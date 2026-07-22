@@ -29,6 +29,9 @@
   @keyframes bbTicker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
   @keyframes bbPulse{0%,100%{opacity:1}50%{opacity:.25}}
   @keyframes bbUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes bbPageIn{from{opacity:0}to{opacity:1}}
+  .bb-page-in{animation:bbPageIn .28s ease both}
+  @media (prefers-reduced-motion:reduce){.bb-page-in{animation:none}}
   .bb-fade{animation:bbUp .6s cubic-bezier(.16,.8,.3,1) both}
 
   @keyframes bbReveal{0%{opacity:0;transform:perspective(1400px) rotateX(-38deg) translateY(80px) scale(.9)}55%{opacity:1}100%{opacity:1;transform:perspective(1400px) rotateX(0deg) translateY(0) scale(1)}}
@@ -188,7 +191,7 @@
   @keyframes bbPlayerNum{from{opacity:0;transform:translateX(-40px)}to{opacity:.16;transform:translateX(0)}}
   @keyframes bbPlayerRow{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   #bb-player-modal{width:100%;max-width:820px;margin:auto;background:#0A150F;border:1px solid rgba(198,162,87,.28);border-radius:22px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;animation:bbPlayerPop .34s cubic-bezier(.16,.8,.3,1) both}
-  @media (max-width:640px){#bb-player-modal{grid-template-columns:1fr}#bb-player-photo{aspect-ratio:4/3}}
+  @media (max-width:640px){#bb-player-modal{grid-template-columns:1fr}#bb-player-photo{width:100%;aspect-ratio:4/3;min-height:0}}
   #bb-player-photo{position:relative;background:radial-gradient(120% 90% at 70% 0%,#123322,#081C13 60%,#05130D);overflow:hidden;min-height:340px}
   #bb-player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;z-index:2;animation:bbPlayerImg .6s cubic-bezier(.16,.8,.3,1) both;animation-delay:.06s}
   #bb-player-bignum{position:absolute;left:-4%;bottom:2%;z-index:1;font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(150px,22vw,240px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(243,239,230,.16);opacity:.16;pointer-events:none;animation:bbPlayerNum .7s cubic-bezier(.16,.8,.3,1) both}
@@ -566,6 +569,7 @@
   <main id="bb-page-equipes" class="bb-fade bb-hide">
     <div style="max-width:1320px;margin:0 auto;padding:clamp(28px,4vw,44px) clamp(16px,4vw,24px) clamp(60px,8vw,88px)">
       <div style="margin-bottom:clamp(24px,4vw,36px)">
+        <button type="button" id="bb-equipes-back" class="bb-hide" style="display:inline-flex;align-items:center;gap:7px;background:none;border:none;padding:0;margin-bottom:16px;cursor:pointer;font-family:'Montserrat',sans-serif;font-weight:600;font-size:13px;color:#A8D93B"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>Retour</button>
         <span style="display:inline-block;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#07130D;background:#C6A257;padding:5px 11px;border-radius:5px;margin-bottom:14px">SAISON 2026–2027</span>
         <h1 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:clamp(34px,5.5vw,56px);letter-spacing:-.01em;color:#F3EFE6;margin:0 0 10px">Nos équipes</h1>
         <p style="font-size:15px;line-height:1.65;color:#C7CFC8;margin:0;max-width:56ch">L'effectif senior et les catégories de formation du club, de Benjamins à Seniors.</p>
@@ -841,7 +845,7 @@
           <p id="bb-player-bio" class="bb-pl-r" style="font-size:14px;line-height:1.7;color:#B9C2BB;margin:0"></p>
           <div class="bb-pl-r" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:2px">
             <div id="bb-player-dots" style="display:flex;gap:7px;flex-wrap:wrap"></div>
-            <button type="button" data-nav="equipes" class="bb-btn-ghost">Voir l'effectif</button>
+            <button type="button" data-nav="equipes" data-from-player="1" class="bb-btn-ghost">Voir l'effectif</button>
           </div>
         </div>
       </div>
@@ -900,7 +904,8 @@
     cart: [],
     homeSc: 78,
     awaySc: 72,
-    sec: 192
+    sec: 192,
+    cameFromPlayer: false
   };
 
   var sizes = ['XS','S','M','L','XL','XXL'];
@@ -1174,6 +1179,13 @@
     closeDrawer();
     window.scrollTo(0, 0);
 
+    var activePage = document.getElementById('bb-page-' + page);
+    if (activePage) {
+      activePage.classList.remove('bb-page-in');
+      void activePage.offsetWidth;
+      activePage.classList.add('bb-page-in');
+    }
+
     var tryoutsPage = document.getElementById('bb-page-tryouts');
     tryoutsPage.classList.remove('is-visible');
     if (page === 'tryouts') {
@@ -1189,7 +1201,10 @@
         eq.classList.remove('is-in');
         setTimeout(function(){ eq.classList.add('is-in'); }, 90);
       }
+      var backBtn = document.getElementById('bb-equipes-back');
+      if (backBtn) backBtn.classList.toggle('bb-hide', !state.cameFromPlayer);
     }
+    if (page !== 'equipes') state.cameFromPlayer = false;
   }
 
   /* ===== overlays ===== */
@@ -1458,7 +1473,9 @@
       if (closeEl) { closeOverlays(); return; }
 
       var navEl = e.target.closest('[data-nav]');
-      if (navEl) { e.preventDefault(); closeOverlays(); goTo(navEl.getAttribute('data-nav')); return; }
+      if (navEl) { e.preventDefault(); state.cameFromPlayer = navEl.hasAttribute('data-from-player'); closeOverlays(); goTo(navEl.getAttribute('data-nav')); return; }
+
+      if (e.target.closest('#bb-equipes-back')) { goTo('accueil'); return; }
 
       if (e.target.closest('#bb-menu-btn')) { openDrawer(!state.drawerOpen); return; }
       if (e.target.closest('#bb-cart-btn')) { openCart(); return; }
