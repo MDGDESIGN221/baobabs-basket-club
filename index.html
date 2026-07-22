@@ -114,6 +114,20 @@
   @media (prefers-reduced-motion:reduce){.bb-eff.armed .bb-player .bb-name{opacity:1!important}}
 
   .bb-hide{display:none!important}
+
+  /* ===== splash d'ouverture ===== */
+  @keyframes bbSplashLogo{0%{opacity:0;transform:scale(.55) translateY(14px)}55%{opacity:1}100%{opacity:1;transform:scale(1) translateY(0)}}
+  @keyframes bbSplashRing{0%{transform:scale(.6);opacity:0}40%{opacity:.6}100%{transform:scale(1.9);opacity:0}}
+  @keyframes bbSplashText{from{opacity:0;transform:translateY(12px);letter-spacing:.16em}to{opacity:1;transform:translateY(0);letter-spacing:.32em}}
+  @keyframes bbSplashBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  #bb-splash{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(120% 120% at 50% 30%,#123322 0%,#081C13 52%,#05100B 100%);transition:opacity .7s ease,visibility .7s ease}
+  #bb-splash.bb-splash-done{opacity:0;visibility:hidden;pointer-events:none}
+  #bb-splash .bb-splash-logo-wrap{position:relative;display:flex;align-items:center;justify-content:center}
+  #bb-splash img{width:118px;height:118px;object-fit:contain;animation:bbSplashLogo .9s cubic-bezier(.34,1.3,.5,1) both;filter:drop-shadow(0 12px 30px rgba(0,0,0,.5))}
+  #bb-splash .bb-splash-name{font-family:'Montserrat',sans-serif;font-weight:800;font-size:15px;letter-spacing:.32em;color:#F3EFE6;text-transform:uppercase;animation:bbSplashText .7s ease both;animation-delay:.35s;opacity:0}
+  #bb-splash .bb-splash-sub{font-family:'Montserrat',sans-serif;font-weight:500;font-size:10px;letter-spacing:.26em;color:#C6A257;text-transform:uppercase;margin-top:6px;animation:bbSplashText .7s ease both;animation-delay:.5s;opacity:0}
+  #bb-splash .bb-splash-track{width:150px;height:2px;border-radius:2px;background:rgba(243,239,230,.12);overflow:hidden}
+  #bb-splash .bb-splash-track i{display:block;width:100%;height:100%;background:linear-gradient(90deg,#C6A257,#A8D93B);transform-origin:left;animation:bbSplashBar 1.5s cubic-bezier(.5,0,.2,1) both;animation-delay:.2s}
   .bb-nav-link{padding:6px 0;border-bottom:2px solid transparent}
   .bb-nav-link.active{border-bottom-color:#C6A257;color:#C6A257}
   .bb-nav-link.active.try{border-bottom-color:#A8D93B;color:#A8D93B}
@@ -196,6 +210,19 @@
 </style>
 </head>
 <body>
+
+<div id="bb-splash">
+  <div class="bb-splash-logo-wrap">
+    <img src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png" alt="Baobabs Basket Club">
+  </div>
+  <div style="text-align:center;display:flex;flex-direction:column;gap:20px;align-items:center">
+    <div>
+      <div class="bb-splash-name">Baobabs</div>
+      <div class="bb-splash-sub">Basket Club</div>
+    </div>
+    <div class="bb-splash-track"><i></i></div>
+  </div>
+</div>
 
 <div style="min-height:100vh;background:#061109">
 
@@ -1422,6 +1449,15 @@
     if (mq.addEventListener) mq.addEventListener('change', onMq); else mq.addListener(onMq);
   }
 
+  function hideSplash(){
+    var s = document.getElementById('bb-splash');
+    if (!s) return;
+    setTimeout(function(){
+      s.classList.add('bb-splash-done');
+      setTimeout(function(){ s.style.display = 'none'; }, 750);
+    }, 2000);
+  }
+
   function init(){
     renderPlayers();
     renderTimeline();
@@ -1435,6 +1471,7 @@
     bindEvents();
     tickScore();
     armRevealEffects();
+    hideSplash();
   }
 
   if (document.readyState === 'loading') {
