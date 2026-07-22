@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Résultats — Baobabs Basket Club</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#061109;color:#F3EFE6;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+  *{box-sizing:border-box}
+  ::selection{background:#C6A257;color:#07130D}
+  button{font-family:inherit;cursor:pointer}
+  input,select{font-family:inherit}
+
+  .wrap{max-width:640px;margin:0 auto;padding:40px 20px 80px}
+  h1{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:clamp(26px,5vw,34px);margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:#B9C2BB;font-size:14px;margin:0 0 32px}
+
+  .card{background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:22px}
+
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+  .field label{font-family:'Montserrat',sans-serif;font-weight:600;font-size:12px;letter-spacing:.06em;color:#C6A257;text-transform:uppercase}
+  .field input[type=text],.field input[type=number],.field input[type=date],.field input[type=password],.field select{
+    background:#07130D;border:1px solid rgba(243,239,230,.14);border-radius:8px;color:#F3EFE6;padding:11px 12px;font-size:15px;width:100%
+  }
+  .field input:focus,.field select:focus{outline:2px solid #A8D93B;outline-offset:1px;border-color:transparent}
+
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .score-row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:end}
+  .score-row .vs{padding-bottom:11px;color:#7E8A82;font-weight:700;text-align:center}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:9px;padding:13px 20px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13.5px;letter-spacing:.04em;width:100%}
+  .btn-primary{background:#A8D93B;color:#0A1B0D}
+  .btn-primary:hover{background:#bce85a}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+  .btn-ghost{background:transparent;border:1px solid rgba(243,239,230,.18);color:#F3EFE6}
+
+  .msg{font-size:13.5px;margin-top:12px;padding:10px 12px;border-radius:8px;display:none}
+  .msg.ok{display:block;background:rgba(168,217,59,.12);color:#A8D93B;border:1px solid rgba(168,217,59,.3)}
+  .msg.err{display:block;background:rgba(192,39,27,.12);color:#e8776e;border:1px solid rgba(192,39,27,.3)}
+
+  .list{margin-top:32px}
+  .list h2{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;margin:0 0 14px}
+  .result-item{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+  .result-item .info{font-size:14px}
+  .result-item .info b{color:#C6A257}
+  .result-item .date{color:#7E8A82;font-size:12px;display:block;margin-top:2px}
+  .del-btn{background:transparent;border:1px solid rgba(192,39,27,.4);color:#e8776e;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600;flex:none}
+  .del-btn:hover{background:rgba(192,39,27,.12)}
+
+  #gate{max-width:360px;margin:120px auto 0;padding:0 20px}
+  #gate .card{text-align:center}
+  #gate h1{font-size:22px}
+  .hide{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="card">
+    <h1>Accès résultats</h1>
+    <p class="sub">Entre le mot de passe pour ajouter ou modifier les résultats des Baobabs.</p>
+    <div class="field">
+      <label for="pw">Mot de passe</label>
+      <input type="password" id="pw" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary" id="unlock-btn">Déverrouiller</button>
+    <div class="msg err" id="gate-msg">Mot de passe incorrect.</div>
+  </div>
+</div>
+
+<div class="wrap hide" id="app">
+  <h1>Résultats — Baobabs</h1>
+  <p class="sub">Ajoute un résultat de match. Il apparaîtra automatiquement sur le site public.</p>
+
+  <div class="card">
+    <div class="field">
+      <label for="opponent">Équipe adverse</label>
+      <input type="text" id="opponent" placeholder="Ex : Louga BC">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="match_date">Date du match</label>
+        <input type="date" id="match_date">
+      </div>
+      <div class="field">
+        <label for="is_home">Lieu</label>
+        <select id="is_home">
+          <option value="true">Domicile</option>
+          <option value="false">Extérieur</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="score-row">
+      <div class="field" style="margin-bottom:0">
+        <label>Score Baobabs</label>
+        <input type="number" id="score_baobabs" min="0" placeholder="0">
+      </div>
+      <div class="vs">–</div>
+      <div class="field" style="margin-bottom:0">
+        <label>Score adverse</label>
+        <input type="number" id="score_opponent" min="0" placeholder="0">
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:16px">
+      <label for="competition">Compétition (optionnel)</label>
+      <input type="text" id="competition" placeholder="Ex : Championnat régional">
+    </div>
+
+    <button class="btn btn-primary" id="add-btn">Ajouter le résultat</button>
+    <div class="msg" id="form-msg"></div>
+  </div>
+
+  <div class="list">
+    <h2>Résultats enregistrés</h2>
+    <div id="results-list">
+      <p class="sub">Chargement…</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var SUPABASE_URL = "https://lmwbwasupqkvswukieav.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_68RKprorqTmVkzjHrKgdZw_h-AcMXRh";
+
+  // Mot de passe simple côté page — change-le ici. Ce n'est pas une vraie sécurité,
+  // juste un filtre pour éviter que n'importe qui tombe sur le formulaire par erreur.
+  var ADMIN_PASSWORD = "baobabs2026";
+
+  var gate = document.getElementById('gate');
+  var app = document.getElementById('app');
+  var pwInput = document.getElementById('pw');
+  var gateMsg = document.getElementById('gate-msg');
+
+  document.getElementById('unlock-btn').addEventListener('click', tryUnlock);
+  pwInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') tryUnlock(); });
+
+  function tryUnlock(){
+    if (pwInput.value === ADMIN_PASSWORD) {
+      gate.classList.add('hide');
+      app.classList.remove('hide');
+      sessionStorage.setItem('bb_admin_ok', '1');
+      loadResults();
+    } else {
+      gateMsg.style.display = 'block';
+    }
+  }
+
+  if (sessionStorage.getItem('bb_admin_ok') === '1') {
+    gate.classList.add('hide');
+    app.classList.remove('hide');
+    loadResults();
+  }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function showMsg(el, text, ok){
+    el.textContent = text;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+  }
+
+  function loadResults(){
+    var list = document.getElementById('results-list');
+    fetch(SUPABASE_URL + '/rest/v1/match_results?select=*&order=match_date.desc&limit=50', {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    })
+    .then(function(res){ if (!res.ok) throw new Error('fetch failed'); return res.json(); })
+    .then(function(rows){
+      if (!rows.length) { list.innerHTML = '<p class="sub">Aucun résultat enregistré pour le moment.</p>'; return; }
+      list.innerHTML = rows.map(function(r){
+        var lieu = r.is_home ? 'vs' : '@';
+        return '' +
+          '<div class="result-item">' +
+            '<div class="info">' +
+              'Baobabs ' + lieu + ' ' + esc(r.opponent) + ' — <b>' + r.score_baobabs + ' - ' + r.score_opponent + '</b>' +
+              '<span class="date">' + esc(r.match_date) + (r.competition ? ' · ' + esc(r.competition) : '') + '</span>' +
+            '</div>' +
+            '<button class="del-btn" data-id="' + r.id + '">Supprimer</button>' +
+          '</div>';
+      }).join('');
+      list.querySelectorAll('.del-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){ deleteResult(btn.getAttribute('data-id')); });
+      });
+    })
+    .catch(function(){
+      list.innerHTML = '<p class="sub">Impossible de charger les résultats.</p>';
+    });
+  }
+
+  function deleteResult(id){
+    if (!confirm('Supprimer ce résultat ?')) return;
+    fetch(SUPABASE_URL + '/rest/v1/match_results?id=eq.' + id, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    })
+    .then(function(res){ if (!res.ok) throw new Error('delete failed'); loadResults(); })
+    .catch(function(){ alert('Erreur lors de la suppression.'); });
+  }
+
+  document.getElementById('add-btn').addEventListener('click', function(){
+    var opponent = document.getElementById('opponent').value.trim();
+    var matchDate = document.getElementById('match_date').value;
+    var isHome = document.getElementById('is_home').value === 'true';
+    var scoreBaobabs = document.getElementById('score_baobabs').value;
+    var scoreOpponent = document.getElementById('score_opponent').value;
+    var competition = document.getElementById('competition').value.trim();
+    var msg = document.getElementById('form-msg');
+
+    if (!opponent || !matchDate || scoreBaobabs === '' || scoreOpponent === '') {
+      showMsg(msg, 'Merci de remplir équipe, date et les deux scores.', false);
+      return;
+    }
+
+    var addBtn = document.getElementById('add-btn');
+    addBtn.disabled = true;
+
+    fetch(SUPABASE_URL + '/rest/v1/match_results', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        opponent: opponent,
+        match_date: matchDate,
+        is_home: isHome,
+        score_baobabs: parseInt(scoreBaobabs, 10),
+        score_opponent: parseInt(scoreOpponent, 10),
+        competition: competition || null
+      })
+    })
+    .then(function(res){
+      if (!res.ok) throw new Error('insert failed');
+      showMsg(msg, 'Résultat ajouté avec succès.', true);
+      document.getElementById('opponent').value = '';
+      document.getElementById('match_date').value = '';
+      document.getElementById('score_baobabs').value = '';
+      document.getElementById('score_opponent').value = '';
+      document.getElementById('competition').value = '';
+      loadResults();
+    })
+    .catch(function(){
+      showMsg(msg, "Erreur lors de l'ajout. Vérifie ta connexion et réessaie.", false);
+    })
+    .finally(function(){ addBtn.disabled = false; });
+  });
+})();
+</script>
+
+</body>
+</html>
