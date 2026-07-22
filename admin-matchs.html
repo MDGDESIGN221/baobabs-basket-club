@@ -9,74 +9,137 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
-  body{margin:0;background:#061109;color:#F3EFE6;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+  :root{
+    --bg:#061109; --panel:#0F1E15; --panel2:#0C1A12; --border:rgba(243,239,230,.09); --border2:rgba(243,239,230,.16);
+    --text:#F3EFE6; --dim:#B9C2BB; --dim2:#7E8A82; --gold:#C6A257; --lime:#A8D93B; --danger:#C0271B; --danger-text:#e8776e;
+  }
   *{box-sizing:border-box}
-  ::selection{background:#C6A257;color:#07130D}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+  ::selection{background:var(--gold);color:#07130D}
   button{font-family:inherit;cursor:pointer}
   input,select,textarea{font-family:inherit}
+  img{max-width:100%}
 
-  .wrap{max-width:720px;margin:0 auto;padding:40px 20px 80px}
-  h1{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:clamp(26px,5vw,34px);margin:0 0 6px;letter-spacing:-.01em}
-  .sub{color:#B9C2BB;font-size:14px;margin:0 0 32px}
+  .wrap{max-width:1120px;margin:0 auto;padding:36px 20px 80px}
+  h1{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:clamp(24px,4.5vw,32px);margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--dim);font-size:13.5px;margin:0 0 28px;line-height:1.5}
 
-  .card{background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:22px;margin-bottom:20px}
+  .section-label{font-family:'Montserrat',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;margin:0 0 12px}
 
-  .tabs{display:flex;gap:8px;margin-bottom:22px}
-  .tab-btn{flex:1;background:#0F1E15;border:1px solid rgba(243,239,230,.14);color:#B9C2BB;border-radius:9px;padding:11px 14px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;letter-spacing:.03em}
-  .tab-btn.active{background:#A8D93B;color:#0A1B0D;border-color:#A8D93B}
-
-  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
-  .field label{font-family:'Montserrat',sans-serif;font-weight:600;font-size:12px;letter-spacing:.06em;color:#C6A257;text-transform:uppercase}
-  .field input[type=text],.field input[type=number],.field input[type=date],.field input[type=time],.field input[type=password],.field select{
-    background:#07130D;border:1px solid rgba(243,239,230,.14);border-radius:8px;color:#F3EFE6;padding:11px 12px;font-size:15px;width:100%
-  }
-  .field input:focus,.field select:focus{outline:2px solid #A8D93B;outline-offset:1px;border-color:transparent}
-  .hint{color:#7E8A82;font-size:12px;margin-top:2px}
-
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  .score-row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:end}
-  .score-row .vs{padding-bottom:11px;color:#7E8A82;font-weight:700;text-align:center}
-
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:9px;padding:13px 20px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13.5px;letter-spacing:.04em;width:100%}
-  .btn-primary{background:#A8D93B;color:#0A1B0D}
-  .btn-primary:hover{background:#bce85a}
-  .btn-primary:disabled{opacity:.5;cursor:not-allowed}
-  .btn-ghost{background:transparent;border:1px solid rgba(243,239,230,.18);color:#F3EFE6}
-
-  .msg{font-size:13.5px;margin-top:12px;padding:10px 12px;border-radius:8px;display:none}
-  .msg.ok{display:block;background:rgba(168,217,59,.12);color:#A8D93B;border:1px solid rgba(168,217,59,.3)}
-  .msg.err{display:block;background:rgba(192,39,27,.12);color:#e8776e;border:1px solid rgba(192,39,27,.3)}
-
-  .list{margin-top:32px}
-  .list h2{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;margin:0 0 14px}
-
-  .match-item{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:10px;padding:12px 14px;margin-bottom:8px}
-  .match-item .info{font-size:14px;display:flex;align-items:center;gap:10px}
-  .match-item .info b{color:#C6A257}
-  .match-item .logo{width:28px;height:28px;border-radius:50%;object-fit:contain;background:#07130D;border:1px solid rgba(243,239,230,.14);flex:none}
-  .match-item .date{color:#7E8A82;font-size:12px;display:block;margin-top:2px}
-  .status-pill{font-family:'Montserrat',sans-serif;font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:20px;flex:none}
-  .status-upcoming{background:rgba(198,162,87,.16);color:#C6A257}
-  .status-played{background:rgba(168,217,59,.14);color:#A8D93B}
-  .item-actions{display:flex;gap:6px;flex:none}
-  .edit-btn{background:transparent;border:1px solid rgba(243,239,230,.18);color:#F3EFE6;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600}
-  .edit-btn:hover{background:rgba(243,239,230,.08)}
-  .del-btn{background:transparent;border:1px solid rgba(192,39,27,.4);color:#e8776e;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:600}
-  .del-btn:hover{background:rgba(192,39,27,.12)}
-
-  .team-item{display:flex;align-items:center;gap:12px;background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:10px;padding:10px 14px;margin-bottom:8px}
-  .team-item img{width:32px;height:32px;border-radius:50%;object-fit:contain;background:#07130D;border:1px solid rgba(243,239,230,.14);flex:none}
-  .team-item span{flex:1;font-size:14px}
-
-  #gate{max-width:360px;margin:120px auto 0;padding:0 20px}
-  #gate .card{text-align:center}
-  #gate h1{font-size:22px}
+  /* ===== gate ===== */
+  #gate{max-width:340px;margin:110px auto 0;padding:0 20px}
+  #gate .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center}
+  #gate h1{font-size:20px}
   .hide{display:none!important}
 
-  .logo-choice{display:flex;gap:8px;margin-bottom:10px}
-  .logo-choice button{flex:1;background:#07130D;border:1px solid rgba(243,239,230,.14);color:#B9C2BB;border-radius:7px;padding:8px;font-size:12px;font-weight:600;font-family:'Montserrat',sans-serif}
-  .logo-choice button.active{background:rgba(168,217,59,.14);color:#A8D93B;border-color:rgba(168,217,59,.4)}
-  .logo-preview{width:48px;height:48px;border-radius:50%;object-fit:contain;background:#07130D;border:1px solid rgba(243,239,230,.14);margin-top:8px;display:none}
+  /* ===== layout ===== */
+  .layout{display:flex;flex-direction:column;gap:22px}
+  .preview-col{order:-1}
+  @media (min-width:960px){
+    .layout{display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start}
+    .preview-col{order:0;position:sticky;top:20px}
+  }
+
+  /* ===== form card ===== */
+  .form-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px}
+  .form-block{margin-bottom:24px}
+  .form-block:last-of-type{margin-bottom:0}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+  .field label{font-family:'Montserrat',sans-serif;font-weight:600;font-size:12px;color:var(--dim);letter-spacing:.02em}
+  .field input[type=text],.field input[type=number],.field input[type=date],.field input[type=time],.field input[type=password],.field select,.field textarea{
+    background:#07130D;border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:11px 12px;font-size:14.5px;width:100%
+  }
+  .field textarea{resize:vertical;min-height:70px;line-height:1.5}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--lime);outline-offset:1px;border-color:transparent}
+  .hint{color:var(--dim2);font-size:12px;line-height:1.5}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+  /* two-button toggle (lieu, upload/url) */
+  .toggle2{display:flex;gap:8px}
+  .toggle2 button{flex:1;background:#07130D;border:1px solid var(--border2);color:var(--dim);border-radius:8px;padding:10px;font-family:'Montserrat',sans-serif;font-weight:600;font-size:13px}
+  .toggle2 button.active{background:rgba(168,217,59,.14);color:var(--lime);border-color:rgba(168,217,59,.4)}
+
+  /* ===== team grid ===== */
+  .team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:10px}
+  .team-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;background:#07130D;border:1px solid var(--border2);border-radius:10px;padding:10px 6px 8px;text-align:center}
+  .team-tile.selected{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+  .team-tile .avatar{width:36px;height:36px;border-radius:50%;object-fit:contain;background:#0c1913;border:1px solid var(--border2)}
+  .team-tile .avatar-fallback{display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;color:#fff}
+  .team-tile .tname{font-size:11px;color:var(--dim);line-height:1.25;word-break:break-word}
+  .team-tile.selected .tname{color:var(--text)}
+  .team-tile .rm{position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:rgba(192,39,27,.85);color:#fff;border:none;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+  .team-tile.add{border-style:dashed;color:var(--dim);justify-content:center}
+  .team-tile.add .avatar-fallback{background:transparent;border-style:dashed;color:var(--dim);font-size:18px;font-weight:400}
+
+  .add-team-panel{margin-top:12px;padding:14px;background:#07130D;border:1px solid var(--border2);border-radius:10px}
+  .add-team-panel .logo-preview{width:40px;height:40px;border-radius:50%;object-fit:contain;background:#0c1913;border:1px solid var(--border2);margin-top:6px;display:none}
+  .add-team-actions{display:flex;gap:8px;margin-top:12px}
+
+  /* ===== buttons ===== */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:9px;padding:12px 18px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;letter-spacing:.02em}
+  .btn-primary{background:var(--lime);color:#0A1B0D}
+  .btn-primary:hover{background:#bce85a}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+  .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text)}
+  .btn-ghost:hover{background:rgba(243,239,230,.06)}
+  .btn-sm{padding:9px 14px;font-size:12.5px}
+  .btn-full{width:100%}
+  .btn-link{background:none;border:none;color:var(--dim2);font-size:12px;text-decoration:underline;padding:0}
+
+  .msg{font-size:13px;margin-top:10px;padding:9px 12px;border-radius:8px;display:none;line-height:1.4}
+  .msg.ok{display:block;background:rgba(168,217,59,.12);color:var(--lime);border:1px solid rgba(168,217,59,.3)}
+  .msg.err{display:block;background:rgba(192,39,27,.12);color:var(--danger-text);border:1px solid rgba(192,39,27,.3)}
+
+  /* ===== photo field ===== */
+  .photo-current{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .photo-current img{width:56px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border2);background:#07130D}
+
+  /* ===== preview ===== */
+  .preview-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px}
+  .preview-card .section-label{margin-bottom:14px}
+  .prev-empty{font-size:13px;color:var(--dim2);line-height:1.6;padding:20px 6px;text-align:center}
+  .prev-caption{font-size:11.5px;color:var(--dim2);margin-top:12px;line-height:1.5;text-align:center}
+
+  .prev-hero{background:linear-gradient(155deg,#0F4030,#0A2318);border:1px solid rgba(198,162,87,.28);border-radius:16px;padding:20px}
+  .prev-hero-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .prev-kicker{font-family:'Montserrat',sans-serif;font-weight:600;font-size:11px;letter-spacing:.16em;color:var(--gold);text-transform:uppercase}
+  .prev-badge{font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;color:#07130D;background:var(--gold);padding:3px 8px;border-radius:20px}
+  .prev-hero-teams{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:18px}
+  .prev-team{text-align:center;flex:1;min-width:0}
+  .prev-avatar{width:52px;height:52px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);display:block}
+  .prev-avatar-fallback{display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;color:#fff}
+  .prev-team-name{font-family:'Montserrat',sans-serif;font-weight:600;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prev-vs{font-family:'Montserrat',sans-serif;font-weight:700;font-size:19px;color:var(--gold);flex:none}
+  .prev-hero-info{text-align:center;font-size:12.5px;color:var(--dim);line-height:1.6;border-top:1px solid rgba(243,239,230,.09);padding-top:13px}
+  .prev-hero-date{font-family:'Montserrat',sans-serif;font-weight:500;letter-spacing:.04em;color:var(--text);font-size:14px}
+  .prev-hero-cta{display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:12px;border-radius:9px;background:var(--gold);color:#07130D;margin-top:15px}
+
+  .prev-result{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0F1E15;border:1px solid var(--border);border-left:3px solid var(--dim2);border-radius:10px;padding:12px 14px}
+  .prev-result-left{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .prev-result-tag{font-family:'Montserrat',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.06em;color:var(--dim)}
+  .prev-result-opp{font-family:'Montserrat',sans-serif;font-weight:600;font-size:13.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prev-result-comp{font-size:11px;color:var(--dim2)}
+  .prev-result-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none}
+  .prev-result-score{font-family:'Montserrat',sans-serif;font-weight:800;font-size:15px;color:var(--gold)}
+  .prev-result-date{font-size:11px;color:var(--dim2)}
+
+  /* ===== matches list ===== */
+  .lists{margin-top:26px;display:grid;grid-template-columns:1fr;gap:20px}
+  @media (min-width:760px){ .lists{grid-template-columns:1fr 1fr} }
+  .list h2{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;margin:0 0 12px}
+  .match-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:8px}
+  .match-item .info{font-size:13.5px;display:flex;align-items:center;gap:9px;min-width:0}
+  .match-item .logo{width:26px;height:26px;border-radius:50%;object-fit:contain;background:#07130D;border:1px solid var(--border2);flex:none}
+  .match-item .txt{min-width:0}
+  .match-item .date{color:var(--dim2);font-size:11.5px;display:block;margin-top:2px}
+  .status-pill{font-family:'Montserrat',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;flex:none;margin-right:6px}
+  .status-upcoming{background:rgba(198,162,87,.16);color:var(--gold)}
+  .status-played{background:rgba(168,217,59,.14);color:var(--lime)}
+  .item-actions{display:flex;gap:6px;flex:none}
+  .edit-btn{background:transparent;border:1px solid var(--border2);color:var(--text);border-radius:7px;padding:6px 10px;font-size:11.5px;font-weight:600}
+  .edit-btn:hover{background:rgba(243,239,230,.08)}
+  .del-btn{background:transparent;border:1px solid rgba(192,39,27,.4);color:var(--danger-text);border-radius:7px;padding:6px 10px;font-size:11.5px;font-weight:600}
+  .del-btn:hover{background:rgba(192,39,27,.12)}
 </style>
 </head>
 <body>
@@ -89,84 +152,129 @@
       <label for="pw">Mot de passe</label>
       <input type="password" id="pw" placeholder="••••••••">
     </div>
-    <button class="btn btn-primary" id="unlock-btn">Déverrouiller</button>
+    <button class="btn btn-primary btn-full" id="unlock-btn">Déverrouiller</button>
     <div class="msg err" id="gate-msg">Mot de passe incorrect.</div>
   </div>
 </div>
 
 <div class="wrap hide" id="app">
   <h1>Matchs — Baobabs</h1>
-  <p class="sub">Gère le calendrier et les résultats. Tout apparaît automatiquement sur le site public.</p>
+  <p class="sub">Renseigne un match : le calendrier, les résultats et la carte "Prochain match" se mettent à jour tout seuls sur le site.</p>
 
-  <div class="tabs">
-    <button class="tab-btn active" id="tab-matches-btn">Matchs</button>
-    <button class="tab-btn" id="tab-teams-btn">Équipes adverses</button>
-  </div>
+  <div class="layout">
+    <div class="form-col">
+      <div class="form-card">
 
-  <!-- ===== ONGLET MATCHS ===== -->
-  <div id="tab-matches">
-    <div class="card">
-      <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:19px;margin:0 0 16px" id="match-form-title">Ajouter un match</h2>
-
-      <div class="field">
-        <label for="opponent_select">Équipe adverse</label>
-        <select id="opponent_select">
-          <option value="">Chargement des équipes…</option>
-        </select>
-        <span class="hint">Pas encore dans la liste ? Ajoute-la depuis l'onglet "Équipes adverses".</span>
-      </div>
-
-      <div class="row2">
-        <div class="field">
-          <label for="match_date">Date du match</label>
-          <input type="date" id="match_date">
-        </div>
-        <div class="field">
-          <label for="match_time">Heure (optionnel)</label>
-          <input type="time" id="match_time">
-        </div>
-      </div>
-
-      <div class="row2">
-        <div class="field">
-          <label for="is_home">Lieu</label>
-          <select id="is_home">
-            <option value="true">Domicile</option>
-            <option value="false">Extérieur</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="venue">Salle / stade (optionnel)</label>
-          <input type="text" id="venue" placeholder="Ex : Complexe P. Semedo, Dakar">
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="competition">Compétition (optionnel)</label>
-        <input type="text" id="competition" placeholder="Ex : Championnat régional">
-      </div>
-
-      <div class="field">
-        <label>Scores (laisser vide si le match n'a pas encore eu lieu)</label>
-        <div class="score-row">
-          <div>
-            <input type="number" id="score_baobabs" min="0" placeholder="Score Baobabs">
-          </div>
-          <div class="vs">–</div>
-          <div>
-            <input type="number" id="score_opponent" min="0" placeholder="Score adverse">
+        <div class="form-block">
+          <div class="section-label">Adversaire</div>
+          <div class="team-grid" id="team-grid"></div>
+          <div class="add-team-panel hide" id="add-team-panel">
+            <div class="field">
+              <label for="new_team_name">Nom de l'équipe</label>
+              <input type="text" id="new_team_name" placeholder="Ex : Rufisque BC">
+            </div>
+            <div class="field">
+              <label>Logo (optionnel)</label>
+              <div class="toggle2">
+                <button type="button" class="active" id="nt-mode-upload">Uploader une image</button>
+                <button type="button" id="nt-mode-url">Coller un lien</button>
+              </div>
+              <input type="file" id="new_team_file" accept="image/*" style="margin-top:8px">
+              <input type="text" id="new_team_url" placeholder="https://…" class="hide" style="margin-top:8px">
+              <img id="new_team_preview" class="logo-preview">
+            </div>
+            <div class="add-team-actions">
+              <button class="btn btn-primary btn-sm" id="save-team-btn">Ajouter l'équipe</button>
+              <button class="btn btn-ghost btn-sm" id="cancel-team-btn">Annuler</button>
+            </div>
+            <div class="msg" id="team-form-msg"></div>
           </div>
         </div>
-        <span class="hint">Sans les deux scores, le match apparaît comme "à venir". Avec les deux scores, il passe automatiquement en "joué".</span>
-      </div>
 
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-primary" id="save-match-btn">Ajouter le match</button>
-        <button class="btn btn-ghost hide" id="cancel-edit-btn" style="width:auto;flex:none;padding:13px 18px">Annuler</button>
+        <div class="form-block">
+          <div class="field">
+            <label>Lieu</label>
+            <div class="toggle2">
+              <button type="button" class="active" id="lieu-home">Domicile</button>
+              <button type="button" id="lieu-away">Extérieur</button>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="match_date">Date du match</label>
+              <input type="date" id="match_date">
+            </div>
+            <div class="field">
+              <label for="match_time">Heure (optionnel)</label>
+              <input type="time" id="match_time">
+            </div>
+          </div>
+          <div class="field">
+            <label for="venue">Salle / stade (optionnel)</label>
+            <input type="text" id="venue" placeholder="Ex : Complexe P. Semedo, Dakar">
+          </div>
+          <div class="field">
+            <label for="competition">Compétition (optionnel)</label>
+            <input type="text" id="competition" placeholder="Ex : Championnat régional">
+          </div>
+        </div>
+
+        <div class="form-block">
+          <div class="field">
+            <label>Scores</label>
+            <div class="row2">
+              <input type="number" id="score_baobabs" min="0" placeholder="Score Baobabs">
+              <input type="number" id="score_opponent" min="0" placeholder="Score adverse">
+            </div>
+            <span class="hint">Laisse les deux vides tant que le match n'a pas eu lieu — il apparaît alors comme "à venir". Dès que les deux scores sont remplis, il passe automatiquement en "joué".</span>
+          </div>
+        </div>
+
+        <div class="form-block">
+          <div class="field">
+            <label>Photo du match (optionnel)</label>
+            <div class="photo-current hide" id="photo-current-row">
+              <img id="photo-current-thumb" src="" alt="">
+              <button type="button" class="btn-link" id="photo-remove-btn">Retirer la photo</button>
+            </div>
+            <div class="toggle2">
+              <button type="button" class="active" id="photo-mode-upload">Uploader une image</button>
+              <button type="button" id="photo-mode-url">Coller un lien</button>
+            </div>
+            <input type="file" id="match_photo_file" accept="image/*" style="margin-top:8px">
+            <input type="text" id="match_photo_url" placeholder="https://…" class="hide" style="margin-top:8px">
+            <span class="hint">Affiche avant le match, ou photo/résumé après — comme tu préfères.</span>
+          </div>
+          <div class="field">
+            <label for="stream_url">Lien du direct YouTube (optionnel)</label>
+            <input type="text" id="stream_url" placeholder="https://youtube.com/watch?v=…">
+            <span class="hint">Lien vers la diffusion en direct de ce match précis, si tu en as un.</span>
+          </div>
+          <div class="field">
+            <label for="notes">Notes (optionnel)</label>
+            <textarea id="notes" placeholder="Une remarque à garder pour ce match…"></textarea>
+            <span class="hint">Visible seulement ici, pas sur le site public.</span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" id="save-match-btn" style="flex:1">Ajouter le match</button>
+          <button class="btn btn-ghost hide" id="cancel-edit-btn">Annuler</button>
+        </div>
+        <div class="msg" id="match-form-msg"></div>
       </div>
-      <div class="msg" id="match-form-msg"></div>
     </div>
 
+    <div class="preview-col">
+      <div class="preview-card">
+        <div class="section-label">Aperçu</div>
+        <div id="preview-slot"><div class="prev-empty">Choisis une équipe et une date pour voir l'aperçu.</div></div>
+        <div class="prev-caption" id="preview-caption"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lists">
     <div class="list">
       <h2>À venir</h2>
       <div id="upcoming-list"><p class="sub">Chargement…</p></div>
@@ -176,48 +284,66 @@
       <div id="played-list"><p class="sub">Chargement…</p></div>
     </div>
   </div>
-
-  <!-- ===== ONGLET ÉQUIPES ===== -->
-  <div id="tab-teams" class="hide">
-    <div class="card">
-      <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:19px;margin:0 0 16px">Ajouter une équipe adverse</h2>
-
-      <div class="field">
-        <label for="team_name">Nom de l'équipe</label>
-        <input type="text" id="team_name" placeholder="Ex : Louga BC">
-      </div>
-
-      <div class="field">
-        <label>Logo (optionnel)</label>
-        <div class="logo-choice">
-          <button type="button" class="active" id="logo-mode-upload">Uploader une image</button>
-          <button type="button" id="logo-mode-url">Coller un lien</button>
-        </div>
-        <input type="file" id="team_logo_file" accept="image/*">
-        <input type="text" id="team_logo_url" placeholder="https://…" class="hide">
-        <img id="team_logo_preview" class="logo-preview">
-      </div>
-
-      <button class="btn btn-primary" id="save-team-btn">Ajouter l'équipe</button>
-      <div class="msg" id="team-form-msg"></div>
-    </div>
-
-    <div class="list">
-      <h2>Équipes enregistrées</h2>
-      <div id="teams-list"><p class="sub">Chargement…</p></div>
-    </div>
-  </div>
 </div>
 
 <script>
 (function(){
   var SUPABASE_URL = "https://lmwbwasupqkvswukieav.supabase.co";
   var SUPABASE_KEY = "sb_publishable_68RKprorqTmVkzjHrKgdZw_h-AcMXRh";
-
-  // Mot de passe simple côté page — change-le ici. Ce n'est pas une vraie sécurité,
-  // juste un filtre pour éviter que n'importe qui tombe sur le formulaire par erreur.
   var ADMIN_PASSWORD = "baobabs2026";
+  var BBC_LOGO = "https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png";
 
+  // Équipes déjà utilisées ailleurs sur le site (mêmes logos réels) — proposées
+  // instantanément, sans appel réseau, dès l'ouverture de la page.
+  var KNOWN_TEAMS = [
+    { name: "DUC Dakar", logo_url: "https://res.cloudinary.com/djdkpihuz/image/upload/v1784688526/DUC_Dakar_logo_zyqx86.png" },
+    { name: "ASC Ville", logo_url: "https://res.cloudinary.com/djdkpihuz/image/upload/v1784752437/ASC_Ville_g3uln3.jpg" },
+    { name: "Louga BC", logo_url: "https://res.cloudinary.com/djdkpihuz/image/upload/v1784752437/Louga_BC_zr15vm.webp" },
+    { name: "Mbour Basket", logo_url: "https://res.cloudinary.com/djdkpihuz/image/upload/v1784752437/Mbour_Basket_iorbvv.jpg" },
+    { name: "Guédiawaye", logo_url: "https://res.cloudinary.com/djdkpihuz/image/upload/v1784752437/Gu%C3%A9diawaye_Basket_d63dsi.jpg" },
+    { name: "Saint-Louis", logo_url: "https://res.cloudinary.com/djdkpihuz/image/upload/v1784752437/Saint-Louis_m7ynf5.jpg" },
+    { name: "Thiès Élite", logo_url: null }
+  ];
+
+  var FALLBACK_COLORS = ['#c0392b','#2457c5','#15803d','#d97706','#7c3aed','#0891b2','#be185d','#b45309'];
+  function fallbackColor(name){
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return FALLBACK_COLORS[h % FALLBACK_COLORS.length];
+  }
+  function initials(name){
+    return name.split(/\s+/).map(function(w){ return w[0]; }).join('').slice(0,3).toUpperCase();
+  }
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function normName(s){ return String(s || '').trim().toLowerCase(); }
+  function showMsg(el, text, ok){
+    el.textContent = text;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+  }
+  function sbHeaders(extra){
+    var h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+    if (extra) for (var k in extra) h[k] = extra[k];
+    return h;
+  }
+  function formatDateShort(d){
+    var dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  }
+  function formatDateLong(d){
+    var dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+  }
+  function daysUntil(d){
+    var today = new Date(); today.setHours(0,0,0,0);
+    var dt = new Date(d + 'T00:00:00');
+    return Math.round((dt - today) / 86400000);
+  }
+
+  // ===================== GATE =====================
   var gate = document.getElementById('gate');
   var app = document.getElementById('app');
   var pwInput = document.getElementById('pw');
@@ -236,156 +362,178 @@
       gateMsg.style.display = 'block';
     }
   }
-
   if (sessionStorage.getItem('bb_admin_ok') === '1') {
     gate.classList.add('hide');
     app.classList.remove('hide');
     init();
   }
 
-  function esc(s){
-    return String(s).replace(/[&<>"']/g, function(c){
-      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  // ===================== ÉTAT =====================
+  var customTeamsCache = [];      // équipes ajoutées via "+ Nouvelle équipe", chargées depuis Supabase
+  var selectedTeam = null;        // { name, logo_url }
+  var isHome = true;
+  var editingMatchId = null;
+  var currentPhotoUrl = null;     // photo déjà enregistrée (mode édition)
+  var newTeamFile = null;
+  var newMatchPhotoFile = null;
+
+  // ===================== ÉQUIPES : GRILLE =====================
+  function allTeamsForGrid(){
+    var seen = {};
+    var out = [];
+    KNOWN_TEAMS.forEach(function(t){ seen[normName(t.name)] = true; out.push({ name: t.name, logo_url: t.logo_url, custom: false }); });
+    customTeamsCache.forEach(function(t){
+      if (seen[normName(t.name)]) return;
+      seen[normName(t.name)] = true;
+      out.push({ name: t.name, logo_url: t.logo_url, custom: true, id: t.id });
+    });
+    return out;
+  }
+
+  function renderTeamGrid(){
+    var grid = document.getElementById('team-grid');
+    var teams = allTeamsForGrid();
+    var html = teams.map(function(t){
+      var isSel = selectedTeam && normName(selectedTeam.name) === normName(t.name);
+      var avatar = t.logo_url
+        ? '<img class="avatar" src="' + esc(t.logo_url) + '" alt="">'
+        : '<div class="avatar avatar-fallback" style="background:' + fallbackColor(t.name) + '">' + esc(initials(t.name)) + '</div>';
+      var rm = t.custom ? '<button type="button" class="rm" data-rm-id="' + t.id + '" title="Supprimer">×</button>' : '';
+      return '<div class="team-tile' + (isSel ? ' selected' : '') + '" data-team-name="' + esc(t.name) + '" data-logo="' + esc(t.logo_url || '') + '">' +
+        rm + avatar + '<span class="tname">' + esc(t.name) + '</span>' +
+      '</div>';
+    }).join('');
+    html += '<div class="team-tile add" id="add-team-tile"><div class="avatar avatar-fallback">+</div><span class="tname">Nouvelle équipe</span></div>';
+    grid.innerHTML = html;
+
+    grid.querySelectorAll('.team-tile[data-team-name]').forEach(function(tile){
+      tile.addEventListener('click', function(e){
+        if (e.target.hasAttribute('data-rm-id')) return;
+        selectedTeam = { name: tile.getAttribute('data-team-name'), logo_url: tile.getAttribute('data-logo') || null };
+        renderTeamGrid();
+        updatePreview();
+      });
+    });
+    grid.querySelectorAll('[data-rm-id]').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        deleteCustomTeam(btn.getAttribute('data-rm-id'));
+      });
+    });
+    document.getElementById('add-team-tile').addEventListener('click', function(){
+      document.getElementById('add-team-panel').classList.remove('hide');
+      document.getElementById('new_team_name').focus();
     });
   }
 
-  function showMsg(el, text, ok){
-    el.textContent = text;
-    el.className = 'msg ' + (ok ? 'ok' : 'err');
-  }
-
-  function sbHeaders(extra){
-    var h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
-    if (extra) for (var k in extra) h[k] = extra[k];
-    return h;
-  }
-
-  // ===================== TABS =====================
-  var tabMatchesBtn = document.getElementById('tab-matches-btn');
-  var tabTeamsBtn = document.getElementById('tab-teams-btn');
-  var tabMatches = document.getElementById('tab-matches');
-  var tabTeams = document.getElementById('tab-teams');
-
-  tabMatchesBtn.addEventListener('click', function(){
-    tabMatchesBtn.classList.add('active');
-    tabTeamsBtn.classList.remove('active');
-    tabMatches.classList.remove('hide');
-    tabTeams.classList.add('hide');
-  });
-  tabTeamsBtn.addEventListener('click', function(){
-    tabTeamsBtn.classList.add('active');
-    tabMatchesBtn.classList.remove('active');
-    tabTeams.classList.remove('hide');
-    tabMatches.classList.add('hide');
-  });
-
-  // ===================== ÉQUIPES =====================
-  var teamsCache = [];
-
-  var logoModeUpload = document.getElementById('logo-mode-upload');
-  var logoModeUrl = document.getElementById('logo-mode-url');
-  var teamLogoFile = document.getElementById('team_logo_file');
-  var teamLogoUrl = document.getElementById('team_logo_url');
-  var teamLogoPreview = document.getElementById('team_logo_preview');
-
-  logoModeUpload.addEventListener('click', function(){
-    logoModeUpload.classList.add('active');
-    logoModeUrl.classList.remove('active');
-    teamLogoFile.classList.remove('hide');
-    teamLogoUrl.classList.add('hide');
-  });
-  logoModeUrl.addEventListener('click', function(){
-    logoModeUrl.classList.add('active');
-    logoModeUpload.classList.remove('active');
-    teamLogoUrl.classList.remove('hide');
-    teamLogoFile.classList.add('hide');
-  });
-  teamLogoFile.addEventListener('change', function(){
-    var f = teamLogoFile.files[0];
-    if (!f) { teamLogoPreview.style.display = 'none'; return; }
-    var reader = new FileReader();
-    reader.onload = function(e){
-      teamLogoPreview.src = e.target.result;
-      teamLogoPreview.style.display = 'block';
-    };
-    reader.readAsDataURL(f);
-  });
-  teamLogoUrl.addEventListener('input', function(){
-    if (teamLogoUrl.value) {
-      teamLogoPreview.src = teamLogoUrl.value;
-      teamLogoPreview.style.display = 'block';
-    } else {
-      teamLogoPreview.style.display = 'none';
-    }
-  });
-
-  function loadTeams(){
+  function loadCustomTeams(){
     return fetch(SUPABASE_URL + '/rest/v1/teams?select=*&order=name.asc', { headers: sbHeaders() })
       .then(function(res){ if (!res.ok) throw new Error('fetch teams failed'); return res.json(); })
       .then(function(rows){
-        teamsCache = rows || [];
-        renderTeamsList();
-        renderOpponentSelect();
-        return teamsCache;
+        customTeamsCache = rows || [];
+        renderTeamGrid();
+      })
+      .catch(function(){
+        customTeamsCache = [];
+        renderTeamGrid();
       });
   }
 
-  function renderTeamsList(){
-    var list = document.getElementById('teams-list');
-    if (!teamsCache.length) { list.innerHTML = '<p class="sub">Aucune équipe enregistrée pour le moment.</p>'; return; }
-    list.innerHTML = teamsCache.map(function(t){
-      var logo = t.logo_url
-        ? '<img src="' + esc(t.logo_url) + '" alt="' + esc(t.name) + '">'
-        : '<div style="width:32px;height:32px;border-radius:50%;background:#07130D;border:1px solid rgba(243,239,230,.14)"></div>';
-      return '' +
-        '<div class="team-item">' +
-          logo +
-          '<span>' + esc(t.name) + '</span>' +
-          '<button class="del-btn" data-id="' + t.id + '">Supprimer</button>' +
-        '</div>';
-    }).join('');
-    list.querySelectorAll('.del-btn').forEach(function(btn){
-      btn.addEventListener('click', function(){ deleteTeam(btn.getAttribute('data-id')); });
-    });
+  function deleteCustomTeam(id){
+    if (!confirm("Supprimer cette équipe ? Les matchs déjà enregistrés avec elle garderont son nom et logo.")) return;
+    fetch(SUPABASE_URL + '/rest/v1/teams?id=eq.' + id, { method: 'DELETE', headers: sbHeaders() })
+      .then(function(res){ if (!res.ok) throw new Error('delete team failed'); return loadCustomTeams(); })
+      .then(function(){
+        if (selectedTeam) {
+          var stillThere = allTeamsForGrid().some(function(t){ return normName(t.name) === normName(selectedTeam.name); });
+          if (!stillThere) { selectedTeam = null; updatePreview(); }
+        }
+      })
+      .catch(function(){ alert("Erreur lors de la suppression de l'équipe."); });
   }
 
-  function renderOpponentSelect(){
-    var sel = document.getElementById('opponent_select');
-    var current = sel.value;
-    if (!teamsCache.length) {
-      sel.innerHTML = '<option value="">Aucune équipe — ajoute-en une d\'abord</option>';
-      return;
-    }
-    sel.innerHTML = '<option value="">— Choisir une équipe —</option>' + teamsCache.map(function(t){
-      return '<option value="' + t.id + '">' + esc(t.name) + '</option>';
-    }).join('');
-    if (current) sel.value = current;
-  }
-
-  function uploadLogoIfNeeded(){
-    var f = teamLogoFile.files[0];
-    if (logoModeUrl.classList.contains('active')) {
-      return Promise.resolve(teamLogoUrl.value.trim() || null);
-    }
-    if (!f) return Promise.resolve(null);
-    var path = Date.now() + '-' + f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    return fetch(SUPABASE_URL + '/storage/v1/object/team-logos/' + path, {
+  // Après un enregistrement de match réussi : si l'équipe utilisée n'existe pas
+  // encore dans la table "teams" (cas d'une équipe déjà connue du site mais
+  // jamais encore choisie ici), on l'y ajoute discrètement pour qu'elle
+  // devienne modifiable/supprimable comme une équipe normale. Échec silencieux :
+  // le match est déjà enregistré, ce n'est pas grave si cette étape échoue.
+  function ensureTeamPersisted(name, logo_url){
+    var exists = customTeamsCache.some(function(t){ return normName(t.name) === normName(name); });
+    if (exists) return;
+    fetch(SUPABASE_URL + '/rest/v1/teams', {
       method: 'POST',
-      headers: sbHeaders({ 'Content-Type': f.type || 'application/octet-stream' }),
-      body: f
-    })
-    .then(function(res){ if (!res.ok) throw new Error('upload failed'); return SUPABASE_URL + '/storage/v1/object/public/team-logos/' + path; });
+      headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      body: JSON.stringify({ name: name, logo_url: logo_url || null })
+    }).then(function(){ loadCustomTeams(); }).catch(function(){});
+  }
+
+  // ===================== PANNEAU "NOUVELLE ÉQUIPE" =====================
+  var ntModeUpload = document.getElementById('nt-mode-upload');
+  var ntModeUrl = document.getElementById('nt-mode-url');
+  var ntFile = document.getElementById('new_team_file');
+  var ntUrl = document.getElementById('new_team_url');
+  var ntPreview = document.getElementById('new_team_preview');
+
+  ntModeUpload.addEventListener('click', function(){
+    ntModeUpload.classList.add('active'); ntModeUrl.classList.remove('active');
+    ntFile.classList.remove('hide'); ntUrl.classList.add('hide');
+  });
+  ntModeUrl.addEventListener('click', function(){
+    ntModeUrl.classList.add('active'); ntModeUpload.classList.remove('active');
+    ntUrl.classList.remove('hide'); ntFile.classList.add('hide');
+  });
+  ntFile.addEventListener('change', function(){
+    newTeamFile = ntFile.files[0] || null;
+    if (!newTeamFile) { ntPreview.style.display = 'none'; return; }
+    var reader = new FileReader();
+    reader.onload = function(e){ ntPreview.src = e.target.result; ntPreview.style.display = 'block'; };
+    reader.readAsDataURL(newTeamFile);
+  });
+  ntUrl.addEventListener('input', function(){
+    if (ntUrl.value) { ntPreview.src = ntUrl.value; ntPreview.style.display = 'block'; }
+    else { ntPreview.style.display = 'none'; }
+  });
+
+  function resetAddTeamPanel(){
+    document.getElementById('add-team-panel').classList.add('hide');
+    document.getElementById('new_team_name').value = '';
+    ntFile.value = ''; ntUrl.value = ''; newTeamFile = null;
+    ntPreview.style.display = 'none';
+    document.getElementById('team-form-msg').className = 'msg';
+  }
+  document.getElementById('cancel-team-btn').addEventListener('click', resetAddTeamPanel);
+
+  function uploadFileTo(bucket, file){
+    var path = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return fetch(SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + path, {
+      method: 'POST',
+      headers: sbHeaders({ 'Content-Type': file.type || 'application/octet-stream' }),
+      body: file
+    }).then(function(res){ if (!res.ok) throw new Error('upload failed'); return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path; });
   }
 
   document.getElementById('save-team-btn').addEventListener('click', function(){
-    var name = document.getElementById('team_name').value.trim();
+    var name = document.getElementById('new_team_name').value.trim();
     var msg = document.getElementById('team-form-msg');
-    if (!name) { showMsg(msg, 'Merci de renseigner le nom de l\'équipe.', false); return; }
+    if (!name) { showMsg(msg, "Merci de renseigner le nom de l'équipe.", false); return; }
+
+    var dup = allTeamsForGrid().filter(function(t){ return normName(t.name) === normName(name); })[0];
+    if (dup) {
+      selectedTeam = { name: dup.name, logo_url: dup.logo_url };
+      renderTeamGrid(); updatePreview();
+      showMsg(msg, 'Cette équipe existe déjà — sélectionnée.', true);
+      setTimeout(resetAddTeamPanel, 900);
+      return;
+    }
 
     var btn = document.getElementById('save-team-btn');
     btn.disabled = true;
 
-    uploadLogoIfNeeded()
+    var logoStep = ntModeUrl.classList.contains('active')
+      ? Promise.resolve(ntUrl.value.trim() || null)
+      : (newTeamFile ? uploadFileTo('team-logos', newTeamFile) : Promise.resolve(null));
+
+    logoStep
       .then(function(logoUrl){
         return fetch(SUPABASE_URL + '/rest/v1/teams', {
           method: 'POST',
@@ -393,13 +541,15 @@
           body: JSON.stringify({ name: name, logo_url: logoUrl })
         });
       })
-      .then(function(res){ if (!res.ok) throw new Error('insert team failed'); return loadTeams(); })
+      .then(function(res){ if (!res.ok) throw new Error('insert team failed'); return loadCustomTeams(); })
       .then(function(){
-        showMsg(msg, 'Équipe ajoutée.', true);
-        document.getElementById('team_name').value = '';
-        teamLogoFile.value = '';
-        teamLogoUrl.value = '';
-        teamLogoPreview.style.display = 'none';
+        selectedTeam = { name: name, logo_url: (ntModeUrl.classList.contains('active') ? (ntUrl.value.trim() || null) : null) };
+        // Le logo exact vient d'être stocké côté Supabase ; on relit la liste pour l'avoir avec la bonne URL.
+        var justAdded = customTeamsCache.filter(function(t){ return normName(t.name) === normName(name); })[0];
+        if (justAdded) selectedTeam = { name: justAdded.name, logo_url: justAdded.logo_url };
+        renderTeamGrid();
+        updatePreview();
+        resetAddTeamPanel();
       })
       .catch(function(){
         showMsg(msg, "Erreur lors de l'ajout de l'équipe. Vérifie ta connexion et réessaie.", false);
@@ -407,16 +557,126 @@
       .finally(function(){ btn.disabled = false; });
   });
 
-  function deleteTeam(id){
-    if (!confirm('Supprimer cette équipe ? Les matchs déjà enregistrés avec cette équipe garderont son nom et logo.')) return;
-    fetch(SUPABASE_URL + '/rest/v1/teams?id=eq.' + id, { method: 'DELETE', headers: sbHeaders() })
-      .then(function(res){ if (!res.ok) throw new Error('delete team failed'); return loadTeams(); })
-      .catch(function(){ alert('Erreur lors de la suppression.'); });
+  // ===================== TOGGLE LIEU =====================
+  var lieuHomeBtn = document.getElementById('lieu-home');
+  var lieuAwayBtn = document.getElementById('lieu-away');
+  lieuHomeBtn.addEventListener('click', function(){ isHome = true; lieuHomeBtn.classList.add('active'); lieuAwayBtn.classList.remove('active'); updatePreview(); });
+  lieuAwayBtn.addEventListener('click', function(){ isHome = false; lieuAwayBtn.classList.add('active'); lieuHomeBtn.classList.remove('active'); updatePreview(); });
+
+  // ===================== PHOTO DU MATCH =====================
+  var photoModeUpload = document.getElementById('photo-mode-upload');
+  var photoModeUrl = document.getElementById('photo-mode-url');
+  var photoFile = document.getElementById('match_photo_file');
+  var photoUrlInput = document.getElementById('match_photo_url');
+
+  photoModeUpload.addEventListener('click', function(){
+    photoModeUpload.classList.add('active'); photoModeUrl.classList.remove('active');
+    photoFile.classList.remove('hide'); photoUrlInput.classList.add('hide');
+  });
+  photoModeUrl.addEventListener('click', function(){
+    photoModeUrl.classList.add('active'); photoModeUpload.classList.remove('active');
+    photoUrlInput.classList.remove('hide'); photoFile.classList.add('hide');
+  });
+  photoFile.addEventListener('change', function(){ newMatchPhotoFile = photoFile.files[0] || null; });
+  document.getElementById('photo-remove-btn').addEventListener('click', function(){
+    currentPhotoUrl = null;
+    document.getElementById('photo-current-row').classList.add('hide');
+  });
+
+  function setCurrentPhoto(url){
+    currentPhotoUrl = url || null;
+    var row = document.getElementById('photo-current-row');
+    if (currentPhotoUrl) {
+      document.getElementById('photo-current-thumb').src = currentPhotoUrl;
+      row.classList.remove('hide');
+    } else {
+      row.classList.add('hide');
+    }
   }
 
-  // ===================== MATCHS =====================
-  var editingMatchId = null;
+  function resolveMatchPhoto(){
+    if (photoModeUrl.classList.contains('active')) {
+      var typed = photoUrlInput.value.trim();
+      return Promise.resolve(typed || currentPhotoUrl || null);
+    }
+    if (newMatchPhotoFile) return uploadFileTo('match-photos', newMatchPhotoFile);
+    return Promise.resolve(currentPhotoUrl);
+  }
 
+  // ===================== APERÇU LIVE =====================
+  function teamBlockHtml(name, logo){
+    var img = logo
+      ? '<img class="prev-avatar" src="' + esc(logo) + '" alt="">'
+      : '<div class="prev-avatar prev-avatar-fallback" style="background:' + fallbackColor(name) + '">' + esc(initials(name)) + '</div>';
+    return '<div class="prev-team">' + img + '<div class="prev-team-name">' + esc(name) + '</div></div>';
+  }
+
+  function renderHeroPreview(dateVal, timeVal, venueVal){
+    var d = daysUntil(dateVal);
+    var badge = d <= 0 ? "AUJOURD'HUI" : ('J-' + d);
+    var homeName = isHome ? 'BAOBABS' : selectedTeam.name.toUpperCase();
+    var awayName = isHome ? selectedTeam.name.toUpperCase() : 'BAOBABS';
+    var homeLogo = isHome ? BBC_LOGO : selectedTeam.logo_url;
+    var awayLogo = isHome ? selectedTeam.logo_url : BBC_LOGO;
+    var timeStr = timeVal ? ' · ' + timeVal : '';
+    return '' +
+      '<div class="prev-hero">' +
+        '<div class="prev-hero-top"><span class="prev-kicker">Prochain match</span><span class="prev-badge">' + badge + '</span></div>' +
+        '<div class="prev-hero-teams">' + teamBlockHtml(homeName, homeLogo) + '<div class="prev-vs">VS</div>' + teamBlockHtml(awayName, awayLogo) + '</div>' +
+        '<div class="prev-hero-info"><div class="prev-hero-date">' + esc(formatDateLong(dateVal) + timeStr) + '</div>' + (venueVal ? '<div>' + esc(venueVal) + '</div>' : '') + '</div>' +
+        '<div class="prev-hero-cta">Réserver ma place</div>' +
+      '</div>';
+  }
+
+  function renderResultPreview(dateVal, competitionVal, scoreB, scoreO){
+    var won = scoreB > scoreO;
+    var opponentLabel = (isHome ? 'vs ' : '@ ') + selectedTeam.name;
+    return '' +
+      '<div class="prev-result" style="border-left-color:' + (won ? 'var(--lime)' : 'var(--dim2)') + '">' +
+        '<div class="prev-result-left">' +
+          '<span class="prev-result-tag" style="color:' + (won ? 'var(--lime)' : 'var(--dim)') + '">' + (won ? 'VICTOIRE' : 'DÉFAITE') + '</span>' +
+          '<span class="prev-result-opp">' + esc(opponentLabel) + '</span>' +
+          (competitionVal ? '<span class="prev-result-comp">' + esc(competitionVal) + '</span>' : '') +
+        '</div>' +
+        '<div class="prev-result-right">' +
+          '<span class="prev-result-score">' + scoreB + ' - ' + scoreO + '</span>' +
+          '<span class="prev-result-date">' + esc(formatDateShort(dateVal)) + '</span>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function updatePreview(){
+    var slot = document.getElementById('preview-slot');
+    var caption = document.getElementById('preview-caption');
+    var dateVal = document.getElementById('match_date').value;
+
+    if (!selectedTeam || !dateVal) {
+      slot.innerHTML = '<div class="prev-empty">Choisis une équipe et une date pour voir l\'aperçu.</div>';
+      caption.textContent = '';
+      return;
+    }
+
+    var scoreBRaw = document.getElementById('score_baobabs').value;
+    var scoreORaw = document.getElementById('score_opponent').value;
+    var bothScores = scoreBRaw !== '' && scoreORaw !== '';
+
+    if (bothScores) {
+      var competitionVal = document.getElementById('competition').value.trim();
+      slot.innerHTML = renderResultPreview(dateVal, competitionVal, parseInt(scoreBRaw, 10), parseInt(scoreORaw, 10));
+      caption.textContent = 'Ainsi ce résultat apparaîtra dans le bandeau et la liste "Derniers résultats".';
+    } else {
+      var timeVal = document.getElementById('match_time').value;
+      var venueVal = document.getElementById('venue').value.trim();
+      slot.innerHTML = renderHeroPreview(dateVal, timeVal, venueVal);
+      caption.textContent = 'Ainsi apparaîtra la carte "Prochain match" sur l\'accueil, si c\'est le prochain match à venir.';
+    }
+  }
+
+  ['match_date','match_time','venue','competition','score_baobabs','score_opponent'].forEach(function(id){
+    document.getElementById(id).addEventListener('input', updatePreview);
+  });
+
+  // ===================== MATCHS : LISTE =====================
   function isPlayed(m){
     return m.score_baobabs !== null && m.score_baobabs !== undefined &&
            m.score_opponent !== null && m.score_opponent !== undefined;
@@ -456,7 +716,7 @@
         '<div class="match-item">' +
           '<div class="info">' +
             logo +
-            '<span>' + pill + ' Baobabs ' + lieu + ' ' + esc(m.opponent_name) + scoreLabel +
+            '<span class="txt">' + pill + 'Baobabs ' + lieu + ' ' + esc(m.opponent_name) + scoreLabel +
               '<span class="date">' + esc(m.match_date) + (m.match_time ? ' · ' + esc(m.match_time) : '') + (m.competition ? ' · ' + esc(m.competition) : '') + '</span>' +
             '</span>' +
           '</div>' +
@@ -479,102 +739,124 @@
     if (!m) return;
     editingMatchId = m.id;
 
-    var matchTeam = teamsCache.filter(function(t){ return t.name === m.opponent_name; })[0];
-    document.getElementById('opponent_select').value = matchTeam ? matchTeam.id : '';
+    selectedTeam = { name: m.opponent_name, logo_url: m.opponent_logo_url || null };
+    isHome = !!m.is_home;
+    lieuHomeBtn.classList.toggle('active', isHome);
+    lieuAwayBtn.classList.toggle('active', !isHome);
+
     document.getElementById('match_date').value = m.match_date || '';
     document.getElementById('match_time').value = m.match_time || '';
-    document.getElementById('is_home').value = m.is_home ? 'true' : 'false';
     document.getElementById('venue').value = m.venue || '';
     document.getElementById('competition').value = m.competition || '';
     document.getElementById('score_baobabs').value = (m.score_baobabs === null || m.score_baobabs === undefined) ? '' : m.score_baobabs;
     document.getElementById('score_opponent').value = (m.score_opponent === null || m.score_opponent === undefined) ? '' : m.score_opponent;
+    document.getElementById('stream_url').value = m.stream_url || '';
+    document.getElementById('notes').value = m.notes || '';
 
-    document.getElementById('match-form-title').textContent = 'Modifier le match';
+    newMatchPhotoFile = null;
+    photoFile.value = '';
+    photoUrlInput.value = '';
+    photoModeUpload.classList.add('active'); photoModeUrl.classList.remove('active');
+    photoFile.classList.remove('hide'); photoUrlInput.classList.add('hide');
+    setCurrentPhoto(m.photo_url || null);
+
+    renderTeamGrid();
+    updatePreview();
+
     document.getElementById('save-match-btn').textContent = 'Enregistrer les modifications';
     document.getElementById('cancel-edit-btn').classList.remove('hide');
-    document.getElementById('tab-matches-btn').click();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function resetMatchForm(){
     editingMatchId = null;
-    document.getElementById('opponent_select').value = '';
+    selectedTeam = null;
+    isHome = true;
+    lieuHomeBtn.classList.add('active'); lieuAwayBtn.classList.remove('active');
     document.getElementById('match_date').value = '';
     document.getElementById('match_time').value = '';
-    document.getElementById('is_home').value = 'true';
     document.getElementById('venue').value = '';
     document.getElementById('competition').value = '';
     document.getElementById('score_baobabs').value = '';
     document.getElementById('score_opponent').value = '';
-    document.getElementById('match-form-title').textContent = 'Ajouter un match';
+    document.getElementById('stream_url').value = '';
+    document.getElementById('notes').value = '';
+    newMatchPhotoFile = null;
+    photoFile.value = '';
+    photoUrlInput.value = '';
+    setCurrentPhoto(null);
     document.getElementById('save-match-btn').textContent = 'Ajouter le match';
     document.getElementById('cancel-edit-btn').classList.add('hide');
+    renderTeamGrid();
+    updatePreview();
   }
-
   document.getElementById('cancel-edit-btn').addEventListener('click', resetMatchForm);
 
   document.getElementById('save-match-btn').addEventListener('click', function(){
-    var teamId = document.getElementById('opponent_select').value;
     var matchDate = document.getElementById('match_date').value;
     var matchTime = document.getElementById('match_time').value;
-    var isHome = document.getElementById('is_home').value === 'true';
     var venue = document.getElementById('venue').value.trim();
     var competition = document.getElementById('competition').value.trim();
     var scoreBaobabsRaw = document.getElementById('score_baobabs').value;
     var scoreOpponentRaw = document.getElementById('score_opponent').value;
+    var streamUrl = document.getElementById('stream_url').value.trim();
+    var notes = document.getElementById('notes').value.trim();
     var msg = document.getElementById('match-form-msg');
 
-    if (!teamId || !matchDate) {
+    if (!selectedTeam || !matchDate) {
       showMsg(msg, 'Merci de choisir une équipe et une date.', false);
       return;
     }
-    var team = teamsCache.filter(function(t){ return String(t.id) === String(teamId); })[0];
-    if (!team) { showMsg(msg, 'Équipe introuvable, réessaie.', false); return; }
-
     var bothScores = scoreBaobabsRaw !== '' && scoreOpponentRaw !== '';
     var oneScore = (scoreBaobabsRaw !== '') !== (scoreOpponentRaw !== '');
     if (oneScore) {
-      showMsg(msg, 'Renseigne les deux scores, ou aucun si le match n\'a pas encore eu lieu.', false);
+      showMsg(msg, "Renseigne les deux scores, ou aucun si le match n'a pas encore eu lieu.", false);
       return;
     }
-
-    var payload = {
-      opponent_name: team.name,
-      opponent_logo_url: team.logo_url || null,
-      match_date: matchDate,
-      match_time: matchTime || null,
-      is_home: isHome,
-      venue: venue || null,
-      competition: competition || null,
-      score_baobabs: bothScores ? parseInt(scoreBaobabsRaw, 10) : null,
-      score_opponent: bothScores ? parseInt(scoreOpponentRaw, 10) : null
-    };
 
     var btn = document.getElementById('save-match-btn');
     btn.disabled = true;
 
-    var req = editingMatchId
-      ? fetch(SUPABASE_URL + '/rest/v1/matches?id=eq.' + editingMatchId, {
-          method: 'PATCH',
-          headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
-          body: JSON.stringify(payload)
-        })
-      : fetch(SUPABASE_URL + '/rest/v1/matches', {
-          method: 'POST',
-          headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
-          body: JSON.stringify(payload)
-        });
+    resolveMatchPhoto().then(function(photoUrl){
+      var payload = {
+        opponent_name: selectedTeam.name,
+        opponent_logo_url: selectedTeam.logo_url || null,
+        match_date: matchDate,
+        match_time: matchTime || null,
+        is_home: isHome,
+        venue: venue || null,
+        competition: competition || null,
+        score_baobabs: bothScores ? parseInt(scoreBaobabsRaw, 10) : null,
+        score_opponent: bothScores ? parseInt(scoreOpponentRaw, 10) : null,
+        photo_url: photoUrl || null,
+        stream_url: streamUrl || null,
+        notes: notes || null
+      };
 
-    req.then(function(res){
+      var req = editingMatchId
+        ? fetch(SUPABASE_URL + '/rest/v1/matches?id=eq.' + editingMatchId, {
+            method: 'PATCH',
+            headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+            body: JSON.stringify(payload)
+          })
+        : fetch(SUPABASE_URL + '/rest/v1/matches', {
+            method: 'POST',
+            headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+            body: JSON.stringify(payload)
+          });
+
+      return req.then(function(res){
         if (!res.ok) throw new Error('save match failed');
         showMsg(msg, editingMatchId ? 'Match mis à jour.' : 'Match ajouté.', true);
+        ensureTeamPersisted(selectedTeam.name, selectedTeam.logo_url);
         resetMatchForm();
         loadMatches();
-      })
-      .catch(function(){
-        showMsg(msg, "Erreur lors de l'enregistrement. Vérifie ta connexion et réessaie.", false);
-      })
-      .finally(function(){ btn.disabled = false; });
+      });
+    })
+    .catch(function(){
+      showMsg(msg, "Erreur lors de l'enregistrement. Vérifie ta connexion et réessaie.", false);
+    })
+    .finally(function(){ btn.disabled = false; });
   });
 
   function deleteMatch(id){
@@ -586,7 +868,8 @@
 
   // ===================== INIT =====================
   function init(){
-    loadTeams().then(function(){ loadMatches(); });
+    renderTeamGrid();
+    loadCustomTeams().then(function(){ loadMatches(); });
   }
 })();
 </script>
