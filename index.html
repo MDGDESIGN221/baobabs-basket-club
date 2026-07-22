@@ -126,9 +126,13 @@
   #bb-app .bb-phone-b{margin-left:-38px;margin-top:46px;z-index:2}
   #bb-app .bb-phone-b{animation-delay:-3.2s}
   #bb-app .bb-phone-3d{transform-style:preserve-3d;transform:rotateX(var(--ty)) rotateY(calc(var(--baseY,0deg) + var(--tx)));transition:transform .14s ease-out}
-  #bb-app .bb-phone-body{position:relative;width:100%;aspect-ratio:1/2.04;background:#05100B;border:2px solid #223229;border-radius:30px;padding:7px;box-shadow:0 34px 70px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.4)}
-  #bb-app .bb-phone-screen{position:relative;width:100%;height:100%;border-radius:24px;overflow:hidden;background:#0A150F}
-  #bb-app .bb-phone-island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:44px;height:13px;background:#05100B;border-radius:8px;z-index:6}
+  #bb-app .bb-phone-body{position:relative;width:100%;aspect-ratio:1/2.06;background:linear-gradient(135deg,#4a5158 0%,#20242a 26%,#33393f 52%,#15181c 78%,#3a4046 100%);border-radius:14% / 6.8%;padding:4px;box-shadow:0 40px 80px rgba(0,0,0,.6),0 6px 18px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.14),inset 0 0 2px 1px rgba(0,0,0,.5)}
+  #bb-app .bb-phone-body::before{content:"";position:absolute;right:-2.5px;top:25%;width:3px;height:11%;background:linear-gradient(#3a4046,#0e1012);border-radius:0 2px 2px 0;box-shadow:inset 0 1px 1px rgba(255,255,255,.2)}
+  #bb-app .bb-phone-body::after{content:"";position:absolute;left:-2.5px;top:19%;width:3px;height:9%;background:linear-gradient(#3a4046,#0e1012);border-radius:2px 0 0 2px;box-shadow:inset 0 1px 1px rgba(255,255,255,.2),0 14% 0 0 #0e1012,0 30% 0 0 #0e1012}
+  #bb-app .bb-phone-screen{position:relative;width:100%;height:100%;border-radius:11% / 5.4%;overflow:hidden;background:#0A150F;box-shadow:inset 0 0 0 2px #05070a}
+  #bb-app .bb-phone-screen::after{content:"";position:absolute;inset:0;z-index:7;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,.05) 16%,transparent 34%,transparent 100%);mix-blend-mode:screen}
+  #bb-app .bb-phone-island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:34%;height:12px;background:#05070a;border-radius:10px;z-index:8;display:flex;align-items:center;justify-content:flex-end;padding-right:7px}
+  #bb-app .bb-phone-island::after{content:"";width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#2a4a6a,#05070a 70%);box-shadow:0 0 0 1px rgba(255,255,255,.08)}
   #bb-app .bb-phone-tab{position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:space-around;align-items:center;padding:9px 0 12px;background:linear-gradient(to top,rgba(5,14,9,.96),rgba(5,14,9,.55));backdrop-filter:blur(4px)}
   #bb-app .bb-phone-tab span{width:19px;height:19px;border-radius:6px;background:rgba(243,239,230,.28)}
   #bb-app .bb-phone-tab span.on{background:#A8D93B}
@@ -1106,7 +1110,9 @@
       desc: "Le maillot des Baobabs pour la saison 2026, porté à domicile au Complexe Patrick Semedo. Coupe technique respirante, floqué aux couleurs du club.",
       price: 25000,
       images: [
-        'https://res.cloudinary.com/djdkpihuz/image/upload/v1784689094/Replace_jersey_with_Baobabs_club_202607220257_uda4kz.jpg'
+        'https://res.cloudinary.com/djdkpihuz/image/upload/v1784689094/Replace_jersey_with_Baobabs_club_202607220257_uda4kz.jpg',
+        'https://res.cloudinary.com/djdkpihuz/image/upload/v1784748816/Replace_jersey_with_Baobabs_club_202607221933_oaaj6k.jpg',
+        'https://res.cloudinary.com/djdkpihuz/image/upload/v1784688966/ET_a462kv.jpg'
       ]
     },
     {
@@ -1116,8 +1122,7 @@
       desc: "Le maillot extérieur des Baobabs, pensé pour les déplacements de la saison 2026. Même exigence technique, teinte inversée.",
       price: 25000,
       images: [
-        'https://res.cloudinary.com/djdkpihuz/image/upload/v1784688856/Replace_jersey_with_Baobabs_2K_202607220253_fmyqm7.jpg',
-        'https://res.cloudinary.com/djdkpihuz/image/upload/v1784748816/Replace_jersey_with_Baobabs_club_202607221933_oaaj6k.jpg'
+        'https://res.cloudinary.com/djdkpihuz/image/upload/v1784688856/Replace_jersey_with_Baobabs_2K_202607220253_fmyqm7.jpg'
       ]
     },
     {
@@ -1254,14 +1259,18 @@
     var el = document.getElementById('bb-home-products');
     if (!el) return;
     el.innerHTML = products.map(function(p){
+      var thumbs = p.images.length > 1 ? '<div style="display:flex;gap:6px;padding:0 16px 14px">' + p.images.map(function(src, i){
+        return '<button type="button" data-home-thumb="' + p.id + ':' + i + '" aria-label="Voir la photo ' + (i + 1) + '" style="width:34px;height:34px;flex:none;border-radius:7px;overflow:hidden;padding:0;cursor:pointer;background:#0C1A12;border:1px solid ' + (i === 0 ? '#C6A257' : 'rgba(243,239,230,.14)') + '"><img src="' + src + '" alt="" style="width:100%;height:100%;object-fit:cover"></button>';
+      }).join('') + '</div>' : '';
       return '' +
         '<div class="bb-shop-card" data-product="' + p.id + '" style="position:relative">' +
-          '<div class="bb-shop-img" style="aspect-ratio:4/5"><img src="' + p.images[0] + '" alt="' + esc(p.name) + '"></div>' +
+          '<div class="bb-shop-img" style="aspect-ratio:4/5"><img id="bb-home-img-' + p.id + '" src="' + p.images[0] + '" alt="' + esc(p.name) + '"></div>' +
           '<button type="button" data-add-quick="' + p.id + '" aria-label="Ajouter au panier" style="position:absolute;top:12px;right:12px;z-index:2;width:38px;height:38px;border-radius:50%;border:none;background:#A8D93B;color:#0A1B0D;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(0,0,0,.35)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg></button>' +
-          '<div style="padding:14px 16px 18px">' +
+          '<div style="padding:14px 16px 10px">' +
             '<div style="font-family:\'Montserrat\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">' + esc(p.name) + '</div>' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px"><span style="font-size:11.5px;color:#7E8A82">' + esc(p.tag) + '</span><span style="font-family:\'Montserrat\',sans-serif;font-weight:700;font-size:15px;color:#C6A257">' + money(p.price) + '</span></div>' +
           '</div>' +
+          thumbs +
         '</div>';
     }).join('');
   }
@@ -1707,6 +1716,20 @@
       if (e.target.closest('#bb-player-next')) { showPlayer(playerIdx + 1); return; }
       var dot = e.target.closest('[data-player-dot]');
       if (dot) { showPlayer(parseInt(dot.getAttribute('data-player-dot'), 10)); return; }
+
+      var homeThumb = e.target.closest('[data-home-thumb]');
+      if (homeThumb) {
+        e.stopPropagation();
+        var parts = homeThumb.getAttribute('data-home-thumb').split(':');
+        var prod = findProduct(parts[0]);
+        if (prod) {
+          document.getElementById('bb-home-img-' + parts[0]).src = prod.images[parts[1]];
+          homeThumb.parentNode.querySelectorAll('[data-home-thumb]').forEach(function(b){
+            b.style.borderColor = b === homeThumb ? '#C6A257' : 'rgba(243,239,230,.14)';
+          });
+        }
+        return;
+      }
 
       var playerEl = e.target.closest('[data-player]');
       if (playerEl) { openPlayer(playerEl.getAttribute('data-player')); return; }
