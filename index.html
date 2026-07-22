@@ -554,20 +554,41 @@
             <button type="button" data-nav="tryouts" style="display:flex;width:100%;align-items:center;justify-content:center;gap:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:13px 26px;border-radius:9px;border:none;background:#C6A257;color:#07130D;cursor:pointer;margin-top:16px">Réserver ma place <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
           </div>
 
-          <div id="bb-live-card" style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-left:3px solid #C0271B;border-radius:12px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-              <div style="display:flex;align-items:center;gap:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#F3EFE6">
+          <div id="bb-live-card" style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-left:3px solid #C0271B;border-radius:12px;overflow:hidden">
+            <div id="bb-live-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0">
+              <div id="bb-live-badge" style="display:none;align-items:center;gap:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#F3EFE6">
                 <span style="width:8px;height:8px;border-radius:50%;background:#C0271B;animation:bbPulse 1.3s infinite"></span>EN DIRECT
               </div>
-              <span id="bb-clock" style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:12px;color:#B9C2BB">Q4 03:12</span>
+              <div id="bb-offline-badge" style="display:flex;align-items:center;gap:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#7E8A82">
+                <span style="width:8px;height:8px;border-radius:50%;background:#7E8A82"></span>PAS DE DIRECT EN COURS
+              </div>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(243,239,230,.08)">
-              <span style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:16px;color:#F3EFE6">Baobabs</span><span id="bb-home-score" style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:28px;color:#C6A257;line-height:1">78</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0 0">
-              <span style="font-family:'Montserrat',sans-serif;font-weight:500;font-size:16px;color:#B9C2BB">SLBC Louga</span><span id="bb-away-score" style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:24px;color:#B9C2BB;line-height:1">72</span>
+            <div id="bb-live-player-wrap" style="position:relative;width:100%;aspect-ratio:16/9;margin-top:14px;background:#07130D">
+              <iframe id="bb-live-iframe" src="" title="Direct Baobabs Basket Club" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:none" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+              <div id="bb-live-fallback" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:20px">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#C6A257" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2"></rect></svg>
+                <span style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:13px;color:#B9C2BB">Aucun match en direct pour le moment</span>
+                <span style="font-family:'Montserrat',sans-serif;font-weight:500;font-size:11.5px;color:#7E8A82">La diffusion démarre automatiquement ici dès qu'un live commence</span>
+              </div>
             </div>
           </div>
+          <script>
+          (function(){
+            // ↓↓↓ Colle ici l'identifiant de la chaîne YouTube du club (commence par "UC..."), ou laisse vide.
+            var BB_YT_CHANNEL_ID = "";
+            var iframe = document.getElementById('bb-live-iframe');
+            var fallback = document.getElementById('bb-live-fallback');
+            var liveBadge = document.getElementById('bb-live-badge');
+            var offlineBadge = document.getElementById('bb-offline-badge');
+            if (!BB_YT_CHANNEL_ID) return; // rien à faire tant qu'aucune chaîne n'est configurée
+            // Embed "live channel" : YouTube bascule automatiquement sur le direct en cours.
+            iframe.src = "https://www.youtube.com/embed/live_stream?channel=" + BB_YT_CHANNEL_ID + "&autoplay=0";
+            iframe.style.display = "block";
+            fallback.style.display = "none";
+            liveBadge.style.display = "flex";
+            offlineBadge.style.display = "none";
+          })();
+          </script>
         </div>
       </section>
 
@@ -1647,7 +1668,7 @@
     var heroImgWrap = document.getElementById('bb-hero-img-wrap');
     heroImgWrap.style.minHeight = mq ? 'clamp(240px,58vw,380px)' : 'clamp(320px,48vw,480px)';
     document.getElementById('bb-next-match').style.padding = mq ? '18px' : '22px 24px';
-    document.getElementById('bb-live-card').style.padding = mq ? '18px' : '22px 24px';
+    document.getElementById('bb-live-header').style.padding = mq ? '14px 14px 0' : '16px 16px 0';
     document.getElementById('bb-footer-ctas').style.flexDirection = mq ? 'column' : 'row';
     Array.prototype.forEach.call(document.getElementById('bb-footer-ctas').children, function(btn){
       btn.style.width = mq ? '100%' : '';
