@@ -14,7 +14,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
 
 <style>
   body{margin:0;background:#061109;color:#F3EFE6;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -149,14 +149,20 @@
   @keyframes bbSplashRing{0%{transform:scale(.6);opacity:0}40%{opacity:.6}100%{transform:scale(1.9);opacity:0}}
   @keyframes bbSplashText{from{opacity:0;transform:translateY(12px);letter-spacing:.16em}to{opacity:1;transform:translateY(0);letter-spacing:.32em}}
   @keyframes bbSplashBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-  #bb-splash{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(120% 120% at 50% 30%,#123322 0%,#081C13 52%,#05100B 100%);transition:opacity .7s ease,visibility .7s ease}
+  #bb-splash{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:#061109;transition:opacity .7s ease,visibility .7s ease}
   #bb-splash.bb-splash-done{opacity:0;visibility:hidden;pointer-events:none}
   #bb-splash .bb-splash-logo-wrap{position:relative;display:flex;align-items:center;justify-content:center}
-  #bb-splash img{width:118px;height:118px;object-fit:contain;animation:bbSplashLogo .9s cubic-bezier(.34,1.3,.5,1) both;filter:drop-shadow(0 12px 30px rgba(0,0,0,.5))}
+  #bb-splash img{width:120px;height:120px;object-fit:contain;animation:bbSplashLogo .9s cubic-bezier(.34,1.3,.5,1) both}
   #bb-splash .bb-splash-name{font-family:'Montserrat',sans-serif;font-weight:800;font-size:15px;letter-spacing:.32em;color:#F3EFE6;text-transform:uppercase;animation:bbSplashText .7s ease both;animation-delay:.35s;opacity:0}
   #bb-splash .bb-splash-sub{font-family:'Montserrat',sans-serif;font-weight:500;font-size:10px;letter-spacing:.26em;color:#C6A257;text-transform:uppercase;margin-top:6px;animation:bbSplashText .7s ease both;animation-delay:.5s;opacity:0}
   #bb-splash .bb-splash-track{width:150px;height:2px;border-radius:2px;background:rgba(243,239,230,.12);overflow:hidden}
   #bb-splash .bb-splash-track i{display:block;width:100%;height:100%;background:linear-gradient(90deg,#C6A257,#A8D93B);transform-origin:left;animation:bbSplashBar 1.5s cubic-bezier(.5,0,.2,1) both;animation-delay:.2s}
+  @keyframes bbNumGlow{0%,100%{opacity:.2;filter:drop-shadow(0 0 0 rgba(168,217,59,0))}50%{opacity:.92;filter:drop-shadow(0 0 24px rgba(168,217,59,.85))}}
+  @keyframes bbCardSheen{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+  .bb-player .bb-cardbg{position:absolute;inset:0;z-index:0;background:linear-gradient(125deg,#0C1E13 0%,#12331F 28%,#0A1B12 52%,#123A22 78%,#0C1E13 100%);background-size:220% 220%;animation:bbCardSheen 10s linear infinite}
+  .bb-player .bb-cardgrid{position:absolute;inset:0;z-index:0;background-image:linear-gradient(rgba(168,217,59,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(168,217,59,.055) 1px,transparent 1px);background-size:26px 26px;opacity:.55}
+  .bb-player .bb-bignum{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:300px;line-height:.72;letter-spacing:-.02em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
+  @media (prefers-reduced-motion:reduce){.bb-player .bb-cardbg{animation:none}.bb-player .bb-bignum{animation:none;opacity:.5}}
   .bb-nav-link{padding:6px 0;border-bottom:2px solid transparent}
   .bb-nav-link.active{border-bottom-color:#C6A257;color:#C6A257}
   .bb-nav-link.active.try{border-bottom-color:#A8D93B;color:#A8D93B}
@@ -1208,10 +1214,13 @@
   }
 
   function playerCards(){
-    return players.map(function(p){
+    return players.map(function(p, i){
       return '' +
         '<div class="bb-player" data-player="' + p.no + '" style="cursor:pointer;position:relative;border-radius:14px;overflow:hidden;background:#0D1A12;border:1px solid rgba(243,239,230,.09);min-height:330px;box-shadow:0 10px 26px rgba(0,0,0,.32)">' +
-          '<div class="bb-spot" style="position:absolute;left:50%;top:-12%;width:120%;height:52%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.14),transparent 74%);pointer-events:none;z-index:0"></div>' +
+          '<div class="bb-cardbg" style="animation-delay:' + (-i * 1.1).toFixed(1) + 's"></div>' +
+          '<div class="bb-cardgrid"></div>' +
+          '<div class="bb-bignum" style="animation-delay:' + (-i * 0.45).toFixed(2) + 's">' + p.no + '</div>' +
+          '<div class="bb-spot" style="position:absolute;left:50%;top:-12%;width:120%;height:52%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.14),transparent 74%);pointer-events:none;z-index:1"></div>' +
           '<div class="bb-badge" style="position:absolute;top:12px;left:12px;z-index:4;font-family:\'Montserrat\',sans-serif;font-weight:900;font-size:13px;color:#0A1B0D;background:#A8D93B;border-radius:8px;padding:4px 9px;line-height:1">#' + p.no + '</div>' +
           '<img class="bb-portrait" src="' + p.src + '" alt="' + esc(p.name) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;z-index:2;transition:transform .5s cubic-bezier(.16,.8,.3,1)">' +
           '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(6,13,9,.93) 0%,rgba(6,13,9,.12) 42%,transparent 62%);z-index:3"></div>' +
