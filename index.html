@@ -1225,7 +1225,7 @@
             <h3 id="bb-product-name" style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:clamp(24px,3vw,30px);color:#F3EFE6;margin:8px 0 0"></h3>
           </div>
           <p id="bb-product-desc" style="font-size:13.5px;line-height:1.65;color:#B9C2BB;margin:0"></p>
-          <div>
+          <div id="bb-product-size-wrap">
             <div style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#93A099;margin-bottom:9px">Taille</div>
             <div id="bb-product-sizes" style="display:grid;grid-template-columns:repeat(6,1fr);gap:7px"></div>
           </div>
@@ -1375,6 +1375,19 @@
         'https://res.cloudinary.com/djdkpihuz/image/upload/v1784688811/Replace_jersey_with_Baobabs_2K_202607220252_1_y8nrdr.jpg',
         'https://res.cloudinary.com/djdkpihuz/image/upload/v1784748698/Replace_jersey_with_Baobabs_club_202607221931_wypaa3.jpg',
         'https://res.cloudinary.com/djdkpihuz/image/upload/v1784688810/Replace_jersey_with_Baobabs_2K_202607220252_mfbrbt.jpg'
+      ]
+    },
+    {
+      id: 'casquette',
+      name: 'Casquette officielle',
+      tag: 'Accessoire officiel',
+      desc: "La casquette officielle des Baobabs, floquée aux couleurs du club. Taille unique ajustable, pour supporter l'équipe partout.",
+      price: 10000,
+      sizes: ['Taille unique'],
+      images: [
+        'https://res.cloudinary.com/djdkpihuz/image/upload/v1784756926/Replace_logo_on_cap_2K_202607222141_mtizyy.jpg',
+        'https://res.cloudinary.com/djdkpihuz/image/upload/v1784756926/Another_pose_of_cap_2K_202607222144_gbyhjs.jpg',
+        'https://res.cloudinary.com/djdkpihuz/image/upload/v1784756926/Cap_in_black_2K_202607222143_rdhxvf.jpg'
       ]
     }
   ];
@@ -1771,7 +1784,8 @@
   function addToCart(id, size){
     var p = findProduct(id);
     if (!p) return;
-    size = size || 'M';
+    var productSizes = p.sizes || sizes;
+    size = size || (productSizes.indexOf('M') !== -1 ? 'M' : productSizes[0]);
     var found = null;
     for (var i = 0; i < state.cart.length; i++){
       if (state.cart[i].id === id && state.cart[i].size === size){ found = state.cart[i]; break; }
@@ -1816,7 +1830,7 @@
           '<div style="width:62px;height:62px;flex:none;border-radius:9px;overflow:hidden;background:#0C1A12"><img src="' + p.images[0] + '" alt="' + esc(p.name) + '" style="width:100%;height:100%;object-fit:cover"></div>' +
           '<div style="flex:1;min-width:0">' +
             '<div style="font-family:\'Montserrat\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6">' + esc(p.name) + '</div>' +
-            '<div style="font-size:12px;color:#7E8A82;margin:2px 0 8px">Taille ' + esc(it.size) + ' · ' + money(p.price) + '</div>' +
+            '<div style="font-size:12px;color:#7E8A82;margin:2px 0 8px">' + (p.sizes ? esc(it.size) : ('Taille ' + esc(it.size))) + ' · ' + money(p.price) + '</div>' +
             '<div style="display:flex;align-items:center;gap:14px">' +
               '<div style="display:flex;align-items:center;gap:8px">' +
                 '<button type="button" class="bb-qty-btn" data-qty="dec" data-idx="' + idx + '">−</button>' +
@@ -1885,9 +1899,10 @@
   function openProduct(id){
     var p = findProduct(id);
     if (!p) return;
+    var productSizes = p.sizes || sizes;
     modalState.product = p;
     modalState.img = 0;
-    modalState.size = 'M';
+    modalState.size = productSizes.indexOf('M') !== -1 ? 'M' : productSizes[0];
 
     document.getElementById('bb-product-tag').textContent = p.tag;
     document.getElementById('bb-product-name').textContent = p.name;
@@ -1907,9 +1922,16 @@
       thumbs.innerHTML = '';
     }
 
-    document.getElementById('bb-product-sizes').innerHTML = sizes.map(function(s){
-      return '<button type="button" class="bb-size-btn' + (s === modalState.size ? ' active' : '') + '" data-size="' + s + '">' + s + '</button>';
-    }).join('');
+    var sizeWrap = document.getElementById('bb-product-size-wrap');
+    if (productSizes.length > 1){
+      sizeWrap.style.display = '';
+      document.getElementById('bb-product-sizes').innerHTML = productSizes.map(function(s){
+        return '<button type="button" class="bb-size-btn' + (s === modalState.size ? ' active' : '') + '" data-size="' + s + '">' + s + '</button>';
+      }).join('');
+    } else {
+      sizeWrap.style.display = 'none';
+      document.getElementById('bb-product-sizes').innerHTML = '';
+    }
 
     openOverlay('bb-product-overlay');
   }
