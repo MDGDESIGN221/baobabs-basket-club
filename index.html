@@ -166,6 +166,10 @@
   .bb-pl-stat{background:rgba(243,239,230,.05);border:1px solid rgba(243,239,230,.12);border-radius:11px;padding:12px 10px;text-align:center}
   .bb-pl-stat b{display:block;font-family:'Montserrat',sans-serif;font-weight:800;font-size:20px;color:#C6A257;line-height:1}
   .bb-pl-stat span{display:block;font-family:'Montserrat',sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#7E8A82;margin-top:6px}
+  .bb-pl-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:4;width:40px;height:40px;border-radius:50%;border:1px solid rgba(243,239,230,.28);background:rgba(10,21,15,.62);backdrop-filter:blur(4px);color:#F3EFE6;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s ease,border-color .2s ease,color .2s ease}
+  .bb-pl-arrow:hover{background:#A8D93B;border-color:#A8D93B;color:#0A1B0D}
+  .bb-pl-dot{width:9px;height:9px;border-radius:50%;border:none;padding:0;background:rgba(243,239,230,.22);cursor:pointer;transition:background .2s ease,transform .2s ease}
+  .bb-pl-dot.active{background:#A8D93B;transform:scale(1.25)}
 
   /* modal légal + CTA */
   #bb-legal-modal,#bb-cta-modal{width:100%;max-width:600px;margin:auto;max-height:86vh;display:flex;flex-direction:column;background:#0A150F;border:1px solid rgba(198,162,87,.28);border-radius:18px;overflow:hidden;animation:bbPopIn .3s cubic-bezier(.16,.8,.3,1) both}
@@ -704,6 +708,8 @@
       <div id="bb-player-modal">
         <div id="bb-player-photo">
           <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer" style="position:absolute;top:12px;right:12px;z-index:4;background:#0A150F">✕</button>
+          <button type="button" id="bb-player-prev" class="bb-pl-arrow" aria-label="Joueuse précédente" style="left:12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></button>
+          <button type="button" id="bb-player-next" class="bb-pl-arrow" aria-label="Joueuse suivante" style="right:12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
           <div id="bb-player-bignum">00</div>
           <div id="bb-player-glow"></div>
           <img id="bb-player-img" alt="" />
@@ -715,7 +721,8 @@
           </div>
           <div id="bb-player-stats" class="bb-pl-r" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
           <p id="bb-player-bio" class="bb-pl-r" style="font-size:14px;line-height:1.7;color:#B9C2BB;margin:0"></p>
-          <div class="bb-pl-r" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px">
+          <div class="bb-pl-r" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:2px">
+            <div id="bb-player-dots" style="display:flex;gap:7px;flex-wrap:wrap"></div>
             <button type="button" data-nav="equipes" class="bb-btn-ghost">Voir l'effectif</button>
           </div>
         </div>
@@ -1173,10 +1180,9 @@
   function openCart(){ renderCart(); openOverlay('bb-cart-overlay'); }
 
   /* ===== modal joueuse ===== */
-  function openPlayer(no){
-    var p = null;
-    for (var i = 0; i < players.length; i++) if (String(players[i].no) === String(no)) { p = players[i]; break; }
-    if (!p) return;
+  var playerIdx = 0;
+
+  function fillPlayer(p){
     document.getElementById('bb-player-pos').textContent = '#' + p.no + ' · ' + p.pos;
     document.getElementById('bb-player-name').textContent = p.name;
     document.getElementById('bb-player-bio').textContent = p.bio;
@@ -1187,6 +1193,34 @@
       '<div class="bb-pl-stat"><b>' + p.age + '</b><span>ans</span></div>' +
       '<div class="bb-pl-stat"><b>' + esc(p.height) + '</b><span>Taille</span></div>' +
       '<div class="bb-pl-stat"><b>' + esc(p.foot) + '</b><span>Origine</span></div>';
+    document.getElementById('bb-player-dots').innerHTML = players.map(function(_, i){
+      return '<button type="button" class="bb-pl-dot' + (i === playerIdx ? ' active' : '') + '" data-player-dot="' + i + '" aria-label="Joueuse ' + (i + 1) + '"></button>';
+    }).join('');
+  }
+
+  function replayPlayerAnim(){
+    var img = document.getElementById('bb-player-img');
+    var num = document.getElementById('bb-player-bignum');
+    var info = document.getElementById('bb-player-info');
+    [img, num].concat(Array.prototype.slice.call(info.querySelectorAll('.bb-pl-r'))).forEach(function(el){
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.style.animation = '';
+    });
+  }
+
+  function showPlayer(i){
+    var n = players.length;
+    playerIdx = ((i % n) + n) % n;
+    fillPlayer(players[playerIdx]);
+    replayPlayerAnim();
+  }
+
+  function openPlayer(no){
+    var idx = 0;
+    for (var i = 0; i < players.length; i++) if (String(players[i].no) === String(no)) { idx = i; break; }
+    playerIdx = idx;
+    fillPlayer(players[playerIdx]);
     openOverlay('bb-player-overlay');
   }
 
@@ -1341,6 +1375,11 @@
         return;
       }
 
+      if (e.target.closest('#bb-player-prev')) { showPlayer(playerIdx - 1); return; }
+      if (e.target.closest('#bb-player-next')) { showPlayer(playerIdx + 1); return; }
+      var dot = e.target.closest('[data-player-dot]');
+      if (dot) { showPlayer(parseInt(dot.getAttribute('data-player-dot'), 10)); return; }
+
       var playerEl = e.target.closest('[data-player]');
       if (playerEl) { openPlayer(playerEl.getAttribute('data-player')); return; }
 
@@ -1363,7 +1402,20 @@
 
     document.addEventListener('keydown', function(e){
       if (e.key === 'Escape') closeOverlays();
+      var playerOpen = !document.getElementById('bb-player-overlay').classList.contains('bb-hide');
+      if (playerOpen && e.key === 'ArrowLeft') showPlayer(playerIdx - 1);
+      if (playerOpen && e.key === 'ArrowRight') showPlayer(playerIdx + 1);
     });
+
+    var photo = document.getElementById('bb-player-photo');
+    var touchX = null;
+    photo.addEventListener('touchstart', function(e){ touchX = e.changedTouches[0].clientX; }, { passive: true });
+    photo.addEventListener('touchend', function(e){
+      if (touchX === null) return;
+      var dx = e.changedTouches[0].clientX - touchX;
+      if (Math.abs(dx) > 45) showPlayer(playerIdx + (dx < 0 ? 1 : -1));
+      touchX = null;
+    }, { passive: true });
 
     var mq = window.matchMedia('(max-width:1024px)');
     var onMq = function(){ applyResponsive(); };
