@@ -534,9 +534,9 @@
           <div id="bb-next-match" style="background:linear-gradient(155deg,#0F4030,#0A2318);border:1px solid rgba(198,162,87,.28);border-radius:16px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
               <span style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:12px;letter-spacing:.18em;color:#C6A257;text-transform:uppercase">Prochain match</span>
-              <span style="font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;color:#07130D;background:#C6A257;padding:3px 9px;border-radius:20px">J-3</span>
+              <span id="bb-next-match-badge" style="font-family:'Montserrat',sans-serif;font-weight:700;font-size:12px;color:#07130D;background:#C6A257;padding:3px 9px;border-radius:20px">J-3</span>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px">
+            <div id="bb-next-match-teams" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px">
               <div style="text-align:center;flex:1">
                 <img src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png" alt="Baobabs" style="width:58px;height:58px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)">
                 <div style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">BAOBABS</div>
@@ -547,7 +547,7 @@
                 <div style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">DUC DAKAR</div>
               </div>
             </div>
-            <div style="text-align:center;font-size:13px;color:#B9C2BB;line-height:1.7;border-top:1px solid rgba(243,239,230,.09);padding-top:14px">
+            <div id="bb-next-match-info" style="text-align:center;font-size:13px;color:#B9C2BB;line-height:1.7;border-top:1px solid rgba(243,239,230,.09);padding-top:14px">
               <div style="font-family:'Montserrat',sans-serif;font-weight:500;letter-spacing:.05em;color:#F3EFE6;font-size:15px">SAM 12 JUIL · 19:00</div>
               <div>Stadium Marius Ndiaye, Dakar</div>
             </div>
@@ -2287,64 +2287,170 @@ document.addEventListener('keydown', function(e){
     });
   }
 
-  function formatDate(d){
+  function formatDateShort(d){
     var dt = new Date(d + 'T00:00:00');
     return dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   }
 
-  function tickerItemHtml(r){
-    var home = r.is_home ? 'Baobabs' : r.opponent;
-    var away = r.is_home ? r.opponent : 'Baobabs';
-    var homeScore = r.is_home ? r.score_baobabs : r.score_opponent;
-    var awayScore = r.is_home ? r.score_opponent : r.score_baobabs;
+  function formatDateLong(d){
+    var dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+  }
+
+  function daysUntil(d){
+    var today = new Date();
+    today.setHours(0,0,0,0);
+    var dt = new Date(d + 'T00:00:00');
+    return Math.round((dt - today) / 86400000);
+  }
+
+  // Couleur de secours stable par nom d'équipe, utilisée quand aucun logo n'est fourni.
+  var FALLBACK_COLORS = ['#c0392b','#2457c5','#15803d','#d97706','#7c3aed','#0891b2','#be185d','#b45309'];
+  function fallbackColor(name){
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return FALLBACK_COLORS[h % FALLBACK_COLORS.length];
+  }
+  function initials(name){
+    return name.split(/\s+/).map(function(w){ return w[0]; }).join('').slice(0,3).toUpperCase();
+  }
+
+  function isPlayed(m){
+    return m.score_baobabs !== null && m.score_baobabs !== undefined &&
+           m.score_opponent !== null && m.score_opponent !== undefined;
+  }
+
+  // ===== Ticker + liste des résultats (matchs joués) =====
+  function tickerItemHtml(m){
+    var home = m.is_home ? 'Baobabs' : m.opponent_name;
+    var away = m.is_home ? m.opponent_name : 'Baobabs';
+    var homeScore = m.is_home ? m.score_baobabs : m.score_opponent;
+    var awayScore = m.is_home ? m.score_opponent : m.score_baobabs;
     return '<span style="font-family:\'Montserrat\',sans-serif;font-size:13.5px;color:#D8D6CE;white-space:nowrap">' +
       escHtml(home) + ' <b style="color:#C6A257">' + homeScore + '</b> · <b style="color:#F3EFE6">' + awayScore + '</b> ' + escHtml(away) +
     '</span>';
   }
 
-  function resultRowHtml(r){
-    var won = r.score_baobabs > r.score_opponent;
-    var opponentLabel = (r.is_home ? 'vs ' : '@ ') + r.opponent;
+  function resultRowHtml(m){
+    var won = m.score_baobabs > m.score_opponent;
+    var opponentLabel = (m.is_home ? 'vs ' : '@ ') + m.opponent_name;
     return '' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-left:3px solid ' + (won ? '#A8D93B' : '#7E8A82') + ';border-radius:10px;padding:12px 16px">' +
         '<div style="display:flex;align-items:center;gap:12px">' +
           '<span style="font-family:\'Montserrat\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.08em;color:' + (won ? '#A8D93B' : '#B9C2BB') + ';flex:none">' + (won ? 'VICTOIRE' : 'DÉFAITE') + '</span>' +
           '<span style="font-family:\'Montserrat\',sans-serif;font-weight:600;font-size:14.5px;color:#F3EFE6">' + escHtml(opponentLabel) + '</span>' +
-          (r.competition ? '<span style="font-size:12px;color:#7E8A82">' + escHtml(r.competition) + '</span>' : '') +
+          (m.competition ? '<span style="font-size:12px;color:#7E8A82">' + escHtml(m.competition) + '</span>' : '') +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:10px;flex:none">' +
-          '<span style="font-family:\'Montserrat\',sans-serif;font-weight:800;font-size:16px;color:#C6A257">' + r.score_baobabs + ' - ' + r.score_opponent + '</span>' +
-          '<span style="font-size:12px;color:#7E8A82">' + formatDate(r.match_date) + '</span>' +
+          '<span style="font-family:\'Montserrat\',sans-serif;font-weight:800;font-size:16px;color:#C6A257">' + m.score_baobabs + ' - ' + m.score_opponent + '</span>' +
+          '<span style="font-size:12px;color:#7E8A82">' + formatDateShort(m.match_date) + '</span>' +
         '</div>' +
       '</div>';
   }
 
-  function renderResults(results){
+  function renderResults(played){
     var ticker = document.getElementById('bb-results-ticker');
     var list = document.getElementById('bb-results-list');
-    if (!results || !results.length) {
+    if (!played || !played.length) {
       if (list) list.innerHTML = '<span style="font-family:\'Montserrat\',sans-serif;font-size:13.5px;color:#7E8A82">Aucun résultat pour le moment.</span>';
       return; // le ticker garde son contenu de secours codé en dur
     }
     if (ticker) {
-      var itemsHtml = results.map(tickerItemHtml).join('');
+      var itemsHtml = played.map(tickerItemHtml).join('');
       ticker.innerHTML = itemsHtml + itemsHtml; // dupliqué pour la boucle d'animation continue
     }
     if (list) {
-      list.innerHTML = results.slice(0, 8).map(resultRowHtml).join('');
+      list.innerHTML = played.slice(0, 8).map(resultRowHtml).join('');
     }
   }
 
-  fetch(SUPABASE_URL + '/rest/v1/match_results?select=*&order=match_date.desc&limit=20', {
+  // ===== Carte "Prochain match" (accueil) =====
+  function renderNextMatch(upcoming){
+    var card = document.getElementById('bb-next-match');
+    if (!card || !upcoming || !upcoming.length) return; // garde le contenu statique de secours
+    var m = upcoming[0];
+    var d = daysUntil(m.match_date);
+    var badge = d <= 0 ? 'AUJOURD\u2019HUI' : ('J-' + d);
+
+    var homeName = m.is_home ? 'BAOBABS' : m.opponent_name.toUpperCase();
+    var awayName = m.is_home ? m.opponent_name.toUpperCase() : 'BAOBABS';
+    var homeLogo = m.is_home ? 'https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png' : m.opponent_logo_url;
+    var awayLogo = m.is_home ? m.opponent_logo_url : 'https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png';
+
+    function teamBlock(name, logo){
+      var img = logo
+        ? '<img src="' + logo + '" alt="' + escHtml(name) + '" style="width:58px;height:58px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)">'
+        : '<div style="width:58px;height:58px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:16px;color:#fff;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
+      return '<div style="text-align:center;flex:1">' + img +
+        '<div style="font-family:\'Montserrat\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">' + escHtml(name) + '</div></div>';
+    }
+
+    var badgeEl = document.getElementById('bb-next-match-badge');
+    if (badgeEl) badgeEl.textContent = badge;
+
+    var teamsRow = document.getElementById('bb-next-match-teams');
+    if (teamsRow) {
+      teamsRow.innerHTML = teamBlock(homeName, homeLogo) +
+        '<div style="font-family:\'Montserrat\',sans-serif;font-weight:700;font-size:22px;color:#C6A257">VS</div>' +
+        teamBlock(awayName, awayLogo);
+    }
+
+    var infoBlock = document.getElementById('bb-next-match-info');
+    if (infoBlock) {
+      var timeStr = m.match_time ? ' · ' + m.match_time : '';
+      infoBlock.innerHTML =
+        '<div style="font-family:\'Montserrat\',sans-serif;font-weight:500;letter-spacing:.05em;color:#F3EFE6;font-size:15px">' + escHtml(formatDateLong(m.match_date) + timeStr) + '</div>' +
+        (m.venue ? '<div>' + escHtml(m.venue) + '</div>' : '');
+    }
+  }
+
+  // ===== Calendrier (matchs à venir) =====
+  function fixBadge(name, logo){
+    var inner = logo ? '<img src="' + logo + '" alt="' + escHtml(name) + '">' : escHtml(initials(name));
+    return '<div class="bb-fix-team"><div class="bb-fix-badge" style="background:' + (logo ? '#0C1A12' : fallbackColor(name)) + '">' + inner + '</div><span class="bb-fix-abbr">' + escHtml(name) + '</span></div>';
+  }
+
+  function renderFixtures(upcoming){
+    var el = document.getElementById('bb-fixtures');
+    if (!el) return;
+    if (!upcoming || !upcoming.length) {
+      el.innerHTML = '<span style="font-family:\'Montserrat\',sans-serif;font-size:13.5px;color:#7E8A82">Aucun match à venir programmé.</span>';
+      return;
+    }
+    el.innerHTML = upcoming.map(function(m, i){
+      var homeName = m.is_home ? 'Baobabs' : m.opponent_name;
+      var awayName = m.is_home ? m.opponent_name : 'Baobabs';
+      var homeLogo = m.is_home ? 'https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png' : m.opponent_logo_url;
+      var awayLogo = m.is_home ? m.opponent_logo_url : 'https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png';
+      return '' +
+        '<div class="bb-fix">' +
+          '<div class="bb-fix-h"><span style="width:5px;height:5px;border-radius:50%;background:#C6A257"></span>Match ' + (i + 1) + '</div>' +
+          '<div class="bb-fix-b">' +
+            fixBadge(homeName, homeLogo) +
+            '<div class="bb-fix-mid"><span class="bb-fix-vs">VS</span><div class="bb-fix-date">' + escHtml(formatDateShort(m.match_date)) + '</div><div class="bb-fix-meta">' + escHtml(m.venue || '') + (m.match_time ? '<br>' + escHtml(m.match_time) : '') + '</div></div>' +
+            fixBadge(awayName, awayLogo) +
+          '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  fetch(SUPABASE_URL + '/rest/v1/matches?select=*&order=match_date.asc&limit=200', {
     headers: {
       'apikey': SUPABASE_KEY,
       'Authorization': 'Bearer ' + SUPABASE_KEY
     }
   })
   .then(function(res){ if (!res.ok) throw new Error('Erreur réseau'); return res.json(); })
-  .then(renderResults)
+  .then(function(matches){
+    matches = matches || [];
+    var played = matches.filter(isPlayed).sort(function(a, b){ return b.match_date.localeCompare(a.match_date); });
+    var upcoming = matches.filter(function(m){ return !isPlayed(m); });
+    renderResults(played);
+    renderNextMatch(upcoming);
+    renderFixtures(upcoming);
+  })
   .catch(function(err){
-    console.warn('Résultats Supabase indisponibles, contenu de secours conservé.', err);
+    console.warn('Données matchs Supabase indisponibles, contenu de secours conservé.', err);
     var list = document.getElementById('bb-results-list');
     if (list) list.innerHTML = '<span style="font-family:\'Montserrat\',sans-serif;font-size:13.5px;color:#7E8A82">Résultats momentanément indisponibles.</span>';
   });
