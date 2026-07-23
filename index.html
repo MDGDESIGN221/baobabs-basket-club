@@ -574,19 +574,25 @@
           </div>
           <script>
           (function(){
-            // ↓↓↓ Colle ici l'identifiant de la chaîne YouTube du club (commence par "UC..."), ou laisse vide.
-            var BB_YT_CHANNEL_ID = "";
             var iframe = document.getElementById('bb-live-iframe');
             var fallback = document.getElementById('bb-live-fallback');
             var liveBadge = document.getElementById('bb-live-badge');
             var offlineBadge = document.getElementById('bb-offline-badge');
-            if (!BB_YT_CHANNEL_ID) return; // rien à faire tant qu'aucune chaîne n'est configurée
-            // Embed "live channel" : YouTube bascule automatiquement sur le direct en cours.
-            iframe.src = "https://www.youtube.com/embed/live_stream?channel=" + BB_YT_CHANNEL_ID + "&autoplay=0";
-            iframe.style.display = "block";
-            fallback.style.display = "none";
-            liveBadge.style.display = "flex";
-            offlineBadge.style.display = "none";
+            var fallbackText = fallback.querySelector('span:last-child');
+
+            // Appelée une fois que index.html a chargé site_settings (yt_channel_id, live_offline_note).
+            window.bbInitLive = function(channelId, offlineNote){
+              if (offlineNote && fallbackText) fallbackText.textContent = offlineNote;
+              if (!channelId) return; // rien à faire tant qu'aucune chaîne n'est configurée
+              // Embed "live channel" : YouTube bascule automatiquement sur le direct en cours.
+              // On affiche le lecteur ; YouTube lui-même montre son propre message si aucun direct
+              // n'est en cours à cet instant (le site ne peut pas savoir à l'avance si c'est le cas).
+              iframe.src = "https://www.youtube.com/embed/live_stream?channel=" + channelId + "&autoplay=0";
+              iframe.style.display = "block";
+              fallback.style.display = "none";
+              liveBadge.style.display = "flex";
+              offlineBadge.style.display = "none";
+            };
           })();
           </script>
         </div>
@@ -2408,14 +2414,22 @@ document.addEventListener('keydown', function(e){
   function resultRowHtml(m){
     var won = m.score_baobabs > m.score_opponent;
     var opponentLabel = (m.is_home ? 'vs ' : '@ ') + m.opponent_name;
+    var photo = m.photo_url
+      ? '<img src="' + escHtml(m.photo_url) + '" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none;border:1px solid rgba(243,239,230,.12)">'
+      : '';
+    var replay = m.stream_url
+      ? '<a href="' + escHtml(m.stream_url) + '" target="_blank" rel="noopener" style="font-family:\'Montserrat\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.04em;color:#A8D93B;white-space:nowrap">▶ Replay</a>'
+      : '';
     return '' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-left:3px solid ' + (won ? '#A8D93B' : '#7E8A82') + ';border-radius:10px;padding:12px 16px">' +
-        '<div style="display:flex;align-items:center;gap:12px">' +
+        '<div style="display:flex;align-items:center;gap:12px;min-width:0">' +
+          photo +
           '<span style="font-family:\'Montserrat\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.08em;color:' + (won ? '#A8D93B' : '#B9C2BB') + ';flex:none">' + (won ? 'VICTOIRE' : 'DÉFAITE') + '</span>' +
-          '<span style="font-family:\'Montserrat\',sans-serif;font-weight:600;font-size:14.5px;color:#F3EFE6">' + escHtml(opponentLabel) + '</span>' +
-          (m.competition ? '<span style="font-size:12px;color:#7E8A82">' + escHtml(m.competition) + '</span>' : '') +
+          '<span style="font-family:\'Montserrat\',sans-serif;font-weight:600;font-size:14.5px;color:#F3EFE6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(opponentLabel) + '</span>' +
+          (m.competition ? '<span style="font-size:12px;color:#7E8A82;white-space:nowrap">' + escHtml(m.competition) + '</span>' : '') +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:10px;flex:none">' +
+          replay +
           '<span style="font-family:\'Montserrat\',sans-serif;font-weight:800;font-size:16px;color:#C6A257">' + m.score_baobabs + ' - ' + m.score_opponent + '</span>' +
           '<span style="font-size:12px;color:#7E8A82">' + formatDateShort(m.match_date) + '</span>' +
         '</div>' +
@@ -2547,8 +2561,12 @@ document.addEventListener('keydown', function(e){
         }
       });
     }
+    if (window.bbInitLive) window.bbInitLive(settings.yt_channel_id || '', settings.live_offline_note || '');
   })
-  .catch(function(err){ console.warn('Réglages du site indisponibles.', err); });
+  .catch(function(err){
+    console.warn('Réglages du site indisponibles.', err);
+    if (window.bbInitLive) window.bbInitLive('', ''); // pas de réglages dispo → bloc live reste sur son état par défaut
+  });
 })();
 </script>
 
