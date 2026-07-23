@@ -214,6 +214,8 @@
   .order-line-item{display:flex;align-items:center;gap:10px;padding:5px 0}
   .order-line-thumb{width:38px;height:38px;border-radius:8px;object-fit:cover;background:var(--surface-2);border:1px solid var(--line-strong);flex:none}
   .order-line-noimg{width:38px;height:38px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line-strong);flex:none;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .recruit-photo{width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--surface-2);border:1px solid var(--line-strong);flex:none;margin-right:12px}
+  .recruit-photo-noimg{width:52px;height:52px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line-strong);flex:none;margin-right:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
   .order-line-info{flex:1;min-width:0}
   .order-line-name{font-size:13px;font-weight:600;color:var(--text)}
   .order-line-size{font-size:11.5px;color:var(--faint)}
@@ -909,6 +911,17 @@
       </div>
       <div class="list-head"><h2 id="forms-list-title">Inscriptions newsletter</h2><span class="list-count" id="forms-count">—</span></div>
       <div class="callout hide" id="orders-summary-bar" style="display:flex;gap:22px;flex-wrap:wrap"></div>
+      <div class="hide" id="orders-filters-bar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+        <input type="text" id="orders-search" placeholder="Chercher par nom ou téléphone…" style="flex:1;min-width:180px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Archivo',sans-serif;font-size:13px">
+        <select id="orders-filter-status" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Archivo',sans-serif;font-size:13px;flex:none">
+          <option value="">Tous les statuts</option>
+          <option value="nouvelle">Nouvelle</option>
+          <option value="confirmée">Confirmée</option>
+          <option value="prête">Prête</option>
+          <option value="récupérée">Récupérée</option>
+          <option value="annulée">Annulée</option>
+        </select>
+      </div>
       <div id="forms-list"><div class="empty">Chargement…</div></div>
     </section>
   </div>
@@ -1743,7 +1756,12 @@
         var l1=[r.phone, r.email, r.city].filter(Boolean).join(' · ');
         var l2=[r.position, r.category, (r.height_cm?r.height_cm+' cm':''), (r.weight_kg?r.weight_kg+' kg':''), r.strong_hand, age].filter(Boolean).join(' · ');
         var exp=r.experience?(r.experience+(r.previous_clubs?(' — '+r.previous_clubs):'')):'';
-        return '<div class="form-item-top"><div class="form-item-name">'+esc(name||'—')+'</div><div class="form-item-date">'+fmtDateTime(r.created_at)+'</div></div>'+
+        var photoHtml = r.photo_url
+          ? '<img class="recruit-photo" src="'+esc(r.photo_url)+'" alt="Photo de '+esc(name||'candidat')+'">'
+          : '<div class="recruit-photo-noimg">🧑</div>';
+        return '<div class="form-item-top" style="align-items:flex-start">'+photoHtml+
+          '<div style="flex:1;display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div class="form-item-name">'+esc(name||'—')+'</div><div class="form-item-date">'+fmtDateTime(r.created_at)+'</div></div>'+
+          '</div>'+
           (l1?'<div class="form-item-line">'+esc(l1)+'</div>':'')+
           (l2?'<div class="form-item-line">'+esc(l2)+'</div>':'')+
           (exp?'<div class="form-item-line">'+esc(exp)+'</div>':'')+
@@ -1767,28 +1785,20 @@
     var map={nouvelle:'Nouvelle',"confirmée":'Confirmée',"prête":'Prête au retrait',"récupérée":'Récupérée',"annulée":'Annulée'};
     return map[s]||s;
   }
-  function loadForms(){
-    var f=FORMS[currentForm];
-    document.getElementById('forms-list-title').textContent=f.title;
-    var list=document.getElementById('forms-list');
-    list.innerHTML='<div class="empty">Chargement…</div>';
-    sbGet(f.table+'?select=*&order=created_at.desc').then(function(rows){
-      rows=rows||[];
+  var allOrderRows = []; // toutes les commandes chargées, avant filtrage — évite de refaire un appel réseau à chaque frappe dans la recherche
+  function matchesOrderFilters(r){
+    var statusFilter = document.getElementById('orders-filter-status').value;
+    if(statusFilter && normalizeOrderStatus(r.status)!==statusFilter) return false;
+    var q = document.getElementById('orders-search').value.trim().toLowerCase();
+    if(!q) return true;
+    var haystack = ((r.customer_name||'')+' '+(r.customer_phone||'')).toLowerCase();
+    return haystack.indexOf(q) !== -1;
+  }
+  function renderFormsList(rows, f){
       document.getElementById('forms-count').textContent=rows.length;
-      var summaryBar = document.getElementById('orders-summary-bar');
-      if(f.table==='orders'){
-        var now=new Date();
-        var weekAgo=new Date(now.getTime()-7*86400000);
-        var monthStart=new Date(now.getFullYear(),now.getMonth(),1);
-        var sumSince=function(since){ return rows.filter(function(r){ return r.created_at && new Date(r.created_at)>=since && normalizeOrderStatus(r.status)!=='annulée'; }).reduce(function(a,r){ return a+(Number(r.total)||0); },0); };
-        var weekTotal=sumSince(weekAgo), monthTotal=sumSince(monthStart);
-        summaryBar.classList.remove('hide');
-        summaryBar.innerHTML='<div><b>'+esc(weekTotal.toLocaleString('fr-FR'))+' FCFA</b> — 7 derniers jours</div><div><b>'+esc(monthTotal.toLocaleString('fr-FR'))+' FCFA</b> — ce mois-ci</div>';
-      } else {
-        summaryBar.classList.add('hide');
-      }
-      if(!rows.length){ list.innerHTML='<div class="empty">'+esc(f.empty)+'</div>'; return; }
+      if(!rows.length){ document.getElementById('forms-list').innerHTML='<div class="empty">'+esc(f.empty)+'</div>'; return; }
       var isOrders = f.table==='orders';
+      var list = document.getElementById('forms-list');
       list.innerHTML=rows.map(function(r){
         var delBtn = isOrders ? '' : '<button class="icon-btn danger form-del" data-id="'+r.id+'" data-table="'+f.table+'" aria-label="Supprimer" style="margin-top:9px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
         return '<div class="'+(isOrders?'order-card':'form-item')+'">'+f.render(r)+delBtn+'</div>';
@@ -1823,6 +1833,32 @@
           if(panel) panel.classList.toggle('open');
         });
       });
+  }
+  function loadForms(){
+    var f=FORMS[currentForm];
+    document.getElementById('forms-list-title').textContent=f.title;
+    var list=document.getElementById('forms-list');
+    list.innerHTML='<div class="empty">Chargement…</div>';
+    var summaryBar = document.getElementById('orders-summary-bar');
+    var filtersBar = document.getElementById('orders-filters-bar');
+    var isOrders = f.table==='orders';
+    filtersBar.classList.toggle('hide', !isOrders);
+    sbGet(f.table+'?select=*&order=created_at.desc').then(function(rows){
+      rows=rows||[];
+      if(isOrders){
+        allOrderRows = rows;
+        var now=new Date();
+        var weekAgo=new Date(now.getTime()-7*86400000);
+        var monthStart=new Date(now.getFullYear(),now.getMonth(),1);
+        var sumSince=function(since){ return rows.filter(function(r){ return r.created_at && new Date(r.created_at)>=since && normalizeOrderStatus(r.status)!=='annulée'; }).reduce(function(a,r){ return a+(Number(r.total)||0); },0); };
+        var weekTotal=sumSince(weekAgo), monthTotal=sumSince(monthStart);
+        summaryBar.classList.remove('hide');
+        summaryBar.innerHTML='<div><b>'+esc(weekTotal.toLocaleString('fr-FR'))+' FCFA</b> — 7 derniers jours</div><div><b>'+esc(monthTotal.toLocaleString('fr-FR'))+' FCFA</b> — ce mois-ci</div>';
+        renderFormsList(rows.filter(matchesOrderFilters), f);
+      } else {
+        summaryBar.classList.add('hide');
+        renderFormsList(rows, f);
+      }
     }).catch(function(){ list.innerHTML='<div class="empty">Impossible de charger. La table « '+esc(f.table)+' » existe-t-elle ? (migration SQL)</div>'; });
   }
   document.getElementById('forms-nav').addEventListener('click',function(e){
@@ -1830,6 +1866,12 @@
     document.querySelectorAll('#forms-nav .nav-btn').forEach(function(b){ b.classList.toggle('active', b===btn); });
     currentForm=btn.getAttribute('data-form');
     loadForms();
+  });
+  document.getElementById('orders-search').addEventListener('input', function(){
+    if(currentForm==='orders') renderFormsList(allOrderRows.filter(matchesOrderFilters), FORMS.orders);
+  });
+  document.getElementById('orders-filter-status').addEventListener('change', function(){
+    if(currentForm==='orders') renderFormsList(allOrderRows.filter(matchesOrderFilters), FORMS.orders);
   });
 
   // ===================== TABLEAU DE BORD =====================

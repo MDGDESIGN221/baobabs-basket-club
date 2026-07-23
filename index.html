@@ -1479,6 +1479,11 @@
             <div class="bb-field"><label for="bb-rec-birth">Date de naissance *</label><input id="bb-rec-birth" name="birth_date" type="date" required></div>
             <div class="bb-field"><label for="bb-rec-cat">Catégorie</label><select id="bb-rec-cat" name="category"><option value="">—</option><option>U13</option><option>U15</option><option>U18</option><option>Senior</option></select></div>
           </div>
+          <div class="bb-field">
+            <label for="bb-rec-photo">Photo <span style="text-transform:none;color:#7E8A82">(optionnel — aide le coach à te reconnaître)</span></label>
+            <input id="bb-rec-photo" name="photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+            <div id="bb-rec-photo-preview" class="bb-hide" style="margin-top:10px"><img id="bb-rec-photo-preview-img" alt="Aperçu" style="width:72px;height:72px;border-radius:10px;object-fit:cover;border:1px solid rgba(198,162,87,.28)"></div>
+          </div>
 
           <div class="bb-rec-legend">Coordonnées</div>
           <div class="bb-rec-grid">
@@ -1549,6 +1554,24 @@
       },
       body: JSON.stringify(payload)
     }).then(function(res){ if (!res.ok) throw new Error('insert failed: ' + table); });
+  }
+  // Upload un fichier vers un bucket Supabase Storage public et renvoie son URL publique.
+  // bucket doit déjà exister avec les bonnes policies (voir MIGRATION-SUPABASE-v6.sql).
+  function sbUploadFile(bucket, file){
+    var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    var path = Date.now() + '-' + Math.random().toString(36).slice(2, 9) + '.' + ext;
+    return fetch(SUPABASE_URL + '/storage/v1/object/' + bucket + '/' + path, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': file.type || 'application/octet-stream'
+      },
+      body: file
+    }).then(function(res){
+      if (!res.ok) throw new Error('upload failed: ' + bucket);
+      return SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/' + path;
+    });
   }
 
   var state = {
@@ -2379,13 +2402,27 @@
         var val = (expWrap.querySelector('input:checked') || {}).value;
         document.getElementById('bb-rec-clubs-field').classList.toggle('bb-hide', val !== 'A d\u00e9j\u00e0 jou\u00e9 en club');
       });
+      var recPhotoInput = document.getElementById('bb-rec-photo');
+      recPhotoInput.addEventListener('change', function(){
+        var file = recPhotoInput.files && recPhotoInput.files[0];
+        var preview = document.getElementById('bb-rec-photo-preview');
+        var previewImg = document.getElementById('bb-rec-photo-preview-img');
+        if (!file) { preview.classList.add('bb-hide'); return; }
+        var reader = new FileReader();
+        reader.onload = function(ev){ previewImg.src = ev.target.result; preview.classList.remove('bb-hide'); };
+        reader.readAsDataURL(file);
+      });
       recForm.addEventListener('submit', function(e){
         e.preventDefault();
         var form = this, fd = new FormData(form);
         function g(k){ var v = fd.get(k); return (v != null && String(v).trim() !== '') ? String(v).trim() : null; }
-        var payload = { first_name:g('first_name'), last_name:g('last_name'), birth_date:g('birth_date'), category:g('category'), phone:g('phone'), email:g('email'), city:g('city'), position:g('position'), strong_hand:g('strong_hand'), height_cm:g('height_cm'), weight_kg:g('weight_kg'), experience:g('experience'), previous_clubs:g('previous_clubs'), health_notes:g('health_notes'), message:g('message') };
+        var photoFile = recPhotoInput.files && recPhotoInput.files[0];
         var btn = form.querySelector('button[type=submit]'); btn.disabled = true;
-        sbInsert('recruitment_requests', payload).then(function(){
+        var uploadStep = photoFile ? sbUploadFile('recruitment-photos', photoFile) : Promise.resolve(null);
+        uploadStep.then(function(photoUrl){
+          var payload = { first_name:g('first_name'), last_name:g('last_name'), birth_date:g('birth_date'), category:g('category'), phone:g('phone'), email:g('email'), city:g('city'), position:g('position'), strong_hand:g('strong_hand'), height_cm:g('height_cm'), weight_kg:g('weight_kg'), experience:g('experience'), previous_clubs:g('previous_clubs'), health_notes:g('health_notes'), message:g('message'), photo_url: photoUrl };
+          return sbInsert('recruitment_requests', payload);
+        }).then(function(){
           form.classList.add('bb-hide');
           document.getElementById('bb-recruit-success').classList.remove('bb-hide');
         }).catch(function(err){ console.warn('Candidature \u00e9chou\u00e9e', err); toast("Erreur d'envoi \u2014 r\u00e9essaie dans un instant"); }).finally(function(){ btn.disabled = false; });
