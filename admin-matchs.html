@@ -872,7 +872,8 @@
 
     <!-- ===== SECTION ACCUEIL ===== -->
     <section id="section-home" class="hide">
-      <div class="card" style="max-width:640px">
+      <div class="grid-2"><div>
+      <div class="card">
         <h2 class="card-title">Bandeau d'accueil</h2>
         <p class="card-sub">L'image et le texte d'accroche en haut de la page d'accueil.</p>
         <div class="field">
@@ -890,6 +891,19 @@
         <div class="field"><label for="set_club_email">E-mail du club <span class="opt">(optionnel)</span></label><input type="email" id="set_club_email" placeholder="baobabsbasketclub@gmail.com"></div>
         <button class="btn btn-primary" id="save-home-btn">Enregistrer</button>
         <div class="msg" id="home-msg"></div>
+      </div>
+      </div>
+      <aside class="preview-aside" id="hero_preview_aside">
+        <div class="preview-shell">
+          <div class="preview-bar"><span class="dot"></span><b>Aperçu en direct</b><span>Sur le site</span>
+            <button class="preview-collapse" id="hero_preview_collapse" aria-label="Réduire l'aperçu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="preview-body" id="hero_preview_body" style="padding:0"></div>
+          <p class="preview-note">Aperçu réel — bandeau en haut de la page d'accueil (mêmes styles que le site, adaptés à la largeur du panneau).</p>
+        </div>
+      </aside>
       </div>
     </section>
 
@@ -1526,6 +1540,7 @@
     document.getElementById('set_hero_title').value=settings.hero_title||''; document.getElementById('set_hero_subtitle').value=settings.hero_subtitle||'';
     document.getElementById('set_club_email').value=settings.club_email||'';
     document.getElementById('hero_url').value=settings.hero_image_url||''; var p=document.getElementById('hero_preview'); if(settings.hero_image_url){p.src=settings.hero_image_url;p.style.display='block';}
+    updateHeroPreview();
   };
   document.getElementById('save-home-btn').addEventListener('click',function(){
     var msg=document.getElementById('home-msg'); var btn=this; btn.disabled=true;
@@ -1533,6 +1548,29 @@
       .then(function(url){ saveSettings({ hero_title:document.getElementById('set_hero_title').value.trim(), hero_subtitle:document.getElementById('set_hero_subtitle').value.trim(), hero_image_url:url||'', club_email:document.getElementById('set_club_email').value.trim() }, msg, btn); })
       .catch(function(){ showMsg(msg,'Erreur lors de l\'upload de l\'image.',false); btn.disabled=false; });
   });
+
+  function updateHeroPreview(){
+    var body=document.getElementById('hero_preview_body'); if(!body) return;
+    var title=document.getElementById('set_hero_title').value.trim()||'Les Baobabs renversent le DUC dans le money time';
+    var subVal=document.getElementById('set_hero_subtitle').value.trim();
+    var sub=subVal?('<span>'+esc(subVal)+'</span>'):'<span>Match report</span><span style="opacity:.4">•</span><span>Il y a 2 h</span>';
+    var photoSrc=collImgSrc('hero_preview')||'https://res.cloudinary.com/djdkpihuz/image/upload/v1784692836/Person_on_basketball_court_2K_202607220359_qdn8q9.jpg';
+    body.innerHTML=
+      '<div style="position:relative;border-radius:14px;overflow:hidden;background:#0F1E15;min-height:210px">'+
+        '<img src="'+esc(photoSrc)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">'+
+        '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,.94) 8%,rgba(5,14,9,.15) 55%,transparent)"></div>'+
+        '<div style="position:relative;padding:18px">'+
+          '<span style="display:inline-block;font-family:\'Archivo\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;color:#07130D;background:linear-gradient(180deg,#D4B36A,#C6A257);padding:5px 11px;border-radius:6px;white-space:nowrap;margin-bottom:12px">CHAMPIONNAT · D2</span>'+
+          '<h2 style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:22px;line-height:1.05;letter-spacing:-.01em;color:#F3EFE6;margin:0 0 10px;max-width:18ch">'+esc(title)+'</h2>'+
+          '<div style="display:flex;gap:12px;align-items:center;font-size:12.5px;color:#B9C2BB">'+sub+'</div>'+
+        '</div>'+
+      '</div>';
+  }
+  ['set_hero_title','set_hero_subtitle','hero_url'].forEach(function(id){
+    var el=document.getElementById(id); el.addEventListener('input',updateHeroPreview); el.addEventListener('change',updateHeroPreview);
+  });
+  document.getElementById('hero_preview').addEventListener('load',updateHeroPreview);
+  document.getElementById('hero_preview_collapse').addEventListener('click',function(){ document.getElementById('hero_preview_aside').classList.toggle('collapsed'); });
 
   wireImageControl(document.getElementById('founder_mode_upload'), document.getElementById('founder_mode_url'), document.getElementById('founder_file'), document.getElementById('founder_url'), document.getElementById('founder_preview'));
   LOADERS_founder=function(){
