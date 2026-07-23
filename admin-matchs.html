@@ -115,6 +115,16 @@
   .status-pill{font-family:'Montserrat',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;padding:4px 9px;border-radius:20px;flex:none}
   .status-upcoming{background:var(--gold-soft);color:var(--gold)}
   .status-win{background:rgba(168,217,59,.14);color:var(--lime)}
+  .form-item{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-bottom:9px}
+  .form-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .form-item-name{font-size:14.5px;font-weight:700}
+  .form-item-date{color:var(--faint);font-size:11.5px;white-space:nowrap;flex:none;margin-top:2px}
+  .form-item-line{color:var(--muted);font-size:13px;margin-top:4px;line-height:1.5;word-break:break-word}
+  .form-item-line a{color:var(--gold)}
+  .form-item-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:11px}
+  .status-toggle{font-family:'Montserrat',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;padding:5px 11px;border-radius:20px;border:1px solid transparent;flex:none}
+  .status-toggle.new{background:var(--gold-soft);color:var(--gold);border-color:rgba(180,135,58,.35)}
+  .status-toggle.done{background:rgba(28,122,58,.09);color:var(--lime);border-color:rgba(28,122,58,.28)}
   .status-loss{background:rgba(192,39,27,.1);color:#C0271B}
   .status-off{background:rgba(243,239,230,.08);color:var(--muted)}
   .item-actions{display:flex;gap:7px;flex:none}
@@ -303,6 +313,7 @@
       <button class="nav-btn" data-section="news">Actualités</button>
       <button class="nav-btn" data-section="partners">Partenaires</button>
       <button class="nav-btn" data-section="shop">Boutique</button>
+      <button class="nav-btn" data-section="forms">Messages</button>
       <button class="nav-btn" data-section="home">Accueil</button>
     </div>
 
@@ -549,6 +560,18 @@
     <section id="section-news" class="hide"><div id="coll-news"></div></section>
     <section id="section-partners" class="hide"><div id="coll-partners"></div></section>
     <section id="section-shop" class="hide"><div id="coll-shop"></div></section>
+
+    <!-- ===== SECTION MESSAGES (newsletter / contact / commandes) ===== -->
+    <section id="section-forms" class="hide">
+      <div class="callout">Ce que les visiteurs envoient depuis le site public : inscriptions à la newsletter, messages du formulaire de contact, et commandes passées dans la boutique. Consultation et suppression uniquement — ces données ne sont pas modifiables.</div>
+      <div class="nav-scroll" id="forms-nav" style="margin-bottom:18px">
+        <button class="nav-btn active" data-form="newsletter">Newsletter</button>
+        <button class="nav-btn" data-form="contact">Contact</button>
+        <button class="nav-btn" data-form="orders">Commandes</button>
+      </div>
+      <div class="list-head"><h2 id="forms-list-title">Inscriptions newsletter</h2><span class="list-count" id="forms-count">—</span></div>
+      <div id="forms-list"><div class="empty">Chargement…</div></div>
+    </section>
   </div>
 
   <div id="tour-overlay" class="hide">
@@ -639,12 +662,13 @@
     news:{t:'Actualités',d:'Les annonces et actualités publiées sur le site.'},
     partners:{t:'Partenaires',d:'Les logos et liens des partenaires du club.'},
     shop:{t:'Boutique',d:'Les produits proposés dans la boutique.'},
+    forms:{t:'Messages',d:'Les inscriptions newsletter, messages de contact et commandes boutique envoyés depuis le site public.'},
     home:{t:'Bandeau d\'accueil',d:'L\'image et le texte d\'accroche de la page d\'accueil.'}
   };
   var loadedSections = {};
   function showSection(key){
     document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-section')===key); });
-    ['matches','teams','live','roster','staff','news','partners','shop','home'].forEach(function(k){
+    ['matches','teams','live','roster','staff','news','partners','shop','forms','home'].forEach(function(k){
       document.getElementById('section-'+k).classList.toggle('hide', k!==key);
     });
     var m = SECTION_META[key];
@@ -1121,6 +1145,76 @@
     sbDelete(c.table,id).then(function(){ loadCollection(key); }).catch(function(){ alert('Erreur lors de la suppression.'); });
   }
 
+  // ===================== MESSAGES (newsletter / contact / commandes) =====================
+  var FORMS = {
+    newsletter:{ table:'newsletter_subscribers', title:'Inscriptions newsletter', empty:'Aucune inscription pour l\'instant.',
+      render:function(r){
+        return '<div class="form-item-top"><div class="form-item-name">'+esc(r.email)+'</div><div class="form-item-date">'+fmtDateTime(r.created_at)+'</div></div>'+
+          (r.name?'<div class="form-item-line">'+esc(r.name)+'</div>':'');
+      } },
+    contact:{ table:'contact_messages', title:'Messages de contact', empty:'Aucun message pour l\'instant.',
+      render:function(r){
+        return '<div class="form-item-top"><div class="form-item-name">'+esc(r.name)+'</div><div class="form-item-date">'+fmtDateTime(r.created_at)+'</div></div>'+
+          '<div class="form-item-line">'+esc(r.email)+'</div>'+
+          (r.message?'<div class="form-item-line">'+esc(r.message)+'</div>':'');
+      } },
+    orders:{ table:'orders', title:'Commandes boutique', empty:'Aucune commande pour l\'instant.',
+      render:function(r){
+        var items; try{ items=JSON.parse(r.items||'[]'); }catch(e){ items=null; }
+        var itemsLine = Array.isArray(items) && items.length
+          ? items.map(function(it){ var n=it.name||it.title||'Article'; var q=it.qty||it.quantity; return q?(esc(n)+' ×'+esc(q)):esc(n); }).join(', ')
+          : '';
+        var isDone = r.status==='traitée'||r.status==='traitee'||r.status==='done';
+        return '<div class="form-item-top"><div class="form-item-name">'+esc(r.customer_name)+'</div><div class="form-item-date">'+fmtDateTime(r.created_at)+'</div></div>'+
+          '<div class="form-item-line">'+esc(r.customer_phone)+'</div>'+
+          (itemsLine?'<div class="form-item-line">'+itemsLine+'</div>':'')+
+          (r.note?'<div class="form-item-line">'+esc(r.note)+'</div>':'')+
+          (r.total?'<div class="form-item-line"><b>'+esc(r.total)+' FCFA</b></div>':'')+
+          '<div class="form-item-bottom"><button class="status-toggle '+(isDone?'done':'new')+'" data-id="'+r.id+'" data-status="'+(isDone?'nouvelle':'traitée')+'">'+(isDone?'Traitée':'Nouvelle')+'</button>'+
+          '<button class="icon-btn danger form-del" data-id="'+r.id+'" data-table="orders" aria-label="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>';
+      } }
+  };
+  var currentForm = 'newsletter';
+  function fmtDateTime(ts){
+    if(!ts) return '';
+    var d = new Date(ts);
+    return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  }
+  function loadForms(){
+    var f=FORMS[currentForm];
+    document.getElementById('forms-list-title').textContent=f.title;
+    var list=document.getElementById('forms-list');
+    list.innerHTML='<div class="empty">Chargement…</div>';
+    sbGet(f.table+'?select=*&order=created_at.desc').then(function(rows){
+      rows=rows||[];
+      document.getElementById('forms-count').textContent=rows.length;
+      if(!rows.length){ list.innerHTML='<div class="empty">'+esc(f.empty)+'</div>'; return; }
+      list.innerHTML=rows.map(function(r){
+        var delBtn = f.table==='orders' ? '' : '<button class="icon-btn danger form-del" data-id="'+r.id+'" data-table="'+f.table+'" aria-label="Supprimer" style="margin-top:9px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
+        return '<div class="form-item">'+f.render(r)+delBtn+'</div>';
+      }).join('');
+      list.querySelectorAll('.form-del').forEach(function(b){
+        b.addEventListener('click',function(){
+          if(!confirm('Supprimer cet élément ?')) return;
+          sbDelete(b.getAttribute('data-table'),b.getAttribute('data-id')).then(loadForms).catch(function(){ alert('Erreur lors de la suppression.'); });
+        });
+      });
+      list.querySelectorAll('.status-toggle').forEach(function(b){
+        b.addEventListener('click',function(){
+          var id=b.getAttribute('data-id'), newStatus=b.getAttribute('data-status');
+          b.disabled=true;
+          sbUpdate('orders',id,{status:newStatus}).then(loadForms).catch(function(){ alert('Erreur lors de la mise à jour du statut.'); b.disabled=false; });
+        });
+      });
+    }).catch(function(){ list.innerHTML='<div class="empty">Impossible de charger. La table « '+esc(f.table)+' » existe-t-elle ? (migration SQL)</div>'; });
+  }
+  document.getElementById('forms-nav').addEventListener('click',function(e){
+    var btn=e.target.closest('.nav-btn'); if(!btn) return;
+    document.querySelectorAll('#forms-nav .nav-btn').forEach(function(b){ b.classList.toggle('active', b===btn); });
+    currentForm=btn.getAttribute('data-form');
+    loadForms();
+  });
+
   // ===================== LOADERS =====================
   var LOADERS_live, LOADERS_home;
   var LOADERS = {
@@ -1131,7 +1225,8 @@
     staff:function(){ buildCollection('staff'); },
     news:function(){ buildCollection('news'); },
     partners:function(){ buildCollection('partners'); },
-    shop:function(){ buildCollection('shop'); }
+    shop:function(){ buildCollection('shop'); },
+    forms:function(){ loadForms(); }
   };
 
   // ===================== VISITE GUIDÉE =====================
