@@ -521,12 +521,12 @@
 
       <section id="bb-hero" style="position:relative;display:grid;gap:18px">
         <div id="bb-hero-img-wrap" style="position:relative;border-radius:18px;overflow:hidden;background:#0F1E15">
-          <img src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784692836/Person_on_basketball_court_2K_202607220359_qdn8q9.jpg" alt="Action de match — Baobabs vs DUC" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+          <img id="bb-hero-img" src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784692836/Person_on_basketball_court_2K_202607220359_qdn8q9.jpg" alt="Action de match — Baobabs" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
           <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,.94) 8%,rgba(5,14,9,.15) 55%,transparent);pointer-events:none"></div>
           <div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,32px)">
-            <span style="display:inline-block;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#07130D;background:#C6A257;padding:5px 11px;border-radius:5px;margin-bottom:14px">CHAMPIONNAT · N1</span>
-            <h1 style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(28px,4vw,46px);line-height:1.02;letter-spacing:-.01em;color:#F3EFE6;margin:0 0 12px;max-width:18ch">Les Baobabs renversent le DUC dans le money time</h1>
-            <div style="display:flex;gap:14px;align-items:center;font-size:13px;color:#B9C2BB"><span>Match report</span><span style="opacity:.4">•</span><span>Il y a 2 h</span></div>
+            <span style="display:inline-block;font-family:'Montserrat',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#07130D;background:#C6A257;padding:5px 11px;border-radius:5px;margin-bottom:14px">CHAMPIONNAT · D2</span>
+            <h1 id="bb-hero-title" style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:clamp(28px,4vw,46px);line-height:1.02;letter-spacing:-.01em;color:#F3EFE6;margin:0 0 12px;max-width:18ch">Les Baobabs renversent le DUC dans le money time</h1>
+            <div id="bb-hero-sub" style="display:flex;gap:14px;align-items:center;font-size:13px;color:#B9C2BB"><span>Match report</span><span style="opacity:.4">•</span><span>Il y a 2 h</span></div>
           </div>
         </div>
 
@@ -1147,6 +1147,14 @@
       </div>
     </div>
   </div>
+
+  <section id="bb-actus" class="bb-hide" style="max-width:1320px;margin:0 auto;padding:clamp(40px,6vw,72px) clamp(16px,4vw,24px) 0">
+    <div style="margin-bottom:clamp(20px,3vw,30px)">
+      <span style="font-family:'Montserrat',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase">Actualités</span>
+      <h2 style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:clamp(28px,4vw,44px);color:#F3EFE6;margin:8px 0 0">Les dernières du club</h2>
+    </div>
+    <div id="bb-actus-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(16px,2.4vw,22px)"></div>
+  </section>
 
   <div class="bb-news-band">
     <div style="position:absolute;right:-3%;top:50%;transform:translateY(-50%);font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(150px,24vw,300px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(168,217,59,.07);pointer-events:none;user-select:none;z-index:0">BBC</div>
@@ -2357,6 +2365,10 @@
       if(rows && rows.length) renderPartners(rows);
     }).catch(function(){});
 
+    sbFetch('news?select=*&order=published_at.desc,sort.asc&limit=12').then(function(rows){
+      if(rows && rows.length) renderActus(rows);
+    }).catch(function(){});
+
     sbFetch('org_roles?select=*').then(function(rows){
       if(!rows || !rows.length) return;
       function lines(t){ return String(t||'').split('\n').map(function(s){return s.trim();}).filter(Boolean); }
@@ -2376,8 +2388,31 @@
     }).catch(function(){});
 
     sbFetch('site_settings?select=*').then(function(rows){
-      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s);
+      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s);
     }).catch(function(){});
+  }
+
+  function applyHero(s){
+    if(!s) return;
+    if(s.hero_image_url){ var im=document.getElementById('bb-hero-img'); if(im) im.src=s.hero_image_url; }
+    if(s.hero_title){ var t=document.getElementById('bb-hero-title'); if(t) t.textContent=s.hero_title; }
+    if(s.hero_subtitle){ var sub=document.getElementById('bb-hero-sub'); if(sub) sub.innerHTML='<span>'+esc(s.hero_subtitle)+'</span>'; }
+  }
+
+  function renderActus(rows){
+    var el=document.getElementById('bb-actus-grid'); var sec=document.getElementById('bb-actus'); if(!el||!sec) return;
+    function fdate(d){ if(!d) return ''; try{ return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return d; } }
+    el.innerHTML=rows.map(function(n){
+      var img = n.image_url ? '<div style="aspect-ratio:16/10;overflow:hidden;background:#0F1E15"><img src="'+n.image_url+'" alt="'+esc(n.title||'')+'" style="width:100%;height:100%;object-fit:cover"></div>' : '';
+      var body = n.body ? '<p style="font-size:14px;line-height:1.6;color:#B9C2BB;margin:8px 0 0">'+esc(String(n.body).slice(0,140))+(String(n.body).length>140?'…':'')+'</p>' : '';
+      return '<article style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:16px;overflow:hidden">'+img+
+        '<div style="padding:18px 20px 22px">'+
+          (n.published_at?'<div style="font-family:\'Montserrat\',sans-serif;font-weight:600;font-size:11px;letter-spacing:.1em;color:#C6A257;text-transform:uppercase">'+esc(fdate(n.published_at))+'</div>':'')+
+          '<h3 style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:21px;color:#F3EFE6;margin:6px 0 0;line-height:1.1">'+esc(n.title||'')+'</h3>'+
+          body+
+        '</div></article>';
+    }).join('');
+    sec.classList.remove('bb-hide');
   }
 
   function applyFounder(s){
