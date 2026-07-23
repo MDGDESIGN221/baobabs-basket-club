@@ -1331,7 +1331,9 @@
         <form id="bb-order-form" class="bb-hide" style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
           <div class="bb-field"><label for="bb-order-name">Nom</label><input id="bb-order-name" type="text" placeholder="Votre nom" required></div>
           <div class="bb-field"><label for="bb-order-phone">Téléphone</label><input id="bb-order-phone" type="tel" placeholder="+221 …" required></div>
-          <div class="bb-field"><label for="bb-order-note">Précisions <span style="text-transform:none;color:#7E8A82">(optionnel)</span></label><textarea id="bb-order-note" rows="2" placeholder="Lieu de retrait, remarque…"></textarea></div>
+          <div class="bb-field"><label for="bb-order-email">Email <span style="text-transform:none;color:#7E8A82">(optionnel — reçois ta confirmation par email)</span></label><input id="bb-order-email" type="email" placeholder="toi@exemple.com"></div>
+          <div class="bb-field"><label for="bb-order-pickup">Lieu de retrait <span style="text-transform:none;color:#7E8A82">(optionnel)</span></label><input id="bb-order-pickup" type="text" placeholder="Ex : Complexe Patrick Semedo"></div>
+          <div class="bb-field"><label for="bb-order-note">Précisions <span style="text-transform:none;color:#7E8A82">(optionnel)</span></label><textarea id="bb-order-note" rows="2" placeholder="Remarque, disponibilité…"></textarea></div>
           <button type="submit" class="bb-btn-solid" style="margin-top:2px">Confirmer la commande</button>
         </form>
         <div id="bb-order-success" class="bb-hide" style="text-align:center;padding:8px 0 4px">
@@ -2433,6 +2435,8 @@
       var form = this;
       var name = document.getElementById('bb-order-name').value.trim();
       var phone = document.getElementById('bb-order-phone').value.trim();
+      var email = document.getElementById('bb-order-email').value.trim();
+      var pickup = document.getElementById('bb-order-pickup').value.trim();
       var note = document.getElementById('bb-order-note').value.trim();
       var items = state.cart.map(function(it){
         var p = findProduct(it.id);
@@ -2440,7 +2444,7 @@
       });
       var btn = form.querySelector('button[type=submit]');
       btn.disabled = true;
-      sbInsert('orders', { customer_name: name, customer_phone: phone, note: note || null, items: items, total: cartTotal() })
+      sbInsert('orders', { customer_name: name, customer_phone: phone, customer_email: email || null, pickup_location: pickup || null, note: note || null, items: items, total: cartTotal() })
         .then(function(){
           state.cart = [];
           updateBadge();

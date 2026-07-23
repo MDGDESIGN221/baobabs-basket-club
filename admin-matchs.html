@@ -200,6 +200,41 @@
   .status-toggle{font-family:'Archivo',sans-serif;font-weight:800;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;padding:6px 12px;border-radius:20px;border:1px solid transparent;flex:none}
   .status-toggle.new{background:var(--gold-soft);color:var(--gold-bright);border-color:rgba(198,162,87,.35)}
   .status-toggle.done{background:rgba(168,217,59,.1);color:var(--lime);border-color:rgba(168,217,59,.28)}
+
+  /* ---- Commandes enrichies ---- */
+  .order-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px;transition:border-color .15s}
+  .order-card:hover{border-color:rgba(198,162,87,.25)}
+  .order-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px}
+  .order-number{font-family:'Archivo Black',sans-serif;font-weight:900;font-size:14px;color:var(--gold-bright);letter-spacing:.02em}
+  .order-customer{font-size:13.5px;font-weight:700;color:var(--text);margin-top:2px}
+  .order-meta-line{color:var(--muted);font-size:12.5px;margin-top:3px;line-height:1.5}
+  .order-meta-line a{color:var(--gold)}
+  .order-date{color:var(--faint);font-size:11.5px;white-space:nowrap;flex:none;margin-top:2px;text-align:right}
+  .order-items{margin:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0}
+  .order-line-item{display:flex;align-items:center;gap:10px;padding:5px 0}
+  .order-line-thumb{width:38px;height:38px;border-radius:8px;object-fit:cover;background:var(--surface-2);border:1px solid var(--line-strong);flex:none}
+  .order-line-noimg{width:38px;height:38px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line-strong);flex:none;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .order-line-info{flex:1;min-width:0}
+  .order-line-name{font-size:13px;font-weight:600;color:var(--text)}
+  .order-line-size{font-size:11.5px;color:var(--faint)}
+  .order-line-sub{font-size:12.5px;font-weight:700;color:var(--muted);flex:none;white-space:nowrap}
+  .order-total-row{display:flex;justify-content:space-between;align-items:center;margin-top:2px}
+  .order-total-label{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .order-total-amount{font-family:'Archivo Black',sans-serif;font-weight:900;font-size:17px;color:var(--gold-bright)}
+  .order-status-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px}
+  .order-status-pill{font-family:'Archivo',sans-serif;font-weight:800;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:6px 11px;border-radius:20px;border:1px solid transparent;cursor:pointer;background:var(--surface-2);color:var(--muted)}
+  .order-status-pill.current{cursor:default}
+  .order-status-pill[data-status="nouvelle"].current{background:var(--gold-soft);color:var(--gold-bright);border-color:rgba(198,162,87,.35)}
+  .order-status-pill[data-status="confirmée"].current{background:rgba(93,156,236,.12);color:#7FB4F0;border-color:rgba(93,156,236,.3)}
+  .order-status-pill[data-status="prête"].current{background:rgba(198,162,87,.14);color:var(--gold-bright);border-color:rgba(198,162,87,.35)}
+  .order-status-pill[data-status="récupérée"].current,.order-status-pill[data-status="traitée"].current{background:rgba(168,217,59,.1);color:var(--lime);border-color:rgba(168,217,59,.28)}
+  .order-status-pill[data-status="annulée"].current{background:rgba(224,90,90,.12);color:#E88A8A;border-color:rgba(224,90,90,.3)}
+  .order-history-toggle{font-family:'Archivo',sans-serif;font-weight:600;font-size:11.5px;color:var(--faint);background:none;border:none;cursor:pointer;padding:0;margin-top:9px;text-decoration:underline;text-underline-offset:2px}
+  .order-history{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line-strong)}
+  .order-history.open{display:block}
+  .order-history-item{font-size:11.5px;color:var(--muted);padding:3px 0;display:flex;justify-content:space-between;gap:8px}
+  .order-history-item .h-status{font-weight:700;color:var(--text)}
+  .order-history-item .h-date{color:var(--faint);white-space:nowrap}
   .status-loss{background:rgba(229,86,74,.12);color:#F0847A;border-color:rgba(229,86,74,.3)}
   .status-off{background:rgba(243,239,230,.08);color:var(--muted)}
   .item-actions{display:flex;gap:7px;flex:none}
@@ -873,6 +908,7 @@
         <button class="nav-btn" data-form="recruitment">Recrutement</button>
       </div>
       <div class="list-head"><h2 id="forms-list-title">Inscriptions newsletter</h2><span class="list-count" id="forms-count">—</span></div>
+      <div class="callout hide" id="orders-summary-bar" style="display:flex;gap:22px;flex-wrap:wrap"></div>
       <div id="forms-list"><div class="empty">Chargement…</div></div>
     </section>
   </div>
@@ -1617,6 +1653,15 @@
     sbDelete(c.table,id).then(function(){ loadCollection(key); }).catch(function(){ alert('Erreur lors de la suppression.'); });
   }
 
+  // Mini-catalogue boutique — juste de quoi illustrer une commande (photo + nom).
+  // Garder synchronisé avec `products` dans index.html si un article est ajouté/retiré.
+  var SHOP_PRODUCTS = {
+    domicile:{ name:'Maillot Domicile 2026', image:'https://res.cloudinary.com/djdkpihuz/image/upload/v1784689094/Replace_jersey_with_Baobabs_club_202607220257_uda4kz.jpg' },
+    exterieur:{ name:'Maillot Extérieur 2026', image:'https://res.cloudinary.com/djdkpihuz/image/upload/v1784688856/Replace_jersey_with_Baobabs_2K_202607220253_fmyqm7.jpg' },
+    third:{ name:'Maillot Third 2026', image:'https://res.cloudinary.com/djdkpihuz/image/upload/v1784688811/Replace_jersey_with_Baobabs_2K_202607220252_1_y8nrdr.jpg' },
+    casquette:{ name:'Casquette officielle', image:'https://res.cloudinary.com/djdkpihuz/image/upload/v1784756926/Replace_logo_on_cap_2K_202607222141_mtizyy.jpg' }
+  };
+
   // ===================== MESSAGES (newsletter / contact / commandes) =====================
   var FORMS = {
     newsletter:{ table:'newsletter_subscribers', title:'Inscriptions newsletter', empty:'Aucune inscription pour l\'instant.',
@@ -1626,24 +1671,70 @@
       } },
     contact:{ table:'contact_messages', title:'Messages de contact', empty:'Aucun message pour l\'instant.',
       render:function(r){
+        var isRead = !!r.is_read;
         return '<div class="form-item-top"><div class="form-item-name">'+esc(r.name)+'</div><div class="form-item-date">'+fmtDateTime(r.created_at)+'</div></div>'+
           '<div class="form-item-line">'+esc(r.email)+'</div>'+
-          (r.message?'<div class="form-item-line">'+esc(r.message)+'</div>':'');
+          (r.message?'<div class="form-item-line">'+esc(r.message)+'</div>':'')+
+          '<div class="form-item-bottom"><button class="status-toggle '+(isRead?'done':'new')+' contact-read-toggle" data-id="'+r.id+'" data-read="'+(isRead?'0':'1')+'">'+(isRead?'Traité':'À traiter')+'</button></div>';
       } },
     orders:{ table:'orders', title:'Commandes boutique', empty:'Aucune commande pour l\'instant.',
       render:function(r){
-        var items; try{ items=JSON.parse(r.items||'[]'); }catch(e){ items=null; }
-        var itemsLine = Array.isArray(items) && items.length
-          ? items.map(function(it){ var n=it.name||it.title||'Article'; var q=it.qty||it.quantity; return q?(esc(n)+' ×'+esc(q)):esc(n); }).join(', ')
-          : '';
-        var isDone = r.status==='traitée'||r.status==='traitee'||r.status==='done';
-        return '<div class="form-item-top"><div class="form-item-name">'+esc(r.customer_name)+'</div><div class="form-item-date">'+fmtDateTime(r.created_at)+'</div></div>'+
-          '<div class="form-item-line">'+esc(r.customer_phone)+'</div>'+
-          (itemsLine?'<div class="form-item-line">'+itemsLine+'</div>':'')+
-          (r.note?'<div class="form-item-line">'+esc(r.note)+'</div>':'')+
-          (r.total?'<div class="form-item-line"><b>'+esc(r.total)+' FCFA</b></div>':'')+
-          '<div class="form-item-bottom"><button class="status-toggle '+(isDone?'done':'new')+'" data-id="'+r.id+'" data-status="'+(isDone?'nouvelle':'traitée')+'">'+(isDone?'Traitée':'Nouvelle')+'</button>'+
-          '<button class="icon-btn danger form-del" data-id="'+r.id+'" data-table="orders" aria-label="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>';
+        var items; try{ items=Array.isArray(r.items)?r.items:JSON.parse(r.items||'[]'); }catch(e){ items=[]; }
+        if(!Array.isArray(items)) items=[];
+
+        var orderNum = r.order_number || ('#'+String(r.id).slice(0,4).toUpperCase());
+
+        var linesHtml = items.map(function(it){
+          var prod = SHOP_PRODUCTS[it.id];
+          var name = it.name || (prod?prod.name:'Article');
+          var img = prod?prod.image:null;
+          var thumb = img ? '<img class="order-line-thumb" src="'+esc(img)+'" alt="">' : '<div class="order-line-noimg">👕</div>';
+          var qty = it.qty || it.quantity || 1;
+          var unitPrice = it.unit_price;
+          var lineTotal = unitPrice!=null ? (unitPrice*qty) : null;
+          return '<div class="order-line-item">'+thumb+
+            '<div class="order-line-info"><div class="order-line-name">'+esc(name)+'</div>'+
+            (it.size?'<div class="order-line-size">Taille '+esc(it.size)+' · ×'+esc(qty)+'</div>':'<div class="order-line-size">×'+esc(qty)+'</div>')+
+            '</div>'+
+            (lineTotal!=null?'<div class="order-line-sub">'+esc(lineTotal.toLocaleString('fr-FR'))+' F</div>':'')+
+            '</div>';
+        }).join('');
+
+        var metaLines = '';
+        if(r.pickup_location) metaLines += '<div class="order-meta-line">📍 '+esc(r.pickup_location)+'</div>';
+        if(r.payment_method) metaLines += '<div class="order-meta-line">💳 '+esc(r.payment_method)+'</div>';
+        if(r.note) metaLines += '<div class="order-meta-line">'+esc(r.note)+'</div>';
+        if(r.customer_email) metaLines += '<div class="order-meta-line">'+esc(r.customer_email)+(r.confirmation_email_sent?' · confirmation envoyée':'')+'</div>';
+
+        var STATUSES = [
+          {key:'nouvelle', label:'Nouvelle'},
+          {key:'confirmée', label:'Confirmée'},
+          {key:'prête', label:'Prête'},
+          {key:'récupérée', label:'Récupérée'},
+          {key:'annulée', label:'Annulée'}
+        ];
+        var curStatus = normalizeOrderStatus(r.status);
+        var statusPills = STATUSES.map(function(s){
+          var isCur = s.key===curStatus;
+          return '<button type="button" class="order-status-pill'+(isCur?' current':'')+'" data-status="'+s.key+'" data-id="'+r.id+'" '+(isCur?'disabled':'')+'>'+esc(s.label)+'</button>';
+        }).join('');
+
+        var history; try{ history=Array.isArray(r.status_history)?r.status_history:JSON.parse(r.status_history||'[]'); }catch(e){ history=[]; }
+        var historyHtml = history.length ? history.map(function(h){
+          return '<div class="order-history-item"><span class="h-status">'+esc(statusLabel(h.status))+'</span><span class="h-date">'+fmtDateTime(h.at)+'</span></div>';
+        }).join('') : '<div class="order-history-item">Aucun historique enregistré.</div>';
+
+        return '<div class="order-top">'+
+            '<div><div class="order-number">'+esc(orderNum)+'</div><div class="order-customer">'+esc(r.customer_name)+'</div><div class="order-meta-line">'+esc(r.customer_phone)+'</div></div>'+
+            '<div class="order-date">'+fmtDateTime(r.created_at)+'</div>'+
+          '</div>'+
+          metaLines+
+          (linesHtml?'<div class="order-items">'+linesHtml+'</div>':'')+
+          '<div class="order-total-row"><span class="order-total-label">Total</span><span class="order-total-amount">'+(r.total?esc(Number(r.total).toLocaleString('fr-FR'))+' FCFA':'—')+'</span></div>'+
+          '<div class="order-status-row">'+statusPills+'</div>'+
+          '<button type="button" class="order-history-toggle" data-id="'+r.id+'">Voir l\'historique</button>'+
+          '<div class="order-history" id="order-history-'+r.id+'">'+historyHtml+'</div>'+
+          '<div style="margin-top:10px"><button class="icon-btn danger form-del" data-id="'+r.id+'" data-table="orders" aria-label="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>';
       } },
     recruitment:{ table:'recruitment_requests', title:'Candidatures recrutement', empty:'Aucune candidature pour l\'instant.',
       render:function(r){
@@ -1666,6 +1757,16 @@
     var d = new Date(ts);
     return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   }
+  function normalizeOrderStatus(raw){
+    if(raw==='traitée'||raw==='traitee'||raw==='done') return 'récupérée';
+    if(!raw) return 'nouvelle';
+    return raw;
+  }
+  function statusLabel(raw){
+    var s=normalizeOrderStatus(raw);
+    var map={nouvelle:'Nouvelle',"confirmée":'Confirmée',"prête":'Prête au retrait',"récupérée":'Récupérée',"annulée":'Annulée'};
+    return map[s]||s;
+  }
   function loadForms(){
     var f=FORMS[currentForm];
     document.getElementById('forms-list-title').textContent=f.title;
@@ -1674,10 +1775,23 @@
     sbGet(f.table+'?select=*&order=created_at.desc').then(function(rows){
       rows=rows||[];
       document.getElementById('forms-count').textContent=rows.length;
+      var summaryBar = document.getElementById('orders-summary-bar');
+      if(f.table==='orders'){
+        var now=new Date();
+        var weekAgo=new Date(now.getTime()-7*86400000);
+        var monthStart=new Date(now.getFullYear(),now.getMonth(),1);
+        var sumSince=function(since){ return rows.filter(function(r){ return r.created_at && new Date(r.created_at)>=since && normalizeOrderStatus(r.status)!=='annulée'; }).reduce(function(a,r){ return a+(Number(r.total)||0); },0); };
+        var weekTotal=sumSince(weekAgo), monthTotal=sumSince(monthStart);
+        summaryBar.classList.remove('hide');
+        summaryBar.innerHTML='<div><b>'+esc(weekTotal.toLocaleString('fr-FR'))+' FCFA</b> — 7 derniers jours</div><div><b>'+esc(monthTotal.toLocaleString('fr-FR'))+' FCFA</b> — ce mois-ci</div>';
+      } else {
+        summaryBar.classList.add('hide');
+      }
       if(!rows.length){ list.innerHTML='<div class="empty">'+esc(f.empty)+'</div>'; return; }
+      var isOrders = f.table==='orders';
       list.innerHTML=rows.map(function(r){
-        var delBtn = f.table==='orders' ? '' : '<button class="icon-btn danger form-del" data-id="'+r.id+'" data-table="'+f.table+'" aria-label="Supprimer" style="margin-top:9px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
-        return '<div class="form-item">'+f.render(r)+delBtn+'</div>';
+        var delBtn = isOrders ? '' : '<button class="icon-btn danger form-del" data-id="'+r.id+'" data-table="'+f.table+'" aria-label="Supprimer" style="margin-top:9px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
+        return '<div class="'+(isOrders?'order-card':'form-item')+'">'+f.render(r)+delBtn+'</div>';
       }).join('');
       list.querySelectorAll('.form-del').forEach(function(b){
         b.addEventListener('click',function(){
@@ -1685,11 +1799,28 @@
           sbDelete(b.getAttribute('data-table'),b.getAttribute('data-id')).then(loadForms).catch(function(){ alert('Erreur lors de la suppression.'); });
         });
       });
-      list.querySelectorAll('.status-toggle').forEach(function(b){
+      list.querySelectorAll('.order-status-pill').forEach(function(b){
         b.addEventListener('click',function(){
           var id=b.getAttribute('data-id'), newStatus=b.getAttribute('data-status');
+          var row = rows.filter(function(r){ return String(r.id)===String(id); })[0];
+          var history; try{ history=row&&Array.isArray(row.status_history)?row.status_history.slice():(row?JSON.parse(row.status_history||'[]'):[]); }catch(e){ history=[]; }
+          history.push({status:newStatus, at:new Date().toISOString()});
+          list.querySelectorAll('.order-status-pill[data-id="'+id+'"]').forEach(function(x){ x.disabled=true; });
+          sbUpdate('orders',id,{status:newStatus, status_history:history}).then(loadForms).catch(function(){ alert('Erreur lors de la mise à jour du statut.'); loadForms(); });
+        });
+      });
+      list.querySelectorAll('.contact-read-toggle').forEach(function(b){
+        b.addEventListener('click',function(){
+          var id=b.getAttribute('data-id'), newRead=b.getAttribute('data-read')==='1';
           b.disabled=true;
-          sbUpdate('orders',id,{status:newStatus}).then(loadForms).catch(function(){ alert('Erreur lors de la mise à jour du statut.'); b.disabled=false; });
+          sbUpdate('contact_messages',id,{is_read:newRead}).then(loadForms).catch(function(){ alert('Erreur lors de la mise à jour.'); b.disabled=false; });
+        });
+      });
+      list.querySelectorAll('.order-history-toggle').forEach(function(b){
+        b.addEventListener('click',function(){
+          var id=b.getAttribute('data-id');
+          var panel=document.getElementById('order-history-'+id);
+          if(panel) panel.classList.toggle('open');
         });
       });
     }).catch(function(){ list.innerHTML='<div class="empty">Impossible de charger. La table « '+esc(f.table)+' » existe-t-elle ? (migration SQL)</div>'; });
@@ -1738,7 +1869,7 @@
         rows=rows||[];
         document.getElementById('dash-'+t.key+'-num').textContent=rows.length;
         if(t.key==='orders'){
-          var pending = rows.filter(function(r){ return !(r.status==='traitée'||r.status==='traitee'||r.status==='done'); }).length;
+          var pending = rows.filter(function(r){ var s=normalizeOrderStatus(r.status); return s!=='récupérée' && s!=='annulée'; }).length;
           document.getElementById('dash-orders-new-sub').textContent = pending ? (pending+' en attente') : 'Tout traité';
           totalNew += pending;
         } else if (t.key!=='newsletter') {
