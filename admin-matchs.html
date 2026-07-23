@@ -314,7 +314,8 @@
       <button class="nav-btn" data-section="teams">Adversaires</button>
       <button class="nav-btn" data-section="live">Direct</button>
       <button class="nav-btn" data-section="roster">Effectif</button>
-      <button class="nav-btn" data-section="staff">Bureau</button>
+      <button class="nav-btn" data-section="founder">Fondateur</button>
+      <button class="nav-btn" data-section="bureau">Bureau</button>
       <button class="nav-btn" data-section="news">Actualités</button>
       <button class="nav-btn" data-section="partners">Partenaires</button>
       <button class="nav-btn" data-section="shop">Boutique</button>
@@ -561,7 +562,54 @@
 
     <!-- ===== SECTIONS COLLECTIONS (générées) ===== -->
     <section id="section-roster" class="hide"><div id="coll-roster"></div></section>
-    <section id="section-staff" class="hide"><div id="coll-staff"></div></section>
+    <section id="section-founder" class="hide">
+      <div class="card" style="max-width:640px">
+        <div class="callout">Cette fiche s'affiche dans un bloc <b>Fondateur</b> sur la page « Le Club » du site, juste sous « Notre histoire ». L'organigramme du club reste géré séparément.</div>
+        <h2 class="card-title">Le fondateur du club</h2>
+        <p class="card-sub">Présentez la personne à l'origine du club.</p>
+        <div class="field">
+          <label>Photo <span class="opt">(optionnel)</span></label>
+          <div class="logo-choice">
+            <button type="button" class="active" id="founder_mode_upload">Uploader</button>
+            <button type="button" id="founder_mode_url">Coller un lien</button>
+          </div>
+          <input type="file" id="founder_file" accept="image/*">
+          <input type="text" id="founder_url" placeholder="https://…" class="hide">
+          <img id="founder_preview" class="logo-preview" style="width:110px;height:110px;border-radius:50%;object-fit:cover" alt="">
+        </div>
+        <div class="field"><label for="set_founder_name">Nom</label><input type="text" id="set_founder_name" placeholder="Ex : Antoine Jean-Pierre Ndong"></div>
+        <div class="field"><label for="set_founder_role">Fonction / titre</label><input type="text" id="set_founder_role" placeholder="Ex : Fondateur & initiateur"></div>
+        <div class="field"><label for="set_founder_bio">Présentation</label><textarea id="set_founder_bio" style="min-height:150px" placeholder="Son parcours, sa vision pour le club…"></textarea></div>
+        <button class="btn btn-primary" id="save-founder-btn">Enregistrer</button>
+        <div class="msg" id="founder-msg"></div>
+      </div>
+    </section>
+    <section id="section-bureau" class="hide">
+      <div class="card" style="max-width:640px">
+        <div class="callout">Choisissez un poste de l'organigramme et remplissez sa fiche. La <b>structure de l'arbre reste fixe</b> ; vous éditez le titulaire, la photo et le texte de chaque fiche. Laissez vide pour garder le texte par défaut du site.</div>
+        <div class="field">
+          <label for="bureau_role">Poste</label>
+          <select id="bureau_role"></select>
+        </div>
+        <div class="field">
+          <label>Photo du titulaire <span class="opt">(optionnel)</span></label>
+          <div class="logo-choice">
+            <button type="button" class="active" id="bureau_mode_upload">Uploader</button>
+            <button type="button" id="bureau_mode_url">Coller un lien</button>
+          </div>
+          <input type="file" id="bureau_file" accept="image/*">
+          <input type="text" id="bureau_url" placeholder="https://…" class="hide">
+          <img id="bureau_preview" class="logo-preview" style="width:88px;height:88px;border-radius:50%;object-fit:cover" alt="">
+        </div>
+        <div class="field"><label for="set_bureau_holder">Nom du titulaire <span class="opt">(optionnel)</span></label><input type="text" id="set_bureau_holder" placeholder="Ex : Awa Sène"></div>
+        <div class="field"><label for="set_bureau_intro">Intro de la fiche</label><textarea id="set_bureau_intro" placeholder="Rôle général du poste…"></textarea></div>
+        <div class="field"><label for="set_bureau_resp">Responsabilités</label><textarea id="set_bureau_resp" style="min-height:120px" placeholder="Une par ligne…"></textarea><span class="hint">Une responsabilité par ligne.</span></div>
+        <div class="field"><label for="set_bureau_powers">Pouvoirs <span class="opt">(optionnel)</span></label><textarea id="set_bureau_powers" placeholder="Un par ligne…"></textarea><span class="hint">Un par ligne.</span></div>
+        <div class="field"><label for="set_bureau_limits">Limites <span class="opt">(optionnel)</span></label><textarea id="set_bureau_limits" placeholder="Une par ligne…"></textarea><span class="hint">Une par ligne.</span></div>
+        <button class="btn btn-primary" id="save-bureau-btn">Enregistrer ce poste</button>
+        <div class="msg" id="bureau-msg"></div>
+      </div>
+    </section>
     <section id="section-news" class="hide"><div id="coll-news"></div></section>
     <section id="section-partners" class="hide"><div id="coll-partners"></div></section>
     <section id="section-shop" class="hide"><div id="coll-shop"></div></section>
@@ -713,7 +761,9 @@
     teams:{t:'Adversaires',d:'La liste des clubs que vous affrontez, avec leurs logos.'},
     live:{t:'Diffusion en direct',d:'Reliez la chaîne YouTube du club pour activer le direct sur l\'accueil.'},
     roster:{t:'Effectif',d:'Les joueuses et joueurs affichés dans la section Équipes.'},
-    staff:{t:'Bureau & staff',d:'Les membres du bureau et de l\'encadrement.'},
+    staff:{t:'Fondateur',d:'La fiche du fondateur affichée sur la page « Le Club » du site.'},
+    founder:{t:'Fondateur',d:'La fiche du fondateur affichée sur la page « Le Club » du site.'},
+    bureau:{t:'Bureau / organigramme',d:'Éditez le titulaire et la fiche de chaque poste de l\'organigramme.'},
     news:{t:'Actualités',d:'Les annonces et actualités publiées sur le site.'},
     partners:{t:'Partenaires',d:'Les logos et liens des partenaires du club.'},
     shop:{t:'Boutique',d:'Les produits proposés dans la boutique.'},
@@ -723,7 +773,7 @@
   var loadedSections = {};
   function showSection(key){
     document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-section')===key); });
-    ['matches','teams','live','roster','staff','news','partners','shop','forms','home'].forEach(function(k){
+    ['matches','teams','live','roster','founder','bureau','news','partners','shop','forms','home'].forEach(function(k){
       document.getElementById('section-'+k).classList.toggle('hide', k!==key);
     });
     var m = SECTION_META[key];
@@ -1045,6 +1095,69 @@
       .catch(function(){ showMsg(msg,'Erreur lors de l\'upload de l\'image.',false); btn.disabled=false; });
   });
 
+  wireImageControl(document.getElementById('founder_mode_upload'), document.getElementById('founder_mode_url'), document.getElementById('founder_file'), document.getElementById('founder_url'), document.getElementById('founder_preview'));
+  LOADERS_founder=function(){
+    document.getElementById('set_founder_name').value=settings.founder_name||'';
+    document.getElementById('set_founder_role').value=settings.founder_role||'';
+    document.getElementById('set_founder_bio').value=settings.founder_bio||'';
+    document.getElementById('founder_url').value=settings.founder_photo_url||''; var p=document.getElementById('founder_preview'); if(settings.founder_photo_url){p.src=settings.founder_photo_url;p.style.display='block';}
+  };
+  document.getElementById('save-founder-btn').addEventListener('click',function(){
+    var msg=document.getElementById('founder-msg'); var btn=this; btn.disabled=true;
+    imageValue(MEDIA_BUCKET, document.getElementById('founder_file'), document.getElementById('founder_url'), document.getElementById('founder_mode_url'))
+      .then(function(url){ saveSettings({ founder_name:document.getElementById('set_founder_name').value.trim(), founder_role:document.getElementById('set_founder_role').value.trim(), founder_bio:document.getElementById('set_founder_bio').value.trim(), founder_photo_url:url||'' }, msg, btn); })
+      .catch(function(){ showMsg(msg,'Erreur lors de l\'upload de l\'image.',false); btn.disabled=false; });
+  });
+
+  // ===================== BUREAU / ORGANIGRAMME =====================
+  var ORG_ROLES=[
+    {key:'president',label:'Président'},{key:'vp',label:'Vice-Président'},
+    {key:'sg',label:'Secrétaire Général'},{key:'sg_adj',label:'Secrétaire Général Adjoint'},
+    {key:'tres',label:'Trésorière'},{key:'tres_adj',label:'Trésorier Adjoint'},
+    {key:'ds',label:'Directeur Sportif'},{key:'acad',label:'Responsable Académie'},
+    {key:'acad_adj',label:'Responsable Académie Adjoint'},{key:'medical',label:'Pôle Médical'},
+    {key:'logistique',label:'Logistique'},{key:'comm',label:'Communication'},
+    {key:'partenariats',label:'Partenariats'},{key:'conseil',label:'Conseil d\'administration'}
+  ];
+  var bureauMap={};
+  function bureauFillForm(){
+    var k=document.getElementById('bureau_role').value; var r=bureauMap[k]||{};
+    document.getElementById('set_bureau_holder').value=r.holder_name||'';
+    document.getElementById('set_bureau_intro').value=r.intro||'';
+    document.getElementById('set_bureau_resp').value=r.responsibilities||'';
+    document.getElementById('set_bureau_powers').value=r.powers||'';
+    document.getElementById('set_bureau_limits').value=r.limits||'';
+    document.getElementById('bureau_url').value=r.photo_url||'';
+    var p=document.getElementById('bureau_preview'); if(r.photo_url){p.src=r.photo_url;p.style.display='block';}else p.style.display='none';
+    document.getElementById('bureau_mode_upload').click();
+    showMsg(document.getElementById('bureau-msg'),'',true);
+  }
+  LOADERS_bureau=function(){
+    var sel=document.getElementById('bureau_role');
+    sel.innerHTML=ORG_ROLES.map(function(o){ return '<option value="'+o.key+'">'+esc(o.label)+'</option>'; }).join('');
+    sbGet('org_roles?select=*').then(function(rows){ bureauMap={}; (rows||[]).forEach(function(r){ bureauMap[r.role_key]=r; }); bureauFillForm(); })
+      .catch(function(){ bureauMap={}; bureauFillForm(); });
+  };
+  wireImageControl(document.getElementById('bureau_mode_upload'), document.getElementById('bureau_mode_url'), document.getElementById('bureau_file'), document.getElementById('bureau_url'), document.getElementById('bureau_preview'));
+  document.getElementById('bureau_role').addEventListener('change',bureauFillForm);
+  document.getElementById('save-bureau-btn').addEventListener('click',function(){
+    var k=document.getElementById('bureau_role').value; var msg=document.getElementById('bureau-msg'); var btn=this; btn.disabled=true;
+    imageValue(MEDIA_BUCKET, document.getElementById('bureau_file'), document.getElementById('bureau_url'), document.getElementById('bureau_mode_url'))
+      .then(function(url){
+        var body={ role_key:k,
+          holder_name:document.getElementById('set_bureau_holder').value.trim()||null,
+          photo_url:url||null,
+          intro:document.getElementById('set_bureau_intro').value.trim()||null,
+          responsibilities:document.getElementById('set_bureau_resp').value.trim()||null,
+          powers:document.getElementById('set_bureau_powers').value.trim()||null,
+          limits:document.getElementById('set_bureau_limits').value.trim()||null };
+        return fetch(SUPABASE_URL+'/rest/v1/org_roles',{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)})
+          .then(function(res){ if(!res.ok) throw new Error('org'); bureauMap[k]=body; showMsg(msg,'Poste enregistré.',true); });
+      })
+      .catch(function(){ showMsg(msg,"Erreur. Vérifiez que la table 'org_roles' existe (migration SQL).",false); })
+      .finally(function(){ btn.disabled=false; });
+  });
+
   // ===================== GESTIONNAIRE GÉNÉRIQUE DE COLLECTIONS =====================
   var COLLECTIONS = {
     roster:{ table:'players', guide:'Créez une fiche par joueuse ou joueur. Le nom suffit pour commencer ; le numéro, le poste et la photo enrichissent la fiche affichée dans la section Équipes du site. « Ordre d\'affichage » range les fiches (0 = en premier).', empty:'Aucune fiche pour l\'instant. Remplissez le formulaire ci-dessus pour créer la première.', title:'joueur / joueuse', order:'sort.asc,jersey_number.asc', circle:true, imageField:'photo_url', primary:'name',
@@ -1054,7 +1167,8 @@
         {name:'jersey_number',label:'Numéro',type:'number',opt:true},
         {name:'position',label:'Poste',type:'select',opt:true,options:['','Meneur / Meneuse','Arrière','Ailier / Ailière','Ailier fort / Ailière forte','Pivot']},
         {name:'height',label:'Taille',type:'text',opt:true,ph:'Ex : 1,92 m'},
-        {name:'birth_year',label:'Année de naissance',type:'number',opt:true},
+        {name:'city',label:'Ville',type:'text',opt:true,ph:'Ex : Dakar'},
+        {name:'birth_year',label:'Année de naissance',type:'number',opt:true,ph:'Ex : 2004'},
         {name:'photo_url',label:'Photo',type:'image',opt:true},
         {name:'bio',label:'Bio',type:'textarea',opt:true},
         {name:'sort',label:'Ordre d\'affichage',type:'number',opt:true,ph:'0 = en premier'}
@@ -1085,13 +1199,13 @@
         {name:'website_url',label:'Site web',type:'url',opt:true,ph:'https://…'},
         {name:'sort',label:'Ordre d\'affichage',type:'number',opt:true}
       ]},
-    shop:{ table:'products', guide:'Ajoutez un produit : un nom et un prix. Le visuel, les tailles et la catégorie améliorent la fiche. Basculez « Épuisé » dès qu\'un produit n\'est plus disponible.', empty:'Aucun produit en boutique.', title:'produit', order:'sort.asc', imageField:'image_url', primary:'name',
+    shop:{ table:'products', guide:'Ajoutez un produit : un nom et un prix. Vous pouvez mettre jusqu\'à 4 photos (la 1re sert de visuel principal). Les tailles et la catégorie améliorent la fiche. Basculez « Épuisé » dès qu\'un produit n\'est plus disponible.', empty:'Aucun produit en boutique.', title:'produit', order:'sort.asc', imageField:'images', primary:'name',
       meta:function(r){ return [r.price?(r.price+' FCFA'):'', r.category, r.in_stock===false?'Épuisé':''].filter(Boolean).join(' · '); },
       fields:[
         {name:'name',label:'Nom du produit',type:'text',required:true},
         {name:'price',label:'Prix (FCFA)',type:'number',opt:true},
         {name:'category',label:'Catégorie',type:'select',opt:true,options:['','Maillots','Entraînement','Accessoires','Lifestyle']},
-        {name:'image_url',label:'Visuel',type:'image',opt:true},
+        {name:'images',label:'Photos (jusqu\'à 4)',type:'gallery',opt:true},
         {name:'sizes',label:'Tailles disponibles',type:'text',opt:true,ph:'Ex : S, M, L, XL'},
         {name:'description',label:'Description',type:'textarea',opt:true},
         {name:'in_stock',label:'Disponibilité',type:'boolean',opt:true},
@@ -1099,6 +1213,7 @@
       ]}
   };
 
+  var GALLERY_N=4;
   function collFieldHtml(key,f){
     var id=key+'__'+f.name; var opt=f.opt?' <span class="opt">(optionnel)</span>':'';
     var lab='<label for="'+id+'">'+esc(f.label)+opt+'</label>';
@@ -1106,6 +1221,13 @@
     if(f.type==='select') return '<div class="field">'+lab+'<select id="'+id+'">'+f.options.map(function(o){ return '<option value="'+esc(o)+'">'+(o?esc(o):'— Choisir —')+'</option>'; }).join('')+'</select></div>';
     if(f.type==='boolean') return '<div class="field">'+lab+'<select id="'+id+'"><option value="true">En stock</option><option value="false">Épuisé</option></select></div>';
     if(f.type==='image') return '<div class="field">'+lab+'<div class="logo-choice"><button type="button" class="active" id="'+id+'_mu">Uploader</button><button type="button" id="'+id+'_ml">Coller un lien</button></div><input type="file" id="'+id+'_file" accept="image/*"><input type="text" id="'+id+'_url" class="hide" placeholder="https://…"><img id="'+id+'_pv" class="logo-preview"'+(f.name==='logo_url'?' style="border-radius:50%;object-fit:contain"':'')+' alt=""></div>';
+    if(f.type==='gallery'){
+      var slots='';
+      for(var gi=0;gi<GALLERY_N;gi++){ var sid=id+'_'+gi;
+        slots+='<div style="margin-bottom:10px"><div style="font-family:\'Montserrat\',sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.06em;color:var(--faint);margin-bottom:5px">Photo '+(gi+1)+(gi===0?' (principale)':'')+'</div><div class="logo-choice"><button type="button" class="active" id="'+sid+'_mu">Uploader</button><button type="button" id="'+sid+'_ml">Coller un lien</button></div><input type="file" id="'+sid+'_file" accept="image/*"><input type="text" id="'+sid+'_url" class="hide" placeholder="https://…"><img id="'+sid+'_pv" class="logo-preview" style="width:100%;height:96px" alt=""></div>';
+      }
+      return '<div class="field">'+lab+slots+'</div>';
+    }
     var t=(f.type==='number')?'number':(f.type==='date'?'date':(f.type==='url'?'url':'text'));
     return '<div class="field">'+lab+'<input type="'+t+'" id="'+id+'" placeholder="'+esc(f.ph||'')+'"'+(t==='number'?' min="0"':'')+'></div>';
   }
@@ -1121,7 +1243,8 @@
         '<div class="msg" id="'+key+'_msg"></div></div>'+
       '<div class="list"><div class="list-head"><h2>Enregistrés</h2><span class="list-count" id="'+key+'_count">—</span></div><div id="'+key+'_list"><div class="empty">Chargement…</div></div></div>';
     // wire image controls
-    c.fields.forEach(function(f){ if(f.type==='image'){ var id=key+'__'+f.name; wireImageControl(document.getElementById(id+'_mu'),document.getElementById(id+'_ml'),document.getElementById(id+'_file'),document.getElementById(id+'_url'),document.getElementById(id+'_pv')); } });
+    c.fields.forEach(function(f){ if(f.type==='image'){ var id=key+'__'+f.name; wireImageControl(document.getElementById(id+'_mu'),document.getElementById(id+'_ml'),document.getElementById(id+'_file'),document.getElementById(id+'_url'),document.getElementById(id+'_pv')); }
+      else if(f.type==='gallery'){ var gid=key+'__'+f.name; for(var gi=0;gi<GALLERY_N;gi++){ var sid=gid+'_'+gi; wireImageControl(document.getElementById(sid+'_mu'),document.getElementById(sid+'_ml'),document.getElementById(sid+'_file'),document.getElementById(sid+'_url'),document.getElementById(sid+'_pv')); } } });
     document.getElementById(key+'_save').addEventListener('click',function(){ saveCollection(key); });
     document.getElementById(key+'_cancel').addEventListener('click',function(){ resetCollectionForm(key); });
     applyCollDefaults(key);
@@ -1135,7 +1258,7 @@
       rows=rows||[]; c._rows=rows; document.getElementById(key+'_count').textContent=rows.length;
       if(!rows.length){ list.innerHTML='<div class="empty">'+(c.empty?esc(c.empty):'Rien pour le moment.')+'</div>'; return; }
       list.innerHTML=rows.map(function(r){
-        var img=r[c.imageField];
+        var img=r[c.imageField]; if(Array.isArray(img)) img=img[0];
         var thumb=img?'<img class="rec-thumb'+(c.circle?' circle':'')+'" src="'+esc(img)+'" alt="">':'<div class="rec-noimg'+(c.circle?' circle':'')+'" style="background:'+fallbackColor(r[c.primary])+'">'+esc(initials(r[c.primary]))+'</div>';
         var meta=c.meta(r);
         return '<div class="rec-item">'+thumb+'<div class="rec-main"><div class="rec-title">'+esc(r[c.primary])+'</div>'+(meta?'<div class="rec-meta">'+esc(meta)+'</div>':'')+'</div>'+
@@ -1149,6 +1272,7 @@
 
   function setField(key,f,val){
     var id=key+'__'+f.name;
+    if(f.type==='gallery'){ var arr=Array.isArray(val)?val:[]; for(var gi=0;gi<GALLERY_N;gi++){ var sid=id+'_'+gi, u=arr[gi]||'', pv=document.getElementById(sid+'_pv'); document.getElementById(sid+'_url').value=u; if(u){pv.src=u;pv.style.display='block';}else pv.style.display='none'; document.getElementById(sid+'_ml').click(); } return; }
     if(f.type==='image'){ var urlEl=document.getElementById(id+'_url'), pv=document.getElementById(id+'_pv'); urlEl.value=val||''; if(val){pv.src=val;pv.style.display='block';}else pv.style.display='none'; document.getElementById(id+'_ml').click(); return; }
     if(f.type==='boolean'){ document.getElementById(id).value=(val===false)?'false':'true'; return; }
     document.getElementById(id).value=(val==null)?'':val;
@@ -1163,7 +1287,8 @@
   function resetCollectionForm(key){
     var c=COLLECTIONS[key]; c._editing=null;
     c.fields.forEach(function(f){ var id=key+'__'+f.name;
-      if(f.type==='image'){ document.getElementById(id+'_url').value=''; document.getElementById(id+'_file').value=''; document.getElementById(id+'_pv').style.display='none'; document.getElementById(id+'_mu').click(); }
+      if(f.type==='gallery'){ for(var gi=0;gi<GALLERY_N;gi++){ var sid=id+'_'+gi; document.getElementById(sid+'_url').value=''; document.getElementById(sid+'_file').value=''; document.getElementById(sid+'_pv').style.display='none'; document.getElementById(sid+'_mu').click(); } }
+      else if(f.type==='image'){ document.getElementById(id+'_url').value=''; document.getElementById(id+'_file').value=''; document.getElementById(id+'_pv').style.display='none'; document.getElementById(id+'_mu').click(); }
       else if(f.type==='boolean'){ document.getElementById(id).value='true'; }
       else document.getElementById(id).value='';
     });
@@ -1174,21 +1299,25 @@
   }
   function saveCollection(key){
     var c=COLLECTIONS[key]; var msg=document.getElementById(key+'_msg');
-    for(var i=0;i<c.fields.length;i++){ var f=c.fields[i]; if(f.required && f.type!=='image' && !document.getElementById(key+'__'+f.name).value.trim()){ showMsg(msg,'Le champ « '+f.label+' » est obligatoire.',false); return; } }
+    for(var i=0;i<c.fields.length;i++){ var f=c.fields[i]; if(f.required && f.type!=='image' && f.type!=='gallery' && !document.getElementById(key+'__'+f.name).value.trim()){ showMsg(msg,'Le champ « '+f.label+' » est obligatoire.',false); return; } }
     var btn=document.getElementById(key+'_save'); btn.disabled=true;
-    // resolve image fields
-    var imgFields=c.fields.filter(function(f){return f.type==='image';});
-    Promise.all(imgFields.map(function(f){ var id=key+'__'+f.name; return imageValue(MEDIA_BUCKET,document.getElementById(id+'_file'),document.getElementById(id+'_url'),document.getElementById(id+'_ml')).then(function(u){ return {name:f.name,val:u}; }); }))
+    // résout images simples ET galeries (tableau d'URLs)
+    var resolvers=[];
+    c.fields.forEach(function(f){
+      if(f.type==='image'){ var id=key+'__'+f.name; resolvers.push(imageValue(MEDIA_BUCKET,document.getElementById(id+'_file'),document.getElementById(id+'_url'),document.getElementById(id+'_ml')).then(function(u){ return {name:f.name,val:u}; })); }
+      else if(f.type==='gallery'){ var gid=key+'__'+f.name, slotProms=[]; for(var gi=0;gi<GALLERY_N;gi++){ var sid=gid+'_'+gi; slotProms.push(imageValue(MEDIA_BUCKET,document.getElementById(sid+'_file'),document.getElementById(sid+'_url'),document.getElementById(sid+'_ml'))); } resolvers.push(Promise.all(slotProms).then(function(list){ return {name:f.name,val:list.filter(Boolean)}; })); }
+    });
+    Promise.all(resolvers)
       .then(function(imgs){
         var payload={};
         c.fields.forEach(function(f){
-          if(f.type==='image') return;
+          if(f.type==='image'||f.type==='gallery') return;
           var v=document.getElementById(key+'__'+f.name).value;
           if(f.type==='number') payload[f.name]=(v===''?null:parseInt(v,10));
           else if(f.type==='boolean') payload[f.name]=(v==='true');
           else payload[f.name]=(v.trim()===''?null:v.trim());
         });
-        imgs.forEach(function(o){ payload[o.name]=o.val||null; });
+        imgs.forEach(function(o){ payload[o.name]=Array.isArray(o.val)?(o.val.length?o.val:null):(o.val||null); });
         return c._editing ? sbUpdate(c.table,c._editing,payload) : sbInsert(c.table,payload);
       })
       .then(function(){ showMsg(msg,c._editing?'Modifié.':'Ajouté.',true); resetCollectionForm(key); loadCollection(key); })
@@ -1271,13 +1400,14 @@
   });
 
   // ===================== LOADERS =====================
-  var LOADERS_live, LOADERS_home;
+  var LOADERS_live, LOADERS_home, LOADERS_founder, LOADERS_bureau;
   var LOADERS = {
     teams:function(){ /* déjà chargé à l'init */ },
     live:function(){ loadSettings().then(function(){ LOADERS_live(); }); },
     home:function(){ loadSettings().then(function(){ LOADERS_home(); }); },
     roster:function(){ buildCollection('roster'); },
-    staff:function(){ buildCollection('staff'); },
+    founder:function(){ loadSettings().then(function(){ LOADERS_founder(); }); },
+    bureau:function(){ LOADERS_bureau(); },
     news:function(){ buildCollection('news'); },
     partners:function(){ buildCollection('partners'); },
     shop:function(){ buildCollection('shop'); },
