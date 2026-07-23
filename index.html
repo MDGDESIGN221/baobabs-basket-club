@@ -1380,6 +1380,9 @@
 
 </div>
 
+<canvas id="bb-ball-canvas" style="position:fixed;inset:0;width:100vw;height:100vh;z-index:9999;pointer-events:none;display:none"></canvas>
+<script src="three.min.js"></script>
+<script src="ballon-3d.js"></script>
 <script>
 (function(){
   'use strict';
@@ -1810,6 +1813,12 @@
       if (backBtn) backBtn.classList.toggle('bb-hide', !state.cameFromPlayer);
     }
     if (page !== 'equipes') state.cameFromPlayer = false;
+
+    if (window.BBBall) {
+      if (page === 'accueil') setTimeout(function(){ window.BBBall.playRoll(); }, 250);
+      else if (page === 'equipes') setTimeout(function(){ window.BBBall.playDribbleOverCards('#bb-effectif-equipes'); }, 550);
+      else window.BBBall.stop();
+    }
   }
 
   /* ===== overlays ===== */
@@ -2451,6 +2460,7 @@
     initPhoneTilt();
     initFaceOff();
     bbHydrate();
+    if (window.BBBall) setTimeout(function(){ window.BBBall.playRoll(); }, 800);
     var org = document.getElementById('bb-org');
     if (org) {
       if ('IntersectionObserver' in window) {
