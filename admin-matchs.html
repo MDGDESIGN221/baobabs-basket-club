@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#FBFBF9;--surface:#FFFFFF;--surface-2:#F5F5F1;
@@ -212,13 +213,17 @@
   </div>
   <div class="card">
     <h2 class="card-title">Accès réservé</h2>
-    <p class="card-sub">Entrez le mot de passe pour gérer le contenu du site.</p>
+    <p class="card-sub">Connectez-vous avec votre compte pour gérer le contenu du site.</p>
+    <div class="field" style="text-align:left">
+      <label for="gate-email">E-mail</label>
+      <input type="email" id="gate-email" placeholder="vous@exemple.com" autocomplete="username">
+    </div>
     <div class="field" style="text-align:left">
       <label for="pw">Mot de passe</label>
       <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <button class="btn btn-primary" id="unlock-btn">Déverrouiller</button>
-    <div class="msg" id="gate-msg">Mot de passe incorrect.</div>
+    <button class="btn btn-primary" id="unlock-btn">Se connecter</button>
+    <div class="msg" id="gate-msg">Identifiants incorrects.</div>
   </div>
 </div>
 
@@ -262,14 +267,14 @@
     <div class="wc-text">
       <div class="wc-brand"><img src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png" alt="">Baobabs Basket Club · Espace de gestion</div>
       <div class="wc-hi">Bienvenue,</div>
-      <h1 class="wc-name"><span><i class="m">Monsieur</i></span><span><i>Jean-Pierre</i></span><span><i>Hamid Ndong</i></span></h1>
+      <h1 class="wc-name"><span><i id="wc-name-text">—</i></span></h1>
       <div class="wc-line"></div>
       <p class="wc-sub">Votre tableau de bord est prêt. Vous pouvez tout gérer d'ici, en toute simplicité.</p>
       <button id="enter-btn" class="btn btn-primary wc-btn">Entrer dans l'espace →</button>
     </div>
     <div class="wc-photo-wrap">
       <div class="wc-halo"></div>
-      <img class="wc-photo" src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784770738/HAMID_1_sbp0f6.png" alt="Jean-Pierre Hamid Ndong">
+      <img class="wc-photo" src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png" alt="Baobabs Basket Club" style="width:min(50vw,220px);max-height:min(40vh,300px);object-fit:contain;filter:none;background:transparent;border-radius:0;box-shadow:none">
     </div>
   </div>
 </div>
@@ -595,25 +600,75 @@
 (function(){
   var SUPABASE_URL = "https://lmwbwasupqkvswukieav.supabase.co";
   var SUPABASE_KEY = "sb_publishable_68RKprorqTmVkzjHrKgdZw_h-AcMXRh";
-  var ADMIN_PASSWORD = "baobabs2026";
   var BAOBABS_LOGO = "https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png";
   var MEDIA_BUCKET = "site-media";
 
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  var currentSession = null;
+
   var gate = document.getElementById('gate');
   var app = document.getElementById('app');
+  var emailInput = document.getElementById('gate-email');
   var pwInput = document.getElementById('pw');
   var gateMsg = document.getElementById('gate-msg');
+  var unlockBtn = document.getElementById('unlock-btn');
 
-  document.getElementById('unlock-btn').addEventListener('click', tryUnlock);
+  unlockBtn.addEventListener('click', tryUnlock);
   pwInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') tryUnlock(); });
-  document.getElementById('logout-btn').addEventListener('click', function(){ location.reload(); });
+  emailInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') tryUnlock(); });
+  document.getElementById('logout-btn').addEventListener('click', function(){
+    sb.auth.signOut().then(function(){ location.reload(); });
+  });
 
   function tryUnlock(){
-    if (pwInput.value === ADMIN_PASSWORD) {
-      gate.classList.add('hide');
-      document.getElementById('welcome').classList.remove('hide');
-    } else gateMsg.className = 'msg err';
+    var email = (emailInput.value || '').trim();
+    var password = pwInput.value || '';
+    if (!email || !password){ gateMsg.textContent = 'Entrez votre e-mail et votre mot de passe.'; gateMsg.className = 'msg err'; return; }
+    unlockBtn.disabled = true;
+    unlockBtn.textContent = 'Connexion…';
+    sb.auth.signInWithPassword({ email: email, password: password }).then(function(res){
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = 'Se connecter';
+      if (res.error || !res.data.session) {
+        gateMsg.textContent = 'Identifiants incorrects.';
+        gateMsg.className = 'msg err';
+        return;
+      }
+      currentSession = res.data.session;
+      onAuthenticated();
+    }).catch(function(){
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = 'Se connecter';
+      gateMsg.textContent = 'Erreur de connexion. Réessayez.';
+      gateMsg.className = 'msg err';
+    });
   }
+
+  function onAuthenticated(){
+    gate.classList.add('hide');
+    var name = (currentSession.user.user_metadata && currentSession.user.user_metadata.full_name) || currentSession.user.email;
+    var welcomeName = document.getElementById('wc-name-text');
+    if (welcomeName) welcomeName.textContent = name;
+    document.getElementById('welcome').classList.remove('hide');
+  }
+
+  // Garde le token à jour automatiquement (rafraîchi tout seul par le SDK,
+  // évite qu'une session expire silencieusement pendant l'utilisation).
+  sb.auth.onAuthStateChange(function(event, session){
+    currentSession = session;
+    if (event === 'SIGNED_OUT') location.reload();
+  });
+
+  // Session déjà active (retour sur la page) : on saute l'écran de connexion.
+  sb.auth.getSession().then(function(res){
+    if (res.data && res.data.session) {
+      currentSession = res.data.session;
+      gate.classList.add('hide');
+      document.getElementById('welcome').classList.add('hide');
+      app.classList.remove('hide');
+      init();
+    }
+  });
   document.getElementById('enter-btn').addEventListener('click', function(){
     document.getElementById('welcome').classList.add('hide');
     app.classList.remove('hide');
@@ -623,7 +678,7 @@
   // ---------- helpers ----------
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function showMsg(el, text, ok){ if(!el)return; el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); if(!text) el.className='msg'; }
-  function sbHeaders(extra){ var h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }; if (extra) for (var k in extra) h[k]=extra[k]; return h; }
+  function sbHeaders(extra){ var token = (currentSession && currentSession.access_token) || SUPABASE_KEY; var h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token }; if (extra) for (var k in extra) h[k]=extra[k]; return h; }
   var FALLBACK_COLORS = ['#c0392b','#2457c5','#15803d','#d97706','#7c3aed','#0891b2','#be185d','#b45309'];
   function fallbackColor(name){ var h=0,s=String(name||'?'); for(var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return FALLBACK_COLORS[h%FALLBACK_COLORS.length]; }
   function initials(name){ return String(name||'?').replace(/[^A-Za-z0-9 ]/g,'').trim().split(/\s+/).map(function(w){return w.charAt(0);}).join('').slice(0,3).toUpperCase()||'?'; }
