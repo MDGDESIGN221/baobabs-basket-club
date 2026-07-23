@@ -949,6 +949,28 @@
           <span style="font-family:'Archivo',sans-serif;font-size:13.5px;color:#7E8A82">Chargement des résultats…</span>
         </div>
       </div>
+
+      <div id="bb-standings-wrap" class="bb-hide" style="margin-bottom:8px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 18px">
+          <h3 style="font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0">Classement</h3>
+          <span style="font-family:'Archivo',sans-serif;font-weight:600;font-size:12px;color:#7E8A82">Championnat D2 · Dakar</span>
+        </div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid rgba(243,239,230,.09);border-radius:16px;background:#0F1E15">
+          <table style="width:100%;border-collapse:collapse;min-width:460px">
+            <thead>
+              <tr style="text-align:left">
+                <th style="font-family:'Archivo',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;color:#7E8A82;text-transform:uppercase;padding:14px 10px 14px 18px">#</th>
+                <th style="font-family:'Archivo',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;color:#7E8A82;text-transform:uppercase;padding:14px 10px">Équipe</th>
+                <th style="font-family:'Archivo',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;color:#7E8A82;text-transform:uppercase;padding:14px 10px;text-align:center">J</th>
+                <th style="font-family:'Archivo',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;color:#7E8A82;text-transform:uppercase;padding:14px 10px;text-align:center">V</th>
+                <th style="font-family:'Archivo',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;color:#7E8A82;text-transform:uppercase;padding:14px 10px;text-align:center">D</th>
+                <th style="font-family:'Archivo',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;color:#C6A257;text-transform:uppercase;padding:14px 18px 14px 10px;text-align:center">Pts</th>
+              </tr>
+            </thead>
+            <tbody id="bb-standings-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -2357,6 +2379,10 @@
       if(rows && rows.length) renderActus(rows);
     }).catch(function(){});
 
+    sbFetch('standings?select=*&order=points.desc,wins.desc').then(function(rows){
+      if(rows && rows.length) renderStandings(rows);
+    }).catch(function(){});
+
     sbFetch('org_roles?select=*').then(function(rows){
       if(!rows || !rows.length) return;
       function lines(t){ return String(t||'').split('\n').map(function(s){return s.trim();}).filter(Boolean); }
@@ -2385,6 +2411,26 @@
     if(s.hero_image_url){ var im=document.getElementById('bb-hero-img'); if(im) im.src=s.hero_image_url; }
     if(s.hero_title){ var t=document.getElementById('bb-hero-title'); if(t) t.textContent=s.hero_title; }
     if(s.hero_subtitle){ var sub=document.getElementById('bb-hero-sub'); if(sub) sub.innerHTML='<span>'+esc(s.hero_subtitle)+'</span>'; }
+  }
+
+  function renderStandings(rows){
+    var body=document.getElementById('bb-standings-body'); var wrap=document.getElementById('bb-standings-wrap'); if(!body||!wrap) return;
+    function isBao(n){ return /baobab/i.test(n||''); }
+    body.innerHTML=rows.map(function(r,i){
+      var bao=isBao(r.team_name);
+      var rowBg=bao?'background:linear-gradient(90deg,rgba(198,162,87,.14),rgba(198,162,87,.03))':'';
+      var nameColor=bao?'#C6A257':'#F3EFE6';
+      var td='font-family:\'Archivo\',sans-serif;font-size:14px;color:#C7CFC8;padding:13px 10px;border-top:1px solid rgba(243,239,230,.06);text-align:center';
+      return '<tr style="'+rowBg+'">'+
+        '<td style="'+td+';padding-left:18px;text-align:left;font-weight:800;color:'+(bao?'#C6A257':'#7E8A82')+'">'+(i+1)+'</td>'+
+        '<td style="'+td+';text-align:left;font-weight:'+(bao?'800':'600')+';color:'+nameColor+'">'+esc(r.team_name||'')+'</td>'+
+        '<td style="'+td+'">'+(r.played||0)+'</td>'+
+        '<td style="'+td+'">'+(r.wins||0)+'</td>'+
+        '<td style="'+td+'">'+(r.losses||0)+'</td>'+
+        '<td style="'+td+';padding-right:18px;font-weight:800;color:#F3EFE6">'+(r.points||0)+'</td>'+
+      '</tr>';
+    }).join('');
+    wrap.classList.remove('bb-hide');
   }
 
   function renderActus(rows){
