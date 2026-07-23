@@ -313,6 +313,7 @@
       <button class="nav-btn active" data-section="matches">Matchs</button>
       <button class="nav-btn" data-section="teams">Adversaires</button>
       <button class="nav-btn" data-section="live">Direct</button>
+      <button class="nav-btn" data-section="standings">Classement</button>
       <button class="nav-btn" data-section="roster">Effectif</button>
       <button class="nav-btn" data-section="founder">Fondateur</button>
       <button class="nav-btn" data-section="bureau">Bureau</button>
@@ -561,6 +562,7 @@
     </section>
 
     <!-- ===== SECTIONS COLLECTIONS (générées) ===== -->
+    <section id="section-standings" class="hide"><div id="coll-standings"></div></section>
     <section id="section-roster" class="hide"><div id="coll-roster"></div></section>
     <section id="section-founder" class="hide">
       <div class="card" style="max-width:640px">
@@ -760,6 +762,7 @@
     matches:{t:'Gestion des matchs',d:'Ajoutez un match, saisissez un score, gérez vos adversaires. Tout se met à jour sur le site public.'},
     teams:{t:'Adversaires',d:'La liste des clubs que vous affrontez, avec leurs logos.'},
     live:{t:'Diffusion en direct',d:'Reliez la chaîne YouTube du club pour activer le direct sur l\'accueil.'},
+    standings:{t:'Classement',d:'Le tableau du championnat affiché sur la page Compétitions. Les lignes se classent par points.'},
     roster:{t:'Effectif',d:'Les joueuses et joueurs affichés dans la section Équipes.'},
     staff:{t:'Fondateur',d:'La fiche du fondateur affichée sur la page « Le Club » du site.'},
     founder:{t:'Fondateur',d:'La fiche du fondateur affichée sur la page « Le Club » du site.'},
@@ -773,7 +776,7 @@
   var loadedSections = {};
   function showSection(key){
     document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-section')===key); });
-    ['matches','teams','live','roster','founder','bureau','news','partners','shop','forms','home'].forEach(function(k){
+    ['matches','teams','live','standings','roster','founder','bureau','news','partners','shop','forms','home'].forEach(function(k){
       document.getElementById('section-'+k).classList.toggle('hide', k!==key);
     });
     var m = SECTION_META[key];
@@ -1160,6 +1163,15 @@
 
   // ===================== GESTIONNAIRE GÉNÉRIQUE DE COLLECTIONS =====================
   var COLLECTIONS = {
+    standings:{ table:'standings', guide:'Saisissez le classement du championnat, une ligne par équipe. Les lignes sont triées automatiquement par points (puis victoires). La ligne « Baobabs » est mise en avant sur le site.', empty:'Classement vide — ajoutez les équipes du championnat.', title:'ligne de classement', order:'points.desc,wins.desc', imageField:null, primary:'team_name',
+      meta:function(r){ return 'J'+(r.played||0)+' · '+(r.wins||0)+'V '+(r.losses||0)+'D · '+(r.points||0)+' pts'; },
+      fields:[
+        {name:'team_name',label:'Équipe',type:'text',required:true,ph:'Ex : US Ouakam'},
+        {name:'played',label:'Matchés joués (J)',type:'number',opt:true},
+        {name:'wins',label:'Victoires (V)',type:'number',opt:true},
+        {name:'losses',label:'Défaites (D)',type:'number',opt:true},
+        {name:'points',label:'Points',type:'number',opt:true}
+      ]},
     roster:{ table:'players', guide:'Créez une fiche par joueuse ou joueur. Le nom suffit pour commencer ; le numéro, le poste et la photo enrichissent la fiche affichée dans la section Équipes du site. « Ordre d\'affichage » range les fiches (0 = en premier).', empty:'Aucune fiche pour l\'instant. Remplissez le formulaire ci-dessus pour créer la première.', title:'joueur / joueuse', order:'sort.asc,jersey_number.asc', circle:true, imageField:'photo_url', primary:'name',
       meta:function(r){ return [r.jersey_number?('#'+r.jersey_number):'', r.position, r.height].filter(Boolean).join(' · '); },
       fields:[
@@ -1411,6 +1423,7 @@
     news:function(){ buildCollection('news'); },
     partners:function(){ buildCollection('partners'); },
     shop:function(){ buildCollection('shop'); },
+    standings:function(){ buildCollection('standings'); },
     forms:function(){ loadForms(); }
   };
 
