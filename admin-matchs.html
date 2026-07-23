@@ -493,15 +493,14 @@
 
   document.getElementById('unlock-btn').addEventListener('click', tryUnlock);
   pwInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') tryUnlock(); });
-  document.getElementById('logout-btn').addEventListener('click', function(){ sessionStorage.removeItem('bb_admin_ok'); location.reload(); });
+  document.getElementById('logout-btn').addEventListener('click', function(){ location.reload(); });
 
   function tryUnlock(){
     if (pwInput.value === ADMIN_PASSWORD) {
       gate.classList.add('hide'); app.classList.remove('hide');
-      sessionStorage.setItem('bb_admin_ok', '1'); init();
+      init();
     } else gateMsg.style.display = 'block';
   }
-  if (sessionStorage.getItem('bb_admin_ok') === '1') { gate.classList.add('hide'); app.classList.remove('hide'); /* init appelé en fin de script */ }
 
   // ---------- helpers ----------
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -985,8 +984,7 @@
     loadTeams().then(function(){ loadMatches(); updatePreview(); });
   }
 
-  // Auto-déverrouillage si session déjà ouverte (après toutes les déclarations)
-  if (sessionStorage.getItem('bb_admin_ok') === '1') { init(); }
+  // Le mot de passe est redemandé à chaque ouverture de la page.
 })();
 </script>
 
