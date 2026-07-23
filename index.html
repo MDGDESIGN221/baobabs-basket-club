@@ -2518,26 +2518,30 @@ document.addEventListener('keydown', function(e){
 
   function resultRowHtml(m){
     var won = m.score_baobabs > m.score_opponent;
-    var opponentLabel = (m.is_home ? 'vs ' : '@ ') + m.opponent_name;
-    var photo = m.photo_url
-      ? '<img src="' + escHtml(m.photo_url) + '" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none;border:1px solid rgba(243,239,230,.12)">'
-      : '';
-    var replay = m.stream_url
-      ? '<a href="' + escHtml(m.stream_url) + '" target="_blank" rel="noopener" style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.04em;color:#A8D93B;white-space:nowrap">▶ Replay</a>'
-      : '';
+    var nul = m.score_baobabs === m.score_opponent;
+    var statusTxt = won ? 'VICTOIRE' : (nul ? 'MATCH NUL' : 'DÉFAITE');
+    var statusCol = won ? '#A8D93B' : (nul ? '#C6A257' : '#E0655C');
+    var bbLogo = 'https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png';
+    var crest = function(src, name){
+      return src
+        ? '<img src="' + escHtml(src) + '" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:contain;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none">'
+        : '<div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:\'Archivo Black\',sans-serif;font-size:13px;color:#fff;flex:none;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
+    };
+    var bbCol = (won || nul) ? '#07130D' : 'rgba(7,19,13,.5)';
+    var opCol = (!won || nul) ? '#07130D' : 'rgba(7,19,13,.5)';
+    var replay = m.stream_url ? '<a href="' + escHtml(m.stream_url) + '" target="_blank" rel="noopener" style="color:#A8D93B;font-weight:700">▶ Replay</a>' : '';
+    var meta = [formatDateShort(m.match_date), (m.is_home ? 'Domicile' : 'Extérieur'), (m.competition ? escHtml(m.competition) : ''), replay].filter(Boolean).join(' &middot; ');
     return '' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-left:3px solid ' + (won ? '#A8D93B' : '#7E8A82') + ';border-radius:10px;padding:12px 16px">' +
-        '<div style="display:flex;align-items:center;gap:12px;min-width:0">' +
-          photo +
-          '<span style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.08em;color:' + (won ? '#A8D93B' : '#B9C2BB') + ';flex:none">' + (won ? 'VICTOIRE' : 'DÉFAITE') + '</span>' +
-          '<span style="font-family:\'Archivo\',sans-serif;font-weight:600;font-size:14.5px;color:#F3EFE6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(opponentLabel) + '</span>' +
-          (m.competition ? '<span style="font-size:12px;color:#7E8A82;white-space:nowrap">' + escHtml(m.competition) + '</span>' : '') +
+      '<div style="position:relative;padding-top:13px">' +
+        '<div style="position:absolute;top:0;left:50%;transform:translate(-50%,-50%);z-index:2;background:#07130D;border:1px solid ' + statusCol + ';color:' + statusCol + ';font-family:\'Archivo\',sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;padding:4px 12px;border-radius:20px;white-space:nowrap">' + statusTxt + '</div>' +
+        '<div style="display:flex;align-items:stretch;background:linear-gradient(150deg,#0F1E15,#0A150F);border:1px solid rgba(198,162,87,.22);border-radius:14px;overflow:hidden;min-height:64px">' +
+          '<div style="flex:1;display:flex;align-items:center;gap:11px;padding:10px 14px;min-width:0">' + crest(bbLogo, 'Baobabs') + '<span style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:14px;letter-spacing:.02em;color:#F3EFE6;text-transform:uppercase;flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Baobabs</span></div>' +
+          '<div style="flex:none;display:flex;align-items:center;gap:9px;padding:0 clamp(12px,2vw,18px);background:linear-gradient(180deg,#D4B36A,#C6A257);font-family:\'Archivo Black\',sans-serif;font-size:clamp(21px,3vw,27px);line-height:1">' +
+            '<span style="color:' + bbCol + '">' + m.score_baobabs + '</span><span style="color:rgba(7,19,13,.4);font-size:.8em">:</span><span style="color:' + opCol + '">' + m.score_opponent + '</span>' +
+          '</div>' +
+          '<div style="flex:1;display:flex;align-items:center;gap:11px;padding:10px 14px;min-width:0"><span style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:14px;letter-spacing:.02em;color:#F3EFE6;text-transform:uppercase;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(m.opponent_name) + '</span>' + crest(m.opponent_logo_url, m.opponent_name) + '</div>' +
         '</div>' +
-        '<div style="display:flex;align-items:center;gap:10px;flex:none">' +
-          replay +
-          '<span style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:16px;color:#C6A257">' + m.score_baobabs + ' - ' + m.score_opponent + '</span>' +
-          '<span style="font-size:12px;color:#7E8A82">' + formatDateShort(m.match_date) + '</span>' +
-        '</div>' +
+        (meta ? '<div style="text-align:center;margin-top:8px;font-family:\'Archivo\',sans-serif;font-size:12px;color:#7E8A82">' + meta + '</div>' : '') +
       '</div>';
   }
 
