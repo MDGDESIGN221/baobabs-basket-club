@@ -11,10 +11,10 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --bg:#FBFBF9;--surface:#FFFFFF;--surface-2:#F5F5F1;
-    --line:rgba(17,17,17,.10);--line-strong:rgba(17,17,17,.17);
-    --text:#141414;--muted:#5B5B57;--faint:#8A8A84;
-    --gold:#B4873A;--gold-soft:rgba(180,135,58,.13);--lime:#1C7A3A;--danger:#C0271B;--radius:14px;
+    --bg:#0B120E;--surface:#131C16;--surface-2:#182219;
+    --line:rgba(243,239,230,.09);--line-strong:rgba(243,239,230,.16);
+    --text:#F3EFE6;--muted:#A9B2AB;--faint:#77827B;
+    --gold:#C6A257;--gold-soft:rgba(198,162,87,.14);--lime:#A8D93B;--danger:#E5564A;--radius:14px;
   }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
@@ -26,7 +26,7 @@
   a:hover{color:#d9b877}
   .hide{display:none!important}
 
-  .topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(11,18,14,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
   .topbar-inner{max-width:1180px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:14px}
   .brand{display:flex;align-items:center;gap:11px;min-width:0}
   .brand img{width:36px;height:36px;object-fit:contain;flex:none}
@@ -43,7 +43,7 @@
   .page-head h1{font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(24px,4.5vw,32px);margin:0;letter-spacing:.01em}
   .page-head p{color:var(--muted);font-size:14px;margin:6px 0 0;max-width:60ch;text-wrap:pretty}
 
-  /* nav sections */
+  /* nav sections (legacy horizontal — kept for forms sub-nav) */
   .nav-scroll{display:flex;gap:6px;overflow-x:auto;padding:5px;background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:24px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .nav-scroll::-webkit-scrollbar{display:none}
   .nav-btn{flex:none;background:transparent;border:none;color:var(--muted);border-radius:8px;padding:10px 15px;font-family:'Archivo',sans-serif;font-weight:600;font-size:13px;white-space:nowrap;min-height:42px;transition:background .15s,color .15s}
@@ -51,6 +51,56 @@
 
   .grid-2{display:grid;grid-template-columns:1fr;gap:22px;align-items:start}
   @media(min-width:940px){.grid-2{grid-template-columns:minmax(0,1fr) 372px}}
+
+  /* ===================== APP SHELL / SIDEBAR ===================== */
+  .app-shell{display:flex;max-width:1400px;margin:0 auto}
+  .sidebar{flex:none;width:264px;border-right:1px solid var(--line);min-height:calc(100vh - 65px);padding:20px 14px 40px;position:sticky;top:65px;align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
+  .sb-group{margin-bottom:22px}
+  .sb-group-label{font-family:'Archivo',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding:0 10px;margin-bottom:8px}
+  .sb-link{display:flex;align-items:center;gap:11px;width:100%;background:transparent;border:none;color:var(--muted);border-radius:9px;padding:10px 11px;font-family:'Archivo',sans-serif;font-weight:600;font-size:13.5px;text-align:left;margin-bottom:2px;transition:background .15s,color .15s}
+  .sb-link svg{width:18px;height:18px;flex:none;opacity:.85}
+  .sb-link:hover{background:var(--surface-2);color:var(--text)}
+  .sb-link.active{background:var(--gold-soft);color:#8A6423;font-weight:700}
+  .sb-link.active svg{opacity:1}
+  .sb-link-badge{margin-left:auto;flex:none;background:var(--danger);color:#fff;font-family:'Archivo',sans-serif;font-weight:800;font-size:10px;line-height:1;border-radius:20px;padding:4px 7px;min-width:18px;text-align:center}
+  .app-main{flex:1;min-width:0}
+
+  .mobile-nav-toggle{display:none;background:transparent;border:1px solid var(--line-strong);color:var(--text);border-radius:9px;width:40px;height:40px;align-items:center;justify-content:center;flex:none}
+  .mobile-nav-toggle svg{width:19px;height:19px}
+  .sidebar-scrim{display:none}
+
+  @media(max-width:939px){
+    .mobile-nav-toggle{display:flex}
+    .sidebar{position:fixed;top:0;left:0;bottom:0;z-index:50;background:var(--bg);width:min(84vw,320px);min-height:100vh;max-height:100vh;transform:translateX(-100%);transition:transform .25s cubic-bezier(.2,.8,.2,1);padding-top:20px;box-shadow:0 0 0 rgba(0,0,0,0)}
+    .sidebar.open{transform:translateX(0);box-shadow:24px 0 60px rgba(0,0,0,.18)}
+    .sidebar-scrim.open{display:block;position:fixed;inset:0;z-index:45;background:rgba(10,10,10,.38);animation:scrimIn .2s ease both}
+    @keyframes scrimIn{from{opacity:0}to{opacity:1}}
+    .sidebar-close{display:flex!important}
+  }
+  .sidebar-close{display:none;align-items:center;justify-content:center;background:transparent;border:1px solid var(--line-strong);color:var(--text);border-radius:8px;width:34px;height:34px;margin:0 14px 14px auto}
+
+  /* ===================== DASHBOARD ===================== */
+  .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:26px}
+  .dash-stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;display:flex;flex-direction:column;gap:6px;transition:border-color .15s,transform .15s;cursor:pointer;text-align:left}
+  .dash-stat:hover{border-color:rgba(198,162,87,.5);transform:translateY(-2px)}
+  .dash-stat-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .dash-stat-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none}
+  .dash-stat-icon svg{width:18px;height:18px}
+  .dash-stat-num{font-family:'Archivo Black',sans-serif;font-weight:900;font-size:28px;line-height:1}
+  .dash-stat-label{font-size:12.5px;color:var(--muted);font-weight:600}
+  .dash-stat-sub{font-size:11.5px;color:var(--faint);margin-top:-2px}
+
+  .dash-section-title{font-family:'Archivo Black',sans-serif;font-weight:900;font-size:16px;margin:28px 0 12px}
+  .dash-quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+  .dash-quick-btn{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:13px 14px;font-family:'Archivo',sans-serif;font-weight:600;font-size:13px;color:var(--text);text-align:left;transition:border-color .15s}
+  .dash-quick-btn:hover{border-color:rgba(198,162,87,.5)}
+  .dash-quick-btn svg{width:17px;height:17px;color:var(--gold);flex:none}
+
+  .dash-next-card{background:linear-gradient(155deg,#0F4030,#0A2318);border:1px solid rgba(198,162,87,.28);border-radius:var(--radius);padding:22px;color:#F3EFE6;margin-bottom:26px}
+  .dash-next-label{font-family:'Archivo',sans-serif;font-weight:600;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  .dash-next-teams{font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(18px,3vw,24px);margin:8px 0 4px}
+  .dash-next-meta{font-size:13px;color:#B9C2BB}
+  .dash-next-empty{font-size:13.5px;color:#B9C2BB}
 
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:0 1px 3px rgba(17,17,17,.05)}
   @media(min-width:600px){.card{padding:26px}}
@@ -65,9 +115,9 @@
     background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;color:var(--text);padding:13px 13px;font-size:15px;width:100%;min-height:48px;transition:border-color .15s
   }
   .field textarea{min-height:90px;resize:vertical;line-height:1.5}
-  .field input::placeholder,.field textarea::placeholder{color:#586158}
+  .field input::placeholder,.field textarea::placeholder{color:#5C665E}
   .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
-  .field select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%235B5B57' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:40px}
+  .field select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23A9B2AB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:40px}
   .hint{color:var(--faint);font-size:12px;margin-top:1px;text-wrap:pretty}
   .dym-hint{display:block;font-size:12.5px;color:var(--gold);margin-top:1px}
   .dym-hint button{background:none;border:none;color:var(--gold);font:inherit;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px}
@@ -95,8 +145,8 @@
   .form-actions{display:flex;gap:10px;margin-top:4px}
 
   .msg{font-size:13.5px;margin-top:14px;padding:11px 13px;border-radius:9px;display:none;line-height:1.45}
-  .msg.ok{display:block;background:rgba(28,122,58,.09);color:#186a33;border:1px solid rgba(28,122,58,.28)}
-  .msg.err{display:block;background:rgba(192,39,27,.08);color:#C0271B;border:1px solid rgba(192,39,27,.28)}
+  .msg.ok{display:block;background:rgba(168,217,59,.1);color:var(--lime);border:1px solid rgba(168,217,59,.3)}
+  .msg.err{display:block;background:rgba(229,86,74,.1);color:var(--danger);border:1px solid rgba(229,86,74,.32)}
 
   .list{margin-top:26px}
   .list-head{display:flex;align-items:center;gap:10px;margin:0 0 13px}
@@ -126,7 +176,7 @@
   .status-toggle{font-family:'Archivo',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;padding:5px 11px;border-radius:20px;border:1px solid transparent;flex:none}
   .status-toggle.new{background:var(--gold-soft);color:var(--gold);border-color:rgba(180,135,58,.35)}
   .status-toggle.done{background:rgba(28,122,58,.09);color:var(--lime);border-color:rgba(28,122,58,.28)}
-  .status-loss{background:rgba(192,39,27,.1);color:#C0271B}
+  .status-loss{background:rgba(229,86,74,.13);color:var(--danger)}
   .status-off{background:rgba(243,239,230,.08);color:var(--muted)}
   .item-actions{display:flex;gap:7px;flex:none}
   .icon-btn{background:transparent;border:1px solid var(--line-strong);color:var(--muted);border-radius:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex:none}
@@ -194,7 +244,7 @@
   .kc-tile.added:hover{border-color:var(--line-strong)}
   .kc-check{position:absolute;top:5px;right:5px;width:17px;height:17px;border-radius:50%;background:var(--lime);color:#0A1B0D;font-size:11px;line-height:17px;font-weight:800}
 
-  .callout{background:var(--gold-soft);border:1px solid rgba(198,162,87,.3);border-radius:10px;padding:14px 16px;font-size:13px;color:#6E5320;line-height:1.55;margin-bottom:20px;text-wrap:pretty}
+  .callout{background:var(--gold-soft);border:1px solid rgba(198,162,87,.3);border-radius:10px;padding:14px 16px;font-size:13px;color:#D8C79E;line-height:1.55;margin-bottom:20px;text-wrap:pretty}
   .callout b{color:var(--gold)}
 
   #gate{max-width:380px;margin:0 auto;padding:14vh 20px 0}
@@ -232,7 +282,7 @@
   #welcome{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden}
   .wc-inner{position:relative;width:100%;max-width:1080px;display:grid;grid-template-columns:1fr;gap:10px;align-items:center}
   @media(min-width:820px){.wc-inner{grid-template-columns:1.05fr .95fr;gap:30px}}
-  .wc-bgname{position:absolute;left:-2%;top:50%;transform:translateY(-50%);font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(120px,30vw,300px);line-height:.8;letter-spacing:-.03em;color:rgba(20,20,20,.035);white-space:nowrap;pointer-events:none;z-index:0;animation:wcBg 1.2s ease both}
+  .wc-bgname{position:absolute;left:-2%;top:50%;transform:translateY(-50%);font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(120px,30vw,300px);line-height:.8;letter-spacing:-.03em;color:rgba(243,239,230,.045);white-space:nowrap;pointer-events:none;z-index:0;animation:wcBg 1.2s ease both}
   .wc-text{position:relative;z-index:2;order:2}
   @media(min-width:820px){.wc-text{order:1}}
   .wc-brand{display:flex;align-items:center;gap:9px;font-family:'Archivo',sans-serif;font-weight:600;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:22px;animation:wcUp .6s ease both .1s}
@@ -283,6 +333,9 @@
 <div id="app" class="hide">
   <header class="topbar">
     <div class="topbar-inner">
+      <button class="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Ouvrir la navigation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
       <div class="brand">
         <img src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png" alt="Baobabs">
         <div class="brand-text"><b>Baobabs Basket Club</b><span>Espace gestion</span></div>
@@ -303,29 +356,179 @@
     </div>
   </header>
 
+  <div class="sidebar-scrim" id="sidebar-scrim"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <button class="sidebar-close" id="sidebar-close" aria-label="Fermer la navigation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+
+      <div class="sb-group">
+        <div class="sb-group-label">Aperçu</div>
+        <button class="sb-link active" data-section="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+          Tableau de bord
+        </button>
+      </div>
+
+      <div class="sb-group">
+        <div class="sb-group-label">Match day</div>
+        <button class="sb-link" data-section="matches">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18M3 12h18M4.5 7.5c2 1.3 13 1.3 15 0M4.5 16.5c2-1.3 13-1.3 15 0"/></svg>
+          Matchs
+        </button>
+        <button class="sb-link" data-section="teams">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Adversaires
+        </button>
+        <button class="sb-link" data-section="live">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          Direct
+        </button>
+        <button class="sb-link" data-section="standings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          Classement
+        </button>
+      </div>
+
+      <div class="sb-group">
+        <div class="sb-group-label">Contenu du site</div>
+        <button class="sb-link" data-section="roster">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Effectif
+        </button>
+        <button class="sb-link" data-section="founder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v6c0 5 4 8.5 9 9 5-.5 9-4 9-9V7l-9-5Z"/></svg>
+          Fondateur
+        </button>
+        <button class="sb-link" data-section="bureau">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg>
+          Bureau
+        </button>
+        <button class="sb-link" data-section="news">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4Z"/><path d="M4 4v13a3 3 0 0 0 3 3M9 8h7M9 12h7M9 16h4"/></svg>
+          Actualités
+        </button>
+        <button class="sb-link" data-section="partners">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/><path d="M2 12h4M18 12h4M12 2v4M12 18v4"/></svg>
+          Partenaires
+        </button>
+        <button class="sb-link" data-section="shop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+          Boutique
+        </button>
+        <button class="sb-link" data-section="home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V9.5Z"/></svg>
+          Accueil
+        </button>
+      </div>
+
+      <div class="sb-group">
+        <div class="sb-group-label">Boîte de réception</div>
+        <button class="sb-link" data-section="forms">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>
+          Messages
+          <span class="sb-link-badge hide" id="sb-messages-badge">0</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="app-main">
   <div class="wrap">
     <div class="page-head">
-      <h1 id="page-title">Gestion des matchs</h1>
-      <p id="page-desc">Ajoutez un match, saisissez un score, gérez vos adversaires. Tout se met à jour sur le site public.</p>
+      <h1 id="page-title">Tableau de bord</h1>
+      <p id="page-desc">Vue d'ensemble de votre club — ce qui se passe, ce qui vous attend.</p>
     </div>
 
-    <div class="nav-scroll" id="nav-scroll">
-      <button class="nav-btn active" data-section="matches">Matchs</button>
-      <button class="nav-btn" data-section="teams">Adversaires</button>
-      <button class="nav-btn" data-section="live">Direct</button>
-      <button class="nav-btn" data-section="standings">Classement</button>
-      <button class="nav-btn" data-section="roster">Effectif</button>
-      <button class="nav-btn" data-section="founder">Fondateur</button>
-      <button class="nav-btn" data-section="bureau">Bureau</button>
-      <button class="nav-btn" data-section="news">Actualités</button>
-      <button class="nav-btn" data-section="partners">Partenaires</button>
-      <button class="nav-btn" data-section="shop">Boutique</button>
-      <button class="nav-btn" data-section="forms">Messages</button>
-      <button class="nav-btn" data-section="home">Accueil</button>
-    </div>
+    <!-- ===== SECTION TABLEAU DE BORD ===== -->
+    <section id="section-dashboard">
+      <div class="dash-next-card" id="dash-next-card">
+        <span class="dash-next-label">Prochain match</span>
+        <div class="dash-next-empty" id="dash-next-body">Chargement…</div>
+      </div>
+
+      <div class="dash-grid" id="dash-stats">
+        <button class="dash-stat" data-section="matches">
+          <div class="dash-stat-top">
+            <div class="dash-stat-icon" style="background:var(--gold-soft);color:var(--gold)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg>
+            </div>
+          </div>
+          <div class="dash-stat-num" id="dash-upcoming-num">—</div>
+          <div class="dash-stat-label">Matchs à venir</div>
+        </button>
+        <button class="dash-stat" data-section="matches">
+          <div class="dash-stat-top">
+            <div class="dash-stat-icon" style="background:rgba(28,122,58,.12);color:var(--lime)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            </div>
+          </div>
+          <div class="dash-stat-num" id="dash-played-num">—</div>
+          <div class="dash-stat-label">Matchs joués</div>
+        </button>
+        <button class="dash-stat" data-section="forms" data-form="newsletter">
+          <div class="dash-stat-top">
+            <div class="dash-stat-icon" style="background:rgba(180,135,58,.12);color:var(--gold)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
+            </div>
+          </div>
+          <div class="dash-stat-num" id="dash-newsletter-num">—</div>
+          <div class="dash-stat-label">Inscrits newsletter</div>
+        </button>
+        <button class="dash-stat" data-section="forms" data-form="contact">
+          <div class="dash-stat-top">
+            <div class="dash-stat-icon" style="background:rgba(180,135,58,.12);color:var(--gold)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>
+            </div>
+          </div>
+          <div class="dash-stat-num" id="dash-contact-num">—</div>
+          <div class="dash-stat-label">Messages de contact</div>
+        </button>
+        <button class="dash-stat" data-section="forms" data-form="orders">
+          <div class="dash-stat-top">
+            <div class="dash-stat-icon" style="background:rgba(180,135,58,.12);color:var(--gold)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+            </div>
+          </div>
+          <div class="dash-stat-num" id="dash-orders-num">—</div>
+          <div class="dash-stat-label">Commandes</div>
+          <div class="dash-stat-sub" id="dash-orders-new-sub"></div>
+        </button>
+        <button class="dash-stat" data-section="forms" data-form="recruitment">
+          <div class="dash-stat-top">
+            <div class="dash-stat-icon" style="background:rgba(180,135,58,.12);color:var(--gold)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m19 8 2 2 4-4" transform="translate(-3 0)"/></svg>
+            </div>
+          </div>
+          <div class="dash-stat-num" id="dash-recruitment-num">—</div>
+          <div class="dash-stat-label">Candidatures</div>
+        </button>
+      </div>
+
+      <div class="dash-section-title">Accès rapide</div>
+      <div class="dash-quick">
+        <button class="dash-quick-btn" data-section="matches">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Ajouter un match
+        </button>
+        <button class="dash-quick-btn" data-section="news">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          Publier une actualité
+        </button>
+        <button class="dash-quick-btn" data-section="forms">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>
+          Voir les messages
+        </button>
+        <a class="dash-quick-btn" href="index.html" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+          Voir le site public
+        </a>
+      </div>
+    </section>
 
     <!-- ===== SECTION MATCHS ===== -->
-    <section id="section-matches">
+    <section id="section-matches" class="hide">
       <div class="callout">Choisissez l'adversaire et la date pour créer un <b>match à venir</b>. Une fois le match joué, ajoutez les <b>deux scores</b> : il basculera automatiquement en « Joué » et apparaîtra dans les résultats du site. L'aperçu à droite montre le rendu exact sur la page d'accueil.</div>
       <div class="grid-2">
         <div>
@@ -629,6 +832,8 @@
       <div id="forms-list"><div class="empty">Chargement…</div></div>
     </section>
   </div>
+    </div>
+  </div>
 
   <div id="tour-overlay" class="hide">
     <div id="tour-spot"></div>
@@ -760,6 +965,7 @@
 
   // ===================== NAVIGATION =====================
   var SECTION_META = {
+    dashboard:{t:'Tableau de bord',d:'Vue d\'ensemble de votre club — ce qui se passe, ce qui vous attend.'},
     matches:{t:'Gestion des matchs',d:'Ajoutez un match, saisissez un score, gérez vos adversaires. Tout se met à jour sur le site public.'},
     teams:{t:'Adversaires',d:'La liste des clubs que vous affrontez, avec leurs logos.'},
     live:{t:'Diffusion en direct',d:'Reliez la chaîne YouTube du club pour activer le direct sur l\'accueil.'},
@@ -774,21 +980,38 @@
     forms:{t:'Messages',d:'Les inscriptions newsletter, messages de contact et commandes boutique envoyés depuis le site public.'},
     home:{t:'Bandeau d\'accueil',d:'L\'image et le texte d\'accroche de la page d\'accueil.'}
   };
+  var ALL_SECTIONS = ['dashboard','matches','teams','live','standings','roster','founder','bureau','news','partners','shop','forms','home'];
   var loadedSections = {};
-  function showSection(key){
-    document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-section')===key); });
-    ['matches','teams','live','standings','roster','founder','bureau','news','partners','shop','forms','home'].forEach(function(k){
-      document.getElementById('section-'+k).classList.toggle('hide', k!==key);
+  function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
+  function showSection(key, formKey){
+    document.querySelectorAll('.sb-link').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-section')===key); });
+    ALL_SECTIONS.forEach(function(k){
+      var el = document.getElementById('section-'+k); if (el) el.classList.toggle('hide', k!==key);
     });
     var m = SECTION_META[key];
     document.getElementById('page-title').textContent = m.t;
     document.getElementById('page-desc').textContent = m.d;
     if (!loadedSections[key]) { loadedSections[key]=true; if (LOADERS[key]) LOADERS[key](); }
+    if (key==='forms' && formKey) {
+      var fbtn = document.querySelector('#forms-nav .nav-btn[data-form="'+formKey+'"]');
+      if (fbtn) fbtn.click();
+    }
+    closeMobileNav();
     window.scrollTo({top:0});
   }
-  document.getElementById('nav-scroll').addEventListener('click', function(e){
-    var btn = e.target.closest('.nav-btn'); if (btn) showSection(btn.getAttribute('data-section'));
+  document.querySelectorAll('#sidebar .sb-link, #dash-stats .dash-stat, .dash-quick-btn[data-section]').forEach(function(b){
+    b.addEventListener('click', function(e){
+      var sec = b.getAttribute('data-section'); if (!sec) return;
+      e.preventDefault();
+      showSection(sec, b.getAttribute('data-form'));
+    });
   });
+  document.getElementById('mobile-nav-toggle').addEventListener('click', function(){
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebar-scrim').classList.add('open');
+  });
+  document.getElementById('sidebar-close').addEventListener('click', closeMobileNav);
+  document.getElementById('sidebar-scrim').addEventListener('click', closeMobileNav);
   document.getElementById('preview-collapse').addEventListener('click', function(){ document.getElementById('preview-aside').classList.toggle('collapsed'); });
 
   // ===================== ADVERSAIRES =====================
@@ -1426,9 +1649,62 @@
     loadForms();
   });
 
+  // ===================== TABLEAU DE BORD =====================
+  function loadDashboard(){
+    // Prochain match + compteurs matchs (réutilise les données déjà en base)
+    sbGet('matches?select=*&order=match_date.asc&limit=300').then(function(rows){
+      rows=rows||[];
+      var upcoming=rows.filter(function(m){return !isPlayed(m);}).sort(function(a,b){return (a.match_date||'').localeCompare(b.match_date||'');});
+      var played=rows.filter(isPlayed);
+      document.getElementById('dash-upcoming-num').textContent=upcoming.length;
+      document.getElementById('dash-played-num').textContent=played.length;
+      var body=document.getElementById('dash-next-body');
+      if(upcoming.length){
+        var m=upcoming[0]; var d=m.match_date?daysUntil(m.match_date):null;
+        var badge=(d==null)?'':(d<=0?'AUJOURD\u2019HUI':('J-'+d));
+        var lieu=m.is_home?'Baobabs vs ':'Baobabs @ ';
+        body.className=''; 
+        body.innerHTML='<div class="dash-next-teams">'+lieu+esc(m.opponent_name||'—')+'</div><div class="dash-next-meta">'+(badge?badge+' · ':'')+esc(formatDateShort(m.match_date))+(m.match_time?(' · '+esc(m.match_time)):'')+(m.competition?(' · '+esc(m.competition)):'')+'</div>';
+      } else {
+        body.className='dash-next-empty';
+        body.textContent='Aucun match à venir programmé pour le moment.';
+      }
+    }).catch(function(){
+      document.getElementById('dash-next-body').textContent='Impossible de charger les matchs.';
+    });
+
+    // Compteurs boîte de réception (une requête légère par table, déjà utilisées ailleurs)
+    var inboxTables = [
+      {key:'newsletter', table:'newsletter_subscribers'},
+      {key:'contact', table:'contact_messages'},
+      {key:'orders', table:'orders'},
+      {key:'recruitment', table:'recruitment_requests'}
+    ];
+    var totalNew = 0, doneCount = 0;
+    Promise.all(inboxTables.map(function(t){
+      return sbGet(t.table+'?select=id'+(t.key==='orders'?',status':'')+'&order=created_at.desc').then(function(rows){
+        rows=rows||[];
+        document.getElementById('dash-'+t.key+'-num').textContent=rows.length;
+        if(t.key==='orders'){
+          var pending = rows.filter(function(r){ return !(r.status==='traitée'||r.status==='traitee'||r.status==='done'); }).length;
+          document.getElementById('dash-orders-new-sub').textContent = pending ? (pending+' en attente') : 'Tout traité';
+          totalNew += pending;
+        } else if (t.key!=='newsletter') {
+          totalNew += rows.length;
+        }
+        return rows.length;
+      }).catch(function(){ document.getElementById('dash-'+t.key+'-num').textContent='—'; return 0; });
+    })).then(function(){
+      var badge=document.getElementById('sb-messages-badge');
+      if(totalNew>0){ badge.textContent = totalNew>99?'99+':totalNew; badge.classList.remove('hide'); }
+      else badge.classList.add('hide');
+    });
+  }
+
   // ===================== LOADERS =====================
   var LOADERS_live, LOADERS_home, LOADERS_founder, LOADERS_bureau;
   var LOADERS = {
+    dashboard:function(){ loadDashboard(); },
     teams:function(){ /* déjà chargé à l'init */ },
     live:function(){ loadSettings().then(function(){ LOADERS_live(); }); },
     home:function(){ loadSettings().then(function(){ LOADERS_home(); }); },
@@ -1444,7 +1720,8 @@
 
   // ===================== VISITE GUIDÉE =====================
   var TOUR_STEPS = [
-    { selector:'#nav-scroll', section:'matches', title:'Les onglets', body:"Toute la gestion du site passe par ici : matchs, adversaires, direct, effectif, actualités, boutique… Un clic pour changer d'onglet." },
+    { selector:'#dash-stats', section:'dashboard', title:'Le tableau de bord', body:"Un coup d'œil sur tout : prochain match, matchs joués, et ce qui attend une réponse dans vos messages." },
+    { selector:'#sidebar', section:'dashboard', title:'La navigation', body:"Toute la gestion du site passe par ici : matchs, adversaires, direct, effectif, actualités, boutique… Un clic pour changer de section. Sur mobile, le bouton en haut à gauche ouvre ce menu." },
     { selector:'#opponent_select', section:'matches', title:"L'adversaire", body:"Choisissez l'équipe dans la liste. Absente ? Le lien juste en dessous permet d'en ajouter une nouvelle sans quitter la page." },
     { selector:'#match_date', section:'matches', title:'Date et heure', body:"La date suffit pour un match à venir. L'heure est facultative — utile si vous voulez l'afficher sur le site." },
     { selector:'.score-row', section:'matches', title:'Le score', body:"Dès que les deux scores sont remplis, le match bascule automatiquement en « Joué » et rejoint les résultats du site. Rien à changer à la main." },
@@ -1478,6 +1755,12 @@
   function renderTourStep(i){
     var step=TOUR_STEPS[i]; if(!step) return;
     if(step.section) showSection(step.section);
+    if(step.selector==='#sidebar' && window.innerWidth<940){
+      document.getElementById('sidebar').classList.add('open');
+      document.getElementById('sidebar-scrim').classList.add('open');
+    } else {
+      closeMobileNav();
+    }
     document.getElementById('tour-count').textContent='Étape '+(i+1)+' / '+TOUR_STEPS.length;
     document.getElementById('tour-title').textContent=step.title;
     document.getElementById('tour-body').textContent=step.body;
@@ -1509,8 +1792,9 @@
   // ===================== INIT =====================
   function init(){
     updatePreview();
-    loadedSections.matches=true; loadedSections.teams=true;
+    loadedSections.matches=true; loadedSections.teams=true; loadedSections.dashboard=true;
     loadTeams().then(function(){ loadMatches(); updatePreview(); });
+    loadDashboard();
     var alreadySeen=false;
     try{ alreadySeen=localStorage.getItem('bbc_tour_seen')==='1'; }catch(e){}
     if(!alreadySeen) setTimeout(startTour,600);
