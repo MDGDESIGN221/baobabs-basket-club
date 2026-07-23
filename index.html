@@ -294,6 +294,17 @@
   .bb-field input::placeholder,.bb-field textarea::placeholder{color:#5F6B63}
   .bb-btn-solid{font-family:'Archivo',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:13px 24px;border-radius:9px;border:none;background:#A8D93B;color:#0A1B0D;cursor:pointer;transition:filter .2s ease}
   .bb-btn-solid:hover{filter:brightness(1.08)}
+  .bb-field select{font-family:'Archivo',sans-serif;font-size:14px;color:#F3EFE6;background:rgba(243,239,230,.05);border:1px solid rgba(243,239,230,.18);border-radius:9px;padding:11px 12px;-webkit-appearance:none;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%2393A099' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:32px}
+  .bb-field select:focus{outline:2px solid #A8D93B;outline-offset:1px;border-color:transparent}
+  .bb-field select option{background:#0A150F;color:#F3EFE6}
+  #bb-recruit-modal{width:100%;max-width:640px;margin:auto;background:#0A150F;border:1px solid rgba(198,162,87,.28);border-radius:20px;overflow:hidden;animation:bbPopIn .3s cubic-bezier(.16,.8,.3,1) both;max-height:calc(100vh - 40px);display:flex;flex-direction:column}
+  .bb-rec-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:560px){.bb-rec-grid{grid-template-columns:1fr}}
+  .bb-rec-legend{font-family:'Archivo',sans-serif;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#C6A257;border-left:2px solid currentColor;padding-left:10px;margin:8px 0 0}
+  .bb-radio-row{display:flex;gap:10px;flex-wrap:wrap}
+  .bb-radio{flex:1;min-width:130px;display:flex;align-items:center;gap:9px;padding:11px 14px;border:1px solid rgba(243,239,230,.18);border-radius:9px;cursor:pointer;font-family:'Archivo',sans-serif;font-size:13.5px;color:#D8D6CE;background:rgba(243,239,230,.03);transition:border-color .2s,background .2s,color .2s}
+  .bb-radio input{accent-color:#A8D93B}
+  .bb-radio.on{border-color:#A8D93B;background:rgba(168,217,59,.08);color:#F3EFE6}
   .bb-btn-ghost{font-family:'Archivo',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:13px 24px;border-radius:9px;border:1px solid rgba(243,239,230,.18);background:transparent;color:#F3EFE6;cursor:pointer}
 
   /* boutique / équipes / compétitions */
@@ -1379,6 +1390,68 @@
     </div>
   </div>
 
+  <div id="bb-recruit-overlay" class="bb-hide">
+    <div class="bb-scrim" data-close-overlay></div>
+    <div class="bb-modal-wrap">
+      <div id="bb-recruit-modal">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:clamp(20px,3vw,26px) clamp(20px,4vw,30px) 14px;flex:none;border-bottom:1px solid rgba(243,239,230,.08)">
+          <div>
+            <div style="font-family:'Archivo',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#A8D93B;margin-bottom:6px">Recrutement · Saison 2026</div>
+            <h3 style="font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(20px,3vw,26px);color:#F3EFE6;margin:0;line-height:1">Rejoindre l'effectif</h3>
+          </div>
+          <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+        <form id="bb-recruit-form" style="padding:clamp(18px,3vw,24px) clamp(20px,4vw,30px) clamp(24px,3vw,30px);display:flex;flex-direction:column;gap:14px;overflow-y:auto">
+          <p style="font-size:13px;line-height:1.6;color:#B9C2BB;margin:0">Débutante ou déjà joueuse, remplis ce formulaire : le club te recontacte pour une séance de détection. Les champs marqués * sont obligatoires.</p>
+
+          <div class="bb-rec-legend">Identité</div>
+          <div class="bb-rec-grid">
+            <div class="bb-field"><label for="bb-rec-first">Prénom *</label><input id="bb-rec-first" name="first_name" type="text" required></div>
+            <div class="bb-field"><label for="bb-rec-last">Nom *</label><input id="bb-rec-last" name="last_name" type="text" required></div>
+            <div class="bb-field"><label for="bb-rec-birth">Date de naissance *</label><input id="bb-rec-birth" name="birth_date" type="date" required></div>
+            <div class="bb-field"><label for="bb-rec-cat">Catégorie</label><select id="bb-rec-cat" name="category"><option value="">—</option><option>U13</option><option>U15</option><option>U18</option><option>Senior</option></select></div>
+          </div>
+
+          <div class="bb-rec-legend">Coordonnées</div>
+          <div class="bb-rec-grid">
+            <div class="bb-field"><label for="bb-rec-phone">Téléphone / WhatsApp *</label><input id="bb-rec-phone" name="phone" type="tel" required placeholder="+221 …"></div>
+            <div class="bb-field"><label for="bb-rec-email">Email</label><input id="bb-rec-email" name="email" type="email" placeholder="(optionnel)"></div>
+          </div>
+          <div class="bb-field"><label for="bb-rec-city">Ville / Quartier *</label><input id="bb-rec-city" name="city" type="text" required placeholder="Ex : Dakar, Ouakam"></div>
+
+          <div class="bb-rec-legend">Sur le terrain</div>
+          <div class="bb-rec-grid">
+            <div class="bb-field"><label for="bb-rec-pos">Poste souhaité</label><select id="bb-rec-pos" name="position"><option value="">Indécise</option><option>Meneuse</option><option>Arrière</option><option>Ailière</option><option>Ailière-forte</option><option>Pivot</option></select></div>
+            <div class="bb-field"><label for="bb-rec-hand">Main forte</label><select id="bb-rec-hand" name="strong_hand"><option value="">—</option><option>Droitière</option><option>Gauchère</option><option>Ambidextre</option></select></div>
+            <div class="bb-field"><label for="bb-rec-height">Taille (cm)</label><input id="bb-rec-height" name="height_cm" type="number" min="120" max="230" placeholder="(optionnel)"></div>
+            <div class="bb-field"><label for="bb-rec-weight">Poids (kg)</label><input id="bb-rec-weight" name="weight_kg" type="number" min="30" max="150" placeholder="(optionnel)"></div>
+          </div>
+
+          <div class="bb-rec-legend">Parcours</div>
+          <div class="bb-radio-row" id="bb-rec-exp">
+            <label class="bb-radio on"><input type="radio" name="experience" value="Débutante" checked>Débutante</label>
+            <label class="bb-radio"><input type="radio" name="experience" value="A déjà joué en club">A déjà joué en club</label>
+          </div>
+          <div class="bb-field bb-hide" id="bb-rec-clubs-field"><label for="bb-rec-clubs">Ancien(s) club(s)</label><input id="bb-rec-clubs" name="previous_clubs" type="text" placeholder="Nom du/des club(s), années"></div>
+
+          <div class="bb-rec-legend">Santé <span style="color:#5F6B63;font-weight:600;letter-spacing:.04em;text-transform:none">(optionnel)</span></div>
+          <div class="bb-field"><label for="bb-rec-health">Antécédents, allergies, traitement</label><textarea id="bb-rec-health" name="health_notes" rows="2" placeholder="Laisser vide si rien à signaler"></textarea></div>
+
+          <div class="bb-field"><label for="bb-rec-msg">Message</label><textarea id="bb-rec-msg" name="message" rows="2" placeholder="(optionnel)"></textarea></div>
+
+          <label style="display:flex;gap:10px;align-items:flex-start;font-family:'Archivo',sans-serif;font-size:12.5px;line-height:1.5;color:#93A099;cursor:pointer"><input type="checkbox" id="bb-rec-consent" required style="margin-top:2px;accent-color:#A8D93B">J'autorise le Baobabs Basket Club à me recontacter au sujet de ma candidature.</label>
+
+          <button type="submit" class="bb-btn-solid" style="margin-top:2px">Déposer ma candidature</button>
+        </form>
+        <div id="bb-recruit-success" class="bb-hide" style="padding:8px clamp(20px,4vw,30px) clamp(30px,4vw,36px);text-align:center">
+          <div style="width:52px;height:52px;border-radius:50%;background:rgba(168,217,59,.14);border:1px solid rgba(168,217,59,.4);display:flex;align-items:center;justify-content:center;margin:8px auto 16px;color:#A8D93B"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>
+          <p style="font-family:'Archivo Black',sans-serif;font-weight:900;font-size:20px;color:#F3EFE6;margin:0 0 8px">Candidature envoyée !</p>
+          <p style="font-size:13.5px;line-height:1.6;color:#93A099;margin:0 auto;max-width:34ch">Merci — le club te recontacte très vite pour la détection. À bientôt sur le terrain.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <canvas id="bb-ball-canvas" style="position:fixed;inset:0;width:100vw;height:100vh;z-index:9999;pointer-events:none;display:none"></canvas>
@@ -1589,7 +1662,16 @@
     var a = document.getElementById('bb-effectif');
     if (a) a.innerHTML = html;
     var b = document.getElementById('bb-effectif-equipes');
-    if (b) b.innerHTML = html;
+    if (b) b.innerHTML = html + recruitCard();
+  }
+
+  function recruitCard(){
+    return '<div data-recruit="1" role="button" tabindex="0" aria-label="Rejoindre l\'effectif" style="grid-column:span 2;min-height:330px;border-radius:14px;border:1.5px dashed rgba(198,162,87,.5);background:radial-gradient(120% 130% at 80% 0%,#12402C,#0A2318 62%,#081C13);display:flex;flex-direction:column;justify-content:center;padding:clamp(22px,3vw,34px);cursor:pointer;position:relative;overflow:hidden">' +
+      '<span style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#A8D93B;border-left:2px solid currentColor;padding-left:10px">Recrutement ouvert</span>' +
+      '<div style="font-family:\'Archivo Black\',sans-serif;font-weight:900;font-size:clamp(24px,2.4vw,32px);color:#F3EFE6;line-height:1.02;margin:14px 0 10px;max-width:15ch">Ta place est sur ce terrain</div>' +
+      '<p style="font-family:\'Archivo\',sans-serif;font-size:13.5px;line-height:1.6;color:#C7CFC8;margin:0 0 20px;max-width:36ch">D\u00e9butante ou confirm\u00e9e, d\u00e9pose ta candidature : mensurations, poste, parcours. Le club te recontacte pour la d\u00e9tection.</p>' +
+      '<span style="display:inline-flex;align-items:center;gap:9px;align-self:flex-start;font-family:\'Archivo\',sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.06em;color:#0A1B0D;background:#A8D93B;padding:12px 20px;border-radius:9px">Rejoindre l\'effectif <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>' +
+    '</div>';
   }
 
   function timelineHtml(){
@@ -1828,7 +1910,7 @@
     document.body.style.overflow = 'hidden';
   }
   function closeOverlays(){
-    ['bb-cart-overlay','bb-product-overlay','bb-player-overlay','bb-role-overlay','bb-legal-overlay','bb-cta-overlay'].forEach(function(id){
+    ['bb-cart-overlay','bb-product-overlay','bb-player-overlay','bb-role-overlay','bb-legal-overlay','bb-cta-overlay','bb-recruit-overlay'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.classList.add('bb-hide');
     });
@@ -2069,6 +2151,14 @@
 
   /* ===== modal CTA ===== */
   var ctaKey = null;
+  function openRecruit(){
+    var f = document.getElementById('bb-recruit-form');
+    f.classList.remove('bb-hide'); f.reset();
+    document.getElementById('bb-recruit-success').classList.add('bb-hide');
+    document.getElementById('bb-rec-clubs-field').classList.add('bb-hide');
+    document.getElementById('bb-rec-exp').querySelectorAll('.bb-radio').forEach(function(l,i){ l.classList.toggle('on', i===0); });
+    openOverlay('bb-recruit-overlay');
+  }
   function openCta(key){
     var c = ctaContent[key];
     if (!c) return;
@@ -2178,6 +2268,9 @@
       }
 
       var playerEl = e.target.closest('[data-player]');
+      var recCardEl = e.target.closest('[data-recruit]');
+      if (recCardEl) { e.preventDefault(); openRecruit(); return; }
+
       if (playerEl) { openPlayer(playerEl.getAttribute('data-player')); return; }
 
       var prodEl = e.target.closest('[data-product]');
@@ -2191,6 +2284,27 @@
       var ctaEl = e.target.closest('[data-cta]');
       if (ctaEl) { e.preventDefault(); openCta(ctaEl.getAttribute('data-cta')); return; }
     });
+
+    var recForm = document.getElementById('bb-recruit-form');
+    if (recForm) {
+      var expWrap = document.getElementById('bb-rec-exp');
+      expWrap.addEventListener('change', function(){
+        expWrap.querySelectorAll('.bb-radio').forEach(function(l){ l.classList.toggle('on', l.querySelector('input').checked); });
+        var val = (expWrap.querySelector('input:checked') || {}).value;
+        document.getElementById('bb-rec-clubs-field').classList.toggle('bb-hide', val !== 'A d\u00e9j\u00e0 jou\u00e9 en club');
+      });
+      recForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        var form = this, fd = new FormData(form);
+        function g(k){ var v = fd.get(k); return (v != null && String(v).trim() !== '') ? String(v).trim() : null; }
+        var payload = { first_name:g('first_name'), last_name:g('last_name'), birth_date:g('birth_date'), category:g('category'), phone:g('phone'), email:g('email'), city:g('city'), position:g('position'), strong_hand:g('strong_hand'), height_cm:g('height_cm'), weight_kg:g('weight_kg'), experience:g('experience'), previous_clubs:g('previous_clubs'), health_notes:g('health_notes'), message:g('message') };
+        var btn = form.querySelector('button[type=submit]'); btn.disabled = true;
+        sbInsert('recruitment_requests', payload).then(function(){
+          form.classList.add('bb-hide');
+          document.getElementById('bb-recruit-success').classList.remove('bb-hide');
+        }).catch(function(err){ console.warn('Candidature \u00e9chou\u00e9e', err); toast("Erreur d'envoi \u2014 r\u00e9essaie dans un instant"); }).finally(function(){ btn.disabled = false; });
+      });
+    }
 
     document.getElementById('bb-cta-form').addEventListener('submit', function(e){
       e.preventDefault();

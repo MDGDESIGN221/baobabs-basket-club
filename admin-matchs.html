@@ -623,6 +623,7 @@
         <button class="nav-btn active" data-form="newsletter">Newsletter</button>
         <button class="nav-btn" data-form="contact">Contact</button>
         <button class="nav-btn" data-form="orders">Commandes</button>
+        <button class="nav-btn" data-form="recruitment">Recrutement</button>
       </div>
       <div class="list-head"><h2 id="forms-list-title">Inscriptions newsletter</h2><span class="list-count" id="forms-count">—</span></div>
       <div id="forms-list"><div class="empty">Chargement…</div></div>
@@ -1368,6 +1369,20 @@
           (r.total?'<div class="form-item-line"><b>'+esc(r.total)+' FCFA</b></div>':'')+
           '<div class="form-item-bottom"><button class="status-toggle '+(isDone?'done':'new')+'" data-id="'+r.id+'" data-status="'+(isDone?'nouvelle':'traitée')+'">'+(isDone?'Traitée':'Nouvelle')+'</button>'+
           '<button class="icon-btn danger form-del" data-id="'+r.id+'" data-table="orders" aria-label="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>';
+      } },
+    recruitment:{ table:'recruitment_requests', title:'Candidatures recrutement', empty:'Aucune candidature pour l\'instant.',
+      render:function(r){
+        var name=((r.first_name||'')+' '+(r.last_name||'')).trim();
+        var age=''; if(r.birth_date){ var d=new Date(r.birth_date); if(!isNaN(d.getTime())) age=(new Date().getFullYear()-d.getFullYear())+' ans'; }
+        var l1=[r.phone, r.email, r.city].filter(Boolean).join(' · ');
+        var l2=[r.position, r.category, (r.height_cm?r.height_cm+' cm':''), (r.weight_kg?r.weight_kg+' kg':''), r.strong_hand, age].filter(Boolean).join(' · ');
+        var exp=r.experience?(r.experience+(r.previous_clubs?(' — '+r.previous_clubs):'')):'';
+        return '<div class="form-item-top"><div class="form-item-name">'+esc(name||'—')+'</div><div class="form-item-date">'+fmtDateTime(r.created_at)+'</div></div>'+
+          (l1?'<div class="form-item-line">'+esc(l1)+'</div>':'')+
+          (l2?'<div class="form-item-line">'+esc(l2)+'</div>':'')+
+          (exp?'<div class="form-item-line">'+esc(exp)+'</div>':'')+
+          (r.health_notes?'<div class="form-item-line">Santé : '+esc(r.health_notes)+'</div>':'')+
+          (r.message?'<div class="form-item-line">'+esc(r.message)+'</div>':'');
       } }
   };
   var currentForm = 'newsletter';
