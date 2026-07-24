@@ -2615,7 +2615,7 @@
     var add=document.getElementById('qg-add'); if(add) add.addEventListener('click',qgAdd);
   }
 
-  function qgSelect(id){ QG.sel=id; if(id!=='__new__') QG.draft=null; qgRenderCards(); qgRenderInspector(); }
+  function qgSelect(id){ QG.sel=id; qgRenderCards(); qgRenderInspector(); }
   function qgAdd(){ QG.sel='__new__'; QG.draft={ name:'', gender:'F', jersey_number:'', position:'', height:'', city:'', birth_year:'', photo_url:'', photo_x:50, photo_y:0, photo_zoom:100, name_color:'', bio:'', sort:QG.rows.length }; qgRenderCards(); qgRenderInspector(); window.scrollTo({top:0,behavior:'smooth'}); }
 
   function qgRenderInspector(){
@@ -2780,7 +2780,7 @@
       .catch(function(){ if(box) box.innerHTML='<div class="qg-loading">Impossible de charger. La table « '+esc(c.table)+' » existe-t-elle ? (migration SQL)</div>'; });
   }
   function qgvCurrent(key){ var S=qgvState(key); if(S.sel==='__new__') return S.draft; if(S.sel==null) return null; return S.rows.filter(function(x){return String(x.id)===String(S.sel);})[0]||null; }
-  function qgvSelect(key,id){ var S=qgvState(key); S.sel=id; if(id!=='__new__') S.draft=null; qgvRenderCards(key); qgvRenderInspector(key); }
+  function qgvSelect(key,id){ var S=qgvState(key); S.sel=id; qgvRenderCards(key); qgvRenderInspector(key); }
   function qgvAdd(key){ var c=COLLECTIONS[key]; var d={}; c.fields.forEach(function(f){ if(f.type==='date'&&f.default==='today') d[f.name]=todayISO(); else if(f.type==='boolean') d[f.name]=(f.bdefault===true); else if(f.type==='gallery') d[f.name]=[]; else d[f.name]=''; if(f.type==='image'&&f.pos){ d[f.name+'_x']=50; d[f.name+'_y']=50; d[f.name+'_zoom']=100; } }); var S=qgvState(key); S.draft=d; S.sel='__new__'; qgvRenderCards(key); qgvRenderInspector(key); window.scrollTo({top:0,behavior:'smooth'}); }
 
   function qgvRenderCards(key){
