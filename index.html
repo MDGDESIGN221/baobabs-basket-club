@@ -1097,7 +1097,7 @@
         </div>
         <div style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:28px">
           <h3 style="font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;color:#F3EFE6;margin:0 0 18px">Le staff</h3>
-          <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:14px" id="bb-staff-list">
             <div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.18);flex:none"></div><div><div style="font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">Coach principal</div><div style="font-size:12.5px;color:#7E8A82">À renseigner</div></div></div>
             <div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.18);flex:none"></div><div><div style="font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">Coach adjoint</div><div style="font-size:12.5px;color:#7E8A82">À renseigner</div></div></div>
             <div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.18);flex:none"></div><div><div style="font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">Préparateur physique</div><div style="font-size:12.5px;color:#7E8A82">À renseigner</div></div></div>
@@ -2586,6 +2586,16 @@
     }).join('');
   }
 
+  function renderStaff(rows){
+    var el = document.getElementById('bb-staff-list'); if(!el || !rows || !rows.length) return;
+    el.innerHTML = rows.map(function(m){
+      var ph = m.photo_url
+        ? '<img src="'+m.photo_url+'" alt="'+esc(m.name||'')+'" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none">'
+        : '<div style="width:42px;height:42px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.18);flex:none;display:flex;align-items:center;justify-content:center;font-family:\'Archivo\',sans-serif;font-weight:700;font-size:14px;color:#C6A257">'+esc((m.name||'?').trim().charAt(0).toUpperCase())+'</div>';
+      return '<div style="display:flex;align-items:center;gap:12px">'+ph+'<div><div style="font-family:\'Archivo\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">'+esc(m.role||'')+'</div><div style="font-size:12.5px;color:#B9C2BB">'+esc(m.name||'')+'</div></div></div>';
+    }).join('');
+  }
+
   function bbHydrate(){
     sbFetch('players?select=*&order=sort.asc,jersey_number.asc').then(function(rows){
       if(!rows || !rows.length) return;
@@ -2610,6 +2620,10 @@
 
     sbFetch('partners?select=*&order=sort.asc').then(function(rows){
       if(rows && rows.length) renderPartners(rows);
+    }).catch(function(){});
+
+    sbFetch('staff?select=*&order=sort.asc').then(function(rows){
+      if(rows && rows.length) renderStaff(rows);
     }).catch(function(){});
 
     sbFetch('news?select=*&order=published_at.desc,sort.asc&limit=12').then(function(rows){
