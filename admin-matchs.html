@@ -239,6 +239,27 @@
   .order-history-item .h-date{color:var(--faint);white-space:nowrap}
   .status-loss{background:rgba(229,86,74,.12);color:#F0847A;border-color:rgba(229,86,74,.3)}
   .rec-alert{background:rgba(229,86,74,.12);color:#F0847A;border-color:rgba(229,86,74,.3)}
+  /* --- gestion candidatures --- */
+  .rec-gender{font-family:'Archivo',sans-serif;font-weight:800;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:20px;border:1px solid transparent;margin-left:8px}
+  .rec-gender.f{background:rgba(214,120,180,.14);color:#E58BC0;border-color:rgba(214,120,180,.4)}
+  .rec-gender.m{background:rgba(90,168,217,.14);color:#7CC1EC;border-color:rgba(90,168,217,.4)}
+  .rec-status-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px}
+  .rec-status-pill{font-family:'Archivo',sans-serif;font-weight:800;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:6px 11px;border-radius:20px;border:1px solid transparent;cursor:pointer;background:var(--surface-2);color:var(--muted);opacity:.6}
+  .rec-status-pill:hover{opacity:1}
+  .rec-status-pill.current{opacity:1;cursor:default}
+  .rec-status-pill[data-s="nouvelle"].current{background:var(--gold-soft);color:var(--gold-bright);border-color:rgba(198,162,87,.35)}
+  .rec-status-pill[data-s="preselection"].current{background:rgba(90,168,217,.14);color:#7CC1EC;border-color:rgba(90,168,217,.4)}
+  .rec-status-pill[data-s="convoquee"].current{background:rgba(168,217,59,.12);color:var(--lime);border-color:rgba(168,217,59,.3)}
+  .rec-status-pill[data-s="retenue"].current{background:rgba(46,204,113,.16);color:#5FE0A0;border-color:rgba(46,204,113,.4)}
+  .rec-status-pill[data-s="refusee"].current{background:rgba(229,86,74,.12);color:#F0847A;border-color:rgba(229,86,74,.3)}
+  .rec-stars{display:inline-flex;gap:2px;margin-top:10px}
+  .rec-star{background:none;border:none;cursor:pointer;font-size:17px;line-height:1;color:var(--line-strong);padding:0 1px}
+  .rec-star.on{color:var(--gold-bright)}
+  .rec-notes{width:100%;margin-top:10px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;color:var(--text);font-family:'Archivo',sans-serif;font-size:12.5px;resize:vertical}
+  .rec-notes:focus{outline:none;border-color:var(--gold)}
+  .rec-filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  .rec-filters select,.rec-filters input{background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:9px 12px;color:var(--text);font-family:'Archivo',sans-serif;font-size:13px}
+  .rec-filters select:focus,.rec-filters input:focus{outline:none;border-color:var(--gold)}
   .status-off{background:rgba(243,239,230,.08);color:var(--muted)}
   .item-actions{display:flex;gap:7px;flex:none}
   .icon-btn{background:var(--surface-2);border:1px solid var(--line-strong);color:var(--muted);border-radius:9px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex:none;transition:border-color .15s,color .15s}
@@ -1075,7 +1096,7 @@
 
     <!-- ===== SECTION MESSAGES (newsletter / contact / commandes) ===== -->
     <section id="section-forms" class="hide">
-      <div class="callout">Ce que les visiteurs envoient depuis le site public : inscriptions à la newsletter, messages du formulaire de contact, et commandes passées dans la boutique. Consultation et suppression uniquement — ces données ne sont pas modifiables.</div>
+      <div class="callout">Ce que les visiteurs envoient depuis le site : newsletter, contact, commandes et candidatures. Les <b>candidatures</b> et <b>commandes</b> se gèrent ici (statut, note, tri) ; newsletter et contact sont en consultation.</div>
       <div class="nav-scroll" id="forms-nav" style="margin-bottom:18px">
         <button class="nav-btn active" data-form="newsletter">Newsletter</button>
         <button class="nav-btn" data-form="contact">Contact</button>
@@ -1083,6 +1104,13 @@
         <button class="nav-btn" data-form="recruitment">Recrutement</button>
       </div>
       <div class="list-head"><h2 id="forms-list-title">Inscriptions newsletter</h2><span class="list-count" id="forms-count">—</span></div>
+      <div class="rec-filters hide" id="rec-filters-bar">
+        <input type="text" id="rec-search" placeholder="Chercher nom, ville, poste…" style="flex:1;min-width:180px">
+        <select id="rec-filter-gender"><option value="">Tous sexes</option><option value="F">Filles</option><option value="M">Garçons</option></select>
+        <select id="rec-filter-cat"><option value="">Toutes catégories</option><option>U13</option><option>U15</option><option>U18</option><option>Senior</option></select>
+        <select id="rec-filter-status"><option value="">Tous statuts</option><option value="nouvelle">Nouvelle</option><option value="preselection">Présélection</option><option value="convoquee">Convoqué·e</option><option value="retenue">Retenu·e</option><option value="refusee">Refusé·e</option></select>
+        <select id="rec-sort"><option value="recent">Plus récentes</option><option value="old">Plus anciennes</option><option value="name">Nom (A→Z)</option><option value="rating">Mieux notées</option></select>
+      </div>
       <div class="callout hide" id="orders-summary-bar" style="display:flex;gap:22px;flex-wrap:wrap"></div>
       <div class="hide" id="orders-filters-bar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
         <input type="text" id="orders-search" placeholder="Chercher par nom ou téléphone…" style="flex:1;min-width:180px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Archivo',sans-serif;font-size:13px">
@@ -2162,18 +2190,29 @@
           ? '<img class="recruit-photo" src="'+esc(r.photo_url)+'" alt="Photo de '+esc(name||'candidat')+'">'
           : '<div class="recruit-photo-noimg">🧑</div>';
         var hAge=hoursSince(r.created_at);
-        var ageBadge=(hAge!=null && hAge>24) ? '<span class="status-pill rec-alert" style="margin-bottom:6px;display:inline-block">Reçue il y a '+Math.floor(hAge/24)+'j</span>' : '';
+        var st=recStatusKey(r.status);
+        var isNew=st==='nouvelle';
+        var ageBadge=(isNew && hAge!=null && hAge>24) ? '<span class="status-pill rec-alert" style="margin-bottom:6px;display:inline-block">Reçue il y a '+Math.floor(hAge/24)+'j</span>' : '';
+        var g=(r.gender==='M')?'<span class="rec-gender m">Garçon</span>':(r.gender==='F'?'<span class="rec-gender f">Fille</span>':'');
+        var pills=RECRUIT_STATUSES.map(function(s){ return '<button type="button" class="rec-status-pill'+(s.key===st?' current':'')+'" data-s="'+s.key+'" data-id="'+r.id+'">'+esc(s.label)+'</button>'; }).join('');
+        var rating=parseInt(r.rating,10)||0;
+        var stars=''; for(var i=1;i<=5;i++){ stars+='<button type="button" class="rec-star'+(i<=rating?' on':'')+'" data-id="'+r.id+'" data-v="'+i+'">★</button>'; }
         return '<div class="form-item-top" style="align-items:flex-start">'+photoHtml+
-          '<div style="flex:1;display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div><div class="form-item-name">'+esc(name||'—')+'</div>'+(ageBadge?'<div>'+ageBadge+'</div>':'')+'</div><div class="form-item-date">'+fmtDateTime(r.created_at)+'</div></div>'+
+          '<div style="flex:1;display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div><div class="form-item-name">'+esc(name||'—')+g+'</div>'+(ageBadge?'<div>'+ageBadge+'</div>':'')+'</div><div class="form-item-date">'+fmtDateTime(r.created_at)+'</div></div>'+
           '</div>'+
           (l1?'<div class="form-item-line">'+esc(l1)+'</div>':'')+
           (l2?'<div class="form-item-line">'+esc(l2)+'</div>':'')+
           (exp?'<div class="form-item-line">'+esc(exp)+'</div>':'')+
           (r.health_notes?'<div class="form-item-line">Santé : '+esc(r.health_notes)+'</div>':'')+
-          (r.message?'<div class="form-item-line">'+esc(r.message)+'</div>':'');
+          (r.message?'<div class="form-item-line">'+esc(r.message)+'</div>':'')+
+          '<div class="rec-status-row">'+pills+'</div>'+
+          '<div class="rec-stars" title="Note interne">'+stars+'</div>'+
+          '<textarea class="rec-notes" data-id="'+r.id+'" rows="2" placeholder="Notes internes (privées)…">'+esc(r.admin_notes||'')+'</textarea>';
       } }
   };
   var currentForm = 'newsletter';
+  var RECRUIT_STATUSES=[{key:'nouvelle',label:'Nouvelle'},{key:'preselection',label:'Présélection'},{key:'convoquee',label:'Convoqué·e'},{key:'retenue',label:'Retenu·e'},{key:'refusee',label:'Refusé·e'}];
+  function recStatusKey(raw){ if(!raw) return 'nouvelle'; raw=String(raw).toLowerCase(); return RECRUIT_STATUSES.some(function(s){return s.key===raw;})?raw:'nouvelle'; }
   function fmtDateTime(ts){
     if(!ts) return '';
     var d = new Date(ts);
@@ -2237,6 +2276,28 @@
           if(panel) panel.classList.toggle('open');
         });
       });
+      list.querySelectorAll('.rec-status-pill').forEach(function(b){
+        b.addEventListener('click',function(){
+          if(b.classList.contains('current')) return;
+          var id=b.getAttribute('data-id'), st=b.getAttribute('data-s');
+          list.querySelectorAll('.rec-status-pill[data-id="'+id+'"]').forEach(function(x){ x.classList.toggle('current', x===b); });
+          sbUpdate('recruitment_requests',id,{status:st}).then(function(){ loadDashboard && loadDashboard(); }).catch(function(){ alert('Erreur lors de la mise à jour du statut.'); loadForms(); });
+        });
+      });
+      list.querySelectorAll('.rec-star').forEach(function(b){
+        b.addEventListener('click',function(){
+          var id=b.getAttribute('data-id'), v=parseInt(b.getAttribute('data-v'),10);
+          var cur=list.querySelectorAll('.rec-star[data-id="'+id+'"]');
+          var already=(cur[v-1] && cur[v-1].classList.contains('on') && (v===cur.length || !cur[v].classList.contains('on')));
+          var val=already?0:v;
+          cur.forEach(function(x,i){ x.classList.toggle('on', i<val); });
+          sbUpdate('recruitment_requests',id,{rating:val}).catch(function(){ alert('Erreur note.'); loadForms(); });
+        });
+      });
+      list.querySelectorAll('.rec-notes').forEach(function(t){
+        var to=null;
+        t.addEventListener('input',function(){ clearTimeout(to); to=setTimeout(function(){ sbUpdate('recruitment_requests',t.getAttribute('data-id'),{admin_notes:t.value}).catch(function(){}); },700); });
+      });
   }
   function loadForms(){
     var f=FORMS[currentForm];
@@ -2246,7 +2307,9 @@
     var summaryBar = document.getElementById('orders-summary-bar');
     var filtersBar = document.getElementById('orders-filters-bar');
     var isOrders = f.table==='orders';
+    var isRecruit = f.table==='recruitment_requests';
     filtersBar.classList.toggle('hide', !isOrders);
+    document.getElementById('rec-filters-bar').classList.toggle('hide', !isRecruit);
     sbGet(f.table+'?select=*&order=created_at.desc').then(function(rows){
       rows=rows||[];
       if(isOrders){
@@ -2259,11 +2322,37 @@
         summaryBar.classList.remove('hide');
         summaryBar.innerHTML='<div><b>'+esc(weekTotal.toLocaleString('fr-FR'))+' FCFA</b> — 7 derniers jours</div><div><b>'+esc(monthTotal.toLocaleString('fr-FR'))+' FCFA</b> — ce mois-ci</div>';
         renderFormsList(rows.filter(matchesOrderFilters), f);
+      } else if(isRecruit){
+        summaryBar.classList.add('hide');
+        allRecruitRows = rows;
+        renderRecruitFiltered();
       } else {
         summaryBar.classList.add('hide');
         renderFormsList(rows, f);
       }
     }).catch(function(){ list.innerHTML='<div class="empty">Impossible de charger. La table « '+esc(f.table)+' » existe-t-elle ? (migration SQL)</div>'; });
+  }
+  var allRecruitRows = [];
+  function renderRecruitFiltered(){
+    var q=(document.getElementById('rec-search').value||'').trim().toLowerCase();
+    var fg=document.getElementById('rec-filter-gender').value;
+    var fc=document.getElementById('rec-filter-cat').value;
+    var fs=document.getElementById('rec-filter-status').value;
+    var sort=document.getElementById('rec-sort').value;
+    var rows=allRecruitRows.filter(function(r){
+      if(fg && r.gender!==fg) return false;
+      if(fc && r.category!==fc) return false;
+      if(fs && recStatusKey(r.status)!==fs) return false;
+      if(q){ var h=[r.first_name,r.last_name,r.city,r.position,r.phone,r.email].filter(Boolean).join(' ').toLowerCase(); if(h.indexOf(q)<0) return false; }
+      return true;
+    });
+    rows.sort(function(a,b){
+      if(sort==='name') return ((a.last_name||'')+(a.first_name||'')).localeCompare((b.last_name||'')+(b.first_name||''));
+      if(sort==='rating') return (parseInt(b.rating,10)||0)-(parseInt(a.rating,10)||0);
+      var da=new Date(a.created_at||0), db=new Date(b.created_at||0);
+      return sort==='old' ? da-db : db-da;
+    });
+    renderFormsList(rows, FORMS.recruitment);
   }
   document.getElementById('forms-nav').addEventListener('click',function(e){
     var btn=e.target.closest('.nav-btn'); if(!btn) return;
@@ -2276,6 +2365,9 @@
   });
   document.getElementById('orders-filter-status').addEventListener('change', function(){
     if(currentForm==='orders') renderFormsList(allOrderRows.filter(matchesOrderFilters), FORMS.orders);
+  });
+  ['rec-search','rec-filter-gender','rec-filter-cat','rec-filter-status','rec-sort'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.addEventListener(id==='rec-search'?'input':'change', function(){ if(currentForm==='recruitment') renderRecruitFiltered(); });
   });
 
   // ===================== TABLEAU DE BORD =====================

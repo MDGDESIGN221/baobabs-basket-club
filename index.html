@@ -1474,9 +1474,10 @@
           <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
         <form id="bb-recruit-form" style="padding:clamp(18px,3vw,24px) clamp(20px,4vw,30px) clamp(24px,3vw,30px);display:flex;flex-direction:column;gap:14px;overflow-y:auto">
-          <p style="font-size:13px;line-height:1.6;color:#B9C2BB;margin:0">Débutante ou déjà joueuse, remplis ce formulaire : le club te recontacte pour une séance de détection. Les champs marqués * sont obligatoires.</p>
+          <p style="font-size:13px;line-height:1.6;color:#B9C2BB;margin:0">Fille ou garçon, débutant·e ou déjà licencié·e : remplis ce formulaire, le club te recontacte pour une séance de détection. Les champs marqués * sont obligatoires.</p>
 
           <div class="bb-rec-legend">Identité</div>
+          <div class="bb-field"><label>Sexe *</label><div class="bb-radio-row" id="bb-rec-gender"><label class="bb-radio on"><input type="radio" name="gender" value="F" checked>Fille</label><label class="bb-radio"><input type="radio" name="gender" value="M">Garçon</label></div></div>
           <div class="bb-rec-grid">
             <div class="bb-field"><label for="bb-rec-first">Prénom *</label><input id="bb-rec-first" name="first_name" type="text" required></div>
             <div class="bb-field"><label for="bb-rec-last">Nom *</label><input id="bb-rec-last" name="last_name" type="text" required></div>
@@ -1493,15 +1494,15 @@
 
           <div class="bb-rec-legend">Sur le terrain</div>
           <div class="bb-rec-grid">
-            <div class="bb-field"><label for="bb-rec-pos">Poste souhaité</label><select id="bb-rec-pos" name="position"><option value="">Indécise</option><option>Meneuse</option><option>Arrière</option><option>Ailière</option><option>Ailière-forte</option><option>Pivot</option></select></div>
-            <div class="bb-field"><label for="bb-rec-hand">Main forte</label><select id="bb-rec-hand" name="strong_hand"><option value="">—</option><option>Droitière</option><option>Gauchère</option><option>Ambidextre</option></select></div>
+            <div class="bb-field"><label for="bb-rec-pos">Poste souhaité</label><select id="bb-rec-pos" name="position"><option value="">Indécis·e</option><option>Meneur·se</option><option>Arrière</option><option>Ailier·ère</option><option>Ailier·ère fort·e</option><option>Pivot</option></select></div>
+            <div class="bb-field"><label for="bb-rec-hand">Main forte</label><select id="bb-rec-hand" name="strong_hand"><option value="">—</option><option>Droitier·ère</option><option>Gaucher·ère</option><option>Ambidextre</option></select></div>
             <div class="bb-field"><label for="bb-rec-height">Taille (cm)</label><input id="bb-rec-height" name="height_cm" type="number" min="120" max="230" placeholder="(optionnel)"></div>
             <div class="bb-field"><label for="bb-rec-weight">Poids (kg)</label><input id="bb-rec-weight" name="weight_kg" type="number" min="30" max="150" placeholder="(optionnel)"></div>
           </div>
 
           <div class="bb-rec-legend">Parcours</div>
           <div class="bb-radio-row" id="bb-rec-exp">
-            <label class="bb-radio on"><input type="radio" name="experience" value="Débutante" checked>Débutante</label>
+            <label class="bb-radio on"><input type="radio" name="experience" value="Débutant·e" checked>Débutant·e</label>
             <label class="bb-radio"><input type="radio" name="experience" value="A déjà joué en club">A déjà joué en club</label>
           </div>
           <div class="bb-field bb-hide" id="bb-rec-clubs-field"><label for="bb-rec-clubs">Ancien(s) club(s)</label><input id="bb-rec-clubs" name="previous_clubs" type="text" placeholder="Nom du/des club(s), années"></div>
@@ -2230,6 +2231,7 @@
     document.getElementById('bb-recruit-success').classList.add('bb-hide');
     document.getElementById('bb-rec-clubs-field').classList.add('bb-hide');
     document.getElementById('bb-rec-exp').querySelectorAll('.bb-radio').forEach(function(l,i){ l.classList.toggle('on', i===0); });
+    var gw=document.getElementById('bb-rec-gender'); if(gw) gw.querySelectorAll('.bb-radio').forEach(function(l,i){ l.classList.toggle('on', i===0); });
     openOverlay('bb-recruit-overlay');
   }
   function openCta(key){
@@ -2361,6 +2363,10 @@
     var recForm = document.getElementById('bb-recruit-form');
     if (recForm) {
       var expWrap = document.getElementById('bb-rec-exp');
+      var genWrap = document.getElementById('bb-rec-gender');
+      if(genWrap) genWrap.addEventListener('change', function(){
+        genWrap.querySelectorAll('.bb-radio').forEach(function(l){ l.classList.toggle('on', l.querySelector('input').checked); });
+      });
       expWrap.addEventListener('change', function(){
         expWrap.querySelectorAll('.bb-radio').forEach(function(l){ l.classList.toggle('on', l.querySelector('input').checked); });
         var val = (expWrap.querySelector('input:checked') || {}).value;
@@ -2370,7 +2376,7 @@
         e.preventDefault();
         var form = this, fd = new FormData(form);
         function g(k){ var v = fd.get(k); return (v != null && String(v).trim() !== '') ? String(v).trim() : null; }
-        var payload = { first_name:g('first_name'), last_name:g('last_name'), birth_date:g('birth_date'), category:g('category'), phone:g('phone'), email:g('email'), city:g('city'), position:g('position'), strong_hand:g('strong_hand'), height_cm:g('height_cm'), weight_kg:g('weight_kg'), experience:g('experience'), previous_clubs:g('previous_clubs'), health_notes:g('health_notes'), message:g('message') };
+        var payload = { first_name:g('first_name'), last_name:g('last_name'), gender:g('gender'), birth_date:g('birth_date'), category:g('category'), phone:g('phone'), email:g('email'), city:g('city'), position:g('position'), strong_hand:g('strong_hand'), height_cm:g('height_cm'), weight_kg:g('weight_kg'), experience:g('experience'), previous_clubs:g('previous_clubs'), health_notes:g('health_notes'), message:g('message'), status:'nouvelle' };
         var btn = form.querySelector('button[type=submit]'); btn.disabled = true;
         sbInsert('recruitment_requests', payload).then(function(){
           form.classList.add('bb-hide');
