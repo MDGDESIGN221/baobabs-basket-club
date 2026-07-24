@@ -543,6 +543,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2M9 20h6M12 4v16"/></svg>
           Contenu du site
         </button>
+        <button class="sb-link" data-section="reglages">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+          Réglages du site
+        </button>
         <button class="sb-link" data-section="news">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4Z"/><path d="M4 4v13a3 3 0 0 0 3 3M9 8h7M9 12h7M9 16h4"/></svg>
           Actualités
@@ -1042,6 +1046,7 @@
       <div id="qgv-timeline"></div>
       <div id="coll-timeline" class="hide"></div>
     </section>
+    <section id="section-reglages" class="hide"><div id="qgs-mount"></div></section>
     <section id="section-content" class="hide"><div id="qgc-mount"></div></section>
     <section id="section-news" class="hide">
       <div class="qg-tabbar">
@@ -1236,6 +1241,7 @@
     staff:{t:'Staff',d:'Les membres de l\'encadrement affichés dans le bloc « Le staff » du site.'},
     timeline:{t:'Notre histoire',d:'La chronologie du club affichée sur la page « Le Club ».'},
     content:{t:'Contenu du site',d:'Les textes éditoriaux du site : intro « Le Club », objectifs, et autres blocs. Aperçu en direct.'},
+    reglages:{t:'Réglages du site',d:'Identité, coordonnées, réseaux sociaux et pied de page. Appliqués partout sur le site.'},
     founder:{t:'Fondateur',d:'La fiche du fondateur affichée sur la page « Le Club » du site.'},
     bureau:{t:'Bureau / organigramme',d:'Éditez le titulaire et la fiche de chaque poste de l\'organigramme.'},
     news:{t:'Actualités',d:'Les annonces et actualités publiées sur le site.'},
@@ -1244,7 +1250,7 @@
     forms:{t:'Messages',d:'Les inscriptions newsletter, messages de contact et commandes boutique envoyés depuis le site public.'},
     home:{t:'Bandeau d\'accueil',d:'L\'image et le texte d\'accroche de la page d\'accueil.'}
   };
-  var ALL_SECTIONS = ['dashboard','matches','live','standings','roster','founder','bureau','staff','timeline','content','news','partners','shop','forms','home'];
+  var ALL_SECTIONS = ['dashboard','matches','live','standings','roster','founder','bureau','staff','timeline','content','reglages','news','partners','shop','forms','home'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -2336,7 +2342,8 @@
     bureau:function(){ LOADERS_bureau(); },
     staff:function(){ qgvInit('staff'); },
     timeline:function(){ qgvInit('timeline'); },
-    content:function(){ loadSettings().then(function(){ qgcRender(); }); },
+    content:function(){ loadSettings().then(function(){ qgcRender(CONTENT_BLOCKS,'qgc-mount'); }); },
+    reglages:function(){ loadSettings().then(function(){ qgcRender(SETTINGS_BLOCKS,'qgs-mount'); }); },
     news:function(){ qgvInit('news'); },
     partners:function(){ qgvInit('partners'); },
     shop:function(){ qgvInit('shop'); },
@@ -2980,12 +2987,47 @@
       ],
       preview:function(v){ function c(t,x){ return '<div style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:12px;padding:16px"><div style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:16px;color:#C6A257;margin-bottom:7px">'+esc(t)+'</div><div style="font-size:12.5px;line-height:1.55;color:#B9C2BB">'+esc(x)+'</div></div>'; } return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+c(v.club_obj1_title,v.club_obj1_text)+c(v.club_obj2_title,v.club_obj2_text)+c(v.club_obj3_title,v.club_obj3_text)+'</div>'; } }
   ];
-  function qgcVal(key){ var b=null; CONTENT_BLOCKS.forEach(function(bl){ bl.fields.forEach(function(f){ if(f.key===key) b=f; }); }); var d=b?b.def:''; return (settings[key]!=null && settings[key]!=='')?settings[key]:d; }
-  function qgcRender(){
-    var m=document.getElementById('qgc-mount'); if(!m) return;
-    m.innerHTML='<div style="max-width:760px">'+CONTENT_BLOCKS.map(function(bl){
+  var LOGO_DEF='https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png';
+  var SETTINGS_BLOCKS = [
+    { id:'set_identity', page:'Réglages · Identité', label:'Identité du club', fields:[
+        {key:'club_name', label:'Nom du club', type:'text', def:'Baobabs Basket Club'},
+        {key:'club_tagline', label:'Slogan', type:'text', def:'Former, gagner, rassembler'},
+        {key:'club_description', label:'Description', type:'textarea', def:'Club de basketball fondé à Dakar en 2026.'},
+        {key:'logo_url', label:'Logo principal', type:'image', def:LOGO_DEF},
+        {key:'logo_secondary_url', label:'Logo secondaire', type:'image', def:''},
+        {key:'favicon_url', label:'Favicon', type:'image', def:LOGO_DEF}
+      ],
+      preview:function(v){ return '<div style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:20px;text-align:center"><img src="'+esc(v.logo_url||LOGO_DEF)+'" alt="" style="width:60px;height:60px;object-fit:contain;margin:0 auto 12px"><div style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:18px;color:#F3EFE6">'+esc(v.club_name)+'</div><div style="font-size:12.5px;color:#C6A257;margin-top:4px">'+esc(v.club_tagline)+'</div><div style="font-size:12px;color:#B9C2BB;margin-top:8px">'+esc(v.club_description)+'</div></div>'; } },
+    { id:'set_contact', page:'Réglages · Coordonnées', label:'Coordonnées', fields:[
+        {key:'club_phone', label:'Téléphone', type:'text', def:''},
+        {key:'club_email', label:'Email', type:'text', def:''},
+        {key:'club_address', label:'Adresse', type:'text', def:'Complexe Patrick Semedo, Dakar'},
+        {key:'club_maps_url', label:'Lien Google Maps', type:'text', def:''}
+      ],
+      preview:function(v){ function line(ic,t){ return t?'<div style="display:flex;gap:9px;align-items:center;font-size:13px;color:#C7CFC8;margin-top:8px"><span style="color:#C6A257">'+ic+'</span>'+esc(t)+'</div>':''; } return '<div style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:20px">'+line('✆',v.club_phone)+line('✉',v.club_email)+line('⌖',v.club_address)+(v.club_maps_url?'<div style="font-size:11.5px;color:#7E8A82;margin-top:10px">Maps : '+esc(v.club_maps_url)+'</div>':'')+'</div>'; } },
+    { id:'set_social', page:'Réglages · Réseaux', label:'Réseaux sociaux', fields:[
+        {key:'social_facebook', label:'Facebook (URL)', type:'text', def:''},
+        {key:'social_instagram', label:'Instagram (URL)', type:'text', def:''},
+        {key:'social_tiktok', label:'TikTok (URL)', type:'text', def:''},
+        {key:'social_youtube', label:'YouTube (URL)', type:'text', def:''},
+        {key:'social_linkedin', label:'LinkedIn (URL)', type:'text', def:''},
+        {key:'social_whatsapp', label:'WhatsApp (URL/numéro)', type:'text', def:''}
+      ],
+      preview:function(v){ var items=[['Facebook',v.social_facebook],['Instagram',v.social_instagram],['TikTok',v.social_tiktok],['YouTube',v.social_youtube],['LinkedIn',v.social_linkedin],['WhatsApp',v.social_whatsapp]].filter(function(x){return x[1];}); if(!items.length) return '<div class="pv-empty">Aucun réseau renseigné.</div>'; return '<div style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:18px;display:flex;flex-wrap:wrap;gap:8px">'+items.map(function(x){ return '<span style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:11.5px;color:#0A1B0D;background:#C6A257;border-radius:20px;padding:5px 11px">'+esc(x[0])+'</span>'; }).join('')+'</div>'; } },
+    { id:'set_footer', page:'Réglages · Pied de page', label:'Pied de page', fields:[
+        {key:'footer_text', label:'Texte du footer', type:'textarea', def:'Club de basketball fondé à Dakar en 2026. Former, gagner, faire grandir une communauté autour du jeu.'},
+        {key:'footer_copyright', label:'Copyright', type:'text', def:'© 2026 Baobabs Basket Club. Tous droits réservés.'}
+      ],
+      preview:function(v){ return '<div style="background:#07130D;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:20px"><div style="font-size:13px;color:#7E8A82;line-height:1.7">'+esc(v.footer_text)+'</div><div style="font-size:11.5px;color:#5C6B60;margin-top:14px;padding-top:12px;border-top:1px solid rgba(243,239,230,.08)">'+esc(v.footer_copyright)+'</div></div>'; } }
+  ];
+  function qgcAll(){ return CONTENT_BLOCKS.concat(SETTINGS_BLOCKS); }
+  function qgcVal(key){ var b=null; qgcAll().forEach(function(bl){ bl.fields.forEach(function(f){ if(f.key===key) b=f; }); }); var d=b?b.def:''; return (settings[key]!=null && settings[key]!=='')?settings[key]:d; }
+  function qgcRender(blocks, mountId){
+    var m=document.getElementById(mountId); if(!m) return;
+    m.innerHTML='<div style="max-width:760px">'+blocks.map(function(bl){
       var fields=bl.fields.map(function(f){
         var v=qgcVal(f.key);
+        if(f.type==='image') return '<div class="qg-field"><label>'+esc(f.label)+'</label><input class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'" placeholder="https://…" style="font-size:12.5px"><div class="qg-photo-actions"><label class="qg-file-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Téléverser</span><input type="file" data-kfile="'+f.key+'" accept="image/*" style="display:none"></label></div></div>';
         if(f.type==='textarea') return '<div class="qg-field"><label>'+esc(f.label)+'</label><textarea class="qg-in qgc-in" data-k="'+f.key+'" rows="3">'+esc(v)+'</textarea></div>';
         return '<div class="qg-field"><label>'+esc(f.label)+'</label><input class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'"></div>';
       }).join('');
@@ -2993,14 +3035,15 @@
         '<div class="grid-2" style="align-items:start;gap:20px"><div>'+fields+'<button type="button" class="btn btn-primary qgc-save" data-block="'+bl.id+'">Enregistrer</button><div class="msg" id="qgc-msg-'+bl.id+'"></div></div>'+
         '<div><div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:9px">Aperçu réel</div><div id="qgc-pv-'+bl.id+'"></div></div></div></div>';
     }).join('')+'</div>';
-    CONTENT_BLOCKS.forEach(function(bl){ qgcPreview(bl); });
-    m.querySelectorAll('.qgc-in').forEach(function(el){ el.addEventListener('input',function(){ var bl=CONTENT_BLOCKS.filter(function(b){ return b.fields.some(function(f){return f.key===el.getAttribute('data-k');}); })[0]; if(bl) qgcPreview(bl); }); });
+    blocks.forEach(function(bl){ qgcPreview(bl); });
+    m.querySelectorAll('.qgc-in').forEach(function(el){ el.addEventListener('input',function(){ var bl=qgcAll().filter(function(b){ return b.fields.some(function(f){return f.key===el.getAttribute('data-k');}); })[0]; if(bl) qgcPreview(bl); }); });
+    m.querySelectorAll('input[data-kfile]').forEach(function(fe){ fe.addEventListener('change',function(){ var file=fe.files[0]; if(!file) return; var key=fe.getAttribute('data-kfile'); var span=fe.parentNode.querySelector('span'); if(span) span.textContent='Envoi…'; uploadFile(MEDIA_BUCKET,file).then(function(url){ var inp=document.querySelector('.qgc-in[data-k="'+key+'"]'); if(inp){ inp.value=url; inp.dispatchEvent(new Event('input',{bubbles:true})); } if(span) span.textContent='Téléverser'; qgToast('Image envoyée ✓'); }).catch(function(){ if(span) span.textContent='Téléverser'; qgToast('Échec de l\'envoi',true); }); }); });
     m.querySelectorAll('.qgc-save').forEach(function(btn){ btn.addEventListener('click',function(){ qgcSave(btn.getAttribute('data-block'),btn); }); });
   }
   function qgcCollect(bl){ var v={}; bl.fields.forEach(function(f){ var el=document.querySelector('.qgc-in[data-k="'+f.key+'"]'); v[f.key]=el?el.value:qgcVal(f.key); }); return v; }
-  function qgcPreview(bl){ var pv=document.getElementById('qgc-pv-'+bl.id); if(pv) pv.innerHTML=bl.preview(qgcCollect(bl)); }
+  function qgcPreview(bl){ var pv=document.getElementById('qgc-pv-'+bl.id); if(pv && bl.preview) pv.innerHTML=bl.preview(qgcCollect(bl)); }
   function qgcSave(blockId,btn){
-    var bl=CONTENT_BLOCKS.filter(function(b){return b.id===blockId;})[0]; if(!bl) return;
+    var bl=qgcAll().filter(function(b){return b.id===blockId;})[0]; if(!bl) return;
     saveSettings(qgcCollect(bl), document.getElementById('qgc-msg-'+blockId), btn);
   }
 
