@@ -535,6 +535,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Staff
         </button>
+        <button class="sb-link" data-section="timeline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+          Notre histoire
+        </button>
         <button class="sb-link" data-section="news">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4Z"/><path d="M4 4v13a3 3 0 0 0 3 3M9 8h7M9 12h7M9 16h4"/></svg>
           Actualités
@@ -1026,6 +1030,14 @@
       <div id="qgv-staff"></div>
       <div id="coll-staff" class="hide"></div>
     </section>
+    <section id="section-timeline" class="hide">
+      <div class="qg-tabbar">
+        <button type="button" class="qg-tab active" data-qg-tab="visual"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Éditeur visuel</button>
+        <button type="button" class="qg-tab" data-qg-tab="form"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Formulaire classique</button>
+      </div>
+      <div id="qgv-timeline"></div>
+      <div id="coll-timeline" class="hide"></div>
+    </section>
     <section id="section-news" class="hide">
       <div class="qg-tabbar">
         <button type="button" class="qg-tab active" data-qg-tab="visual"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Éditeur visuel</button>
@@ -1216,7 +1228,8 @@
     live:{t:'Diffusion en direct',d:'Reliez la chaîne YouTube du club pour activer le direct sur l\'accueil.'},
     standings:{t:'Classement',d:'Le tableau du championnat affiché sur la page Compétitions. Les lignes se classent par points.'},
     roster:{t:'Effectif',d:'Les joueuses et joueurs affichés dans la section Équipes.'},
-    staff:{t:'Fondateur',d:'La fiche du fondateur affichée sur la page « Le Club » du site.'},
+    staff:{t:'Staff',d:'Les membres de l\'encadrement affichés dans le bloc « Le staff » du site.'},
+    timeline:{t:'Notre histoire',d:'La chronologie du club affichée sur la page « Le Club ».'},
     founder:{t:'Fondateur',d:'La fiche du fondateur affichée sur la page « Le Club » du site.'},
     bureau:{t:'Bureau / organigramme',d:'Éditez le titulaire et la fiche de chaque poste de l\'organigramme.'},
     news:{t:'Actualités',d:'Les annonces et actualités publiées sur le site.'},
@@ -1225,7 +1238,7 @@
     forms:{t:'Messages',d:'Les inscriptions newsletter, messages de contact et commandes boutique envoyés depuis le site public.'},
     home:{t:'Bandeau d\'accueil',d:'L\'image et le texte d\'accroche de la page d\'accueil.'}
   };
-  var ALL_SECTIONS = ['dashboard','matches','live','standings','roster','founder','bureau','staff','news','partners','shop','forms','home'];
+  var ALL_SECTIONS = ['dashboard','matches','live','standings','roster','founder','bureau','staff','timeline','news','partners','shop','forms','home'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -1792,6 +1805,15 @@
         '</div>'+
         '<p class="pv-hint">Aperçu de style — cette section n\'a pas encore de rendu dédié sur le site public.</p>';
       }},
+    timeline:{ table:'timeline_events', guide:'La chronologie « Notre histoire ». Ajoutez une étape : une année, un titre et un texte. Glissez / triez avec l\'ordre.', empty:'Aucune étape.', title:'étape', order:'sort.asc', imageField:null, primary:'title',
+      meta:function(r){ return r.year||''; },
+      fields:[
+        {name:'year',label:'Année',type:'text',required:true,ph:'Ex : 2026'},
+        {name:'title',label:'Titre de l\'étape',type:'text',required:true},
+        {name:'body',label:'Texte',type:'rich',opt:true,ph:'Décris cette étape…'},
+        {name:'sort',label:'Ordre d\'affichage',type:'number',opt:true,ph:'0 = en premier'}
+      ],
+      preview:function(v){ return '<div class="pv-empty">Aperçu dans l\'onglet Éditeur visuel.</div>'; }},
     news:{ table:'news', guide:'Publiez une annonce : un titre et un contenu suffisent. La date est réglée sur aujourd\'hui par défaut ; une image rend l\'actualité plus visible.', empty:'Aucune actualité publiée.', title:'actualité', order:'published_at.desc', imageField:'image_url', primary:'title',
       meta:function(r){ return r.published_at?formatDateShort(r.published_at):''; },
       fields:[
@@ -1862,7 +1884,7 @@
   function collFieldHtml(key,f){
     var id=key+'__'+f.name; var opt=f.opt?' <span class="opt">(optionnel)</span>':'';
     var lab='<label for="'+id+'">'+esc(f.label)+opt+'</label>';
-    if(f.type==='textarea') return '<div class="field">'+lab+'<textarea id="'+id+'" placeholder="'+esc(f.ph||'')+'"></textarea></div>';
+    if(f.type==='textarea'||f.type==='rich') return '<div class="field">'+lab+'<textarea id="'+id+'" placeholder="'+esc(f.ph||'')+'"></textarea></div>';
     if(f.type==='select') return '<div class="field">'+lab+'<select id="'+id+'">'+f.options.map(function(o){ return '<option value="'+esc(o)+'">'+(o?esc(o):'— Choisir —')+'</option>'; }).join('')+'</select></div>';
     if(f.type==='boolean') return '<div class="field">'+lab+'<select id="'+id+'"><option value="true">En stock</option><option value="false">Épuisé</option></select></div>';
     if(f.type==='image') return '<div class="field">'+lab+'<div class="logo-choice"><button type="button" class="active" id="'+id+'_mu">Uploader</button><button type="button" id="'+id+'_ml">Coller un lien</button></div><input type="file" id="'+id+'_file" accept="image/*"><input type="text" id="'+id+'_url" class="hide" placeholder="https://…"><img id="'+id+'_pv" class="logo-preview"'+(f.name==='logo_url'?' style="border-radius:50%;object-fit:contain"':'')+' alt=""></div>';
@@ -2307,6 +2329,7 @@
     founder:function(){ loadSettings().then(function(){ LOADERS_founder(); }); },
     bureau:function(){ LOADERS_bureau(); },
     staff:function(){ qgvInit('staff'); },
+    timeline:function(){ qgvInit('timeline'); },
     news:function(){ qgvInit('news'); },
     partners:function(){ qgvInit('partners'); },
     shop:function(){ qgvInit('shop'); },
@@ -2611,6 +2634,7 @@
     news:{ k:'Le club en mouvement', h:'Actualités', p:'Clique une carte pour l\'éditer, comme sur le site.' },
     partners:{ k:'Ils nous soutiennent', h:'Partenaires', p:'Clique un logo pour l\'éditer · ajoute un partenaire.' },
     staff:{ k:'L\'encadrement', h:'Le staff', p:'Clique un membre pour l\'éditer · ajoute coach, manager… · glisse pour réordonner.' },
+    timeline:{ k:'Le club', h:'Notre histoire', p:'Clique une étape pour l\'éditer · ajoute une étape · le texte accepte gras, surligné, couleur.' },
     shop:{ k:'La boutique', h:'Produits', p:'Clique une fiche produit pour l\'éditer.' }
   };
   function qgvState(key){ if(!QGV[key]) QGV[key]={rows:[],sel:null,draft:null,built:false}; return QGV[key]; }
@@ -2660,6 +2684,7 @@
     box.querySelectorAll('.qgv-del').forEach(function(b){ b.addEventListener('click',function(e){ e.stopPropagation(); qgvDeleteId(key,b.getAttribute('data-qgv-id')); }); });
   }
 
+  function bbRichAdmin(h){ var s=(h==null?'':String(h)); return s.replace(/<\s*script/gi,'&lt;script').replace(/on\w+\s*=/gi,'data-x='); }
   var QGV_RENDER = {
     standings:function(rows, draft, sel){
       function row(r,id,i){
@@ -2727,6 +2752,16 @@
       out+='<button type="button" class="qgv-add" style="display:flex;align-items:center;justify-content:center;gap:9px;min-height:96px;border-radius:16px;border:1.5px dashed rgba(198,162,87,.5);background:radial-gradient(120% 130% at 80% 0%,#12402C,#0A2318 62%);color:#A8D93B;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12.5px">Ajouter un membre</span></button>';
       return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">'+out+'</div>';
     },
+    timeline:function(rows, draft, sel){
+      function item(t,id){
+        var isSel=sel!=null&&String(sel)===String(id);
+        var body=t.body?bbRichAdmin(t.body):'';
+        return '<div data-qgv-id="'+esc(id)+'" style="position:relative;display:flex;gap:20px;align-items:flex-start;background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:18px 20px;cursor:pointer'+(isSel?';box-shadow:0 0 0 2px #A8D93B,0 0 0 5px rgba(168,217,59,.2)':'')+'"><div style="flex:none;width:74px;font-family:\'Archivo\',sans-serif;font-weight:900;font-size:22px;color:#C6A257">'+esc(t.year||'—')+'</div><div style="min-width:0"><div style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:16px;color:#F3EFE6">'+esc(t.title||'Nouvelle étape')+'</div>'+(body?'<div style="font-size:13px;line-height:1.55;color:#B9C2BB;margin-top:6px">'+body+'</div>':'')+'</div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid rgba(243,239,230,.14);border-radius:9px;padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
+      }
+      var out=''; rows.forEach(function(t){ out+=item(t,t.id); }); if(draft) out+=item(draft,'__new__');
+      out+='<button type="button" class="qgv-add" style="display:flex;align-items:center;justify-content:center;gap:9px;min-height:80px;border-radius:14px;border:1.5px dashed rgba(198,162,87,.5);background:radial-gradient(120% 130% at 80% 0%,#12402C,#0A2318 62%);color:#A8D93B;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12.5px">Ajouter une étape</span></button>';
+      return '<div style="display:flex;flex-direction:column;gap:12px">'+out+'</div>';
+    },
     shop:function(rows, draft, sel){
       function card(p,id){
         var isSel=sel!=null&&String(sel)===String(id);
@@ -2746,6 +2781,7 @@
     var id='qgvf-'+key+'-'+f.name; var v=cur[f.name]; if(v==null) v='';
     var lab='<label>'+esc(f.label)+'</label>';
     if(f.type==='gallery') return '<div class="qg-field"><label>'+esc(f.label)+'</label><div class="qg-gal" id="'+id+'-gal"></div><div class="qg-hint" style="margin-top:8px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Glisse pour réordonner · la 1re photo est l\'image principale · jusqu\'à '+GALLERY_N+' photos.</div></div>';
+    if(f.type==='rich') return '<div class="qg-field">'+lab+qgRTField(id,v,f.ph||'')+'</div>';
     if(f.type==='textarea') return '<div class="qg-field">'+lab+'<textarea class="qg-in" id="'+id+'" rows="4" placeholder="'+esc(f.ph||'')+'">'+esc(v)+'</textarea></div>';
     if(f.type==='select'){ var o=(f.options||[]).slice(); if(v&&o.indexOf(v)<0) o.push(v); return '<div class="qg-field">'+lab+'<select class="qg-in" id="'+id+'">'+o.map(function(x){ return '<option value="'+esc(x)+'"'+(String(v)===x?' selected':'')+'>'+(x?esc(x):'—')+'</option>'; }).join('')+'</select></div>'; }
     if(f.type==='boolean'){ var isOn=(v===true||v==='true')?true:((v===false||v==='false')?false:(f.bdefault===true)); var onL=f.onLabel||(f.name==='in_stock'?'En stock':'Oui'); var offL=f.offLabel||(f.name==='in_stock'?'Épuisé':'Non'); return '<div class="qg-field">'+lab+'<select class="qg-in" id="'+id+'"><option value="true"'+(isOn?' selected':'')+'>'+esc(onL)+'</option><option value="false"'+(!isOn?' selected':'')+'>'+esc(offL)+'</option></select></div>'; }
@@ -2755,6 +2791,7 @@
   }
   function qgvBindField(key,f){
     if(f.type==='gallery'){ qgvGalleryRender(key,f.name); return; }
+    if(f.type==='rich'){ qgvRTBind(key,'qgvf-'+key+'-'+f.name,f.name); return; }
     var id='qgvf-'+key+'-'+f.name; var e=document.getElementById(id); if(!e) return;
     var h=function(){ var cur=qgvCurrent(key); if(!cur) return; cur[f.name]=e.value; qgvRenderCards(key); };
     e.addEventListener('input',h); e.addEventListener('change',h);
@@ -2869,6 +2906,25 @@
     });
     ed.addEventListener('input',function(){ var c=qgRTCur(); if(c) c[field]=ed.innerHTML; });
     ed.addEventListener('blur',function(){ var c=qgRTCur(); if(c) c[field]=ed.innerHTML; });
+  }
+
+  function qgvRTBind(key, id, field){
+    var ed=document.getElementById(id); if(!ed) return;
+    var wrap=ed.parentNode;
+    wrap.querySelectorAll('.qg-rt-tb button').forEach(function(b){
+      b.addEventListener('mousedown',function(e){ e.preventDefault(); });
+      b.addEventListener('click',function(){
+        ed.focus(); try{ document.execCommand('styleWithCSS',false,true); }catch(e){}
+        var cmd=b.getAttribute('data-rt');
+        if(cmd==='bold') document.execCommand('bold');
+        else if(cmd==='hilite') document.execCommand('hiliteColor',false,'#A8D93B');
+        else if(cmd==='color') document.execCommand('foreColor',false,b.getAttribute('data-c'));
+        else if(cmd==='clear'){ document.execCommand('removeFormat'); document.execCommand('hiliteColor',false,'transparent'); }
+        var c=qgvCurrent(key); if(c){ c[field]=ed.innerHTML; qgvRenderCards(key); }
+      });
+    });
+    ed.addEventListener('input',function(){ var c=qgvCurrent(key); if(c) c[field]=ed.innerHTML; });
+    ed.addEventListener('blur',function(){ var c=qgvCurrent(key); if(c) c[field]=ed.innerHTML; });
   }
 
   // Le mot de passe est redemandé à chaque ouverture de la page.

@@ -1788,7 +1788,7 @@
           '<div style="flex:none;width:88px;font-family:\'Archivo\',sans-serif;font-weight:900;font-size:24px;color:#C6A257">' + t.year + '</div>' +
           '<div>' +
             '<div style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:17px;color:#F3EFE6;margin-bottom:6px">' + esc(t.title) + '</div>' +
-            '<p style="font-size:14.5px;line-height:1.65;color:#B9C2BB;margin:0;max-width:60ch">' + esc(t.text) + '</p>' +
+            '<p style="font-size:14.5px;line-height:1.65;color:#B9C2BB;margin:0;max-width:60ch">' + bbRich(t.text) + '</p>' +
           '</div>' +
         '</div>';
     }).join('');
@@ -2624,6 +2624,10 @@
 
     sbFetch('staff?select=*&order=sort.asc').then(function(rows){
       if(rows && rows.length) renderStaff(rows);
+    }).catch(function(){});
+
+    sbFetch('timeline_events?select=*&order=sort.asc').then(function(rows){
+      if(rows && rows.length){ timeline = rows.map(function(r){ return { year:r.year||'', title:r.title||'', text:r.body||'' }; }); renderTimeline(); }
     }).catch(function(){});
 
     sbFetch('news?select=*&order=published_at.desc,sort.asc&limit=12').then(function(rows){
