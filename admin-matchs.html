@@ -594,6 +594,14 @@
           <span class="sb-link-badge hide" id="sb-messages-badge">0</span>
         </button>
       </div>
+
+      <div class="sb-group">
+        <div class="sb-group-label">Sécurité</div>
+        <button class="sb-link" data-section="audit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Historique
+        </button>
+      </div>
     </aside>
 
     <div class="app-main">
@@ -1125,6 +1133,34 @@
       </div>
       <div id="forms-list"><div class="empty">Chargement…</div></div>
     </section>
+
+    <section id="section-audit" class="hide">
+      <div class="callout">Qui a modifié quoi dans l'espace gestion, et quand. Protégé par un mot de passe distinct de la connexion — utile pour retrouver un changement ou vérifier une modification.</div>
+
+      <div class="card" id="audit-lock-card">
+        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:18px 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:38px;height:38px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <div style="font-family:'Archivo',sans-serif;font-weight:800;font-size:17px;color:var(--text)">Accès verrouillé</div>
+          <div style="font-size:13px;color:var(--faint);max-width:38ch">Entrez le mot de passe de l'historique pour consulter les modifications.</div>
+          <div class="field" style="width:100%;max-width:280px;margin:6px 0 0">
+            <input type="password" id="audit-pwd" placeholder="Mot de passe" autocomplete="off">
+          </div>
+          <button type="button" class="btn btn-primary" id="audit-unlock-btn" style="max-width:280px">Déverrouiller</button>
+          <div class="msg" id="audit-lock-msg"></div>
+        </div>
+      </div>
+
+      <div class="hide" id="audit-content">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+          <input type="date" id="audit-filter-date" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Archivo',sans-serif;font-size:13px">
+          <input type="text" id="audit-search" placeholder="Chercher qui, où, un champ…" style="flex:1;min-width:180px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Archivo',sans-serif;font-size:13px">
+          <button type="button" class="link-btn" id="audit-clear-filters" style="flex:none">Réinitialiser</button>
+          <button type="button" class="link-btn" id="audit-relock-btn" style="flex:none" title="Reverrouiller l'historique">Verrouiller</button>
+        </div>
+        <div class="list-head"><h2>Modifications</h2><span class="list-count" id="audit-count">—</span></div>
+        <div id="audit-list"><div class="empty">Chargement…</div></div>
+      </div>
+    </section>
   </div>
     </div>
   </div>
@@ -1239,9 +1275,78 @@
   function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
 
   function sbGet(path){ return fetch(SUPABASE_URL+'/rest/v1/'+path, {headers:sbHeaders()}).then(function(r){ if(!r.ok) throw new Error('GET '+path); return r.json(); }); }
-  function sbInsert(table,body){ return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){ if(!r.ok){ if(r.status===409) throw new Error('duplicate'); throw new Error('insert'); } }); }
-  function sbUpdate(table,id,body){ return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'PATCH',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){ if(!r.ok) throw new Error('update'); }); }
-  function sbDelete(table,id){ return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'DELETE',headers:sbHeaders()}).then(function(r){ if(!r.ok) throw new Error('delete'); }); }
+  function sbInsert(table,body,sectionLabel){ return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){ if(!r.ok){ if(r.status===409) throw new Error('duplicate'); throw new Error('insert'); } auditLogInsert(table,body,sectionLabel); }); }
+  function sbUpdate(table,id,body,sectionLabel){ return sbGet(table+'?select=*&id=eq.'+id).then(function(rows){ return (rows&&rows[0])||null; }).catch(function(){ return null; }).then(function(before){ return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'PATCH',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){ if(!r.ok) throw new Error('update'); auditLogUpdate(table,id,before,body,sectionLabel); }); }); }
+  function sbDelete(table,id,sectionLabel){ return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'DELETE',headers:sbHeaders()}).then(function(r){ if(!r.ok) throw new Error('delete'); auditLogDelete(table,id,sectionLabel); }); }
+  function sbUpsert(table,body,sectionLabel){ return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)}).then(function(r){ if(!r.ok) throw new Error('upsert'); auditLogUpsert(table,body,sectionLabel); }); }
+
+  // ===================== HISTORIQUE / AUDIT LOG =====================
+  // Écrit discrètement une ligne dans admin_audit_log à chaque sauvegarde.
+  // N'importe quelle erreur ici est avalée : la journalisation ne doit
+  // jamais faire échouer une sauvegarde réelle de l'admin.
+  var AUDIT_NAMES = {
+    'mdgdesign221@gmail.com': 'Toi',
+    'baobabsbasketclub@gmail.com': 'Le gérant'
+  };
+  function auditUserName(){
+    var email = currentSession && currentSession.user && currentSession.user.email;
+    if (!email) return 'Inconnu';
+    return AUDIT_NAMES[email] || email;
+  }
+  function auditUserEmail(){
+    return (currentSession && currentSession.user && currentSession.user.email) || null;
+  }
+  function auditSend(section,table,recordId,field,oldVal,newVal){
+    try {
+      fetch(SUPABASE_URL+'/rest/v1/rpc/log_audit_entry',{method:'POST',headers:sbHeaders({'Content-Type':'application/json'}),body:JSON.stringify({
+        p_user_email: auditUserEmail(),
+        p_section: section || table || null,
+        p_table_name: table || null,
+        p_record_id: recordId==null?null:String(recordId),
+        p_field_key: field || null,
+        p_old_value: oldVal==null?null:String(oldVal),
+        p_new_value: newVal==null?null:String(newVal)
+      })}).catch(function(){});
+    } catch(e){}
+  }
+  function auditDiffFields(before, after, section, table, recordId){
+    before = before || {};
+    var keys = Object.keys(after||{});
+    keys.forEach(function(k){
+      var ov = before[k], nv = after[k];
+      var ovs = ov==null?'':String(ov), nvs = nv==null?'':String(nv);
+      if (ovs === nvs) return;
+      auditSend(section, table, recordId, k, ovs, nvs);
+    });
+  }
+  function auditLogInsert(table,body,sectionLabel){
+    var recordId = body && body.id != null ? body.id : null;
+    auditDiffFields({}, body, sectionLabel, table, recordId || '(nouveau)');
+  }
+  function auditLogUpdate(table,id,before,body,sectionLabel){
+    auditDiffFields(before, body, sectionLabel, table, id);
+  }
+  function auditLogDelete(table,id,sectionLabel){
+    auditSend(sectionLabel, table, id, '(supprimé)', '', '');
+  }
+  function auditLogUpsert(table,body,sectionLabel){
+    // site_settings arrive sous forme de tableau de lignes
+    // (ex: [{key:'club_name', value:'...'}, ...]) — on journalise ligne par ligne.
+    // org_roles est journalisé explicitement à son point d'appel (voir
+    // save-bureau-btn) car on y a un accès plus précis à l'état "avant".
+    if (table === 'org_roles') return;
+    var rows = Array.isArray(body) ? body : [body];
+    rows.forEach(function(row){
+      if (table === 'site_settings' && row && row.key != null) {
+        var before = (typeof settings !== 'undefined' && settings) ? settings[row.key] : null;
+        var beforeStr = before==null?'':String(before), afterStr = row.value==null?'':String(row.value);
+        if (beforeStr === afterStr) return;
+        auditSend(sectionLabel, table, row.key, row.key, beforeStr, afterStr);
+      } else {
+        auditSend(sectionLabel, table, (row && row.id) || null, '(upsert)', '', JSON.stringify(row));
+      }
+    });
+  }
   function uploadFile(bucket,file){ var path=Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'); return fetch(SUPABASE_URL+'/storage/v1/object/'+bucket+'/'+path,{method:'POST',headers:sbHeaders({'Content-Type':file.type||'application/octet-stream'}),body:file}).then(function(r){ if(!r.ok) throw new Error('upload'); return SUPABASE_URL+'/storage/v1/object/public/'+bucket+'/'+path; }); }
 
   // image control helper (upload OR url) -> Promise<url|null>
@@ -1276,9 +1381,10 @@
     partners:{t:'Partenaires',d:'Les logos et liens des partenaires du club.'},
     shop:{t:'Boutique',d:'Les produits proposés dans la boutique.'},
     forms:{t:'Messages',d:'Les inscriptions newsletter, messages de contact et commandes boutique envoyés depuis le site public.'},
-    home:{t:'Bandeau d\'accueil',d:'L\'image et le texte d\'accroche de la page d\'accueil.'}
+    home:{t:'Bandeau d\'accueil',d:'L\'image et le texte d\'accroche de la page d\'accueil.'},
+    audit:{t:'Historique',d:'Qui a modifié quoi, et quand — protégé par mot de passe.'}
   };
-  var ALL_SECTIONS = ['dashboard','matches','live','standings','roster','founder','bureau','staff','timeline','content','reglages','news','partners','shop','forms','home'];
+  var ALL_SECTIONS = ['dashboard','matches','live','standings','roster','founder','bureau','staff','timeline','content','reglages','news','partners','shop','forms','home','audit'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -1382,10 +1488,10 @@
     sel.innerHTML='<option value="">— Choisir une équipe —</option>'+teamsCache.map(function(t){ return '<option value="'+t.id+'">'+esc(t.name)+'</option>'; }).join('');
     if(cur) sel.value=cur;
   }
-  function addTeam(name,logoUrl){ return sbInsert('teams',{name:name,logo_url:logoUrl||null}).then(function(){ return loadTeams(); }); }
+  function addTeam(name,logoUrl){ return sbInsert('teams',{name:name,logo_url:logoUrl||null},'Adversaires').then(function(){ return loadTeams(); }); }
   function deleteTeam(id){
     if(!confirm('Supprimer cet adversaire ? Les matchs déjà enregistrés gardent son nom et son logo.')) return;
-    sbDelete('teams',id).then(loadTeams).catch(function(){ alert('Erreur lors de la suppression.'); });
+    sbDelete('teams',id,'Adversaires').then(loadTeams).catch(function(){ alert('Erreur lors de la suppression.'); });
   }
   wireDidYouMean(document.getElementById('team_name'), document.getElementById('dym_team_name'), knownTeamNames);
 
@@ -1591,13 +1697,13 @@
     imageValue('match-photos', document.getElementById('mp_file'), document.getElementById('mp_url'), document.getElementById('mp_mode_url'))
       .then(function(photoUrl){
         var payload={ opponent_name:f.team.name, opponent_logo_url:f.team.logo_url||null, match_date:f.match_date, match_time:f.match_time||null, is_home:f.is_home, venue:f.venue||null, competition:f.competition||null, photo_url:photoUrl||null, stream_url:f.stream_url||null, notes:f.notes||null, score_baobabs:f.bothScores?parseInt(f.sb,10):null, score_opponent:f.bothScores?parseInt(f.so,10):null };
-        return editingMatchId ? sbUpdate('matches',editingMatchId,payload) : sbInsert('matches',payload);
+        return editingMatchId ? sbUpdate('matches',editingMatchId,payload,'Matchs') : sbInsert('matches',payload,'Matchs');
       })
       .then(function(){ showMsg(msg,editingMatchId?'Match mis à jour.':'Match ajouté.',true); resetMatchForm(); loadMatches(); })
       .catch(function(){ showMsg(msg,"Erreur lors de l'enregistrement. Si les champs photo/replay/notes sont utilisés, vérifiez que la migration SQL a bien été exécutée.",false); })
       .finally(function(){ btn.disabled=false; });
   });
-  function deleteMatch(id){ if(!confirm('Supprimer ce match ?'))return; sbDelete('matches',id).then(loadMatches).catch(function(){ alert('Erreur lors de la suppression.'); }); }
+  function deleteMatch(id){ if(!confirm('Supprimer ce match ?'))return; sbDelete('matches',id,'Matchs').then(loadMatches).catch(function(){ alert('Erreur lors de la suppression.'); }); }
 
   ['opponent_select','match_date','match_time','is_home','venue','competition','stream_url','score_baobabs','score_opponent','mp_url'].forEach(function(id){
     var el=document.getElementById(id); el.addEventListener('input',updatePreview); el.addEventListener('change',updatePreview);
@@ -1606,11 +1712,11 @@
   // ===================== RÉGLAGES (site_settings) =====================
   var settings={};
   function loadSettings(){ return sbGet('site_settings?select=*').then(function(rows){ settings={}; (rows||[]).forEach(function(r){ settings[r.key]=r.value; }); }).catch(function(){ settings={}; }); }
-  function saveSettings(pairs,msg,btn){
+  function saveSettings(pairs,msg,btn,sectionLabel){
     btn.disabled=true;
     var body=Object.keys(pairs).map(function(k){ return {key:k, value:pairs[k]==null?'':String(pairs[k])}; });
-    fetch(SUPABASE_URL+'/rest/v1/site_settings',{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)})
-      .then(function(r){ if(!r.ok) throw new Error('settings'); Object.keys(pairs).forEach(function(k){ settings[k]=pairs[k]; }); showMsg(msg,'Enregistré.',true); })
+    sbUpsert('site_settings',body,sectionLabel)
+      .then(function(){ Object.keys(pairs).forEach(function(k){ settings[k]=pairs[k]; }); showMsg(msg,'Enregistré.',true); })
       .catch(function(){ showMsg(msg,"Erreur. Vérifiez que la table 'site_settings' existe (migration SQL).",false); })
       .finally(function(){ btn.disabled=false; });
   }
@@ -1619,7 +1725,7 @@
 
   LOADERS_live=function(){ document.getElementById('set_yt_channel').value=settings.yt_channel_id||''; document.getElementById('set_live_note').value=settings.live_offline_note||''; };
   document.getElementById('save-live-btn').addEventListener('click',function(){
-    saveSettings({ yt_channel_id:document.getElementById('set_yt_channel').value.trim(), live_offline_note:document.getElementById('set_live_note').value.trim() }, document.getElementById('live-msg'), this);
+    saveSettings({ yt_channel_id:document.getElementById('set_yt_channel').value.trim(), live_offline_note:document.getElementById('set_live_note').value.trim() }, document.getElementById('live-msg'), this, 'Réglages · Live');
   });
   LOADERS_home=function(){
     document.getElementById('set_hero_title').value=settings.hero_title||''; document.getElementById('set_hero_subtitle').value=settings.hero_subtitle||'';
@@ -1632,7 +1738,7 @@
   document.getElementById('save-home-btn').addEventListener('click',function(){
     var msg=document.getElementById('home-msg'); var btn=this; btn.disabled=true;
     imageValue(MEDIA_BUCKET, document.getElementById('hero_file'), document.getElementById('hero_url'), document.getElementById('hero_mode_url'))
-      .then(function(url){ saveSettings({ hero_title:document.getElementById('set_hero_title').value.trim(), hero_subtitle:document.getElementById('set_hero_subtitle').value.trim(), hero_image_url:url||'', hero_title_color:document.getElementById('set_hero_title_color').value, hero_subtitle_color:document.getElementById('set_hero_subtitle_color').value, club_email:document.getElementById('set_club_email').value.trim() }, msg, btn); })
+      .then(function(url){ saveSettings({ hero_title:document.getElementById('set_hero_title').value.trim(), hero_subtitle:document.getElementById('set_hero_subtitle').value.trim(), hero_image_url:url||'', hero_title_color:document.getElementById('set_hero_title_color').value, hero_subtitle_color:document.getElementById('set_hero_subtitle_color').value, club_email:document.getElementById('set_club_email').value.trim() }, msg, btn, 'Accueil · Hero'); })
       .catch(function(){ showMsg(msg,'Erreur lors de l\'upload de l\'image.',false); btn.disabled=false; });
   });
 
@@ -1672,7 +1778,7 @@
   document.getElementById('save-founder-btn').addEventListener('click',function(){
     var msg=document.getElementById('founder-msg'); var btn=this; btn.disabled=true;
     imageValue(MEDIA_BUCKET, document.getElementById('founder_file'), document.getElementById('founder_url'), document.getElementById('founder_mode_url'))
-      .then(function(url){ saveSettings({ founder_name:document.getElementById('set_founder_name').value.trim(), founder_role:document.getElementById('set_founder_role').value.trim(), founder_bio:document.getElementById('set_founder_bio').value.trim(), founder_photo_url:url||'' }, msg, btn); })
+      .then(function(url){ saveSettings({ founder_name:document.getElementById('set_founder_name').value.trim(), founder_role:document.getElementById('set_founder_role').value.trim(), founder_bio:document.getElementById('set_founder_bio').value.trim(), founder_photo_url:url||'' }, msg, btn, 'Fondateur'); })
       .catch(function(){ showMsg(msg,'Erreur lors de l\'upload de l\'image.',false); btn.disabled=false; });
   });
 
@@ -1741,8 +1847,11 @@
           responsibilities:document.getElementById('set_bureau_resp').value.trim()||null,
           powers:document.getElementById('set_bureau_powers').value.trim()||null,
           limits:document.getElementById('set_bureau_limits').value.trim()||null };
-        return fetch(SUPABASE_URL+'/rest/v1/org_roles',{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)})
-          .then(function(res){ if(!res.ok) throw new Error('org'); bureauMap[k]=body; showMsg(msg,'Poste enregistré.',true); });
+        var before=bureauMap[k]||{};
+        return sbUpsert('org_roles',body,'Organigramme — '+(bureauMap[k]&&bureauMap[k].holder_name?bureauMap[k].holder_name:k)).then(function(){
+          auditDiffFields(before, body, 'Organigramme', 'org_roles', k);
+          bureauMap[k]=body; showMsg(msg,'Poste enregistré.',true);
+        });
       })
       .catch(function(){ showMsg(msg,"Erreur. Vérifiez que la table 'org_roles' existe (migration SQL).",false); })
       .finally(function(){ btn.disabled=false; });
@@ -2081,7 +2190,8 @@
           else payload[f.name]=(v.trim()===''?null:v.trim());
         });
         imgs.forEach(function(o){ payload[o.name]=Array.isArray(o.val)?(o.val.length?o.val:null):(o.val||null); });
-        return c._editing ? sbUpdate(c.table,c._editing,payload) : sbInsert(c.table,payload);
+        var lbl=c.title||key;
+        return c._editing ? sbUpdate(c.table,c._editing,payload,lbl) : sbInsert(c.table,payload,lbl);
       })
       .then(function(){ showMsg(msg,c._editing?'Modifié.':'Ajouté.',true); resetCollectionForm(key); loadCollection(key); })
       .catch(function(){ showMsg(msg,"Erreur lors de l'enregistrement. Vérifiez que la table « "+c.table+" » et le bucket existent (migration SQL).",false); })
@@ -2089,7 +2199,7 @@
   }
   function deleteCollection(key,id){
     var c=COLLECTIONS[key]; if(!confirm('Supprimer cet élément ?'))return;
-    sbDelete(c.table,id).then(function(){ loadCollection(key); }).catch(function(){ alert('Erreur lors de la suppression.'); });
+    sbDelete(c.table,id,c.title||key).then(function(){ loadCollection(key); }).catch(function(){ alert('Erreur lors de la suppression.'); });
   }
 
   // Mini-catalogue boutique — juste de quoi illustrer une commande (photo + nom).
@@ -2249,7 +2359,7 @@
       list.querySelectorAll('.form-del').forEach(function(b){
         b.addEventListener('click',function(){
           if(!confirm('Supprimer cet élément ?')) return;
-          sbDelete(b.getAttribute('data-table'),b.getAttribute('data-id')).then(loadForms).catch(function(){ alert('Erreur lors de la suppression.'); });
+          sbDelete(b.getAttribute('data-table'),b.getAttribute('data-id'),'Messages').then(loadForms).catch(function(){ alert('Erreur lors de la suppression.'); });
         });
       });
       list.querySelectorAll('.order-status-pill').forEach(function(b){
@@ -2259,14 +2369,14 @@
           var history; try{ history=row&&Array.isArray(row.status_history)?row.status_history.slice():(row?JSON.parse(row.status_history||'[]'):[]); }catch(e){ history=[]; }
           history.push({status:newStatus, at:new Date().toISOString()});
           list.querySelectorAll('.order-status-pill[data-id="'+id+'"]').forEach(function(x){ x.disabled=true; });
-          sbUpdate('orders',id,{status:newStatus, status_history:history}).then(loadForms).catch(function(){ alert('Erreur lors de la mise à jour du statut.'); loadForms(); });
+          sbUpdate('orders',id,{status:newStatus, status_history:history},'Commandes').then(loadForms).catch(function(){ alert('Erreur lors de la mise à jour du statut.'); loadForms(); });
         });
       });
       list.querySelectorAll('.contact-read-toggle').forEach(function(b){
         b.addEventListener('click',function(){
           var id=b.getAttribute('data-id'), newRead=b.getAttribute('data-read')==='1';
           b.disabled=true;
-          sbUpdate('contact_messages',id,{is_read:newRead}).then(loadForms).catch(function(){ alert('Erreur lors de la mise à jour.'); b.disabled=false; });
+          sbUpdate('contact_messages',id,{is_read:newRead},'Messages · Contact').then(loadForms).catch(function(){ alert('Erreur lors de la mise à jour.'); b.disabled=false; });
         });
       });
       list.querySelectorAll('.order-history-toggle').forEach(function(b){
@@ -2281,7 +2391,7 @@
           if(b.classList.contains('current')) return;
           var id=b.getAttribute('data-id'), st=b.getAttribute('data-s');
           list.querySelectorAll('.rec-status-pill[data-id="'+id+'"]').forEach(function(x){ x.classList.toggle('current', x===b); });
-          sbUpdate('recruitment_requests',id,{status:st}).then(function(){ loadDashboard && loadDashboard(); }).catch(function(){ alert('Erreur lors de la mise à jour du statut.'); loadForms(); });
+          sbUpdate('recruitment_requests',id,{status:st},'Candidatures').then(function(){ loadDashboard && loadDashboard(); }).catch(function(){ alert('Erreur lors de la mise à jour du statut.'); loadForms(); });
         });
       });
       list.querySelectorAll('.rec-star').forEach(function(b){
@@ -2291,12 +2401,12 @@
           var already=(cur[v-1] && cur[v-1].classList.contains('on') && (v===cur.length || !cur[v].classList.contains('on')));
           var val=already?0:v;
           cur.forEach(function(x,i){ x.classList.toggle('on', i<val); });
-          sbUpdate('recruitment_requests',id,{rating:val}).catch(function(){ alert('Erreur note.'); loadForms(); });
+          sbUpdate('recruitment_requests',id,{rating:val},'Candidatures').catch(function(){ alert('Erreur note.'); loadForms(); });
         });
       });
       list.querySelectorAll('.rec-notes').forEach(function(t){
         var to=null;
-        t.addEventListener('input',function(){ clearTimeout(to); to=setTimeout(function(){ sbUpdate('recruitment_requests',t.getAttribute('data-id'),{admin_notes:t.value}).catch(function(){}); },700); });
+        t.addEventListener('input',function(){ clearTimeout(to); to=setTimeout(function(){ sbUpdate('recruitment_requests',t.getAttribute('data-id'),{admin_notes:t.value},'Candidatures').catch(function(){}); },700); });
       });
   }
   function loadForms(){
@@ -2440,8 +2550,114 @@
     partners:function(){ qgvInit('partners'); },
     shop:function(){ qgvInit('shop'); },
     standings:function(){ qgvInit('standings'); },
-    forms:function(){ loadForms(); }
+    forms:function(){ loadForms(); },
+    audit:function(){ /* rien à charger tant que le mot de passe n'est pas entré */ }
   };
+
+  // ===================== HISTORIQUE — UI =====================
+  var auditRows = null; // null = pas encore déverrouillé
+  var auditPwdCache = null;
+
+  function auditFormatWhen(iso){
+    if(!iso) return '';
+    var d = new Date(iso);
+    var datePart = d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    var timePart = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    return datePart+' à '+timePart;
+  }
+
+  function auditRenderList(){
+    var wrap=document.getElementById('audit-list'); if(!wrap) return;
+    var countEl=document.getElementById('audit-count');
+    if(!auditRows){ wrap.innerHTML='<div class="empty">Verrouillé.</div>'; if(countEl) countEl.textContent='—'; return; }
+
+    var dateFilter=(document.getElementById('audit-filter-date')||{}).value||'';
+    var q=((document.getElementById('audit-search')||{}).value||'').trim().toLowerCase();
+
+    var rows=auditRows.filter(function(r){
+      if(dateFilter){
+        var d=new Date(r.created_at);
+        var localDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        if(localDate!==dateFilter) return false;
+      }
+      if(q){
+        var hay=[r.user_email,r.section,r.table_name,r.field_key,r.old_value,r.new_value].join(' ').toLowerCase();
+        if(hay.indexOf(q)===-1) return false;
+      }
+      return true;
+    });
+
+    if(countEl) countEl.textContent=rows.length+(rows.length>1?' modifications':' modification');
+    if(!rows.length){ wrap.innerHTML='<div class="empty">Aucune modification trouvée.</div>'; return; }
+
+    wrap.innerHTML=rows.map(function(r){
+      var who=AUDIT_NAMES[r.user_email]||r.user_email||'Inconnu';
+      var when=auditFormatWhen(r.created_at);
+      var where=r.section||r.table_name||'—';
+      var field=r.field_key||'';
+      var oldV=(r.old_value==null||r.old_value==='')?'<i>(vide)</i>':esc(String(r.old_value)).slice(0,180);
+      var newV=(r.new_value==null||r.new_value==='')?'<i>(vide)</i>':esc(String(r.new_value)).slice(0,180);
+      return '<div class="card" style="margin-bottom:10px;padding:16px 18px">'+
+        '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline;margin-bottom:8px">'+
+          '<div style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:13.5px;color:var(--text)">'+esc(who)+'</div>'+
+          '<div style="font-size:11.5px;color:var(--faint)">'+esc(when)+'</div>'+
+        '</div>'+
+        '<div style="font-size:12.5px;color:var(--gold);font-weight:700;margin-bottom:6px">'+esc(where)+(field?' — '+esc(field):'')+'</div>'+
+        '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:start;font-size:12.5px">'+
+          '<div style="color:var(--faint);word-break:break-word">'+oldV+'</div>'+
+          '<div style="color:var(--faint)">→</div>'+
+          '<div style="color:var(--text);word-break:break-word">'+newV+'</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+
+  function auditUnlock(){
+    var input=document.getElementById('audit-pwd');
+    var msg=document.getElementById('audit-lock-msg');
+    var btn=document.getElementById('audit-unlock-btn');
+    var pwd=(input.value||'').trim();
+    if(!pwd){ showMsg(msg,'Entrez un mot de passe.',false); return; }
+    btn.disabled=true; showMsg(msg,'Vérification…',true);
+    fetch(SUPABASE_URL+'/rest/v1/rpc/verify_audit_password',{method:'POST',headers:sbHeaders({'Content-Type':'application/json'}),body:JSON.stringify({pwd:pwd})})
+      .then(function(r){ if(!r.ok) throw new Error('rpc'); return r.json(); })
+      .then(function(rows){
+        if(!rows || !rows.length){
+          // Résultat vide : soit mauvais mot de passe, soit historique réellement vide.
+          // On ne peut pas distinguer les deux côté client sans indice supplémentaire —
+          // message volontairement neutre.
+          showMsg(msg,"Mot de passe incorrect, ou aucune modification enregistrée pour l'instant.",false);
+          btn.disabled=false;
+          return;
+        }
+        auditRows=rows; auditPwdCache=pwd;
+        document.getElementById('audit-lock-card').classList.add('hide');
+        document.getElementById('audit-content').classList.remove('hide');
+        showMsg(msg,'',true);
+        auditRenderList();
+      })
+      .catch(function(){ showMsg(msg,'Erreur de connexion. Vérifiez que le script SQL a bien été exécuté.',false); })
+      .finally(function(){ btn.disabled=false; });
+  }
+
+  function auditRelock(){
+    auditRows=null; auditPwdCache=null;
+    document.getElementById('audit-pwd').value='';
+    document.getElementById('audit-content').classList.add('hide');
+    document.getElementById('audit-lock-card').classList.remove('hide');
+    showMsg(document.getElementById('audit-lock-msg'),'',true);
+  }
+
+  document.getElementById('audit-unlock-btn').addEventListener('click',auditUnlock);
+  document.getElementById('audit-pwd').addEventListener('keydown',function(e){ if(e.key==='Enter') auditUnlock(); });
+  document.getElementById('audit-relock-btn').addEventListener('click',auditRelock);
+  document.getElementById('audit-filter-date').addEventListener('change',auditRenderList);
+  document.getElementById('audit-search').addEventListener('input',auditRenderList);
+  document.getElementById('audit-clear-filters').addEventListener('click',function(){
+    document.getElementById('audit-filter-date').value='';
+    document.getElementById('audit-search').value='';
+    auditRenderList();
+  });
 
   // ===================== VISITE GUIDÉE =====================
   var TOUR_STEPS = [
@@ -2694,7 +2910,8 @@
     var btn=document.getElementById('qg-save'); if(btn){ btn.disabled=true; btn.textContent='Enregistrement…'; }
     var payload=qgPayload(cur);
     var isNew=QG.sel==='__new__';
-    var p = isNew ? sbInsert('players',payload) : sbUpdate('players',cur.id,payload);
+    var effLbl='Effectif — '+(cur.name||'(sans nom)');
+    var p = isNew ? sbInsert('players',payload,effLbl) : sbUpdate('players',cur.id,payload,effLbl);
     p.then(function(){
       qgToast(isNew?'Joueuse ajoutée au site ✓':'Modifications enregistrées ✓');
       QG.draft=null; if(isNew) QG.sel=null;
@@ -2707,13 +2924,13 @@
     if(id==='__new__'){ QG.sel=null; QG.draft=null; qgRenderCards(); qgRenderInspector(); return; }
     var r=QG.rows.filter(function(x){return String(x.id)===String(id);})[0];
     if(!confirm('Supprimer '+((r&&r.name)?r.name:'cette fiche')+' ?')) return;
-    sbDelete('players',id).then(function(){ qgToast('Fiche supprimée ✓'); if(String(QG.sel)===String(id)) QG.sel=null; loadDashboard && loadDashboard(); qgLoad(); qgRenderInspector(); })
+    sbDelete('players',id,'Effectif — '+((r&&r.name)?r.name:'(sans nom)')).then(function(){ qgToast('Fiche supprimée ✓'); if(String(QG.sel)===String(id)) QG.sel=null; loadDashboard && loadDashboard(); qgLoad(); qgRenderInspector(); })
       .catch(function(){ qgToast('Erreur lors de la suppression.',true); });
   }
   function qgDuplicate(id){
     var r=QG.rows.filter(function(x){return String(x.id)===String(id);})[0]; if(!r) return;
     var copy=qgPayload(r); copy.name=(r.name||'Joueuse')+' (copie)'; copy.jersey_number=null; copy.sort=QG.rows.length;
-    sbInsert('players',copy).then(function(){ qgToast('Fiche dupliquée ✓'); qgLoad(); }).catch(function(){ qgToast('Erreur lors de la duplication.',true); });
+    sbInsert('players',copy,'Effectif — '+copy.name).then(function(){ qgToast('Fiche dupliquée ✓'); qgLoad(); }).catch(function(){ qgToast('Erreur lors de la duplication.',true); });
   }
   function qgDrop(targetId){
     var from=QG.dragId; QG.dragId=null;
@@ -2723,7 +2940,7 @@
     if(fi<0||ti<0){ qgRenderCards(); return; }
     var m=arr.splice(fi,1)[0]; arr.splice(ti,0,m);
     QG.rows=arr; qgRenderCards();
-    var proms=[]; arr.forEach(function(x,i){ if(x.sort!==i){ x.sort=i; proms.push(sbUpdate('players',x.id,{sort:i})); } });
+    var proms=[]; arr.forEach(function(x,i){ if(x.sort!==i){ x.sort=i; proms.push(sbUpdate('players',x.id,{sort:i},'Effectif — ordre')); } });
     if(proms.length) Promise.all(proms).then(function(){ qgToast('Ordre enregistré ✓'); }).catch(function(){ qgToast('Ordre non sauvegardé.',true); });
   }
 
@@ -2989,11 +3206,12 @@
     var isNew=qgvState(key).sel==='__new__'; var payload=qgvPayload(key,cur);
     var makeFeatured=(key==='partners' && (payload.featured===true));
     var btn=document.getElementById('qgv-save-'+key); if(btn){ btn.disabled=true; btn.textContent='Enregistrement…'; }
-    (isNew?sbInsert(c.table,payload):sbUpdate(c.table,cur.id,payload)).then(function(){
+    var qgvLbl=c.title||key;
+    (isNew?sbInsert(c.table,payload,qgvLbl):sbUpdate(c.table,cur.id,payload,qgvLbl)).then(function(){
       qgToast(isNew?'Ajouté au site ✓':'Modifications enregistrées ✓');
       var S=qgvState(key); S.draft=null; if(isNew) S.sel=null;
       loadDashboard && loadDashboard();
-      if(makeFeatured){ var others=qgvState(key).rows.filter(function(r){ return String(r.id)!==String(cur.id) && (r.featured===true||r.featured==='true'); }); return Promise.all(others.map(function(r){ return sbUpdate('partners',r.id,{featured:false}); })).then(function(){ return sbGet(c.table+'?select=*&order='+c.order); }); }
+      if(makeFeatured){ var others=qgvState(key).rows.filter(function(r){ return String(r.id)!==String(cur.id) && (r.featured===true||r.featured==='true'); }); return Promise.all(others.map(function(r){ return sbUpdate('partners',r.id,{featured:false},qgvLbl); })).then(function(){ return sbGet(c.table+'?select=*&order='+c.order); }); }
       return sbGet(c.table+'?select=*&order='+c.order);
     }).then(function(rows){ qgvState(key).rows=rows||[]; qgvRenderCards(key); qgvRenderInspector(key); })
       .catch(function(){ qgToast('Erreur lors de l\'enregistrement (table / migration SQL ?).',true); if(btn){ btn.disabled=false; btn.textContent=isNew?'Ajouter au site':'Enregistrer'; } });
@@ -3002,7 +3220,7 @@
     var S=qgvState(key);
     if(id==='__new__'){ S.sel=null; S.draft=null; qgvRenderCards(key); qgvRenderInspector(key); return; }
     if(!confirm('Supprimer cet élément ?')) return;
-    sbDelete(COLLECTIONS[key].table,id).then(function(){ qgToast('Supprimé ✓'); if(String(S.sel)===String(id)) S.sel=null; loadDashboard && loadDashboard(); qgvLoad(key); qgvRenderInspector(key); })
+    sbDelete(COLLECTIONS[key].table,id,COLLECTIONS[key].title||key).then(function(){ qgToast('Supprimé ✓'); if(String(S.sel)===String(id)) S.sel=null; loadDashboard && loadDashboard(); qgvLoad(key); qgvRenderInspector(key); })
       .catch(function(){ qgToast('Erreur lors de la suppression.',true); });
   }
 
@@ -3137,7 +3355,7 @@
   function qgcPreview(bl){ var pv=document.getElementById('qgc-pv-'+bl.id); if(pv && bl.preview) pv.innerHTML=bl.preview(qgcCollect(bl)); }
   function qgcSave(blockId,btn){
     var bl=qgcAll().filter(function(b){return b.id===blockId;})[0]; if(!bl) return;
-    saveSettings(qgcCollect(bl), document.getElementById('qgc-msg-'+blockId), btn);
+    saveSettings(qgcCollect(bl), document.getElementById('qgc-msg-'+blockId), btn, bl.page||bl.label);
   }
 
   // --- Bloc de cadrage image réutilisable (moteur roster) ---
