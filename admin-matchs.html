@@ -238,6 +238,7 @@
   .order-history-item .h-status{font-weight:700;color:var(--text)}
   .order-history-item .h-date{color:var(--faint);white-space:nowrap}
   .status-loss{background:rgba(229,86,74,.12);color:#F0847A;border-color:rgba(229,86,74,.3)}
+  .rec-alert{background:rgba(229,86,74,.12);color:#F0847A;border-color:rgba(229,86,74,.3)}
   .status-off{background:rgba(243,239,230,.08);color:var(--muted)}
   .item-actions{display:flex;gap:7px;flex:none}
   .icon-btn{background:var(--surface-2);border:1px solid var(--line-strong);color:var(--muted);border-radius:9px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex:none;transition:border-color .15s,color .15s}
@@ -1483,7 +1484,12 @@
       var logo=m.opponent_logo_url?'<img class="rec-thumb circle" src="'+esc(m.opponent_logo_url)+'" alt="">':'<div class="rec-noimg circle" style="background:'+fallbackColor(m.opponent_name)+'">'+esc(initials(m.opponent_name))+'</div>';
       var pill,score='';
       if(played){ var win=m.score_baobabs>m.score_opponent; pill='<span class="status-pill '+(win?'status-win':'status-loss')+'">'+(win?'Victoire':(m.score_baobabs===m.score_opponent?'Nul':'Défaite'))+'</span>'; score=' · <b>'+m.score_baobabs+' – '+m.score_opponent+'</b>'; }
-      else pill='<span class="status-pill status-upcoming">À venir</span>';
+      else {
+        var dLeft=m.match_date?daysUntil(m.match_date):null;
+        if(dLeft!=null && dLeft<0) pill='<span class="status-pill rec-alert">Score à saisir</span>';
+        else if(dLeft!=null && dLeft>=0 && dLeft<=2 && !m.venue) pill='<span class="status-pill rec-alert">Lieu à renseigner</span>';
+        else pill='<span class="status-pill status-upcoming">À venir</span>';
+      }
       return '<div class="rec-item">'+logo+'<div class="rec-main"><div class="rec-title">'+pill+' Baobabs '+lieu+' '+esc(m.opponent_name)+score+'</div><div class="rec-meta">'+esc(formatDateShort(m.match_date))+(m.match_time?' · '+esc(m.match_time):'')+(m.competition?' · '+esc(m.competition):'')+'</div></div>'+
         '<div class="item-actions"><button class="icon-btn edit-btn" data-id="'+m.id+'" title="Modifier" aria-label="Modifier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>'+
         '<button class="icon-btn danger del-btn" data-id="'+m.id+'" title="Supprimer" aria-label="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div></div>';
@@ -2723,6 +2729,9 @@
   function qgvSave(key){
     var c=COLLECTIONS[key]; var cur=qgvCurrent(key); if(!cur) return;
     for(var i=0;i<c.fields.length;i++){ var f=c.fields[i]; if(f.required){ var v=cur[f.name]; if(v==null||String(v).trim()===''){ qgToast('« '+f.label+' » est obligatoire.',true); return; } } }
+    if(key==='roster' && !cur.photo_url){ if(!confirm('Cette fiche n\'a pas de photo. Enregistrer quand même ?')) return; }
+    if(key==='shop' && (cur.in_stock!==false && cur.in_stock!=='false') && !(Array.isArray(cur.images)&&cur.images.filter(Boolean).length)){ if(!confirm('Ce produit est marqué « En stock » mais n\'a aucune photo. Enregistrer quand même ?')) return; }
+    if(key==='partners' && !cur.logo_url && !cur.website_url){ if(!confirm('Ce partenaire n\'a ni logo ni site web. Enregistrer quand même ?')) return; }
     var isNew=qgvState(key).sel==='__new__'; var payload=qgvPayload(key,cur);
     var btn=document.getElementById('qgv-save-'+key); if(btn){ btn.disabled=true; btn.textContent='Enregistrement…'; }
     (isNew?sbInsert(c.table,payload):sbUpdate(c.table,cur.id,payload)).then(function(){
