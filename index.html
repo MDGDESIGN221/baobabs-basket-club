@@ -1734,7 +1734,7 @@
               '<div class="bb-spot" style="position:absolute;left:50%;top:-12%;width:120%;height:52%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.14),transparent 74%);pointer-events:none;z-index:1"></div>' +
               '<div class="bb-badge" style="position:absolute;top:12px;left:12px;z-index:4;font-family:\'Archivo\',sans-serif;font-weight:900;font-size:13px;color:#0A1B0D;background:#A8D93B;border-radius:8px;padding:4px 9px;line-height:1">#' + p.no + '</div>' +
               '<span class="bb-pos-badge ' + posClass(p.pos) + '">' + esc(p.pos) + '</span>' +
-              '<img class="bb-portrait" src="' + p.src + '" alt="' + esc(p.name) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;z-index:2;transition:transform .5s cubic-bezier(.16,.8,.3,1)">' +
+              '<img class="bb-portrait" src="' + p.src + '" alt="' + esc(p.name) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';transform:scale(' + ((p.pz==null?100:p.pz)/100) + ');transform-origin:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';z-index:2;transition:transform .5s cubic-bezier(.16,.8,.3,1)">' +
               '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(6,13,9,.93) 0%,rgba(6,13,9,.12) 42%,transparent 62%);z-index:3"></div>' +
               '<div class="bb-name" style="position:absolute;left:16px;right:14px;bottom:16px;z-index:5">' +
                 '<div style="font-family:\'Archivo Black\',sans-serif;font-weight:900;font-size:22px;color:' + (p.nameColor||'#F3EFE6') + ';line-height:1.02;letter-spacing:.01em">' + esc(p.name) + '</div>' +
@@ -2087,6 +2087,8 @@
     document.getElementById('bb-player-bignum').textContent = p.no;
     var img = document.getElementById('bb-player-img');
     img.src = p.src; img.alt = p.name;
+    var mpx=(p.px==null?50:p.px), mpy=(p.py==null?0:p.py), mpz=(p.pz==null?100:p.pz);
+    img.style.objectPosition=mpx+'% '+mpy+'%'; img.style.transform='scale('+(mpz/100)+')'; img.style.transformOrigin=mpx+'% '+mpy+'%';
     document.getElementById('bb-player-stats').innerHTML =
       '<div class="bb-pl-stat"><b>' + p.age + '</b><span>ans</span></div>' +
       '<div class="bb-pl-stat"><b>' + esc(p.height) + '</b><span>Taille</span></div>' +
@@ -2559,7 +2561,8 @@
       players = rows.map(function(r){
         return { no: (r.jersey_number!=null?r.jersey_number:''), name:r.name||'', pos:r.position||'',
           age:(r.birth_year? (new Date().getFullYear()-r.birth_year):''), height:r.height||'', foot:r.city||'',
-          src:r.photo_url||'', nameColor:r.name_color||'', bio:r.bio||'' };
+          src:r.photo_url||'', nameColor:r.name_color||'', bio:r.bio||'',
+          px:(r.photo_x==null||r.photo_x==='')?50:r.photo_x, py:(r.photo_y==null||r.photo_y==='')?0:r.photo_y, pz:(r.photo_zoom==null||r.photo_zoom==='')?100:r.photo_zoom };
       });
       renderPlayers();
     }).catch(function(){});

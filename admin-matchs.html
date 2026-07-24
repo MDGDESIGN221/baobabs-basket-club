@@ -2476,8 +2476,9 @@
     var name = (r.name&&r.name.trim())? r.name : 'Nouvelle joueuse';
     var pos = r.position || '';
     var isSel = QG.sel!=null && String(QG.sel)===String(idAttr);
+    var rpx=(r.photo_x==null||r.photo_x==='')?50:r.photo_x, rpy=(r.photo_y==null||r.photo_y==='')?0:r.photo_y, rpz=(r.photo_zoom==null||r.photo_zoom==='')?100:r.photo_zoom;
     var photo = r.photo_url
-      ? '<img src="'+esc(r.photo_url)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;z-index:2;pointer-events:none">'
+      ? '<img src="'+esc(r.photo_url)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:'+rpx+'% '+rpy+'%;transform:scale('+(rpz/100)+');transform-origin:'+rpx+'% '+rpy+'%;z-index:2;pointer-events:none">'
       : '<div style="position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;color:#5C6B60"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg><span style="font-size:11px;font-weight:600">Photo à ajouter</span></div>';
     var badge = hasNo ? '<div style="position:absolute;top:11px;left:11px;z-index:4;font-family:\'Archivo\',sans-serif;font-weight:900;font-size:12px;color:#0A1B0D;background:#A8D93B;border-radius:8px;padding:3px 8px;line-height:1">#'+esc(big)+'</div>' : '';
     var posBadge = pos ? '<div style="position:absolute;top:11px;right:11px;z-index:4;font-family:\'Archivo\',sans-serif;font-weight:700;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#C6E3F5;background:rgba(90,168,217,.16);border:1px solid rgba(90,168,217,.5);border-radius:100px;padding:3px 9px;line-height:1;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(pos)+'</div>' : '';
@@ -2516,7 +2517,7 @@
   }
 
   function qgSelect(id){ QG.sel=id; if(id!=='__new__') QG.draft=null; qgRenderCards(); qgRenderInspector(); }
-  function qgAdd(){ QG.sel='__new__'; QG.draft={ name:'', jersey_number:'', position:'', height:'', city:'', birth_year:'', photo_url:'', name_color:'', bio:'', sort:QG.rows.length }; qgRenderCards(); qgRenderInspector(); window.scrollTo({top:0,behavior:'smooth'}); }
+  function qgAdd(){ QG.sel='__new__'; QG.draft={ name:'', jersey_number:'', position:'', height:'', city:'', birth_year:'', photo_url:'', photo_x:50, photo_y:0, photo_zoom:100, name_color:'', bio:'', sort:QG.rows.length }; qgRenderCards(); qgRenderInspector(); window.scrollTo({top:0,behavior:'smooth'}); }
 
   function qgRenderInspector(){
     var el=document.getElementById('qg-inspector'); if(!el) return;
@@ -2549,7 +2550,8 @@
         '<div class="qg-field"><label>Ville</label><input class="qg-in" id="qg-f-city" placeholder="Dakar" value="'+esc(cur.city)+'"></div>'+
         '<div class="qg-field"><label>Photo</label><input class="qg-in" id="qg-f-photo" placeholder="https://… .png" value="'+esc(cur.photo_url)+'" style="font-size:12.5px">'+
           '<div class="qg-photo-actions"><label class="qg-file-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span id="qg-file-label">Téléverser</span><input type="file" id="qg-f-file" accept="image/*" style="display:none"></label></div>'+
-          '<div class="qg-hint" style="margin-top:8px">PNG détouré ou photo carrée — s\'affiche comme les autres cartes.</div></div>'+
+          '<div class="qg-hint" style="margin-top:8px">PNG détouré ou photo carrée — s\'affiche comme les autres cartes.</div>'+
+          qgPosBlock('qg-f-photo', cur, 'photo')+'</div>'+
         '<div class="qg-field"><label>Bio · fiche scouting</label>'+qgRTField('qg-f-bio', cur.bio||'', 'Quelques lignes sur la joueuse… (sélectionne un mot pour le mettre en gras, surligner ou colorer)')+'</div>'+
       '</div>'+
       '<div class="qg-insp-foot">'+
@@ -2559,7 +2561,7 @@
     qgBind('qg-f-no','jersey_number'); qgBind('qg-f-pos','position'); qgBind('qg-f-name','name');
     qgBind('qg-f-namecolor','name_color');
     qgBind('qg-f-year','birth_year'); qgBind('qg-f-height','height'); qgBind('qg-f-city','city');
-    qgBind('qg-f-photo','photo_url'); qgRTBind('qg-f-bio','bio');
+    qgBind('qg-f-photo','photo_url'); qgRTBind('qg-f-bio','bio'); qgPosBlockBind('qg-f-photo','photo');
     document.getElementById('qg-close').addEventListener('click',function(){ QG.sel=null; QG.draft=null; qgRenderCards(); qgRenderInspector(); });
     document.getElementById('qg-save').addEventListener('click',qgSave);
     document.getElementById('qg-del').addEventListener('click',function(){ qgDeleteId(QG.sel); });
@@ -2574,7 +2576,7 @@
     uploadFile(MEDIA_BUCKET,f).then(function(url){
       var cur=qgCurrent(); if(cur){ cur.photo_url=url; }
       var urlEl=document.getElementById('qg-f-photo'); if(urlEl) urlEl.value=url;
-      if(lbl) lbl.textContent='Téléverser'; qgRenderCards();
+      if(lbl) lbl.textContent='Téléverser'; qgRenderCards(); qgPosBlockPreview('qg-f-photo','photo');
       qgToast('Photo envoyée ✓');
     }).catch(function(){ if(lbl) lbl.textContent='Téléverser'; qgToast('Échec de l\'envoi de la photo',true); });
   }
@@ -2582,7 +2584,8 @@
   function qgPayload(cur){
     function tn(v){ v=(v==null?'':String(v)).trim(); return v===''?null:v; }
     function inum(v){ v=(v==null?'':String(v)).trim(); return v===''?null:parseInt(v,10); }
-    return { name:tn(cur.name), jersey_number:inum(cur.jersey_number), position:tn(cur.position), height:tn(cur.height), city:tn(cur.city), birth_year:inum(cur.birth_year), photo_url:tn(cur.photo_url), name_color:tn(cur.name_color), bio:tn(cur.bio), sort:(cur.sort==null?QG.rows.length:cur.sort) };
+    function posv(v,d){ v=(v==null||v==='')?d:parseInt(v,10); return isNaN(v)?d:v; }
+    return { name:tn(cur.name), jersey_number:inum(cur.jersey_number), position:tn(cur.position), height:tn(cur.height), city:tn(cur.city), birth_year:inum(cur.birth_year), photo_url:tn(cur.photo_url), photo_x:posv(cur.photo_x,50), photo_y:posv(cur.photo_y,0), photo_zoom:posv(cur.photo_zoom,100), name_color:tn(cur.name_color), bio:tn(cur.bio), sort:(cur.sort==null?QG.rows.length:cur.sort) };
   }
   function qgSave(){
     var cur=qgCurrent(); if(!cur) return;
@@ -2999,6 +3002,31 @@
   function qgcSave(blockId,btn){
     var bl=CONTENT_BLOCKS.filter(function(b){return b.id===blockId;})[0]; if(!bl) return;
     saveSettings(qgcCollect(bl), document.getElementById('qgc-msg-'+blockId), btn);
+  }
+
+  // --- Bloc de cadrage image réutilisable (moteur roster) ---
+  function qgPosBlock(baseId, cur, field){
+    var x=(cur[field+'_x']==null||cur[field+'_x']==='')?50:cur[field+'_x'], y=(cur[field+'_y']==null||cur[field+'_y']==='')?0:cur[field+'_y'], z=(cur[field+'_zoom']==null||cur[field+'_zoom']==='')?100:cur[field+'_zoom'];
+    return '<div class="qg-pos" id="'+baseId+'-pos"><div class="qg-pos-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Cadrage de la photo</div>'+
+      '<div class="qg-pos-grid">'+
+        '<label>Horizontal</label><input type="range" min="0" max="100" value="'+x+'" data-pos="'+field+'_x"><span class="val" id="'+baseId+'-x-v">'+x+'%</span>'+
+        '<label>Vertical</label><input type="range" min="0" max="100" value="'+y+'" data-pos="'+field+'_y"><span class="val" id="'+baseId+'-y-v">'+y+'%</span>'+
+        '<label>Zoom</label><input type="range" min="100" max="250" value="'+z+'" data-pos="'+field+'_zoom"><span class="val" id="'+baseId+'-z-v">'+z+'%</span>'+
+      '</div>'+
+      '<div class="qg-pos-preview" id="'+baseId+'-pos-pv"><img alt=""></div>'+
+      '<button type="button" class="qg-pos-reset" data-posreset="'+field+'">Recentrer</button></div>';
+  }
+  function qgPosBlockBind(baseId, field){
+    var box=document.getElementById(baseId+'-pos'); if(!box) return;
+    box.querySelectorAll('input[type=range]').forEach(function(sl){ sl.addEventListener('input',function(){ var cur=qgCurrent(); if(!cur) return; var k=sl.getAttribute('data-pos'); cur[k]=parseInt(sl.value,10); var which=k.indexOf('_x')>=0?'x':(k.indexOf('_y')>=0?'y':'z'); var ve=document.getElementById(baseId+'-'+which+'-v'); if(ve) ve.textContent=sl.value+'%'; qgPosBlockPreview(baseId,field); qgRenderCards(); }); });
+    var rb=box.querySelector('[data-posreset]'); if(rb) rb.addEventListener('click',function(){ var cur=qgCurrent(); if(!cur) return; cur[field+'_x']=50; cur[field+'_y']=0; cur[field+'_zoom']=100; qgRenderInspector(); qgRenderCards(); });
+    qgPosBlockPreview(baseId,field);
+  }
+  function qgPosBlockPreview(baseId, field){
+    var cur=qgCurrent(); if(!cur) return; var pv=document.getElementById(baseId+'-pos-pv'); if(!pv) return; var img=pv.querySelector('img'); if(!img) return;
+    var url=cur[field==='photo'?'photo_url':field]||''; if(!url){ pv.style.display='none'; return; } pv.style.display='block'; img.src=url;
+    var x=(cur[field+'_x']==null||cur[field+'_x']==='')?50:cur[field+'_x'], y=(cur[field+'_y']==null||cur[field+'_y']==='')?0:cur[field+'_y'], z=(cur[field+'_zoom']==null||cur[field+'_zoom']==='')?100:cur[field+'_zoom'];
+    img.style.objectPosition=x+'% '+y+'%'; img.style.transform='scale('+(z/100)+')'; img.style.transformOrigin=x+'% '+y+'%';
   }
 
   // Le mot de passe est redemandé à chaque ouverture de la page.
