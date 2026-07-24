@@ -887,7 +887,20 @@
           <img id="hero_preview" class="logo-preview" style="width:100%;height:120px" alt="">
         </div>
         <div class="field"><label for="set_hero_title">Titre d'accroche</label><input type="text" id="set_hero_title" placeholder="Ex : Le basket sénégalais, à la maison"></div>
+        <div class="field">
+          <label for="set_hero_title_color">Couleur du titre</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="color" id="set_hero_title_color" value="#F3EFE6" style="width:44px;height:36px;padding:2px;border-radius:8px;border:1px solid rgba(0,0,0,.12);cursor:pointer">
+            <span style="font-size:12px;color:var(--muted,#6b7268)">Utile si l'image de fond est claire et que le texte devient illisible.</span>
+          </div>
+        </div>
         <div class="field"><label for="set_hero_subtitle">Sous-titre <span class="opt">(optionnel)</span></label><textarea id="set_hero_subtitle" placeholder="Une phrase de présentation…"></textarea></div>
+        <div class="field">
+          <label for="set_hero_subtitle_color">Couleur du sous-titre</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="color" id="set_hero_subtitle_color" value="#B9C2BB" style="width:44px;height:36px;padding:2px;border-radius:8px;border:1px solid rgba(0,0,0,.12);cursor:pointer">
+          </div>
+        </div>
         <div class="field"><label for="set_club_email">E-mail du club <span class="opt">(optionnel)</span></label><input type="email" id="set_club_email" placeholder="baobabsbasketclub@gmail.com"></div>
         <button class="btn btn-primary" id="save-home-btn">Enregistrer</button>
         <div class="msg" id="home-msg"></div>
@@ -1539,13 +1552,15 @@
   LOADERS_home=function(){
     document.getElementById('set_hero_title').value=settings.hero_title||''; document.getElementById('set_hero_subtitle').value=settings.hero_subtitle||'';
     document.getElementById('set_club_email').value=settings.club_email||'';
+    document.getElementById('set_hero_title_color').value=settings.hero_title_color||'#F3EFE6';
+    document.getElementById('set_hero_subtitle_color').value=settings.hero_subtitle_color||'#B9C2BB';
     document.getElementById('hero_url').value=settings.hero_image_url||''; var p=document.getElementById('hero_preview'); if(settings.hero_image_url){p.src=settings.hero_image_url;p.style.display='block';}
     updateHeroPreview();
   };
   document.getElementById('save-home-btn').addEventListener('click',function(){
     var msg=document.getElementById('home-msg'); var btn=this; btn.disabled=true;
     imageValue(MEDIA_BUCKET, document.getElementById('hero_file'), document.getElementById('hero_url'), document.getElementById('hero_mode_url'))
-      .then(function(url){ saveSettings({ hero_title:document.getElementById('set_hero_title').value.trim(), hero_subtitle:document.getElementById('set_hero_subtitle').value.trim(), hero_image_url:url||'', club_email:document.getElementById('set_club_email').value.trim() }, msg, btn); })
+      .then(function(url){ saveSettings({ hero_title:document.getElementById('set_hero_title').value.trim(), hero_subtitle:document.getElementById('set_hero_subtitle').value.trim(), hero_image_url:url||'', hero_title_color:document.getElementById('set_hero_title_color').value, hero_subtitle_color:document.getElementById('set_hero_subtitle_color').value, club_email:document.getElementById('set_club_email').value.trim() }, msg, btn); })
       .catch(function(){ showMsg(msg,'Erreur lors de l\'upload de l\'image.',false); btn.disabled=false; });
   });
 
@@ -1553,6 +1568,8 @@
     var body=document.getElementById('hero_preview_body'); if(!body) return;
     var title=document.getElementById('set_hero_title').value.trim()||'Les Baobabs renversent le DUC dans le money time';
     var subVal=document.getElementById('set_hero_subtitle').value.trim();
+    var titleColor=document.getElementById('set_hero_title_color').value||'#F3EFE6';
+    var subColor=document.getElementById('set_hero_subtitle_color').value||'#B9C2BB';
     var sub=subVal?('<span>'+esc(subVal)+'</span>'):'<span>Match report</span><span style="opacity:.4">•</span><span>Il y a 2 h</span>';
     var photoSrc=collImgSrc('hero_preview')||'https://res.cloudinary.com/djdkpihuz/image/upload/v1784692836/Person_on_basketball_court_2K_202607220359_qdn8q9.jpg';
     body.innerHTML=
@@ -1561,12 +1578,12 @@
         '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,.94) 8%,rgba(5,14,9,.15) 55%,transparent)"></div>'+
         '<div style="position:relative;padding:18px">'+
           '<span style="display:inline-block;font-family:\'Archivo\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;color:#07130D;background:linear-gradient(180deg,#D4B36A,#C6A257);padding:5px 11px;border-radius:6px;white-space:nowrap;margin-bottom:12px">CHAMPIONNAT · D2</span>'+
-          '<h2 style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:22px;line-height:1.05;letter-spacing:-.01em;color:#F3EFE6;margin:0 0 10px;max-width:18ch">'+esc(title)+'</h2>'+
-          '<div style="display:flex;gap:12px;align-items:center;font-size:12.5px;color:#B9C2BB">'+sub+'</div>'+
+          '<h2 style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:22px;line-height:1.05;letter-spacing:-.01em;color:'+esc(titleColor)+';margin:0 0 10px;max-width:18ch">'+esc(title)+'</h2>'+
+          '<div style="display:flex;gap:12px;align-items:center;font-size:12.5px;color:'+esc(subColor)+'">'+sub+'</div>'+
         '</div>'+
       '</div>';
   }
-  ['set_hero_title','set_hero_subtitle','hero_url'].forEach(function(id){
+  ['set_hero_title','set_hero_subtitle','hero_url','set_hero_title_color','set_hero_subtitle_color'].forEach(function(id){
     var el=document.getElementById(id); el.addEventListener('input',updateHeroPreview); el.addEventListener('change',updateHeroPreview);
   });
   document.getElementById('hero_preview').addEventListener('load',updateHeroPreview);
