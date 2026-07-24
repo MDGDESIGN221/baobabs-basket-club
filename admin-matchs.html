@@ -1153,6 +1153,12 @@
       <div class="hide" id="audit-content">
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
           <input type="date" id="audit-filter-date" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Archivo',sans-serif;font-size:13px">
+          <select id="audit-filter-section" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Archivo',sans-serif;font-size:13px">
+            <option value="">Toutes les sections</option>
+          </select>
+          <select id="audit-filter-who" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Archivo',sans-serif;font-size:13px">
+            <option value="">Tout le monde</option>
+          </select>
           <input type="text" id="audit-search" placeholder="Chercher qui, où, un champ…" style="flex:1;min-width:180px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'Archivo',sans-serif;font-size:13px">
           <button type="button" class="link-btn" id="audit-clear-filters" style="flex:none">Réinitialiser</button>
           <button type="button" class="link-btn" id="audit-relock-btn" style="flex:none" title="Reverrouiller l'historique">Verrouiller</button>
@@ -1348,6 +1354,155 @@
     });
   }
   function uploadFile(bucket,file){ var path=Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'); return fetch(SUPABASE_URL+'/storage/v1/object/'+bucket+'/'+path,{method:'POST',headers:sbHeaders({'Content-Type':file.type||'application/octet-stream'}),body:file}).then(function(r){ if(!r.ok) throw new Error('upload'); return SUPABASE_URL+'/storage/v1/object/public/'+bucket+'/'+path; }); }
+
+  // ===================== HISTORIQUE — TRADUCTION DES CHAMPS =====================
+  // Dictionnaire complet : nom technique (field_key stocké en base) -> libellé
+  // français clair. Construit à partir des labels déjà définis pour chaque
+  // formulaire (COLLECTIONS, SETTINGS_BLOCKS, CONTENT_BLOCKS, formulaire Matchs).
+  // Si un champ inconnu apparaît un jour (nouvelle section ajoutée sans mise à
+  // jour de ce dictionnaire), on retombe proprement sur le nom technique tel
+  // quel plutôt que de planter — voir auditFieldLabel().
+  var AUDIT_FIELD_LABELS = {
+    // --- Classement (standings) ---
+    team_name:'Nom de l\'équipe', logo_url:'Logo', played:'Matchs joués', wins:'Victoires', losses:'Défaites', points:'Points',
+    // --- Effectif (roster) ---
+    name:'Nom', jersey_number:'Numéro de maillot', position:'Poste', height:'Taille', city:'Ville', birth_year:'Année de naissance', photo_url:'Photo', bio:'Présentation / bio', sort:'Ordre d\'affichage',
+    // --- Staff ---
+    role:'Fonction',
+    // --- Notre histoire (timeline) ---
+    year:'Année', title:'Titre', body:'Texte / contenu',
+    // --- Actualités (news) ---
+    published_at:'Date de publication', image_url:'Image',
+    // --- Partenaires ---
+    website_url:'Site web du partenaire', featured:'Mis en avant', force_white:'Logo en blanc', logo_scale:'Taille du logo', hidden:'Visibilité sur le site',
+    // --- Boutique (products) ---
+    price:'Prix', category:'Catégorie', images:'Photos', sizes:'Tailles disponibles', description:'Description', in_stock:'Disponibilité',
+    // --- Réglages · Identité ---
+    club_name:'Nom du club', club_tagline:'Slogan', club_description:'Description du club', logo_secondary_url:'Logo secondaire', favicon_url:'Favicon',
+    // --- Réglages · Coordonnées ---
+    club_phone:'Téléphone', club_email:'Email', club_address:'Adresse', club_maps_url:'Lien Google Maps',
+    // --- Réglages · Réseaux sociaux ---
+    social_facebook:'Facebook', social_instagram:'Instagram', social_tiktok:'TikTok', social_youtube:'YouTube', social_linkedin:'LinkedIn', social_whatsapp:'WhatsApp',
+    // --- Réglages · Pied de page ---
+    footer_text:'Texte du footer', footer_copyright:'Copyright du footer',
+    // --- Contenu de page « Le Club » ---
+    club_intro_kicker:'Sur-titre de l\'intro', club_intro_title:'Titre de l\'intro', club_intro_text:'Paragraphe de l\'intro',
+    club_obj1_title:'Titre — Carte 1 (Former)', club_obj1_text:'Texte — Carte 1 (Former)',
+    club_obj2_title:'Titre — Carte 2 (Gagner)', club_obj2_text:'Texte — Carte 2 (Gagner)',
+    club_obj3_title:'Titre — Carte 3 (Rassembler)', club_obj3_text:'Texte — Carte 3 (Rassembler)',
+    // --- Matchs ---
+    opponent_name:'Nom de l\'adversaire', opponent_logo_url:'Logo de l\'adversaire', match_date:'Date du match', match_time:'Heure du match', is_home:'Domicile / extérieur', venue:'Salle / stade', competition:'Compétition', stream_url:'Lien du direct / replay', notes:'Notes internes', score_baobabs:'Score Baobabs', score_opponent:'Score adverse'
+  };
+  // Champs de recadrage d'image : gérés par un curseur commun (Horizontal /
+  // Vertical / Zoom) réutilisé pour toute photo recadrable, quel que soit le
+  // nom du champ de base (photo_url, image_url, logo_url…). On détecte le
+  // suffixe plutôt que de lister chaque combinaison une par une.
+  var AUDIT_CROP_SUFFIX = { '_x':'Position horizontale de la photo', '_y':'Position verticale de la photo', '_zoom':'Zoom de la photo' };
+  function auditFieldLabel(key){
+    if (!key) return '';
+    if (AUDIT_FIELD_LABELS[key]) return AUDIT_FIELD_LABELS[key];
+    for (var suf in AUDIT_CROP_SUFFIX) {
+      if (key.slice(-suf.length) === suf) {
+        var base = key.slice(0, -suf.length);
+        var baseLabel = AUDIT_FIELD_LABELS[base] || AUDIT_FIELD_LABELS[base+'_url'] || 'photo';
+        return AUDIT_CROP_SUFFIX[suf] + (baseLabel && baseLabel !== 'photo' ? ' ('+baseLabel.toLowerCase()+')' : '');
+      }
+    }
+    return key; // repli : jamais planter, montrer le nom technique tel quel
+  }
+
+  // ===================== HISTORIQUE — SECTIONS ET COULEURS =====================
+  // Regroupe les valeurs libres de "section" (celles écrites par auditSend, ex:
+  // "actualité", "Réglages · Coordonnées"…) en catégories d'affichage stables,
+  // avec un badge de couleur par catégorie. Une catégorie couvre plusieurs
+  // libellés bruts (ex: toutes les pages de Réglages → une seule catégorie).
+  var AUDIT_CATEGORIES = [
+    { match:/^actualité/i,           label:'Actualités',    color:'blue'   },
+    { match:/^match/i,               label:'Matchs',        color:'coral'  },
+    { match:/^produit|boutique/i,    label:'Boutique',      color:'amber'  },
+    { match:/^joueur|effectif|roster/i, label:'Effectif',   color:'teal'   },
+    { match:/^membre|staff|bureau/i, label:'Staff',         color:'purple' },
+    { match:/^partenaire/i,          label:'Partenaires',   color:'pink'   },
+    { match:/^ligne de classement|classement|standing/i, label:'Classement', color:'green' },
+    { match:/^étape|histoire|timeline/i, label:'Notre histoire', color:'gray' },
+    { match:/^réglages/i,            label:'Réglages',      color:'blue'   },
+    { match:/^page/i,                label:'Contenu de page', color:'purple' }
+  ];
+  function auditCategory(sectionRaw){
+    var s = sectionRaw || '';
+    for (var i=0;i<AUDIT_CATEGORIES.length;i++){ if (AUDIT_CATEGORIES[i].match.test(s)) return AUDIT_CATEGORIES[i]; }
+    return { label: s || 'Autre', color:'gray' };
+  }
+
+  // ===================== HISTORIQUE — NOM DE L'ÉLÉMENT CONCERNÉ =====================
+  // Pour une modification qui touche une ligne précise d'une collection (une
+  // actualité, un match, un produit…), on va chercher un libellé lisible de
+  // cette ligne (ex: "Match : Baobabs vs ASC Ville de Dakar") plutôt que
+  // d'afficher juste l'identifiant technique (record_id, un uuid illisible).
+  // Résultats mis en cache pour éviter de refaire la même requête plusieurs
+  // fois quand plusieurs lignes d'historique concernent le même élément.
+  var auditRecordLabelCache = {};
+  function auditFetchRecordLabel(tableName, recordId){
+    if (!tableName || !recordId || recordId==='(nouveau)' || recordId==='(vide)') return Promise.resolve(null);
+    var cacheKey = tableName+':'+recordId;
+    if (auditRecordLabelCache[cacheKey] !== undefined) return Promise.resolve(auditRecordLabelCache[cacheKey]);
+    var query = null;
+    if (tableName === 'matches') query = 'matches?select=opponent_name,is_home&id=eq.'+recordId;
+    else if (tableName === 'news') query = 'news?select=title&id=eq.'+recordId;
+    else if (tableName === 'products') query = 'products?select=name&id=eq.'+recordId;
+    else if (tableName === 'players') query = 'players?select=name&id=eq.'+recordId;
+    else if (tableName === 'staff') query = 'staff?select=name&id=eq.'+recordId;
+    else if (tableName === 'partners') query = 'partners?select=name&id=eq.'+recordId;
+    else if (tableName === 'standings') query = 'standings?select=team_name&id=eq.'+recordId;
+    else if (tableName === 'timeline_events') query = 'timeline_events?select=title&id=eq.'+recordId;
+    if (!query) { auditRecordLabelCache[cacheKey]=null; return Promise.resolve(null); }
+    return sbGet(query).then(function(rows){
+      var r = rows && rows[0]; var label = null;
+      if (r) {
+        if (tableName==='matches') label = 'Match : '+(r.is_home?'Baobabs vs ':'Baobabs @ ')+(r.opponent_name||'?');
+        else if (r.title) label = (tableName==='news'?'Actualité : ':'')+r.title;
+        else if (r.name) label = (tableName==='products'?'Produit : ':tableName==='players'?'Joueur : ':tableName==='staff'?'Membre : ':tableName==='partners'?'Partenaire : ':'')+r.name;
+        else if (r.team_name) label = 'Équipe : '+r.team_name;
+      }
+      auditRecordLabelCache[cacheKey] = label;
+      return label;
+    }).catch(function(){ auditRecordLabelCache[cacheKey]=null; return null; });
+  }
+
+  // ===================== HISTORIQUE — FORMATAGE DES VALEURS AFFICHÉES =====================
+  var AUDIT_IMAGE_EXT = /\.(jpe?g|png|gif|webp|svg|avif)(\?.*)?$/i;
+  function auditLooksLikeImage(fieldKey, value){
+    if (!value) return false;
+    var isUrl = /^https?:\/\//i.test(value);
+    if (!isUrl) return false;
+    if (AUDIT_IMAGE_EXT.test(value)) return true;
+    return /url$|photo|logo|image|favicon/i.test(fieldKey||'') && isUrl;
+  }
+  function auditLooksLikeUrl(value){ return /^https?:\/\//i.test(value||''); }
+  var AUDIT_TEXT_TRUNCATE = 90;
+  // Rend une valeur (ancienne ou nouvelle) sous forme de HTML compact :
+  // miniature si image, lien cliquable si URL, aperçu + "voir le texte
+  // complet" si texte long, sinon simple texte échappé.
+  function auditRenderValue(fieldKey, value, uid){
+    if (value==null || value==='') return '<i style="color:var(--faint)">(vide)</i>';
+    var v = String(value);
+    if (auditLooksLikeImage(fieldKey, v)) {
+      return '<img src="'+esc(v)+'" alt="" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--line-strong);vertical-align:middle" loading="lazy">';
+    }
+    if (auditLooksLikeUrl(v)) {
+      var shortUrl = v.length>60 ? v.slice(0,57)+'…' : v;
+      return '<a href="'+esc(v)+'" target="_blank" rel="noopener" style="color:var(--gold);word-break:break-all">'+esc(shortUrl)+'</a>';
+    }
+    if (v.length > AUDIT_TEXT_TRUNCATE) {
+      var shortId = 'audit-txt-'+uid;
+      return '<span id="'+shortId+'-short">'+esc(v.slice(0,AUDIT_TEXT_TRUNCATE))+'… '+
+        '<button type="button" class="link-btn" style="font-size:11.5px;padding:0" onclick="'+
+        'document.getElementById(\''+shortId+'-short\').classList.add(\'hide\');'+
+        'document.getElementById(\''+shortId+'-full\').classList.remove(\'hide\')">Voir le texte complet</button></span>'+
+        '<span id="'+shortId+'-full" class="hide">'+esc(v)+'</span>';
+    }
+    return esc(v);
+  }
 
   // image control helper (upload OR url) -> Promise<url|null>
   function imageValue(bucket, fileEl, urlEl, modeUrlBtn){
@@ -2566,12 +2721,52 @@
     return datePart+' à '+timePart;
   }
 
+  // Couleurs de badge de section — mêmes teintes que la palette du reste
+  // de l'admin, adaptées en "badge doux" (fond clair, texte foncé de la
+  // même teinte) plutôt que les couleurs saturées utilisées ailleurs.
+  var AUDIT_BADGE_COLORS = {
+    blue:  {bg:'rgba(120,155,210,.16)', fg:'#9DB8E8'},
+    coral: {bg:'rgba(216,120,90,.16)',  fg:'#E39B7F'},
+    amber: {bg:'rgba(198,162,87,.18)',  fg:'var(--gold)'},
+    teal:  {bg:'rgba(90,180,160,.16)',  fg:'#7FCBB8'},
+    purple:{bg:'rgba(150,130,210,.16)', fg:'#B3A0E8'},
+    pink:  {bg:'rgba(212,83,126,.16)',  fg:'#E695B0'},
+    green: {bg:'rgba(120,180,90,.16)',  fg:'#A0D080'},
+    gray:  {bg:'rgba(180,180,170,.14)', fg:'var(--faint)'}
+  };
+  function auditBadgeHtml(cat){
+    var c = AUDIT_BADGE_COLORS[cat.color] || AUDIT_BADGE_COLORS.gray;
+    return '<span style="display:inline-block;background:'+c.bg+';color:'+c.fg+';font-family:\'Archivo\',sans-serif;font-weight:700;font-size:11px;padding:3px 10px;border-radius:20px">'+esc(cat.label)+'</span>';
+  }
+
+  // Renseigne les menus déroulants Section / Qui à partir des données
+  // réellement présentes dans l'historique, une fois déverrouillé — pour
+  // ne jamais afficher un filtre vide qui ne correspond à rien.
+  function auditPopulateFilters(rows){
+    var secSel=document.getElementById('audit-filter-section');
+    var whoSel=document.getElementById('audit-filter-who');
+    if(!secSel||!whoSel) return;
+    var secLabels={}, whoLabels={};
+    rows.forEach(function(r){
+      var cat=auditCategory(r.section||r.table_name);
+      secLabels[cat.label]=true;
+      var who=AUDIT_NAMES[r.user_email]||r.user_email||'Inconnu';
+      whoLabels[who]=true;
+    });
+    var curSec=secSel.value, curWho=whoSel.value;
+    secSel.innerHTML='<option value="">Toutes les sections</option>'+Object.keys(secLabels).sort().map(function(l){ return '<option value="'+esc(l)+'">'+esc(l)+'</option>'; }).join('');
+    whoSel.innerHTML='<option value="">Tout le monde</option>'+Object.keys(whoLabels).sort().map(function(l){ return '<option value="'+esc(l)+'">'+esc(l)+'</option>'; }).join('');
+    secSel.value=curSec; whoSel.value=curWho;
+  }
+
   function auditRenderList(){
     var wrap=document.getElementById('audit-list'); if(!wrap) return;
     var countEl=document.getElementById('audit-count');
     if(!auditRows){ wrap.innerHTML='<div class="empty">Verrouillé.</div>'; if(countEl) countEl.textContent='—'; return; }
 
     var dateFilter=(document.getElementById('audit-filter-date')||{}).value||'';
+    var sectionFilter=(document.getElementById('audit-filter-section')||{}).value||'';
+    var whoFilter=(document.getElementById('audit-filter-who')||{}).value||'';
     var q=((document.getElementById('audit-search')||{}).value||'').trim().toLowerCase();
 
     var rows=auditRows.filter(function(r){
@@ -2580,8 +2775,17 @@
         var localDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
         if(localDate!==dateFilter) return false;
       }
+      if(sectionFilter){
+        var cat=auditCategory(r.section||r.table_name);
+        if(cat.label!==sectionFilter) return false;
+      }
+      if(whoFilter){
+        var who=AUDIT_NAMES[r.user_email]||r.user_email||'Inconnu';
+        if(who!==whoFilter) return false;
+      }
       if(q){
-        var hay=[r.user_email,r.section,r.table_name,r.field_key,r.old_value,r.new_value].join(' ').toLowerCase();
+        var fieldLabel=auditFieldLabel(r.field_key);
+        var hay=[r.user_email,r.section,r.table_name,r.field_key,fieldLabel,r.old_value,r.new_value].join(' ').toLowerCase();
         if(hay.indexOf(q)===-1) return false;
       }
       return true;
@@ -2590,26 +2794,47 @@
     if(countEl) countEl.textContent=rows.length+(rows.length>1?' modifications':' modification');
     if(!rows.length){ wrap.innerHTML='<div class="empty">Aucune modification trouvée.</div>'; return; }
 
-    wrap.innerHTML=rows.map(function(r){
+    wrap.innerHTML=rows.map(function(r,i){
       var who=AUDIT_NAMES[r.user_email]||r.user_email||'Inconnu';
+      var initial=who.charAt(0).toUpperCase();
       var when=auditFormatWhen(r.created_at);
-      var where=r.section||r.table_name||'—';
-      var field=r.field_key||'';
-      var oldV=(r.old_value==null||r.old_value==='')?'<i>(vide)</i>':esc(String(r.old_value)).slice(0,180);
-      var newV=(r.new_value==null||r.new_value==='')?'<i>(vide)</i>':esc(String(r.new_value)).slice(0,180);
-      return '<div class="card" style="margin-bottom:10px;padding:16px 18px">'+
-        '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline;margin-bottom:8px">'+
-          '<div style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:13.5px;color:var(--text)">'+esc(who)+'</div>'+
-          '<div style="font-size:11.5px;color:var(--faint)">'+esc(when)+'</div>'+
+      var cat=auditCategory(r.section||r.table_name);
+      var fieldLabel=auditFieldLabel(r.field_key);
+      var uid='r'+i;
+      var oldV=auditRenderValue(r.field_key, r.old_value, uid+'-old');
+      var newV=auditRenderValue(r.field_key, r.new_value, uid+'-new');
+      return '<div class="card" style="margin-bottom:10px;padding:16px 18px" id="audit-card-'+uid+'" data-table="'+esc(r.table_name||'')+'" data-record="'+esc(r.record_id||'')+'">'+
+        '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px">'+
+          '<div style="display:flex;align-items:center;gap:8px">'+
+            '<span style="width:26px;height:26px;border-radius:50%;background:rgba(198,162,87,.18);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-family:\'Archivo\',sans-serif;font-weight:700;font-size:12px">'+esc(initial)+'</span>'+
+            '<span style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:13.5px;color:var(--text)">'+esc(who)+'</span>'+
+          '</div>'+
+          '<span style="font-size:11.5px;color:var(--faint)">'+esc(when)+'</span>'+
         '</div>'+
-        '<div style="font-size:12.5px;color:var(--gold);font-weight:700;margin-bottom:6px">'+esc(where)+(field?' — '+esc(field):'')+'</div>'+
-        '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:start;font-size:12.5px">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
+          auditBadgeHtml(cat)+
+          (fieldLabel?'<span style="font-size:12px;color:var(--faint)">·</span><span style="font-size:12.5px;color:var(--text)">'+esc(fieldLabel)+'</span>':'')+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;font-size:12.5px;background:var(--surface-2, rgba(255,255,255,.03));border-radius:8px;padding:10px 12px">'+
           '<div style="color:var(--faint);word-break:break-word">'+oldV+'</div>'+
           '<div style="color:var(--faint)">→</div>'+
           '<div style="color:var(--text);word-break:break-word">'+newV+'</div>'+
         '</div>'+
+        '<div class="audit-record-label" id="audit-reclabel-'+uid+'" style="font-size:11px;color:var(--faint);margin-top:8px"></div>'+
       '</div>';
     }).join('');
+
+    // Charge le nom de l'élément concerné (quel match, quelle actualité…)
+    // après affichage, sans bloquer le rendu initial de la liste : chaque
+    // carte reçoit son libellé dès que la petite requête associée répond.
+    rows.forEach(function(r,i){
+      var uid='r'+i;
+      auditFetchRecordLabel(r.table_name, r.record_id).then(function(label){
+        if(!label) return;
+        var el=document.getElementById('audit-reclabel-'+uid);
+        if(el) el.textContent=label;
+      });
+    });
   }
 
   function auditUnlock(){
@@ -2634,6 +2859,7 @@
         document.getElementById('audit-lock-card').classList.add('hide');
         document.getElementById('audit-content').classList.remove('hide');
         showMsg(msg,'',true);
+        auditPopulateFilters(rows);
         auditRenderList();
       })
       .catch(function(){ showMsg(msg,'Erreur de connexion. Vérifiez que le script SQL a bien été exécuté.',false); })
@@ -2652,9 +2878,13 @@
   document.getElementById('audit-pwd').addEventListener('keydown',function(e){ if(e.key==='Enter') auditUnlock(); });
   document.getElementById('audit-relock-btn').addEventListener('click',auditRelock);
   document.getElementById('audit-filter-date').addEventListener('change',auditRenderList);
+  document.getElementById('audit-filter-section').addEventListener('change',auditRenderList);
+  document.getElementById('audit-filter-who').addEventListener('change',auditRenderList);
   document.getElementById('audit-search').addEventListener('input',auditRenderList);
   document.getElementById('audit-clear-filters').addEventListener('click',function(){
     document.getElementById('audit-filter-date').value='';
+    document.getElementById('audit-filter-section').value='';
+    document.getElementById('audit-filter-who').value='';
     document.getElementById('audit-search').value='';
     auditRenderList();
   });
