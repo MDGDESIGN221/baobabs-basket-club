@@ -1060,25 +1060,25 @@
     <div style="position:relative;background:linear-gradient(155deg,#0F4030,#081C13);border-bottom:1px solid rgba(198,162,87,.22);overflow:hidden">
       <div style="position:absolute;right:-2%;top:50%;transform:translateY(-50%);font-family:'Archivo',sans-serif;font-weight:900;font-size:clamp(180px,28vw,420px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(198,162,87,.1);pointer-events:none">2026</div>
       <div style="position:relative;max-width:1500px;margin:0 auto;padding:clamp(48px,7vw,90px) clamp(16px,4vw,24px)">
-        <span style="font-family:'Archivo',sans-serif;font-weight:600;font-size:11.5px;letter-spacing:.18em;color:#C6A257;text-transform:uppercase">Le Club</span>
-        <h2 style="font-family:'Archivo',sans-serif;font-weight:900;font-size:clamp(34px,6vw,72px);line-height:1;letter-spacing:-.02em;color:#F3EFE6;margin:14px 0 18px;max-width:16ch">Une tribu née à Dakar, tournée vers le sommet</h2>
-        <p style="max-width:56ch;font-size:16px;line-height:1.7;color:#C7CFC8;margin:0">Fondé en 2026, le Baobabs Basket Club se lance avec une ambition claire : former localement et viser haut dès sa première saison. Du centre de formation à l'équipe pro, une même exigence.</p>
+        <span id="bb-club-kicker" style="font-family:'Archivo',sans-serif;font-weight:600;font-size:11.5px;letter-spacing:.18em;color:#C6A257;text-transform:uppercase">Le Club</span>
+        <h2 id="bb-club-title" style="font-family:'Archivo',sans-serif;font-weight:900;font-size:clamp(34px,6vw,72px);line-height:1;letter-spacing:-.02em;color:#F3EFE6;margin:14px 0 18px;max-width:16ch">Une tribu née à Dakar, tournée vers le sommet</h2>
+        <p id="bb-club-intro" style="max-width:56ch;font-size:16px;line-height:1.7;color:#C7CFC8;margin:0">Fondé en 2026, le Baobabs Basket Club se lance avec une ambition claire : former localement et viser haut dès sa première saison. Du centre de formation à l'équipe pro, une même exigence.</p>
       </div>
     </div>
 
     <div style="max-width:1500px;margin:0 auto;padding:clamp(36px,5vw,64px) clamp(16px,4vw,24px)">
       <div style="display:grid;gap:22px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-bottom:56px">
         <div style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:26px">
-          <div style="font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;color:#C6A257;margin-bottom:10px">Former</div>
-          <p style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:0">Un centre de formation qui accompagne les jeunes talents, sur et en dehors du terrain.</p>
+          <div id="bb-obj1-title" style="font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;color:#C6A257;margin-bottom:10px">Former</div>
+          <p id="bb-obj1-text" style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:0">Un centre de formation qui accompagne les jeunes talents, sur et en dehors du terrain.</p>
         </div>
         <div style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:26px">
-          <div style="font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;color:#C6A257;margin-bottom:10px">Gagner</div>
-          <p style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:0">Une équipe pro qui vise les sommets du championnat national et continental.</p>
+          <div id="bb-obj2-title" style="font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;color:#C6A257;margin-bottom:10px">Gagner</div>
+          <p id="bb-obj2-text" style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:0">Une équipe pro qui vise les sommets du championnat national et continental.</p>
         </div>
         <div style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:26px">
-          <div style="font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;color:#C6A257;margin-bottom:10px">Rassembler</div>
-          <p style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:0">Une communauté de supporters fidèles, du quartier jusqu'à la diaspora.</p>
+          <div id="bb-obj3-title" style="font-family:'Archivo',sans-serif;font-weight:800;font-size:20px;color:#C6A257;margin-bottom:10px">Rassembler</div>
+          <p id="bb-obj3-text" style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:0">Une communauté de supporters fidèles, du quartier jusqu'à la diaspora.</p>
         </div>
       </div>
 
@@ -1681,7 +1681,7 @@
   // Rendu sécurisé du texte enrichi (gras / surligné / couleur) saisi dans l'espace gestion.
   function bbRich(html){
     var s=(html==null?'':String(html));
-    if(s.indexOf('<')<0) return esc(s);
+    if(s.indexOf('<')<0) return esc(s).replace(/\n/g,'<br>');
     var root=document.createElement('div'); root.innerHTML=s;
     var allowed={B:1,STRONG:1,I:1,EM:1,U:1,MARK:1,BR:1,SPAN:1,DIV:1,P:1,FONT:1};
     var okProp={'color':1,'background-color':1,'background':1,'font-weight':1,'text-decoration':1};
@@ -2614,8 +2614,19 @@
     }).catch(function(){});
 
     sbFetch('site_settings?select=*').then(function(rows){
-      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s);
+      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyContent(s);
     }).catch(function(){});
+  }
+
+  function applyContent(s){
+    if(!s) return;
+    function set(id,val){ if(val==null||val==='') return; var el=document.getElementById(id); if(el) el.textContent=val; }
+    set('bb-club-kicker', s.club_intro_kicker);
+    set('bb-club-title', s.club_intro_title);
+    set('bb-club-intro', s.club_intro_text);
+    set('bb-obj1-title', s.club_obj1_title); set('bb-obj1-text', s.club_obj1_text);
+    set('bb-obj2-title', s.club_obj2_title); set('bb-obj2-text', s.club_obj2_text);
+    set('bb-obj3-title', s.club_obj3_title); set('bb-obj3-text', s.club_obj3_text);
   }
 
   function applyHero(s){
@@ -2667,7 +2678,7 @@
     var el=document.getElementById('bb-founder'); if(!el) return;
     if(!s || !s.founder_name){ el.classList.add('bb-hide'); return; }
     var photo = s.founder_photo_url ? '<img src="'+s.founder_photo_url+'" alt="'+esc(s.founder_name)+'" style="width:clamp(120px,22vw,168px);height:clamp(120px,22vw,168px);border-radius:18px;object-fit:cover;border:1px solid rgba(198,162,87,.35);flex:none">' : '';
-    var bio = s.founder_bio ? String(s.founder_bio).split('\n').map(function(p){ return p.trim(); }).filter(Boolean).map(function(p){ return '<p style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:0 0 12px">'+esc(p)+'</p>'; }).join('') : '';
+    var bio = s.founder_bio ? '<div style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:14px 0 0">'+bbRich(s.founder_bio)+'</div>' : '';
     el.innerHTML =
       '<span style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Le fondateur</span>' +
       '<div style="display:flex;gap:clamp(18px,3vw,32px);align-items:flex-start;flex-wrap:wrap;margin-top:16px">' +

@@ -539,6 +539,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
           Notre histoire
         </button>
+        <button class="sb-link" data-section="content">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2M9 20h6M12 4v16"/></svg>
+          Contenu du site
+        </button>
         <button class="sb-link" data-section="news">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4Z"/><path d="M4 4v13a3 3 0 0 0 3 3M9 8h7M9 12h7M9 16h4"/></svg>
           Actualités
@@ -1038,6 +1042,7 @@
       <div id="qgv-timeline"></div>
       <div id="coll-timeline" class="hide"></div>
     </section>
+    <section id="section-content" class="hide"><div id="qgc-mount"></div></section>
     <section id="section-news" class="hide">
       <div class="qg-tabbar">
         <button type="button" class="qg-tab active" data-qg-tab="visual"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Éditeur visuel</button>
@@ -1230,6 +1235,7 @@
     roster:{t:'Effectif',d:'Les joueuses et joueurs affichés dans la section Équipes.'},
     staff:{t:'Staff',d:'Les membres de l\'encadrement affichés dans le bloc « Le staff » du site.'},
     timeline:{t:'Notre histoire',d:'La chronologie du club affichée sur la page « Le Club ».'},
+    content:{t:'Contenu du site',d:'Les textes éditoriaux du site : intro « Le Club », objectifs, et autres blocs. Aperçu en direct.'},
     founder:{t:'Fondateur',d:'La fiche du fondateur affichée sur la page « Le Club » du site.'},
     bureau:{t:'Bureau / organigramme',d:'Éditez le titulaire et la fiche de chaque poste de l\'organigramme.'},
     news:{t:'Actualités',d:'Les annonces et actualités publiées sur le site.'},
@@ -1238,7 +1244,7 @@
     forms:{t:'Messages',d:'Les inscriptions newsletter, messages de contact et commandes boutique envoyés depuis le site public.'},
     home:{t:'Bandeau d\'accueil',d:'L\'image et le texte d\'accroche de la page d\'accueil.'}
   };
-  var ALL_SECTIONS = ['dashboard','matches','live','standings','roster','founder','bureau','staff','timeline','news','partners','shop','forms','home'];
+  var ALL_SECTIONS = ['dashboard','matches','live','standings','roster','founder','bureau','staff','timeline','content','news','partners','shop','forms','home'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -2330,6 +2336,7 @@
     bureau:function(){ LOADERS_bureau(); },
     staff:function(){ qgvInit('staff'); },
     timeline:function(){ qgvInit('timeline'); },
+    content:function(){ loadSettings().then(function(){ qgcRender(); }); },
     news:function(){ qgvInit('news'); },
     partners:function(){ qgvInit('partners'); },
     shop:function(){ qgvInit('shop'); },
@@ -2925,6 +2932,48 @@
     });
     ed.addEventListener('input',function(){ var c=qgvCurrent(key); if(c) c[field]=ed.innerHTML; });
     ed.addEventListener('blur',function(){ var c=qgvCurrent(key); if(c) c[field]=ed.innerHTML; });
+  }
+
+  // ===================== CONTENU ÉDITORIAL (blocs settings, aperçu réel) =====================
+  var CONTENT_BLOCKS = [
+    { id:'club_intro', page:'Page « Le Club »', label:'Intro — bandeau', fields:[
+        {key:'club_intro_kicker', label:'Sur-titre', type:'text', def:'Le Club'},
+        {key:'club_intro_title', label:'Titre', type:'text', def:'Une tribu née à Dakar'},
+        {key:'club_intro_text', label:'Paragraphe', type:'textarea', def:"Fondé en 2026, le Baobabs Basket Club se lance avec une ambition claire : former localement et viser haut dès la première saison."}
+      ],
+      preview:function(v){ return '<div style="background:linear-gradient(155deg,#0F4030,#081C13);border:1px solid rgba(198,162,87,.22);border-radius:14px;padding:26px"><div style="font-family:\'Archivo\',sans-serif;font-weight:600;font-size:11px;letter-spacing:.18em;color:#C6A257;text-transform:uppercase">'+esc(v.club_intro_kicker)+'</div><div style="font-family:\'Archivo\',sans-serif;font-weight:900;font-size:30px;line-height:1.02;color:#F3EFE6;margin:12px 0 12px">'+esc(v.club_intro_title)+'</div><div style="font-size:14px;line-height:1.6;color:#C7CFC8">'+esc(v.club_intro_text)+'</div></div>'; } },
+    { id:'club_obj', page:'Page « Le Club »', label:'Objectifs — 3 cartes', fields:[
+        {key:'club_obj1_title', label:'Carte 1 · titre', type:'text', def:'Former'},
+        {key:'club_obj1_text', label:'Carte 1 · texte', type:'textarea', def:'Un centre de formation qui accompagne les jeunes talents, sur et en dehors du terrain.'},
+        {key:'club_obj2_title', label:'Carte 2 · titre', type:'text', def:'Gagner'},
+        {key:'club_obj2_text', label:'Carte 2 · texte', type:'textarea', def:'Une équipe pro qui vise les sommets du championnat national et continental.'},
+        {key:'club_obj3_title', label:'Carte 3 · titre', type:'text', def:'Rassembler'},
+        {key:'club_obj3_text', label:'Carte 3 · texte', type:'textarea', def:"Une communauté de supporters fidèles, du quartier jusqu'à la diaspora."}
+      ],
+      preview:function(v){ function c(t,x){ return '<div style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:12px;padding:16px"><div style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:16px;color:#C6A257;margin-bottom:7px">'+esc(t)+'</div><div style="font-size:12.5px;line-height:1.55;color:#B9C2BB">'+esc(x)+'</div></div>'; } return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+c(v.club_obj1_title,v.club_obj1_text)+c(v.club_obj2_title,v.club_obj2_text)+c(v.club_obj3_title,v.club_obj3_text)+'</div>'; } }
+  ];
+  function qgcVal(key){ var b=null; CONTENT_BLOCKS.forEach(function(bl){ bl.fields.forEach(function(f){ if(f.key===key) b=f; }); }); var d=b?b.def:''; return (settings[key]!=null && settings[key]!=='')?settings[key]:d; }
+  function qgcRender(){
+    var m=document.getElementById('qgc-mount'); if(!m) return;
+    m.innerHTML='<div style="max-width:760px">'+CONTENT_BLOCKS.map(function(bl){
+      var fields=bl.fields.map(function(f){
+        var v=qgcVal(f.key);
+        if(f.type==='textarea') return '<div class="qg-field"><label>'+esc(f.label)+'</label><textarea class="qg-in qgc-in" data-k="'+f.key+'" rows="3">'+esc(v)+'</textarea></div>';
+        return '<div class="qg-field"><label>'+esc(f.label)+'</label><input class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'"></div>';
+      }).join('');
+      return '<div class="card" style="margin-bottom:20px"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px"><h2 class="card-title" style="margin:0">'+esc(bl.label)+'</h2><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)">'+esc(bl.page)+'</span></div>'+
+        '<div class="grid-2" style="align-items:start;gap:20px"><div>'+fields+'<button type="button" class="btn btn-primary qgc-save" data-block="'+bl.id+'">Enregistrer</button><div class="msg" id="qgc-msg-'+bl.id+'"></div></div>'+
+        '<div><div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:9px">Aperçu réel</div><div id="qgc-pv-'+bl.id+'"></div></div></div></div>';
+    }).join('')+'</div>';
+    CONTENT_BLOCKS.forEach(function(bl){ qgcPreview(bl); });
+    m.querySelectorAll('.qgc-in').forEach(function(el){ el.addEventListener('input',function(){ var bl=CONTENT_BLOCKS.filter(function(b){ return b.fields.some(function(f){return f.key===el.getAttribute('data-k');}); })[0]; if(bl) qgcPreview(bl); }); });
+    m.querySelectorAll('.qgc-save').forEach(function(btn){ btn.addEventListener('click',function(){ qgcSave(btn.getAttribute('data-block'),btn); }); });
+  }
+  function qgcCollect(bl){ var v={}; bl.fields.forEach(function(f){ var el=document.querySelector('.qgc-in[data-k="'+f.key+'"]'); v[f.key]=el?el.value:qgcVal(f.key); }); return v; }
+  function qgcPreview(bl){ var pv=document.getElementById('qgc-pv-'+bl.id); if(pv) pv.innerHTML=bl.preview(qgcCollect(bl)); }
+  function qgcSave(blockId,btn){
+    var bl=CONTENT_BLOCKS.filter(function(b){return b.id===blockId;})[0]; if(!bl) return;
+    saveSettings(qgcCollect(bl), document.getElementById('qgc-msg-'+blockId), btn);
   }
 
   // Le mot de passe est redemandé à chaque ouverture de la page.
