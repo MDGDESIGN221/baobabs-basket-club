@@ -2616,7 +2616,7 @@
   }
 
   function qgSelect(id){ QG.sel=id; if(id!=='__new__') QG.draft=null; qgRenderCards(); qgRenderInspector(); }
-  function qgAdd(){ QG.sel='__new__'; QG.draft={ name:'', jersey_number:'', position:'', height:'', city:'', birth_year:'', photo_url:'', photo_x:50, photo_y:0, photo_zoom:100, name_color:'', bio:'', sort:QG.rows.length }; qgRenderCards(); qgRenderInspector(); window.scrollTo({top:0,behavior:'smooth'}); }
+  function qgAdd(){ QG.sel='__new__'; QG.draft={ name:'', gender:'F', jersey_number:'', position:'', height:'', city:'', birth_year:'', photo_url:'', photo_x:50, photo_y:0, photo_zoom:100, name_color:'', bio:'', sort:QG.rows.length }; qgRenderCards(); qgRenderInspector(); window.scrollTo({top:0,behavior:'smooth'}); }
 
   function qgRenderInspector(){
     var el=document.getElementById('qg-inspector'); if(!el) return;
@@ -2643,10 +2643,11 @@
             '<span class="qg-hint" style="margin:0">Utile si la photo a un fond clair en bas, là où le nom s\'affiche.</span>'+
           '</div>'+
         '</div>'+
-        '<div class="qg-row2"><div class="qg-field"><label>Année de naissance</label><input class="qg-in" id="qg-f-year" inputmode="numeric" placeholder="Ex : 2004" value="'+esc(cur.birth_year)+'"></div>'+
-          '<div class="qg-field"><label>Taille</label><input class="qg-in" id="qg-f-height" placeholder="1,80 m" value="'+esc(cur.height)+'"></div></div>'+
+        '<div class="qg-row2"><div class="qg-field"><label>Sexe</label><select class="qg-in" id="qg-f-gender"><option value="F"'+((cur.gender||'F')==='F'?' selected':'')+'>Fille</option><option value="M"'+(cur.gender==='M'?' selected':'')+'>Garçon</option></select></div>'+
+          '<div class="qg-field"><label>Année de naissance</label><input class="qg-in" id="qg-f-year" inputmode="numeric" placeholder="Ex : 2004" value="'+esc(cur.birth_year)+'"></div></div>'+
+        '<div class="qg-row2"><div class="qg-field"><label>Taille</label><input class="qg-in" id="qg-f-height" placeholder="1,80 m" value="'+esc(cur.height)+'"></div>'+
+          '<div class="qg-field"><label>Ville</label><input class="qg-in" id="qg-f-city" placeholder="Dakar" value="'+esc(cur.city)+'"></div></div>'+
         (age!==''&&!isNaN(age)?'<div class="qg-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Âge affiché sur le site : '+age+' ans.</div>':'')+
-        '<div class="qg-field"><label>Ville</label><input class="qg-in" id="qg-f-city" placeholder="Dakar" value="'+esc(cur.city)+'"></div>'+
         '<div class="qg-field"><label>Photo</label><input class="qg-in" id="qg-f-photo" placeholder="https://… .png" value="'+esc(cur.photo_url)+'" style="font-size:12.5px">'+
           '<div class="qg-photo-actions"><label class="qg-file-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span id="qg-file-label">Téléverser</span><input type="file" id="qg-f-file" accept="image/*" style="display:none"></label></div>'+
           '<div class="qg-hint" style="margin-top:8px">PNG détouré ou photo carrée — s\'affiche comme les autres cartes.</div>'+
@@ -2659,7 +2660,7 @@
       '</div>';
     qgBind('qg-f-no','jersey_number'); qgBind('qg-f-pos','position'); qgBind('qg-f-name','name');
     qgBind('qg-f-namecolor','name_color');
-    qgBind('qg-f-year','birth_year'); qgBind('qg-f-height','height'); qgBind('qg-f-city','city');
+    qgBind('qg-f-year','birth_year'); qgBind('qg-f-height','height'); qgBind('qg-f-city','city'); qgBind('qg-f-gender','gender');
     qgBind('qg-f-photo','photo_url'); qgRTBind('qg-f-bio','bio'); qgPosBlockBind('qg-f-photo','photo');
     document.getElementById('qg-close').addEventListener('click',function(){ QG.sel=null; QG.draft=null; qgRenderCards(); qgRenderInspector(); });
     document.getElementById('qg-save').addEventListener('click',qgSave);
@@ -2684,7 +2685,7 @@
     function tn(v){ v=(v==null?'':String(v)).trim(); return v===''?null:v; }
     function inum(v){ v=(v==null?'':String(v)).trim(); return v===''?null:parseInt(v,10); }
     function posv(v,d){ v=(v==null||v==='')?d:parseInt(v,10); return isNaN(v)?d:v; }
-    return { name:tn(cur.name), jersey_number:inum(cur.jersey_number), position:tn(cur.position), height:tn(cur.height), city:tn(cur.city), birth_year:inum(cur.birth_year), photo_url:tn(cur.photo_url), photo_x:posv(cur.photo_x,50), photo_y:posv(cur.photo_y,0), photo_zoom:posv(cur.photo_zoom,100), name_color:tn(cur.name_color), bio:tn(cur.bio), sort:(cur.sort==null?QG.rows.length:cur.sort) };
+    return { name:tn(cur.name), gender:(cur.gender==='M'?'M':'F'), jersey_number:inum(cur.jersey_number), position:tn(cur.position), height:tn(cur.height), city:tn(cur.city), birth_year:inum(cur.birth_year), photo_url:tn(cur.photo_url), photo_x:posv(cur.photo_x,50), photo_y:posv(cur.photo_y,0), photo_zoom:posv(cur.photo_zoom,100), name_color:tn(cur.name_color), bio:tn(cur.bio), sort:(cur.sort==null?QG.rows.length:cur.sort) };
   }
   function qgSave(){
     var cur=qgCurrent(); if(!cur) return;

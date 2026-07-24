@@ -979,6 +979,11 @@
       <div style="position:relative;overflow:hidden;min-height:clamp(360px,52vw,760px);margin-bottom:clamp(32px,5vw,48px)">
         <img id="bb-eff-bg" class="bb-eff-bg" src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784691229/Calque_0_xdlgac.png" alt="" aria-hidden="true">
         <h3 style="position:relative;z-index:1;font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0 0 18px">Effectif senior</h3>
+        <div id="bb-eff-filter" style="position:relative;z-index:1;display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap">
+          <button type="button" data-g="all" style="font-family:'Archivo',sans-serif;font-weight:700;font-size:12px;letter-spacing:.04em;padding:8px 16px;border-radius:20px;border:1px solid #A8D93B;background:#A8D93B;color:#0A1B0D;cursor:pointer;min-height:38px">Tous</button>
+          <button type="button" data-g="F" style="font-family:'Archivo',sans-serif;font-weight:700;font-size:12px;letter-spacing:.04em;padding:8px 16px;border-radius:20px;border:1px solid rgba(243,239,230,.2);background:transparent;color:#C7CFC8;cursor:pointer;min-height:38px">Filles</button>
+          <button type="button" data-g="M" style="font-family:'Archivo',sans-serif;font-weight:700;font-size:12px;letter-spacing:.04em;padding:8px 16px;border-radius:20px;border:1px solid rgba(243,239,230,.2);background:transparent;color:#C7CFC8;cursor:pointer;min-height:38px">Garçons</button>
+        </div>
         <div id="bb-effectif-equipes" class="bb-eff" style="position:relative;z-index:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px"></div>
       </div>
       <div>
@@ -1723,10 +1728,11 @@
     return 'bb-pos-arriere';
   }
 
-  function playerCards(){
-    return players.map(function(p, i){
+  function playerCards(filterGender){
+    return players.filter(function(p){ return !filterGender || filterGender==='all' || p.gender===filterGender; }).map(function(p, i){
+      var idx = players.indexOf(p);
       return '' +
-        '<div class="bb-player" data-player="' + p.no + '" data-player-idx="' + i + '" style="cursor:pointer;position:relative;border-radius:14px;min-height:330px">' +
+        '<div class="bb-player" data-player="' + p.no + '" data-player-idx="' + idx + '" style="cursor:pointer;position:relative;border-radius:14px;min-height:330px">' +
           '<div class="bb-flip-inner">' +
             '<div class="bb-flip-face bb-flip-front" style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);box-shadow:0 10px 26px rgba(0,0,0,.32)">' +
               '<div class="bb-cardbg" style="animation-delay:' + (-i * 1.1).toFixed(1) + 's"></div>' +
@@ -1761,12 +1767,20 @@
     }).join('');
   }
 
+  var eqGenderFilter = 'all';
   function renderPlayers(){
-    var html = playerCards();
     var a = document.getElementById('bb-effectif');
-    if (a) a.innerHTML = html + recruitCard();
+    if (a) a.innerHTML = playerCards('all') + recruitCard();
     var b = document.getElementById('bb-effectif-equipes');
-    if (b) b.innerHTML = html + recruitCard();
+    if (b) b.innerHTML = playerCards(eqGenderFilter) + recruitCard();
+    var bar = document.getElementById('bb-eff-filter');
+    if (bar){ bar.querySelectorAll('button').forEach(function(btn){
+      var on = btn.getAttribute('data-g')===eqGenderFilter;
+      btn.style.background = on ? '#A8D93B' : 'transparent';
+      btn.style.color = on ? '#0A1B0D' : '#C7CFC8';
+      btn.style.borderColor = on ? '#A8D93B' : 'rgba(243,239,230,.2)';
+      if(!btn.__bound){ btn.__bound=true; btn.addEventListener('click', function(){ eqGenderFilter=btn.getAttribute('data-g'); renderPlayers(); }); }
+    }); }
   }
 
   function recruitCard(){
@@ -2567,7 +2581,7 @@
       players = rows.map(function(r){
         return { no: (r.jersey_number!=null?r.jersey_number:''), name:r.name||'', pos:r.position||'',
           age:(r.birth_year? (new Date().getFullYear()-r.birth_year):''), height:r.height||'', foot:r.city||'',
-          src:r.photo_url||'', nameColor:r.name_color||'', bio:r.bio||'',
+          src:r.photo_url||'', nameColor:r.name_color||'', bio:r.bio||'', gender:(r.gender==='M'?'M':'F'),
           px:(r.photo_x==null||r.photo_x==='')?50:r.photo_x, py:(r.photo_y==null||r.photo_y==='')?0:r.photo_y, pz:(r.photo_zoom==null||r.photo_zoom==='')?100:r.photo_zoom };
       });
       renderPlayers();
