@@ -218,19 +218,18 @@
   @keyframes bbCardSheen{0%{background-position:0% 50%}100%{background-position:200% 50%}}
   .bb-player .bb-cardbg{position:absolute;inset:0;z-index:0;background:linear-gradient(125deg,#0C1E13 0%,#12331F 28%,#0A1B12 52%,#123A22 78%,#0C1E13 100%);background-size:220% 220%;animation:bbCardSheen 10s linear infinite}
   .bb-player .bb-cardgrid{position:absolute;inset:0;z-index:0;background-image:linear-gradient(rgba(168,217,59,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(168,217,59,.055) 1px,transparent 1px);background-size:26px 26px;opacity:.55}
-  /* La carte est le conteneur de référence : le numéro se dimensionne sur sa
-     largeur (cqw), plus sur celle de la fenêtre.
-     Valeurs mesurées sur Anton italique, carte de 280px : à 1× la taille de la
-     carte, un chiffre couvre 53% de sa largeur, deux chiffres 98%, trois 143%.
-     L'italique est synthétisé par le navigateur, ce qui élargit encore le tracé.
-     Mesuré au canvas : le tracé italique n'est pas centré dans sa boîte, son
-     centre optique tombe 0,10em (un chiffre) à 0,15em (deux et trois) à droite
-     du centre de la boîte. translateX négatif recentre le tracé, sinon il
-     déborde à droite et son pied touche le bord gauche. */
-  .bb-player{container-type:inline-size}
-  .bb-player .bb-bignum{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) translateX(-.1em);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:clamp(120px,105cqw,300px);line-height:.72;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
-  .bb-player .bb-bignum.bb-bignum-2{font-size:clamp(100px,82cqw,230px);transform:translate(-50%,-50%) translateX(-.15em)}
-  .bb-player .bb-bignum.bb-bignum-3{font-size:clamp(80px,56cqw,160px);transform:translate(-50%,-50%) translateX(-.145em)}
+  /* Numéro géant des cartes joueuses.
+     La taille est calculée en JavaScript (bbFitNums) à partir de la carte
+     mesurée : les unités de requête de conteneur donnaient des résultats
+     différents entre l'émulation du navigateur et un vrai iPhone. La valeur
+     ci-dessous n'est qu'un repli si le script ne tourne pas.
+     Le tracé italique n'est pas centré dans sa boîte — mesuré au canvas, son
+     centre optique tombe 0,10em (un chiffre) à 0,15em (deux et trois) à droite.
+     translateX le recentre, sinon il déborde à droite et son pied touche le
+     bord gauche. */
+  .bb-player .bb-bignum{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) translateX(-.1em);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:180px;line-height:.72;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
+  .bb-player .bb-bignum.bb-bignum-2{transform:translate(-50%,-50%) translateX(-.15em)}
+  .bb-player .bb-bignum.bb-bignum-3{transform:translate(-50%,-50%) translateX(-.145em)}
   @media (prefers-reduced-motion:reduce){.bb-player .bb-cardbg{animation:none}.bb-player .bb-bignum{animation:none;opacity:.5}.bb-flip-inner{transition:none!important}@media (hover:hover){.bb-player:hover .bb-flip-inner{transform:none!important}}}
 
   /* ===== flip carte joueuse (fiche scouting) ===== */
@@ -2093,6 +2092,7 @@ window.bbCloud = function(url, w){
     if (a) a.innerHTML = playerCards('all') + recruitCard();
     var b = document.getElementById('bb-effectif-equipes');
     if (b) b.innerHTML = playerCards(eqGenderFilter) + recruitCard();
+    if (window.bbFitNums) window.bbFitNums();
     var bar = document.getElementById('bb-eff-filter');
     if (bar){ bar.querySelectorAll('button').forEach(function(btn){
       var on = btn.getAttribute('data-g')===eqGenderFilter;
@@ -2332,6 +2332,7 @@ window.bbCloud = function(url, w){
 
     if (window.bbRescanMotion) window.bbRescanMotion();
     if (window.bbImgOpt) window.bbImgOpt.scanSoon();
+    if (window.bbFitNums) requestAnimationFrame(window.bbFitNums);
   }
 
   /* ===== overlays ===== */
@@ -2605,7 +2606,7 @@ window.bbCloud = function(url, w){
     var html = '';
     if (r.photo || r.holder) {
       html += '<div style="display:flex;align-items:center;gap:14px;margin-top:16px">' +
-        (r.photo ? '<img src="'+r.photo+'" alt="" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:1px solid rgba(198,162,87,.45);flex:none" loading="lazy" decoding="async">' : '') +
+        (r.photo ? '<img src="'+(window.bbCloud?window.bbCloud(r.photo,200):(r.photo))+'" alt="" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:1px solid rgba(198,162,87,.45);flex:none" loading="lazy" decoding="async">' : '') +
         (r.holder ? '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:16px;color:#C6A257">'+esc(r.holder)+'</div>' : '') +
         '</div>';
     }
@@ -3060,7 +3061,7 @@ window.bbCloud = function(url, w){
       var color=(p.force_white===false||p.force_white==='false');
       var scale=parseInt(p.logo_scale,10); if(isNaN(scale)||!scale) scale=100;
       var imgStyle=scale!==100?' style="max-height:'+scale+'%;max-width:'+scale+'%"':'';
-      var img = p.logo_url ? '<img src="'+p.logo_url+'" alt="'+esc(p.name||'')+'"'+imgStyle+' loading="lazy" decoding="async">' : '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:13px;color:#C7CFC8">'+esc(p.name||'')+'</span>';
+      var img = p.logo_url ? '<img src="'+(window.bbCloud?window.bbCloud(p.logo_url,400):(p.logo_url))+'" alt="'+esc(p.name||'')+'"'+imgStyle+' loading="lazy" decoding="async">' : '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:13px;color:#C7CFC8">'+esc(p.name||'')+'</span>';
       var cls='bb-partner'+(color?' is-color':'')+(featured?' is-main':'');
       return p.website_url
         ? '<a class="'+cls+'" href="'+p.website_url+'" target="_blank" rel="noopener">'+img+'</a>'
@@ -3072,7 +3073,7 @@ window.bbCloud = function(url, w){
     var el = document.getElementById('bb-staff-list'); if(!el || !rows || !rows.length) return;
     el.innerHTML = rows.map(function(m){
       var ph = m.photo_url
-        ? '<img src="'+m.photo_url+'" alt="'+esc(m.name||'')+'" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none" loading="lazy" decoding="async">'
+        ? '<img src="'+(window.bbCloud?window.bbCloud(m.photo_url,150):(m.photo_url))+'" alt="'+esc(m.name||'')+'" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none" loading="lazy" decoding="async">'
         : '<div style="width:42px;height:42px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.18);flex:none;display:flex;align-items:center;justify-content:center;font-family:\'Inter\',sans-serif;font-weight:700;font-size:14px;color:#C6A257">'+esc((m.name||'?').trim().charAt(0).toUpperCase())+'</div>';
       return '<div style="display:flex;align-items:center;gap:12px">'+ph+'<div><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">'+esc(m.role||'')+'</div><div style="font-size:12.5px;color:#B9C2BB">'+esc(m.name||'')+'</div></div></div>';
     }).join('');
@@ -3223,8 +3224,8 @@ window.bbCloud = function(url, w){
     set('bb-fo-p2-name', s.fo_p2_name);
     if(s.fo_p1_number || s.fo_p1_position) set('bb-fo-p1-role', '#'+(s.fo_p1_number||'')+' · '+(s.fo_p1_position||''));
     if(s.fo_p2_number || s.fo_p2_position) set('bb-fo-p2-role', '#'+(s.fo_p2_number||'')+' · '+(s.fo_p2_position||''));
-    if(s.fo_p1_photo_url){ var i1=document.getElementById('bb-fo-p1-img'); if(i1){ i1.src=s.fo_p1_photo_url; i1.alt=s.fo_p1_name||i1.alt; } }
-    if(s.fo_p2_photo_url){ var i2=document.getElementById('bb-fo-p2-img'); if(i2){ i2.src=s.fo_p2_photo_url; i2.alt=s.fo_p2_name||i2.alt; } }
+    if(s.fo_p1_photo_url){ var i1=document.getElementById('bb-fo-p1-img'); if(i1){ i1.src=(window.bbCloud?window.bbCloud(s.fo_p1_photo_url,800):(s.fo_p1_photo_url)); i1.alt=s.fo_p1_name||i1.alt; } }
+    if(s.fo_p2_photo_url){ var i2=document.getElementById('bb-fo-p2-img'); if(i2){ i2.src=(window.bbCloud?window.bbCloud(s.fo_p2_photo_url,800):(s.fo_p2_photo_url)); i2.alt=s.fo_p2_name||i2.alt; } }
 
     // 6 stats, dans l'ordre où elles apparaissent dans le DOM (Points, Rebonds, Passes déc., Interceptions, 3 points, Évaluation).
     var stats=[
@@ -3315,7 +3316,7 @@ window.bbCloud = function(url, w){
     bbSet('bb-media-title', s.md_title);
     bbSet('bb-media-tag', s.md_tag);
     bbSet('bb-media-caption', s.md_caption);
-    if(s.md_image_url){ var im=document.getElementById('bb-media-img'); if(im){ im.src=s.md_image_url; if(s.md_caption) im.alt=s.md_caption; } }
+    if(s.md_image_url){ var im=document.getElementById('bb-media-img'); if(im){ im.src=(window.bbCloud?window.bbCloud(s.md_image_url,1800):(s.md_image_url)); if(s.md_caption) im.alt=s.md_caption; } }
     // Un lien renseigné rend la carte cliquable et fait apparaître le bouton lecture.
     var card=document.getElementById('bb-media-card'), play=document.getElementById('bb-media-play');
     if(card && s.md_link_url){
@@ -3334,7 +3335,7 @@ window.bbCloud = function(url, w){
       if(!url){ wrap.style.display='none'; return; }
       anySide=true;
       wrap.style.display='block';
-      var img=document.getElementById('bb-media-'+n+'-img'); if(img){ img.src=url; img.alt=cap||''; }
+      var img=document.getElementById('bb-media-'+n+'-img'); if(img){ img.src=(window.bbCloud?window.bbCloud(url,900):(url)); img.alt=cap||''; }
       bbSet('bb-media-'+n+'-caption', cap);
       if(link){ wrap.href=link; wrap.target='_blank'; wrap.rel='noopener'; } else { wrap.removeAttribute('href'); }
     });
@@ -3403,13 +3404,15 @@ window.bbCloud = function(url, w){
 
     // Affiches : la 2e est optionnelle ; sans aucune affiche, la pile disparaît.
     var p1=s.try_poster1_url, p2=s.try_poster2_url;
-    if(p1){ document.querySelectorAll('[data-bb-poster="1"] img').forEach(function(i){ i.src=p1; });
-            document.querySelectorAll('[data-bb-poster-full="1"]').forEach(function(i){ i.src=p1; }); }
+    if(p1){ var p1u=(window.bbCloud?window.bbCloud(p1,1000):(p1));
+            document.querySelectorAll('[data-bb-poster="1"] img').forEach(function(i){ i.src=p1u; });
+            document.querySelectorAll('[data-bb-poster-full="1"]').forEach(function(i){ i.src=p1u; }); }
     if(p2!=null){
       var show2 = p2 !== '';
       document.querySelectorAll('[data-bb-poster="2"]').forEach(function(c){ c.style.display = show2 ? '' : 'none'; });
-      document.querySelectorAll('[data-bb-poster-full="2"]').forEach(function(i){ i.style.display = show2 ? '' : 'none'; if(show2) i.src=p2; });
-      if(show2) document.querySelectorAll('[data-bb-poster="2"] img').forEach(function(i){ i.src=p2; });
+      var p2u=(window.bbCloud?window.bbCloud(p2,1000):(p2));
+      document.querySelectorAll('[data-bb-poster-full="2"]').forEach(function(i){ i.style.display = show2 ? '' : 'none'; if(show2) i.src=p2u; });
+      if(show2) document.querySelectorAll('[data-bb-poster="2"] img').forEach(function(i){ i.src=p2u; });
     }
     if(p1==='' && (p2===''||p2==null)){
       document.querySelectorAll('[data-bb-poster-row]').forEach(function(r){ r.style.display='none'; });
@@ -3519,7 +3522,7 @@ window.bbCloud = function(url, w){
 
   function applyHero(s){
     if(!s) return;
-    if(s.hero_image_url){ var im=document.getElementById('bb-hero-img'); if(im) im.src=s.hero_image_url; }
+    if(s.hero_image_url){ var im=document.getElementById('bb-hero-img'); if(im) im.src=(window.bbCloud?window.bbCloud(s.hero_image_url,1800):(s.hero_image_url)); }
     if(s.hero_title){ var t=document.getElementById('bb-hero-title'); if(t) t.textContent=s.hero_title; }
     if(s.hero_subtitle){ var sub=document.getElementById('bb-hero-sub'); if(sub) sub.innerHTML='<span>'+esc(s.hero_subtitle)+'</span>'; }
     var titleEl=document.getElementById('bb-hero-title'); if(titleEl) titleEl.style.color=s.hero_title_color||'#F3EFE6';
@@ -3627,7 +3630,7 @@ window.bbCloud = function(url, w){
     if(!rows || !rows.length) return;
     var n=rows[0];
     var im=document.getElementById('bb-asc-news-img');
-    if(im && n.image_url){ im.src=n.image_url; im.alt=n.title||''; }
+    if(im && n.image_url){ im.src=(window.bbCloud?window.bbCloud(n.image_url,400):(n.image_url)); im.alt=n.title||''; }
     bbAscSet('bb-asc-news-title', n.title);
     if(n.category) bbAscSet('bb-asc-news-tag', n.category);
   }
@@ -3663,7 +3666,7 @@ window.bbCloud = function(url, w){
       var td='font-family:\'Inter\',sans-serif;font-size:14px;color:#C7CFC8;padding:13px 10px;border-top:1px solid rgba(243,239,230,.06);text-align:center';
       return '<tr style="'+rowBg+'">'+
         '<td style="'+td+';padding-left:18px;text-align:left;font-weight:800;color:'+(bao?'#C6A257':'#7E8A82')+'">'+(i+1)+'</td>'+
-        '<td style="'+td+';text-align:left;font-weight:'+(bao?'800':'600')+';color:'+nameColor+'"><span style="display:inline-flex;align-items:center;gap:9px;min-width:0">'+(r.logo_url?'<img src="'+esc(r.logo_url)+'" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex:none;background:#12211A" loading="lazy" decoding="async">':'')+'<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.team_name||'')+'</span></span></td>'+
+        '<td style="'+td+';text-align:left;font-weight:'+(bao?'800':'600')+';color:'+nameColor+'"><span style="display:inline-flex;align-items:center;gap:9px;min-width:0">'+(r.logo_url?'<img src="'+esc((window.bbCloud?window.bbCloud(r.logo_url,100):(r.logo_url)))+'" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex:none;background:#12211A" loading="lazy" decoding="async">':'')+'<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.team_name||'')+'</span></span></td>'+
         '<td style="'+td+'">'+(r.played||0)+'</td>'+
         '<td style="'+td+'">'+(r.wins||0)+'</td>'+
         '<td style="'+td+'">'+(r.losses||0)+'</td>'+
@@ -3678,7 +3681,7 @@ window.bbCloud = function(url, w){
     function fdate(d){ if(!d) return ''; try{ return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return d; } }
     el.innerHTML=rows.map(function(n){
       var nx=(n.image_url_x==null||n.image_url_x==='')?50:n.image_url_x, ny=(n.image_url_y==null||n.image_url_y==='')?50:n.image_url_y, nz=(n.image_url_zoom==null||n.image_url_zoom==='')?100:n.image_url_zoom;
-      var img = n.image_url ? '<div style="aspect-ratio:16/10;overflow:hidden;background:#0F1E15"><img src="'+n.image_url+'" alt="'+esc(n.title||'')+'" style="width:100%;height:100%;object-fit:cover;object-position:'+nx+'% '+ny+'%;transform:scale('+(nz/100)+');transform-origin:'+nx+'% '+ny+'%" loading="lazy" decoding="async"></div>' : '';
+      var img = n.image_url ? '<div style="aspect-ratio:16/10;overflow:hidden;background:#0F1E15"><img src="'+(window.bbCloud?window.bbCloud(n.image_url,1000):(n.image_url))+'" alt="'+esc(n.title||'')+'" style="width:100%;height:100%;object-fit:cover;object-position:'+nx+'% '+ny+'%;transform:scale('+(nz/100)+');transform-origin:'+nx+'% '+ny+'%" loading="lazy" decoding="async"></div>' : '';
       var body = n.body ? '<p style="font-size:14px;line-height:1.6;color:#B9C2BB;margin:8px 0 0">'+esc(String(n.body).slice(0,140))+(String(n.body).length>140?'…':'')+'</p>' : '';
       return '<article style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:16px;overflow:hidden">'+img+
         '<div style="padding:18px 20px 22px">'+
@@ -3693,7 +3696,7 @@ window.bbCloud = function(url, w){
   function applyFounder(s){
     var el=document.getElementById('bb-founder'); if(!el) return;
     if(!s || !s.founder_name){ el.classList.add('bb-hide'); return; }
-    var photo = s.founder_photo_url ? '<img src="'+s.founder_photo_url+'" alt="'+esc(s.founder_name)+'" style="width:clamp(120px,22vw,168px);height:clamp(120px,22vw,168px);border-radius:18px;object-fit:cover;border:1px solid rgba(198,162,87,.35);flex:none" loading="lazy" decoding="async">' : '';
+    var photo = s.founder_photo_url ? '<img src="'+(window.bbCloud?window.bbCloud(s.founder_photo_url,400):(s.founder_photo_url))+'" alt="'+esc(s.founder_name)+'" style="width:clamp(120px,22vw,168px);height:clamp(120px,22vw,168px);border-radius:18px;object-fit:cover;border:1px solid rgba(198,162,87,.35);flex:none" loading="lazy" decoding="async">' : '';
     var bio = s.founder_bio ? '<div style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:14px 0 0">'+bbRich(s.founder_bio)+'</div>' : '';
     el.innerHTML =
       '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Le fondateur</span>' +
@@ -3821,7 +3824,7 @@ document.addEventListener('keydown', function(e){
     var bbLogo = 'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_320,c_limit/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png';
     var crest = function(src, name){
       return src
-        ? '<img src="' + escHtml(src) + '" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:contain;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy" decoding="async">'
+        ? '<img src="' + escHtml((window.bbCloud?window.bbCloud(src,150):(src))) + '" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:contain;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy" decoding="async">'
         : '<div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:\'Archivo\',sans-serif;font-stretch:125%;font-size:13px;color:#fff;flex:none;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
     };
     var bbCol = (won || nul) ? '#07130D' : 'rgba(7,19,13,.5)';
@@ -3873,7 +3876,7 @@ document.addEventListener('keydown', function(e){
 
     function teamBlock(name, logo){
       var img = logo
-        ? '<img src="' + logo + '" alt="' + escHtml(name) + '" style="width:58px;height:58px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)" loading="lazy" decoding="async">'
+        ? '<img src="' + (window.bbCloud?window.bbCloud(logo,200):(logo)) + '" alt="' + escHtml(name) + '" style="width:58px;height:58px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)" loading="lazy" decoding="async">'
         : '<div style="width:58px;height:58px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:16px;color:#fff;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
       return '<div style="text-align:center;flex:1">' + img +
         '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">' + escHtml(name) + '</div></div>';
@@ -3900,7 +3903,7 @@ document.addEventListener('keydown', function(e){
 
   // ===== Calendrier (matchs à venir) =====
   function fixBadge(name, logo){
-    var inner = logo ? '<img src="' + logo + '" alt="' + escHtml(name) + '" loading="lazy" decoding="async">' : escHtml(initials(name));
+    var inner = logo ? '<img src="' + (window.bbCloud?window.bbCloud(logo,200):(logo)) + '" alt="' + escHtml(name) + '" loading="lazy" decoding="async">' : escHtml(initials(name));
     return '<div class="bb-fix-team"><div class="bb-fix-badge" style="background:' + (logo ? '#0C1A12' : fallbackColor(name)) + '">' + inner + '</div><span class="bb-fix-abbr">' + escHtml(name) + '</span></div>';
   }
 
@@ -4183,6 +4186,39 @@ document.addEventListener('keydown', function(e){
    affichées et réécrit leur URL à la bonne taille. Rien à faire à l'ajout
    d'une nouvelle image — elle passe par ici comme les autres.
    ========================================================================== */
+/* Taille du numéro géant des cartes joueuses.
+   Ratios mesurés au canvas sur Anton italique (l'italique est synthétisé par le
+   navigateur, ce qui élargit le tracé au-delà des métriques de la police) :
+   à taille de police F, la largeur du tracé vaut 0,625F à un chiffre,
+   0,736F à deux, 1,386F à trois ; sa hauteur vaut 0,72F dans tous les cas.
+   On vise 78% de la largeur de la carte et 60% de sa hauteur, et on retient la
+   plus contraignante des deux — le numéro reste grand sans jamais être rogné,
+   sur iPhone comme sur grand écran. */
+window.bbFitNums = function(){
+  var els = document.querySelectorAll('.bb-player .bb-bignum');
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i], card = el.parentNode;
+    while (card && !(card.classList && card.classList.contains('bb-player'))) card = card.parentNode;
+    if (!card) continue;
+    var cw = card.clientWidth, ch = card.clientHeight;
+    if (!cw || !ch) continue;
+    var d = (el.textContent || '').trim().length || 1;
+    var ratio = d === 1 ? 0.625 : (d === 2 ? 0.736 : 1.386);
+    var byWidth = (cw * 0.78) / ratio;
+    var byHeight = (ch * 0.60) / 0.72;
+    el.style.fontSize = Math.max(48, Math.round(Math.min(byWidth, byHeight))) + 'px';
+  }
+};
+(function(){
+  var t = null;
+  function refit(){ clearTimeout(t); t = setTimeout(window.bbFitNums, 120); }
+  window.addEventListener('resize', refit);
+  window.addEventListener('orientationchange', refit);
+  // La police Anton change les métriques : on recale une fois qu'elle est prête.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ window.bbFitNums(); });
+  window.addEventListener('load', function(){ window.bbFitNums(); });
+})();
+
 window.bbImgOpt = (function(){
   var STEP = 100;      // on arrondit au palier supérieur pour réutiliser le cache Cloudinary
   var MAX_DPR = 2;     // au-delà, le gain de netteté ne justifie plus le poids
