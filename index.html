@@ -1249,15 +1249,15 @@
     <div class="bb-news-inner">
       <div>
         <span style="font-family:'Archivo',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#A8D93B;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Newsletter</span>
-        <h2 style="font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(30px,4.4vw,52px);line-height:.96;letter-spacing:-.01em;color:#F3EFE6;margin:10px 0 12px">Ne rate aucun<br>match des Baobabs</h2>
-        <p style="max-width:44ch;font-size:15px;line-height:1.65;color:#C7CFC8;margin:0">Résultats, billetterie, drops boutique et actus du club — une fois par semaine, dans ta boîte mail.</p>
+        <h2 id="bb-nl-title" style="font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(30px,4.4vw,52px);line-height:.96;letter-spacing:-.01em;color:#F3EFE6;margin:10px 0 12px">Ne rate aucun<br>match des Baobabs</h2>
+        <p id="bb-nl-sub" style="max-width:44ch;font-size:15px;line-height:1.65;color:#C7CFC8;margin:0">Résultats, billetterie, drops boutique et actus du club — une fois par semaine, dans ta boîte mail.</p>
       </div>
       <div>
         <form class="bb-news-form" id="bb-news-form" onsubmit="return false">
           <input type="email" id="bb-news-email" required placeholder="Ton adresse email" aria-label="Adresse email">
           <button type="submit" class="bb-news-btn">S'inscrire</button>
         </form>
-        <div id="bb-news-ok" class="bb-hide" style="display:flex;align-items:center;gap:9px;color:#A8D93B;font-family:'Archivo',sans-serif;font-weight:600;font-size:14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>Merci ! Tu es inscrit à la newsletter des Baobabs.</div>
+        <div id="bb-news-ok" class="bb-hide" style="display:flex;align-items:center;gap:9px;color:#A8D93B;font-family:'Archivo',sans-serif;font-weight:600;font-size:14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg><span id="bb-nl-confirm">Merci ! Tu es inscrit à la newsletter des Baobabs.</span></div>
         <p style="font-size:11.5px;color:#7E8A82;margin:12px 0 0">En t'inscrivant, tu acceptes de recevoir les emails du club. Désinscription à tout moment.</p>
       </div>
     </div>
@@ -2691,7 +2691,7 @@
     }).catch(function(){});
 
     sbFetch('site_settings?select=*').then(function(rows){
-      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyContent(s); applySiteSettings(s); applyFaceOff(s);
+      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyContent(s); applySiteSettings(s); applyFaceOff(s); applyNewsletter(s); applyLegal(s);
     }).catch(function(){});
   }
 
@@ -2782,6 +2782,37 @@
         iEls[1].style.width=(max>0?(v2/max*100):0)+'%';
       }
     });
+  }
+
+  // Branche le bandeau Newsletter (titre, sous-titre, message de confirmation) sur le site public.
+  function applyNewsletter(s){
+    if(!s) return;
+    if(s.nl_title){ var t=document.getElementById('bb-nl-title'); if(t) t.innerHTML=esc(s.nl_title).replace(/\n/g,'<br>'); }
+    if(s.nl_subtitle){ var sub=document.getElementById('bb-nl-sub'); if(sub) sub.textContent=s.nl_subtitle; }
+    if(s.nl_confirm){ var c=document.getElementById('bb-nl-confirm'); if(c) c.textContent=s.nl_confirm; }
+  }
+
+  // Branche les modales Mentions légales / Confidentialité en réécrivant l'objet legalContent
+  // avant toute ouverture — openLegal() lit legalContent[key] au moment du clic, donc cette
+  // surcharge suffit sans toucher au rendu de la modale.
+  function applyLegal(s){
+    if(!s || !window.legalContent) return;
+    var m=legalContent.mentions, c=legalContent.confidentialite;
+    if(m){
+      if(s.ml_title) m.title=s.ml_title;
+      var mb=m.body||[];
+      if(mb[0]){ if(s.ml_s1_h) mb[0].h=s.ml_s1_h; if(s.ml_s1_p) mb[0].p=s.ml_s1_p; }
+      if(mb[1]){ if(s.ml_s2_h) mb[1].h=s.ml_s2_h; if(s.ml_s2_p) mb[1].p=s.ml_s2_p; }
+      if(mb[2]){ if(s.ml_s3_h) mb[2].h=s.ml_s3_h; if(s.ml_s3_p) mb[2].p=s.ml_s3_p; }
+      if(mb[3]){ if(s.ml_s4_h) mb[3].h=s.ml_s4_h; if(s.ml_s4_p) mb[3].p=s.ml_s4_p; }
+    }
+    if(c){
+      if(s.cf_title) c.title=s.cf_title;
+      var cb=c.body||[];
+      if(cb[0]){ if(s.cf_s1_h) cb[0].h=s.cf_s1_h; if(s.cf_s1_p) cb[0].p=s.cf_s1_p; }
+      if(cb[1]){ if(s.cf_s2_h) cb[1].h=s.cf_s2_h; if(s.cf_s2_p) cb[1].p=s.cf_s2_p; }
+      if(cb[2]){ if(s.cf_s3_h) cb[2].h=s.cf_s3_h; if(s.cf_s3_p) cb[2].p=s.cf_s3_p; }
+    }
   }
 
   function applyHero(s){
