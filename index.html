@@ -3505,15 +3505,16 @@ window.bbCloud = function(url, w){
   function bbSet(id,val){ if(val==null||val==='') return; var el=document.getElementById(id); if(el) el.textContent=val; }
   function bbSetAll(name,val){ if(val==null||val==='') return; document.querySelectorAll('[data-bb="'+name+'"]').forEach(function(el){ el.textContent=val; }); }
   // Un lien saisi dans l'admin : soit une page du site (accueil, club, equipes,
-  // competitions, tryouts, boutique), soit un mot-clé de modale (contact,
-  // abonnement), soit une URL complète (https://…, mailto:, tel:).
+  // competitions, tryouts, boutique), soit un mot-clé de modale (billetterie,
+  // contact, abonnement), soit une URL complète (https://…, mailto:, tel:).
   function bbApplyLink(a,val){
     if(val==null||val==='') return;
     var v=String(val).trim(), low=v.toLowerCase();
     var nav=['accueil','club','equipes','competitions','tryouts','boutique'];
-    a.removeAttribute('data-nav'); a.removeAttribute('data-cta'); a.removeAttribute('target'); a.removeAttribute('rel');
+    a.removeAttribute('data-nav'); a.removeAttribute('data-cta'); a.removeAttribute('data-ticket'); a.removeAttribute('target'); a.removeAttribute('rel');
     if(/^(https?:|mailto:|tel:)/i.test(v)){ a.href=v; if(/^https?:/i.test(v)){ a.target='_blank'; a.rel='noopener'; } return; }
     if(nav.indexOf(low)>=0){ a.setAttribute('data-nav',low); a.href='#'; return; }
+    if(low==='billetterie'||low==='billets'){ a.setAttribute('data-ticket',''); a.href='#'; return; }
     if(low==='contact'){ a.setAttribute('data-cta','contact'); a.href='#'; return; }
     if(low==='abonnement'||low==='subscribe'||low==='newsletter'){ a.setAttribute('data-cta','subscribe'); a.href='#'; return; }
     a.href=v;
