@@ -218,8 +218,13 @@
   @keyframes bbCardSheen{0%{background-position:0% 50%}100%{background-position:200% 50%}}
   .bb-player .bb-cardbg{position:absolute;inset:0;z-index:0;background:linear-gradient(125deg,#0C1E13 0%,#12331F 28%,#0A1B12 52%,#123A22 78%,#0C1E13 100%);background-size:220% 220%;animation:bbCardSheen 10s linear infinite}
   .bb-player .bb-cardgrid{position:absolute;inset:0;z-index:0;background-image:linear-gradient(rgba(168,217,59,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(168,217,59,.055) 1px,transparent 1px);background-size:26px 26px;opacity:.55}
-  .bb-player .bb-bignum{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:clamp(140px,44vw,300px);line-height:.72;letter-spacing:-.02em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap;max-width:100%}
-  .bb-player .bb-bignum.bb-bignum-2{font-size:clamp(76px,24vw,168px)}
+  /* La carte est le conteneur de référence : le numéro se dimensionne sur sa
+     largeur (cqw), plus sur celle de la fenêtre. Un chiffre et deux chiffres
+     partagent la même taille — une grille de numéros de tailles différentes
+     paraît accidentelle. 96cqw laisse deux chiffres dans la carte sans rognage. */
+  .bb-player{container-type:inline-size}
+  .bb-player .bb-bignum{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:clamp(120px,96cqw,300px);line-height:.72;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
+  .bb-player .bb-bignum.bb-bignum-3{font-size:clamp(90px,64cqw,200px)}
   @media (prefers-reduced-motion:reduce){.bb-player .bb-cardbg{animation:none}.bb-player .bb-bignum{animation:none;opacity:.5}.bb-flip-inner{transition:none!important}@media (hover:hover){.bb-player:hover .bb-flip-inner{transform:none!important}}}
 
   /* ===== flip carte joueuse (fiche scouting) ===== */
@@ -1823,6 +1828,15 @@
 
 </div>
 
+<script>
+/* Transforme une URL Cloudinary pour une largeur donnée. Utilisée à la source,
+   dans les données, pour que le navigateur ne télécharge jamais l'original. */
+window.bbCloud = function(url, w){
+  if (!url || url.indexOf('res.cloudinary.com') === -1 || url.indexOf('/image/upload/') === -1) return url;
+  if (url.indexOf('f_auto') !== -1 || /\.svg($|\?)/i.test(url)) return url;
+  return url.replace(/\/upload\/v(\d+)\//, '/upload/f_auto,q_auto,w_' + w + ',c_limit/v$1/');
+};
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
@@ -2037,7 +2051,7 @@
             '<div class="bb-flip-face bb-flip-front" style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);box-shadow:0 10px 26px rgba(0,0,0,.32)">' +
               '<div class="bb-cardbg" style="animation-delay:' + (-i * 1.1).toFixed(1) + 's"></div>' +
               '<div class="bb-cardgrid"></div>' +
-              '<div class="bb-bignum' + (String(p.no).length > 1 ? ' bb-bignum-2' : '') + '" style="animation-delay:' + (-i * 0.45).toFixed(2) + 's">' + p.no + '</div>' +
+              '<div class="bb-bignum' + (String(p.no).length > 2 ? ' bb-bignum-3' : '') + '" style="animation-delay:' + (-i * 0.45).toFixed(2) + 's">' + p.no + '</div>' +
               '<div class="bb-spot" style="position:absolute;left:50%;top:-12%;width:120%;height:52%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.14),transparent 74%);pointer-events:none;z-index:1"></div>' +
               '<div class="bb-badge" style="position:absolute;top:12px;left:12px;z-index:4;font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:13px;color:#0A1B0D;background:#A8D93B;border-radius:8px;padding:4px 9px;line-height:1">#' + p.no + '</div>' +
               '<span class="bb-pos-badge ' + posClass(p.pos) + '">' + esc(p.pos) + '</span>' +
@@ -2432,7 +2446,7 @@
     document.getElementById('bb-player-bio').innerHTML = bbRich(p.bio);
     document.getElementById('bb-player-bignum').textContent = p.no;
     var img = document.getElementById('bb-player-img');
-    img.src = p.src; img.alt = p.name;
+    img.src = p.srcFull || p.src; img.alt = p.name;
     var mpx=(p.px==null?50:p.px), mpy=(p.py==null?0:p.py), mpz=(p.pz==null?100:p.pz);
     img.style.objectPosition=mpx+'% '+mpy+'%'; img.style.transform='scale('+(mpz/100)+')'; img.style.transformOrigin=mpx+'% '+mpy+'%';
     document.getElementById('bb-player-stats').innerHTML =
@@ -3022,7 +3036,9 @@
       players = rows.map(function(r){
         return { no: (r.jersey_number!=null?r.jersey_number:''), name:r.name||'', pos:r.position||'',
           age:(r.birth_year? (new Date().getFullYear()-r.birth_year):''), height:r.height||'', foot:r.city||'',
-          src:r.photo_url||'', nameColor:r.name_color||'', bio:r.bio||'', gender:(r.gender==='M'?'M':'F'),
+          src:(window.bbCloud?window.bbCloud(r.photo_url||'',800):(r.photo_url||'')),
+          srcFull:(window.bbCloud?window.bbCloud(r.photo_url||'',1400):(r.photo_url||'')),
+          nameColor:r.name_color||'', bio:r.bio||'', gender:(r.gender==='M'?'M':'F'),
           px:(r.photo_x==null||r.photo_x==='')?50:r.photo_x, py:(r.photo_y==null||r.photo_y==='')?0:r.photo_y, pz:(r.photo_zoom==null||r.photo_zoom==='')?100:r.photo_zoom };
       });
       renderPlayers(); renderAppRoster();
@@ -3033,6 +3049,7 @@
       products = rows.map(function(r){
         var imgs = Array.isArray(r.images) ? r.images.filter(Boolean) : (r.image_url ? [r.image_url] : []);
         if(!imgs.length) imgs = [''];
+        if(window.bbCloud) imgs = imgs.map(function(u){ return window.bbCloud(u, 900); });
         var sz = r.sizes ? String(r.sizes).split(',').map(function(s){return s.trim();}).filter(Boolean) : null;
         return { id:String(r.id), name:r.name||'', tag:r.category||'', desc:r.description||'', price:r.price||0, images:imgs, sizes:(sz&&sz.length?sz:null), in_stock:(r.in_stock!==false) };
       });
