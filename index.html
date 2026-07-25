@@ -227,9 +227,7 @@
      italique dépasse sa propre boîte à droite de 0,164em (un chiffre),
      0,186em (deux), 0,179em (trois) : le translateX recule d'autant, plus
      0,06em de marge, pour effleurer le bord sans le franchir. */
-  .bb-player .bb-bignum{position:absolute;right:0;top:40%;transform:translateY(-50%) translateX(-.22em);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:180px;line-height:.72;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
-  .bb-player .bb-bignum.bb-bignum-2{transform:translateY(-50%) translateX(-.25em)}
-  .bb-player .bb-bignum.bb-bignum-3{transform:translateY(-50%) translateX(-.24em)}
+  .bb-player .bb-bignum{position:absolute;right:0;top:50%;transform:translateY(-50%) translate(-.22em,-.077em);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:180px;line-height:1;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
   @media (prefers-reduced-motion:reduce){.bb-player .bb-cardbg{animation:none}.bb-player .bb-bignum{animation:none;opacity:.5}.bb-flip-inner{transition:none!important}@media (hover:hover){.bb-player:hover .bb-flip-inner{transform:none!important}}}
 
   /* ===== flip carte joueuse (fiche scouting) ===== */
@@ -2069,7 +2067,7 @@ window.bbCloud = function(url, w){
             '<div class="bb-flip-face bb-flip-front" style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);box-shadow:0 10px 26px rgba(0,0,0,.32)">' +
               '<div class="bb-cardbg" style="animation-delay:' + (-i * 1.1).toFixed(1) + 's"></div>' +
               '<div class="bb-cardgrid"></div>' +
-              '<div class="bb-bignum' + (String(p.no).length === 2 ? ' bb-bignum-2' : (String(p.no).length > 2 ? ' bb-bignum-3' : '')) + '" style="animation-delay:' + (-i * 0.45).toFixed(2) + 's">' + p.no + '</div>' +
+              '<div class="bb-bignum" style="animation-delay:' + (-i * 0.45).toFixed(2) + 's">' + p.no + '</div>' +
               '<div class="bb-spot" style="position:absolute;left:50%;top:-12%;width:120%;height:52%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.14),transparent 74%);pointer-events:none;z-index:1"></div>' +
               '<div class="bb-badge" style="position:absolute;top:12px;left:12px;z-index:4;font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:13px;color:#0A1B0D;background:#A8D93B;border-radius:8px;padding:4px 9px;line-height:1">#' + p.no + '</div>' +
               '<span class="bb-pos-badge ' + posClass(p.pos) + '">' + esc(p.pos) + '</span>' +
@@ -4199,35 +4197,73 @@ document.addEventListener('keydown', function(e){
    affichées et réécrit leur URL à la bonne taille. Rien à faire à l'ajout
    d'une nouvelle image — elle passe par ici comme les autres.
    ========================================================================== */
-/* Taille du numéro géant des cartes joueuses.
-   Ratios mesurés au canvas sur Anton italique (l'italique est synthétisé par le
-   navigateur, ce qui élargit le tracé au-delà des métriques de la police) :
-   à taille de police F, la largeur du tracé vaut 0,625F à un chiffre,
-   0,736F à deux, 1,386F à trois ; sa hauteur vaut 0,72F dans tous les cas.
-   Le numéro étant ancré à droite, le côté gauche est libre : on autorise 88% de
-   la largeur de la carte, et 60% de sa hauteur, en retenant la plus
-   contraignante — grand sans jamais être rogné, sur iPhone comme sur grand écran. */
-window.bbFitNums = function(){
-  var els = document.querySelectorAll('.bb-player .bb-bignum');
-  for (var i = 0; i < els.length; i++) {
-    var el = els[i];
-    // On mesure la boîte qui rogne réellement, c'est-à-dire le parent direct
-    // (.bb-flip-front, en overflow:hidden), et non la carte extérieure : sur
-    // iOS, perspective et preserve-3d font que les deux ne coïncident pas
-    // toujours, et le numéro était coupé alors que le calcul le disait bon.
-    var box = el.parentNode;
-    if (!box || !box.getBoundingClientRect) continue;
-    var r = box.getBoundingClientRect();
-    var cw = Math.round(r.width) || box.clientWidth;
-    var ch = Math.round(r.height) || box.clientHeight;
-    if (!cw || !ch) continue;
-    var d = (el.textContent || '').trim().length || 1;
-    var ratio = d === 1 ? 0.625 : (d === 2 ? 0.736 : 1.386);
-    var byWidth = (cw * 0.88) / ratio;
-    var byHeight = (ch * 0.60) / 0.72;
-    el.style.fontSize = Math.max(48, Math.round(Math.min(byWidth, byHeight))) + 'px';
-  }
-};
+/* Taille et position du numéro géant des cartes joueuses.
+   Aucune estimation : on mesure le tracé réel de chaque numéro au canvas, dans
+   la police effectivement chargée, puis on le place dans la boîte qui le rogne.
+
+   Trois faits mesurés sur Anton italique, qui expliquent le rognage précédent :
+   - la hauteur du tracé vaut 0,86 à 0,89 em, pas 0,72 em (0,72 était la valeur
+     du line-height, que j'avais prise à tort pour la hauteur du tracé) ;
+   - le tracé dépasse sa propre boîte d'avance à droite d'environ 0,17 em, parce
+     que l'italique est synthétisé par le navigateur ;
+   - avec un line-height inférieur à 1, le tracé sort de sa boîte par le haut :
+     l'élément étant positionné par sa boîte, le sommet des chiffres passait
+     au-dessus du bord de la carte, où .bb-flip-face{overflow:hidden} le coupait.
+   La largeur d'un même nombre de chiffres varie aussi beaucoup ("15" fait
+   0,893 em contre 0,737 em pour "11"), d'où la mesure au cas par cas. */
+window.bbFitNums = (function(){
+  var ctx = null;
+  var LINE_HEIGHT = 1;   // doit rester identique au line-height de .bb-bignum
+  var H_MARGIN = 0.06;   // marge au bord droit, en em
+  var W_BUDGET = 0.88;   // part de la largeur de la boîte
+  var H_BUDGET = 0.58;   // part de la hauteur de la boîte
+
+  return function(){
+    var els = document.querySelectorAll('.bb-player .bb-bignum');
+    if (!els.length) return;
+    if (!ctx) { var cv = document.createElement('canvas'); ctx = cv.getContext && cv.getContext('2d'); }
+    if (!ctx) return;
+
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      // La boîte qui rogne est le parent direct (.bb-flip-front, overflow:hidden),
+      // pas la carte extérieure : avec perspective et preserve-3d, les deux ne
+      // coïncident pas toujours.
+      var box = el.parentNode;
+      if (!box || !box.getBoundingClientRect) continue;
+      var r = box.getBoundingClientRect();
+      var cw = r.width, ch = r.height;
+      if (!cw || !ch) continue;                        // page masquée : on repassera
+      var txt = (el.textContent || '').trim();
+      if (!txt) continue;
+
+      ctx.font = 'italic 100px Anton';
+      ctx.textBaseline = 'alphabetic';
+      var m = ctx.measureText(txt);
+      var inkW = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / 100;
+      var inkA = m.actualBoundingBoxAscent / 100;
+      var inkD = m.actualBoundingBoxDescent / 100;
+      var inkH = inkA + inkD;
+      if (!(inkW > 0) || !(inkH > 0)) continue;        // police pas prête : fonts.ready rappellera
+
+      var byWidth = (cw * W_BUDGET) / inkW;
+      var byHeight = (ch * H_BUDGET) / inkH;
+      var F = Math.max(48, Math.round(Math.min(byWidth, byHeight)));
+      el.style.fontSize = F + 'px';
+
+      // Recentrage horizontal : on recule du dépassement droit réel, plus la marge.
+      var overflowRight = (m.actualBoundingBoxRight - m.width) / 100;
+      // Recentrage vertical : où tombe le centre du tracé dans la boîte de ligne.
+      var fbA = m.fontBoundingBoxAscent / 100, fbD = m.fontBoundingBoxDescent / 100;
+      var baseline = (LINE_HEIGHT - (fbA + fbD)) / 2 + fbA;
+      var vOffset = (baseline - inkA + inkH / 2) - LINE_HEIGHT / 2;
+
+      el.style.transform = 'translateY(-50%) translate(' +
+        (-(overflowRight + H_MARGIN)).toFixed(3) + 'em,' + (-vOffset).toFixed(3) + 'em)';
+    }
+  };
+})();
+
 (function(){
   var t = null;
   function refit(){ clearTimeout(t); t = setTimeout(window.bbFitNums, 120); }
