@@ -1408,6 +1408,17 @@
         return AUDIT_CROP_SUFFIX[suf] + (baseLabel && baseLabel !== 'photo' ? ' ('+baseLabel.toLowerCase()+')' : '');
       }
     }
+    // Repli automatique : on va chercher le libellé dans les formulaires eux-mêmes
+    // (CONTENT_BLOCKS / SETTINGS_BLOCKS), pour que tout nouveau bloc éditorial soit
+    // lisible dans l'historique sans avoir à compléter ce dictionnaire à la main.
+    if (typeof qgcAll === 'function') {
+      var blocks = qgcAll();
+      for (var bi = 0; bi < blocks.length; bi++) {
+        for (var fi = 0; fi < blocks[bi].fields.length; fi++) {
+          if (blocks[bi].fields[fi].key === key) return blocks[bi].label + ' · ' + blocks[bi].fields[fi].label;
+        }
+      }
+    }
     return key; // repli : jamais planter, montrer le nom technique tel quel
   }
 
@@ -3527,6 +3538,30 @@
         {key:'club_obj3_text', label:'Carte 3 · texte', type:'textarea', def:"Une communauté de supporters fidèles, du quartier jusqu'à la diaspora."}
       ],
       preview:function(v){ function c(t,x){ return '<div style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:12px;padding:16px"><div style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:16px;color:#C6A257;margin-bottom:7px">'+esc(t)+'</div><div style="font-size:12.5px;line-height:1.55;color:#B9C2BB">'+esc(x)+'</div></div>'; } return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+c(v.club_obj1_title,v.club_obj1_text)+c(v.club_obj2_title,v.club_obj2_text)+c(v.club_obj3_title,v.club_obj3_text)+'</div>'; } },
+    { id:'club_media', page:'Accueil · Médias', label:'Médias — carte résumé', fields:[
+        {key:'md_title', label:'Titre de la section', type:'text', def:'Médias'},
+        {key:'md_image_url', label:'Image de la carte', type:'image', def:'https://res.cloudinary.com/djdkpihuz/image/upload/v1784924531/Trio_Baobabs___trois_quarts_f5uqkz.png'},
+        {key:'md_caption', label:'Légende affichée sur l\'image', type:'text', def:'Résumé · Baobabs 84–79 ASC Ville de Dakar'},
+        {key:'md_link_url', label:'Lien au clic (optionnel — vidéo YouTube, article…)', type:'text', def:''}
+      ],
+      preview:function(v){ return '<div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:18px"><div style="font-family:\'Archivo Black\',sans-serif;font-weight:900;font-size:18px;color:#F3EFE6;margin-bottom:12px">'+esc(v.md_title)+'</div><div style="position:relative;border-radius:12px;overflow:hidden;height:170px;background:#0F1E15">'+(v.md_image_url?'<img src="'+esc(v.md_image_url)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">':'')+'<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,.85),transparent 60%)"></div><div style="position:absolute;left:14px;bottom:12px;font-family:\'Archivo\',sans-serif;font-weight:600;font-size:13.5px;color:#F3EFE6">'+esc(v.md_caption)+'</div></div></div>'+(v.md_link_url?'<p class="pv-hint">Au clic, la carte ouvrira : '+esc(v.md_link_url)+'</p>':'<p class="pv-hint">Sans lien, la carte reste simplement illustrative.</p>'); } },
+    { id:'club_app', page:'Accueil · L\'appli', label:'L\'appli des Baobabs', fields:[
+        {key:'app_kicker', label:'Sur-titre', type:'text', def:'Bientôt disponible'},
+        {key:'app_title', label:'Titre (Entrée = retour à la ligne)', type:'textarea', def:"L'appli des\nBaobabs"},
+        {key:'app_text', label:'Paragraphe', type:'textarea', def:"Scores en direct, calendrier, billetterie et boutique : bientôt tout le club dans votre poche. L'application des Baobabs arrive prochainement sur iOS et Android."},
+        {key:'app_b1', label:'Puce 1', type:'text', def:'Notifications de match en temps réel'},
+        {key:'app_b2', label:'Puce 2', type:'text', def:'Billets et boutique intégrés'},
+        {key:'app_b3', label:'Puce 3', type:'text', def:"Toute l'actu du club"},
+        {key:'app_badge_note', label:'Mention au-dessus des stores', type:'text', def:'Bientôt sur'},
+        {key:'app_year', label:'Pastille (année / mention courte)', type:'text', def:'2026'},
+        {key:'app_android_url', label:'Lien Google Play (une fois l\'appli publiée)', type:'text', def:''},
+        {key:'app_ios_url', label:'Lien App Store (une fois l\'appli publiée)', type:'text', def:''}
+      ],
+      preview:function(v){
+        function puce(t){ return t?'<li style="display:flex;align-items:center;gap:9px;font-size:12.5px;color:#D8D6CE"><span style="width:14px;height:14px;flex:none;border-radius:50%;background:rgba(168,217,59,.18);color:#A8D93B;display:flex;align-items:center;justify-content:center;font-size:9px">✓</span>'+esc(t)+'</li>':''; }
+        function badge(name,url){ return '<span style="display:inline-flex;align-items:center;gap:8px;background:#05100B;border:1px solid rgba(243,239,230,.14);border-radius:10px;padding:7px 12px;opacity:'+(url?'1':'.6')+'"><span style="text-align:left"><span style="display:block;font-size:8px;letter-spacing:.1em;color:#7E8A82;text-transform:uppercase">'+esc(v.app_badge_note)+'</span><span style="display:block;font-family:\'Archivo\',sans-serif;font-weight:700;font-size:12px;color:#C7CFC8">'+name+'</span></span></span>'; }
+        return '<div style="background:linear-gradient(150deg,#0F4030,#0A2318);border:1px solid rgba(198,162,87,.28);border-radius:16px;padding:22px"><div style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#A8D93B"></span><span style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:10px;letter-spacing:.2em;color:#A8D93B;text-transform:uppercase">'+esc(v.app_kicker)+'</span></div><div style="font-family:\'Archivo Black\',sans-serif;font-weight:900;font-size:26px;line-height:.98;color:#F3EFE6;margin:10px 0 10px;white-space:pre-line">'+esc(v.app_title)+'</div><div style="font-size:12.5px;line-height:1.6;color:#C7CFC8">'+esc(v.app_text)+'</div><ul style="list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px">'+puce(v.app_b1)+puce(v.app_b2)+puce(v.app_b3)+'</ul><div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:16px">'+badge('Google Play',v.app_android_url)+badge('App Store',v.app_ios_url)+(v.app_year?'<span style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#0A1B0D;background:#A8D93B;padding:6px 10px;border-radius:20px">'+esc(v.app_year)+'</span>':'')+'</div></div><p class="pv-hint">Les écrans de téléphone affichés à côté du texte sont une illustration fixe, non modifiable ici.</p>';
+      } },
     { id:'club_faceoff', page:'Accueil · Face-Off', label:'Face-Off — Le duel des leaders', fields:[
         {key:'fo_subtitle', label:'Sous-titre (période)', type:'text', def:'Moyennes par match · 2026'},
         {key:'fo_p1_name', label:'Joueuse 1 · Nom', type:'text', def:'Aïda Diop'},
@@ -3567,6 +3602,41 @@
         stat('Évaluation',v.fo_p1_eval,v.fo_p2_eval)+
         '</div>';
       } },
+    { id:'club_stats', page:'Accueil · Bandeau chiffres', label:'Bandeau statistiques — 4 chiffres', fields:[
+        {key:'st1_value', label:'Chiffre 1', type:'text', def:'2026'},
+        {key:'st1_label', label:'Légende 1', type:'text', def:'Fondation du club'},
+        {key:'st2_value', label:'Chiffre 2', type:'text', def:'D2'},
+        {key:'st2_label', label:'Légende 2', type:'text', def:'Première saison'},
+        {key:'st3_value', label:'Chiffre 3 — vide = on garde l\'icône flèche', type:'text', def:''},
+        {key:'st3_label', label:'Légende 3', type:'text', def:'Licenciées en recrutement'},
+        {key:'st4_value', label:'Chiffre 4', type:'text', def:'27'},
+        {key:'st4_label', label:'Légende 4', type:'text', def:'Tryouts 25–26 juil.'}
+      ],
+      preview:function(v){
+        function cel(val,lab){ return '<div style="text-align:center"><div style="font-family:\'Archivo\',sans-serif;font-weight:900;font-size:26px;color:#C6A257;line-height:1">'+(val?esc(val):'↗')+'</div><div style="margin-top:7px;font-family:\'Archivo\',sans-serif;font-weight:600;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#C7CFC8">'+esc(lab)+'</div></div>'; }
+        return '<div style="background:linear-gradient(155deg,#0F4030,#081C13);border-top:1px solid rgba(198,162,87,.22);border-bottom:1px solid rgba(198,162,87,.22);border-radius:14px;padding:24px 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px">'+cel(v.st1_value,v.st1_label)+cel(v.st2_value,v.st2_label)+cel(v.st3_value,v.st3_label)+cel(v.st4_value,v.st4_label)+'</div>';
+      } },
+    { id:'club_tryouts', page:'Accueil + page Tryouts', label:'TRYOUTS — détection', fields:[
+        {key:'try_kicker', label:'Sur-titre', type:'text', def:'Détection officielle · Saison 2026–2027'},
+        {key:'try_title_a', label:'Titre — 1re partie (blanc)', type:'text', def:'TRY'},
+        {key:'try_title_b', label:'Titre — 2e partie (vert)', type:'text', def:'OUTS'},
+        {key:'try_text', label:'Paragraphe', type:'textarea', def:'Le club ouvre ses portes à toutes les catégories. Viens montrer ce que tu sais faire devant le staff technique des Baobabs.'},
+        {key:'try_dates', label:'Dates', type:'text', def:'25 & 26 juillet 2026'},
+        {key:'try_time', label:'Heure', type:'text', def:'15h00'},
+        {key:'try_place', label:'Lieu', type:'text', def:'Complexe Patrick Semedo, Dakar'},
+        {key:'try_contact', label:'Téléphone de contact (sert aussi au bouton Appeler)', type:'text', def:'+221 77 858 74 53'}
+      ],
+      preview:function(v){
+        function info(l,t){ return '<div style="display:flex;flex-direction:column;gap:3px"><span style="font-family:\'Archivo\',sans-serif;font-weight:500;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82">'+l+'</span><span style="font-family:\'Archivo\',sans-serif;font-weight:600;font-size:12.5px;color:#F3EFE6">'+esc(t)+'</span></div>'; }
+        return '<div style="background:radial-gradient(120% 140% at 78% 0%,#123322 0%,#081C13 46%,#05130D 100%);border:1px solid rgba(198,162,87,.22);border-radius:14px;padding:20px"><div style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:#A8D93B"></span><span style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.22em;color:#A8D93B;text-transform:uppercase">'+esc(v.try_kicker)+'</span></div><div style="font-family:\'Archivo Black\',sans-serif;font-weight:900;font-size:44px;line-height:.9;color:#F3EFE6;margin:10px 0 8px">'+esc(v.try_title_a)+'<span style="color:#A8D93B">'+esc(v.try_title_b)+'</span></div><div style="font-size:12.5px;line-height:1.6;color:#C7CFC8">'+esc(v.try_text)+'</div><div style="display:flex;flex-wrap:wrap;gap:20px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(243,239,230,.08)">'+info('Dates',v.try_dates)+info('Heure',v.try_time)+info('Lieu',v.try_place)+info('Contact',v.try_contact)+'</div></div><p class="pv-hint">Ce bloc alimente l\'accueil <b>et</b> la page Tryouts. Les catégories de recrutement se gèrent dans l\'onglet Recrutement.</p>';
+      } },
+    { id:'club_tribu', page:'Accueil · Bandeau CTA', label:'Rejoins la tribu Baobabs', fields:[
+        {key:'tribu_title', label:'Titre', type:'text', def:'Rejoins la tribu Baobabs'},
+        {key:'tribu_text', label:'Sous-titre', type:'text', def:'Billets, boutique, actus : ne rate rien de la saison.'},
+        {key:'tribu_btn1', label:'Bouton 1 (ouvre la modale S\'abonner)', type:'text', def:"S'abonner"},
+        {key:'tribu_btn2', label:'Bouton 2 (ouvre la modale Nous contacter)', type:'text', def:'Nous contacter'}
+      ],
+      preview:function(v){ return '<div style="background:linear-gradient(155deg,#0F4030,#081C13);border-radius:14px;padding:26px;text-align:center"><div style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:22px;color:#F3EFE6;margin-bottom:8px">'+esc(v.tribu_title)+'</div><div style="font-size:12.5px;color:#C7CFC8;margin-bottom:18px">'+esc(v.tribu_text)+'</div><div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><span style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:10px 18px;border-radius:8px;background:#C6A257;color:#07130D">'+esc(v.tribu_btn1)+'</span><span style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:10px 18px;border-radius:8px;border:1px solid rgba(243,239,230,.18);color:#F3EFE6">'+esc(v.tribu_btn2)+'</span></div></div>'; } },
     { id:'club_newsletter', page:'Accueil · Newsletter', label:'Newsletter — bandeau d\'inscription', fields:[
         {key:'nl_title', label:'Titre (Entrée = retour à la ligne)', type:'textarea', def:'Ne rate aucun\nmatch des Baobabs'},
         {key:'nl_subtitle', label:'Sous-titre', type:'textarea', def:'Résultats, billetterie, drops boutique et actus du club — une fois par semaine, dans ta boîte mail.'},
@@ -3594,7 +3664,62 @@
         {key:'cf_s3_h', label:'Section 3 · Titre', type:'text', def:'Vos droits'},
         {key:'cf_s3_p', label:'Section 3 · Texte', type:'textarea', def:"Vous disposez d'un droit d'accès, de rectification et de suppression de vos données personnelles. Pour toute demande, contactez le club via le formulaire de contact du site."}
       ],
-      preview:function(v){ function sec(h,p){ return h?'<h4 style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:12.5px;color:#C6A257;margin:14px 0 5px">'+esc(h)+'</h4><p style="font-size:12px;line-height:1.55;color:#B9C2BB;margin:0">'+esc(p)+'</p>':''; } return '<div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:20px;max-height:340px;overflow:auto"><div style="font-family:\'Archivo Black\',sans-serif;font-weight:900;font-size:16px;color:#F3EFE6">'+esc(v.cf_title)+'</div>'+sec(v.cf_s1_h,v.cf_s1_p)+sec(v.cf_s2_h,v.cf_s2_p)+sec(v.cf_s3_h,v.cf_s3_p)+'</div><p class="pv-hint">S\'affiche dans la modale « Confidentialité », ouverte depuis un lien du footer.</p>'; } }
+      preview:function(v){ function sec(h,p){ return h?'<h4 style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:12.5px;color:#C6A257;margin:14px 0 5px">'+esc(h)+'</h4><p style="font-size:12px;line-height:1.55;color:#B9C2BB;margin:0">'+esc(p)+'</p>':''; } return '<div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:20px;max-height:340px;overflow:auto"><div style="font-family:\'Archivo Black\',sans-serif;font-weight:900;font-size:16px;color:#F3EFE6">'+esc(v.cf_title)+'</div>'+sec(v.cf_s1_h,v.cf_s1_p)+sec(v.cf_s2_h,v.cf_s2_p)+sec(v.cf_s3_h,v.cf_s3_p)+'</div><p class="pv-hint">S\'affiche dans la modale « Confidentialité », ouverte depuis un lien du footer.</p>'; } },
+    { id:'club_camp', page:'Accueil · Camp de base', label:'Où nous trouver — Le camp de base', fields:[
+        {key:'camp_kicker', label:'Sur-titre', type:'text', def:'Où nous trouver'},
+        {key:'camp_title', label:'Titre', type:'text', def:'Le camp de base'},
+        {key:'camp_venue', label:'Nom de la salle', type:'text', def:'Complexe Patrick Semedo'}
+      ],
+      preview:function(v){ return '<div style="background:linear-gradient(150deg,#0F2417,#081C13);border:1px solid rgba(198,162,87,.22);border-radius:14px;padding:20px"><div style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:10px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase">'+esc(v.camp_kicker)+'</div><div style="font-family:\'Archivo Black\',sans-serif;font-weight:900;font-size:22px;color:#F3EFE6;margin:8px 0 16px">'+esc(v.camp_title)+'</div><div style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:5px">Salle</div><div style="font-family:\'Archivo Black\',sans-serif;font-weight:900;font-size:16px;color:#F3EFE6">'+esc(v.camp_venue)+'</div><div style="font-size:12.5px;color:#C7CFC8;margin-top:12px">'+esc(qgcVal('club_address'))+'</div></div><p class="pv-hint">L\'adresse et le bouton Itinéraire se modifient dans <b>Réglages · Coordonnées</b> (adresse + lien Google Maps). Le nom de salle mis ici s\'applique aussi au repère de la carte.</p>'; } },
+    { id:'club_footer_cols', page:'Pied de page · Colonnes', label:'Footer — les 3 colonnes de liens', fields:[
+        {key:'fc1_title', label:'Colonne 1 · titre', type:'text', def:'Le Club'},
+        {key:'fc1_l1_label', label:'Colonne 1 · lien 1 — libellé', type:'text', def:'Histoire'},
+        {key:'fc1_l1_url', label:'Colonne 1 · lien 1 — destination', type:'text', def:'club'},
+        {key:'fc1_l2_label', label:'Colonne 1 · lien 2 — libellé', type:'text', def:'Le centre de formation'},
+        {key:'fc1_l2_url', label:'Colonne 1 · lien 2 — destination', type:'text', def:'club'},
+        {key:'fc1_l3_label', label:'Colonne 1 · lien 3 — libellé', type:'text', def:'Staff & dirigeants'},
+        {key:'fc1_l3_url', label:'Colonne 1 · lien 3 — destination', type:'text', def:'club'},
+        {key:'fc1_l4_label', label:'Colonne 1 · lien 4 — libellé', type:'text', def:'Le palmarès'},
+        {key:'fc1_l4_url', label:'Colonne 1 · lien 4 — destination', type:'text', def:'club'},
+        {key:'fc2_title', label:'Colonne 2 · titre', type:'text', def:'Supporters'},
+        {key:'fc2_l1_label', label:'Colonne 2 · lien 1 — libellé', type:'text', def:'Billetterie'},
+        {key:'fc2_l1_url', label:'Colonne 2 · lien 1 — destination', type:'text', def:'tryouts'},
+        {key:'fc2_l2_label', label:'Colonne 2 · lien 2 — libellé', type:'text', def:'Boutique officielle'},
+        {key:'fc2_l2_url', label:'Colonne 2 · lien 2 — destination', type:'text', def:'boutique'},
+        {key:'fc2_l3_label', label:'Colonne 2 · lien 3 — libellé', type:'text', def:'Abonnements'},
+        {key:'fc2_l3_url', label:'Colonne 2 · lien 3 — destination', type:'text', def:'abonnement'},
+        {key:'fc2_l4_label', label:'Colonne 2 · lien 4 — libellé', type:'text', def:'Newsletter'},
+        {key:'fc2_l4_url', label:'Colonne 2 · lien 4 — destination', type:'text', def:'abonnement'},
+        {key:'fc3_title', label:'Colonne 3 · titre', type:'text', def:'Suivez-nous'},
+        {key:'fc3_l1_label', label:'Colonne 3 · lien 1 — libellé', type:'text', def:'Instagram'},
+        {key:'fc3_l1_url', label:'Colonne 3 · lien 1 — destination', type:'text', def:'https://www.instagram.com/baobabsbasketclub/'},
+        {key:'fc3_l2_label', label:'Colonne 3 · lien 2 — libellé', type:'text', def:'Facebook'},
+        {key:'fc3_l2_url', label:'Colonne 3 · lien 2 — destination', type:'text', def:'https://web.facebook.com/profile.php?id=61591172644857'},
+        {key:'fc3_l3_label', label:'Colonne 3 · lien 3 — libellé', type:'text', def:'TikTok'},
+        {key:'fc3_l3_url', label:'Colonne 3 · lien 3 — destination', type:'text', def:'https://www.tiktok.com/@baobabsbasketclub'},
+        {key:'fc3_l4_label', label:'Colonne 3 · lien 4 — libellé', type:'text', def:'Contact'},
+        {key:'fc3_l4_url', label:'Colonne 3 · lien 4 — destination', type:'text', def:'contact'}
+      ],
+      preview:function(v){
+        function col(t,items){ return '<div><div style="font-family:\'Archivo\',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;color:#C6A257;padding-bottom:8px;border-bottom:1px solid rgba(198,162,87,.18);margin-bottom:12px">'+esc(t)+'</div><div style="display:flex;flex-direction:column;gap:9px;font-size:12px;color:#B9C2BB">'+items.map(function(it){ return it[0]?'<span>'+esc(it[0])+'<span style="display:block;font-size:9.5px;color:#5C6B60">'+esc(it[1]||'—')+'</span></span>':''; }).join('')+'</div></div>'; }
+        return '<div style="background:#060C09;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">'+
+          col(v.fc1_title,[[v.fc1_l1_label,v.fc1_l1_url],[v.fc1_l2_label,v.fc1_l2_url],[v.fc1_l3_label,v.fc1_l3_url],[v.fc1_l4_label,v.fc1_l4_url]])+
+          col(v.fc2_title,[[v.fc2_l1_label,v.fc2_l1_url],[v.fc2_l2_label,v.fc2_l2_url],[v.fc2_l3_label,v.fc2_l3_url],[v.fc2_l4_label,v.fc2_l4_url]])+
+          col(v.fc3_title,[[v.fc3_l1_label,v.fc3_l1_url],[v.fc3_l2_label,v.fc3_l2_url],[v.fc3_l3_label,v.fc3_l3_url],[v.fc3_l4_label,v.fc3_l4_url]])+
+        '</div><p class="pv-hint">Destination : un mot-clé de page du site (<b>accueil, club, equipes, competitions, tryouts, boutique</b>), un mot-clé de modale (<b>contact</b>, <b>abonnement</b>), ou une adresse complète (https://…). Les mêmes libellés s\'appliquent au footer mobile.</p>';
+      } },
+    { id:'club_cta_modals', page:'Modales · CTA', label:'Modales S\'abonner / Nous contacter', fields:[
+        {key:'cta_sub_title', label:'S\'abonner · titre', type:'text', def:"S'abonner"},
+        {key:'cta_sub_desc', label:'S\'abonner · description', type:'textarea', def:'Reçois les actus, les résultats et les offres boutique des Baobabs directement par email.'},
+        {key:'cta_sub_success', label:'S\'abonner · message de confirmation', type:'text', def:'Tu es inscrit à la newsletter des Baobabs.'},
+        {key:'cta_con_title', label:'Nous contacter · titre', type:'text', def:'Nous contacter'},
+        {key:'cta_con_desc', label:'Nous contacter · description', type:'textarea', def:"Une question, un partenariat, une demande d'information ? Écris-nous, le club te répond rapidement."},
+        {key:'cta_con_success', label:'Nous contacter · message de confirmation', type:'text', def:'Ton message a été envoyé au club.'}
+      ],
+      preview:function(v){
+        function modale(t,d,ok){ return '<div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:18px"><div style="font-family:\'Archivo Black\',sans-serif;font-weight:900;font-size:16px;color:#F3EFE6">'+esc(t)+'</div><div style="font-size:12px;line-height:1.55;color:#B9C2BB;margin-top:8px">'+esc(d)+'</div><div style="margin-top:14px;height:34px;border-radius:8px;border:1px solid rgba(243,239,230,.12);background:#07130D"></div><div style="display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11.5px;color:#A8D93B"><span>✓</span>'+esc(ok)+'</div></div>'; }
+        return '<div style="display:grid;gap:12px">'+modale(v.cta_sub_title,v.cta_sub_desc,v.cta_sub_success)+modale(v.cta_con_title,v.cta_con_desc,v.cta_con_success)+'</div><p class="pv-hint">Ouvertes par les deux boutons du bandeau « Rejoins la tribu Baobabs ».</p>';
+      } }
   ];
   var LOGO_DEF='https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png';
   var SETTINGS_BLOCKS = [
