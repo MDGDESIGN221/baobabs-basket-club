@@ -1195,7 +1195,13 @@
   var BAOBABS_LOGO = "https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png";
   var MEDIA_BUCKET = "site-media";
 
-  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // storageKey dédiée : sans ça, une session client (index.html) ouverte
+  // dans un autre onglet du même domaine écraserait cette session admin
+  // (et inversement), le SDK Supabase partageant sinon la même clé de
+  // localStorage entre toutes les pages du site.
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { storageKey: 'bbc-admin-auth' }
+  });
   var currentSession = null;
 
   var gate = document.getElementById('gate');

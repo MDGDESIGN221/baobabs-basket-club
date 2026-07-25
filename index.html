@@ -1663,7 +1663,13 @@
   // Client SDK, utilisé uniquement pour l'auth (comptes clients).
   // Le reste du site continue d'utiliser sbFetch/sbInsert (fetch direct)
   // pour ne rien changer au fonctionnement déjà en place.
-  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // storageKey dédiée : sans ça, une session admin-matchs.html ouverte
+  // dans un autre onglet du même domaine écraserait cette session
+  // client (et inversement), le SDK Supabase partageant sinon la même
+  // clé de localStorage entre toutes les pages du site.
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { storageKey: 'bbc-client-auth' }
+  });
   var currentCustomer = null; // { user, name, phone } une fois connecté, sinon null
   function sbInsert(table, payload){
     return fetch(SUPABASE_URL + '/rest/v1/' + table, {
