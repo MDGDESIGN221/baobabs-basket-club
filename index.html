@@ -2311,6 +2311,7 @@
     if (page !== 'equipes') state.cameFromPlayer = false;
 
     if (window.bbRescanMotion) window.bbRescanMotion();
+    if (window.bbImgOpt) window.bbImgOpt.scanSoon();
   }
 
   /* ===== overlays ===== */
@@ -4108,5 +4109,65 @@ document.addEventListener('keydown', function(e){
 })();
 </script>
 
+<script>
+/* ============================================================================
+   Optimisation automatique des images Cloudinary.
+   Les images posées dans le HTML portent déjà leur transformation. Celles que
+   l'admin fournit (joueuses, produits, actualités, partenaires, affiches) ont
+   une adresse construite en JavaScript : ce module les mesure une fois
+   affichées et réécrit leur URL à la bonne taille. Rien à faire à l'ajout
+   d'une nouvelle image — elle passe par ici comme les autres.
+   ========================================================================== */
+window.bbImgOpt = (function(){
+  var STEP = 100;      // on arrondit au palier supérieur pour réutiliser le cache Cloudinary
+  var MAX_DPR = 2;     // au-delà, le gain de netteté ne justifie plus le poids
+
+  function isCloudinary(u){ return u.indexOf('res.cloudinary.com') !== -1 && u.indexOf('/image/upload/') !== -1; }
+  function alreadyDone(u){ return u.indexOf('f_auto') !== -1 || !/\/upload\/v\d+\//.test(u); }
+
+  function optimise(img){
+    var u = img.getAttribute('src') || '';
+    if (!u || !isCloudinary(u) || /\.svg($|\?)/i.test(u)) return;
+    if (alreadyDone(u)) { img.setAttribute('data-bbopt', '1'); return; }
+    var box = img.getBoundingClientRect().width || img.offsetWidth || 0;
+    if (!box) return;  // pas encore affichée (page masquée) : on repassera à l'affichage
+    var dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    var w = Math.max(STEP, Math.ceil(box * dpr / STEP) * STEP);
+    img.setAttribute('data-bbopt', '1');
+    img.setAttribute('src', u.replace(/\/upload\/v(\d+)\//, '/upload/f_auto,q_auto,w_' + w + ',c_limit/v$1/'));
+  }
+
+  function scan(root){
+    var scope = (root && root.querySelectorAll) ? root : document;
+    var list = scope.querySelectorAll('img[src]:not([data-bbopt])');
+    for (var i = 0; i < list.length; i++) optimise(list[i]);
+    if (scope !== document && scope.tagName === 'IMG' && !scope.hasAttribute('data-bbopt')) optimise(scope);
+  }
+
+  function scanSoon(root){ requestAnimationFrame(function(){ scan(root); }); }
+
+  if (window.MutationObserver) {
+    new MutationObserver(function(muts){
+      for (var i = 0; i < muts.length; i++) {
+        var m = muts[i];
+        if (m.type === 'attributes' && m.target.tagName === 'IMG') {
+          var v = m.target.getAttribute('src') || '';
+          // Notre propre réécriture contient f_auto : on ne se rappelle pas nous-mêmes.
+          if (v.indexOf('f_auto') === -1) { m.target.removeAttribute('data-bbopt'); optimise(m.target); }
+        } else if (m.type === 'childList') {
+          for (var j = 0; j < m.addedNodes.length; j++) {
+            var n = m.addedNodes[j];
+            if (n.nodeType === 1) scanSoon(n);
+          }
+        }
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+  }
+
+  scanSoon();
+  window.addEventListener('load', function(){ scanSoon(); });
+  return { scan: scan, scanSoon: scanSoon };
+})();
+</script>
 </body>
 </html>
