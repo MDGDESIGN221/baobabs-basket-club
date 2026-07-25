@@ -1219,15 +1219,29 @@
     unlockBtn.disabled = true;
     unlockBtn.textContent = 'Connexion…';
     sb.auth.signInWithPassword({ email: email, password: password }).then(function(res){
-      unlockBtn.disabled = false;
-      unlockBtn.textContent = 'Se connecter';
       if (res.error || !res.data.session) {
+        unlockBtn.disabled = false;
+        unlockBtn.textContent = 'Se connecter';
         gateMsg.textContent = 'Identifiants incorrects.';
         gateMsg.className = 'msg err';
         return;
       }
-      currentSession = res.data.session;
-      onAuthenticated();
+      // Email + mot de passe corrects ne suffit plus : il faut aussi
+      // figurer dans admin_users (voir MIGRATION-comptes-clients.sql).
+      // Sans cette vérification, n'importe quel compte client créé
+      // depuis index.html pourrait entrer ici.
+      sb.rpc('is_admin').then(function(check){
+        unlockBtn.disabled = false;
+        unlockBtn.textContent = 'Se connecter';
+        if (check.error || check.data !== true) {
+          sb.auth.signOut();
+          gateMsg.textContent = 'Ce compte n\u2019a pas accès à l\u2019administration.';
+          gateMsg.className = 'msg err';
+          return;
+        }
+        currentSession = res.data.session;
+        onAuthenticated();
+      });
     }).catch(function(){
       unlockBtn.disabled = false;
       unlockBtn.textContent = 'Se connecter';
@@ -1251,14 +1265,19 @@
     if (event === 'SIGNED_OUT') location.reload();
   });
 
-  // Session déjà active (retour sur la page) : on saute l'écran de connexion.
+  // Session déjà active (retour sur la page) : on vérifie quand même
+  // is_admin() avant de sauter l'écran de connexion — une session
+  // client valide ne doit jamais donner accès ici.
   sb.auth.getSession().then(function(res){
     if (res.data && res.data.session) {
-      currentSession = res.data.session;
-      gate.classList.add('hide');
-      document.getElementById('welcome').classList.add('hide');
-      app.classList.remove('hide');
-      init();
+      sb.rpc('is_admin').then(function(check){
+        if (check.error || check.data !== true) { sb.auth.signOut(); return; }
+        currentSession = res.data.session;
+        gate.classList.add('hide');
+        document.getElementById('welcome').classList.add('hide');
+        app.classList.remove('hide');
+        init();
+      });
     }
   });
   document.getElementById('enter-btn').addEventListener('click', function(){
