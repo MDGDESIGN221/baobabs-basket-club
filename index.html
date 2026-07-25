@@ -40,9 +40,13 @@
   @keyframes bbTicker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
   @keyframes bbPulse{0%,100%{opacity:1}50%{opacity:.25}}
   @keyframes bbUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes bbPageIn{from{opacity:0}to{opacity:1}}
-  .bb-page-in{animation:bbPageIn .28s ease both}
-  @media (prefers-reduced-motion:reduce){.bb-page-in{animation:none}}
+  /* Transition de page « Dérive » — direction retenue le 25/07/2026.
+     La page sortante recule vers la gauche, la nouvelle arrive de la droite. */
+  @keyframes bbDeriveIn{from{opacity:0;transform:translateX(7%) scale(.99)}to{opacity:1;transform:none}}
+  @keyframes bbDeriveOut{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-6%) scale(.97)}}
+  .bb-page-in{animation:bbDeriveIn .30s cubic-bezier(.4,0,.2,1) both}
+  .bb-page-out{animation:bbDeriveOut .17s cubic-bezier(.4,0,.2,1) both;pointer-events:none}
+  @media (prefers-reduced-motion:reduce){.bb-page-in,.bb-page-out{animation:none}}
   .bb-fade{animation:bbUp .6s cubic-bezier(.16,.8,.3,1) both}
 
   @keyframes bbReveal{0%{opacity:0;transform:perspective(1400px) rotateX(-38deg) translateY(80px) scale(.9)}55%{opacity:1}100%{opacity:1;transform:perspective(1400px) rotateX(0deg) translateY(0) scale(1)}}
@@ -596,7 +600,7 @@
   </div>
 </div>
 
-<div style="min-height:100vh;background:#061109">
+<div id="bb-shell" style="min-height:100vh;background:#061109;overflow-x:clip">
 
   <div id="bb-utility" style="background:#0C1A12;border-bottom:1px solid rgba(243,239,230,.06)">
     <div style="max-width:1500px;margin:0 auto;padding:9px clamp(16px,4vw,24px);display:flex;align-items:center;justify-content:space-between;font-size:12px">
@@ -2247,8 +2251,26 @@
   var PAGES = ['accueil','boutique','equipes','competitions','club','tryouts'];
   var equipesInSeen = false;
 
+  // goTo joue la sortie de la page courante, puis passe la main à applyPage.
+  // Sans page précédente visible (premier chargement) ou si le visiteur a
+  // désactivé les animations, on bascule directement.
+  var deriveTimer = null;
   function goTo(page){
     if (PAGES.indexOf(page) === -1) page = 'accueil';
+    var prev = state.page;
+    var prevEl = prev ? document.getElementById('bb-page-' + prev) : null;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!prevEl || prev === page || reduce || prevEl.classList.contains('bb-hide')) { applyPage(page); return; }
+    clearTimeout(deriveTimer);
+    prevEl.classList.remove('bb-page-in');
+    prevEl.classList.add('bb-page-out');
+    deriveTimer = setTimeout(function(){
+      prevEl.classList.remove('bb-page-out');
+      applyPage(page);
+    }, 170);
+  }
+
+  function applyPage(page){
     state.page = page;
     PAGES.forEach(function(p){
       var el = document.getElementById('bb-page-' + p);
