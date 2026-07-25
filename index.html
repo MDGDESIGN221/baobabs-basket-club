@@ -238,6 +238,16 @@
   @media (hover:hover){.bb-player:hover .bb-flip-inner{transform:rotateY(180deg)}}
   .bb-flip-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;overflow:hidden}
   .bb-flip-back{transform:rotateY(180deg);background:linear-gradient(150deg,#0A1B12,#0F2417);border:1px solid rgba(168,217,59,.28);padding:18px;display:flex;flex-direction:column;justify-content:space-between;z-index:2}
+  /* Le retournement 3D n'existe que sous (hover:hover) : sur iPhone et Android
+     il ne se produit jamais, mais preserve-3d et backface-visibility restaient
+     actifs — c'est cette combinaison qui fait rogner iOS Safari. On les neutralise
+     là où le retournement est de toute façon inaccessible. La fiche complète
+     reste atteignable au toucher, en ouvrant la fiche joueuse. */
+  @media (hover:none){
+    .bb-flip-inner{transform-style:flat;transition:none}
+    .bb-flip-face{backface-visibility:visible;-webkit-backface-visibility:visible}
+    .bb-flip-back{display:none}
+  }
   .bb-flip-back .bb-fb-head{font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:19px;color:#F3EFE6;line-height:1.05}
   .bb-flip-back .bb-fb-tag{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;color:#A8D93B;margin:3px 0 14px}
   .bb-flip-back .bb-fb-row{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(243,239,230,.08);padding:7px 0}
@@ -4200,10 +4210,16 @@ document.addEventListener('keydown', function(e){
 window.bbFitNums = function(){
   var els = document.querySelectorAll('.bb-player .bb-bignum');
   for (var i = 0; i < els.length; i++) {
-    var el = els[i], card = el.parentNode;
-    while (card && !(card.classList && card.classList.contains('bb-player'))) card = card.parentNode;
-    if (!card) continue;
-    var cw = card.clientWidth, ch = card.clientHeight;
+    var el = els[i];
+    // On mesure la boîte qui rogne réellement, c'est-à-dire le parent direct
+    // (.bb-flip-front, en overflow:hidden), et non la carte extérieure : sur
+    // iOS, perspective et preserve-3d font que les deux ne coïncident pas
+    // toujours, et le numéro était coupé alors que le calcul le disait bon.
+    var box = el.parentNode;
+    if (!box || !box.getBoundingClientRect) continue;
+    var r = box.getBoundingClientRect();
+    var cw = Math.round(r.width) || box.clientWidth;
+    var ch = Math.round(r.height) || box.clientHeight;
     if (!cw || !ch) continue;
     var d = (el.textContent || '').trim().length || 1;
     var ratio = d === 1 ? 0.625 : (d === 2 ? 0.736 : 1.386);
