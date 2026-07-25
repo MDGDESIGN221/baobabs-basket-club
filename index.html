@@ -223,12 +223,14 @@
      Valeurs mesurées sur Anton italique, carte de 280px : à 1× la taille de la
      carte, un chiffre couvre 53% de sa largeur, deux chiffres 98%, trois 143%.
      L'italique est synthétisé par le navigateur, ce qui élargit encore le tracé.
-     Chaque cas est donc calé pour occuper environ 80% de la largeur — le numéro
-     respire au lieu de toucher les bords — et sa hauteur reste sous 65% de la carte. */
+     Mesuré au canvas : le tracé italique n'est pas centré dans sa boîte, son
+     centre optique tombe 0,10em (un chiffre) à 0,15em (deux et trois) à droite
+     du centre de la boîte. translateX négatif recentre le tracé, sinon il
+     déborde à droite et son pied touche le bord gauche. */
   .bb-player{container-type:inline-size}
-  .bb-player .bb-bignum{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:clamp(120px,105cqw,300px);line-height:.72;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
-  .bb-player .bb-bignum.bb-bignum-2{font-size:clamp(100px,82cqw,230px)}
-  .bb-player .bb-bignum.bb-bignum-3{font-size:clamp(80px,56cqw,160px)}
+  .bb-player .bb-bignum{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) translateX(-.1em);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:clamp(120px,105cqw,300px);line-height:.72;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
+  .bb-player .bb-bignum.bb-bignum-2{font-size:clamp(100px,82cqw,230px);transform:translate(-50%,-50%) translateX(-.15em)}
+  .bb-player .bb-bignum.bb-bignum-3{font-size:clamp(80px,56cqw,160px);transform:translate(-50%,-50%) translateX(-.145em)}
   @media (prefers-reduced-motion:reduce){.bb-player .bb-cardbg{animation:none}.bb-player .bb-bignum{animation:none;opacity:.5}.bb-flip-inner{transition:none!important}@media (hover:hover){.bb-player:hover .bb-flip-inner{transform:none!important}}}
 
   /* ===== flip carte joueuse (fiche scouting) ===== */
@@ -2443,6 +2445,7 @@ window.bbCloud = function(url, w){
 
   /* ===== modal joueuse ===== */
   var playerIdx = 0;
+  var playerToken = 0;
 
   function fillPlayer(p){
     document.getElementById('bb-player-pos').textContent = '#' + p.no + ' · ' + p.pos;
@@ -2450,7 +2453,19 @@ window.bbCloud = function(url, w){
     document.getElementById('bb-player-bio').innerHTML = bbRich(p.bio);
     document.getElementById('bb-player-bignum').textContent = p.no;
     var img = document.getElementById('bb-player-img');
-    img.src = p.srcFull || p.src; img.alt = p.name;
+    // On part de la photo déjà en cache (celle de la carte) pour que la fiche
+    // ne s'ouvre jamais sur un cadre vide, puis on monte en définition sans
+    // que ça se voie. Le jeton évite qu'un chargement tardif écrase la fiche
+    // d'une autre joueuse si le visiteur a navigué entre-temps.
+    playerToken++;
+    var tok = playerToken;
+    img.src = p.src || p.srcFull || '';
+    img.alt = p.name;
+    if (p.srcFull && p.srcFull !== p.src) {
+      var hi = new Image();
+      hi.onload = function(){ if (tok === playerToken) img.src = p.srcFull; };
+      hi.src = p.srcFull;
+    }
     var mpx=(p.px==null?50:p.px), mpy=(p.py==null?0:p.py), mpz=(p.pz==null?100:p.pz);
     img.style.objectPosition=mpx+'% '+mpy+'%'; img.style.transform='scale('+(mpz/100)+')'; img.style.transformOrigin=mpx+'% '+mpy+'%';
     document.getElementById('bb-player-stats').innerHTML =
@@ -2473,11 +2488,38 @@ window.bbCloud = function(url, w){
     });
   }
 
+  // Précharge les photos des joueuses voisines : le clic sur suivant ou
+  // précédent trouve alors l'image déjà en cache, et la transition est la
+  // même à chaque fois.
+  function preloadPlayerNeighbours(){
+    var n = players.length;
+    if (!n) return;
+    [playerIdx - 1, playerIdx + 1].forEach(function(k){
+      var p = players[((k % n) + n) % n];
+      if (!p) return;
+      [p.src, p.srcFull].forEach(function(u){ if (u) { var im = new Image(); im.decoding = 'async'; im.src = u; } });
+    });
+  }
+
+  // Attend que la photo soit décodée avant de jouer l'animation : sans ça, la
+  // fiche s'animait sur une image vide dès que la photo n'était pas en cache,
+  // et la transition paraissait différente d'une joueuse à l'autre.
+  function animateWhenPhotoReady(){
+    var img = document.getElementById('bb-player-img');
+    var done = false;
+    function once(){ if (done) return; done = true; replayPlayerAnim(); }
+    if (!img || (img.complete && img.naturalWidth)) { once(); }
+    else if (img.decode) { img.decode().then(once).catch(once); }
+    else { img.onload = once; img.onerror = once; }
+    setTimeout(once, 450);
+  }
+
   function showPlayer(i){
     var n = players.length;
     playerIdx = ((i % n) + n) % n;
     fillPlayer(players[playerIdx]);
-    replayPlayerAnim();
+    animateWhenPhotoReady();
+    preloadPlayerNeighbours();
   }
 
   function openPlayerByIdx(idx){
@@ -2485,6 +2527,7 @@ window.bbCloud = function(url, w){
     playerIdx = ((idx % n) + n) % n;
     fillPlayer(players[playerIdx]);
     openOverlay('bb-player-overlay');
+    preloadPlayerNeighbours();
   }
 
   function openPlayer(no){
@@ -2493,6 +2536,7 @@ window.bbCloud = function(url, w){
     playerIdx = idx;
     fillPlayer(players[playerIdx]);
     openOverlay('bb-player-overlay');
+    preloadPlayerNeighbours();
   }
 
   /* ===== modal produit ===== */
