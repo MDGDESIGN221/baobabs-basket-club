@@ -397,6 +397,21 @@
   .subpanel{display:none}
   .subpanel.active{display:block}
 
+  /* ===================== BILLETTERIE ===================== */
+  .rec-item.tk-active{border-color:var(--gold);background:var(--surface-2)}
+  .tk-offer{display:grid;grid-template-columns:minmax(88px,1.4fr) 94px 80px 106px;gap:8px;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px;margin-bottom:9px}
+  .tk-offer input,.tk-offer select{background:var(--surface);border:1px solid var(--line-strong);color:var(--text);border-radius:8px;padding:9px 10px;font:inherit;font-size:13px;width:100%}
+  .tk-offer-foot{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .tk-offer .btn{padding:9px 14px;font-size:12px}
+  .tk-sold{font-size:11.5px;color:var(--faint)}
+  .tk-presets{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 12px}
+  .tk-preset{background:var(--surface-2);border:1px solid var(--line-strong);color:var(--muted);border-radius:20px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
+  .tk-preset:hover{border-color:var(--gold);color:var(--gold)}
+  .tk-filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+  .tk-filters select,.tk-filters input{background:var(--surface);border:1px solid var(--line-strong);color:var(--text);border-radius:9px;padding:11px 12px;font:inherit;font-size:13.5px}
+  .tk-filters input{flex:1;min-width:170px}
+  .tk-ref{font-family:'Archivo',sans-serif;font-weight:900;font-stretch:125%;color:var(--gold-bright);letter-spacing:.04em}
+
   #gate{max-width:380px;margin:0 auto;padding:14vh 20px 0}
   #gate .brand{justify-content:center;margin-bottom:22px}
   #gate .card{text-align:center}
@@ -535,6 +550,10 @@
         <button class="sb-link" data-section="standings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
           Classement
+        </button>
+        <button class="sb-link" data-section="tickets">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z"/><path d="M13 5v2M13 11v2M13 17v2"/></svg>
+          Billetterie
         </button>
       </div>
 
@@ -894,6 +913,59 @@
           <div id="teams-list"><div class="empty">Chargement…</div></div>
         </div>
       </div><!-- /matches-subtab-teams -->
+    </section>
+
+    <!-- ===== SECTION BILLETTERIE ===== -->
+    <section id="section-tickets" class="hide">
+      <div class="subtabs" id="tickets-subtabs">
+        <button type="button" class="subtab active" data-tksub="offers">Ventes par match</button>
+        <button type="button" class="subtab" data-tksub="resa">Réservations</button>
+      </div>
+
+      <div id="tk-sub-offers">
+        <div class="callout">Une ligne par catégorie de place, avec son tarif et son quota. <b>Le paiement se fait sur place</b> : le site enregistre la réservation et donne une référence à présenter au guichet. Tant qu'aucune catégorie n'est <b>ouverte</b>, rien n'apparaît sur le site public.</div>
+        <div class="grid-2"><div>
+          <div class="card">
+            <h2 class="card-title">Matchs à venir</h2>
+            <p class="card-sub">Choisissez un match pour gérer ses billets.</p>
+            <div id="tk-match-list"><div class="empty">Chargement…</div></div>
+          </div>
+        </div><div>
+          <div class="card">
+            <h2 class="card-title" id="tk-offers-title">Billets</h2>
+            <p class="card-sub" id="tk-offers-sub">Sélectionnez un match à gauche.</p>
+            <div id="tk-offers-list"></div>
+            <div id="tk-offers-add" class="hide">
+              <div class="tk-presets" id="tk-preset-row"></div>
+              <div class="tk-offer" style="grid-template-columns:minmax(88px,1.4fr) 94px 80px 106px">
+                <input id="tk-new-cat" type="text" placeholder="Catégorie" aria-label="Catégorie">
+                <input id="tk-new-price" type="number" min="0" step="500" placeholder="Tarif" aria-label="Tarif en FCFA">
+                <input id="tk-new-quota" type="number" min="0" placeholder="Places" aria-label="Nombre de places">
+                <button type="button" class="btn btn-ghost" id="tk-new-add">Ajouter</button>
+              </div>
+            </div>
+            <div class="msg" id="tk-offers-msg"></div>
+          </div>
+        </div></div>
+      </div>
+
+      <div id="tk-sub-resa" class="hide">
+        <div class="callout">Les réservations enregistrées depuis le site. <b>Retirer</b> se fait au guichet le jour du match ; <b>Annuler</b> remet les places dans le quota.</div>
+        <div class="card">
+          <div class="tk-filters">
+            <select id="tk-resa-match"><option value="">Tous les matchs</option></select>
+            <select id="tk-resa-status">
+              <option value="">Tous les statuts</option>
+              <option value="reservee">Réservées</option>
+              <option value="retiree">Retirées</option>
+              <option value="annulee">Annulées</option>
+            </select>
+            <input id="tk-resa-search" type="search" placeholder="Nom, téléphone ou référence…">
+          </div>
+          <div id="tk-resa-list"><div class="empty">Chargement…</div></div>
+          <div class="msg" id="tk-resa-msg"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ===== SECTION DIRECT ===== -->
@@ -1415,6 +1487,8 @@
     club_obj1_title:'Titre — Carte 1 (Former)', club_obj1_text:'Texte — Carte 1 (Former)',
     club_obj2_title:'Titre — Carte 2 (Gagner)', club_obj2_text:'Texte — Carte 2 (Gagner)',
     club_obj3_title:'Titre — Carte 3 (Rassembler)', club_obj3_text:'Texte — Carte 3 (Rassembler)',
+    // --- Billetterie ---
+    category:'Catégorie de billet', price_fcfa:'Tarif (FCFA)', quota:'Nombre de places', is_open:'Vente ouverte', sort_order:'Ordre d\'affichage',
     // --- Matchs ---
     opponent_name:'Nom de l\'adversaire', opponent_logo_url:'Logo de l\'adversaire', match_date:'Date du match', match_time:'Heure du match', is_home:'Domicile / extérieur', venue:'Salle / stade', competition:'Compétition', stream_url:'Lien du direct / replay', notes:'Notes internes', score_baobabs:'Score Baobabs', score_opponent:'Score adverse'
   };
@@ -1484,6 +1558,7 @@
     if (auditRecordLabelCache[cacheKey] !== undefined) return Promise.resolve(auditRecordLabelCache[cacheKey]);
     var query = null;
     if (tableName === 'matches') query = 'matches?select=opponent_name,is_home&id=eq.'+recordId;
+    else if (tableName === 'ticket_offers') query = 'ticket_offers?select=category&id=eq.'+recordId;
     else if (tableName === 'news') query = 'news?select=title&id=eq.'+recordId;
     else if (tableName === 'products') query = 'products?select=name&id=eq.'+recordId;
     else if (tableName === 'players') query = 'players?select=name&id=eq.'+recordId;
@@ -1496,6 +1571,7 @@
       var r = rows && rows[0]; var label = null;
       if (r) {
         if (tableName==='matches') label = 'Match : '+(r.is_home?'Baobabs vs ':'Baobabs @ ')+(r.opponent_name||'?');
+        else if (tableName==='ticket_offers') label = 'Billet : '+(r.category||'?');
         else if (r.title) label = (tableName==='news'?'Actualité : ':'')+r.title;
         else if (r.name) label = (tableName==='products'?'Produit : ':tableName==='players'?'Joueur : ':tableName==='staff'?'Membre : ':tableName==='partners'?'Partenaire : ':'')+r.name;
         else if (r.team_name) label = 'Équipe : '+r.team_name;
@@ -1561,6 +1637,7 @@
     teams:{t:'Adversaires',d:'La liste des clubs que vous affrontez, avec leurs logos.'},
     live:{t:'Diffusion en direct',d:'Reliez la chaîne YouTube du club pour activer le direct sur l\'accueil.'},
     standings:{t:'Classement',d:'Le tableau du championnat affiché sur la page Compétitions. Les lignes se classent par points.'},
+    tickets:{t:'Billetterie',d:'Ouvrez la vente match par match : catégories, tarifs, quotas — et suivez les réservations.'},
     roster:{t:'Effectif',d:'Les joueuses et joueurs affichés dans la section Équipes.'},
     staff:{t:'Staff',d:'Les membres de l\'encadrement affichés dans le bloc « Le staff » du site.'},
     timeline:{t:'Notre histoire',d:'La chronologie du club affichée sur la page « Le Club ».'},
@@ -1575,7 +1652,7 @@
     home:{t:'Bandeau d\'accueil',d:'L\'image et le texte d\'accroche de la page d\'accueil.'},
     audit:{t:'Historique',d:'Qui a modifié quoi, et quand — protégé par mot de passe.'}
   };
-  var ALL_SECTIONS = ['dashboard','matches','live','standings','roster','founder','bureau','staff','timeline','content','reglages','news','partners','shop','forms','home','audit'];
+  var ALL_SECTIONS = ['dashboard','matches','live','standings','tickets','roster','founder','bureau','staff','timeline','content','reglages','news','partners','shop','forms','home','audit'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -2723,6 +2800,231 @@
     });
   }
 
+  // ===================== BILLETTERIE =====================
+  // Tarifs constatés à Dakar, proposés en raccourci — tout reste modifiable.
+  var TK_PRESETS = [
+    {label:'Entrée standard', price:1000},
+    {label:'Tribune officielle', price:2000},
+    {label:'Virages', price:3000},
+    {label:'Tribune', price:5000},
+    {label:'Annexes', price:10000},
+    {label:'Loge', price:30000},
+    {label:'Courtside', price:50000}
+  ];
+  var tkMatches=[], tkOffers={}, tkSel=null, tkResa=[], tkStarted=false;
+
+  function tkFcfa(n){ return String(Number(n)||0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' FCFA'; }
+  function tkLabel(m){ return 'Baobabs '+(m.is_home?'vs ':'@ ')+(m.opponent_name||'?'); }
+  function tkMatchById(id){ return tkMatches.filter(function(m){ return String(m.id)===String(id); })[0]; }
+  function tkRpc(fn, body){
+    return fetch(SUPABASE_URL+'/rest/v1/rpc/'+fn, {method:'POST',headers:sbHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body||{})})
+      .then(function(r){ return r.text().then(function(t){
+        var j=null; try{ j=t?JSON.parse(t):null; }catch(e){}
+        if(!r.ok) throw new Error((j&&(j.message||j.hint))||'erreur');
+        return j;
+      }); });
+  }
+
+  function tkInit(){
+    if(tkStarted) return; tkStarted=true;
+    var row=document.getElementById('tk-preset-row');
+    row.innerHTML=TK_PRESETS.map(function(p,i){ return '<button type="button" class="tk-preset" data-i="'+i+'">'+esc(p.label)+' · '+esc(tkFcfa(p.price))+'</button>'; }).join('');
+    row.querySelectorAll('.tk-preset').forEach(function(b){
+      b.addEventListener('click',function(){
+        var p=TK_PRESETS[+b.getAttribute('data-i')];
+        document.getElementById('tk-new-cat').value=p.label;
+        document.getElementById('tk-new-price').value=p.price;
+        document.getElementById('tk-new-quota').focus();
+      });
+    });
+    document.getElementById('tk-new-add').addEventListener('click', tkAddOffer);
+    ['tk-resa-match','tk-resa-status','tk-resa-search'].forEach(function(id){
+      var el=document.getElementById(id);
+      el.addEventListener('input', tkRenderResa); el.addEventListener('change', tkRenderResa);
+    });
+    document.querySelectorAll('#tickets-subtabs .subtab').forEach(function(b){
+      b.addEventListener('click',function(){
+        var k=b.getAttribute('data-tksub');
+        document.querySelectorAll('#tickets-subtabs .subtab').forEach(function(x){ x.classList.toggle('active',x===b); });
+        document.getElementById('tk-sub-offers').classList.toggle('hide',k!=='offers');
+        document.getElementById('tk-sub-resa').classList.toggle('hide',k!=='resa');
+        if(k==='resa') tkLoadResa();
+      });
+    });
+    tkLoadOffers();
+  }
+
+  function tkLoadOffers(){
+    return Promise.all([
+      sbGet('matches?select=*&order=match_date.asc&limit=300'),
+      sbGet('ticket_offers?select=*&order=sort_order.asc')
+    ]).then(function(res){
+      tkMatches=res[0]||[]; tkOffers={};
+      (res[1]||[]).forEach(function(o){ (tkOffers[o.match_id]=tkOffers[o.match_id]||[]).push(o); });
+      tkRenderMatches();
+      if(tkSel) tkRenderOffers(tkSel);
+      var sel=document.getElementById('tk-resa-match');
+      sel.innerHTML='<option value="">Tous les matchs</option>'+tkMatches.map(function(m){ return '<option value="'+m.id+'">'+esc(tkLabel(m))+' — '+esc(formatDateShort(m.match_date))+'</option>'; }).join('');
+    }).catch(function(){
+      document.getElementById('tk-match-list').innerHTML='<div class="empty">Billetterie indisponible — la migration <b>MIGRATION-billetterie.sql</b> a-t-elle été exécutée dans Supabase ?</div>';
+    });
+  }
+
+  function tkRenderMatches(){
+    var box=document.getElementById('tk-match-list');
+    var rows=tkMatches.filter(function(m){ return !isPlayed(m); });
+    if(!rows.length){ box.innerHTML='<div class="empty">Aucun match à venir. Ajoutez-en un dans « Matchs &amp; adversaires ».</div>'; return; }
+    box.innerHTML=rows.map(function(m){
+      var offs=tkOffers[m.id]||[];
+      var quota=0, sold=0, open=false;
+      offs.forEach(function(o){ quota+=o.quota||0; sold+=o.sold||0; if(o.is_open) open=true; });
+      var pill = !offs.length ? '<span class="status-pill status-upcoming">À configurer</span>'
+               : open ? '<span class="status-pill status-win">Vente ouverte</span>'
+                      : '<span class="status-pill status-off">Vente fermée</span>';
+      var logo=m.opponent_logo_url
+        ? '<img class="rec-thumb circle" src="'+esc(m.opponent_logo_url)+'" alt="">'
+        : '<div class="rec-noimg circle" style="background:'+fallbackColor(m.opponent_name)+'">'+esc(String(m.opponent_name||'?').charAt(0))+'</div>';
+      var meta = offs.length ? (sold+' / '+quota+' places réservées') : 'Aucune catégorie de billet';
+      return '<div class="rec-item tk-match'+(String(tkSel)===String(m.id)?' tk-active':'')+'" data-id="'+m.id+'">'+logo+
+        '<div class="rec-main"><div class="rec-title">'+pill+' '+esc(tkLabel(m))+'</div>'+
+        '<div class="rec-meta">'+esc(formatDateShort(m.match_date))+(m.venue?' · '+esc(m.venue):'')+' — '+esc(meta)+'</div></div></div>';
+    }).join('');
+    box.querySelectorAll('.tk-match').forEach(function(el){
+      el.addEventListener('click',function(){ tkSel=el.getAttribute('data-id'); tkRenderMatches(); tkRenderOffers(tkSel); });
+    });
+  }
+
+  function tkRenderOffers(matchId){
+    var m=tkMatchById(matchId); if(!m) return;
+    document.getElementById('tk-offers-title').textContent=tkLabel(m);
+    document.getElementById('tk-offers-sub').textContent=formatDateShort(m.match_date)+(m.match_time?' · '+m.match_time:'')+(m.venue?' · '+m.venue:'');
+    document.getElementById('tk-offers-add').classList.remove('hide');
+    var offs=tkOffers[matchId]||[];
+    var list=document.getElementById('tk-offers-list');
+    list.innerHTML = offs.length ? offs.map(function(o){
+      return '<div class="tk-offer" data-id="'+o.id+'">'+
+        '<input class="tk-cat" type="text" value="'+esc(o.category)+'" aria-label="Catégorie">'+
+        '<input class="tk-price" type="number" min="0" step="500" value="'+(o.price_fcfa||0)+'" aria-label="Tarif en FCFA">'+
+        '<input class="tk-quota" type="number" min="'+(o.sold||0)+'" value="'+(o.quota||0)+'" aria-label="Nombre de places">'+
+        '<select class="tk-open" aria-label="État de la vente"><option value="1"'+(o.is_open?' selected':'')+'>Ouverte</option><option value="0"'+(o.is_open?'':' selected')+'>Fermée</option></select>'+
+        '<div class="tk-offer-foot"><span class="tk-sold">'+(o.sold||0)+' réservée(s) · '+esc(tkFcfa(o.price_fcfa))+'</span>'+
+        '<span style="display:flex;gap:7px"><button type="button" class="btn btn-ghost tk-save">Enregistrer</button>'+
+        '<button type="button" class="btn btn-ghost tk-del">Supprimer</button></span></div>'+
+      '</div>';
+    }).join('') : '<div class="empty">Aucune catégorie de billet. Ajoutez-en une ci-dessous.</div>';
+
+    list.querySelectorAll('.tk-offer').forEach(function(row){
+      var id=row.getAttribute('data-id');
+      row.querySelector('.tk-save').addEventListener('click',function(){ tkSaveOffer(id,row,this); });
+      row.querySelector('.tk-del').addEventListener('click',function(){ tkDeleteOffer(id); });
+    });
+  }
+
+  function tkSaveOffer(id,row,btn){
+    var msg=document.getElementById('tk-offers-msg');
+    var payload={
+      category: row.querySelector('.tk-cat').value.trim(),
+      price_fcfa: parseInt(row.querySelector('.tk-price').value,10)||0,
+      quota: parseInt(row.querySelector('.tk-quota').value,10)||0,
+      is_open: row.querySelector('.tk-open').value==='1'
+    };
+    if(!payload.category){ showMsg(msg,'La catégorie ne peut pas être vide.',false); return; }
+    btn.disabled=true;
+    sbUpdate('ticket_offers',id,payload,'Billetterie')
+      .then(function(){ showMsg(msg,'Enregistré.',true); return tkLoadOffers(); })
+      .catch(function(){ showMsg(msg,"Erreur lors de l'enregistrement. Le quota ne peut pas être inférieur aux places déjà réservées.",false); })
+      .finally(function(){ btn.disabled=false; });
+  }
+
+  function tkDeleteOffer(id){
+    if(!confirm('Supprimer cette catégorie de billet ?')) return;
+    var msg=document.getElementById('tk-offers-msg');
+    sbDelete('ticket_offers',id,'Billetterie')
+      .then(function(){ showMsg(msg,'Catégorie supprimée.',true); return tkLoadOffers(); })
+      .catch(function(){ showMsg(msg,'Suppression impossible : des réservations existent sur cette catégorie. Fermez plutôt la vente.',false); });
+  }
+
+  function tkAddOffer(){
+    var msg=document.getElementById('tk-offers-msg');
+    if(!tkSel){ showMsg(msg,'Choisissez d\'abord un match.',false); return; }
+    var cat=document.getElementById('tk-new-cat').value.trim();
+    var price=parseInt(document.getElementById('tk-new-price').value,10)||0;
+    var quota=parseInt(document.getElementById('tk-new-quota').value,10)||0;
+    if(!cat){ showMsg(msg,'Indiquez une catégorie (ex. Tribune).',false); return; }
+    if(quota<1){ showMsg(msg,'Indiquez un nombre de places.',false); return; }
+    var btn=document.getElementById('tk-new-add'); btn.disabled=true;
+    sbInsert('ticket_offers',{match_id:tkSel,category:cat,price_fcfa:price,quota:quota,is_open:false,sort_order:(tkOffers[tkSel]||[]).length},'Billetterie')
+      .then(function(){
+        document.getElementById('tk-new-cat').value=''; document.getElementById('tk-new-price').value=''; document.getElementById('tk-new-quota').value='';
+        showMsg(msg,'Catégorie ajoutée — elle reste fermée tant que vous ne l\'ouvrez pas.',true);
+        return tkLoadOffers();
+      })
+      .catch(function(){ showMsg(msg,'Erreur : cette catégorie existe peut-être déjà pour ce match.',false); })
+      .finally(function(){ btn.disabled=false; });
+  }
+
+  function tkLoadResa(){
+    return sbGet('reservations?select=*,ticket_offers(category)&order=created_at.desc&limit=500')
+      .then(function(rows){ tkResa=rows||[]; tkRenderResa(); })
+      .catch(function(){ document.getElementById('tk-resa-list').innerHTML='<div class="empty">Réservations indisponibles — la migration SQL a-t-elle été exécutée ?</div>'; });
+  }
+
+  function tkResaPill(s){
+    if(s==='retiree') return '<span class="status-pill status-win">Retirée</span>';
+    if(s==='annulee') return '<span class="status-pill status-off">Annulée</span>';
+    if(s==='expiree') return '<span class="status-pill status-off">Expirée</span>';
+    return '<span class="status-pill status-upcoming">Réservée</span>';
+  }
+
+  function tkRenderResa(){
+    var box=document.getElementById('tk-resa-list');
+    var fm=document.getElementById('tk-resa-match').value;
+    var fs=document.getElementById('tk-resa-status').value;
+    var q=document.getElementById('tk-resa-search').value.trim().toLowerCase();
+    var rows=tkResa.filter(function(r){
+      if(fm && String(r.match_id)!==String(fm)) return false;
+      if(fs && r.status!==fs) return false;
+      if(q){
+        var hay=[r.reference,r.buyer_name,r.buyer_phone,r.buyer_email].join(' ').toLowerCase();
+        if(hay.indexOf(q)<0) return false;
+      }
+      return true;
+    });
+    if(!rows.length){ box.innerHTML='<div class="empty">Aucune réservation pour ce filtre.</div>'; return; }
+    box.innerHTML=rows.map(function(r){
+      var m=tkMatchById(r.match_id);
+      var cat=(r.ticket_offers&&r.ticket_offers.category)||'—';
+      var actions='';
+      if(r.status==='reservee'){
+        actions='<span style="display:flex;gap:7px;flex:none">'+
+          '<button type="button" class="btn btn-ghost tk-checkin" data-id="'+r.id+'" style="padding:9px 13px;font-size:12px">Retirer</button>'+
+          '<button type="button" class="btn btn-ghost tk-cancel" data-id="'+r.id+'" style="padding:9px 13px;font-size:12px">Annuler</button></span>';
+      }
+      return '<div class="rec-item"><div class="rec-main">'+
+        '<div class="rec-title">'+tkResaPill(r.status)+' <span class="tk-ref">'+esc(r.reference)+'</span> — '+esc(r.buyer_name||'Client')+' × '+r.quantity+'</div>'+
+        '<div class="rec-meta">'+esc(m?tkLabel(m):'Match supprimé')+' · '+esc(cat)+' · '+esc(tkFcfa(r.total_fcfa))+(r.buyer_phone?' · '+esc(r.buyer_phone):'')+'</div>'+
+        '</div>'+actions+'</div>';
+    }).join('');
+    var msg=document.getElementById('tk-resa-msg');
+    box.querySelectorAll('.tk-checkin').forEach(function(b){
+      b.addEventListener('click',function(){
+        b.disabled=true;
+        tkRpc('bbc_retirer_reservation',{p_reservation_id:b.getAttribute('data-id')})
+          .then(function(){ showMsg(msg,'Billet marqué comme retiré.',true); return Promise.all([tkLoadResa(),tkLoadOffers()]); })
+          .catch(function(){ showMsg(msg,'Impossible de marquer ce billet.',false); b.disabled=false; });
+      });
+    });
+    box.querySelectorAll('.tk-cancel').forEach(function(b){
+      b.addEventListener('click',function(){
+        if(!confirm('Annuler cette réservation ? Les places repartent dans le quota.')) return;
+        b.disabled=true;
+        tkRpc('bbc_annuler_reservation',{p_reservation_id:b.getAttribute('data-id')})
+          .then(function(){ showMsg(msg,'Réservation annulée, places remises en vente.',true); return Promise.all([tkLoadResa(),tkLoadOffers()]); })
+          .catch(function(){ showMsg(msg,"Impossible d'annuler cette réservation.",false); b.disabled=false; });
+      });
+    });
+  }
+
   // ===================== LOADERS =====================
   var LOADERS_live, LOADERS_home, LOADERS_founder, LOADERS_bureau;
   var LOADERS = {
@@ -2741,6 +3043,7 @@
     partners:function(){ qgvInit('partners'); },
     shop:function(){ qgvInit('shop'); },
     standings:function(){ qgvInit('standings'); },
+    tickets:function(){ tkInit(); },
     forms:function(){ loadForms(); },
     audit:function(){ /* rien à charger tant que le mot de passe n'est pas entré */ }
   };

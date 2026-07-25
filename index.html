@@ -316,7 +316,7 @@
   .bb-pl-dot.active{background:#A8D93B;transform:scale(1.25)}
 
   /* modal légal + CTA */
-  #bb-legal-modal,#bb-cta-modal,#bb-role-modal{width:100%;max-width:600px;margin:auto;max-height:86vh;display:flex;flex-direction:column;background:#0A150F;border:1px solid rgba(198,162,87,.28);border-radius:18px;overflow:hidden;animation:bbPopIn .3s cubic-bezier(.16,.8,.3,1) both}
+  #bb-legal-modal,#bb-cta-modal,#bb-role-modal,#bb-ticket-modal{width:100%;max-width:600px;margin:auto;max-height:86vh;display:flex;flex-direction:column;background:#0A150F;border:1px solid rgba(198,162,87,.28);border-radius:18px;overflow:hidden;animation:bbPopIn .3s cubic-bezier(.16,.8,.3,1) both}
   .bb-legal-body{overflow-y:auto;padding:0 clamp(20px,4vw,32px) 28px}
   .bb-legal-body h4{font-family:'Inter',sans-serif;font-weight:700;font-size:14px;color:#C6A257;letter-spacing:.02em;margin:22px 0 8px}
   .bb-legal-body h4:first-child{margin-top:0}
@@ -626,7 +626,7 @@
   <div id="bb-utility" style="background:#0C1A12;border-bottom:1px solid rgba(243,239,230,.06)">
     <div style="max-width:1500px;margin:0 auto;padding:9px clamp(16px,4vw,24px);display:flex;align-items:center;justify-content:space-between;font-size:12px">
       <div style="display:flex;gap:22px;color:#93A099;font-weight:500">
-        <a href="#" data-nav="tryouts" style="color:inherit">Billetterie</a>
+        <a href="#" data-ticket style="color:inherit">Billetterie</a>
         <a href="#" data-nav="boutique" style="color:inherit">Boutique</a>
         <a href="#" data-cta="contact" style="color:inherit">Licenciés</a>
         <a href="#" data-nav="club" style="color:inherit">Le Centre</a>
@@ -757,7 +757,7 @@
               <div style="font-family:'Inter',sans-serif;font-weight:500;letter-spacing:.05em;color:#F3EFE6;font-size:15px">SAM 12 JUIL · 19:00</div>
               <div>Stadium Marius Ndiaye, Dakar</div>
             </div>
-              <a id="bb-hs-ticket" href="#" data-nav="tryouts" style="display:flex;align-items:center;justify-content:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;padding:14px 20px;border-radius:9px;background:#C6A257;color:#07130D;margin-top:16px">Billetterie <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+              <a id="bb-hs-ticket" href="#" data-ticket style="display:flex;align-items:center;justify-content:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;padding:14px 20px;border-radius:9px;background:#C6A257;color:#07130D;margin-top:16px">Billetterie <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
             </div>
 
             <a id="bb-hero-actu" href="#" data-nav="accueil" style="display:flex;gap:14px;align-items:center;padding:14px 18px;border-radius:14px;background:rgba(5,16,11,.72);backdrop-filter:blur(10px);border:1px solid rgba(243,239,230,.12);text-decoration:none">
@@ -1731,6 +1731,20 @@
     </div>
   </div>
 
+  <!-- ===== modal billetterie ===== -->
+  <div id="bb-ticket-overlay" class="bb-hide">
+    <div class="bb-scrim" data-close-overlay></div>
+    <div class="bb-modal-wrap">
+      <div id="bb-ticket-modal">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) 0">
+          <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#F3EFE6;margin:0">Billetterie</h3>
+          <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+        <div class="bb-legal-body" id="bb-ticket-body" style="padding-top:18px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== modal connexion ===== -->
   <div id="bb-login-overlay" class="bb-hide">
     <div class="bb-scrim" data-close-overlay></div>
@@ -2352,7 +2366,7 @@ window.bbCloud = function(url, w){
     document.body.style.overflow = 'hidden';
   }
   function closeOverlays(){
-    ['bb-cart-overlay','bb-product-overlay','bb-player-overlay','bb-role-overlay','bb-legal-overlay','bb-cta-overlay','bb-recruit-overlay','bb-login-overlay','bb-register-overlay'].forEach(function(id){
+    ['bb-cart-overlay','bb-product-overlay','bb-player-overlay','bb-role-overlay','bb-legal-overlay','bb-cta-overlay','bb-recruit-overlay','bb-login-overlay','bb-register-overlay','bb-ticket-overlay'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.classList.add('bb-hide');
     });
@@ -3057,6 +3071,190 @@ window.bbCloud = function(url, w){
       stage.style.setProperty('--ty', '0deg');
     });
   }
+
+  /* ===== billetterie (réservation, paiement sur place) ===== */
+  var bbTkOffers = [], bbTkSel = null, bbTkQty = 1, bbTkState = 'idle', bbTkResult = null;
+
+  function bbTkHeaders(){
+    var token = (typeof sbSession !== 'undefined' && sbSession && sbSession.access_token) || SUPABASE_KEY;
+    return { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+  }
+  function bbTkPrice(n){ return String(Number(n) || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA'; }
+  function bbTkEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function bbTkDate(iso, time){
+    if (!iso) return '';
+    var d = new Date(iso + 'T00:00:00');
+    var s = d.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'long' });
+    return s.charAt(0).toUpperCase() + s.slice(1) + (time ? ' · ' + String(time).slice(0,5) : '');
+  }
+
+  function bbTkOpen(){
+    openOverlay('bb-ticket-overlay');
+    bbTkSel = null; bbTkQty = 1; bbTkResult = null; bbTkState = 'loading';
+    bbTkRender();
+    var today = new Date().toISOString().slice(0,10);
+    fetch(SUPABASE_URL + '/rest/v1/ticket_offers?select=*,matches(opponent_name,match_date,match_time,is_home,venue)&is_open=eq.true&order=sort_order.asc', { headers: bbTkHeaders() })
+      .then(function(r){ if(!r.ok) throw new Error('offers'); return r.json(); })
+      .then(function(rows){
+        bbTkOffers = (rows || []).filter(function(o){ return o.matches && (!o.matches.match_date || o.matches.match_date >= today); });
+        bbTkState = 'list'; bbTkRender();
+      })
+      .catch(function(){ bbTkState = 'error'; bbTkRender(); });
+  }
+
+  function bbTkGroups(){
+    var order = [], byMatch = {};
+    bbTkOffers.forEach(function(o){
+      if (!byMatch[o.match_id]) { byMatch[o.match_id] = { match: o.matches, offers: [] }; order.push(o.match_id); }
+      byMatch[o.match_id].offers.push(o);
+    });
+    order.sort(function(a,b){ return String(byMatch[a].match.match_date||'').localeCompare(String(byMatch[b].match.match_date||'')); });
+    return order.map(function(id){ return byMatch[id]; });
+  }
+  function bbTkOfferById(id){ return bbTkOffers.filter(function(o){ return String(o.id) === String(id); })[0]; }
+
+  function bbTkRender(){
+    var body = document.getElementById('bb-ticket-body');
+    if (!body) return;
+    var note = 'font-size:13.5px;line-height:1.65;color:#B9C2BB;margin:0';
+
+    if (bbTkState === 'loading'){ body.innerHTML = '<p style="' + note + '">Chargement des billets…</p>'; return; }
+    if (bbTkState === 'error'){ body.innerHTML = '<p style="' + note + '">La billetterie est momentanément indisponible. Réessayez dans un instant.</p>'; return; }
+
+    if (bbTkState === 'done' && bbTkResult){
+      var r = bbTkResult;
+      body.innerHTML =
+        '<div style="text-align:center;padding:6px 0 10px">' +
+          '<div style="width:50px;height:50px;border-radius:50%;background:rgba(168,217,59,.14);border:1px solid rgba(168,217,59,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:#A8D93B"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>' +
+          '<p style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6;margin:0 0 6px">Réservation enregistrée</p>' +
+          '<p style="' + note + ';margin-bottom:18px">Présentez cette référence au guichet le jour du match. Le règlement se fait sur place.</p>' +
+          '<div style="display:inline-block;font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:30px;letter-spacing:.08em;color:#C6A257;background:rgba(198,162,87,.1);border:1px solid rgba(198,162,87,.35);border-radius:12px;padding:14px 24px">' + bbTkEsc(r.reference) + '</div>' +
+          '<p style="' + note + ';margin-top:16px">' + r.quantity + ' place(s) · ' + bbTkEsc(bbTkPrice(r.total_fcfa)) + ' à régler sur place.</p>' +
+        '</div>';
+      return;
+    }
+
+    var groups = bbTkGroups();
+    if (!groups.length){
+      body.innerHTML = '<p style="' + note + '">Aucune vente ouverte pour le moment. Les billets du prochain match à domicile seront annoncés ici.</p>';
+      return;
+    }
+
+    var html = '<p style="' + note + ';margin-bottom:18px">Réservez votre place en ligne, <b style="color:#F3EFE6">le règlement se fait sur place</b> le jour du match. Une référence vous est donnée à présenter au guichet.</p>';
+
+    groups.forEach(function(g){
+      var m = g.match;
+      html += '<div style="margin-bottom:22px">' +
+        '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#A8D93B;margin-bottom:4px">' + bbTkEsc(bbTkDate(m.match_date, m.match_time)) + '</div>' +
+        '<div style="font-family:\'Archivo\',sans-serif;font-stretch:110%;font-weight:800;font-size:17px;color:#F3EFE6;margin-bottom:2px">Baobabs ' + (m.is_home ? 'vs ' : '@ ') + bbTkEsc(m.opponent_name || '') + '</div>' +
+        (m.venue ? '<div style="font-size:12.5px;color:#7E8A82;margin-bottom:12px">' + bbTkEsc(m.venue) + '</div>' : '<div style="height:12px"></div>') +
+        '<div style="display:flex;flex-direction:column;gap:8px">';
+      g.offers.forEach(function(o){
+        var left = Math.max((o.quota || 0) - (o.sold || 0), 0);
+        var sold = left <= 0;
+        var on = String(bbTkSel) === String(o.id);
+        html += '<button type="button" ' + (sold ? 'disabled' : 'data-tk-offer="' + o.id + '"') +
+          ' style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:13px 15px;border-radius:11px;cursor:' + (sold ? 'not-allowed' : 'pointer') + ';font-family:\'Inter\',sans-serif;transition:border-color .15s,background .15s;' +
+          'border:1px solid ' + (on ? '#A8D93B' : 'rgba(243,239,230,.16)') + ';background:' + (on ? 'rgba(168,217,59,.09)' : 'rgba(243,239,230,.04)') + ';opacity:' + (sold ? '.45' : '1') + '">' +
+          '<span style="min-width:0"><span style="display:block;font-weight:700;font-size:14px;color:#F3EFE6">' + bbTkEsc(o.category) + '</span>' +
+          '<span style="display:block;font-size:11.5px;color:' + (left <= 10 && !sold ? '#C6A257' : '#7E8A82') + ';margin-top:3px">' + (sold ? 'Complet' : left + ' place(s) restante(s)') + '</span></span>' +
+          '<span style="flex:none;font-family:\'Archivo\',sans-serif;font-stretch:110%;font-weight:900;font-size:15px;color:#C6A257">' + bbTkEsc(bbTkPrice(o.price_fcfa)) + '</span>' +
+          '</button>';
+      });
+      html += '</div></div>';
+    });
+
+    var sel = bbTkSel ? bbTkOfferById(bbTkSel) : null;
+    if (sel){
+      var max = Math.min(10, Math.max((sel.quota || 0) - (sel.sold || 0), 1));
+      if (bbTkQty > max) bbTkQty = max;
+      var name = (currentCustomer && currentCustomer.name) || '';
+      var phone = (currentCustomer && currentCustomer.phone) || '';
+      var email = (currentCustomer && currentCustomer.user && currentCustomer.user.email) || '';
+      html += '<div style="border-top:1px solid rgba(243,239,230,.1);padding-top:18px;display:flex;flex-direction:column;gap:14px">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px">' +
+          '<span style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#93A099">Nombre de places</span>' +
+          '<span style="display:flex;align-items:center;gap:12px">' +
+            '<button type="button" data-tk-qty="-1" class="bb-qty-btn" aria-label="Retirer une place">−</button>' +
+            '<b style="font-family:\'Archivo\',sans-serif;font-stretch:110%;font-weight:900;font-size:18px;color:#F3EFE6;min-width:22px;text-align:center">' + bbTkQty + '</b>' +
+            '<button type="button" data-tk-qty="1" class="bb-qty-btn" aria-label="Ajouter une place">+</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="bb-field"><label for="bb-tk-name">Nom</label><input id="bb-tk-name" type="text" placeholder="Votre nom" value="' + bbTkEsc(name) + '"></div>' +
+        '<div class="bb-field"><label for="bb-tk-phone">Téléphone</label><input id="bb-tk-phone" type="tel" placeholder="77 000 00 00" value="' + bbTkEsc(phone) + '"></div>' +
+        '<div class="bb-field"><label for="bb-tk-email">Email</label><input id="bb-tk-email" type="email" placeholder="vous@exemple.com" value="' + bbTkEsc(email) + '"></div>' +
+        (currentCustomer ? '' : '<p style="font-size:12.5px;color:#7E8A82;margin:0">Astuce : <a href="#" data-tk-login style="color:#C6A257">connectez-vous</a> pour retrouver vos réservations dans votre compte.</p>') +
+        '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-top:2px">' +
+          '<span style="font-size:13px;color:#93A099">À régler sur place</span>' +
+          '<b style="font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#C6A257">' + bbTkEsc(bbTkPrice((sel.price_fcfa || 0) * bbTkQty)) + '</b>' +
+        '</div>' +
+        '<p id="bb-tk-error" class="bb-hide" style="font-size:12.5px;color:#E5564A;margin:0"></p>' +
+        '<button type="button" id="bb-tk-confirm" class="bb-btn-solid">Réserver</button>' +
+        '</div>';
+    }
+
+    body.innerHTML = html;
+
+    body.querySelectorAll('[data-tk-offer]').forEach(function(b){
+      b.addEventListener('click', function(){ bbTkSel = b.getAttribute('data-tk-offer'); bbTkQty = 1; bbTkRender(); });
+    });
+    body.querySelectorAll('[data-tk-qty]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var s = bbTkOfferById(bbTkSel); if (!s) return;
+        var lim = Math.min(10, Math.max((s.quota || 0) - (s.sold || 0), 1));
+        bbTkQty = Math.min(lim, Math.max(1, bbTkQty + parseInt(b.getAttribute('data-tk-qty'), 10)));
+        bbTkRender();
+      });
+    });
+    var lg = body.querySelector('[data-tk-login]');
+    if (lg) lg.addEventListener('click', function(e){ e.preventDefault(); closeOverlays(); openLogin(); });
+    var cf = document.getElementById('bb-tk-confirm');
+    if (cf) cf.addEventListener('click', bbTkConfirm);
+  }
+
+  var BB_TK_ERRORS = {
+    places_insuffisantes: 'Il ne reste plus assez de places dans cette catégorie.',
+    vente_fermee: 'La vente vient d\'être fermée pour cette catégorie.',
+    quantite_invalide: 'Choisissez entre 1 et 10 places.',
+    offre_introuvable: 'Cette catégorie n\'est plus disponible.'
+  };
+
+  function bbTkConfirm(){
+    var sel = bbTkOfferById(bbTkSel); if (!sel) return;
+    var err = document.getElementById('bb-tk-error');
+    var btn = document.getElementById('bb-tk-confirm');
+    var name = document.getElementById('bb-tk-name').value.trim();
+    var phone = document.getElementById('bb-tk-phone').value.trim();
+    var email = document.getElementById('bb-tk-email').value.trim();
+    function fail(msg){ err.textContent = msg; err.classList.remove('bb-hide'); }
+    err.classList.add('bb-hide');
+    if (!name){ fail('Indiquez votre nom.'); return; }
+    if (!phone){ fail('Indiquez un téléphone : c\'est ainsi que le club vous joint le jour du match.'); return; }
+    btn.disabled = true; btn.textContent = 'Réservation…';
+    fetch(SUPABASE_URL + '/rest/v1/rpc/bbc_reserver', {
+      method: 'POST', headers: bbTkHeaders(),
+      body: JSON.stringify({ p_offer_id: sel.id, p_quantity: bbTkQty, p_name: name, p_phone: phone, p_email: email || null })
+    }).then(function(r){
+      return r.text().then(function(t){
+        var j = null; try { j = t ? JSON.parse(t) : null; } catch(e){}
+        if (!r.ok){
+          var code = (j && (j.message || j.hint)) || '';
+          throw new Error(BB_TK_ERRORS[code] || 'La réservation n\'a pas pu être enregistrée. Réessayez.');
+        }
+        return Array.isArray(j) ? j[0] : j;
+      });
+    }).then(function(row){
+      bbTkResult = row; bbTkState = 'done'; bbTkRender();
+    }).catch(function(e){
+      btn.disabled = false; btn.textContent = 'Réserver';
+      fail(e.message || 'La réservation n\'a pas pu être enregistrée.');
+    });
+  }
+
+  document.addEventListener('click', function(e){
+    var t = e.target.closest && e.target.closest('[data-ticket]');
+    if (t){ e.preventDefault(); bbTkOpen(); }
+  });
 
   // ===== Hydratation depuis Supabase (contenu géré par l'admin) =====
   var SB_URL = "https://lmwbwasupqkvswukieav.supabase.co";
