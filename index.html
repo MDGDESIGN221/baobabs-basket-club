@@ -843,18 +843,18 @@
             <span style="font-family:'Archivo',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#A8D93B;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Face-Off</span>
             <h2 style="font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(24px,2.8vw,30px);letter-spacing:-.01em;color:#F3EFE6;margin:6px 0 0">Le duel des leaders</h2>
           </div>
-          <span style="font-family:'Archivo',sans-serif;font-weight:600;font-size:12px;color:#7E8A82">Moyennes par match · 2026</span>
+          <span id="bb-fo-sub" style="font-family:'Archivo',sans-serif;font-weight:600;font-size:12px;color:#7E8A82">Moyennes par match · 2026</span>
         </div>
         <div id="bb-fo" style="background:linear-gradient(150deg,#0F1E15,#0A150F);border:1px solid rgba(198,162,87,.22);border-radius:20px;overflow:hidden">
           <div class="bb-fo-grid">
             <div class="bb-fo-side" style="background:linear-gradient(180deg,rgba(198,162,87,.08),transparent)">
-              <div class="bb-fo-photo"><span class="bb-fo-num" style="left:8px">4</span><img src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784826251/nouvel_num_4_umsjcf.png" alt="Aïda Diop"></div>
-              <div style="margin-top:14px"><div style="font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(22px,2.6vw,30px);color:#F3EFE6;line-height:1">Aïda Diop</div><div style="font-family:'Archivo',sans-serif;font-weight:600;font-size:12px;letter-spacing:.06em;color:#C6A257;text-transform:uppercase;margin-top:4px">#4 · Meneuse</div></div>
+              <div class="bb-fo-photo"><span id="bb-fo-p1-num" class="bb-fo-num" style="left:8px">4</span><img id="bb-fo-p1-img" src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784826251/nouvel_num_4_umsjcf.png" alt="Aïda Diop"></div>
+              <div style="margin-top:14px"><div id="bb-fo-p1-name" style="font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(22px,2.6vw,30px);color:#F3EFE6;line-height:1">Aïda Diop</div><div id="bb-fo-p1-role" style="font-family:'Archivo',sans-serif;font-weight:600;font-size:12px;letter-spacing:.06em;color:#C6A257;text-transform:uppercase;margin-top:4px">#4 · Meneuse</div></div>
             </div>
             <div class="bb-fo-vs"><div class="bb-fo-vs-badge">VS</div></div>
             <div class="bb-fo-side" style="background:linear-gradient(180deg,rgba(168,217,59,.08),transparent);text-align:right">
-              <div class="bb-fo-photo"><span class="bb-fo-num" style="right:8px">11</span><img src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784829760/Joueuse_maillot_blanc___fond_transparent_b0fu2e.png" alt="Khady Sy" style="object-position:center 12%"></div>
-              <div style="margin-top:14px"><div style="font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(22px,2.6vw,30px);color:#F3EFE6;line-height:1">Khady Sy</div><div style="font-family:'Archivo',sans-serif;font-weight:600;font-size:12px;letter-spacing:.06em;color:#A8D93B;text-transform:uppercase;margin-top:4px">#11 · Ailière-forte</div></div>
+              <div class="bb-fo-photo"><span id="bb-fo-p2-num" class="bb-fo-num" style="right:8px">11</span><img id="bb-fo-p2-img" src="https://res.cloudinary.com/djdkpihuz/image/upload/v1784829760/Joueuse_maillot_blanc___fond_transparent_b0fu2e.png" alt="Khady Sy" style="object-position:center 12%"></div>
+              <div style="margin-top:14px"><div id="bb-fo-p2-name" style="font-family:'Archivo Black',sans-serif;font-weight:900;font-size:clamp(22px,2.6vw,30px);color:#F3EFE6;line-height:1">Khady Sy</div><div id="bb-fo-p2-role" style="font-family:'Archivo',sans-serif;font-weight:600;font-size:12px;letter-spacing:.06em;color:#A8D93B;text-transform:uppercase;margin-top:4px">#11 · Ailière-forte</div></div>
             </div>
             <div class="bb-fo-stats-wrap" style="grid-column:1 / -1;padding:clamp(6px,2vw,14px) clamp(20px,3vw,34px) clamp(20px,3vw,34px)">
               <div class="bb-fo-stat"><b style="text-align:right;color:#C6A257">14.2</b><span class="lbl">Points</span><b style="text-align:left;color:#A8D93B">18.6</b></div>
@@ -2691,7 +2691,7 @@
     }).catch(function(){});
 
     sbFetch('site_settings?select=*').then(function(rows){
-      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyContent(s); applySiteSettings(s);
+      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyContent(s); applySiteSettings(s); applyFaceOff(s);
     }).catch(function(){});
   }
 
@@ -2739,6 +2739,48 @@
       var p=detectPlatform(a.getAttribute('href'), a.getAttribute('aria-label')); if(!p) return;
       var v=soc[p]; if(!v) return;
       a.href = (p==='whatsapp' && /^\+?\d[\d\s]*$/.test(v)) ? ('https://wa.me/'+v.replace(/[^\d]/g,'')) : v;
+    });
+  }
+
+  // Branche le bloc Face-Off (identité + stats des 2 joueuses) sur le site public.
+  function applyFaceOff(s){
+    if(!s) return;
+    function set(id,val){ if(val==null||val==='') return; var el=document.getElementById(id); if(el) el.textContent=val; }
+    set('bb-fo-sub', s.fo_subtitle);
+    set('bb-fo-p1-num', s.fo_p1_number);
+    set('bb-fo-p2-num', s.fo_p2_number);
+    set('bb-fo-p1-name', s.fo_p1_name);
+    set('bb-fo-p2-name', s.fo_p2_name);
+    if(s.fo_p1_number || s.fo_p1_position) set('bb-fo-p1-role', '#'+(s.fo_p1_number||'')+' · '+(s.fo_p1_position||''));
+    if(s.fo_p2_number || s.fo_p2_position) set('bb-fo-p2-role', '#'+(s.fo_p2_number||'')+' · '+(s.fo_p2_position||''));
+    if(s.fo_p1_photo_url){ var i1=document.getElementById('bb-fo-p1-img'); if(i1){ i1.src=s.fo_p1_photo_url; i1.alt=s.fo_p1_name||i1.alt; } }
+    if(s.fo_p2_photo_url){ var i2=document.getElementById('bb-fo-p2-img'); if(i2){ i2.src=s.fo_p2_photo_url; i2.alt=s.fo_p2_name||i2.alt; } }
+
+    // 6 stats, dans l'ordre où elles apparaissent dans le DOM (Points, Rebonds, Passes déc., Interceptions, 3 points, Évaluation).
+    var stats=[
+      {p1:s.fo_p1_points,   p2:s.fo_p2_points,   suf:''},
+      {p1:s.fo_p1_rebounds, p2:s.fo_p2_rebounds, suf:''},
+      {p1:s.fo_p1_assists,  p2:s.fo_p2_assists,  suf:''},
+      {p1:s.fo_p1_steals,   p2:s.fo_p2_steals,   suf:''},
+      {p1:s.fo_p1_threep,   p2:s.fo_p2_threep,   suf:'%'},
+      {p1:s.fo_p1_eval,     p2:s.fo_p2_eval,     suf:''}
+    ];
+    var hasAny = stats.some(function(x){ return (x.p1!=null&&x.p1!=='')||(x.p2!=null&&x.p2!==''); });
+    if(!hasAny) return;
+    var wrap=document.querySelector('#bb-fo .bb-fo-stats-wrap'); if(!wrap) return;
+    var kids=wrap.children;
+    stats.forEach(function(st,i){
+      var row=kids[i*2], barRow=kids[i*2+1]; if(!row||!barRow) return;
+      var bEls=row.querySelectorAll('b'); var iEls=barRow.querySelectorAll('.bb-fo-bar i');
+      if(bEls.length<2||iEls.length<2) return;
+      if(st.p1!=null && st.p1!=='') bEls[0].textContent=st.p1+st.suf;
+      if(st.p2!=null && st.p2!=='') bEls[1].textContent=st.p2+st.suf;
+      var v1=parseFloat(st.p1), v2=parseFloat(st.p2);
+      if(!isNaN(v1) && !isNaN(v2) && (v1>0||v2>0)){
+        var max=Math.max(v1,v2);
+        iEls[0].style.width=(max>0?(v1/max*100):0)+'%';
+        iEls[1].style.width=(max>0?(v2/max*100):0)+'%';
+      }
     });
   }
 
