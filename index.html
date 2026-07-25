@@ -223,13 +223,13 @@
      mesurée : les unités de requête de conteneur donnaient des résultats
      différents entre l'émulation du navigateur et un vrai iPhone. La valeur
      ci-dessous n'est qu'un repli si le script ne tourne pas.
-     Le tracé italique n'est pas centré dans sa boîte — mesuré au canvas, son
-     centre optique tombe 0,10em (un chiffre) à 0,15em (deux et trois) à droite.
-     translateX le recentre, sinon il déborde à droite et son pied touche le
-     bord gauche. */
-  .bb-player .bb-bignum{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) translateX(-.1em);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:180px;line-height:.72;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
-  .bb-player .bb-bignum.bb-bignum-2{transform:translate(-50%,-50%) translateX(-.15em)}
-  .bb-player .bb-bignum.bb-bignum-3{transform:translate(-50%,-50%) translateX(-.145em)}
+     Le numéro est ancré au bord droit de la carte. Mesuré au canvas, le tracé
+     italique dépasse sa propre boîte à droite de 0,164em (un chiffre),
+     0,186em (deux), 0,179em (trois) : le translateX recule d'autant, plus
+     0,06em de marge, pour effleurer le bord sans le franchir. */
+  .bb-player .bb-bignum{position:absolute;right:0;top:40%;transform:translateY(-50%) translateX(-.22em);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:180px;line-height:.72;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
+  .bb-player .bb-bignum.bb-bignum-2{transform:translateY(-50%) translateX(-.25em)}
+  .bb-player .bb-bignum.bb-bignum-3{transform:translateY(-50%) translateX(-.24em)}
   @media (prefers-reduced-motion:reduce){.bb-player .bb-cardbg{animation:none}.bb-player .bb-bignum{animation:none;opacity:.5}.bb-flip-inner{transition:none!important}@media (hover:hover){.bb-player:hover .bb-flip-inner{transform:none!important}}}
 
   /* ===== flip carte joueuse (fiche scouting) ===== */
@@ -4191,9 +4191,9 @@ document.addEventListener('keydown', function(e){
    navigateur, ce qui élargit le tracé au-delà des métriques de la police) :
    à taille de police F, la largeur du tracé vaut 0,625F à un chiffre,
    0,736F à deux, 1,386F à trois ; sa hauteur vaut 0,72F dans tous les cas.
-   On vise 78% de la largeur de la carte et 60% de sa hauteur, et on retient la
-   plus contraignante des deux — le numéro reste grand sans jamais être rogné,
-   sur iPhone comme sur grand écran. */
+   Le numéro étant ancré à droite, le côté gauche est libre : on autorise 88% de
+   la largeur de la carte, et 60% de sa hauteur, en retenant la plus
+   contraignante — grand sans jamais être rogné, sur iPhone comme sur grand écran. */
 window.bbFitNums = function(){
   var els = document.querySelectorAll('.bb-player .bb-bignum');
   for (var i = 0; i < els.length; i++) {
@@ -4204,7 +4204,7 @@ window.bbFitNums = function(){
     if (!cw || !ch) continue;
     var d = (el.textContent || '').trim().length || 1;
     var ratio = d === 1 ? 0.625 : (d === 2 ? 0.736 : 1.386);
-    var byWidth = (cw * 0.78) / ratio;
+    var byWidth = (cw * 0.88) / ratio;
     var byHeight = (ch * 0.60) / 0.72;
     el.style.fontSize = Math.max(48, Math.round(Math.min(byWidth, byHeight))) + 'px';
   }
