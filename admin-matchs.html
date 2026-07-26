@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@300..700&family=Inter:wght@400..900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
     --bg:#090F0B;--surface:#131C16;--surface-2:#182219;--surface-3:#1E2B21;
@@ -3078,6 +3079,205 @@
     return [r.position, r.category, age, r.city].filter(Boolean).join(' · ');
   }
 
+  // Convertit une URL image (Cloudinary, etc.) en data URL base64 via un
+  // canvas hors-écran, pour que jsPDF puisse la dessiner directement.
+  // Résout à null en cas d'échec (photo cassée, CORS…) plutôt que de
+  // rejeter — un candidat sans photo exploitable ne doit jamais bloquer
+  // la génération du reste de la fiche.
+  function cdImgToDataUrl(url){
+    return new Promise(function(resolve){
+      if (!url) { resolve(null); return; }
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function(){
+        try{
+          var c = document.createElement('canvas');
+          c.width = img.naturalWidth; c.height = img.naturalHeight;
+          c.getContext('2d').drawImage(img,0,0);
+          resolve({ data:c.toDataURL('image/jpeg',0.92), w:img.naturalWidth, h:img.naturalHeight, el:img });
+        }catch(e){ resolve(null); }
+      };
+      img.onerror = function(){ resolve(null); };
+      img.src = url;
+    });
+  }
+
+  // --- Fiche candidat PDF : sobre, pro, en-tête club + logo, photo du
+  // candidat, toutes les sections du dossier (y compris usage interne :
+  // notes, décision, journal). Nom de fichier basé sur le nom du candidat.
+  function cdGeneratePdf(r){
+    var btn = document.getElementById('cd-pdf-btn');
+    var origLabel = btn ? btn.innerHTML : '';
+    if (btn){ btn.disabled = true; btn.innerHTML = 'Génération…'; }
+
+    Promise.all([
+      cdImgToDataUrl(LOGO_DEF),
+      cdImgToDataUrl(r.photo_url)
+    ]).then(function(res){
+      var logo = res[0], photo = res[1];
+      cdRenderPdfDoc(r, logo, photo);
+    }).catch(function(){
+      cdRenderPdfDoc(r, null, null);
+    }).then(function(){
+      if (btn){ btn.disabled = false; btn.innerHTML = origLabel; }
+    });
+  }
+
+  function cdRenderPdfDoc(r, logo, photo){
+    var jsPDFLib = window.jspdf && window.jspdf.jsPDF;
+    if (!jsPDFLib) { alert('Le module PDF n\'a pas pu se charger. Vérifiez votre connexion et réessayez.'); return; }
+    var doc = new jsPDFLib({ unit:'mm', format:'a4' });
+    var PW = 210, PH = 297, M = 18;
+    var y = M;
+    var INK = [20,26,22], FAINT = [110,120,112], LINE = [222,226,220], GOLD = [198,162,87];
+
+    function checkPageBreak(need){
+      if (y + need > PH - M){ doc.addPage(); y = M; }
+    }
+    function hLine(){ doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.3); doc.line(M,y,PW-M,y); }
+    function sectionTitle(t){
+      checkPageBreak(12);
+      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(GOLD[0],GOLD[1],GOLD[2]);
+      doc.text(t.toUpperCase(), M, y);
+      y += 1.5; hLine(); y += 7;
+    }
+    function kv(label, value){
+      if (!value) return;
+      checkPageBreak(7);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(FAINT[0],FAINT[1],FAINT[2]);
+      doc.text(String(label), M, y);
+      doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(INK[0],INK[1],INK[2]);
+      var lines = doc.splitTextToSize(String(value), PW-2*M-55);
+      doc.text(lines, M+55, y);
+      y += Math.max(6, lines.length*5) + 1.5;
+    }
+    function prose(text, color){
+      checkPageBreak(10);
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      doc.setTextColor((color||INK)[0],(color||INK)[1],(color||INK)[2]);
+      var lines = doc.splitTextToSize(String(text), PW-2*M);
+      lines.forEach(function(ln){ checkPageBreak(5.5); doc.text(ln, M, y); y += 5.2; });
+      y += 2;
+    }
+
+    // --- En-tête : logo + nom du club à gauche, titre du document à droite ---
+    if (logo){
+      var lh = 14, lw = lh * (logo.w/logo.h);
+      doc.addImage(logo.data, 'JPEG', M, y, lw, lh);
+    }
+    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(INK[0],INK[1],INK[2]);
+    doc.text('BAOBABS BASKET CLUB', M+18, y+6);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(FAINT[0],FAINT[1],FAINT[2]);
+    doc.text('Dakar · Championnat D2', M+18, y+10.5);
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(FAINT[0],FAINT[1],FAINT[2]);
+    doc.text('FICHE DE CANDIDATURE', PW-M, y+4, { align:'right' });
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); 
+    doc.text('Usage interne — document confidentiel', PW-M, y+9, { align:'right' });
+    y += 20; hLine(); y += 10;
+
+    // --- Bloc identité : photo + nom + statut + coordonnées rapides ---
+    var photoSize = 28;
+    if (photo){
+      // Recadrage carré centré, comme l'avatar rond du site : on prend le
+      // plus petit côté pour éviter une photo étirée si elle n'est pas carrée.
+      // On réutilise photo.el (déjà chargé par cdImgToDataUrl) plutôt que de
+      // recréer une Image() — assigner un data URL à .src n'est pas garanti
+      // synchrone selon le navigateur, donc dessiner immédiatement dessus
+      // pourrait produire un canvas vide.
+      var side = Math.min(photo.w, photo.h);
+      var sx = (photo.w-side)/2, sy = (photo.h-side)/2;
+      var c = document.createElement('canvas'); c.width=c.height=400;
+      var ctx = c.getContext('2d');
+      ctx.drawImage(photo.el, sx, sy, side, side, 0, 0, 400, 400);
+      doc.addImage(c.toDataURL('image/jpeg',0.92), 'JPEG', M, y, photoSize, photoSize);
+    } else {
+      doc.setFillColor(230,232,226);
+      doc.roundedRect(M, y, photoSize, photoSize, 2, 2, 'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(150,155,148);
+      doc.text((r.full_name||'?').charAt(0).toUpperCase(), M+photoSize/2, y+photoSize/2+2, { align:'center' });
+    }
+
+    var tx = M + photoSize + 8;
+    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(INK[0],INK[1],INK[2]);
+    doc.text(r.full_name||'—', tx, y+6);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(FAINT[0],FAINT[1],FAINT[2]);
+    doc.text(cdSubline(r)||'Profil à compléter', tx, y+12);
+    var st = cdSt(r.status||'nouvelle');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(90,95,88);
+    doc.text('Statut : '+st.label+'   ·   Reçue le '+fmtDateTime(r.created_at), tx, y+18);
+    var contact = [r.phone, r.email].filter(Boolean).join('   ·   ');
+    if (contact){ doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(INK[0],INK[1],INK[2]); doc.text(contact, tx, y+24); }
+
+    y += photoSize + 10; hLine(); y += 9;
+
+    // --- Coordonnées ---
+    sectionTitle('Coordonnées');
+    kv('Téléphone', r.phone); kv('Email', r.email); kv('Ville', r.city);
+    kv('Date de naissance', r.birth_date); kv('Âge', r.age?r.age+' ans':'');
+    y += 3;
+
+    // --- Profil sportif ---
+    sectionTitle('Profil sportif');
+    kv('Poste', r.position); kv('Catégorie', r.category);
+    kv('Taille', r.height_cm?r.height_cm+' cm':''); kv('Poids', r.weight_kg?r.weight_kg+' kg':'');
+    kv('Main forte', r.strong_hand); kv('Expérience', r.experience);
+    kv('Clubs précédents', r.previous_clubs);
+    y += 3;
+
+    // --- Message du candidat ---
+    if (r.message || r.health_notes){
+      sectionTitle('Message du candidat');
+      if (r.message) prose(r.message);
+      if (r.health_notes) prose('Santé : '+r.health_notes, [176,90,50]);
+      y += 3;
+    }
+
+    // --- Décision & suivi (usage interne) ---
+    sectionTitle('Décision & suivi — usage interne');
+    kv('Statut actuel', st.label);
+    kv('Note interne', r.rating ? (parseInt(r.rating,10)||0)+' / 5' : '');
+    kv('Entretien', r.interview_at ? fmtDateTime(r.interview_at) : '');
+    kv('Responsable du dossier', r.assigned_to);
+    if (r.decision_note){ y += 1; doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(FAINT[0],FAINT[1],FAINT[2]); doc.text('Motif :', M, y); y += 5; prose(r.decision_note); }
+    y += 3;
+
+    // --- Notes internes ---
+    if (r.admin_notes){
+      sectionTitle('Notes internes — jamais visibles du candidat');
+      prose(r.admin_notes);
+      y += 3;
+    }
+
+    // --- Journal du dossier ---
+    if (cdEvents && cdEvents.length){
+      sectionTitle('Journal du dossier');
+      cdEvents.forEach(function(e){
+        var label = e.kind==='statut'
+          ? (e.from_status?cdSt(e.from_status).label+' → ':'')+cdSt(e.to_status).label
+          : (e.body||e.kind);
+        checkPageBreak(6);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(FAINT[0],FAINT[1],FAINT[2]);
+        doc.text(fmtDateTime(e.created_at), M, y);
+        doc.setTextColor(INK[0],INK[1],INK[2]);
+        doc.text(String(label), M+32, y);
+        y += 5.5;
+      });
+    }
+
+    // --- Pied de page sur chaque page : numérotation + date de génération ---
+    var pageCount = doc.internal.getNumberOfPages();
+    for (var i=1; i<=pageCount; i++){
+      doc.setPage(i);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(FAINT[0],FAINT[1],FAINT[2]);
+      doc.text('Baobabs Basket Club — document généré le '+new Date().toLocaleDateString('fr-FR'), M, PH-M+8);
+      doc.text('Page '+i+' / '+pageCount, PW-M, PH-M+8, { align:'right' });
+    }
+
+    var safeName = (r.full_name||'candidat').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase();
+    doc.save('fiche-candidature-'+(safeName||'candidat')+'.pdf');
+  }
+
   function cdRender(){
     var listView = document.getElementById('cd-list-view');
     var docView = document.getElementById('cd-doc-view');
@@ -3187,6 +3387,7 @@
                 alerte+interviewBadge+
               '</div>'+
               '<button type="button" class="btn btn-ghost" id="cd-archive-toggle" style="padding:7px 12px;font-size:11.5px;flex:none">'+((r.status||'nouvelle')==='archivee'?'Désarchiver':'Archiver')+'</button>'+
+              '<button type="button" class="btn btn-ghost" id="cd-pdf-btn" style="padding:7px 12px;font-size:11.5px;flex:none;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5M4 21h16"/></svg>Fiche PDF</button>'+
             '</div>'+
             '<h2 class="cd-doc-name">'+esc(r.full_name||'—')+'</h2>'+
             '<div class="cd-doc-sub">'+esc(cdSubline(r)||'Profil à compléter')+'<br>Reçue le '+esc(fmtDateTime(r.created_at))+'</div>'+
@@ -3285,6 +3486,9 @@
       var isArchived = (r.status||'nouvelle')==='archivee';
       cdSetStatus(r.id, isArchived ? 'en_attente' : 'archivee');
     });
+    // --- Fiche PDF téléchargeable ---
+    var pdfBtn = document.getElementById('cd-pdf-btn');
+    if (pdfBtn) pdfBtn.addEventListener('click', function(){ cdGeneratePdf(r); });
     // --- Étoiles ---
     box.querySelectorAll('#cd-stars button').forEach(function(b){
       b.addEventListener('click', function(){
