@@ -2016,6 +2016,14 @@
           <p style="font-size:13px;line-height:1.6;color:#B9C2BB;margin:0">Fille ou garçon, débutant·e ou déjà licencié·e : remplis ce formulaire, le club te recontacte pour une séance de détection. Les champs marqués * sont obligatoires.</p>
 
           <div class="bb-rec-legend">Identité</div>
+          <div class="bb-field">
+            <label for="bb-rec-photo">Photo (optionnel)</label>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div id="bb-rec-photo-preview" style="width:64px;height:64px;border-radius:50%;flex:none;background:rgba(243,239,230,.05);border:1px solid rgba(243,239,230,.18);background-size:cover;background-position:center"></div>
+              <label for="bb-rec-photo" style="font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:#C6A257;cursor:pointer;border:1px solid rgba(198,162,87,.4);border-radius:8px;padding:9px 14px;text-transform:none;letter-spacing:normal">Choisir une photo</label>
+              <input id="bb-rec-photo" name="photo" type="file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden">
+            </div>
+          </div>
           <div class="bb-field"><label>Sexe *</label><div class="bb-radio-row" id="bb-rec-gender"><label class="bb-radio on"><input type="radio" name="gender" value="F" checked>Fille</label><label class="bb-radio"><input type="radio" name="gender" value="M">Garçon</label></div></div>
           <div class="bb-rec-grid">
             <div class="bb-field"><label for="bb-rec-first">Prénom *</label><input id="bb-rec-first" name="first_name" type="text" required></div>
@@ -2112,6 +2120,24 @@ window.bbCloud = function(url, w){
       },
       body: JSON.stringify(payload)
     }).then(function(res){ if (!res.ok) throw new Error('insert failed: ' + table); });
+  }
+  // Upload de la photo de candidature vers le bucket public dédié
+  // recruitment-photos (policy Storage : INSERT ouvert au rôle anon,
+  // volontairement séparé du bucket site-media réservé à l'admin).
+  function uploadRecruitPhoto(file){
+    var path = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return fetch(SUPABASE_URL + '/storage/v1/object/recruitment-photos/' + path, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': file.type || 'application/octet-stream'
+      },
+      body: file
+    }).then(function(res){
+      if (!res.ok) throw new Error('photo upload failed');
+      return SUPABASE_URL + '/storage/v1/object/public/recruitment-photos/' + path;
+    });
   }
 
   var state = {
@@ -2935,6 +2961,7 @@ window.bbCloud = function(url, w){
   function openRecruit(){
     var f = document.getElementById('bb-recruit-form');
     f.classList.remove('bb-hide'); f.reset();
+    var pp = document.getElementById('bb-rec-photo-preview'); if (pp) pp.style.backgroundImage = '';
     document.getElementById('bb-recruit-success').classList.add('bb-hide');
     document.getElementById('bb-rec-clubs-field').classList.add('bb-hide');
     document.getElementById('bb-rec-exp').querySelectorAll('.bb-radio').forEach(function(l,i){ l.classList.toggle('on', i===0); });
@@ -3185,13 +3212,29 @@ window.bbCloud = function(url, w){
         var val = (expWrap.querySelector('input:checked') || {}).value;
         document.getElementById('bb-rec-clubs-field').classList.toggle('bb-hide', val !== 'A d\u00e9j\u00e0 jou\u00e9 en club');
       });
+      var photoInput = document.getElementById('bb-rec-photo');
+      var photoPreview = document.getElementById('bb-rec-photo-preview');
+      if (photoInput) photoInput.addEventListener('change', function(){
+        var file = photoInput.files[0];
+        if (!file) { photoPreview.style.backgroundImage = ''; return; }
+        var reader = new FileReader();
+        reader.onload = function(ev){ photoPreview.style.backgroundImage = 'url(' + ev.target.result + ')'; };
+        reader.readAsDataURL(file);
+      });
       recForm.addEventListener('submit', function(e){
         e.preventDefault();
         var form = this, fd = new FormData(form);
         function g(k){ var v = fd.get(k); return (v != null && String(v).trim() !== '') ? String(v).trim() : null; }
         var payload = { first_name:g('first_name'), last_name:g('last_name'), gender:g('gender'), birth_date:g('birth_date'), category:g('category'), phone:g('phone'), email:g('email'), city:g('city'), position:g('position'), strong_hand:g('strong_hand'), height_cm:g('height_cm'), weight_kg:g('weight_kg'), experience:g('experience'), previous_clubs:g('previous_clubs'), health_notes:g('health_notes'), message:g('message'), status:'nouvelle' };
         var btn = form.querySelector('button[type=submit]'); btn.disabled = true;
-        sbInsert('recruitment_requests', payload).then(function(){
+        var photoFile = photoInput && photoInput.files[0];
+        // La photo est facultative : si son upload échoue, la candidature part
+        // quand même sans photo plutôt que de bloquer tout l'envoi pour ça.
+        var photoStep = photoFile ? uploadRecruitPhoto(photoFile).catch(function(err){ console.warn('Upload photo \u00e9chou\u00e9', err); return null; }) : Promise.resolve(null);
+        photoStep.then(function(photoUrl){
+          if (photoUrl) payload.photo_url = photoUrl;
+          return sbInsert('recruitment_requests', payload);
+        }).then(function(){
           form.classList.add('bb-hide');
           document.getElementById('bb-recruit-success').classList.remove('bb-hide');
         }).catch(function(err){ console.warn('Candidature \u00e9chou\u00e9e', err); toast("Erreur d'envoi \u2014 r\u00e9essaie dans un instant"); }).finally(function(){ btn.disabled = false; });
