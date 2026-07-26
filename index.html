@@ -25,7 +25,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300..900&family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet">
 
 <style>
   body{margin:0;background:#061109;color:#F3EFE6;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -53,6 +53,7 @@
   @keyframes bbGlow{0%{opacity:0}40%{opacity:1}100%{opacity:.55}}
 
   .bb-try .r{opacity:0;transform:translateX(-46px);transition:opacity .8s ease,transform .8s cubic-bezier(.16,.8,.3,1)}
+  .r-portrait-wrap{background:transparent}
   .bb-try .r-portrait{opacity:0;transform:translateX(70px);transition:opacity .9s cubic-bezier(.16,.8,.3,1),transform .9s cubic-bezier(.16,.8,.3,1)}
   .bb-try.is-visible .r,.bb-try.is-visible .r-portrait{opacity:1;transform:translateX(0)}
   .bb-try.is-visible .r-eye{transition-delay:.05s}
@@ -246,7 +247,7 @@
     .bb-flip-face{backface-visibility:visible;-webkit-backface-visibility:visible}
     .bb-flip-back{display:none}
   }
-  .bb-flip-back .bb-fb-head{font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:19px;color:#F3EFE6;line-height:1.05}
+  .bb-flip-back .bb-fb-head{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:19px;color:#F3EFE6;line-height:1.05}
   .bb-flip-back .bb-fb-tag{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;color:#A8D93B;margin:3px 0 14px}
   .bb-flip-back .bb-fb-row{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(243,239,230,.08);padding:7px 0}
   .bb-flip-back .bb-fb-k{font-family:'Inter',sans-serif;font-weight:500;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7E8A82}
@@ -299,7 +300,7 @@
   @media (max-width:640px){#bb-player-modal{grid-template-columns:1fr}#bb-player-photo{width:100%;aspect-ratio:4/3;min-height:0}}
   #bb-player-photo{position:relative;background:radial-gradient(120% 90% at 70% 0%,#123322,#081C13 60%,#05130D);overflow:hidden;min-height:340px}
   #bb-player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;z-index:2;animation:bbPlayerImg .6s cubic-bezier(.16,.8,.3,1) both;animation-delay:.06s}
-  #bb-player-bignum{position:absolute;left:-4%;bottom:2%;z-index:1;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(150px,22vw,240px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(243,239,230,.16);opacity:.16;pointer-events:none;animation:bbPlayerNum .7s cubic-bezier(.16,.8,.3,1) both}
+  #bb-player-bignum{position:absolute;left:-4%;bottom:2%;z-index:1;font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(150px,22vw,240px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(243,239,230,.16);opacity:.16;pointer-events:none;animation:bbPlayerNum .7s cubic-bezier(.16,.8,.3,1) both}
   #bb-player-glow{position:absolute;left:50%;bottom:-6%;width:80%;height:26%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.4),transparent 70%);filter:blur(20px);z-index:1;pointer-events:none}
   #bb-player-info{padding:clamp(22px,3.4vw,34px);display:flex;flex-direction:column;gap:18px;justify-content:center}
   #bb-player-info .bb-pl-r{opacity:0;animation:bbPlayerRow .55s cubic-bezier(.16,.8,.3,1) both}
@@ -316,6 +317,79 @@
   .bb-pl-dot.active{background:#A8D93B;transform:scale(1.25)}
 
   /* modal légal + CTA */
+  /* ===== tilt 3D + halo au curseur (portage de tilt-card) =====
+     Version sans framework : la rotation passe par deux variables CSS mises à
+     jour au mousemove, le halo est un cercle en mix-blend-mode difference.
+     Désactivé au doigt et si le visiteur a réduit les animations. */
+  .bb-tilt{transform:perspective(1000px) rotateX(var(--bb-rx,0deg)) rotateY(var(--bb-ry,0deg)) scale(var(--bb-sc,1));transform-style:preserve-3d;transition:transform .45s cubic-bezier(.16,1,.3,1),box-shadow .45s ease,border-color .3s ease;will-change:transform}
+  .bb-tilt-on:hover{--bb-sc:1.03;box-shadow:0 22px 48px -18px rgba(0,0,0,.7),0 0 0 1px rgba(198,162,87,.28);z-index:3}
+  .bb-halo{position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:inherit;z-index:1}
+  .bb-halo > i{position:absolute;left:var(--bb-hx,50%);top:var(--bb-hy,50%);width:var(--bb-hs,520px);height:var(--bb-hs,520px);border-radius:50%;background:#C6A257;mix-blend-mode:difference;opacity:.5;transform:translate(-50%,-50%) scale(0);transition:transform .55s cubic-bezier(.19,1,.22,1);will-change:transform}
+  .bb-tilt-on:hover .bb-halo > i{transform:translate(-50%,-50%) scale(1)}
+  .bb-tilt > *:not(.bb-halo):not(.bb-blobs):not(.bb-blobs-fade){position:relative;z-index:2}
+  @media (prefers-reduced-motion:reduce){.bb-tilt{transition:none}.bb-halo{display:none}}
+
+  /* ===== Text Reveal (façon Dia) =====
+     Le texte se découvre mot par mot : chaque mot arrive légèrement flou,
+     décalé vers le bas, et se pose en cascade. Le découpage est fait en JS
+     mais chaque mot reste un simple <span> — le texte demeure sélectionnable
+     et lisible par un lecteur d'écran (le libellé complet est sur le parent). */
+  [data-bb-reveal]{opacity:1}
+  .bb-word{display:inline-block;white-space:pre;opacity:0;filter:blur(7px);transform:translateY(.42em);
+    transition:opacity .62s cubic-bezier(.16,.8,.3,1),filter .62s cubic-bezier(.16,.8,.3,1),transform .62s cubic-bezier(.16,.8,.3,1);
+    transition-delay:var(--bb-wd,0ms);will-change:opacity,filter,transform}
+  .bb-reveal-in .bb-word{opacity:1;filter:blur(0);transform:translateY(0)}
+  @media (prefers-reduced-motion:reduce){
+    .bb-word{opacity:1!important;filter:none!important;transform:none!important;transition:none!important}
+  }
+
+  /* ===== BlobCard : nappe de couleur en haut + liseré dégradé =====
+     La couleur naît en haut de la carte, dérive lentement et s'éteint avant
+     le bas ; le liseré est vif en haut et disparaît en bas. Tout en CSS. */
+  .bb-blobcard{position:relative;border-radius:24px;background:#0A150F;overflow:hidden;isolation:isolate;
+    box-shadow:0 30px 70px -34px rgba(0,0,0,.85)}
+  .bb-blobcard::after{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:4;
+    background:linear-gradient(180deg,rgba(198,162,87,.85),rgba(168,217,59,.32) 34%,rgba(243,239,230,.06) 68%,transparent 100%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+  .bb-blobs{position:absolute;left:-14%;right:-14%;top:-34%;height:104%;pointer-events:none;z-index:0;filter:blur(58px) saturate(1.15)}
+  .bb-blobs > i{position:absolute;display:block;width:58%;aspect-ratio:1.15;border-radius:50%;mix-blend-mode:screen;will-change:transform}
+  .bb-blobs > i:nth-child(1){left:4%;top:8%;background:#C6A257;opacity:.9;animation:bbBlobA 19s ease-in-out infinite}
+  .bb-blobs > i:nth-child(2){left:34%;top:0%;background:#A8D93B;opacity:.5;animation:bbBlobB 24s ease-in-out infinite}
+  .bb-blobs > i:nth-child(3){left:56%;top:12%;background:#1E5C3A;opacity:.85;animation:bbBlobC 21s ease-in-out infinite}
+  .bb-blobs > i:nth-child(4){left:22%;top:18%;background:#E4C87F;opacity:.4;animation:bbBlobD 27s ease-in-out infinite}
+  @keyframes bbBlobA{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(12%,7%) scale(1.16)}}
+  @keyframes bbBlobB{0%,100%{transform:translate(0,0) scale(1.06)}50%{transform:translate(-14%,10%) scale(.88)}}
+  @keyframes bbBlobC{0%,100%{transform:translate(0,0) scale(.94)}50%{transform:translate(-18%,5%) scale(1.12)}}
+  @keyframes bbBlobD{0%,100%{transform:translate(0,0) scale(1.08)}50%{transform:translate(16%,11%) scale(.9)}}
+  /* la nappe s'éteint avant le bas de la carte */
+  .bb-blobs-fade{position:absolute;inset:0;pointer-events:none;z-index:1;
+    background:linear-gradient(180deg,rgba(10,21,15,0) 0%,rgba(10,21,15,.35) 30%,rgba(10,21,15,.88) 52%,#0A150F 66%)}
+  .bb-blobcard > *:not(.bb-blobs):not(.bb-blobs-fade):not(.bb-halo){position:relative;z-index:2}
+  @media (prefers-reduced-motion:reduce){.bb-blobs > i{animation:none}}
+
+  /* ===== billets ===== */
+  .bb-tk{position:relative;display:flex;flex-direction:column;background:#0E1A12;border:1px solid rgba(198,162,87,.28);border-radius:14px;overflow:hidden;isolation:isolate}
+  .bb-tk-stub{position:relative;border-top:1px dashed rgba(198,162,87,.35);background:rgba(198,162,87,.06);z-index:2}
+  .bb-tk-stub::before,.bb-tk-stub::after{content:'';position:absolute;top:-10px;width:18px;height:18px;border-radius:50%;background:#061109;border:1px solid rgba(198,162,87,.28);z-index:3}
+  .bb-tk-stub::before{left:-10px}
+  .bb-tk-stub::after{right:-10px}
+  .bb-tk-sold{opacity:.45;border-color:rgba(243,239,230,.1)}
+  .bb-tk-sold .bb-tk-stub::before,.bb-tk-sold .bb-tk-stub::after{border-color:rgba(243,239,230,.1)}
+  .bb-tk-price{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;line-height:.92;color:#C6A257;letter-spacing:-.01em}
+  .bb-tk-cta{font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.09em;text-transform:uppercase;padding:12px;border-radius:9px;border:none;background:#A8D93B;color:#0A1B0D;cursor:pointer;transition:transform .12s ease,filter .12s ease;width:100%}
+  .bb-tk-cta:hover{filter:brightness(1.07)}
+  .bb-tk-cta:active{transform:scale(.985)}
+  .bb-tk-off{font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.09em;text-transform:uppercase;padding:12px;border-radius:9px;border:1px solid rgba(243,239,230,.14);color:#7E8A82;text-align:center}
+  .bb-tk-perf{height:1px;background:repeating-linear-gradient(90deg,rgba(198,162,87,.4) 0 5px,transparent 5px 10px)}
+
+  /* ===== fluidité de navigation ===== */
+  html{scroll-behavior:auto;overscroll-behavior-y:none;-webkit-text-size-adjust:100%}
+  body{overscroll-behavior-y:none}
+  main{contain:layout style}
+  main.bb-hide{content-visibility:hidden}
+  #bb-back-btn{flex:none;width:44px;height:44px;border:1px solid rgba(243,239,230,.18);border-radius:10px;background:transparent;color:#F3EFE6;cursor:pointer;align-items:center;justify-content:center;display:none}
+  #bb-back-btn:active{background:rgba(243,239,230,.06)}
+
   #bb-legal-modal,#bb-cta-modal,#bb-role-modal,#bb-ticket-modal{width:100%;max-width:600px;margin:auto;max-height:86vh;display:flex;flex-direction:column;background:#0A150F;border:1px solid rgba(198,162,87,.28);border-radius:18px;overflow:hidden;animation:bbPopIn .3s cubic-bezier(.16,.8,.3,1) both}
   .bb-legal-body{overflow-y:auto;padding:0 clamp(20px,4vw,32px) 28px}
   .bb-legal-body h4{font-family:'Inter',sans-serif;font-weight:700;font-size:14px;color:#C6A257;letter-spacing:.02em;margin:22px 0 8px}
@@ -373,9 +447,9 @@
   .bb-fo-side{position:relative;overflow:hidden;padding:clamp(20px,3vw,34px)}
   .bb-fo-photo{position:relative;height:clamp(200px,26vw,300px);border-radius:14px;overflow:hidden;background:#0C1A12}
   .bb-fo-photo img{width:100%;height:100%;object-fit:cover;object-position:top center}
-  .bb-fo-num{position:absolute;bottom:-6px;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(72px,10vw,120px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(243,239,230,.14);z-index:1;pointer-events:none}
+  .bb-fo-num{position:absolute;bottom:-6px;font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(72px,10vw,120px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(243,239,230,.14);z-index:1;pointer-events:none}
   .bb-fo-vs{align-self:center;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 clamp(6px,1.6vw,20px);z-index:3}
-  .bb-fo-vs-badge{width:clamp(52px,6vw,72px);height:clamp(52px,6vw,72px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(22px,2.6vw,30px);color:#0A1B0D;background:#A8D93B;box-shadow:0 10px 30px rgba(168,217,59,.3)}
+  .bb-fo-vs-badge{width:clamp(52px,6vw,72px);height:clamp(52px,6vw,72px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,30px);color:#0A1B0D;background:#A8D93B;box-shadow:0 10px 30px rgba(168,217,59,.3)}
   .bb-fo-stat{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:11px 0;border-top:1px solid rgba(243,239,230,.08)}
   .bb-fo-stat b{font-family:'Inter',sans-serif;font-weight:800;font-size:clamp(17px,2vw,21px)}
   .bb-fo-stat .lbl{font-family:'Inter',sans-serif;font-weight:600;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#7E8A82;text-align:center;white-space:nowrap}
@@ -504,11 +578,11 @@
   .bb-fix-h{display:flex;align-items:center;justify-content:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#C6A257;padding:9px 0;background:rgba(198,162,87,.08);border-bottom:1px solid rgba(198,162,87,.14)}
   .bb-fix-b{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;padding:16px 12px}
   .bb-fix-team{display:flex;flex-direction:column;align-items:center;gap:8px}
-  .bb-fix-badge{width:48px;height:48px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:16px;color:#fff;letter-spacing:.02em;overflow:hidden;box-shadow:0 6px 14px rgba(0,0,0,.35)}
+  .bb-fix-badge{width:48px;height:48px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:16px;color:#fff;letter-spacing:.02em;overflow:hidden;box-shadow:0 6px 14px rgba(0,0,0,.35)}
   .bb-fix-badge img{width:100%;height:100%;object-fit:contain;padding:5px}
   .bb-fix-abbr{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;color:#B9C2BB;letter-spacing:.04em;text-align:center}
   .bb-fix-mid{text-align:center;min-width:96px}
-  .bb-fix-date{font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:22px;color:#F3EFE6;line-height:1}
+  .bb-fix-date{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:22px;color:#F3EFE6;line-height:1}
   .bb-fix-meta{font-size:10.5px;color:#7E8A82;margin-top:4px;line-height:1.45}
   .bb-fix-vs{display:inline-block;font-family:'Inter',sans-serif;font-weight:800;font-size:10px;letter-spacing:.1em;color:#0A1B0D;background:#A8D93B;border-radius:5px;padding:2px 7px;margin-bottom:6px}
   /* ==================================================================
@@ -672,6 +746,9 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="20" r="1.4"></circle><circle cx="17" cy="20" r="1.4"></circle><path d="M2 3h3l2.4 12H19l2-8H6"></path></svg>
           <span id="bb-cart-badge" class="bb-hide" style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#A8D93B;color:#0A1B0D;font-family:'Inter',sans-serif;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center">0</span>
         </button>
+        <button type="button" id="bb-back-btn" aria-label="Revenir à la page précédente">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+        </button>
         <button type="button" id="bb-menu-btn" aria-label="Menu" class="bb-hide" style="flex:none;width:44px;height:44px;border:1px solid rgba(243,239,230,.18);border-radius:10px;background:transparent;cursor:pointer;flex-direction:column;gap:4px;align-items:center;justify-content:center">
           <span style="width:18px;height:2px;background:#F3EFE6"></span>
           <span style="width:18px;height:2px;background:#F3EFE6"></span>
@@ -706,23 +783,23 @@
             <img id="bb-hero-logo" src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_320,c_limit/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png" alt="Baobabs Basket Club" style="width:46px;height:46px;object-fit:contain;flex:none">
             <span id="bb-hs-kicker" style="font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#C6A257">Baobabs Basket Club · Dakar</span>
           </div>
-          <h1 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(34px,4.4vw,62px);line-height:.94;letter-spacing:-.015em;color:#F3EFE6;margin:0 0 clamp(16px,2vw,22px)"><span id="bb-hs-title">Le basket<br>sénégalais</span><br><span id="bb-hs-accent" style="color:#C6A257">qui monte</span><span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0"> — Baobabs Basket Club, club de basketball officiel de Dakar, Championnat D2</span></h1>
-          <p id="bb-hs-text" style="max-width:44ch;font-size:clamp(14.5px,1.1vw,16px);line-height:1.65;color:#C7CFC8;margin:0 0 clamp(22px,2.6vw,32px);text-wrap:pretty">Formation, compétition, communauté. Depuis 2026, les Baobabs construisent à Dakar un club où les joueuses progressent et où le public a sa place.</p>
+          <h1 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(34px,4.4vw,62px);line-height:.94;letter-spacing:-.015em;color:#F3EFE6;margin:0 0 clamp(16px,2vw,22px)"><span id="bb-hs-title" data-bb-reveal data-reveal-step="86">Le basket<br>sénégalais</span><br><span id="bb-hs-accent" data-bb-reveal data-reveal-step="86" style="color:#C6A257;display:inline-block">qui monte</span><span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0"> — Baobabs Basket Club, club de basketball officiel de Dakar, Championnat D2</span></h1>
+          <p id="bb-hs-text" data-bb-reveal data-reveal-step="24" style="max-width:44ch;font-size:clamp(14.5px,1.1vw,16px);line-height:1.65;color:#C7CFC8;margin:0 0 clamp(22px,2.6vw,32px);text-wrap:pretty">Formation, compétition, communauté. Depuis 2026, les Baobabs construisent à Dakar un club où les joueuses progressent et où le public a sa place.</p>
           <div id="bb-hs-ctas" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:clamp(24px,3vw,36px)">
             <a id="bb-hs-btn1" href="#" data-nav="tryouts" style="display:inline-flex;align-items:center;gap:9px;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:16px 26px;border-radius:10px;background:#A8D93B;color:#0A1B0D">Rejoindre le club</a>
             <a id="bb-hs-btn2" href="#" data-nav="competitions" style="display:inline-flex;align-items:center;gap:9px;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:16px 26px;border-radius:10px;border:1px solid rgba(243,239,230,.24);color:#F3EFE6">Voir le calendrier</a>
           </div>
           <div id="bb-hs-figures" style="display:grid;grid-template-columns:repeat(3,auto);gap:clamp(20px,2.4vw,34px);justify-content:start;padding-top:clamp(20px,2.4vw,26px);border-top:1px solid rgba(243,239,230,.1)">
             <div>
-              <div id="bb-hs-f1v" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,2.2vw,30px);line-height:1;color:#C6A257">2026</div>
+              <div id="bb-hs-f1v" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,2.2vw,30px);line-height:1;color:#C6A257">2026</div>
               <div id="bb-hs-f1l" style="margin-top:7px;font-family:'Inter',sans-serif;font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#93A099">Fondation</div>
             </div>
             <div>
-              <div id="bb-hs-f2v" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,2.2vw,30px);line-height:1;color:#C6A257">27</div>
+              <div id="bb-hs-f2v" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,2.2vw,30px);line-height:1;color:#C6A257">27</div>
               <div id="bb-hs-f2l" style="margin-top:7px;font-family:'Inter',sans-serif;font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#93A099">Licenciées</div>
             </div>
             <div>
-              <div id="bb-hs-f3v" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,2.2vw,30px);line-height:1;color:#C6A257">D2</div>
+              <div id="bb-hs-f3v" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,2.2vw,30px);line-height:1;color:#C6A257">D2</div>
               <div id="bb-hs-f3l" style="margin-top:7px;font-family:'Inter',sans-serif;font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#93A099">Championnat</div>
             </div>
           </div>
@@ -840,14 +917,14 @@
       <section id="bb-actus" class="bb-hide" style="padding:clamp(40px,6vw,72px) 0 0">
         <div style="margin-bottom:clamp(20px,3vw,30px)">
           <span style="font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Actualités</span>
-          <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(28px,4vw,44px);color:#F3EFE6;margin:8px 0 0">Les dernières du club</h2>
+          <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(28px,4vw,44px);color:#F3EFE6;margin:8px 0 0">Les dernières du club</h2>
         </div>
         <div id="bb-actus-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(16px,2.4vw,22px)"></div>
       </section>
 
       <section style="padding:44px 0 8px">
         <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap">
-          <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,2.8vw,30px);letter-spacing:-.01em;color:#F3EFE6;margin:0">L'effectif</h2>
+          <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,2.8vw,30px);letter-spacing:-.01em;color:#F3EFE6;margin:0">L'effectif</h2>
           <a href="#" style="display:inline-flex;align-items:center;gap:5px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;letter-spacing:.06em;color:#C6A257">Tout l'effectif <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
         </div>
         <div id="bb-effectif" class="bb-eff" style="display:grid;gap:16px"></div>
@@ -858,7 +935,7 @@
         <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:clamp(18px,2.4vw,26px)">
           <div>
             <span id="bb-media-kicker" style="display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Vidéos & photos</span>
-            <h2 id="bb-media-title" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(28px,4vw,44px);letter-spacing:-.01em;color:#F3EFE6;margin:10px 0 0">Médias</h2>
+            <h2 id="bb-media-title" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(28px,4vw,44px);letter-spacing:-.01em;color:#F3EFE6;margin:10px 0 0">Médias</h2>
           </div>
           <a id="bb-media-more" href="#" style="display:none;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;letter-spacing:.04em;color:#C6A257">Notre chaîne <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
         </div>
@@ -873,7 +950,7 @@
             </div>
             <div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(18px,2.6vw,30px)">
               <span id="bb-media-tag" style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:#0A1B0D;background:#A8D93B;padding:5px 11px;border-radius:6px;margin-bottom:12px">À revoir</span>
-              <div id="bb-media-caption" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(19px,2.2vw,28px);line-height:1.12;letter-spacing:-.01em;color:#F3EFE6;max-width:26ch;text-wrap:pretty">Résumé · Baobabs 84–79 ASC Ville de Dakar</div>
+              <div id="bb-media-caption" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(19px,2.2vw,28px);line-height:1.12;letter-spacing:-.01em;color:#F3EFE6;max-width:26ch;text-wrap:pretty">Résumé · Baobabs 84–79 ASC Ville de Dakar</div>
             </div>
           </div>
 
@@ -898,7 +975,7 @@
         <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:clamp(18px,2.4vw,26px)">
           <div>
             <span id="bb-shop-kicker" style="display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Store officiel</span>
-            <h2 id="bb-shop-title" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(28px,4vw,44px);letter-spacing:-.01em;color:#F3EFE6;margin:10px 0 0">Boutique</h2>
+            <h2 id="bb-shop-title" data-bb-reveal data-reveal-step="60" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(28px,4vw,44px);letter-spacing:-.01em;color:#F3EFE6;margin:10px 0 0">Boutique</h2>
           </div>
           <a id="bb-shop-link" href="#" data-nav="boutique" style="display:inline-flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;letter-spacing:.04em;color:#C6A257">Tout voir <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
         </div>
@@ -910,10 +987,10 @@
 
       <section id="bb-app" style="padding:44px 0 8px">
         <div class="bb-app-card" style="position:relative;overflow:hidden;border-radius:22px;background:linear-gradient(150deg,#0F4030,#0A2318);border:1px solid rgba(198,162,87,.28);display:grid;padding:clamp(28px,4vw,52px)">
-          <div style="position:absolute;right:-4%;top:50%;transform:translateY(-50%);font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(160px,26vw,320px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(168,217,59,.08);pointer-events:none;user-select:none;z-index:0">BBC</div>
+          <div style="position:absolute;right:-4%;top:50%;transform:translateY(-50%);font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(160px,26vw,320px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(168,217,59,.08);pointer-events:none;user-select:none;z-index:0">BBC</div>
           <div class="bb-app-copy" style="position:relative;z-index:1;display:flex;flex-direction:column;gap:18px">
             <div style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;border-radius:50%;background:#A8D93B"></span><span style="font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.2em;color:#A8D93B;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px" id="bb-app-kicker">Bientôt disponible</span></div>
-            <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(34px,4.6vw,58px);line-height:.94;letter-spacing:-.01em;color:#F3EFE6;margin:0" id="bb-app-title">L'appli des<br>Baobabs</h2>
+            <h2 data-bb-reveal data-reveal-step="60" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(34px,4.6vw,58px);line-height:.94;letter-spacing:-.01em;color:#F3EFE6;margin:0" id="bb-app-title">L'appli des<br>Baobabs</h2>
             <p id="bb-app-text" style="max-width:44ch;font-size:15px;line-height:1.65;color:#C7CFC8;margin:0">Scores en direct, calendrier, billetterie et boutique : bientôt tout le club dans votre poche. L'application des Baobabs arrive prochainement sur iOS et Android.</p>
             <ul style="list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:11px">
               <li style="display:flex;align-items:center;gap:10px;font-size:14px;color:#D8D6CE"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#A8D93B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg><span id="bb-app-b1">Notifications de match en temps réel</span></li>
@@ -937,7 +1014,7 @@
             <div class="bb-app-bgscreen" aria-hidden="true" style="position:absolute;z-index:0;top:-2%;left:-5%;width:clamp(116px,15vw,168px);aspect-ratio:1/2;border-radius:22px;overflow:hidden;background:#0A150F;border:1px solid rgba(243,239,230,.1);box-shadow:0 30px 60px rgba(0,0,0,.5);transform:rotate(-13deg);opacity:.95">
               <div style="padding:16px 12px 10px;background:linear-gradient(160deg,#0F4030,#0A2318)">
                 <div id="bb-asc-cal-k" style="font-family:'Inter',sans-serif;font-weight:700;font-size:7px;letter-spacing:.16em;color:#A8D93B;text-transform:uppercase">Calendrier</div>
-                <div id="bb-asc-cal-t" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:13px;color:#F3EFE6;margin-top:3px">Saison 2026</div>
+                <div id="bb-asc-cal-t" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:13px;color:#F3EFE6;margin-top:3px">Saison 2026</div>
               </div>
               <div id="bb-asc-cal" style="padding:10px 10px;display:flex;flex-direction:column;gap:8px">
                 <div style="background:rgba(243,239,230,.05);border:1px solid rgba(243,239,230,.09);border-radius:9px;padding:8px 9px"><div style="font-family:'Inter',sans-serif;font-weight:700;font-size:6.5px;letter-spacing:.1em;color:#C6A257">SAM 12 JUIL · 19H</div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;font-family:'Inter',sans-serif;font-weight:600;font-size:8.5px;color:#F3EFE6"><span>Baobabs</span><span style="color:#7E8A82">vs</span><span>DUC</span></div></div>
@@ -948,7 +1025,7 @@
             <div class="bb-app-bgscreen" aria-hidden="true" style="position:absolute;z-index:0;top:24%;right:-6%;width:clamp(116px,15vw,168px);aspect-ratio:1/2;border-radius:22px;overflow:hidden;background:#0A150F;border:1px solid rgba(243,239,230,.1);box-shadow:0 30px 60px rgba(0,0,0,.5);transform:rotate(11deg);opacity:.95">
               <div style="padding:16px 12px 10px;background:linear-gradient(160deg,#0F4030,#0A2318)">
                 <div id="bb-asc-std-k" style="font-family:'Inter',sans-serif;font-weight:700;font-size:7px;letter-spacing:.16em;color:#A8D93B;text-transform:uppercase">Classement</div>
-                <div id="bb-asc-std-t" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:13px;color:#F3EFE6;margin-top:3px">D2 · Dakar</div>
+                <div id="bb-asc-std-t" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:13px;color:#F3EFE6;margin-top:3px">D2 · Dakar</div>
               </div>
               <div id="bb-asc-std" style="padding:9px 8px;display:flex;flex-direction:column;gap:6px">
                 <div style="display:flex;align-items:center;gap:7px;font-family:'Inter',sans-serif;font-size:8px;color:#C7CFC8"><span style="color:#7E8A82;font-weight:800;width:9px">1</span><span style="flex:1">US Ouakam</span><b style="color:#F3EFE6">11</b></div>
@@ -961,7 +1038,7 @@
             <div class="bb-app-bgscreen" aria-hidden="true" style="position:absolute;z-index:0;top:-8%;right:-3%;width:clamp(112px,14.5vw,160px);aspect-ratio:1/2;border-radius:22px;overflow:hidden;background:#0A150F;border:1px solid rgba(243,239,230,.1);box-shadow:0 30px 60px rgba(0,0,0,.5);transform:rotate(6deg);opacity:.9">
               <div style="padding:16px 12px 10px;background:linear-gradient(160deg,#0F4030,#0A2318)">
                 <div id="bb-asc-shop-k" style="font-family:'Inter',sans-serif;font-weight:700;font-size:7px;letter-spacing:.16em;color:#A8D93B;text-transform:uppercase">Boutique</div>
-                <div id="bb-asc-shop-t" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:13px;color:#F3EFE6;margin-top:3px">Store officiel</div>
+                <div id="bb-asc-shop-t" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:13px;color:#F3EFE6;margin-top:3px">Store officiel</div>
               </div>
               <div id="bb-asc-shop" style="padding:10px 9px;display:flex;flex-direction:column;gap:8px">
                 <div style="border-radius:9px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:16/12;background:#0A150F"><img src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_300,c_limit/v1784828234/Maillot_blanc_Baobabs_dpzaxu.png" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async"></div><div style="padding:6px 8px"><div style="font-family:'Inter',sans-serif;font-weight:600;font-size:8px;color:#F3EFE6">Maillot ext\u00e9rieur</div><div style="font-family:'Inter',sans-serif;font-weight:800;font-size:8.5px;color:#C6A257;margin-top:2px">15 000 FCFA</div></div></div>
@@ -973,13 +1050,13 @@
                 <img id="bb-asc-roster-img" src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_800,c_limit/v1784826251/nouvel_num_4_umsjcf.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center" loading="lazy" decoding="async">
                 <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,.96),rgba(5,14,9,.05) 55%)"></div>
                 <div id="bb-asc-roster-k" style="position:absolute;top:14px;left:11px;font-family:'Inter',sans-serif;font-weight:700;font-size:7px;letter-spacing:.16em;color:#A8D93B;text-transform:uppercase">Effectif</div>
-                <div style="position:absolute;left:11px;right:11px;bottom:40px"><div id="bb-asc-roster-name" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:14px;color:#F3EFE6;line-height:1">Aïda Diop</div><div id="bb-asc-roster-meta" style="font-family:'Inter',sans-serif;font-weight:700;font-size:7.5px;letter-spacing:.1em;color:#C6A257;text-transform:uppercase;margin-top:3px">#4 · Meneuse</div></div>
+                <div style="position:absolute;left:11px;right:11px;bottom:40px"><div id="bb-asc-roster-name" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:14px;color:#F3EFE6;line-height:1">Aïda Diop</div><div id="bb-asc-roster-meta" style="font-family:'Inter',sans-serif;font-weight:700;font-size:7.5px;letter-spacing:.1em;color:#C6A257;text-transform:uppercase;margin-top:3px">#4 · Meneuse</div></div>
               </div>
             </div>
             <div class="bb-app-bgscreen" aria-hidden="true" style="position:absolute;z-index:0;bottom:-4%;left:3%;width:clamp(108px,14vw,152px);aspect-ratio:1/2;border-radius:22px;overflow:hidden;background:#0A150F;border:1px solid rgba(243,239,230,.1);box-shadow:0 30px 60px rgba(0,0,0,.5);transform:rotate(-3deg);opacity:.82">
               <div style="padding:16px 12px 10px;background:linear-gradient(160deg,#0F4030,#0A2318)">
                 <div id="bb-asc-tick-k" style="font-family:'Inter',sans-serif;font-weight:700;font-size:7px;letter-spacing:.16em;color:#A8D93B;text-transform:uppercase">Billetterie</div>
-                <div id="bb-asc-tick-t" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:13px;color:#F3EFE6;margin-top:3px">Ton billet</div>
+                <div id="bb-asc-tick-t" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:13px;color:#F3EFE6;margin-top:3px">Ton billet</div>
               </div>
               <div style="padding:11px 10px;display:flex;flex-direction:column;gap:9px">
                 <div style="background:rgba(168,217,59,.08);border:1px solid rgba(168,217,59,.3);border-radius:9px;padding:9px"><div id="bb-asc-tick-tag" style="font-family:'Inter',sans-serif;font-weight:700;font-size:6.5px;letter-spacing:.1em;color:#A8D93B">MATCH À DOMICILE</div><div id="bb-asc-tick-teams" style="font-family:'Inter',sans-serif;font-weight:600;font-size:8.5px;color:#F3EFE6;margin-top:4px">Baobabs vs DUC</div><div id="bb-asc-tick-info" style="font-family:'Inter',sans-serif;font-size:7.5px;color:#B9C2BB;margin-top:2px">Marius Ndiaye · 19H</div></div>
@@ -989,7 +1066,7 @@
             <div class="bb-app-bgscreen" aria-hidden="true" style="position:absolute;z-index:0;top:30%;left:-6%;width:clamp(108px,14vw,152px);aspect-ratio:1/2;border-radius:22px;overflow:hidden;background:#0A150F;border:1px solid rgba(243,239,230,.1);box-shadow:0 30px 60px rgba(0,0,0,.5);transform:rotate(-9deg);opacity:.85">
               <div style="padding:16px 12px 12px;background:linear-gradient(160deg,#0F4030,#0A2318);text-align:center">
                 <div style="width:34px;height:34px;border-radius:50%;margin:0 auto 6px;overflow:hidden;border:1.5px solid #C6A257"><img src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_800,c_limit/v1784824755/nouvel_num_7_j1d2uc.png" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async"></div>
-                <div id="bb-asc-space-name" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:11px;color:#F3EFE6">Fatou N.</div>
+                <div id="bb-asc-space-name" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:11px;color:#F3EFE6">Fatou N.</div>
                 <div id="bb-asc-space-k" style="font-family:'Inter',sans-serif;font-weight:700;font-size:6.5px;letter-spacing:.14em;color:#A8D93B;text-transform:uppercase;margin-top:2px">Mon espace</div>
               </div>
               <div style="padding:10px 9px;display:flex;flex-direction:column;gap:7px">
@@ -1012,7 +1089,7 @@
                     <div style="position:absolute;left:12px;right:12px;top:50%;transform:translateY(-50%);z-index:5;text-align:center">
                       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
                         <div style="flex:1"><img src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_320,c_limit/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png" style="width:26px;height:26px;object-fit:contain;margin:0 auto 4px" alt="" loading="lazy" decoding="async"><div style="font-family:'Inter',sans-serif;font-weight:700;font-size:8px;color:#F3EFE6">BAOBABS</div></div>
-                        <div id="bb-asc-score" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#C6A257;line-height:1">78<span style="color:#7E8A82;font-size:14px">:</span>72</div>
+                        <div id="bb-asc-score" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#C6A257;line-height:1">78<span style="color:#7E8A82;font-size:14px">:</span>72</div>
                         <div style="flex:1"><div style="width:26px;height:26px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.2);margin:0 auto 4px"></div><div id="bb-asc-opp" style="font-family:'Inter',sans-serif;font-weight:700;font-size:8px;color:#B9C2BB">LOUGA</div></div>
                       </div>
                     </div>
@@ -1046,7 +1123,7 @@
         <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap">
           <div>
             <span style="font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#A8D93B;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Face-Off</span>
-            <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,2.8vw,30px);letter-spacing:-.01em;color:#F3EFE6;margin:6px 0 0">Le duel des leaders</h2>
+            <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,2.8vw,30px);letter-spacing:-.01em;color:#F3EFE6;margin:6px 0 0">Le duel des leaders</h2>
           </div>
           <span id="bb-fo-sub" style="font-family:'Inter',sans-serif;font-weight:600;font-size:12px;color:#7E8A82">Moyennes par match · 2026</span>
         </div>
@@ -1054,12 +1131,12 @@
           <div class="bb-fo-grid">
             <div class="bb-fo-side" style="background:linear-gradient(180deg,rgba(198,162,87,.08),transparent)">
               <div class="bb-fo-photo"><span id="bb-fo-p1-num" class="bb-fo-num" style="left:8px">4</span><img id="bb-fo-p1-img" src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_800,c_limit/v1784826251/nouvel_num_4_umsjcf.png" alt="Aïda Diop" loading="lazy" decoding="async"></div>
-              <div style="margin-top:14px"><div id="bb-fo-p1-name" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(22px,2.6vw,30px);color:#F3EFE6;line-height:1">Aïda Diop</div><div id="bb-fo-p1-role" style="font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.06em;color:#C6A257;text-transform:uppercase;margin-top:4px">#4 · Meneuse</div></div>
+              <div style="margin-top:14px"><div id="bb-fo-p1-name" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,30px);color:#F3EFE6;line-height:1">Aïda Diop</div><div id="bb-fo-p1-role" style="font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.06em;color:#C6A257;text-transform:uppercase;margin-top:4px">#4 · Meneuse</div></div>
             </div>
             <div class="bb-fo-vs"><div class="bb-fo-vs-badge">VS</div></div>
             <div class="bb-fo-side" style="background:linear-gradient(180deg,rgba(168,217,59,.08),transparent);text-align:right">
               <div class="bb-fo-photo"><span id="bb-fo-p2-num" class="bb-fo-num" style="right:8px">11</span><img id="bb-fo-p2-img" src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_800,c_limit/v1784829760/Joueuse_maillot_blanc___fond_transparent_b0fu2e.png" alt="Khady Sy" style="object-position:center 12%" loading="lazy" decoding="async"></div>
-              <div style="margin-top:14px"><div id="bb-fo-p2-name" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(22px,2.6vw,30px);color:#F3EFE6;line-height:1">Khady Sy</div><div id="bb-fo-p2-role" style="font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.06em;color:#A8D93B;text-transform:uppercase;margin-top:4px">#11 · Ailière-forte</div></div>
+              <div style="margin-top:14px"><div id="bb-fo-p2-name" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,30px);color:#F3EFE6;line-height:1">Khady Sy</div><div id="bb-fo-p2-role" style="font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.06em;color:#A8D93B;text-transform:uppercase;margin-top:4px">#11 · Ailière-forte</div></div>
             </div>
             <div class="bb-fo-stats-wrap" style="grid-column:1 / -1;padding:clamp(6px,2vw,14px) clamp(20px,3vw,34px) clamp(20px,3vw,34px)">
               <div class="bb-fo-stat"><b style="text-align:right;color:#C6A257">14.2</b><span class="lbl">Points</span><b style="text-align:left;color:#A8D93B">18.6</b></div>
@@ -1082,20 +1159,20 @@
 
     <div style="background:linear-gradient(155deg,#0F4030,#081C13);border-top:1px solid rgba(198,162,87,.22);border-bottom:1px solid rgba(198,162,87,.22);margin-top:44px">
       <div style="max-width:1500px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;padding:38px clamp(16px,4vw,24px)">
-        <div style="text-align:center"><div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(30px,3.6vw,44px);color:#C6A257;line-height:1" data-bb="stat1-v">2026</div><div style="margin-top:8px;font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#C7CFC8" data-bb="stat1-l">Fondation du club</div></div>
-        <div style="text-align:center"><div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(30px,3.6vw,44px);color:#C6A257;line-height:1" data-bb="stat2-v">D2</div><div style="margin-top:8px;font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#C7CFC8" data-bb="stat2-l">Première saison</div></div>
+        <div style="text-align:center"><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(30px,3.6vw,44px);color:#C6A257;line-height:1" data-bb="stat1-v">2026</div><div style="margin-top:8px;font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#C7CFC8" data-bb="stat1-l">Fondation du club</div></div>
+        <div style="text-align:center"><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(30px,3.6vw,44px);color:#C6A257;line-height:1" data-bb="stat2-v">D2</div><div style="margin-top:8px;font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#C7CFC8" data-bb="stat2-l">Première saison</div></div>
         <div style="text-align:center"><div data-bb="stat3-v" style="display:flex;align-items:center;justify-content:center;color:#C6A257"><svg width="clamp(30px,3.6vw,44px)" height="clamp(30px,3.6vw,44px)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"></path></svg></div><div style="margin-top:8px;font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#C7CFC8" data-bb="stat3-l">Licenciées en recrutement</div></div>
-        <div style="text-align:center"><div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(30px,3.6vw,44px);color:#C6A257;line-height:1" data-bb="stat4-v">27</div><div style="margin-top:8px;font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#C7CFC8" data-bb="stat4-l">Tryouts 25–26 juil.</div></div>
+        <div style="text-align:center"><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(30px,3.6vw,44px);color:#C6A257;line-height:1" data-bb="stat4-v">27</div><div style="margin-top:8px;font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#C7CFC8" data-bb="stat4-l">Tryouts 25–26 juil.</div></div>
       </div>
     </div>
 
     <div id="bb-try-home" class="bb-try bb-try-home" style="position:relative;overflow:hidden;background:radial-gradient(120% 140% at 78% 0%,#123322 0%,#081C13 46%,#05130D 100%);border-top:1px solid rgba(198,162,87,.22);border-bottom:1px solid rgba(198,162,87,.22)">
-      <div style="position:absolute;right:-2%;top:50%;transform:translateY(-50%);font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(220px,32vw,460px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(168,217,59,.1);pointer-events:none;user-select:none;z-index:0">27</div>
+      <div style="position:absolute;right:-2%;top:50%;transform:translateY(-50%);font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(220px,32vw,460px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(168,217,59,.1);pointer-events:none;user-select:none;z-index:0">27</div>
       <div class="bb-try-grid" style="position:relative;z-index:1;max-width:1500px;margin:0 auto;padding:0 clamp(16px,4vw,24px);display:grid;align-items:end">
         <div class="r-portrait-wrap" style="position:relative;align-self:end;justify-self:center;width:100%">
-          <div style="position:absolute;left:-6%;top:6%;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(90px,11vw,150px);color:transparent;-webkit-text-stroke:1.5px rgba(243,239,230,.16);z-index:0;line-height:1">23</div>
+          <div style="position:absolute;left:-6%;top:6%;font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(90px,11vw,150px);color:transparent;-webkit-text-stroke:1.5px rgba(243,239,230,.16);z-index:0;line-height:1">23</div>
           <div style="position:absolute;left:50%;bottom:6%;width:78%;height:22%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.35),transparent 70%);filter:blur(18px);z-index:0"></div>
-          <img class="r-portrait" src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_1200,c_limit/v1784852882/18_juil._2026_02_12_16-Photoroom_dm3j1p.png" alt="Un membre des Baobabs en maillot vert — détection" style="position:relative;z-index:1;width:100%;height:auto;display:block;filter:drop-shadow(0 16px 28px rgba(0,0,0,.38))" loading="lazy" decoding="async">
+          <img class="r-portrait" width="900" height="1200" fetchpriority="low" src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto:good,w_900,c_limit,dpr_auto/v1784852882/18_juil._2026_02_12_16-Photoroom_dm3j1p.png" alt="Un membre des Baobabs en maillot vert — détection" style="position:relative;z-index:1;width:100%;height:auto;display:block;filter:drop-shadow(0 16px 28px rgba(0,0,0,.38))" loading="eager" decoding="async">
 
           <div class="bb-try-teaser" data-bb-teaser-wrap="1">
             <div class="bb-try-teaser-frame">
@@ -1110,7 +1187,7 @@
         </div>
         <div class="r-content" style="position:relative;display:flex;flex-direction:column;gap:20px">
           <div class="r r-eye" style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;border-radius:50%;background:#A8D93B"></span><span style="font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.22em;color:#A8D93B;text-transform:uppercase" data-bb="try-kicker">Détection officielle · Saison 2026–2027</span></div>
-          <h2 class="r r-title" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(52px,8vw,112px);line-height:.86;letter-spacing:-.01em;color:#F3EFE6;margin:0"><span data-bb="try-title-a">TRY</span><span data-bb="try-title-b" style="color:#A8D93B">OUTS</span></h2>
+          <h2 class="r r-title" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(52px,8vw,112px);line-height:.86;letter-spacing:-.01em;color:#F3EFE6;margin:0"><span data-bb="try-title-a">TRY</span><span data-bb="try-title-b" style="color:#A8D93B">OUTS</span></h2>
           <p class="r r-sub" data-bb="try-text" style="max-width:46ch;font-size:15.5px;line-height:1.65;color:#C7CFC8;margin:0">Le club ouvre ses portes à toutes les catégories. Viens montrer ce que tu sais faire devant le staff technique des Baobabs.</p>
           <div class="r-cats" style="display:flex;flex-wrap:wrap;gap:10px" id="bb-cats-home"></div>
           <div class="r r-info" style="display:flex;flex-wrap:wrap;gap:28px;padding:22px 0;border-top:1px solid rgba(243,239,230,.06);border-bottom:1px solid rgba(243,239,230,.06)">
@@ -1147,7 +1224,7 @@
     <section style="max-width:1500px;margin:0 auto;padding:clamp(44px,6vw,72px) clamp(16px,4vw,24px)">
       <div style="text-align:center;margin-bottom:clamp(28px,4vw,40px)">
         <span style="font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Ils soutiennent les Baobabs</span>
-        <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(26px,3.4vw,40px);letter-spacing:-.01em;color:#F3EFE6;margin:8px 0 0">Nos partenaires</h2>
+        <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(26px,3.4vw,40px);letter-spacing:-.01em;color:#F3EFE6;margin:8px 0 0">Nos partenaires</h2>
       </div>
       <div style="margin-bottom:26px">
         <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;text-align:center;margin-bottom:14px">Partenaire principal</div>
@@ -1171,7 +1248,7 @@
     <div style="max-width:1500px;margin:0 auto;padding:clamp(28px,4vw,44px) clamp(16px,4vw,24px) clamp(60px,8vw,88px)">
       <div style="margin-bottom:clamp(24px,4vw,36px)">
         <span style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#07130D;background:linear-gradient(180deg,#D4B36A,#C6A257);padding:6px 13px;border-radius:7px;box-shadow:0 3px 12px rgba(198,162,87,.28);white-space:nowrap;margin-bottom:14px">SAISON 2026</span>
-        <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(34px,5.5vw,56px);letter-spacing:-.01em;color:#F3EFE6;margin:0 0 10px">Boutique officielle</h2>
+        <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(34px,5.5vw,56px);letter-spacing:-.01em;color:#F3EFE6;margin:0 0 10px">Boutique officielle</h2>
         <p style="font-size:15px;line-height:1.65;color:#C7CFC8;margin:0;max-width:56ch">Les maillots officiels des Baobabs, édition 2026. Retrait au club ou livraison à Dakar.</p>
       </div>
       <div id="bb-shop-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:clamp(16px,2.4vw,22px)"></div>
@@ -1184,12 +1261,12 @@
       <div style="margin-bottom:clamp(24px,4vw,36px)">
         <button type="button" id="bb-equipes-back" class="bb-hide" style="display:inline-flex;align-items:center;gap:7px;background:none;border:none;padding:0;margin-bottom:16px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;color:#A8D93B"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>Retour</button>
         <span style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#07130D;background:linear-gradient(180deg,#D4B36A,#C6A257);padding:6px 13px;border-radius:7px;box-shadow:0 3px 12px rgba(198,162,87,.28);white-space:nowrap;margin-bottom:14px">SAISON 2026–2027</span>
-        <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(34px,5.5vw,56px);letter-spacing:-.01em;color:#F3EFE6;margin:0 0 10px">Nos équipes</h2>
+        <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(34px,5.5vw,56px);letter-spacing:-.01em;color:#F3EFE6;margin:0 0 10px">Nos équipes</h2>
         <p style="font-size:15px;line-height:1.65;color:#C7CFC8;margin:0;max-width:56ch">L'effectif senior et les catégories de formation du club, de Benjamins à Seniors.</p>
       </div>
       <div style="position:relative;overflow:hidden;min-height:clamp(360px,52vw,760px);margin-bottom:clamp(32px,5vw,48px)">
         <img id="bb-eff-bg" class="bb-eff-bg" src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_1600,c_limit/v1784691229/Calque_0_xdlgac.png" alt="" aria-hidden="true" loading="lazy" decoding="async">
-        <h3 style="position:relative;z-index:1;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0 0 18px">Effectif senior</h3>
+        <h3 style="position:relative;z-index:1;font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0 0 18px">Effectif senior</h3>
         <div id="bb-eff-filter" style="position:relative;z-index:1;display:flex;gap:8px;margin:0 0 18px;flex-wrap:wrap">
           <button type="button" data-g="all" style="font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.04em;padding:8px 16px;border-radius:20px;border:1px solid #A8D93B;background:#A8D93B;color:#0A1B0D;cursor:pointer;min-height:38px">Tous</button>
           <button type="button" data-g="F" style="font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.04em;padding:8px 16px;border-radius:20px;border:1px solid rgba(243,239,230,.2);background:transparent;color:#C7CFC8;cursor:pointer;min-height:38px">Filles</button>
@@ -1198,7 +1275,7 @@
         <div id="bb-effectif-equipes" class="bb-eff" style="position:relative;z-index:1;display:grid;gap:16px"></div>
       </div>
       <div>
-        <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0 0 18px">Catégories de formation</h3>
+        <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0 0 18px">Catégories de formation</h3>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
           <div class="bb-comp-card"><div style="font-family:'Inter',sans-serif;font-weight:700;font-size:16px;color:#F3EFE6;margin-bottom:4px">Benjamins</div><div style="font-size:12.5px;color:#7E8A82">Recrutement en cours</div></div>
           <div class="bb-comp-card"><div style="font-family:'Inter',sans-serif;font-weight:700;font-size:16px;color:#F3EFE6;margin-bottom:4px">Minimes</div><div style="font-size:12.5px;color:#7E8A82">Recrutement en cours</div></div>
@@ -1214,7 +1291,7 @@
     <div style="max-width:1500px;margin:0 auto;padding:clamp(28px,4vw,44px) clamp(16px,4vw,24px) clamp(60px,8vw,88px)">
       <div style="margin-bottom:clamp(24px,4vw,36px)">
         <span style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#07130D;background:linear-gradient(180deg,#D4B36A,#C6A257);padding:6px 13px;border-radius:7px;box-shadow:0 3px 12px rgba(198,162,87,.28);white-space:nowrap;margin-bottom:14px">CHAMPIONNAT · D2 DAKAR</span>
-        <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(34px,5.5vw,56px);letter-spacing:-.01em;color:#F3EFE6;margin:0 0 10px">Compétitions</h2>
+        <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(34px,5.5vw,56px);letter-spacing:-.01em;color:#F3EFE6;margin:0 0 10px">Compétitions</h2>
         <p style="font-size:15px;line-height:1.65;color:#C7CFC8;margin:0;max-width:56ch">Le calendrier et les résultats officiels des Baobabs, mis à jour en direct par le club.</p>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:clamp(36px,5vw,52px)">
@@ -1234,14 +1311,14 @@
       </div>
       <div style="margin-bottom:clamp(32px,5vw,48px)">
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 18px">
-          <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0">Calendrier</h3>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0">Calendrier</h3>
           <span style="font-family:'Inter',sans-serif;font-weight:600;font-size:12px;color:#7E8A82">Matchs à venir</span>
         </div>
         <div id="bb-fixtures" class="bb-fix-grid"></div>
       </div>
 
       <div style="margin-bottom:44px">
-        <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0 0 18px">Derniers résultats</h3>
+        <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0 0 18px">Derniers résultats</h3>
         <div id="bb-results-list" style="display:flex;flex-direction:column;gap:10px">
           <span style="font-family:'Inter',sans-serif;font-size:13.5px;color:#7E8A82">Chargement des résultats…</span>
         </div>
@@ -1249,7 +1326,7 @@
 
       <div id="bb-standings-wrap" class="bb-hide" style="margin-bottom:8px">
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 18px">
-          <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0">Classement</h3>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0">Classement</h3>
           <span style="font-family:'Inter',sans-serif;font-weight:600;font-size:12px;color:#7E8A82">Championnat D2 · Dakar</span>
         </div>
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid rgba(243,239,230,.09);border-radius:16px;background:#0F1E15">
@@ -1274,11 +1351,11 @@
   <!-- ===== LE CLUB ===== -->
   <main id="bb-page-club" class="bb-fade bb-hide">
     <div style="position:relative;background:linear-gradient(155deg,#0F4030,#081C13);border-bottom:1px solid rgba(198,162,87,.22);overflow:hidden">
-      <div style="position:absolute;right:-2%;top:50%;transform:translateY(-50%);font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(180px,28vw,420px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(198,162,87,.1);pointer-events:none">2026</div>
+      <div style="position:absolute;right:-2%;top:50%;transform:translateY(-50%);font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(180px,28vw,420px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(198,162,87,.1);pointer-events:none">2026</div>
       <div style="position:relative;max-width:1500px;margin:0 auto;padding:clamp(48px,7vw,90px) clamp(16px,4vw,24px)">
         <span id="bb-club-kicker" style="font-family:'Inter',sans-serif;font-weight:600;font-size:11.5px;letter-spacing:.18em;color:#C6A257;text-transform:uppercase">Le Club</span>
-        <h2 id="bb-club-title" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(34px,6vw,72px);line-height:1;letter-spacing:-.02em;color:#F3EFE6;margin:14px 0 18px;max-width:16ch">Une tribu née à Dakar, tournée vers le sommet</h2>
-        <p id="bb-club-intro" style="max-width:56ch;font-size:16px;line-height:1.7;color:#C7CFC8;margin:0">Fondé en 2026, le Baobabs Basket Club se lance avec une ambition claire : former localement et viser haut dès sa première saison. Du centre de formation à l'équipe pro, une même exigence.</p>
+        <h2 id="bb-club-title" data-bb-reveal data-reveal-step="64" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(34px,6vw,72px);line-height:1;letter-spacing:-.02em;color:#F3EFE6;margin:14px 0 18px;max-width:16ch">Une tribu née à Dakar, tournée vers le sommet</h2>
+        <p id="bb-club-intro" data-bb-reveal data-reveal-step="20" style="max-width:56ch;font-size:16px;line-height:1.7;color:#C7CFC8;margin:0">Fondé en 2026, le Baobabs Basket Club se lance avec une ambition claire : former localement et viser haut dès sa première saison. Du centre de formation à l'équipe pro, une même exigence.</p>
       </div>
     </div>
 
@@ -1298,21 +1375,21 @@
         </div>
       </div>
 
-      <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(26px,3.2vw,36px);color:#F3EFE6;margin:0 0 28px">Notre histoire</h2>
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(26px,3.2vw,36px);color:#F3EFE6;margin:0 0 28px">Notre histoire</h2>
       <div id="bb-timeline" style="display:flex;flex-direction:column;gap:0;margin-bottom:56px"></div>
 
       <div id="bb-founder" class="bb-hide" style="margin-bottom:56px"></div>
 
       <div style="display:grid;gap:22px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
         <div style="background:linear-gradient(155deg,#0F4030,#0A2318);border:1px solid rgba(198,162,87,.28);border-radius:16px;padding:28px">
-          <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:20px;letter-spacing:-.01em;color:#F3EFE6;margin:0 0 18px">Palmarès</h3>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:20px;letter-spacing:-.01em;color:#F3EFE6;margin:0 0 18px">Palmarès</h3>
           <div style="display:flex;flex-direction:column;gap:12px">
             <div style="display:flex;justify-content:space-between;font-size:14.5px;color:#D8D6CE;border-bottom:1px solid rgba(243,239,230,.09);padding-bottom:10px"><span>Titres officiels</span><b style="color:#C6A257">×0</b></div>
             <div style="font-size:13.5px;color:#B9C2BB;line-height:1.6;padding-top:2px">Club fondé en 2026 : le palmarès s'écrit dès cette première saison en D2. Chaque match compte.</div>
           </div>
         </div>
         <div style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:28px">
-          <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:20px;letter-spacing:-.01em;color:#F3EFE6;margin:0 0 18px">Le staff</h3>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:20px;letter-spacing:-.01em;color:#F3EFE6;margin:0 0 18px">Le staff</h3>
           <div style="display:flex;flex-direction:column;gap:14px" id="bb-staff-list">
             <div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.18);flex:none"></div><div><div style="font-family:'Inter',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">Coach principal</div><div style="font-size:12.5px;color:#7E8A82">À renseigner</div></div></div>
             <div style="display:flex;align-items:center;gap:12px"><div style="width:42px;height:42px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.18);flex:none"></div><div><div style="font-family:'Inter',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">Coach adjoint</div><div style="font-size:12.5px;color:#7E8A82">À renseigner</div></div></div>
@@ -1324,7 +1401,7 @@
       <section id="bb-org" style="margin-top:clamp(48px,6vw,72px)">
         <div style="text-align:center;margin-bottom:clamp(24px,4vw,36px)">
           <span style="font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Organigramme</span>
-          <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(26px,3.2vw,38px);color:#F3EFE6;margin:8px 0 4px">La structure du club</h2>
+          <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(26px,3.2vw,38px);color:#F3EFE6;margin:8px 0 4px">La structure du club</h2>
           <p style="font-family:'Inter',sans-serif;font-weight:600;font-size:12px;letter-spacing:.14em;color:#A8D93B;text-transform:uppercase;margin:0">Grandir ici · Régner partout</p>
         </div>
         <div class="org-scroll">
@@ -1380,12 +1457,12 @@
   <!-- ===== TRYOUTS ===== -->
   <main id="bb-page-tryouts" class="bb-try bb-hide">
     <div style="position:relative;overflow:hidden;background:radial-gradient(120% 140% at 78% 0%,#123322 0%,#081C13 46%,#05130D 100%);border-top:1px solid rgba(198,162,87,.22);border-bottom:1px solid rgba(198,162,87,.22)">
-      <div style="position:absolute;right:-2%;top:50%;transform:translateY(-50%);font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(220px,32vw,460px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(168,217,59,.1);pointer-events:none;user-select:none;z-index:0">27</div>
+      <div style="position:absolute;right:-2%;top:50%;transform:translateY(-50%);font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(220px,32vw,460px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(168,217,59,.1);pointer-events:none;user-select:none;z-index:0">27</div>
       <div class="bb-try-grid" style="position:relative;z-index:1;max-width:1500px;margin:0 auto;padding:0 clamp(16px,4vw,24px);display:grid;align-items:end">
         <div class="r-portrait-wrap" style="position:relative;align-self:end;justify-self:center;width:100%">
-          <div style="position:absolute;left:-6%;top:6%;font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(90px,11vw,150px);color:transparent;-webkit-text-stroke:1.5px rgba(243,239,230,.16);z-index:0;line-height:1">23</div>
+          <div style="position:absolute;left:-6%;top:6%;font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(90px,11vw,150px);color:transparent;-webkit-text-stroke:1.5px rgba(243,239,230,.16);z-index:0;line-height:1">23</div>
           <div style="position:absolute;left:50%;bottom:6%;width:78%;height:22%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.35),transparent 70%);filter:blur(18px);z-index:0"></div>
-          <img class="r-portrait" src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_1200,c_limit/v1784852882/18_juil._2026_02_12_16-Photoroom_dm3j1p.png" alt="Un membre des Baobabs en maillot vert — détection" style="position:relative;z-index:1;width:100%;height:auto;display:block;filter:drop-shadow(0 16px 28px rgba(0,0,0,.38))" loading="lazy" decoding="async">
+          <img class="r-portrait" width="900" height="1200" fetchpriority="low" src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto:good,w_900,c_limit,dpr_auto/v1784852882/18_juil._2026_02_12_16-Photoroom_dm3j1p.png" alt="Un membre des Baobabs en maillot vert — détection" style="position:relative;z-index:1;width:100%;height:auto;display:block;filter:drop-shadow(0 16px 28px rgba(0,0,0,.38))" loading="eager" decoding="async">
 
           <div class="bb-try-teaser" data-bb-teaser-wrap="1">
             <div class="bb-try-teaser-frame">
@@ -1401,7 +1478,7 @@
 
         <div class="r-content" style="position:relative;display:flex;flex-direction:column;gap:20px">
           <div class="r r-eye" style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;border-radius:50%;background:#A8D93B"></span><span style="font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.22em;color:#A8D93B;text-transform:uppercase" data-bb="try-kicker">Détection officielle · Saison 2026–2027</span></div>
-          <h2 class="r r-title" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(46px,7vw,96px);line-height:.88;letter-spacing:-.01em;color:#F3EFE6;margin:0"><span data-bb="try-title-a">TRY</span><span data-bb="try-title-b" style="color:#A8D93B">OUTS</span></h2>
+          <h2 class="r r-title" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(46px,7vw,96px);line-height:.88;letter-spacing:-.01em;color:#F3EFE6;margin:0"><span data-bb="try-title-a">TRY</span><span data-bb="try-title-b" style="color:#A8D93B">OUTS</span></h2>
           <p class="r r-sub" data-bb="try-text" style="max-width:46ch;font-size:15.5px;line-height:1.65;color:#C7CFC8;margin:0">Le club ouvre ses portes à toutes les catégories. Viens montrer ce que tu sais faire devant le staff technique des Baobabs.</p>
           <div class="r-cats" style="display:flex;flex-wrap:wrap;gap:10px" id="bb-cats-page"></div>
           <div class="r r-info" style="display:flex;flex-wrap:wrap;gap:28px;padding:22px 0;border-top:1px solid rgba(243,239,230,.06);border-bottom:1px solid rgba(243,239,230,.06)">
@@ -1439,22 +1516,22 @@
   <!-- ===== BILLETTERIE ===== -->
   <main id="bb-page-billetterie" class="bb-hide">
     <div style="position:relative;overflow:hidden;background:radial-gradient(120% 140% at 22% 0%,#123322 0%,#081C13 46%,#05130D 100%);border-top:1px solid rgba(198,162,87,.22);border-bottom:1px solid rgba(198,162,87,.22)">
-      <div style="position:absolute;right:-2%;top:50%;transform:translateY(-50%);font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(200px,30vw,430px);line-height:1;color:transparent;-webkit-text-stroke:1px rgba(198,162,87,.07);pointer-events:none;user-select:none" aria-hidden="true">BBC</div>
+      <div style="position:absolute;right:-2%;top:50%;transform:translateY(-50%);font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(200px,30vw,430px);line-height:1;color:transparent;-webkit-text-stroke:1px rgba(198,162,87,.07);pointer-events:none;user-select:none" aria-hidden="true">BBC</div>
       <div style="position:relative;max-width:1500px;margin:0 auto;padding:clamp(44px,6vw,88px) clamp(16px,4vw,24px)">
         <span style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#A8D93B;border-left:2px solid currentColor;padding-left:10px">Saison 2026 · Championnat D2</span>
-        <h1 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(46px,9vw,120px);line-height:.9;letter-spacing:-.015em;color:#F3EFE6;margin:14px 0 0">BILLETTERIE</h1>
-        <p style="max-width:52ch;font-size:clamp(14.5px,1.1vw,16px);line-height:1.65;color:#C7CFC8;margin:18px 0 0;text-wrap:pretty">Réservez votre place pour les matchs à domicile des Baobabs. La réservation est gratuite et immédiate&nbsp;: vous réglez sur place, au guichet, le jour du match.</p>
+        <h1 data-bb-reveal data-reveal-step="70" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(46px,9vw,120px);line-height:.9;letter-spacing:-.015em;color:#F3EFE6;margin:14px 0 0">BILLETTERIE</h1>
+        <p data-bb-reveal data-reveal-step="26" style="max-width:52ch;font-size:clamp(14.5px,1.1vw,16px);line-height:1.65;color:#C7CFC8;margin:18px 0 0;text-wrap:pretty">Réservez votre place pour les matchs à domicile des Baobabs. La réservation est gratuite et immédiate&nbsp;: vous réglez sur place, au guichet, le jour du match.</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:clamp(26px,3.4vw,40px);max-width:920px">
-          <div style="background:rgba(243,239,230,.04);border:1px solid rgba(243,239,230,.1);border-radius:13px;padding:16px 18px">
-            <div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:15px;color:#C6A257;margin-bottom:5px">1 · Réservez en ligne</div>
+          <div data-bb-tilt data-tilt-rotation="7" data-tilt-halo="360" style="position:relative;background:rgba(243,239,230,.04);border:1px solid rgba(243,239,230,.1);border-radius:13px;padding:16px 18px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:#C6A257;margin-bottom:5px">1 · Réservez en ligne</div>
             <div style="font-size:13px;line-height:1.55;color:#A9B2AB">Choisissez le match, la catégorie et le nombre de places.</div>
           </div>
-          <div style="background:rgba(243,239,230,.04);border:1px solid rgba(243,239,230,.1);border-radius:13px;padding:16px 18px">
-            <div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:15px;color:#C6A257;margin-bottom:5px">2 · Gardez la référence</div>
+          <div data-bb-tilt data-tilt-rotation="7" data-tilt-halo="360" style="position:relative;background:rgba(243,239,230,.04);border:1px solid rgba(243,239,230,.1);border-radius:13px;padding:16px 18px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:#C6A257;margin-bottom:5px">2 · Gardez la référence</div>
             <div style="font-size:13px;line-height:1.55;color:#A9B2AB">Un code du type BBC-7K4M2 s'affiche à la fin de la réservation.</div>
           </div>
-          <div style="background:rgba(243,239,230,.04);border:1px solid rgba(243,239,230,.1);border-radius:13px;padding:16px 18px">
-            <div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:15px;color:#C6A257;margin-bottom:5px">3 · Payez au guichet</div>
+          <div data-bb-tilt data-tilt-rotation="7" data-tilt-halo="360" style="position:relative;background:rgba(243,239,230,.04);border:1px solid rgba(243,239,230,.1);border-radius:13px;padding:16px 18px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:#C6A257;margin-bottom:5px">3 · Payez au guichet</div>
             <div style="font-size:13px;line-height:1.55;color:#A9B2AB">Présentez votre référence à l'entrée et réglez sur place.</div>
           </div>
         </div>
@@ -1462,29 +1539,37 @@
     </div>
     <div style="max-width:1500px;margin:0 auto;padding:clamp(32px,4.6vw,60px) clamp(16px,4vw,24px) clamp(56px,7vw,96px)">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:clamp(18px,2.4vw,26px)">
-        <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,3.2vw,38px);line-height:1;color:#F3EFE6;margin:0">Prochains matchs</h2>
+        <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,3.2vw,38px);line-height:1;color:#F3EFE6;margin:0">Prochains matchs</h2>
         <a href="#" data-nav="competitions" style="font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#A8D93B">Voir tout le calendrier →</a>
       </div>
       <div id="bb-bill-list"></div>
 
       <section style="margin-top:clamp(40px,5vw,72px)">
+        <span style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#A8D93B;border-left:2px solid currentColor;padding-left:10px">Nos tarifs</span>
+        <h2 data-bb-reveal data-reveal-step="58" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,3.2vw,38px);line-height:1;color:#F3EFE6;margin:14px 0 8px">Les catégories de place</h2>
+        <p style="max-width:60ch;font-size:14px;line-height:1.65;color:#A9B2AB;margin:0 0 clamp(20px,2.6vw,28px);text-wrap:pretty">Tarifs de référence pour un match à domicile. Le prix exact de chaque rencontre est indiqué au-dessus, dans la carte du match.</p>
+        <div id="bb-bill-tarifs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:14px"></div>
+        <p style="font-size:12.5px;line-height:1.7;color:#7E8A82;margin:16px 0 0;max-width:74ch;text-wrap:pretty"><b style="color:#A9B2AB">À noter&nbsp;:</b> pour les rencontres régulières du championnat sénégalais, l'entrée standard (virages et tribunes découvertes) est généralement fixée à 1 000 FCFA, les tribunes officielles et loges entre 2 000 et 5 000 FCFA selon l'affiche et le stade. Lors de certains tournois ou matchs amicaux, l'entrée de gamme peut démarrer entre 1 000 et 2 000 FCFA.</p>
+      </section>
+
+      <section style="margin-top:clamp(40px,5vw,72px)">
         <span style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#A8D93B;border-left:2px solid currentColor;padding-left:10px">Bon à savoir</span>
-        <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,3.2vw,38px);line-height:1;color:#F3EFE6;margin:14px 0 clamp(18px,2.4vw,26px)">Avant de venir au match</h2>
+        <h2 data-bb-reveal data-reveal-step="58" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,3.2vw,38px);line-height:1;color:#F3EFE6;margin:14px 0 clamp(18px,2.4vw,26px)">Avant de venir au match</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">
-          <div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
-            <div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:15px;color:#C6A257;margin-bottom:7px">Guichet</div>
+          <div data-bb-tilt data-tilt-rotation="8" data-tilt-halo="400" style="position:relative;background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:#C6A257;margin-bottom:7px">Guichet</div>
             <p style="font-size:13.5px;line-height:1.6;color:#A9B2AB;margin:0">Il ouvre une heure avant le coup d'envoi. Arrivez en avance les soirs d'affiche&nbsp;: les files se forment vite.</p>
           </div>
-          <div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
-            <div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:15px;color:#C6A257;margin-bottom:7px">Paiement</div>
+          <div data-bb-tilt data-tilt-rotation="8" data-tilt-halo="400" style="position:relative;background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:#C6A257;margin-bottom:7px">Paiement</div>
             <p style="font-size:13.5px;line-height:1.6;color:#A9B2AB;margin:0">Espèces et paiement mobile acceptés au guichet. Aucun paiement n'est demandé au moment de la réservation.</p>
           </div>
-          <div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
-            <div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:15px;color:#C6A257;margin-bottom:7px">Votre réservation</div>
+          <div data-bb-tilt data-tilt-rotation="8" data-tilt-halo="400" style="position:relative;background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:#C6A257;margin-bottom:7px">Votre réservation</div>
             <p style="font-size:13.5px;line-height:1.6;color:#A9B2AB;margin:0">Une place non retirée 15 minutes avant le début du match peut être remise en vente. Prévenez-nous en cas d'empêchement.</p>
           </div>
-          <div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
-            <div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:15px;color:#C6A257;margin-bottom:7px">Groupes &amp; écoles</div>
+          <div data-bb-tilt data-tilt-rotation="8" data-tilt-halo="400" style="position:relative;background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:#C6A257;margin-bottom:7px">Groupes &amp; écoles</div>
             <p style="font-size:13.5px;line-height:1.6;color:#A9B2AB;margin:0">À partir de 10 places, contactez le club&nbsp;: nous réservons un bloc de sièges et un tarif adapté.</p>
           </div>
         </div>
@@ -1495,7 +1580,7 @@
           <span style="flex:none;width:38px;height:38px;border-radius:50%;background:rgba(198,162,87,.14);border:1px solid rgba(198,162,87,.4);display:flex;align-items:center;justify-content:center;color:#C6A257"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg></span>
           <div>
             <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:6px">Le camp de base</div>
-            <div id="bb-bill-venue" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:17px;color:#F3EFE6;line-height:1.15">Complexe Patrick Semedo</div>
+            <div id="bb-bill-venue" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:17px;color:#F3EFE6;line-height:1.15">Complexe Patrick Semedo</div>
             <div id="bb-bill-address" style="font-size:13px;color:#A9B2AB;margin-top:5px">Rue Aroun, Mermoz–Sacré-Cœur, Dakar</div>
             <a id="bb-bill-map" href="#" target="_blank" rel="noopener" style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#A8D93B;margin-top:10px">Itinéraire →</a>
           </div>
@@ -1504,7 +1589,7 @@
           <span style="flex:none;width:38px;height:38px;border-radius:50%;background:rgba(198,162,87,.14);border:1px solid rgba(198,162,87,.4);display:flex;align-items:center;justify-content:center;color:#C6A257"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.2-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.8 2Z"></path></svg></span>
           <div>
             <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:6px">Une question ?</div>
-            <a id="bb-bill-phone" href="#" class="bb-hide" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:17px;color:#F3EFE6;line-height:1.15"><span id="bb-bill-phone-text"></span></a>
+            <a id="bb-bill-phone" href="#" class="bb-hide" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:17px;color:#F3EFE6;line-height:1.15"><span id="bb-bill-phone-text"></span></a>
             <div style="font-size:13px;color:#A9B2AB;margin-top:5px">Réservation de groupe, accessibilité, place manquante&nbsp;: écrivez-nous, on répond vite.</div>
             <a href="#" data-cta="contact" style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#A8D93B;margin-top:10px">Nous contacter →</a>
           </div>
@@ -1513,7 +1598,7 @@
           <span style="flex:none;width:38px;height:38px;border-radius:50%;background:rgba(198,162,87,.14);border:1px solid rgba(198,162,87,.4);display:flex;align-items:center;justify-content:center;color:#C6A257"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H7l-3 3V4Z"></path></svg></span>
           <div>
             <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:6px">Ne rien rater</div>
-            <div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:17px;color:#F3EFE6;line-height:1.15">Ouvertures de vente</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:17px;color:#F3EFE6;line-height:1.15">Ouvertures de vente</div>
             <div style="font-size:13px;color:#A9B2AB;margin-top:5px">La newsletter prévient dès qu'un match est mis en vente, avant que les meilleures places partent.</div>
             <a href="#" data-cta="subscribe" style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#A8D93B;margin-top:10px">S'abonner →</a>
           </div>
@@ -1526,7 +1611,7 @@
   <div id="bb-tribu" style="padding:clamp(40px,5vw,56px) 0;background:linear-gradient(155deg,#0F4030,#081C13);text-align:center">
     <div style="max-width:1500px;margin:0 auto;padding:0 clamp(16px,4vw,24px)">
       <img src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_320,c_limit/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png" alt="Baobabs Basket Club" style="width:64px;height:64px;object-fit:contain;margin:0 auto 18px" loading="lazy" decoding="async">
-      <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,3.6vw,36px);letter-spacing:-.015em;color:#F3EFE6;margin:0 0 10px" id="bb-tribu-title">Rejoins la tribu Baobabs</h3>
+      <h3 data-bb-reveal data-reveal-step="60" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,3.6vw,36px);letter-spacing:-.015em;color:#F3EFE6;margin:0 0 10px" id="bb-tribu-title">Rejoins la tribu Baobabs</h3>
       <p id="bb-tribu-text" style="font-size:15px;color:#C7CFC8;margin:0 0 26px">Billets, boutique, actus : ne rate rien de la saison.</p>
       <div id="bb-footer-ctas" style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
         <button type="button" data-cta="subscribe" style="font-family:'Inter',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:13px 26px;border-radius:9px;border:none;background:#C6A257;color:#07130D;cursor:pointer" id="bb-tribu-btn1">S'abonner</button>
@@ -1536,11 +1621,11 @@
   </div>
 
   <div class="bb-news-band" id="bb-nl">
-    <div style="position:absolute;right:-3%;top:50%;transform:translateY(-50%);font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(150px,24vw,300px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(168,217,59,.07);pointer-events:none;user-select:none;z-index:0">BBC</div>
+    <div style="position:absolute;right:-3%;top:50%;transform:translateY(-50%);font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(150px,24vw,300px);line-height:1;color:transparent;-webkit-text-stroke:1.5px rgba(168,217,59,.07);pointer-events:none;user-select:none;z-index:0">BBC</div>
     <div class="bb-news-inner">
       <div>
         <span style="font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#A8D93B;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Newsletter</span>
-        <h2 id="bb-nl-title" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(30px,4.4vw,52px);line-height:.96;letter-spacing:-.01em;color:#F3EFE6;margin:10px 0 12px">Ne rate aucun<br>match des Baobabs</h2>
+        <h2 id="bb-nl-title" data-bb-reveal data-reveal-step="60" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(30px,4.4vw,52px);line-height:.96;letter-spacing:-.01em;color:#F3EFE6;margin:10px 0 12px">Ne rate aucun<br>match des Baobabs</h2>
         <p id="bb-nl-sub" style="max-width:44ch;font-size:15px;line-height:1.65;color:#C7CFC8;margin:0">Résultats, billetterie, drops boutique et actus du club — une fois par semaine, dans ta boîte mail.</p>
       </div>
       <div>
@@ -1557,7 +1642,7 @@
   <section id="bb-camp" style="max-width:1500px;margin:0 auto;padding:clamp(40px,6vw,72px) clamp(16px,4vw,24px) 0">
     <div style="margin-bottom:clamp(20px,3vw,28px)">
       <span style="font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px" id="bb-camp-kicker">Où nous trouver</span>
-      <h2 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(28px,4vw,44px);color:#F3EFE6;margin:8px 0 0" id="bb-camp-title">Le camp de base</h2>
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(28px,4vw,44px);color:#F3EFE6;margin:8px 0 0" id="bb-camp-title">Le camp de base</h2>
     </div>
     <div style="display:grid;grid-template-columns:1fr;gap:0;border:1px solid rgba(198,162,87,.22);border-radius:18px;overflow:hidden;background:#0A150F">
       <div style="display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr)" id="bb-map-grid">
@@ -1565,7 +1650,7 @@
         <div class="bb-map-info" style="padding:clamp(22px,3vw,34px);display:flex;flex-direction:column;justify-content:center;gap:18px;background:linear-gradient(150deg,#0F2417,#081C13)">
           <div>
             <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:6px">Salle</div>
-            <div style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(18px,2.2vw,22px);color:#F3EFE6;line-height:1.1" id="bb-camp-venue">Complexe Patrick Semedo</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(18px,2.2vw,22px);color:#F3EFE6;line-height:1.1" id="bb-camp-venue">Complexe Patrick Semedo</div>
           </div>
           <div>
             <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:6px">Adresse</div>
@@ -1679,7 +1764,7 @@
     <div class="bb-scrim" data-close-overlay></div>
     <div id="bb-cart-panel">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:20px clamp(18px,3vw,24px);border-bottom:1px solid rgba(243,239,230,.09);flex:none">
-        <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#F3EFE6;margin:0">Mon panier</h3>
+        <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#F3EFE6;margin:0">Mon panier</h3>
         <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
       </div>
       <div id="bb-cart-body" style="flex:1;overflow-y:auto;padding:6px clamp(18px,3vw,24px)"></div>
@@ -1718,7 +1803,7 @@
         <div style="padding:clamp(22px,3vw,30px);display:flex;flex-direction:column;gap:16px">
           <div>
             <span id="bb-product-tag" style="font-family:'Inter',sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.18em;color:#C6A257;text-transform:uppercase">Édition officielle</span>
-            <h3 id="bb-product-name" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,3vw,30px);color:#F3EFE6;margin:8px 0 0"></h3>
+            <h3 id="bb-product-name" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,3vw,30px);color:#F3EFE6;margin:8px 0 0"></h3>
           </div>
           <p id="bb-product-desc" style="font-size:13.5px;line-height:1.65;color:#B9C2BB;margin:0"></p>
           <div id="bb-product-size-wrap">
@@ -1750,7 +1835,7 @@
         <div id="bb-player-info">
           <div>
             <span id="bb-player-pos" class="bb-pl-r" style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#0A1B0D;background:#A8D93B;padding:5px 11px;border-radius:5px"></span>
-            <h3 id="bb-player-name" class="bb-pl-r" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(30px,4vw,42px);line-height:1;color:#F3EFE6;margin:12px 0 0"></h3>
+            <h3 id="bb-player-name" class="bb-pl-r" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(30px,4vw,42px);line-height:1;color:#F3EFE6;margin:12px 0 0"></h3>
           </div>
           <div id="bb-player-stats" class="bb-pl-r" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
           <p id="bb-player-bio" class="bb-pl-r" style="font-size:14px;line-height:1.7;color:#B9C2BB;margin:0"></p>
@@ -1771,7 +1856,7 @@
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:clamp(18px,3vw,24px) clamp(20px,4vw,32px) 0">
           <div>
             <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.18em;color:#A8D93B;text-transform:uppercase;margin-bottom:6px">Organigramme · Baobabs</div>
-            <h3 id="bb-role-title" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,3vw,32px);line-height:1;color:#F3EFE6;margin:0"></h3>
+            <h3 id="bb-role-title" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,3vw,32px);line-height:1;color:#F3EFE6;margin:0"></h3>
           </div>
           <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer" style="flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
@@ -1786,7 +1871,7 @@
     <div class="bb-modal-wrap">
       <div id="bb-legal-modal">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:clamp(18px,3vw,24px) clamp(20px,4vw,32px);flex:none">
-          <h3 id="bb-legal-title" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#F3EFE6;margin:0"></h3>
+          <h3 id="bb-legal-title" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#F3EFE6;margin:0"></h3>
           <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
         <div id="bb-legal-body" class="bb-legal-body"></div>
@@ -1800,7 +1885,7 @@
     <div class="bb-modal-wrap">
       <div id="bb-cta-modal">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) 0">
-          <h3 id="bb-cta-title" style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#F3EFE6;margin:0"></h3>
+          <h3 id="bb-cta-title" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#F3EFE6;margin:0"></h3>
           <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
         <form id="bb-cta-form" style="padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) clamp(22px,3vw,26px);display:flex;flex-direction:column;gap:14px">
@@ -1825,7 +1910,7 @@
     <div class="bb-modal-wrap">
       <div id="bb-ticket-modal">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) 0">
-          <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#F3EFE6;margin:0">Billetterie</h3>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#F3EFE6;margin:0">Billetterie</h3>
           <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
         <div class="bb-legal-body" id="bb-ticket-body" style="padding-top:18px"></div>
@@ -1839,7 +1924,7 @@
     <div class="bb-modal-wrap">
       <div id="bb-login-modal" style="width:100%;max-width:400px;background:#0C1A12;border-radius:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) 0">
-          <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#F3EFE6;margin:0">Connexion</h3>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#F3EFE6;margin:0">Connexion</h3>
           <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
         <form id="bb-login-form" style="padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) clamp(22px,3vw,26px);display:flex;flex-direction:column;gap:14px">
@@ -1860,7 +1945,7 @@
     <div class="bb-modal-wrap">
       <div id="bb-register-modal" style="width:100%;max-width:400px;background:#0C1A12;border-radius:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) 0">
-          <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#F3EFE6;margin:0">Créer un compte</h3>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#F3EFE6;margin:0">Créer un compte</h3>
           <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
         <form id="bb-register-form" style="padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) clamp(22px,3vw,26px);display:flex;flex-direction:column;gap:14px">
@@ -1888,7 +1973,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:clamp(20px,3vw,26px) clamp(20px,4vw,30px) 14px;flex:none;border-bottom:1px solid rgba(243,239,230,.08)">
           <div>
             <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#A8D93B;margin-bottom:6px">Recrutement · Saison 2026</div>
-            <h3 style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(20px,3vw,26px);color:#F3EFE6;margin:0;line-height:1">Rejoindre l'effectif</h3>
+            <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(20px,3vw,26px);color:#F3EFE6;margin:0;line-height:1">Rejoindre l'effectif</h3>
           </div>
           <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
@@ -1937,7 +2022,7 @@
         </form>
         <div id="bb-recruit-success" class="bb-hide" style="padding:8px clamp(20px,4vw,30px) clamp(30px,4vw,36px);text-align:center">
           <div style="width:52px;height:52px;border-radius:50%;background:rgba(168,217,59,.14);border:1px solid rgba(168,217,59,.4);display:flex;align-items:center;justify-content:center;margin:8px auto 16px;color:#A8D93B"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>
-          <p style="font-family:'Archivo',sans-serif;font-stretch:125%;font-weight:900;font-size:20px;color:#F3EFE6;margin:0 0 8px">Candidature envoyée !</p>
+          <p style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:20px;color:#F3EFE6;margin:0 0 8px">Candidature envoyée !</p>
           <p style="font-size:13.5px;line-height:1.6;color:#93A099;margin:0 auto;max-width:34ch">Merci — le club te recontacte très vite pour la détection. À bientôt sur le terrain.</p>
         </div>
       </div>
@@ -2171,12 +2256,12 @@ window.bbCloud = function(url, w){
               '<div class="bb-cardgrid"></div>' +
               '<div class="bb-bignum" style="animation-delay:' + (-i * 0.45).toFixed(2) + 's">' + p.no + '</div>' +
               '<div class="bb-spot" style="position:absolute;left:50%;top:-12%;width:120%;height:52%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.14),transparent 74%);pointer-events:none;z-index:1"></div>' +
-              '<div class="bb-badge" style="position:absolute;top:12px;left:12px;z-index:4;font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:13px;color:#0A1B0D;background:#A8D93B;border-radius:8px;padding:4px 9px;line-height:1">#' + p.no + '</div>' +
+              '<div class="bb-badge" style="position:absolute;top:12px;left:12px;z-index:4;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:13px;color:#0A1B0D;background:#A8D93B;border-radius:8px;padding:4px 9px;line-height:1">#' + p.no + '</div>' +
               '<span class="bb-pos-badge ' + posClass(p.pos) + '">' + esc(p.pos) + '</span>' +
               '<img class="bb-portrait" src="' + p.src + '" alt="' + esc(p.name) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';transform:scale(' + ((p.pz==null?100:p.pz)/100) + ');transform-origin:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';z-index:2;transition:transform .5s cubic-bezier(.16,.8,.3,1)" loading="lazy" decoding="async">' +
               '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(6,13,9,.93) 0%,rgba(6,13,9,.12) 42%,transparent 62%);z-index:3"></div>' +
               '<div class="bb-name" style="position:absolute;left:16px;right:14px;bottom:16px;z-index:5">' +
-                '<div style="font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:22px;color:' + (p.nameColor||'#F3EFE6') + ';line-height:1.02;letter-spacing:.01em">' + esc(p.name) + '</div>' +
+                '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:22px;color:' + (p.nameColor||'#F3EFE6') + ';line-height:1.02;letter-spacing:-.01em">' + esc(p.name) + '</div>' +
                 '<div style="display:flex;align-items:center;gap:8px;margin-top:7px">' +
                   '<span class="bb-bar" style="width:20px;height:2px;background:#C6A257;border-radius:2px;display:block"></span>' +
                   '<span style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;color:#C6A257;letter-spacing:.12em;text-transform:uppercase">' + esc(p.pos) + '</span>' +
@@ -2222,7 +2307,7 @@ window.bbCloud = function(url, w){
     }).join('');
     return '<div data-recruit="1" role="button" tabindex="0" aria-label="Rejoindre l\'effectif" style="grid-column:1/-1;min-height:330px;border-radius:14px;border:1.5px dashed rgba(198,162,87,.5);background:radial-gradient(120% 130% at 80% 0%,#12402C,#0A2318 62%,#081C13);display:flex;flex-direction:column;justify-content:center;align-items:flex-start;max-width:480px;padding:clamp(22px,3vw,34px);cursor:pointer;position:relative;overflow:hidden">' +
       '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#A8D93B;border-left:2px solid currentColor;padding-left:10px">Recrutement ouvert</span>' +
-      '<div style="font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,2.4vw,32px);color:#F3EFE6;line-height:1.02;margin:14px 0 10px;max-width:15ch">Ta place est sur ce terrain</div>' +
+      '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,2.4vw,32px);color:#F3EFE6;line-height:1.02;margin:14px 0 10px;max-width:15ch">Ta place est sur ce terrain</div>' +
       '<p style="font-family:\'Inter\',sans-serif;font-size:13.5px;line-height:1.6;color:#C7CFC8;margin:0 0 18px;max-width:36ch">D\u00e9butant\u00b7e ou confirm\u00e9\u00b7e, d\u00e9pose ta candidature : mensurations, poste, parcours. Le club te recontacte pour la d\u00e9tection.</p>' +
       '<div style="display:flex;align-items:center;gap:12px;margin:0 0 20px"><div style="display:flex;padding-left:10px">' + av + '</div><span style="font-family:\'Inter\',sans-serif;font-size:12px;color:#93A099">Rejoins l\'effectif du club</span></div>' +
       '<span style="display:inline-flex;align-items:center;gap:9px;align-self:flex-start;font-family:\'Inter\',sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.06em;color:#0A1B0D;background:#A8D93B;padding:12px 20px;border-radius:9px">Rejoindre l\'effectif <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>' +
@@ -2233,7 +2318,7 @@ window.bbCloud = function(url, w){
     return timeline.map(function(t){
       return '' +
         '<div style="display:flex;gap:22px;align-items:flex-start;padding:20px 0;border-top:1px solid rgba(243,239,230,.09)">' +
-          '<div style="flex:none;width:88px;font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#C6A257">' + t.year + '</div>' +
+          '<div style="flex:none;width:88px;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#C6A257">' + t.year + '</div>' +
           '<div>' +
             '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:17px;color:#F3EFE6;margin-bottom:6px">' + esc(t.title) + '</div>' +
             '<p style="font-size:14.5px;line-height:1.65;color:#B9C2BB;margin:0;max-width:60ch">' + bbRich(t.text) + '</p>' +
@@ -2297,9 +2382,41 @@ window.bbCloud = function(url, w){
     document.getElementById('bb-cats-page').innerHTML = html;
   }
 
+  // Les images du site arrivent de Cloudinary : on laisse le navigateur les
+  // décoder hors du fil principal et on ne réserve la priorité qu'aux visuels
+  // réellement visibles. Sans ça, chaque changement de page provoquait un
+  // à-coup le temps du décodage.
+  function bbTuneMedia(root){
+    (root || document).querySelectorAll('img:not([data-tuned])').forEach(function(img){
+      img.setAttribute('data-tuned', '1');
+      img.decoding = 'async';
+      var wrap = img.closest('main');
+      var above = img.closest('#bb-hero-img-wrap, #bb-hdr');
+      if (above) { img.loading = 'eager'; img.setAttribute('fetchpriority', 'high'); }
+      else if (!img.getAttribute('loading')) img.loading = 'lazy';
+      if (wrap && wrap.classList.contains('bb-hide') && !img.classList.contains('r-portrait')) img.loading = 'lazy';
+    });
+  }
+  // Le portrait de la page Tryouts est préchargé une fois l'accueil affiché :
+  // il est ainsi déjà en cache quand le visiteur ouvre la page.
+  function bbPrefetchTryouts(){
+    var img = document.querySelector('.r-portrait');
+    if (!img || !img.src) return;
+    var pre = new Image();
+    pre.decoding = 'async';
+    pre.src = img.currentSrc || img.src;
+  }
+  if ('requestIdleCallback' in window) requestIdleCallback(bbPrefetchTryouts, { timeout: 3000 });
+  else setTimeout(bbPrefetchTryouts, 2200);
+
+  if (document.readyState !== 'loading') bbTuneMedia();
+  else document.addEventListener('DOMContentLoaded', function(){ bbTuneMedia(); });
+
   function applyResponsive(){
     var mq = window.matchMedia('(max-width:1024px)').matches;
     state.isMobile = mq;
+    var bk = document.getElementById('bb-back-btn');
+    if (bk) bk.style.display = (mq && state.page && state.page !== 'accueil') ? 'flex' : 'none';
 
     document.getElementById('bb-utility').classList.toggle('bb-hide', mq);
     document.getElementById('bb-desktop-nav').classList.toggle('bb-hide', mq);
@@ -2368,6 +2485,25 @@ window.bbCloud = function(url, w){
   }
   function closeDrawer(){ openDrawer(false); }
 
+  // Retour : on rend la main à l'historique quand il y a une étape derrière
+  // nous, sinon on revient à l'accueil.
+  function bbBack(){
+    if (history.state && history.state.bbPage && history.length > 1) history.back();
+    else goTo('accueil');
+  }
+  // Un lien partagé (#billetterie) ou un rafraîchissement rouvre la bonne page.
+  window.addEventListener('load', function(){
+    var h = (location.hash || '').replace('#', '');
+    if (h && PAGES.indexOf(h) !== -1 && h !== state.page) goTo(h, true);
+    if (!history.state || !history.state.bbPage) history.replaceState({ bbPage: state.page || 'accueil' }, '', '#' + (state.page || 'accueil'));
+  });
+
+  window.addEventListener('popstate', function(e){
+    var p = (e.state && e.state.bbPage) || 'accueil';
+    closeOverlays();
+    goTo(p, true);
+  });
+
   function setActiveNav(){
     document.querySelectorAll('.bb-nav-link').forEach(function(a){
       var target = a.getAttribute('data-nav');
@@ -2385,30 +2521,40 @@ window.bbCloud = function(url, w){
   // Sans page précédente visible (premier chargement) ou si le visiteur a
   // désactivé les animations, on bascule directement.
   var deriveTimer = null;
-  function goTo(page){
+  function goTo(page, noPush){
     if (PAGES.indexOf(page) === -1) page = 'accueil';
     var prev = state.page;
     var prevEl = prev ? document.getElementById('bb-page-' + prev) : null;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!prevEl || prev === page || reduce || prevEl.classList.contains('bb-hide')) { applyPage(page); return; }
+    if (!prevEl || prev === page || reduce || prevEl.classList.contains('bb-hide')) { applyPage(page, noPush); return; }
     clearTimeout(deriveTimer);
     prevEl.classList.remove('bb-page-in');
     prevEl.classList.add('bb-page-out');
     deriveTimer = setTimeout(function(){
       prevEl.classList.remove('bb-page-out');
-      applyPage(page);
-    }, 170);
+      applyPage(page, noPush);
+    }, 110);
   }
 
-  function applyPage(page){
+  function applyPage(page, noPush){
     state.page = page;
+    // Chaque page devient une étape d'historique : le bouton « retour » du
+    // téléphone et le geste de retour ramènent à la page précédente sans
+    // recharger le site.
+    if (!noPush) {
+      var st = { bbPage: page };
+      if (!history.state || !history.state.bbPage) history.replaceState(st, '', '#' + page);
+      else if (history.state.bbPage !== page) history.pushState(st, '', '#' + page);
+    }
+    var backBtn = document.getElementById('bb-back-btn');
+    if (backBtn) backBtn.style.display = (state.isMobile && page !== 'accueil') ? 'flex' : 'none';
     PAGES.forEach(function(p){
       var el = document.getElementById('bb-page-' + p);
       if (el) el.classList.toggle('bb-hide', p !== page);
     });
     setActiveNav();
     closeDrawer();
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'auto' });
 
     var activePage = document.getElementById('bb-page-' + page);
     if (activePage) {
@@ -2445,6 +2591,8 @@ window.bbCloud = function(url, w){
     }
     if (page !== 'equipes') state.cameFromPlayer = false;
 
+    bbTuneMedia(activePage || document);
+    if (window.bbTilt) window.bbTilt.scan(activePage || document);
     if (window.bbRescanMotion) window.bbRescanMotion();
     if (window.bbImgOpt) window.bbImgOpt.scanSoon();
     if (window.bbFitNums) requestAnimationFrame(window.bbFitNums);
@@ -2909,7 +3057,8 @@ window.bbCloud = function(url, w){
       var navEl = e.target.closest('[data-nav]');
       if (navEl) { e.preventDefault(); state.cameFromPlayer = navEl.hasAttribute('data-from-player'); closeOverlays(); goTo(navEl.getAttribute('data-nav')); return; }
 
-      if (e.target.closest('#bb-equipes-back')) { goTo('accueil'); return; }
+      if (e.target.closest('#bb-equipes-back')) { bbBack(); return; }
+      if (e.target.closest('#bb-back-btn')) { bbBack(); return; }
 
       if (e.target.closest('#bb-menu-btn')) { openDrawer(!state.drawerOpen); return; }
       if (e.target.closest('#bb-cart-btn')) { openCart(); return; }
@@ -3162,6 +3311,60 @@ window.bbCloud = function(url, w){
     });
   }
 
+  /* ===== tilt 3D au curseur ===== */
+  var bbTilt = (function(){
+    // On exclut le tactile (pointeur grossier) plutôt que d'exiger un survol :
+    // certains navigateurs de bureau ne déclarent pas hover:hover.
+    var enabled = !window.matchMedia('(pointer:coarse)').matches
+      && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var frame = null;
+
+    function mount(el){
+      if (!enabled || el.dataset.bbTilt === 'on') return;
+      el.dataset.bbTilt = 'on';
+      el.classList.add('bb-tilt', 'bb-tilt-on');
+      var rot = parseFloat(el.getAttribute('data-tilt-rotation') || '9');
+      var size = el.getAttribute('data-tilt-halo') || '520';
+      if (!el.querySelector(':scope > .bb-halo')) {
+        var halo = document.createElement('div');
+        halo.className = 'bb-halo';
+        halo.style.setProperty('--bb-hs', size + 'px');
+        halo.appendChild(document.createElement('i'));
+        el.appendChild(halo);
+      }
+      el.addEventListener('mousemove', function(e){
+        if (frame) return;
+        frame = requestAnimationFrame(function(){
+          frame = null;
+          var r = el.getBoundingClientRect();
+          var px = (e.clientX - r.left) / r.width - 0.5;
+          var py = (e.clientY - r.top) / r.height - 0.5;
+          el.style.setProperty('--bb-rx', (-py * rot).toFixed(2) + 'deg');
+          el.style.setProperty('--bb-ry', (px * rot).toFixed(2) + 'deg');
+          var h = el.querySelector('.bb-halo');
+          if (h){
+            h.style.setProperty('--bb-hx', ((px + 0.5) * 100).toFixed(1) + '%');
+            h.style.setProperty('--bb-hy', ((py + 0.5) * 100).toFixed(1) + '%');
+          }
+        });
+      });
+      el.addEventListener('mouseleave', function(){
+        el.style.setProperty('--bb-rx', '0deg');
+        el.style.setProperty('--bb-ry', '0deg');
+      });
+    }
+
+    function scan(root){
+      if (!enabled) return;
+      (root || document).querySelectorAll('[data-bb-tilt]:not([data-bb-tilt="on"])').forEach(mount);
+    }
+
+    if (document.readyState !== 'loading') scan();
+    else document.addEventListener('DOMContentLoaded', function(){ scan(); });
+    return { scan: scan, mount: mount, enabled: enabled };
+  })();
+  window.bbTilt = bbTilt;
+
   /* ===== billetterie (réservation, paiement sur place) ===== */
   var bbTkOffers = [], bbTkSel = null, bbTkQty = 1, bbTkState = 'idle', bbTkResult = null;
 
@@ -3203,7 +3406,47 @@ window.bbCloud = function(url, w){
   /* ----- page Billetterie ----- */
   var BBC_LOGO = 'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_320,c_limit/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png';
 
+  // Un billet : haut « souche » (catégorie + prix), perforation, bas détachable.
+  function bbTkStub(o){
+    var accent = o.sold ? '#7E8A82' : '#C6A257';
+    return '<div class="bb-tk' + (o.sold ? ' bb-tk-sold' : '') + '"' + (o.sold ? '' : ' data-bb-tilt data-tilt-rotation="8" data-tilt-halo="420"') + '>' +
+      '<div style="padding:18px 18px 16px;display:flex;flex-direction:column;gap:12px;flex:1">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+          '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:' + accent + '">Baobabs · Billet</span>' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="' + accent + '" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z"></path></svg>' +
+        '</div>' +
+        '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.01em;font-size:17px;line-height:1.15;color:#F3EFE6">' + bbTkEsc(o.category) + '</div>' +
+        '<div class="bb-tk-price" style="font-size:clamp(26px,3vw,32px)">' + bbTkEsc(bbTkPrice(o.price)) + '</div>' +
+        (o.meta ? '<div style="font-size:12px;color:' + (o.metaWarn ? '#C6A257' : '#7E8A82') + ';margin-top:auto">' + bbTkEsc(o.meta) + '</div>' : '') +
+      '</div>' +
+      '<div class="bb-tk-stub" style="padding:14px">' + o.action + '</div>' +
+    '</div>';
+  }
+
+  // Tarifs de référence : affichés dès l'ouverture de la page, indépendamment
+  // des ventes en cours. Le bouton renvoie vers la liste des matchs.
+  var BB_TARIFS = [
+    { category:'Virages', price:3000, meta:'Debout, derrière les paniers' },
+    { category:'Tribune', price:5000, meta:'Assis, vue latérale' },
+    { category:'Annexes', price:10000, meta:'Tribune couverte' },
+    { category:'Loge', price:30000, meta:'Espace privatif, service' },
+    { category:'Courtside', price:50000, meta:'Au bord du terrain' }
+  ];
+  function bbTarifsRender(){
+    var box = document.getElementById('bb-bill-tarifs');
+    if (!box || box.dataset.done) return;
+    box.dataset.done = '1';
+    box.innerHTML = BB_TARIFS.map(function(t){
+      return bbTkStub({
+        category: t.category, price: t.price, meta: t.meta,
+        action: '<button type="button" class="bb-tk-cta" data-bill-scroll="1">Voir les matchs</button>'
+      });
+    }).join('');
+    if (window.bbTilt) window.bbTilt.scan(box);
+  }
+
   function bbBillLoad(){
+    bbTarifsRender();
     var box = document.getElementById('bb-bill-list');
     if (!box) return;
     box.innerHTML = '<p style="font-size:14px;color:#7E8A82;margin:0">Chargement des billets…</p>';
@@ -3219,13 +3462,13 @@ window.bbCloud = function(url, w){
     if (!groups.length){
       box.innerHTML =
         '<div style="border:1px dashed rgba(198,162,87,.32);border-radius:18px;padding:clamp(30px,5vw,54px);text-align:center;background:rgba(243,239,230,.02)">' +
-          '<div style="font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(20px,2.6vw,28px);color:#F3EFE6;margin-bottom:10px">Aucune vente ouverte pour le moment</div>' +
+          '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(20px,2.6vw,28px);color:#F3EFE6;margin-bottom:10px">Aucune vente ouverte pour le moment</div>' +
           '<p style="font-size:14px;line-height:1.65;color:#A9B2AB;margin:0 auto 22px;max-width:46ch">Les billets du prochain match à domicile sont mis en vente ici quelques jours avant la rencontre. Inscrivez-vous à la newsletter pour être prévenu·e.</p>' +
           '<button type="button" data-cta="subscribe" class="bb-btn-solid" style="width:auto">Être prévenu·e</button>' +
         '</div>';
       return;
     }
-    box.innerHTML = groups.map(function(g){
+    box.innerHTML = groups.map(function(g, $index){
       var m = g.match;
       var days = null;
       if (m.match_date){
@@ -3237,36 +3480,46 @@ window.bbCloud = function(url, w){
       var cats = g.offers.map(function(o){
         var left = Math.max((o.quota || 0) - (o.sold || 0), 0);
         var sold = left <= 0;
-        return '<div style="display:flex;flex-direction:column;gap:12px;background:rgba(243,239,230,.04);border:1px solid ' + (sold ? 'rgba(243,239,230,.08)' : 'rgba(198,162,87,.24)') + ';border-radius:14px;padding:18px;opacity:' + (sold ? '.5' : '1') + '">' +
-          '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">' +
-            '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:14.5px;color:#F3EFE6">' + bbTkEsc(o.category) + '</span>' +
-            '<span style="font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:20px;color:#C6A257;white-space:nowrap">' + bbTkEsc(bbTkPrice(o.price_fcfa)) + '</span>' +
-          '</div>' +
-          '<span style="font-size:12px;color:' + (sold ? '#7E8A82' : (left <= 10 ? '#C6A257' : '#7E8A82')) + '">' + (sold ? 'Complet' : left + ' place(s) restante(s)') + '</span>' +
-          (sold
-            ? '<span style="display:flex;align-items:center;justify-content:center;font-family:\'Inter\',sans-serif;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:12px;border-radius:9px;border:1px solid rgba(243,239,230,.14);color:#7E8A82">Complet</span>'
-            : '<button type="button" data-bill-offer="' + o.id + '" style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:12px;border-radius:9px;border:none;background:#A8D93B;color:#0A1B0D;cursor:pointer">Réserver</button>') +
-        '</div>';
+        return bbTkStub({
+          category: o.category, price: o.price_fcfa, sold: sold,
+          meta: sold ? 'Complet' : left + ' place(s) restante(s)',
+          metaWarn: !sold && left <= 10,
+          action: sold ? '<span class="bb-tk-off">Complet</span>'
+                       : '<button type="button" class="bb-tk-cta" data-bill-offer="' + o.id + '">Réserver</button>'
+        });
       }).join('');
-      return '<article style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:20px;overflow:hidden;margin-bottom:clamp(16px,2vw,22px)">' +
-        '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:clamp(14px,2vw,26px);padding:clamp(18px,2.4vw,26px);background:linear-gradient(140deg,#0F2417,#081C13);border-bottom:1px solid rgba(198,162,87,.18)">' +
-          '<img src="' + BBC_LOGO + '" alt="Baobabs" style="width:52px;height:52px;object-fit:contain;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy">' +
-          '<span style="font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:16px;color:#C6A257">' + (m.is_home ? 'VS' : '@') + '</span>' +
-          (oppLogo ? '<img src="' + bbTkEsc(oppLogo) + '" alt="" style="width:52px;height:52px;object-fit:contain;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy">' : '') +
-          '<div style="flex:1;min-width:180px">' +
-            '<div style="font-family:\'Archivo\',sans-serif;font-stretch:110%;font-weight:800;font-size:clamp(18px,2.2vw,24px);color:#F3EFE6;line-height:1.1">Baobabs ' + (m.is_home ? 'vs ' : '@ ') + bbTkEsc(m.opponent_name || '') + '</div>' +
+      // Le prochain match reçoit la nappe de couleur ; les suivants gardent la
+      // bordure sobre, pour que la hiérarchie reste lisible.
+      var featured = $index === 0;
+      return '<article class="' + (featured ? 'bb-blobcard' : '') + '" data-bb-tilt data-tilt-rotation="4" data-tilt-halo="900" style="margin-bottom:clamp(16px,2vw,22px);border-radius:' + (featured ? '24px' : '20px') + ';overflow:hidden;' + (featured ? '' : 'background:#0A150F;border:1px solid rgba(243,239,230,.09);') + '">' +
+        (featured ? '<span class="bb-blobs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="bb-blobs-fade" aria-hidden="true"></span>' : '') +
+        '<div>' +
+        '<div style="position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:clamp(14px,2vw,26px);padding:clamp(22px,2.8vw,30px) clamp(18px,2.4vw,26px);border-bottom:1px solid rgba(198,162,87,.18)' + (featured ? '' : ';overflow:hidden') + '">' +
+          (featured ? '' : '<span style="position:absolute;inset:0;background:linear-gradient(140deg,#0F2417,#081C13)" aria-hidden="true"></span>') +
+          '<img src="' + BBC_LOGO + '" alt="Baobabs" style="position:relative;z-index:2;width:52px;height:52px;object-fit:contain;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy">' +
+          '<span style="position:relative;z-index:2;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:16px;color:#C6A257">' + (m.is_home ? 'VS' : '@') + '</span>' +
+          (oppLogo ? '<img src="' + bbTkEsc(oppLogo) + '" alt="" style="position:relative;z-index:2;width:52px;height:52px;object-fit:contain;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy">' : '') +
+          '<div style="position:relative;z-index:2;flex:1;min-width:180px">' +
+            '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.01em;font-size:clamp(18px,2.2vw,24px);color:#F3EFE6;line-height:1.1">Baobabs ' + (m.is_home ? 'vs ' : '@ ') + bbTkEsc(m.opponent_name || '') + '</div>' +
             '<div style="font-size:13px;color:#A9B2AB;margin-top:5px">' + bbTkEsc(bbTkDate(m.match_date, m.match_time)) + (m.venue ? ' · ' + bbTkEsc(m.venue) : '') + '</div>' +
           '</div>' +
-          (badge ? '<span style="flex:none;font-family:\'Inter\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.1em;color:#07130D;background:#C6A257;padding:6px 12px;border-radius:20px">' + badge + '</span>' : '') +
+          (badge ? '<span style="position:relative;z-index:2;flex:none;font-family:\'Inter\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.1em;color:#07130D;background:#C6A257;padding:6px 12px;border-radius:20px">' + badge + '</span>' : '') +
         '</div>' +
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;padding:clamp(18px,2.4vw,26px)">' + cats + '</div>' +
+        '<div style="position:relative;display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;padding:clamp(18px,2.4vw,26px)">' + cats + '</div>' +
+        '</div>' +
       '</article>';
     }).join('');
   }
 
   document.addEventListener('click', function(e){
     var b = e.target.closest && e.target.closest('[data-bill-offer]');
-    if (b){ e.preventDefault(); bbTkOpen(b.getAttribute('data-bill-offer')); }
+    if (b){ e.preventDefault(); bbTkOpen(b.getAttribute('data-bill-offer')); return; }
+    var s = e.target.closest && e.target.closest('[data-bill-scroll]');
+    if (s){
+      e.preventDefault();
+      var list = document.getElementById('bb-bill-list');
+      if (list) window.scrollTo({ top: Math.max(list.getBoundingClientRect().top + window.pageYOffset - 90, 0), behavior: 'smooth' });
+    }
   });
 
   function bbTkGroups(){
@@ -3295,7 +3548,7 @@ window.bbCloud = function(url, w){
           '<div style="width:50px;height:50px;border-radius:50%;background:rgba(168,217,59,.14);border:1px solid rgba(168,217,59,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:#A8D93B"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></div>' +
           '<p style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6;margin:0 0 6px">Réservation enregistrée</p>' +
           '<p style="' + note + ';margin-bottom:18px">Présentez cette référence au guichet le jour du match. Le règlement se fait sur place.</p>' +
-          '<div style="display:inline-block;font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:30px;letter-spacing:.08em;color:#C6A257;background:rgba(198,162,87,.1);border:1px solid rgba(198,162,87,.35);border-radius:12px;padding:14px 24px">' + bbTkEsc(r.reference) + '</div>' +
+          '<div style="display:inline-block;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:30px;letter-spacing:.08em;color:#C6A257;background:rgba(198,162,87,.1);border:1px solid rgba(198,162,87,.35);border-radius:12px;padding:14px 24px">' + bbTkEsc(r.reference) + '</div>' +
           '<p style="' + note + ';margin-top:16px">' + r.quantity + ' place(s) · ' + bbTkEsc(bbTkPrice(r.total_fcfa)) + ' à régler sur place.</p>' +
         '</div>';
       return;
@@ -3313,7 +3566,7 @@ window.bbCloud = function(url, w){
       var m = g.match;
       html += '<div style="margin-bottom:22px">' +
         '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#A8D93B;margin-bottom:4px">' + bbTkEsc(bbTkDate(m.match_date, m.match_time)) + '</div>' +
-        '<div style="font-family:\'Archivo\',sans-serif;font-stretch:110%;font-weight:800;font-size:17px;color:#F3EFE6;margin-bottom:2px">Baobabs ' + (m.is_home ? 'vs ' : '@ ') + bbTkEsc(m.opponent_name || '') + '</div>' +
+        '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.01em;font-size:17px;color:#F3EFE6;margin-bottom:2px">Baobabs ' + (m.is_home ? 'vs ' : '@ ') + bbTkEsc(m.opponent_name || '') + '</div>' +
         (m.venue ? '<div style="font-size:12.5px;color:#7E8A82;margin-bottom:12px">' + bbTkEsc(m.venue) + '</div>' : '<div style="height:12px"></div>') +
         '<div style="display:flex;flex-direction:column;gap:8px">';
       g.offers.forEach(function(o){
@@ -3321,11 +3574,11 @@ window.bbCloud = function(url, w){
         var sold = left <= 0;
         var on = String(bbTkSel) === String(o.id);
         html += '<button type="button" ' + (sold ? 'disabled' : 'data-tk-offer="' + o.id + '"') +
-          ' style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:13px 15px;border-radius:11px;cursor:' + (sold ? 'not-allowed' : 'pointer') + ';font-family:\'Inter\',sans-serif;transition:border-color .15s,background .15s;' +
+          ' style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:13px 15px;border-radius:11px;cursor:' + (sold ? 'not-allowed' : 'pointer') + ';font-family:\'Inter\',sans-serif;transition:border-color .12s,background .12s;' +
           'border:1px solid ' + (on ? '#A8D93B' : 'rgba(243,239,230,.16)') + ';background:' + (on ? 'rgba(168,217,59,.09)' : 'rgba(243,239,230,.04)') + ';opacity:' + (sold ? '.45' : '1') + '">' +
           '<span style="min-width:0"><span style="display:block;font-weight:700;font-size:14px;color:#F3EFE6">' + bbTkEsc(o.category) + '</span>' +
           '<span style="display:block;font-size:11.5px;color:' + (left <= 10 && !sold ? '#C6A257' : '#7E8A82') + ';margin-top:3px">' + (sold ? 'Complet' : left + ' place(s) restante(s)') + '</span></span>' +
-          '<span style="flex:none;font-family:\'Archivo\',sans-serif;font-stretch:110%;font-weight:900;font-size:15px;color:#C6A257">' + bbTkEsc(bbTkPrice(o.price_fcfa)) + '</span>' +
+          '<span style="flex:none;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.015em;font-size:15px;color:#C6A257">' + bbTkEsc(bbTkPrice(o.price_fcfa)) + '</span>' +
           '</button>';
       });
       html += '</div></div>';
@@ -3343,7 +3596,7 @@ window.bbCloud = function(url, w){
           '<span style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#93A099">Nombre de places</span>' +
           '<span style="display:flex;align-items:center;gap:12px">' +
             '<button type="button" data-tk-qty="-1" class="bb-qty-btn" aria-label="Retirer une place">−</button>' +
-            '<b style="font-family:\'Archivo\',sans-serif;font-stretch:110%;font-weight:900;font-size:18px;color:#F3EFE6;min-width:22px;text-align:center">' + bbTkQty + '</b>' +
+            '<b style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.015em;font-size:18px;color:#F3EFE6;min-width:22px;text-align:center">' + bbTkQty + '</b>' +
             '<button type="button" data-tk-qty="1" class="bb-qty-btn" aria-label="Ajouter une place">+</button>' +
           '</span>' +
         '</div>' +
@@ -3353,7 +3606,7 @@ window.bbCloud = function(url, w){
         (currentCustomer ? '' : '<p style="font-size:12.5px;color:#7E8A82;margin:0">Astuce : <a href="#" data-tk-login style="color:#C6A257">connectez-vous</a> pour retrouver vos réservations dans votre compte.</p>') +
         '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-top:2px">' +
           '<span style="font-size:13px;color:#93A099">À régler sur place</span>' +
-          '<b style="font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:24px;color:#C6A257">' + bbTkEsc(bbTkPrice((sel.price_fcfa || 0) * bbTkQty)) + '</b>' +
+          '<b style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#C6A257">' + bbTkEsc(bbTkPrice((sel.price_fcfa || 0) * bbTkQty)) + '</b>' +
         '</div>' +
         '<p id="bb-tk-error" class="bb-hide" style="font-size:12.5px;color:#E5564A;margin:0"></p>' +
         '<button type="button" id="bb-tk-confirm" class="bb-btn-solid">Réserver</button>' +
@@ -3522,6 +3775,7 @@ window.bbCloud = function(url, w){
     sbFetch('site_settings?select=*').then(function(rows){
       var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyHeroSplit(s); applyContent(s); applySiteSettings(s); applyFaceOff(s); applyNewsletter(s); applyLegal(s); applyMedia(s); applyApp(s); applyAppScreens(s); applyTryouts(s); applyTryMedia(s); applyStats(s); applyTribu(s); applyCamp(s); applyFooterCols(s); applyCtaModals(s);
       if(window.bbApplyLegacySettings) window.bbApplyLegacySettings(s);
+      bbRevealSoon();
     }).catch(function(){
       // Réglages indisponibles : le bloc live reste sur son état par défaut.
       if(window.bbApplyLegacySettings) window.bbApplyLegacySettings({});
@@ -3671,6 +3925,13 @@ window.bbCloud = function(url, w){
   // ============================================================================
   function bbSet(id,val){ if(val==null||val==='') return; var el=document.getElementById(id); if(el) el.textContent=val; }
   function bbSetAll(name,val){ if(val==null||val==='') return; document.querySelectorAll('[data-bb="'+name+'"]').forEach(function(el){ el.textContent=val; }); }
+  // Les textes administrés arrivent après le premier rendu : on redécoupe les
+  // titres animés une fois l'hydratation passée.
+  var bbRevealAgain = null;
+  function bbRevealSoon(){
+    clearTimeout(bbRevealAgain);
+    bbRevealAgain = setTimeout(function(){ if (window.bbRevealText) window.bbRevealText(); }, 90);
+  }
   // Un lien saisi dans l'admin : soit une page du site (accueil, club, equipes,
   // competitions, tryouts, boutique), soit un mot-clé de modale (billetterie,
   // contact, abonnement), soit une URL complète (https://…, mailto:, tel:).
@@ -4063,7 +4324,7 @@ window.bbCloud = function(url, w){
       return '<article style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:16px;overflow:hidden">'+img+
         '<div style="padding:18px 20px 22px">'+
           (n.published_at?'<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:11px;letter-spacing:.1em;color:#C6A257;text-transform:uppercase">'+esc(fdate(n.published_at))+'</div>':'')+
-          '<h3 style="font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:21px;color:#F3EFE6;margin:6px 0 0;line-height:1.1">'+esc(n.title||'')+'</h3>'+
+          '<h3 style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:21px;color:#F3EFE6;margin:6px 0 0;line-height:1.1">'+esc(n.title||'')+'</h3>'+
           body+
         '</div></article>';
     }).join('');
@@ -4080,7 +4341,7 @@ window.bbCloud = function(url, w){
       '<div style="display:flex;gap:clamp(18px,3vw,32px);align-items:flex-start;flex-wrap:wrap;margin-top:16px">' +
         photo +
         '<div style="flex:1;min-width:240px">' +
-          '<h3 style="font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:clamp(24px,3vw,32px);color:#F3EFE6;margin:0">'+esc(s.founder_name)+'</h3>' +
+          '<h3 style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,3vw,32px);color:#F3EFE6;margin:0">'+esc(s.founder_name)+'</h3>' +
           (s.founder_role ? '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:13px;letter-spacing:.06em;color:#A8D93B;text-transform:uppercase;margin:6px 0 16px">'+esc(s.founder_role)+'</div>' : '<div style="margin-bottom:16px"></div>') +
           bio +
         '</div>' +
@@ -4202,7 +4463,7 @@ document.addEventListener('keydown', function(e){
     var crest = function(src, name){
       return src
         ? '<img src="' + escHtml((window.bbCloud?window.bbCloud(src,150):(src))) + '" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:contain;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy" decoding="async">'
-        : '<div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:\'Archivo\',sans-serif;font-stretch:125%;font-size:13px;color:#fff;flex:none;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
+        : '<div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-size:13px;color:#fff;flex:none;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
     };
     var bbCol = (won || nul) ? '#07130D' : 'rgba(7,19,13,.5)';
     var opCol = (!won || nul) ? '#07130D' : 'rgba(7,19,13,.5)';
@@ -4213,7 +4474,7 @@ document.addEventListener('keydown', function(e){
         '<div style="position:absolute;top:0;left:50%;transform:translate(-50%,-50%);z-index:2;background:#07130D;border:1px solid ' + statusCol + ';color:' + statusCol + ';font-family:\'Inter\',sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;padding:4px 12px;border-radius:20px;white-space:nowrap">' + statusTxt + '</div>' +
         '<div style="display:flex;align-items:stretch;background:linear-gradient(150deg,#0F1E15,#0A150F);border:1px solid rgba(198,162,87,.22);border-radius:14px;overflow:hidden;min-height:64px">' +
           '<div style="flex:1;display:flex;align-items:center;gap:11px;padding:10px 14px;min-width:0">' + crest(bbLogo, 'Baobabs') + '<span style="font-family:\'Inter\',sans-serif;font-weight:800;font-size:14px;letter-spacing:.02em;color:#F3EFE6;text-transform:uppercase;flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Baobabs</span></div>' +
-          '<div style="flex:none;display:flex;align-items:center;gap:9px;padding:0 clamp(12px,2vw,18px);background:linear-gradient(180deg,#D4B36A,#C6A257);font-family:\'Archivo\',sans-serif;font-stretch:125%;font-size:clamp(21px,3vw,27px);line-height:1">' +
+          '<div style="flex:none;display:flex;align-items:center;gap:9px;padding:0 clamp(12px,2vw,18px);background:linear-gradient(180deg,#D4B36A,#C6A257);font-family:\'Space Grotesk\',sans-serif;font-size:clamp(21px,3vw,27px);line-height:1">' +
             '<span style="color:' + bbCol + '">' + m.score_baobabs + '</span><span style="color:rgba(7,19,13,.4);font-size:.8em">:</span><span style="color:' + opCol + '">' + m.score_opponent + '</span>' +
           '</div>' +
           '<div style="flex:1;display:flex;align-items:center;gap:11px;padding:10px 14px;min-width:0"><span style="font-family:\'Inter\',sans-serif;font-weight:800;font-size:14px;letter-spacing:.02em;color:#F3EFE6;text-transform:uppercase;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(m.opponent_name) + '</span>' + crest(m.opponent_logo_url, m.opponent_name) + '</div>' +
@@ -4254,7 +4515,7 @@ document.addEventListener('keydown', function(e){
     function teamBlock(name, logo){
       var img = logo
         ? '<img src="' + (window.bbCloud?window.bbCloud(logo,200):(logo)) + '" alt="' + escHtml(name) + '" style="width:58px;height:58px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)" loading="lazy" decoding="async">'
-        : '<div style="width:58px;height:58px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-family:\'Archivo\',sans-serif;font-stretch:125%;font-weight:900;font-size:16px;color:#fff;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
+        : '<div style="width:58px;height:58px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:16px;color:#fff;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
       return '<div style="text-align:center;flex:1">' + img +
         '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">' + escHtml(name) + '</div></div>';
     }
@@ -4416,7 +4677,7 @@ document.addEventListener('keydown', function(e){
       if (!e.isIntersecting) return;
       reveal(e.target, true);
     });
-  }, { rootMargin: '0px 0px -10% 0px', threshold: 0.06 });;
+  }, { rootMargin: '0px 0px -10% 0px', threshold: 0.06 });
 
   function arm(el, kind, delay){
     if (!el || el.__bbArmed) return;
@@ -4485,6 +4746,72 @@ document.addEventListener('keydown', function(e){
     setTimeout(sweep, 2500);
   }
 
+  // ---- Text Reveal : découpe en mots, puis cascade à l'entrée à l'écran ----
+  function splitWords(el){
+    var label = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    // Une grande partie de ces textes vient de la base : quand l'hydratation
+    // remplace le contenu, on redécoupe au lieu d'abandonner l'effet.
+    // On vérifie aussi que les mots sont encore là : l'hydratation peut
+    // réécrire un texte identique, ce qui détruit les <span> sans changer le
+    // libellé — comparer le texte seul laisserait l'effet muet.
+    if (el.dataset.bbReveal === 'done' && el.__bbSrc === label && el.querySelector('.bb-word')) return;
+    if (el.dataset.bbReveal === 'done') el.classList.remove('bb-reveal-in');
+    el.dataset.bbReveal = 'done';
+    el.__bbSrc = label;
+    el.setAttribute('aria-label', label);
+    var step = parseInt(el.getAttribute('data-reveal-step') || '52', 10);
+    var i = 0;
+
+    // On ne touche qu'aux nœuds de texte : les <span>, <b> ou <a> déjà présents
+    // gardent leur balisage, on ne fait qu'y insérer les mots.
+    (function walk(node){
+      var kids = Array.prototype.slice.call(node.childNodes);
+      kids.forEach(function(n){
+        if (n.nodeType === 3){
+          var parts = (n.nodeValue || '').split(/(\s+)/).filter(function(s){ return s !== ''; });
+          if (!parts.length) return;
+          var frag = document.createDocumentFragment();
+          parts.forEach(function(p){
+            if (/^\s+$/.test(p)){ frag.appendChild(document.createTextNode(p)); return; }
+            var w = document.createElement('span');
+            w.className = 'bb-word';
+            w.setAttribute('aria-hidden', 'true');
+            w.style.setProperty('--bb-wd', (i++ * step) + 'ms');
+            w.textContent = p;
+            frag.appendChild(w);
+          });
+          node.replaceChild(frag, n);
+        } else if (n.nodeType === 1 && !n.classList.contains('bb-word')){
+          walk(n);
+        }
+      });
+    })(el);
+  }
+
+  var ioText = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (!e.isIntersecting) return;
+      e.target.classList.add('bb-reveal-in');
+      ioText.unobserve(e.target);
+    });
+  }, { rootMargin: '0px 0px -12% 0px', threshold: 0.15 });
+
+  function scanText(root){
+    // On repasse volontairement sur les éléments déjà découpés : c'est la
+    // comparaison de texte dans splitWords() qui décide s'il faut refaire le
+    // travail, pas un filtre de sélecteur — sinon l'hydratation détruirait les
+    // mots sans possibilité de les reconstruire.
+    (root || document).querySelectorAll('[data-bb-reveal]').forEach(function(el){
+      splitWords(el);
+      if (el.classList.contains('bb-reveal-in')) return;
+      // Déjà visible : on lance sans attendre le franchissement de seuil.
+      var r = el.getBoundingClientRect();
+      if (r.top < (window.innerHeight || 800) * 0.95 && r.bottom > 0) el.classList.add('bb-reveal-in');
+      else ioText.observe(el);
+    });
+  }
+  window.bbRevealText = scanText;
+
   // ---- Compteurs : nombres entiers seulement, une fois chacun ----
   function countUp(el){
     var raw = (el.textContent || '').trim();
@@ -4537,11 +4864,11 @@ document.addEventListener('keydown', function(e){
   var pending = null;
   window.bbRescanMotion = function(){
     clearTimeout(pending);
-    pending = setTimeout(function(){ scan(); scanNumbers(); safetyNet(); }, 60);
+    pending = setTimeout(function(){ scan(); scanNumbers(); scanText(); safetyNet(); }, 60);
   };
 
   function boot(){
-    scan(); scanNumbers(); onScroll(); sweep(); safetyNet();
+    scan(); scanNumbers(); scanText(); onScroll(); sweep(); safetyNet();
     window.addEventListener('resize', onScroll, { passive: true });
     ['bb-actus-grid','bb-home-products','bb-effectif','bb-effectif-equipes','bb-media-grid'].forEach(function(id){
       var el = document.getElementById(id);
