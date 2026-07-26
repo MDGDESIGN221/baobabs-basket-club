@@ -685,6 +685,7 @@
         <button class="sb-link" data-section="applications">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
           Candidatures
+          <span class="sb-link-badge hide" id="sb-applications-badge">0</span>
         </button>
       </div>
 
@@ -2947,8 +2948,7 @@
     var inboxTables = [
       {key:'newsletter', table:'newsletter_subscribers'},
       {key:'contact', table:'contact_messages'},
-      {key:'orders', table:'orders'},
-      {key:'recruitment', table:'recruitment_requests'}
+      {key:'orders', table:'orders'}
     ];
     var totalNew = 0, doneCount = 0;
     Promise.all(inboxTables.map(function(t){
@@ -2969,6 +2969,19 @@
       if(totalNew>0){ badge.textContent = totalNew>99?'99+':totalNew; badge.classList.remove('hide'); }
       else badge.classList.add('hide');
     });
+
+    // Compteur Candidatures : distinct du badge Messages depuis que les
+    // candidatures ont leur propre menu — on ne remonte que les dossiers
+    // au statut "nouvelle" (pas encore traités), pas le total de la table,
+    // sinon le badge resterait élevé en permanence même à jour.
+    sbGet('recruitment_requests?select=id,status&order=created_at.desc').then(function(rows){
+      rows=rows||[];
+      document.getElementById('dash-recruitment-num').textContent=rows.length;
+      var pendingRecruit = rows.filter(function(r){ return (r.status||'nouvelle')==='nouvelle'; }).length;
+      var appBadge=document.getElementById('sb-applications-badge');
+      if(pendingRecruit>0){ appBadge.textContent = pendingRecruit>99?'99+':pendingRecruit; appBadge.classList.remove('hide'); }
+      else appBadge.classList.add('hide');
+    }).catch(function(){ document.getElementById('dash-recruitment-num').textContent='—'; });
   }
 
   // ===================== CANDIDATURES (module dossier) =====================
@@ -3162,10 +3175,13 @@
         '<div class="cd-doc-hero">'+
           cdAvatar(r,'cd-photo')+
           '<div style="flex:1;min-width:240px">'+
-            '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:9px">'+
-              '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
-              (r.gender==='M'?'<span class="rec-gender m">Garçon</span>':(r.gender==='F'?'<span class="rec-gender f">Fille</span>':''))+
-              alerte+interviewBadge+
+            '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:9px">'+
+              '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+
+                '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
+                (r.gender==='M'?'<span class="rec-gender m">Garçon</span>':(r.gender==='F'?'<span class="rec-gender f">Fille</span>':''))+
+                alerte+interviewBadge+
+              '</div>'+
+              '<button type="button" class="btn btn-ghost" id="cd-archive-toggle" style="padding:7px 12px;font-size:11.5px;flex:none">'+((r.status||'nouvelle')==='archivee'?'Désarchiver':'Archiver')+'</button>'+
             '</div>'+
             '<h2 class="cd-doc-name">'+esc(r.full_name||'—')+'</h2>'+
             '<div class="cd-doc-sub">'+esc(cdSubline(r)||'Profil à compléter')+'<br>Reçue le '+esc(fmtDateTime(r.created_at))+'</div>'+
@@ -3256,6 +3272,13 @@
     // --- Statut ---
     box.querySelectorAll('.cd-st').forEach(function(b){
       b.addEventListener('click', function(){ cdSetStatus(r.id, b.getAttribute('data-st')); });
+    });
+    // --- Archiver / désarchiver : la "corbeille" du module — jamais une
+    // vraie suppression, juste un changement de statut réversible en un clic.
+    var archiveBtn = document.getElementById('cd-archive-toggle');
+    if (archiveBtn) archiveBtn.addEventListener('click', function(){
+      var isArchived = (r.status||'nouvelle')==='archivee';
+      cdSetStatus(r.id, isArchived ? 'en_attente' : 'archivee');
     });
     // --- Étoiles ---
     box.querySelectorAll('#cd-stars button').forEach(function(b){
