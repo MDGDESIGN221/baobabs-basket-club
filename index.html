@@ -395,7 +395,13 @@
   #bb-back-btn{flex:none;width:44px;height:44px;border:1px solid rgba(243,239,230,.18);border-radius:10px;background:transparent;color:#F3EFE6;cursor:pointer;align-items:center;justify-content:center;display:none}
   #bb-back-btn:active{background:rgba(243,239,230,.06)}
 
-  #bb-legal-modal,#bb-cta-modal,#bb-role-modal,#bb-ticket-modal{width:100%;max-width:600px;margin:auto;max-height:86vh;display:flex;flex-direction:column;background:#0A150F;border:1px solid rgba(198,162,87,.28);border-radius:18px;overflow:hidden;animation:bbPopIn .3s cubic-bezier(.16,.8,.3,1) both}
+  .bb-me-tab{font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;padding:9px 14px;border-radius:100px;cursor:pointer;transition:all .15s ease;color:#A9B2AB;background:transparent;border:1px solid rgba(243,239,230,.16)}
+  .bb-me-tab:hover{color:#F3EFE6;border-color:rgba(243,239,230,.3)}
+  .bb-me-tab.on{color:#061109;background:#A8D93B;border-color:#A8D93B}
+  .bb-me-row{display:flex;align-items:flex-start;gap:14px;padding:15px 0;border-bottom:1px solid rgba(243,239,230,.08)}
+  .bb-me-row:last-child{border-bottom:none}
+
+  #bb-legal-modal,#bb-cta-modal,#bb-role-modal,#bb-ticket-modal,#bb-account-modal{width:100%;max-width:600px;margin:auto;max-height:86vh;display:flex;flex-direction:column;background:#0A150F;border:1px solid rgba(198,162,87,.28);border-radius:18px;overflow:hidden;animation:bbPopIn .3s cubic-bezier(.16,.8,.3,1) both}
   .bb-legal-body{overflow-y:auto;padding:0 clamp(20px,4vw,32px) 28px}
   .bb-legal-body h4{font-family:'Inter',sans-serif;font-weight:700;font-size:14px;color:#C6A257;letter-spacing:.02em;margin:22px 0 8px}
   .bb-legal-body h4:first-child{margin-top:0}
@@ -1911,6 +1917,28 @@
     </div>
   </div>
 
+  <!-- ===== modal mon espace ===== -->
+  <div id="bb-account-overlay" class="bb-hide">
+    <div class="bb-scrim" data-close-overlay></div>
+    <div class="bb-modal-wrap">
+      <div id="bb-account-modal">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) 0">
+          <div>
+            <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#F3EFE6;margin:0">Mon espace</h3>
+            <p id="bb-me-hello" style="font-size:13px;color:#7E8A82;margin:5px 0 0"></p>
+          </div>
+          <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+        <div style="display:flex;gap:8px;padding:16px clamp(20px,4vw,26px) 0;flex-wrap:wrap">
+          <button type="button" class="bb-me-tab" data-me-tab="resa">Mes réservations</button>
+          <button type="button" class="bb-me-tab" data-me-tab="cmd">Mes commandes</button>
+          <button type="button" class="bb-me-tab" data-me-tab="info">Mes informations</button>
+        </div>
+        <div class="bb-legal-body" id="bb-me-body" style="padding-top:18px"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== modal billetterie ===== -->
   <div id="bb-ticket-overlay" class="bb-hide">
     <div class="bb-scrim" data-close-overlay></div>
@@ -2072,12 +2100,13 @@ window.bbCloud = function(url, w){
     auth: { storageKey: 'bbc-client-auth' }
   });
   var currentCustomer = null; // { user, name, phone } une fois connecté, sinon null
-  function sbInsert(table, payload){
+  function sbInsert(table, payload, useSession){
+    var token = (useSession && typeof sbSession !== 'undefined' && sbSession && sbSession.access_token) || SUPABASE_KEY;
     return fetch(SUPABASE_URL + '/rest/v1/' + table, {
       method: 'POST',
       headers: {
         'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
@@ -2611,7 +2640,7 @@ window.bbCloud = function(url, w){
     document.body.style.overflow = 'hidden';
   }
   function closeOverlays(){
-    ['bb-cart-overlay','bb-product-overlay','bb-player-overlay','bb-role-overlay','bb-legal-overlay','bb-cta-overlay','bb-recruit-overlay','bb-login-overlay','bb-register-overlay','bb-ticket-overlay'].forEach(function(id){
+    ['bb-cart-overlay','bb-product-overlay','bb-player-overlay','bb-role-overlay','bb-legal-overlay','bb-cta-overlay','bb-recruit-overlay','bb-login-overlay','bb-register-overlay','bb-ticket-overlay','bb-account-overlay'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.classList.add('bb-hide');
     });
@@ -3137,11 +3166,7 @@ window.bbCloud = function(url, w){
       var accountBtn = e.target.closest('#bb-account-btn');
       if (accountBtn) {
         e.preventDefault();
-        if (currentCustomer) {
-          if (window.confirm('Se déconnecter ?')) sb.auth.signOut();
-        } else {
-          openLogin();
-        }
+        if (currentCustomer) bbMeOpen(); else openLogin();
         return;
       }
       if (e.target.closest('[data-open-login]')) { e.preventDefault(); closeOverlays(); openLogin(); return; }
@@ -3225,7 +3250,7 @@ window.bbCloud = function(url, w){
       });
       var btn = form.querySelector('button[type=submit]');
       btn.disabled = true;
-      sbInsert('orders', { customer_name: name, customer_phone: phone, customer_email: email || null, pickup_location: pickup || null, note: note || null, items: items, total: cartTotal() })
+      sbInsert('orders', { customer_name: name, customer_phone: phone, customer_email: email || null, pickup_location: pickup || null, note: note || null, items: items, total: cartTotal(), customer_id: (currentCustomer && currentCustomer.user.id) || null }, true)
         .then(function(){
           state.cart = [];
           updateBadge();
@@ -3372,8 +3397,156 @@ window.bbCloud = function(url, w){
   })();
   window.bbTilt = bbTilt;
 
+  /* ===== Mon espace (réservations, commandes, informations) ===== */
+  var bbMeTab = 'resa', bbMeResa = null, bbMeCmd = null, bbMeLinked = false;
+
+  function bbMeOpen(){
+    if (!currentCustomer) { openLogin(); return; }
+    openOverlay('bb-account-overlay');
+    var hello = document.getElementById('bb-me-hello');
+    if (hello) hello.textContent = (currentCustomer.name ? currentCustomer.name + ' · ' : '') + (currentCustomer.user.email || '');
+    bbMeTab = 'resa';
+    bbMeRender();
+    // Une seule fois par session : on rapatrie les commandes et réservations
+    // passées avec la même adresse e-mail avant de connaître le compte.
+    var pre = bbMeLinked ? Promise.resolve() : bbTkRpc('bbc_rattacher_historique', {}).catch(function(){});
+    bbMeLinked = true;
+    pre.then(bbMeLoad);
+  }
+
+  function bbMeLoad(){
+    return Promise.all([
+      fetch(SUPABASE_URL + '/rest/v1/mes_reservations?select=*&order=match_date.desc', { headers: bbTkHeaders() })
+        .then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; }),
+      // Filtre explicite en plus de la sécurité de la base : si une policy
+      // venait à manquer, on ne récupérerait pas les commandes d'autrui.
+      fetch(SUPABASE_URL + '/rest/v1/orders?select=*&customer_id=eq.' + currentCustomer.user.id + '&order=created_at.desc', { headers: bbTkHeaders() })
+        .then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; })
+    ]).then(function(res){
+      bbMeResa = res[0] || []; bbMeCmd = res[1] || [];
+      bbMeRender();
+    });
+  }
+
+  function bbMeStatus(s){
+    var map = {
+      reservee: ['Réservée', '#C6A257'], retiree: ['Retirée', '#A8D93B'],
+      annulee: ['Annulée', '#7E8A82'], expiree: ['Non retirée', '#7E8A82']
+    };
+    var m = map[s] || ['—', '#7E8A82'];
+    return '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;padding:4px 9px;border-radius:100px;white-space:nowrap;color:' + m[1] + ';border:1px solid ' + m[1] + '55;background:' + m[1] + '14">' + m[0] + '</span>';
+  }
+
+  function bbMeRender(){
+    var body = document.getElementById('bb-me-body');
+    if (!body) return;
+    document.querySelectorAll('.bb-me-tab').forEach(function(b){
+      b.classList.toggle('on', b.getAttribute('data-me-tab') === bbMeTab);
+    });
+    var note = 'font-size:13.5px;line-height:1.65;color:#B9C2BB;margin:0';
+
+    if (bbMeTab === 'info'){
+      var c = currentCustomer;
+      body.innerHTML =
+        '<div style="display:flex;flex-direction:column;gap:14px">' +
+          '<div class="bb-field"><label>Nom</label><input type="text" value="' + bbTkEsc(c.name) + '" readonly></div>' +
+          '<div class="bb-field"><label>Email</label><input type="email" value="' + bbTkEsc(c.user.email || '') + '" readonly></div>' +
+          '<div class="bb-field"><label>Téléphone</label><input type="tel" value="' + bbTkEsc(c.phone) + '" readonly></div>' +
+          '<p style="' + note + '">Pour modifier vos informations, écrivez-nous — nous mettons votre fiche à jour.</p>' +
+          '<button type="button" id="bb-me-logout" style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:13px;border-radius:10px;border:1px solid rgba(224,86,74,.4);background:transparent;color:#E5564A;cursor:pointer">Se déconnecter</button>' +
+        '</div>';
+      var lo = document.getElementById('bb-me-logout');
+      if (lo) lo.addEventListener('click', function(){ closeOverlays(); sb.auth.signOut(); });
+      return;
+    }
+
+    if (bbMeTab === 'resa'){
+      if (bbMeResa === null){ body.innerHTML = '<p style="' + note + '">Chargement…</p>'; return; }
+      if (!bbMeResa.length){
+        body.innerHTML = '<p style="' + note + ';margin-bottom:16px">Vous n\'avez pas encore de réservation.</p>' +
+          '<button type="button" class="bb-btn-solid" data-me-tickets>Voir la billetterie</button>';
+        return;
+      }
+      var futur = bbMeResa.filter(function(r){ return r.a_venir; });
+      var passe = bbMeResa.filter(function(r){ return !r.a_venir; });
+      var html = '';
+      if (futur.length) html += '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#A8D93B;margin-bottom:4px">À venir</div>' + futur.map(bbMeResaRow).join('');
+      if (passe.length) html += '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin:22px 0 4px">Historique</div>' + passe.map(bbMeResaRow).join('');
+      html += '<p id="bb-me-msg" class="bb-hide" style="font-size:12.5px;margin:14px 0 0"></p>';
+      body.innerHTML = html;
+      body.querySelectorAll('[data-me-cancel]').forEach(function(b){
+        b.addEventListener('click', function(){ bbMeCancel(b.getAttribute('data-me-cancel'), b); });
+      });
+      return;
+    }
+
+    if (bbMeCmd === null){ body.innerHTML = '<p style="' + note + '">Chargement…</p>'; return; }
+    if (!bbMeCmd.length){
+      body.innerHTML = '<p style="' + note + ';margin-bottom:16px">Vous n\'avez pas encore de commande.</p>' +
+        '<button type="button" class="bb-btn-solid" data-me-shop>Voir la boutique</button>';
+      return;
+    }
+    body.innerHTML = bbMeCmd.map(function(o){
+      var items = [];
+      try { items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []); } catch(e){ items = []; }
+      var n = items.reduce(function(a, it){ return a + (it.qty || 1); }, 0);
+      var d = o.created_at ? new Date(o.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }) : '';
+      return '<div class="bb-me-row">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6">' + n + ' article(s) · ' + bbTkEsc(bbTkPrice(o.total)) + '</div>' +
+          '<div style="font-size:12.5px;color:#7E8A82;margin-top:4px">' + bbTkEsc(d) + (o.pickup_location ? ' · retrait : ' + bbTkEsc(o.pickup_location) : '') + '</div>' +
+          (items.length ? '<div style="font-size:12px;color:#5F6B63;margin-top:5px">' + bbTkEsc(items.map(function(it){ return (it.qty > 1 ? it.qty + '× ' : '') + (it.name || ''); }).join(', ')) + '</div>' : '') +
+        '</div></div>';
+    }).join('');
+  }
+
+  function bbMeResaRow(r){
+    var d = r.match_date ? bbTkDate(r.match_date, r.match_time) : '';
+    return '<div class="bb-me-row">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">' + bbMeStatus(r.status) +
+          '<span style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:.04em;color:#C6A257;font-size:14px">' + bbTkEsc(r.reference) + '</span></div>' +
+        '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6;margin-top:6px">Baobabs ' + (r.is_home ? 'vs ' : '@ ') + bbTkEsc(r.opponent_name || '') + '</div>' +
+        '<div style="font-size:12.5px;color:#7E8A82;margin-top:4px">' + bbTkEsc(d) + ' · ' + bbTkEsc(r.category) + ' · ' + r.quantity + ' place(s) · ' + bbTkEsc(bbTkPrice(r.total_fcfa)) + '</div>' +
+        (r.status === 'reservee' ? '<div style="font-size:12px;color:#5F6B63;margin-top:5px">À régler sur place, au guichet.</div>' : '') +
+      '</div>' +
+      (r.annulable ? '<button type="button" data-me-cancel="' + r.id + '" style="flex:none;align-self:center;font-family:\'Inter\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:9px 13px;border-radius:9px;border:1px solid rgba(243,239,230,.18);background:transparent;color:#A9B2AB;cursor:pointer">Annuler</button>' : '') +
+    '</div>';
+  }
+
+  function bbMeCancel(id, btn){
+    if (!window.confirm('Annuler cette réservation ? Votre place repartira en vente.')) return;
+    var msg = document.getElementById('bb-me-msg');
+    btn.disabled = true; btn.textContent = '…';
+    bbTkRpc('bbc_annuler_reservation', { p_reservation_id: id })
+      .then(function(){
+        if (msg){ msg.textContent = 'Réservation annulée.'; msg.style.color = '#A8D93B'; msg.classList.remove('bb-hide'); }
+        return bbMeLoad();
+      })
+      .catch(function(){
+        btn.disabled = false; btn.textContent = 'Annuler';
+        if (msg){ msg.textContent = 'L\'annulation n\'a pas pu être enregistrée. Le match est peut-être trop proche.'; msg.style.color = '#E5564A'; msg.classList.remove('bb-hide'); }
+      });
+  }
+
+  document.addEventListener('click', function(e){
+    var t = e.target.closest && e.target.closest('.bb-me-tab');
+    if (t){ bbMeTab = t.getAttribute('data-me-tab'); bbMeRender(); return; }
+    if (e.target.closest && e.target.closest('[data-me-tickets]')){ closeOverlays(); bbTkOpen(); return; }
+    if (e.target.closest && e.target.closest('[data-me-shop]')){ closeOverlays(); goTo('boutique'); return; }
+  });
+
   /* ===== billetterie (réservation, paiement sur place) ===== */
   var bbTkOffers = [], bbTkSel = null, bbTkQty = 1, bbTkState = 'idle', bbTkResult = null;
+
+  function bbTkRpc(fn, body){
+    return fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, { method: 'POST', headers: bbTkHeaders(), body: JSON.stringify(body || {}) })
+      .then(function(r){ return r.text().then(function(t){
+        var j = null; try { j = t ? JSON.parse(t) : null; } catch(e){}
+        if (!r.ok) throw new Error((j && (j.message || j.hint)) || 'erreur');
+        return j;
+      }); });
+  }
 
   function bbTkHeaders(){
     var token = (typeof sbSession !== 'undefined' && sbSession && sbSession.access_token) || SUPABASE_KEY;
