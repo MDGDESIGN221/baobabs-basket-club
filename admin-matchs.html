@@ -451,6 +451,11 @@
   .cd-status-grid{display:flex;flex-wrap:wrap;gap:6px}
   .cd-st{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:7px 11px;border-radius:100px;cursor:pointer;transition:all .14s;background:transparent}
   .cd-notes{width:100%;background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:11px;color:var(--text);font:inherit;font-size:13px;line-height:1.6;resize:vertical;min-height:88px}
+  .cd-input{width:100%;background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:9px 11px;color:var(--text);font:inherit;font-size:13px}
+  .cd-input:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:transparent}
+  .cd-followup-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  @media(max-width:640px){.cd-followup-grid{grid-template-columns:1fr}}
+  .cd-followup-label{font-size:11.5px;color:var(--faint);margin-bottom:5px;display:block}
   .cd-draft{font-size:11.5px;color:var(--gold);margin-top:7px}
   .cd-jrnl{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid rgba(243,239,230,.05);font-size:12.5px}
   .cd-jrnl:last-child{border-bottom:none}
@@ -790,7 +795,7 @@
           <div class="dash-stat-label">Commandes</div>
           <div class="dash-stat-sub" id="dash-orders-new-sub"></div>
         </button>
-        <button class="dash-stat" data-section="forms" data-form="recruitment">
+        <button class="dash-stat" data-section="applications">
           <div class="dash-stat-top">
             <div class="dash-stat-icon" style="background:var(--gold-soft);color:var(--gold)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m19 8 2 2 4-4" transform="translate(-3 0)"/></svg>
@@ -1317,12 +1322,11 @@
 
     <!-- ===== SECTION MESSAGES (newsletter / contact / commandes) ===== -->
     <section id="section-forms" class="hide">
-      <div class="callout">Ce que les visiteurs envoient depuis le site : newsletter, contact, commandes et candidatures. Les <b>candidatures</b> et <b>commandes</b> se gèrent ici (statut, note, tri) ; newsletter et contact sont en consultation.</div>
+      <div class="callout">Ce que les visiteurs envoient depuis le site : newsletter, contact et commandes. Les <b>commandes</b> se gèrent ici (statut, tri). Les candidatures de recrutement ont leur propre espace, plus complet : menu <b>Candidatures</b>.</div>
       <div class="nav-scroll" id="forms-nav" style="margin-bottom:18px">
         <button class="nav-btn active" data-form="newsletter">Newsletter</button>
         <button class="nav-btn" data-form="contact">Contact</button>
         <button class="nav-btn" data-form="orders">Commandes</button>
-        <button class="nav-btn" data-form="recruitment">Recrutement</button>
       </div>
       <div class="list-head"><h2 id="forms-list-title">Inscriptions newsletter</h2><span class="list-count" id="forms-count">—</span></div>
       <div class="rec-filters hide" id="rec-filters-bar">
@@ -2743,6 +2747,17 @@
     var d = new Date(ts);
     return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   }
+  // Convertit un timestamp ISO (avec fuseau, tel que renvoyé par Supabase)
+  // vers le format attendu par <input type="datetime-local"> (heure locale
+  // du navigateur, sans fuseau) — sans ça, l'entretien s'afficherait décalé
+  // ou l'input resterait vide alors qu'une date existe en base.
+  function cdToLocalInput(ts){
+    if(!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    var pad=function(n){ return String(n).padStart(2,'0'); };
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+  }
   function normalizeOrderStatus(raw){
     if(raw==='traitée'||raw==='traitee'||raw==='done') return 'récupérée';
     if(!raw) return 'nouvelle';
@@ -2806,7 +2821,7 @@
           if(b.classList.contains('current')) return;
           var id=b.getAttribute('data-id'), st=b.getAttribute('data-s');
           list.querySelectorAll('.rec-status-pill[data-id="'+id+'"]').forEach(function(x){ x.classList.toggle('current', x===b); });
-          sbUpdate('recruitment_requests',id,{status:st},'Candidatures').then(function(){ loadDashboard && loadDashboard(); }).catch(function(){ alert('Erreur lors de la mise à jour du statut.'); loadForms(); });
+          sbUpdate('recruitment_requests',id,{status:st},'Candidatures').then(function(){ syncRecruitRow(id,{status:st}); loadDashboard && loadDashboard(); }).catch(function(){ alert('Erreur lors de la mise à jour du statut.'); loadForms(); });
         });
       });
       list.querySelectorAll('.rec-star').forEach(function(b){
@@ -2816,13 +2831,22 @@
           var already=(cur[v-1] && cur[v-1].classList.contains('on') && (v===cur.length || !cur[v].classList.contains('on')));
           var val=already?0:v;
           cur.forEach(function(x,i){ x.classList.toggle('on', i<val); });
-          sbUpdate('recruitment_requests',id,{rating:val},'Candidatures').catch(function(){ alert('Erreur note.'); loadForms(); });
+          sbUpdate('recruitment_requests',id,{rating:val},'Candidatures').then(function(){ syncRecruitRow(id,{rating:val}); }).catch(function(){ alert('Erreur note.'); loadForms(); });
         });
       });
       list.querySelectorAll('.rec-notes').forEach(function(t){
         var to=null;
-        t.addEventListener('input',function(){ clearTimeout(to); to=setTimeout(function(){ sbUpdate('recruitment_requests',t.getAttribute('data-id'),{admin_notes:t.value},'Candidatures').catch(function(){}); },700); });
+        t.addEventListener('input',function(){ clearTimeout(to); to=setTimeout(function(){ var id=t.getAttribute('data-id'); sbUpdate('recruitment_requests',id,{admin_notes:t.value},'Candidatures').then(function(){ syncRecruitRow(id,{admin_notes:t.value}); }).catch(function(){}); },700); });
       });
+  }
+  // Après un sbUpdate réussi sur une candidature, on répercute le
+  // changement dans allRecruitRows (la donnée en mémoire utilisée par
+  // les filtres/tri) — sinon toute nouvelle recherche ou changement de
+  // filtre régénère l'affichage à partir d'une copie périmée et fait
+  // "disparaître" la note ou le statut qu'on vient pourtant d'enregistrer.
+  function syncRecruitRow(id,patch){
+    var row = allRecruitRows.filter(function(r){ return String(r.id)===String(id); })[0];
+    if (row) Object.assign(row,patch);
   }
   function loadForms(){
     var f=FORMS[currentForm];
@@ -3126,6 +3150,12 @@
     var jours = r.jours_depuis_reception!=null ? Math.floor(r.jours_depuis_reception) : null;
     var alerte = (r.status||'nouvelle')==='nouvelle' && jours!=null && jours>=2
       ? '<span class="status-pill" style="color:#E08A5B;border:1px solid #E08A5B55;background:#E08A5B14">Reçue il y a '+jours+' jours</span>' : '';
+    var interviewBadge = '';
+    if (r.interview_at) {
+      var iv = new Date(r.interview_at);
+      var passed = iv.getTime() < Date.now();
+      interviewBadge = '<span class="status-pill" style="color:'+(passed?'#8F9A92':'#7DD3C0')+';border:1px solid '+(passed?'#8F9A9255':'#7DD3C055')+';background:'+(passed?'#8F9A9214':'#7DD3C014')+'">'+(passed?'Entretien passé le ':'Entretien le ')+esc(fmtDateTime(r.interview_at))+'</span>';
+    }
 
     box.innerHTML =
       '<div class="cd-doc">'+
@@ -3135,7 +3165,7 @@
             '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:9px">'+
               '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
               (r.gender==='M'?'<span class="rec-gender m">Garçon</span>':(r.gender==='F'?'<span class="rec-gender f">Fille</span>':''))+
-              alerte+
+              alerte+interviewBadge+
             '</div>'+
             '<h2 class="cd-doc-name">'+esc(r.full_name||'—')+'</h2>'+
             '<div class="cd-doc-sub">'+esc(cdSubline(r)||'Profil à compléter')+'<br>Reçue le '+esc(fmtDateTime(r.created_at))+'</div>'+
@@ -3156,6 +3186,21 @@
             '<div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">'+
               '<span style="font-size:12px;color:var(--faint)">Note interne</span>'+
               '<div class="cd-stars2" id="cd-stars">'+stars+'</div>'+
+            '</div>'+
+          '</div></div>'+
+
+          '<div class="cd-sec"><div class="cd-sec-h">Suivi du dossier</div><div class="cd-sec-b">'+
+            '<div class="cd-followup-grid">'+
+              '<div><span class="cd-followup-label">Entretien prévu le</span><input type="datetime-local" class="cd-input" id="cd-interview" value="'+esc(cdToLocalInput(r.interview_at))+'"></div>'+
+              '<div><span class="cd-followup-label">Responsable du dossier</span><input type="text" class="cd-input" id="cd-assigned" placeholder="Nom de la personne en charge" value="'+esc(r.assigned_to||'')+'"></div>'+
+            '</div>'+
+            '<div style="margin-top:12px">'+
+              '<span class="cd-followup-label">Motif de la décision <span style="color:var(--faint);text-transform:none">(visible seulement en interne)</span></span>'+
+              '<textarea class="cd-notes" id="cd-decision" rows="2" placeholder="Ex : profil trop jeune pour la catégorie, revoir la saison prochaine…">'+esc(r.decision_note||'')+'</textarea>'+
+            '</div>'+
+            '<div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:9px">'+
+              '<span class="cd-draft" id="cd-followup-msg"></span>'+
+              '<button type="button" class="btn btn-ghost" id="cd-save-followup" style="padding:9px 14px;font-size:12px">Enregistrer le suivi</button>'+
             '</div>'+
           '</div></div>'+
 
@@ -3219,6 +3264,27 @@
         sbUpdate('recruitment_requests', r.id, { rating: v }, 'Candidatures')
           .then(function(){ r.rating = v; cdRenderDoc(); }).catch(function(){});
       });
+    });
+    // --- Suivi : entretien, responsable, motif de décision ---
+    var saveFollowupBtn = document.getElementById('cd-save-followup');
+    var followupMsg = document.getElementById('cd-followup-msg');
+    if (saveFollowupBtn) saveFollowupBtn.addEventListener('click', function(){
+      var interviewRaw = document.getElementById('cd-interview').value; // '' ou 'YYYY-MM-DDTHH:mm'
+      var assigned = document.getElementById('cd-assigned').value.trim();
+      var decision = document.getElementById('cd-decision').value.trim();
+      // datetime-local n'a pas de fuseau : new Date(...) l'interprète en
+      // heure locale du navigateur, ce qui est le bon comportement ici
+      // (l'entretien est fixé dans le fuseau de la personne qui saisit).
+      var interviewIso = interviewRaw ? new Date(interviewRaw).toISOString() : null;
+      saveFollowupBtn.disabled = true;
+      sbUpdate('recruitment_requests', r.id, { interview_at: interviewIso, assigned_to: assigned || null, decision_note: decision || null }, 'Candidatures')
+        .then(function(){
+          r.interview_at = interviewIso; r.assigned_to = assigned || null; r.decision_note = decision || null;
+          followupMsg.textContent = 'Suivi enregistré ✓'; followupMsg.style.color = 'var(--gold)';
+          setTimeout(function(){ followupMsg.textContent=''; }, 2500);
+        })
+        .catch(function(){ followupMsg.textContent = 'Échec de l\'enregistrement.'; followupMsg.style.color = '#E5564A'; })
+        .finally(function(){ saveFollowupBtn.disabled = false; });
     });
     // --- Notes : brouillon local, pour ne rien perdre en cas de coupure ---
     var ta = document.getElementById('cd-notes');
