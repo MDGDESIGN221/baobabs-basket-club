@@ -1062,6 +1062,7 @@
       <div class="subtabs" id="tickets-subtabs">
         <button type="button" class="subtab active" data-tksub="offers">Ventes par match</button>
         <button type="button" class="subtab" data-tksub="resa">Réservations</button>
+        <button type="button" class="subtab" data-tksub="texts">Page publique</button>
       </div>
 
       <div id="tk-sub-offers">
@@ -1108,6 +1109,8 @@
           <div class="msg" id="tk-resa-msg"></div>
         </div>
       </div>
+
+      <div id="tk-sub-texts" class="hide"><div id="qgc-tk-texts"></div></div>
     </section>
 
     <!-- ===== SECTION DIRECT ===== -->
@@ -3404,7 +3407,9 @@
         document.querySelectorAll('#tickets-subtabs .subtab').forEach(function(x){ x.classList.toggle('active',x===b); });
         document.getElementById('tk-sub-offers').classList.toggle('hide',k!=='offers');
         document.getElementById('tk-sub-resa').classList.toggle('hide',k!=='resa');
+        document.getElementById('tk-sub-texts').classList.toggle('hide',k!=='texts');
         if(k==='resa') tkLoadResa();
+        if(k==='texts') loadSettings().then(function(){ qgcRender(qgcGroup('tk_texts'),'qgc-tk-texts'); });
       });
     });
     tkLoadOffers();
@@ -4786,6 +4791,72 @@
       preview:function(v){
         function modale(t,d,ok){ return '<div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:18px"><div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:16px;color:#F3EFE6">'+esc(t)+'</div><div style="font-size:12px;line-height:1.55;color:#B9C2BB;margin-top:8px">'+esc(d)+'</div><div style="margin-top:14px;height:34px;border-radius:8px;border:1px solid rgba(243,239,230,.12);background:#07130D"></div><div style="display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11.5px;color:#A8D93B"><span>✓</span>'+esc(ok)+'</div></div>'; }
         return '<div style="display:grid;gap:12px">'+modale(v.cta_sub_title,v.cta_sub_desc,v.cta_sub_success)+modale(v.cta_con_title,v.cta_con_desc,v.cta_con_success)+'</div><p class="pv-hint">Ouvertes par les deux boutons du bandeau « Rejoins la tribu Baobabs ».</p>';
+      } },
+    { id:'club_tickets_page', page:'Billetterie · Page publique', label:'Billetterie — Textes de la page publique', fields:[
+        {key:'tk_badge', label:'Bandeau (en-tête)', type:'text', def:'Saison 2026 · Championnat D2'},
+        {key:'tk_h1', label:'Titre principal', type:'text', def:'BILLETTERIE'},
+        {key:'tk_intro', label:"Texte d'intro", type:'textarea', def:"Réservez votre place pour les matchs à domicile des Baobabs. La réservation est gratuite et immédiate : vous réglez sur place, au guichet, le jour du match."},
+        {key:'tk_step1_title', label:'Étape 1 · Titre', type:'text', def:'1 · Réservez en ligne'},
+        {key:'tk_step1_text', label:'Étape 1 · Description', type:'text', def:'Choisissez le match, la catégorie et le nombre de places.'},
+        {key:'tk_step2_title', label:'Étape 2 · Titre', type:'text', def:'2 · Gardez la référence'},
+        {key:'tk_step2_text', label:'Étape 2 · Description', type:'text', def:"Un code du type BBC-7K4M2 s'affiche à la fin de la réservation."},
+        {key:'tk_step3_title', label:'Étape 3 · Titre', type:'text', def:'3 · Payez au guichet'},
+        {key:'tk_step3_text', label:'Étape 3 · Description', type:'text', def:"Présentez votre référence à l'entrée et réglez sur place."},
+        {key:'tk_tarifs_badge', label:'Section tarifs · Bandeau', type:'text', def:'Nos tarifs'},
+        {key:'tk_tarifs_h2', label:'Section tarifs · Titre', type:'text', def:'Les catégories de place'},
+        {key:'tk_tarifs_subtitle', label:'Section tarifs · Sous-titre', type:'textarea', def:'Tarifs de référence pour un match à domicile. Le prix exact de chaque rencontre est indiqué au-dessus, dans la carte du match.'},
+        {key:'tk_tarifs_note', label:'Section tarifs · Note « À noter »', type:'textarea', def:"À noter : pour les rencontres régulières du championnat sénégalais, l'entrée standard (virages et tribunes découvertes) est généralement fixée à 1 000 FCFA, les tribunes officielles et loges entre 2 000 et 5 000 FCFA selon l'affiche et le stade. Lors de certains tournois ou matchs amicaux, l'entrée de gamme peut démarrer entre 1 000 et 2 000 FCFA."},
+        {key:'tk_tarif1_category', label:'Tarif 1 · Catégorie', type:'text', def:'Virages'},
+        {key:'tk_tarif1_price', label:'Tarif 1 · Prix (FCFA, nombre seul)', type:'text', def:'3000'},
+        {key:'tk_tarif1_meta', label:'Tarif 1 · Description', type:'text', def:'Debout, derrière les paniers'},
+        {key:'tk_tarif2_category', label:'Tarif 2 · Catégorie', type:'text', def:'Tribune'},
+        {key:'tk_tarif2_price', label:'Tarif 2 · Prix (FCFA, nombre seul)', type:'text', def:'5000'},
+        {key:'tk_tarif2_meta', label:'Tarif 2 · Description', type:'text', def:'Assis, vue latérale'},
+        {key:'tk_tarif3_category', label:'Tarif 3 · Catégorie', type:'text', def:'Annexes'},
+        {key:'tk_tarif3_price', label:'Tarif 3 · Prix (FCFA, nombre seul)', type:'text', def:'10000'},
+        {key:'tk_tarif3_meta', label:'Tarif 3 · Description', type:'text', def:'Tribune couverte'},
+        {key:'tk_tarif4_category', label:'Tarif 4 · Catégorie', type:'text', def:'Loge'},
+        {key:'tk_tarif4_price', label:'Tarif 4 · Prix (FCFA, nombre seul)', type:'text', def:'30000'},
+        {key:'tk_tarif4_meta', label:'Tarif 4 · Description', type:'text', def:'Espace privatif, service'},
+        {key:'tk_tarif5_category', label:'Tarif 5 · Catégorie', type:'text', def:'Courtside'},
+        {key:'tk_tarif5_price', label:'Tarif 5 · Prix (FCFA, nombre seul)', type:'text', def:'50000'},
+        {key:'tk_tarif5_meta', label:'Tarif 5 · Description', type:'text', def:'Au bord du terrain'},
+        {key:'tk_savoir_badge', label:'Section Bon à savoir · Bandeau', type:'text', def:'Bon à savoir'},
+        {key:'tk_savoir_h2', label:'Section Bon à savoir · Titre', type:'text', def:'Avant de venir au match'},
+        {key:'tk_card1_title', label:'Carte 1 · Titre', type:'text', def:'Guichet'},
+        {key:'tk_card1_text', label:'Carte 1 · Description', type:'textarea', def:"Il ouvre une heure avant le coup d'envoi. Arrivez en avance les soirs d'affiche : les files se forment vite."},
+        {key:'tk_card2_title', label:'Carte 2 · Titre', type:'text', def:'Paiement'},
+        {key:'tk_card2_text', label:'Carte 2 · Description', type:'textarea', def:"Espèces et paiement mobile acceptés au guichet. Aucun paiement n'est demandé au moment de la réservation."},
+        {key:'tk_card3_title', label:'Carte 3 · Titre', type:'text', def:'Votre réservation'},
+        {key:'tk_card3_text', label:'Carte 3 · Description', type:'textarea', def:"Une place non retirée 15 minutes avant le début du match peut être remise en vente. Prévenez-nous en cas d'empêchement."},
+        {key:'tk_card4_title', label:'Carte 4 · Titre', type:'text', def:'Groupes & écoles'},
+        {key:'tk_card4_text', label:'Carte 4 · Description', type:'textarea', def:'À partir de 10 places, contactez le club : nous réservons un bloc de sièges et un tarif adapté.'}
+      ],
+      preview:function(v){
+        function tkPrice(n){ return String(Number(n)||0).replace(/\\B(?=(\\d{3})+(?!\\d))/g,' ')+' FCFA'; }
+        function step(t,d){ return '<div style="background:rgba(243,239,230,.04);border:1px solid rgba(243,239,230,.1);border-radius:10px;padding:11px 13px"><div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:12.5px;color:#C6A257;margin-bottom:4px">'+esc(t)+'</div><div style="font-size:11px;line-height:1.5;color:#A9B2AB">'+esc(d)+'</div></div>'; }
+        function tarif(cat,price,meta){ return '<div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:10px;padding:12px"><div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:13.5px;color:#F3EFE6">'+esc(cat)+'</div><div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:16px;color:#C6A257;margin-top:4px">'+esc(tkPrice(price))+'</div>'+(meta?'<div style="font-size:10.5px;color:#7E8A82;margin-top:3px">'+esc(meta)+'</div>':'')+'</div>'; }
+        function card(t,d){ return '<div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:10px;padding:12px"><div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:12.5px;color:#C6A257;margin-bottom:4px">'+esc(t)+'</div><div style="font-size:11px;line-height:1.5;color:#A9B2AB">'+esc(d)+'</div></div>'; }
+        return '<div style="display:grid;gap:14px">'+
+          '<div style="background:linear-gradient(150deg,#0F1E15,#0A150F);border:1px solid rgba(198,162,87,.22);border-radius:14px;padding:16px">'+
+            '<div style="font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#A8D93B">'+esc(v.tk_badge)+'</div>'+
+            '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:22px;color:#F3EFE6;margin-top:6px">'+esc(v.tk_h1)+'</div>'+
+            '<div style="font-size:11.5px;line-height:1.55;color:#C7CFC8;margin-top:8px">'+esc(v.tk_intro)+'</div>'+
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:12px">'+step(v.tk_step1_title,v.tk_step1_text)+step(v.tk_step2_title,v.tk_step2_text)+step(v.tk_step3_title,v.tk_step3_text)+'</div>'+
+          '</div>'+
+          '<div>'+
+            '<div style="font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#A8D93B">'+esc(v.tk_tarifs_badge)+'</div>'+
+            '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:17px;color:#F3EFE6;margin-top:5px">'+esc(v.tk_tarifs_h2)+'</div>'+
+            '<div style="font-size:11px;line-height:1.5;color:#A9B2AB;margin-top:5px">'+esc(v.tk_tarifs_subtitle)+'</div>'+
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px">'+tarif(v.tk_tarif1_category,v.tk_tarif1_price,v.tk_tarif1_meta)+tarif(v.tk_tarif2_category,v.tk_tarif2_price,v.tk_tarif2_meta)+tarif(v.tk_tarif3_category,v.tk_tarif3_price,v.tk_tarif3_meta)+tarif(v.tk_tarif4_category,v.tk_tarif4_price,v.tk_tarif4_meta)+tarif(v.tk_tarif5_category,v.tk_tarif5_price,v.tk_tarif5_meta)+'</div>'+
+            '<div style="font-size:10.5px;line-height:1.6;color:#7E8A82;margin-top:10px">'+esc(v.tk_tarifs_note)+'</div>'+
+          '</div>'+
+          '<div>'+
+            '<div style="font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#A8D93B">'+esc(v.tk_savoir_badge)+'</div>'+
+            '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:17px;color:#F3EFE6;margin-top:5px">'+esc(v.tk_savoir_h2)+'</div>'+
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px">'+card(v.tk_card1_title,v.tk_card1_text)+card(v.tk_card2_title,v.tk_card2_text)+card(v.tk_card3_title,v.tk_card3_text)+card(v.tk_card4_title,v.tk_card4_text)+'</div>'+
+          '</div>'+
+        '</div>';
       } }
   ];
   var LOGO_DEF='https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png';
@@ -4830,7 +4901,10 @@
     c_tryouts:['club_tryouts','club_try_media'],
     c_app:['club_app','club_app_screens'],
     c_promo:['club_shop_home','club_newsletter','club_tribu','club_cta_modals'],
-    c_legal:['club_footer_cols','club_legal_mentions','club_legal_confid']
+    c_legal:['club_footer_cols','club_legal_mentions','club_legal_confid'],
+    // Pas une entrée de « Pages du site » : rendu depuis le sous-onglet
+    // « Page publique » de la section Billetterie (voir tickets-subtabs).
+    tk_texts:['club_tickets_page']
   };
   function qgcGroup(key){
     return (CONTENT_GROUPS[key]||[]).map(function(id){
