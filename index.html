@@ -3849,6 +3849,7 @@ window.bbCloud = function(url, w){
           '<p style="' + note + ';margin-bottom:18px">Présentez cette référence au guichet le jour du match. Le règlement se fait sur place.</p>' +
           '<div style="display:inline-block;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:30px;letter-spacing:.08em;color:#C6A257;background:rgba(198,162,87,.1);border:1px solid rgba(198,162,87,.35);border-radius:12px;padding:14px 24px">' + bbTkEsc(r.reference) + '</div>' +
           '<p style="' + note + ';margin-top:16px">' + r.quantity + ' place(s) · ' + bbTkEsc(bbTkPrice(r.total_fcfa)) + ' à régler sur place.</p>' +
+          '<p id="bb-tk-mailnote" style="' + note + ';margin-top:8px;color:#A8D93B"></p>' +
         '</div>';
       return;
     }
@@ -3964,6 +3965,18 @@ window.bbCloud = function(url, w){
       });
     }).then(function(row){
       bbTkResult = row; bbTkState = 'done'; bbTkRender();
+      // L'e-mail part en arrière-plan : la réservation est déjà acquise,
+      // un échec d'envoi ne doit ni la bloquer ni assombrir l'écran.
+      if (email && row && row.id){
+        fetch(SUPABASE_URL + '/functions/v1/confirmation-reservation', {
+          method: 'POST', headers: bbTkHeaders(),
+          body: JSON.stringify({ reservation_id: row.id })
+        }).then(function(r){
+          if (!r.ok) return;
+          var n = document.getElementById('bb-tk-mailnote');
+          if (n) n.textContent = 'Une confirmation vient de partir vers ' + email + '.';
+        }).catch(function(){});
+      }
     }).catch(function(e){
       btn.disabled = false; btn.textContent = 'Réserver';
       fail(e.message || 'La réservation n\'a pas pu être enregistrée.');
