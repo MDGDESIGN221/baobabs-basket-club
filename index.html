@@ -759,6 +759,13 @@
   .bb-shop-img{position:relative}
   .bb-sm .bb-fav{width:30px;height:30px;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
   @media(prefers-reduced-motion:reduce){.bb-fav{transition:none}}
+
+  /* Statistiques de la saison : un bloc à part, pour ne pas se confondre
+     avec le gabarit de la joueuse. */
+  .bb-pl-season{flex-basis:100%;margin-top:14px;padding-top:14px;border-top:1px solid rgba(243,239,230,.12)}
+  .bb-pl-season > span{display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#C6A257;margin-bottom:10px}
+  .bb-pl-season > div{display:flex;gap:18px;flex-wrap:wrap}
+  .bb-pl-stat.season b{color:#A8D93B}
 </style>
 </head>
 <body>
@@ -1924,7 +1931,7 @@
         <div id="bb-player-info">
           <div>
             <span id="bb-player-pos" class="bb-pl-r" style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#0A1B0D;background:#A8D93B;padding:5px 11px;border-radius:5px"></span>
-            <h3 id="bb-player-name" class="bb-pl-r" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(30px,4vw,42px);line-height:1;color:#F3EFE6;margin:12px 0 0"></h3>
+            <span id="bb-player-fav" class="bb-hide" style="float:right;margin:2px 0 0 10px"></span><h3 id="bb-player-name" class="bb-pl-r" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(30px,4vw,42px);line-height:1;color:#F3EFE6;margin:12px 0 0"></h3>
           </div>
           <div id="bb-player-stats" class="bb-pl-r" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
           <p id="bb-player-bio" class="bb-pl-r" style="font-size:14px;line-height:1.7;color:#B9C2BB;margin:0"></p>
@@ -2878,10 +2885,25 @@ window.bbCloud = function(url, w){
     }
     var mpx=(p.px==null?50:p.px), mpy=(p.py==null?0:p.py), mpz=(p.pz==null?100:p.pz);
     img.style.objectPosition=mpx+'% '+mpy+'%'; img.style.transform='scale('+(mpz/100)+')'; img.style.transformOrigin=mpx+'% '+mpy+'%';
-    document.getElementById('bb-player-stats').innerHTML =
-      '<div class="bb-pl-stat"><b>' + p.age + '</b><span>ans</span></div>' +
-      '<div class="bb-pl-stat"><b>' + esc(p.height) + '</b><span>Taille</span></div>' +
-      '<div class="bb-pl-stat"><b>' + esc(p.foot) + '</b><span>Origine</span></div>';
+    // Le gabarit d'abord, la saison ensuite : deux informations de nature
+    // différente ne se mélangent pas dans la même rangée.
+    var fiche = [[p.age, 'ans'], [p.height, 'Taille'], [p.weight, 'Poids'], [p.foot, 'Origine']]
+      .filter(function(x){ return x[0] !== '' && x[0] != null; })
+      .map(function(x){ return '<div class="bb-pl-stat"><b>' + esc(x[0]) + '</b><span>' + x[1] + '</span></div>'; }).join('');
+    var S = p.stats || {};
+    var saison = [['points','Pts/match'],['rebonds','Reb/match'],['passes','Pd/match'],['matchs','Matchs']]
+      .filter(function(k){ return S[k[0]] !== '' && S[k[0]] != null; })
+      .map(function(k){ return '<div class="bb-pl-stat season"><b>' + esc(S[k[0]]) + '</b><span>' + k[1] + '</span></div>'; }).join('');
+    document.getElementById('bb-player-stats').innerHTML = fiche +
+      (saison ? '<div class="bb-pl-season"><span>Saison en cours</span><div>' + saison + '</div></div>' : '');
+    var fav = document.getElementById('bb-player-fav');
+    if (fav){
+      if (p.id){
+        fav.innerHTML = bbFavBtn('player', p.id);
+        if (window.bbFavPaint) bbFavPaint(fav);
+        fav.classList.remove('bb-hide');
+      } else fav.classList.add('bb-hide');
+    }
     document.getElementById('bb-player-dots').innerHTML = players.map(function(_, i){
       return '<button type="button" class="bb-pl-dot' + (i === playerIdx ? ' active' : '') + '" data-player-dot="' + i + '" aria-label="Joueuse ' + (i + 1) + '"></button>';
     }).join('');
@@ -4511,7 +4533,8 @@ window.bbCloud = function(url, w){
           src:(window.bbCloud?window.bbCloud(r.photo_url||'',800):(r.photo_url||'')),
           srcFull:(window.bbCloud?window.bbCloud(r.photo_url||'',1400):(r.photo_url||'')),
           nameColor:r.name_color||'', bio:r.bio||'', gender:(r.gender==='M'?'M':'F'),
-          px:(r.photo_x==null||r.photo_x==='')?50:r.photo_x, py:(r.photo_y==null||r.photo_y==='')?0:r.photo_y, pz:(r.photo_zoom==null||r.photo_zoom==='')?100:r.photo_zoom };
+          px:(r.photo_x==null||r.photo_x==='')?50:r.photo_x, py:(r.photo_y==null||r.photo_y==='')?0:r.photo_y, pz:(r.photo_zoom==null||r.photo_zoom==='')?100:r.photo_zoom,
+          id:r.id, weight:r.weight||'', stats:(function(s){ if(typeof s==='string'){ try{ s=JSON.parse(s); }catch(e){ s=null; } } return (s&&typeof s==='object')?s:{}; })(r.stats) };
       });
       renderPlayers(); renderAppRoster();
     }).catch(function(){});
