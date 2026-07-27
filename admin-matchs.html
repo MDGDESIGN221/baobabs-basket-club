@@ -395,6 +395,120 @@
   .pv-info .pv-date{font-family:'Space Grotesk',sans-serif;font-weight:500;letter-spacing:.04em;color:var(--text);font-size:14px}
   .pv-replay{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;letter-spacing:.06em;color:var(--lime)}
 
+  /* ===================== COHÉRENCE SITE ↔ ADMIN ===================== */
+  .co-tabs{display:flex;gap:3px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto}
+  .co-tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font:inherit;font-weight:600;font-size:13px;padding:11px 14px;cursor:pointer;white-space:nowrap;margin-bottom:-1px}
+  .co-tab:hover{color:var(--text)}
+  .co-tab.on{color:var(--gold);border-bottom-color:var(--gold)}
+  .co-tab-n{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:100px;background:var(--surface-2);color:var(--faint)}
+  .co-tab.on .co-tab-n{background:rgba(198,162,87,.18);color:var(--gold)}
+  .co-row{border:1px solid var(--line);border-radius:13px;background:var(--surface);padding:13px 15px;margin-bottom:9px}
+  .co-key{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;letter-spacing:.06em;color:var(--gold);word-break:break-all}
+  .co-where{font-size:11px;color:var(--faint);margin-top:2px}
+  /* Deux colonnes côte à côte : on compare d'un regard au lieu de mémoriser. */
+  .co-vs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  @media(max-width:640px){.co-vs{grid-template-columns:1fr}}
+  .co-box{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--surface-2)}
+  .co-box-l{font-weight:700;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+  .co-box-v{font-size:13px;line-height:1.55;color:var(--text);word-break:break-word;max-height:118px;overflow:auto}
+  .co-box.win{border-color:rgba(168,217,59,.45);background:rgba(168,217,59,.07)}
+  .co-box-v em{color:var(--faint);font-style:italic}
+  .co-snip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.6;color:#C9D2CB;background:#0B160F;border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-top:9px;white-space:pre-wrap;word-break:break-word;max-height:100px;overflow:auto}
+
+  /* ===================== COMPOSITEUR D'AFFICHE ===================== */
+  /* Le formulaire d'origine était douze champs empilés : on remplissait un
+     document administratif. Ici on compose l'affiche du match directement,
+     et le domicile/extérieur se lit parce que les écussons changent de côté. */
+  @keyframes gmIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes gmPop{0%{transform:scale(.86);opacity:0}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
+  @keyframes gmSweep{0%{transform:translateX(-120%)}100%{transform:translateX(220%)}}
+
+  .gmc{position:relative;border-radius:18px;overflow:hidden;border:1px solid rgba(198,162,87,.26);background:radial-gradient(ellipse 620px 300px at 50% -10%,rgba(19,58,38,.9),transparent 70%),linear-gradient(155deg,#12291B 0%,#0C1B12 55%,#081209 100%);margin-bottom:18px}
+  /* Le trait de lumière qui balaie l'affiche : discret, une fois au chargement. */
+  .gmc::after{content:'';position:absolute;top:0;bottom:0;width:70px;background:linear-gradient(90deg,transparent,rgba(243,239,230,.055),transparent);animation:gmSweep 2.6s cubic-bezier(.4,0,.2,1) .3s both;pointer-events:none}
+  @media(prefers-reduced-motion:reduce){.gmc::after{animation:none}}
+  .gmc-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px clamp(16px,2.4vw,24px) 0}
+  .gmc-comp{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--gold)}
+  .gmc-stage{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:clamp(10px,2vw,26px);padding:clamp(16px,2.6vw,26px) clamp(16px,2.4vw,24px)}
+  @media(max-width:620px){.gmc-stage{grid-template-columns:1fr;justify-items:center;gap:14px}}
+
+  .gmc-side{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0;transition:transform .42s cubic-bezier(.22,1,.36,1)}
+  .gmc-crest{width:clamp(72px,9vw,104px);height:clamp(72px,9vw,104px);border-radius:50%;object-fit:contain;background:#0A1710;border:1px solid rgba(198,162,87,.3);padding:8px;animation:gmPop .34s cubic-bezier(.22,1,.36,1) both}
+  .gmc-crest-btn{width:clamp(72px,9vw,104px);height:clamp(72px,9vw,104px);border-radius:50%;border:1.5px dashed rgba(198,162,87,.5);background:rgba(198,162,87,.07);color:var(--gold);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:border-color .18s,background .18s,transform .18s;padding:0;font:inherit}
+  .gmc-crest-btn:hover{border-color:var(--gold);background:rgba(198,162,87,.14);transform:scale(1.04)}
+  .gmc-crest-btn svg{width:22px;height:22px}
+  .gmc-crest-btn span{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:9px;letter-spacing:.11em;text-transform:uppercase}
+  .gmc-team{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(13px,1.5vw,16px);letter-spacing:-.01em;color:var(--text);text-align:center;line-height:1.2;max-width:170px}
+  .gmc-role{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--faint)}
+  .gmc-side.is-host .gmc-role{color:var(--lime)}
+
+  .gmc-mid{display:flex;flex-direction:column;align-items:center;gap:9px}
+  .gmc-vs{font-family:'Anton',sans-serif;font-weight:400;font-size:clamp(22px,3vw,32px);letter-spacing:.03em;color:var(--gold);line-height:1}
+  /* Le bouton d'inversion : c'est lui qui rend le domicile lisible d'un coup d'œil. */
+  .gmc-swap{width:34px;height:34px;border-radius:50%;border:1px solid var(--line-strong);background:var(--surface-2);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .3s cubic-bezier(.22,1,.36,1),color .18s,border-color .18s;padding:0}
+  .gmc-swap:hover{color:var(--gold);border-color:var(--gold);transform:rotate(180deg)}
+  .gmc-swap svg{width:15px;height:15px}
+  .gmc-scoreline{display:flex;align-items:center;gap:10px}
+  .gmc-scoreline input{width:66px;background:rgba(6,14,9,.7);border:1px solid rgba(198,162,87,.3);border-radius:11px;padding:8px;color:var(--text);font-family:'Anton',sans-serif;font-weight:400;font-size:26px;letter-spacing:.01em;text-align:center}
+  .gmc-scoreline input:focus{outline:none;border-color:var(--gold)}
+
+  .gmc-meta{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;padding:0 clamp(16px,2.4vw,24px) clamp(16px,2.4vw,22px)}
+  /* Chaque information du match est une pastille cliquable, pas une ligne de
+     formulaire : on lit l'affiche, on corrige ce qui manque. */
+  .gmc-chip{display:inline-flex;align-items:center;gap:7px;background:rgba(6,14,9,.62);border:1px solid rgba(243,239,230,.12);border-radius:100px;padding:8px 14px;color:#C9D2CB;font-size:12.5px;cursor:pointer;transition:border-color .16s,color .16s}
+  .gmc-chip:hover{border-color:var(--gold);color:var(--text)}
+  .gmc-chip svg{width:13px;height:13px;opacity:.7;flex:none}
+  .gmc-chip.empty{color:var(--faint);border-style:dashed}
+  .gmc-chip b{font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--text)}
+
+  /* Sélecteur d'adversaire : une grille d'écussons, pas une liste déroulante.
+     On reconnaît un club à son logo bien avant de lire son nom. */
+  .gmc-picker{border:1px solid var(--line-strong);border-radius:14px;background:var(--surface-2);padding:14px;margin-bottom:16px;animation:gmIn .22s ease both}
+  .gmc-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px;max-height:290px;overflow-y:auto;padding-right:4px}
+  .gmc-opt{display:flex;flex-direction:column;align-items:center;gap:7px;padding:11px 8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;transition:border-color .16s,transform .16s;text-align:center}
+  .gmc-opt:hover{border-color:var(--gold);transform:translateY(-2px)}
+  .gmc-opt.on{border-color:var(--gold);background:rgba(198,162,87,.1)}
+  .gmc-opt img{width:42px;height:42px;object-fit:contain;border-radius:50%;background:#0d1a12}
+  .gmc-opt-none{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:#fff}
+  .gmc-opt span{font-size:11px;line-height:1.25;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+  /* Les deux moments du match, séparés : annoncer, puis raconter. */
+  .gmc-step{border:1px solid var(--line);border-radius:14px;background:var(--surface);margin-bottom:12px;overflow:hidden}
+  .gmc-step-h{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;padding:14px 16px;cursor:pointer;text-align:left;font:inherit}
+  .gmc-step-n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--faint);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center}
+  .gmc-step.done .gmc-step-n{background:var(--lime);border-color:var(--lime);color:#0A1B0D}
+  .gmc-step-t{flex:1;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;letter-spacing:-.01em;color:var(--text)}
+  .gmc-step-s{font-size:11.5px;color:var(--faint)}
+  .gmc-step-c{width:14px;height:14px;color:var(--faint);transition:transform .24s cubic-bezier(.22,1,.36,1);flex:none}
+  .gmc-step.open .gmc-step-c{transform:rotate(90deg);color:var(--gold)}
+  .gmc-step-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s cubic-bezier(.22,1,.36,1)}
+  .gmc-step.open .gmc-step-b{grid-template-rows:1fr}
+  .gmc-step-b>div{overflow:hidden;min-height:0}
+  .gmc-step-b-in{padding:2px 16px 16px}
+  @media(prefers-reduced-motion:reduce){.gmc-step-b{transition:none}.gmc-side{transition:none}}
+
+  /* Listes de matchs : des cartes plutôt que des lignes de texte. On reconnaît
+     une rencontre à l'écusson de l'adversaire bien avant d'en lire le nom, et
+     le liseré porte le résultat sans qu'on ait à déchiffrer le score. */
+  #upcoming-list, #played-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:10px}
+  #upcoming-list .rec-item, #played-list .rec-item{position:relative;flex-direction:column;align-items:flex-start;gap:10px;padding:14px 15px 13px;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden;transition:border-color .16s,transform .16s}
+  #upcoming-list .rec-item:hover, #played-list .rec-item:hover{border-color:var(--gold);transform:translateY(-2px)}
+  #upcoming-list .rec-item::before, #played-list .rec-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gold)}
+  #upcoming-list .rec-item::before{background:#9DB8E8}
+  #played-list .rec-item:has(.status-win)::before{background:var(--lime)}
+  #played-list .rec-item:has(.status-loss)::before{background:#C0271B}
+  #upcoming-list .rec-item:has(.rec-alert)::before{background:#E08A5B}
+  #upcoming-list .rec-thumb, #played-list .rec-thumb,
+  #upcoming-list .rec-noimg, #played-list .rec-noimg{width:46px;height:46px;font-size:17px}
+  #upcoming-list .rec-main, #played-list .rec-main{width:100%;min-width:0}
+  #upcoming-list .rec-title, #played-list .rec-title{display:flex;flex-wrap:wrap;align-items:center;gap:7px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;letter-spacing:-.01em;line-height:1.3;color:var(--text)}
+  #upcoming-list .rec-title b, #played-list .rec-title b{font-family:'Anton',sans-serif;font-weight:400;font-size:19px;letter-spacing:.01em;color:var(--gold-bright)}
+  #upcoming-list .rec-meta, #played-list .rec-meta{font-size:11.5px;color:var(--faint);margin-top:5px;line-height:1.5}
+  /* Les actions ne s'imposent qu'au survol : la carte doit d'abord se lire. */
+  #upcoming-list .item-actions, #played-list .item-actions{position:absolute;top:11px;right:11px;opacity:0;transition:opacity .16s}
+  #upcoming-list .rec-item:hover .item-actions, #played-list .rec-item:hover .item-actions,
+  #upcoming-list .rec-item:focus-within .item-actions, #played-list .rec-item:focus-within .item-actions{opacity:1}
+
   /* ===================== GESTION DES MATCHS — HUD & finition ===================== */
   @keyframes gmFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   @keyframes gmPulse{0%,100%{box-shadow:0 0 0 0 rgba(168,217,59,.45)}50%{box-shadow:0 0 0 6px rgba(168,217,59,0)}}
@@ -1100,6 +1214,10 @@
 
       <div class="sb-group">
         <div class="sb-group-label">Réglages</div>
+        <button class="sb-link" data-section="coherence">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg>
+          Cohérence
+        </button>
         <button class="sb-link" data-section="reglages">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
           Réglages du site
@@ -1249,7 +1367,62 @@
         <button type="button" class="subtab" data-subtab="teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg>Adversaires</button>
       </div>
       <div id="matches-subtab-matches">
-      <div class="callout">Choisissez l'adversaire et la date pour créer un <b>match à venir</b>. Une fois le match joué, ajoutez les <b>deux scores</b> : il basculera automatiquement en « Joué » et apparaîtra dans les résultats du site. L'aperçu à droite montre le rendu exact sur la page d'accueil.</div>
+      <div class="callout">Composez l'affiche du match ci-dessous&nbsp;: cliquez un écusson pour choisir l'adversaire, le bouton central pour inverser domicile et extérieur. Le formulaire complet reste dessous — l'affiche n'est qu'un raccourci vers ce qui compte.</div>
+
+      <div class="gmc" id="gmc">
+        <div class="gmc-top">
+          <span class="gmc-comp" id="gmc-comp">Match à composer</span>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button type="button" class="btn btn-ghost" id="gmc-retour" style="padding:7px 12px;font-size:11.5px">Créer le match retour</button>
+          </div>
+        </div>
+
+        <div class="gmc-stage">
+          <div class="gmc-side" id="gmc-side-l">
+            <div id="gmc-crest-l"></div>
+            <div class="gmc-team" id="gmc-team-l">Baobabs</div>
+            <div class="gmc-role" id="gmc-role-l">Reçoit</div>
+          </div>
+
+          <div class="gmc-mid">
+            <div class="gmc-vs" id="gmc-vs">VS</div>
+            <div class="gmc-scoreline hide" id="gmc-scoreline"></div>
+            <button type="button" class="gmc-swap" id="gmc-swap" title="Inverser domicile / extérieur" aria-label="Inverser domicile et extérieur">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+            </button>
+          </div>
+
+          <div class="gmc-side" id="gmc-side-r">
+            <div id="gmc-crest-r"></div>
+            <div class="gmc-team" id="gmc-team-r">Adversaire</div>
+            <div class="gmc-role" id="gmc-role-r">Se déplace</div>
+          </div>
+        </div>
+
+        <div class="gmc-meta">
+          <button type="button" class="gmc-chip empty" id="gmc-chip-date" data-goto="match_date">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <span>Date à choisir</span>
+          </button>
+          <button type="button" class="gmc-chip empty" id="gmc-chip-venue" data-goto="venue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Salle</span>
+          </button>
+          <button type="button" class="gmc-chip empty" id="gmc-chip-comp" data-goto="competition">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>
+            <span>Compétition</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="gmc-picker hide" id="gmc-picker">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px">
+          <strong style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12.5px;color:var(--text)">Choisir l'adversaire</strong>
+          <input type="search" id="gmc-picker-q" placeholder="Rechercher une équipe…" style="flex:1;min-width:150px;background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:8px 11px;color:var(--text);font:inherit;font-size:12.5px">
+          <button type="button" class="btn btn-ghost" id="gmc-picker-close" style="padding:7px 12px;font-size:11.5px">Fermer</button>
+        </div>
+        <div class="gmc-picker-grid" id="gmc-picker-grid"></div>
+      </div>
       <div class="grid-2">
         <div>
           <div class="card">
@@ -1339,6 +1512,18 @@
               <span class="dym-hint hide" id="dym_competition"></span>
             </div>
 
+            <!-- Second moment : renseigner un score et une photo n'a de sens
+                 qu'après la rencontre. Replié tant que le match est à venir,
+                 il disparaît du champ de vision sans rien retirer. -->
+            <div class="gmc-step" id="gmc-step2">
+              <button type="button" class="gmc-step-h" id="gmc-step2-h">
+                <span class="gmc-step-n">2</span>
+                <span class="gmc-step-t">Après le match</span>
+                <span class="gmc-step-s" id="gmc-step2-s">Score, photo, replay</span>
+                <svg class="gmc-step-c" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+              <div class="gmc-step-b"><div><div class="gmc-step-b-in">
+
             <div class="field">
               <label>Score <span class="opt">(laisser vide si à venir)</span></label>
               <div class="score-row">
@@ -1369,6 +1554,9 @@
             <div class="field">
               <label for="notes">Notes internes <span class="opt">(non affichées sur le site)</span></label>
               <textarea id="notes" placeholder="Infos pour l'organisation…"></textarea>
+            </div>
+
+            </div></div></div>
             </div>
 
             <div class="form-actions">
@@ -1441,6 +1629,35 @@
       </div><!-- /matches-subtab-teams -->
     </section>
 
+    <!-- ===== SECTION COHÉRENCE ===== -->
+    <section id="section-coherence" class="hide">
+      <div class="mod-head">
+        <h2 class="mod-head-title">Cohérence site ↔ admin</h2>
+        <span class="mod-count" id="co-count">—</span>
+        <button type="button" class="btn btn-ghost" id="co-scan" style="padding:10px 15px;font-size:13px">Analyser le site</button>
+      </div>
+      <div class="callout">Cet écran lit la page publique telle qu'elle est <b>en ligne</b> et la compare à ce que contient l'admin. Il répond à trois questions&nbsp;: qu'est-ce qui a été modifié directement dans le fichier, qu'est-ce qui n'est pas encore administrable, et quels réglages ne servent plus à rien.</div>
+
+      <div class="card" style="max-width:560px;margin-bottom:16px">
+        <div class="field" style="margin-bottom:0">
+          <label for="co-url">Adresse de la page à analyser</label>
+          <input type="text" id="co-url" value="index.html" placeholder="index.html">
+          <span class="hint">Laissez «&nbsp;index.html&nbsp;» si l'admin est déposé à côté du site. Sinon, collez l'adresse complète&nbsp;— le site doit alors autoriser la lecture depuis ce domaine.</span>
+        </div>
+      </div>
+
+      <div id="co-out" class="hide">
+        <div class="co-tabs" id="co-tabs">
+          <button type="button" class="co-tab on" data-co="ecart">Écarts<span class="co-tab-n" id="co-n-ecart">0</span></button>
+          <button type="button" class="co-tab" data-co="dur">Non administrable<span class="co-tab-n" id="co-n-dur">0</span></button>
+          <button type="button" class="co-tab" data-co="orphelin">Réglages inutilisés<span class="co-tab-n" id="co-n-orphelin">0</span></button>
+        </div>
+        <p class="cd-prose" id="co-hint" style="color:var(--faint);font-size:12.5px;margin:0 0 14px;max-width:70ch"></p>
+        <div id="co-list"></div>
+      </div>
+      <div class="msg" id="co-msg"></div>
+    </section>
+
     <!-- ===== SECTION BANNIÈRES ===== -->
     <section id="section-banners" class="hide">
       <div id="bn-list-view">
@@ -1449,7 +1666,7 @@
           <span class="mod-count" id="bn-count">—</span>
           <button type="button" class="btn btn-primary" id="bn-new" style="padding:10px 16px;font-size:13px">Nouvelle bannière</button>
         </div>
-        <div class="callout">Le grand bloc d'accueil peut désormais faire défiler plusieurs bannières. Chacune peut être <b>programmée</b>&nbsp;: elle apparaît et disparaît d'elle-même, sans que vous ayez à vous lever le matin du match. Si aucune n'est en ligne, le site retombe sur l'image réglée dans «&nbsp;Image du hero&nbsp;».</div>
+        <div class="callout">Le grand bloc d'accueil fait défiler les bannières marquées «&nbsp;prête&nbsp;». Chacune peut être <b>programmée</b>&nbsp;: elle apparaît et disparaît d'elle-même, sans que vous ayez à vous lever le matin du match. Si aucune n'est prête, le site retombe sur l'image réglée dans «&nbsp;Image du hero&nbsp;»&nbsp;— rien à désactiver pour revenir en arrière.</div>
         <div id="bn-rows"></div>
       </div>
       <div id="bn-doc-view" class="hide">
@@ -1469,7 +1686,7 @@
         <span class="mod-count" id="an-count">—</span>
         <button type="button" class="btn btn-primary" id="an-new" style="padding:10px 16px;font-size:13px">Nouvelle annonce</button>
       </div>
-      <div class="callout">Le bandeau en haut du site, pour un report de match ou une ouverture de vente. <b>Une seule annonce peut être en ligne à la fois</b>&nbsp;: en activer une désactive automatiquement l'autre — un bandeau qui annonce deux choses n'annonce rien.</div>
+      <div class="callout">Le bandeau en haut du site, pour un report de match ou une ouverture de vente. <b>Une seule annonce peut être retenue à la fois</b>&nbsp;: en retenir une libère l'autre automatiquement — un bandeau qui annonce deux choses n'annonce rien. Le visiteur peut la fermer&nbsp;; la suivante réapparaîtra.</div>
       <div id="an-rows" style="display:flex;flex-direction:column;gap:11px;max-width:860px"></div>
       <div class="msg" id="an-msg"></div>
     </section>
@@ -2492,6 +2709,7 @@
     teams:{t:'Adversaires',d:'La liste des clubs que vous affrontez, avec leurs logos.'},
     live:{t:'Diffusion en direct',d:'Reliez la chaîne YouTube du club pour activer le direct sur l\'accueil.'},
     standings:{t:'Classement',d:'Le tableau du championnat affiché sur la page Compétitions. Les lignes se classent par points.'},
+    coherence:{t:'Cohérence site ↔ admin',d:'Compare la page en ligne avec le contenu de l\'admin : écarts, contenu en dur, réglages inutilisés.'},
     banners:{t:'Bannières & slider',d:'Les bannières du grand bloc d\'accueil : visuel, titre, bouton, et programmation dans le temps.'},
     announce:{t:'Bandeau d\'annonce',d:'Le bandeau en haut du site : report de match, ouverture de vente, information urgente.'},
     squad:{t:'Joueuses',d:'Une fiche par joueuse : portrait, poste, statut, mensurations, parcours et statistiques de la saison.'},
@@ -2526,7 +2744,7 @@
     home:{t:'Image du hero',d:'L\'image de fond et le texte d\'accroche du grand bloc d\'accueil.'},
     audit:{t:'Historique',d:'Qui a modifié quoi, et quand — protégé par mot de passe.'}
   };
-  var ALL_SECTIONS = ['dashboard','matches','live','standings','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
+  var ALL_SECTIONS = ['dashboard','matches','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -2932,7 +3150,400 @@
     var sc=(score!==null&&score!==undefined)?'<div class="pv-score">'+esc(score)+'</div>':'';
     return '<div class="pv-team">'+badge+'<div class="pv-name">'+esc(name)+'</div>'+sc+'</div>';
   }
+  // ===================== COHÉRENCE SITE ↔ ADMIN =====================
+  // Jusqu'ici, rien ne disait ce que le site affiche en dur ni quels réglages
+  // ne servaient plus. On lisait le fichier à la main. Cet écran fait la
+  // comparaison, dans le seul sens qui soit possible : un navigateur peut LIRE
+  // la page publique, il ne peut pas réécrire le fichier. La base reste donc
+  // la seule source modifiable — on adopte du site vers l'admin, jamais l'inverse.
+  var coStarted = false, coTab = 'ecart', coData = { ecart: [], dur: [], orphelin: [] }, coSettings = null;
+
+  var CO_HINT = {
+    ecart: "Ces textes sont administrables, mais la valeur écrite dans le fichier diffère de celle enregistrée ici. Attention : au chargement, le site lit l'admin et écrase le fichier — c'est la colonne « Admin » qui s'affiche réellement. Adoptez la valeur du site si c'est elle que vous vouliez garder.",
+    dur: "Ces emplacements portent du texte sur le site mais aucun réglage ne les alimente : les modifier demande de toucher au fichier. Dites-moi lesquels rendre administrables.",
+    orphelin: "Ces réglages contiennent une valeur, mais la page analysée ne les lit nulle part. Soit ils servent à une autre page, soit ils ne servent plus à rien et peuvent être retirés."
+  };
+
+  function coInit(){
+    if (coStarted){ coRender(); return; }
+    coStarted = true;
+    document.getElementById('co-scan').addEventListener('click', coScan);
+    document.querySelectorAll('#co-tabs .co-tab').forEach(function(b){
+      b.addEventListener('click', function(){
+        coTab = b.getAttribute('data-co');
+        document.querySelectorAll('#co-tabs .co-tab').forEach(function(x){ x.classList.toggle('on', x === b); });
+        coRender();
+      });
+    });
+    coScan();
+  }
+
+  function coScan(){
+    var msg = document.getElementById('co-msg');
+    var btn = document.getElementById('co-scan');
+    var url = (document.getElementById('co-url').value || 'index.html').trim();
+    btn.disabled = true; btn.textContent = 'Analyse…';
+    showMsg(msg, 'Lecture de la page publique…', true);
+
+    // Anti-cache : sans cela on comparerait avec la version d'hier.
+    var bust = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_co=' + Date.now();
+
+    Promise.all([
+      fetch(bust, { cache: 'no-store' }).then(function(r){
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      }),
+      sbGet('site_settings?select=*&limit=1').then(function(rows){ return (rows || [])[0] || {}; })
+    ]).then(function(res){
+      coAnalyse(res[0], res[1]);
+      btn.disabled = false; btn.textContent = 'Analyser le site';
+      document.getElementById('co-out').classList.remove('hide');
+      var total = coData.ecart.length + coData.dur.length + coData.orphelin.length;
+      showMsg(msg, total ? 'Analyse terminée : ' + total + ' point(s) relevé(s).' : 'Analyse terminée : site et admin sont alignés.', true);
+    }).catch(function(e){
+      btn.disabled = false; btn.textContent = 'Analyser le site';
+      showMsg(msg, "Impossible de lire « " + url + " » (" + e.message + "). Si le site est sur un autre domaine, le navigateur bloque la lecture : déposez cet admin à côté du site, ou indiquez un chemin relatif.", false);
+    });
+  }
+
+  function coAnalyse(html, s){
+    coSettings = s;
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+
+    // Le site branche ses contenus de deux façons. On lit les deux, sinon
+    // l'analyse conclurait « en dur » sur des textes en réalité administrables.
+    //   1. attribut data-bb="clef" sur l'élément
+    //   2. appels set('id', s.clef) / bbSet('id', s.clef) dans le script
+    var idToKey = {}, consumed = {};
+
+    doc.querySelectorAll('[data-bb]').forEach(function(el){
+      var k = el.getAttribute('data-bb');
+      if (!k) return;
+      consumed[k] = true;
+      if (el.id) idToKey[el.id] = k;
+    });
+
+    [...html.matchAll(/\b(?:bbSet|set)\(\s*'([^']+)'\s*,\s*s\.([a-z0-9_]+)/g)].forEach(function(m){
+      idToKey[m[1]] = m[2];
+      consumed[m[2]] = true;
+    });
+    // Accès dynamiques (les grilles de tarifs) : la clef est construite au
+    // vol, on marque toute la famille comme consommée.
+    [...html.matchAll(/s\['([a-z_]+)'\s*\+\s*[a-z]\s*\+\s*'([a-z_]+)'\]/g)].forEach(function(m){
+      Object.keys(s).forEach(function(k){
+        if (k.indexOf(m[1]) === 0 && k.indexOf(m[2]) === k.length - m[2].length) consumed[k] = true;
+      });
+    });
+    [...html.matchAll(/s\.([a-z0-9_]+)/g)].forEach(function(m){ consumed[m[1]] = true; });
+
+    // ---- 1. Écarts : administrable, mais le fichier ne dit pas la même chose
+    var ecart = [];
+    Object.keys(idToKey).forEach(function(id){
+      var key = idToKey[id];
+      var el = doc.getElementById(id);
+      if (!el) return;
+      // Un conteneur d'éléments n'a pas de texte propre à comparer.
+      if (el.children.length && el.tagName !== 'H1') return;
+      var fileVal = (el.textContent || '').trim().replace(/\s+/g, ' ');
+      var dbVal = s[key] == null ? '' : String(s[key]).trim().replace(/\s+/g, ' ');
+      if (!fileVal && !dbVal) return;
+      if (fileVal === dbVal) return;
+      ecart.push({ key: key, id: id, file: fileVal, db: dbVal });
+    });
+
+    // ---- 2. En dur : un emplacement de contenu qu'aucun réglage n'alimente.
+    // On se limite aux identifiants bb-* : c'est la convention de nommage des
+    // zones de contenu du site. Chercher tout texte libre produirait du bruit.
+    var dur = [];
+    doc.querySelectorAll('[id^="bb-"]').forEach(function(el){
+      if (idToKey[el.id]) return;
+      if (el.hasAttribute('data-bb')) return;
+      if (el.children.length) return;
+      var t = (el.textContent || '').trim().replace(/\s+/g, ' ');
+      if (t.length < 3 || t.length > 400) return;
+      if (/^[\d\s.,:%–—-]+$/.test(t)) return;   // un compteur, pas un texte
+      dur.push({ id: el.id, tag: el.tagName.toLowerCase(), text: t, section: coSection(el) });
+    });
+
+    // ---- 3. Orphelins : un réglage rempli que la page ne lit pas
+    var orphelin = [];
+    Object.keys(s).forEach(function(k){
+      if (k === 'id' || k === 'created_at' || k === 'updated_at') return;
+      if (consumed[k]) return;
+      var v = s[k];
+      if (v == null || v === '' || v === false) return;
+      orphelin.push({ key: k, value: String(v) });
+    });
+
+    coData = { ecart: ecart, dur: dur, orphelin: orphelin };
+    ['ecart','dur','orphelin'].forEach(function(t){
+      document.getElementById('co-n-' + t).textContent = coData[t].length;
+    });
+    document.getElementById('co-count').textContent =
+      (ecart.length + dur.length + orphelin.length) + ' point(s)';
+    coRender();
+  }
+
+  // Situer l'élément dans la page : « quelque part sur le site » n'aide personne.
+  function coSection(el){
+    var n = el;
+    while (n && n !== document.documentElement){
+      if (n.id && /^(bb-)?(page|sec|section)/i.test(n.id)) return n.id;
+      if (n.getAttribute && n.getAttribute('data-page')) return 'page ' + n.getAttribute('data-page');
+      if (n.tagName === 'SECTION' && n.id) return n.id;
+      n = n.parentElement;
+    }
+    return '';
+  }
+
+  function coRender(){
+    var box = document.getElementById('co-list'); if (!box) return;
+    document.getElementById('co-hint').textContent = CO_HINT[coTab] || '';
+    var rows = coData[coTab] || [];
+
+    if (!rows.length){
+      var vide = {
+        ecart: 'Aucun écart : le fichier et l\'admin disent la même chose.',
+        dur: 'Aucun texte en dur détecté dans les emplacements repérables.',
+        orphelin: 'Aucun réglage inutilisé : tout ce que vous remplissez est lu par le site.'
+      };
+      box.innerHTML = '<div class="empty">' + vide[coTab] + '</div>';
+      return;
+    }
+
+    if (coTab === 'ecart'){
+      box.innerHTML = rows.map(function(r, i){
+        return '<div class="co-row">' +
+          '<div class="co-key">' + esc(r.key) + '</div>' +
+          '<div class="co-where">élément #' + esc(r.id) + '</div>' +
+          '<div class="co-vs">' +
+            '<div class="co-box"><div class="co-box-l">Dans le fichier</div><div class="co-box-v">' + (r.file ? esc(r.file) : '<em>vide</em>') + '</div></div>' +
+            '<div class="co-box win"><div class="co-box-l">Dans l\'admin — c\'est ce qui s\'affiche</div><div class="co-box-v">' + (r.db ? esc(r.db) : '<em>vide</em>') + '</div></div>' +
+          '</div>' +
+          '<div style="margin-top:11px">' +
+            '<button type="button" class="btn btn-ghost co-adopt" data-i="' + i + '" style="padding:8px 13px;font-size:12px">Adopter la valeur du fichier</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      var msg = document.getElementById('co-msg');
+      box.querySelectorAll('.co-adopt').forEach(function(b){
+        b.addEventListener('click', function(){
+          var r = rows[parseInt(b.getAttribute('data-i'), 10)];
+          if (!confirm('Enregistrer « ' + (r.file || '(vide)') + ' » dans le réglage ' + r.key + ' ?')) return;
+          b.disabled = true; b.textContent = '…';
+          var body = {}; body[r.key] = r.file || null;
+          sbUpdate('site_settings', coSettings.id, body, 'Cohérence')
+            .then(function(){ showMsg(msg, 'Valeur adoptée. Le site l\'affichera au prochain chargement.', true); coScan(); })
+            .catch(function(){ b.disabled = false; b.textContent = 'Adopter la valeur du fichier'; showMsg(msg, "L'enregistrement a échoué.", false); });
+        });
+      });
+      return;
+    }
+
+    if (coTab === 'dur'){
+      box.innerHTML = rows.map(function(r){
+        return '<div class="co-row">' +
+          '<div class="co-key">#' + esc(r.id) + ' <span style="color:var(--faint);font-weight:400">&lt;' + esc(r.tag) + '&gt;</span></div>' +
+          (r.section ? '<div class="co-where">dans ' + esc(r.section) + '</div>' : '') +
+          '<div class="co-snip">' + esc(r.text) + '</div>' +
+        '</div>';
+      }).join('') +
+      '<p class="cd-prose" style="color:var(--faint);font-size:12.5px;margin-top:12px;max-width:70ch">Cette liste est une <b>proposition</b>, pas une certitude&nbsp;: certains de ces textes sont volontairement fixes (mentions, libellés de navigation). Indiquez-moi ceux que vous voulez pouvoir modifier, je les rendrai administrables.</p>';
+      return;
+    }
+
+    box.innerHTML = rows.map(function(r){
+      return '<div class="co-row">' +
+        '<div class="co-key">' + esc(r.key) + '</div>' +
+        '<div class="co-snip">' + esc(r.value.length > 300 ? r.value.slice(0, 300) + '…' : r.value) + '</div>' +
+      '</div>';
+    }).join('') +
+    '<p class="cd-prose" style="color:var(--faint);font-size:12.5px;margin-top:12px;max-width:70ch">Je ne supprime rien automatiquement&nbsp;: un réglage peut servir à une page que vous n\'avez pas analysée. Dites-moi lesquels retirer.</p>';
+  }
+
+  // ===================== COMPOSITEUR D'AFFICHE =====================
+  // L'affiche ne stocke rien : elle lit les mêmes champs que le formulaire
+  // et les réécrit. Une seule source de vérité, donc pas de désynchronisation
+  // possible entre ce qu'on voit et ce qui sera enregistré.
+  var gmcReady = false;
+
+  function gmcCrest(url, name, clickable){
+    if (url) return '<img class="gmc-crest" src="' + esc(url) + '" alt="' + esc(name || '') + '"' + (clickable ? ' style="cursor:pointer" data-gmc-pick="1"' : '') + '>';
+    if (!clickable) return '<div class="gmc-crest" style="display:flex;align-items:center;justify-content:center;font-family:\'Anton\',sans-serif;font-size:30px;color:#fff;background:' + fallbackColor(name || '?') + '">' + esc(String(name || '?').charAt(0).toUpperCase()) + '</div>';
+    return '<button type="button" class="gmc-crest-btn" data-gmc-pick="1">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>' +
+      '<span>Adversaire</span></button>';
+  }
+
+  function gmcSync(){
+    var stage = document.getElementById('gmc'); if (!stage) return;
+    var m = currentFormMatch();
+    var home = m.is_home;
+    var opp = m.team;
+    var oppName = opp ? opp.name : null;
+    var oppLogo = opp ? opp.logo_url : null;
+
+    // La gauche est toujours l'équipe qui reçoit : c'est ce qui rend
+    // « domicile » lisible sans lire une étiquette.
+    var L = home ? { n: 'Baobabs', l: BAOBABS_LOGO, own: true } : { n: oppName, l: oppLogo, own: false };
+    var R = home ? { n: oppName, l: oppLogo, own: false } : { n: 'Baobabs', l: BAOBABS_LOGO, own: true };
+
+    document.getElementById('gmc-crest-l').innerHTML = gmcCrest(L.l, L.n, !L.own);
+    document.getElementById('gmc-crest-r').innerHTML = gmcCrest(R.l, R.n, !R.own);
+    document.getElementById('gmc-team-l').textContent = L.n || 'Adversaire';
+    document.getElementById('gmc-team-r').textContent = R.n || 'Adversaire';
+    document.getElementById('gmc-role-l').textContent = 'Reçoit';
+    document.getElementById('gmc-role-r').textContent = 'Se déplace';
+    document.getElementById('gmc-side-l').classList.add('is-host');
+    document.getElementById('gmc-side-r').classList.remove('is-host');
+
+    stage.querySelectorAll('[data-gmc-pick]').forEach(function(el){
+      el.addEventListener('click', function(){ gmcOpenPicker(); });
+    });
+
+    // Score : n'apparaît que s'il existe. Un match à venir n'a pas de score
+    // à montrer, et un zéro affiché par défaut serait un faux résultat.
+    var sb = document.getElementById('score_baobabs').value, so = document.getElementById('score_opponent').value;
+    var line = document.getElementById('gmc-scoreline'), vs = document.getElementById('gmc-vs');
+    if (sb !== '' || so !== ''){
+      line.classList.remove('hide');
+      line.style.display = 'flex';
+      vs.classList.add('hide');
+      var ls = home ? sb : so, rs = home ? so : sb;
+      line.innerHTML = '<input type="number" min="0" id="gmc-s-l" value="' + esc(ls) + '" aria-label="Score équipe qui reçoit">' +
+        '<span style="font-family:\'Anton\',sans-serif;font-size:20px;color:var(--faint)">–</span>' +
+        '<input type="number" min="0" id="gmc-s-r" value="' + esc(rs) + '" aria-label="Score équipe qui se déplace">';
+      var push = function(){
+        var a = document.getElementById('gmc-s-l').value, b = document.getElementById('gmc-s-r').value;
+        document.getElementById('score_baobabs').value = home ? a : b;
+        document.getElementById('score_opponent').value = home ? b : a;
+      };
+      document.getElementById('gmc-s-l').addEventListener('input', push);
+      document.getElementById('gmc-s-r').addEventListener('input', push);
+    } else {
+      line.classList.add('hide');
+      line.style.display = 'none';
+      vs.classList.remove('hide');
+      vs.textContent = home ? 'VS' : '@';
+    }
+
+    var chip = function(id, val, empty){
+      var el = document.getElementById(id); if (!el) return;
+      el.querySelector('span').textContent = val || empty;
+      el.classList.toggle('empty', !val);
+    };
+    var when = '';
+    if (m.match_date){
+      when = formatDateShort(m.match_date);
+      if (m.match_time) when += ' · ' + String(m.match_time).slice(0, 5);
+    }
+    chip('gmc-chip-date', when, 'Date à choisir');
+    chip('gmc-chip-venue', m.venue, 'Salle');
+    chip('gmc-chip-comp', m.competition, 'Compétition');
+
+    var top = document.getElementById('gmc-comp');
+    top.textContent = m.competition || (opp ? (home ? 'Match à domicile' : 'Match à l\'extérieur') : 'Match à composer');
+
+    if (!gmcReady) gmcWire();
+  }
+
+  function gmcWire(){
+    gmcReady = true;
+
+    // Inverser : le select reste la source, on émet « change » pour que
+    // l'aperçu et tout ce qui écoute suivent sans code en double.
+    document.getElementById('gmc-swap').addEventListener('click', function(){
+      var s = document.getElementById('is_home');
+      s.value = s.value === 'true' ? 'false' : 'true';
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+      updatePreview();
+    });
+
+    // Les pastilles amènent au champ correspondant et le mettent en évidence :
+    // on corrige ce qui manque sans chercher dans le formulaire.
+    document.querySelectorAll('.gmc-chip[data-goto]').forEach(function(c){
+      c.addEventListener('click', function(){
+        var el = document.getElementById(c.getAttribute('data-goto'));
+        if (!el) return;
+        el.focus();
+        var wrap = el.closest('.field') || el;
+        wrap.style.transition = 'box-shadow .3s ease';
+        wrap.style.boxShadow = '0 0 0 2px rgba(198,162,87,.5)';
+        setTimeout(function(){ wrap.style.boxShadow = ''; }, 1100);
+      });
+    });
+
+    document.getElementById('gmc-picker-close').addEventListener('click', gmcClosePicker);
+    document.getElementById('gmc-picker-q').addEventListener('input', gmcRenderPicker);
+
+    // Match retour : en championnat, chaque adversaire se joue deux fois.
+    // Recopier l'affiche en inversant les côtés évite de tout ressaisir.
+    document.getElementById('gmc-retour').addEventListener('click', function(){
+      var sel = document.getElementById('opponent_select');
+      if (!sel.value){ gmcOpenPicker(); return; }
+      var c = document.getElementById('cancel-edit-btn');
+      if (c && !c.classList.contains('hide')) c.click();   // sortir du mode édition
+      sel.value = sel.value;
+      var s = document.getElementById('is_home');
+      s.value = s.value === 'true' ? 'false' : 'true';
+      ['match_date','match_time','score_baobabs','score_opponent','mp_url','stream_url'].forEach(function(id){
+        var el = document.getElementById(id); if (el) el.value = '';
+      });
+      var p = document.getElementById('mp_preview'); if (p){ p.src = ''; p.style.display = 'none'; }
+      updatePreview();
+      var d = document.getElementById('match_date'); if (d) d.focus();
+      showMsg(document.getElementById('match-form-msg'), 'Affiche du match retour prête — il ne manque que la date.', true);
+    });
+
+    // Second moment : ouvert d'office si un score existe déjà, replié sinon.
+    var st = document.getElementById('gmc-step2'), h = document.getElementById('gmc-step2-h');
+    if (st && h){
+      var hasScore = document.getElementById('score_baobabs').value !== '' || document.getElementById('score_opponent').value !== '';
+      st.classList.toggle('open', hasScore);
+      st.classList.toggle('done', hasScore);
+      h.addEventListener('click', function(){ st.classList.toggle('open'); });
+    }
+  }
+
+  function gmcOpenPicker(){
+    var p = document.getElementById('gmc-picker');
+    p.classList.remove('hide');
+    gmcRenderPicker();
+    document.getElementById('gmc-picker-q').focus();
+  }
+  function gmcClosePicker(){ document.getElementById('gmc-picker').classList.add('hide'); }
+
+  function gmcRenderPicker(){
+    var grid = document.getElementById('gmc-picker-grid'); if (!grid) return;
+    var q = (document.getElementById('gmc-picker-q').value || '').trim().toLowerCase();
+    var cur = document.getElementById('opponent_select').value;
+    var rows = (teamsCache || []).filter(function(t){ return !q || String(t.name || '').toLowerCase().indexOf(q) >= 0; });
+
+    if (!rows.length){
+      grid.innerHTML = '<p style="grid-column:1/-1;color:var(--faint);font-size:12.5px;margin:6px 2px">Aucune équipe. Ajoutez-la depuis « Absent de la liste ? » sous le sélecteur.</p>';
+      return;
+    }
+    grid.innerHTML = rows.map(function(t){
+      var img = t.logo_url
+        ? '<img src="' + esc(t.logo_url) + '" alt="" loading="lazy">'
+        : '<div class="gmc-opt-none" style="background:' + fallbackColor(t.name || '?') + '">' + esc(String(t.name || '?').charAt(0).toUpperCase()) + '</div>';
+      return '<button type="button" class="gmc-opt' + (String(t.id) === String(cur) ? ' on' : '') + '" data-id="' + esc(t.id) + '">' + img + '<span>' + esc(t.name || '') + '</span></button>';
+    }).join('');
+
+    grid.querySelectorAll('.gmc-opt').forEach(function(b){
+      b.addEventListener('click', function(){
+        var sel = document.getElementById('opponent_select');
+        sel.value = b.getAttribute('data-id');
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        gmcClosePicker();
+        updatePreview();
+      });
+    });
+  }
+
   function updatePreview(){
+    gmcSync();
     var body=document.getElementById('preview-body'), ctx=document.getElementById('preview-context'); var f=currentFormMatch();
     if(!f.team){ ctx.textContent='En attente'; body.innerHTML='<div class="pv-card" style="text-align:center;color:#B9C2BB;font-size:13px;padding:34px 20px">Choisissez une équipe adverse pour voir l\'aperçu de la carte.</div>'; return; }
     var oppName=f.team.name.toUpperCase(), oppLogo=f.team.logo_url||'';
@@ -4249,8 +4860,8 @@
   var BN_LIVE = {
     live:      ['En ligne',    '#A8D93B'],
     plus_tard: ['Programmée',  '#9DB8E8'],
-    termine:   ['Terminée',    '#7E8A82'],
-    off:       ['Désactivée',  '#7E8A82']
+    termine:   ['Expirée',     '#7E8A82'],
+    off:       ['Brouillon',   '#7E8A82']
   };
   function bnBadge(r){
     var s = BN_LIVE[bnLive(r)];
@@ -4291,12 +4902,12 @@
 
     var live = bnRows.filter(function(r){ return bnLive(r) === 'live'; }).length;
     document.getElementById('bn-count').textContent = live
-      ? live + (live > 1 ? ' en ligne' : ' en ligne')
+      ? live + ' en ligne'
       : (bnRows.length ? 'aucune en ligne' : '—');
 
     var box = document.getElementById('bn-rows');
     if (!bnRows.length){
-      box.innerHTML = '<div class="empty">Aucune bannière. Le site affiche l\'image réglée dans « Image du hero ».</div>';
+      box.innerHTML = '<div class="empty">Aucune bannière préparée. Le site affiche l\'image réglée dans « Image du hero ».</div>';
       return;
     }
 
@@ -4323,7 +4934,7 @@
           '<div class="cd-card-meta">' + esc(r.subtitle || 'Pas de sous-titre') + (r.cta_label ? ' · bouton « ' + esc(r.cta_label) + ' »' : '') + '</div>' +
           '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:11px">' +
             '<button type="button" class="btn btn-ghost bn-open" data-id="' + r.id + '" style="padding:8px 13px;font-size:12px">Modifier</button>' +
-            '<button type="button" class="btn btn-ghost bn-toggle" data-id="' + r.id + '" data-on="' + (r.is_active ? '1' : '0') + '" style="padding:8px 13px;font-size:12px">' + (r.is_active ? 'Désactiver' : 'Activer') + '</button>' +
+            '<button type="button" class="btn btn-ghost bn-toggle" data-id="' + r.id + '" data-on="' + (r.is_active ? '1' : '0') + '" style="padding:8px 13px;font-size:12px">' + (r.is_active ? 'Retirer du site' : 'Mettre en ligne') + '</button>' +
             (i > 0 ? '<button type="button" class="btn btn-ghost bn-up" data-id="' + r.id + '" title="Monter" style="padding:8px 11px;font-size:12px">▲</button>' : '') +
             (i < bnRows.length - 1 ? '<button type="button" class="btn btn-ghost bn-down" data-id="' + r.id + '" title="Descendre" style="padding:8px 11px;font-size:12px">▼</button>' : '') +
           '</div>' +
@@ -4413,7 +5024,7 @@
           '<p class="ar-side-h">Mise en ligne</p>' +
           '<label style="display:flex;align-items:center;gap:9px;margin-bottom:13px;cursor:pointer">' +
             '<input type="checkbox" id="bn-active"' + (r.is_active ? ' checked' : '') + ' style="width:17px;height:17px;accent-color:var(--gold)">' +
-            '<span style="font-size:13px;color:var(--text)">Bannière activée</span>' +
+            '<span style="font-size:13px;color:var(--text)">Bannière en ligne</span>' +
           '</label>' +
           '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0 18px">' +
             fld('bn-start', 'Afficher à partir du', bnDate(r.starts_at), 'datetime-local', '', 'Laissez vide pour afficher tout de suite.') +
@@ -4533,7 +5144,7 @@
     var live = anRows.filter(function(r){ return bnLive(r) === 'live'; })[0];
     document.getElementById('an-count').textContent = live ? 'une annonce en ligne' : (anRows.length ? 'aucune en ligne' : '—');
 
-    if (!anRows.length){ box.innerHTML = '<div class="empty">Aucune annonce. Aucun bandeau n\'apparaît sur le site.</div>'; return; }
+    if (!anRows.length){ box.innerHTML = '<div class="empty">Aucune annonce rédigée. Aucun bandeau n\'apparaît sur le site.</div>'; return; }
 
     box.innerHTML = anRows.map(function(r){
       var t = AN_TONE[r.tone] || AN_TONE.info;
@@ -7403,6 +8014,7 @@
     shop:function(){ qgvInit('shop'); },
     standings:function(){ qgvInit('standings'); },
     tickets:function(){ tkInit(); },
+    coherence:function(){ coInit(); },
     banners:function(){ bnInit(); },
     announce:function(){ anInit(); },
     squad:function(){ efInit(); },

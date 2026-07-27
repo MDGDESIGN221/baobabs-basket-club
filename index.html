@@ -713,6 +713,9 @@
 
 <div id="bb-shell" style="min-height:100vh;background:#061109;overflow-x:clip">
 
+  <!-- Bandeau d'annonce : rempli par applyAnnouncement(), masqué s'il n'y a rien. -->
+  <div id="bb-announce" style="display:none"></div>
+
   <div id="bb-utility" style="background:#0C1A12;border-bottom:1px solid rgba(243,239,230,.06)">
     <div style="max-width:1500px;margin:0 auto;padding:9px clamp(16px,4vw,24px);display:flex;align-items:center;justify-content:space-between;font-size:12px">
       <div style="display:flex;gap:22px;color:#93A099;font-weight:500">
@@ -824,7 +827,13 @@
         <!-- Colonne droite : la photo (Réglages · Accueil) + la carte match posée dessus. -->
         <div id="bb-hero-img-wrap" style="position:relative;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;background:#0F1E15">
           <img id="bb-hero-img" src="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_1800,c_limit/v1784692836/Person_on_basketball_court_2K_202607220359_qdn8q9.jpg" alt="Les joueuses des Baobabs" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%" fetchpriority="high">
+          <!-- Deuxième calque : le fondu enchaîné a besoin de deux images, sinon on
+               voit un clignotement blanc pendant le chargement de la suivante. -->
+          <img id="bb-hero-img-b" alt="" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%;opacity:0;transition:opacity .9s ease" fetchpriority="low">
           <div style="position:absolute;inset:0;background:linear-gradient(200deg,rgba(5,16,11,.15),rgba(5,16,11,.55) 62%,rgba(5,16,11,.92));pointer-events:none"></div>
+          <!-- Pastilles de navigation du défilé, ajoutées seulement s'il y a
+               plusieurs bannières. -->
+          <div id="bb-hero-dots" style="display:none;position:absolute;right:clamp(16px,2vw,30px);top:clamp(16px,2vw,30px);z-index:4;gap:7px"></div>
 
           <div id="bb-hs-livepill" style="position:absolute;left:clamp(16px,2vw,30px);top:clamp(16px,2vw,30px);display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:8px;background:rgba(5,16,11,.72);backdrop-filter:blur(8px);border:1px solid rgba(243,239,230,.14)">
             <span style="width:8px;height:8px;border-radius:50%;background:#C0271B;animation:bbPulse 1.4s ease-in-out infinite"></span>
@@ -3953,7 +3962,200 @@ window.bbCloud = function(url, w){
     }).join('');
   }
 
+  // ===================== BANNIÈRES DU HERO =====================
+  // Le hero était une image fixe : mettre en avant le prochain match puis
+  // une actualité demandait de rééditer le réglage. Les bannières font
+  // défiler ce contenu, et se programment dans le temps côté admin.
+  //
+  // Repli assumé : sans bannière en ligne, la page garde exactement ce
+  // qu'elle affiche aujourd'hui. Rien à désactiver pour revenir en arrière.
+  var bbSlides = [], bbSlideI = 0, bbSlideTimer = null, bbImgFlip = false, bbBase = null;
+
+  // Référence prise avant toute bascule : chaque diapositive écrit TOUS les
+  // champs, et retombe ici pour ceux qu'elle ne renseigne pas. Sans cela, le
+  // sous-titre de la précédente resterait affiché sous le titre de la suivante.
+  function bbCaptureBase(){
+    if (bbBase) return bbBase;
+    var g = function(id){ return document.getElementById(id); };
+    var k = g('bb-hs-kicker'), t = g('bb-hs-title'), ac = g('bb-hs-accent'), s = g('bb-hs-text'), b1 = g('bb-hs-btn1');
+    bbBase = {
+      kicker: k ? k.textContent : '',
+      titleHtml: t ? t.innerHTML : '',
+      titleColor: t ? (t.style.color || '') : '',
+      accentDisplay: ac ? (ac.style.display || '') : '',
+      subtitle: s ? s.textContent : '',
+      subtitleColor: s ? (s.style.color || '') : '',
+      ctaLabel: b1 ? b1.textContent.trim() : '',
+      ctaHref: b1 ? b1.getAttribute('href') : null,
+      ctaNav: b1 ? b1.getAttribute('data-nav') : null
+    };
+    return bbBase;
+  }
+
+  function bbApplyBanners(rows){
+    bbCaptureBase();   // avant toute modification, sinon la référence est déjà polluée
+    bbSlides = (rows || []).filter(function(b){ return b.image_url || b.title; });
+    var dots = document.getElementById('bb-hero-dots');
+    if (!bbSlides.length){ if (dots) dots.style.display = 'none'; return; }
+
+    if (dots && bbSlides.length > 1){
+      dots.style.display = 'flex';
+      dots.innerHTML = bbSlides.map(function(b, i){
+        return '<button type="button" data-i="' + i + '" aria-label="Bannière ' + (i + 1) + '" style="width:' + (i === 0 ? '26px' : '9px') + ';height:9px;border-radius:100px;border:none;padding:0;cursor:pointer;background:' + (i === 0 ? '#C6A257' : 'rgba(243,239,230,.32)') + ';transition:width .3s ease,background .3s ease"></button>';
+      }).join('');
+      dots.querySelectorAll('button').forEach(function(d){
+        d.addEventListener('click', function(){ bbGoSlide(parseInt(d.getAttribute('data-i'), 10), true); });
+      });
+    }
+
+    bbGoSlide(0, false);
+    if (bbSlides.length > 1) bbStartSlides();
+  }
+
+  function bbGoSlide(i, manual){
+    if (!bbSlides.length) return;
+    bbSlideI = (i + bbSlides.length) % bbSlides.length;
+    var b = bbSlides[bbSlideI];
+
+    // Fondu enchaîné sur deux calques : basculer le src d'une seule image
+    // laisse voir un vide le temps du chargement.
+    var base = bbCaptureBase();
+
+    if (b.image_url){
+      var a = document.getElementById('bb-hero-img'), c = document.getElementById('bb-hero-img-b');
+      if (a && c){
+        var show = bbImgFlip ? a : c, hide = bbImgFlip ? c : a;
+        show.style.objectPosition = (b.focus_x == null ? 50 : b.focus_x) + '% ' + (b.focus_y == null ? 50 : b.focus_y) + '%';
+        show.style.transform = 'scale(' + ((b.zoom || 100) / 100) + ')';
+        show.style.transition = 'opacity .9s ease';
+        hide.style.transition = 'opacity .9s ease';
+        if (b.image_alt) show.alt = b.image_alt;
+
+        // Le fondu n'est lancé QUE lorsque la nouvelle image est décodée :
+        // sinon on ferait apparaître un calque encore vide et le fond
+        // sombre traverserait pendant la seconde du chargement.
+        var commit = function(){
+          show.style.opacity = '1';
+          hide.style.opacity = '0';
+          bbImgFlip = !bbImgFlip;   // n'inverse qu'une fois l'échange réellement fait
+        };
+        if (show.getAttribute('src') === b.image_url && show.complete){
+          commit();
+        } else {
+          show.onload = commit;
+          // Image introuvable : on garde celle déjà affichée plutôt que de
+          // laisser un trou.
+          show.onerror = function(){ show.onload = null; };
+          show.src = b.image_url;
+          if (show.complete && show.naturalWidth) commit();
+        }
+      }
+    }
+
+    // Tous les champs sont réécrits à chaque diapositive, avec repli sur la
+    // page d'origine : rien ne peut rester de la précédente.
+    bbSet('bb-hs-kicker', b.kicker || base.kicker);
+
+    var t = document.getElementById('bb-hs-title');
+    if (t){
+      t.innerHTML = b.title ? esc(b.title).replace(/\r?\n/g, '<br>') : base.titleHtml;
+      t.style.color = b.title_color || base.titleColor;
+    }
+    // « qui monte » complète le titre d'origine : une bannière qui apporte le
+    // sien le masque, et il revient dès qu'on repasse sur une bannière sans titre.
+    var ac = document.getElementById('bb-hs-accent');
+    if (ac) ac.style.display = b.title ? 'none' : base.accentDisplay;
+
+    var st = document.getElementById('bb-hs-text');
+    if (st){
+      st.textContent = b.subtitle || base.subtitle;
+      st.style.color = b.subtitle_color || base.subtitleColor;
+    }
+
+    var btn = document.getElementById('bb-hs-btn1');
+    if (btn){
+      var svg = btn.querySelector('svg');
+      btn.textContent = b.cta_label || base.ctaLabel;
+      if (svg) btn.appendChild(svg);
+      // Un libellé sans destination garderait le lien de la diapositive
+      // précédente : le bouton dirait une chose et mènerait ailleurs.
+      var href = b.cta_href || (b.cta_label ? null : base.ctaHref);
+      if (href) bbApplyLink(btn, href);
+      else if (!b.cta_label && base.ctaNav){ btn.setAttribute('data-nav', base.ctaNav); btn.setAttribute('href', base.ctaHref || '#'); }
+      else { btn.removeAttribute('data-nav'); btn.setAttribute('href', '#'); }
+    }
+
+    var dots = document.getElementById('bb-hero-dots');
+    if (dots) dots.querySelectorAll('button').forEach(function(d, k){
+      var on = k === bbSlideI;
+      d.style.width = on ? '26px' : '9px';
+      d.style.background = on ? '#C6A257' : 'rgba(243,239,230,.32)';
+    });
+
+    if (manual) bbStartSlides();
+  }
+
+  function bbStartSlides(){
+    if (bbSlideTimer) clearInterval(bbSlideTimer);
+    // Une personne qui lit ne veut pas que ça bouge sous ses yeux.
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    bbSlideTimer = setInterval(function(){
+      if (document.hidden) return;
+      bbGoSlide(bbSlideI + 1, false);
+    }, 7000);
+  }
+
+  // Le défilé s'arrête au survol : on ne perd pas la bannière qu'on lisait.
+  (function(){
+    var h = document.getElementById('bb-hero');
+    if (!h) return;
+    h.addEventListener('mouseenter', function(){ if (bbSlideTimer) clearInterval(bbSlideTimer); });
+    h.addEventListener('mouseleave', function(){ if (bbSlides.length > 1) bbStartSlides(); });
+  })();
+
+  // ===================== BANDEAU D'ANNONCE =====================
+  function bbApplyAnnounce(rows){
+    var box = document.getElementById('bb-announce');
+    if (!box) return;
+    var a = (rows || [])[0];
+    if (!a || !a.message){ box.style.display = 'none'; return; }
+
+    // Une annonce fermée reste fermée — mais seulement celle-là : la
+    // suivante doit pouvoir se faire voir.
+    try { if (localStorage.getItem('bbc-announce-closed') === String(a.id)){ box.style.display = 'none'; return; } } catch(e){}
+
+    var TONE = {
+      info:   ['#9DB8E8', '#08150E'],
+      alerte: ['#C0271B', '#FFFFFF'],
+      succes: ['#A8D93B', '#0A1B0D']
+    };
+    var t = TONE[a.tone] || TONE.info;
+
+    box.style.display = 'block';
+    box.style.background = t[0];
+    box.style.color = t[1];
+    box.innerHTML =
+      '<div style="max-width:1500px;margin:0 auto;padding:10px clamp(16px,4vw,24px);display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;text-align:center">' +
+        '<span style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:13.5px;line-height:1.45">' + esc(a.message) + '</span>' +
+        (a.cta_label ? '<a id="bb-announce-cta" href="#" style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:inherit;text-decoration:underline;text-underline-offset:3px">' + esc(a.cta_label) + '</a>' : '') +
+        '<button type="button" id="bb-announce-x" aria-label="Fermer l\'annonce" style="position:absolute;right:clamp(12px,3vw,20px);background:none;border:none;color:inherit;opacity:.62;font-size:19px;line-height:1;cursor:pointer;padding:4px 6px">×</button>' +
+      '</div>';
+    box.style.position = 'relative';
+
+    if (a.cta_label && a.cta_href) bbApplyLink(document.getElementById('bb-announce-cta'), a.cta_href);
+    var x = document.getElementById('bb-announce-x');
+    if (x) x.addEventListener('click', function(){
+      box.style.display = 'none';
+      try { localStorage.setItem('bbc-announce-closed', String(a.id)); } catch(e){}
+    });
+  }
+
   function bbHydrate(){
+    // Les deux tables peuvent ne pas exister : le site doit continuer de
+    // fonctionner si la migration n'a pas encore été passée.
+    sbFetch('banners_public?select=*').then(bbApplyBanners).catch(function(){});
+    sbFetch('announcement_public?select=*').then(bbApplyAnnounce).catch(function(){});
+
     sbFetch('players?select=*&order=sort.asc,jersey_number.asc').then(function(rows){
       if(!rows || !rows.length) return;
       // Une joueuse partie du club ne doit plus figurer sur le site : jusqu'ici
