@@ -746,6 +746,19 @@
        on garde panier + menu, les deux gestes réellement utilisés. */
     #bb-account-btn{display:none}
   }
+
+  /* ===== Favoris : le cœur ===== */
+  .bb-fav{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(6,17,9,.62);border:1px solid rgba(243,239,230,.22);color:#B9C2BB;cursor:pointer;transition:color .15s,border-color .15s,transform .1s;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);padding:0}
+  .bb-fav svg{width:15px;height:15px}
+  .bb-fav:hover{color:#F3EFE6;border-color:rgba(198,162,87,.6)}
+  .bb-fav:active{transform:scale(.9)}
+  .bb-fav:focus-visible{outline:2px solid #A8D93B;outline-offset:2px}
+  .bb-fav:disabled{opacity:.55;cursor:default}
+  .bb-fav.on{color:#C6A257;border-color:rgba(198,162,87,.65)}
+  .bb-fav.on svg{fill:#C6A257;stroke:#C6A257}
+  .bb-shop-img{position:relative}
+  .bb-sm .bb-fav{width:30px;height:30px;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+  @media(prefers-reduced-motion:reduce){.bb-fav{transition:none}}
 </style>
 </head>
 <body>
@@ -1991,6 +2004,7 @@
         <div style="display:flex;gap:8px;padding:16px clamp(20px,4vw,26px) 0;flex-wrap:wrap">
           <button type="button" class="bb-me-tab" data-me-tab="resa">Mes réservations</button>
           <button type="button" class="bb-me-tab" data-me-tab="cmd">Mes commandes</button>
+          <button type="button" class="bb-me-tab" data-me-tab="fav">Mes favoris</button>
           <button type="button" class="bb-me-tab" data-me-tab="info">Mes informations</button>
         </div>
         <div class="bb-legal-body" id="bb-me-body" style="padding-top:18px"></div>
@@ -2486,7 +2500,7 @@ window.bbCloud = function(url, w){
     el.innerHTML = products.map(function(p){
       return '' +
         '<div class="bb-shop-card" data-product="' + p.id + '">' +
-          '<div class="bb-shop-img"><img src="' + p.images[0] + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async"></div>' +
+          '<div class="bb-shop-img">' + bbFavBtn('product', p.id, 'position:absolute;top:10px;right:10px;z-index:2') + '<img src="' + p.images[0] + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async"></div>' +
           '<div style="padding:16px 18px 20px">' +
             '<span style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.18em;color:#C6A257;text-transform:uppercase">' + esc(p.tag) + '</span>' +
             '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:17px;color:#F3EFE6;margin:8px 0 12px">' + esc(p.name) + '</div>' +
@@ -2497,6 +2511,7 @@ window.bbCloud = function(url, w){
           '</div>' +
         '</div>';
     }).join('');
+    if (window.bbFavPaint) bbFavPaint(el);
   }
 
   function renderCats(){
@@ -3084,16 +3099,18 @@ window.bbCloud = function(url, w){
       var row = (rows && rows[0]) || {};
       currentCustomer = { user: user, name: row.name || user.user_metadata.full_name || '', phone: row.phone || '' };
       setAccountUI();
+      if (window.bbFavLoad) bbFavLoad();
     }).catch(function(){
       currentCustomer = { user: user, name: user.user_metadata.full_name || '', phone: '' };
       setAccountUI();
+      if (window.bbFavLoad) bbFavLoad();
     });
   }
 
   var sbSession = null;
   sb.auth.onAuthStateChange(function(event, session){
     sbSession = session;
-    if (event === 'SIGNED_OUT' || !session) { currentCustomer = null; setAccountUI(); return; }
+    if (event === 'SIGNED_OUT' || !session) { currentCustomer = null; setAccountUI(); if (window.bbFavLoad) bbFavLoad(); return; }
     if (session && session.user) loadCustomerProfile(session.user);
   });
   sb.auth.getSession().then(function(res){
@@ -3515,6 +3532,117 @@ window.bbCloud = function(url, w){
     return { scan: scan, mount: mount, enabled: enabled };
   })();
   window.bbTilt = bbTilt;
+  window.bbFavPaint = function(root){ return bbFavPaint(root); };
+  window.bbFavLoad = function(){ return bbFavLoad(); };
+
+  /* ===== Favoris =====
+     Le cœur sur un maillot ou un match l'épingle au compte. La table est
+     protégée par la base (chacun ne voit que les siens) ; ici on garde
+     simplement l'état en mémoire pour peindre les cœurs. */
+  var bbFavs = null;
+  function bbFavKey(k, id){ return k + ':' + id; }
+
+  function bbFavLoad(){
+    if (!currentCustomer){ bbFavs = null; bbFavPaint(); return; }
+    fetch(SUPABASE_URL + '/rest/v1/favorites?select=kind,target_id', { headers: bbTkHeaders() })
+      .then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; })
+      .then(function(rows){
+        bbFavs = new Set((rows || []).map(function(r){ return bbFavKey(r.kind, r.target_id); }));
+        bbFavPaint();
+      });
+  }
+
+  // Peint l'état des cœurs et câble ceux qui ne le sont pas encore. Le
+  // gestionnaire est posé sur le bouton lui-même : il coupe le clic avant
+  // que la carte n'ouvre sa fiche produit.
+  function bbFavPaint(root){
+    (root || document).querySelectorAll('.bb-fav').forEach(function(b){
+      var on = !!(bbFavs && bbFavs.has(bbFavKey(b.getAttribute('data-fav-kind'), b.getAttribute('data-fav-id'))));
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.setAttribute('aria-label', on ? 'Retirer des favoris' : 'Ajouter aux favoris');
+      if (b.getAttribute('data-fav-wired')) return;
+      b.setAttribute('data-fav-wired', '1');
+      b.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); bbFavToggle(b); });
+    });
+  }
+
+  function bbFavToggle(btn){
+    if (!currentCustomer){ openLogin(); return; }
+    var kind = btn.getAttribute('data-fav-kind'), id = String(btn.getAttribute('data-fav-id'));
+    var key = bbFavKey(kind, id);
+    var on = !!(bbFavs && bbFavs.has(key));
+    btn.disabled = true;
+    var req = on
+      ? fetch(SUPABASE_URL + '/rest/v1/favorites?kind=eq.' + kind + '&target_id=eq.' + encodeURIComponent(id), { method: 'DELETE', headers: bbTkHeaders() })
+      : fetch(SUPABASE_URL + '/rest/v1/favorites', { method: 'POST', headers: bbTkHeaders(), body: JSON.stringify({ customer_id: currentCustomer.user.id, kind: kind, target_id: id }) });
+    req.then(function(r){
+      if (!r.ok) throw new Error('favorites');
+      if (!bbFavs) bbFavs = new Set();
+      if (on) bbFavs.delete(key); else bbFavs.add(key);
+      bbFavPaint();
+    }).catch(function(){}).finally(function(){ btn.disabled = false; });
+  }
+
+  function bbFavBtn(kind, id, extraStyle){
+    return '<button type="button" class="bb-fav" data-fav-kind="' + kind + '" data-fav-id="' + id + '" aria-pressed="false" aria-label="Ajouter aux favoris"' + (extraStyle ? ' style="' + extraStyle + '"' : '') + '>' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></button>';
+  }
+
+  // L'onglet « Mes favoris » : les cœurs posés partout sur le site,
+  // résolus en fiches lisibles (produit ou match).
+  function bbFavRenderTab(body, note){
+    if (!currentCustomer){ body.innerHTML = '<p style="' + note + '">Connectez-vous pour retrouver vos favoris.</p>'; return; }
+    body.innerHTML = '<p style="' + note + '">Chargement…</p>';
+    fetch(SUPABASE_URL + '/rest/v1/favorites?select=*&order=created_at.desc', { headers: bbTkHeaders() })
+      .then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; })
+      .then(function(favs){
+        favs = favs || [];
+        if (!favs.length){
+          body.innerHTML = '<p style="' + note + ';margin-bottom:16px">Aucun favori pour le moment. Le petit cœur sur un maillot de la boutique ou un match du calendrier l\'épingle ici.</p>' +
+            '<button type="button" class="bb-btn-solid" data-me-shop>Voir la boutique</button>';
+          return;
+        }
+        var pIds = favs.filter(function(x){ return x.kind === 'product'; }).map(function(x){ return x.target_id; });
+        var mIds = favs.filter(function(x){ return x.kind === 'match'; }).map(function(x){ return x.target_id; });
+        Promise.all([
+          pIds.length ? fetch(SUPABASE_URL + '/rest/v1/products?select=*&id=in.(' + pIds.join(',') + ')', { headers: bbTkHeaders() }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; }) : Promise.resolve([]),
+          mIds.length ? fetch(SUPABASE_URL + '/rest/v1/matches?select=id,opponent_name,opponent_logo_url,match_date,match_time,venue,is_home&id=in.(' + mIds.join(',') + ')', { headers: bbTkHeaders() }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; }) : Promise.resolve([])
+        ]).then(function(res){
+          var prods = res[0] || [], matchs = res[1] || [];
+          var rowStyle = 'display:flex;align-items:center;gap:13px;padding:13px 2px;border-bottom:1px solid rgba(243,239,230,.08)';
+          var html = '';
+          if (matchs.length){
+            matchs.sort(function(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); });
+            html += '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#A8D93B;margin-bottom:4px">Matchs</div>';
+            html += matchs.map(function(m){
+              var crest = m.opponent_logo_url
+                ? '<img src="' + (window.bbCloud ? window.bbCloud(m.opponent_logo_url, 120) : m.opponent_logo_url) + '" alt="" style="width:38px;height:38px;border-radius:50%;object-fit:contain;background:#0B1810;flex:none">'
+                : '<div style="width:38px;height:38px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:13px;color:#fff;background:' + fallbackColor(m.opponent_name || '?') + '">' + bbTkEsc(String(m.opponent_name || '?').charAt(0)) + '</div>';
+              return '<div style="' + rowStyle + '">' + crest +
+                '<div style="flex:1;min-width:0"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6">' + (m.is_home ? 'Baobabs reçoit ' : 'Baobabs chez ') + bbTkEsc(m.opponent_name || '?') + '</div>' +
+                '<div style="font-size:12px;color:#7E8A82;margin-top:2px">' + bbTkEsc(formatDateShort(m.match_date)) + (m.match_time ? ' · ' + bbTkEsc(String(m.match_time).slice(0, 5)) : '') + (m.venue ? ' · ' + bbTkEsc(m.venue) : '') + '</div></div>' +
+                bbFavBtn('match', m.id) + '</div>';
+            }).join('');
+          }
+          if (prods.length){
+            html += '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#C6A257;margin:' + (matchs.length ? '22px' : '0') + ' 0 4px">Boutique</div>';
+            html += prods.map(function(p){
+              var img = (p.image_url || (p.images && p.images[0]) || '');
+              return '<div style="' + rowStyle + '">' +
+                (img ? '<img src="' + (window.bbCloud ? window.bbCloud(img, 120) : img) + '" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex:none;background:#0B1810">' : '') +
+                '<div style="flex:1;min-width:0"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6">' + bbTkEsc(p.name || 'Produit') + '</div>' +
+                (p.price != null ? '<div style="font-size:12px;color:#C6A257;font-weight:700;margin-top:2px">' + bbTkPrice(p.price) + '</div>' : '') + '</div>' +
+                bbFavBtn('product', p.id) + '</div>';
+            }).join('');
+          }
+          var orphans = favs.length - matchs.length - prods.length;
+          if (orphans > 0) html += '<p style="font-size:11.5px;color:#7E8A82;margin:14px 0 0">' + orphans + ' favori(s) dont l\'élément n\'existe plus.</p>';
+          body.innerHTML = html;
+          bbFavPaint(body);
+        });
+      });
+  }
 
   /* ===== Mon espace (réservations, commandes, informations) ===== */
   var bbMeTab = 'resa', bbMeResa = null, bbMeCmd = null, bbMeLinked = false;
@@ -3563,6 +3691,8 @@ window.bbCloud = function(url, w){
       b.classList.toggle('on', b.getAttribute('data-me-tab') === bbMeTab);
     });
     var note = 'font-size:13.5px;line-height:1.65;color:#B9C2BB;margin:0';
+
+    if (bbMeTab === 'fav'){ bbFavRenderTab(body, note); return; }
 
     if (bbMeTab === 'info'){
       var c = currentCustomer;
@@ -5169,6 +5299,7 @@ document.addEventListener('keydown', function(e){
           (heure ? '<small>' + escHtml(heure) + '</small>' : '') + '</div>';
       }
 
+      var fav = isPlayed ? '' : bbFavBtn('match', m.id, 'flex:none;align-self:center');
       return '<div class="bb-sm' + (isPlayed ? ' played' : '') + (isNext ? ' next' : '') + '">' +
         '<span class="bb-sm-node"></span>' +
         '<span class="bb-sm-date"><b class="bb-sm-d">' + jour + '</b><b class="bb-sm-m">' + mois + '</b></span>' +
@@ -5177,7 +5308,7 @@ document.addEventListener('keydown', function(e){
             '<div class="bb-sm-name"><span class="bb-sm-vs">' + (m.is_home ? 'Reçoit' : 'Se déplace chez') + '</span><br>' + escHtml(m.opponent_name || 'Adversaire') + '</div>' +
             '<div class="bb-sm-sub">' + escHtml([m.venue, m.competition].filter(Boolean).join(' · ') || '') + '</div>' +
           '</div>' +
-        '</div>' + right +
+        '</div>' + right + fav +
       '</div>';
     }
 
@@ -5186,6 +5317,7 @@ document.addEventListener('keydown', function(e){
     html += '<div class="bb-today"><span>' + now.getDate() + ' ' + BB_MOIS[now.getMonth()] + " · aujourd'hui</span></div>";
     html += next.map(function(m, i){ return row(m, false, i === 0); }).join('');
     el.innerHTML = html;
+    if (window.bbFavPaint) bbFavPaint(el);
 
     bbSeasonReveal(el);
   }
