@@ -104,7 +104,21 @@
   .app-shell{display:flex;max-width:1400px;margin:0 auto}
   .sidebar{flex:none;width:264px;border-right:1px solid var(--line);min-height:calc(100vh - 65px);padding:20px 14px 40px;position:sticky;top:65px;align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
   .sb-group{margin-bottom:22px}
-  .sb-group-label{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding:0 10px;margin-bottom:8px}
+  /* Le libellé devient le bouton de repli : avec une trentaine d'entrées,
+     tout ne tient pas à l'écran et l'ascenseur interne de la barre est
+     facile à manquer. Replier rend la navigation entière visible. */
+  .sb-group-label{display:flex;align-items:center;gap:7px;width:100%;background:none;border:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding:5px 10px;margin-bottom:5px;cursor:pointer;text-align:left;border-radius:7px;transition:color .14s,background .14s}
+  .sb-group-label:hover{color:var(--text);background:var(--surface-2)}
+  .sb-group-num{flex:none;font-size:9.5px;letter-spacing:0;color:var(--gold);opacity:.8;min-width:11px}
+  .sb-group-cv{flex:none;width:11px;height:11px;margin-left:auto;opacity:.55;transition:transform .2s cubic-bezier(.22,1,.36,1)}
+  .sb-group.folded .sb-group-cv{transform:rotate(-90deg)}
+  .sb-group-items{display:grid;grid-template-rows:1fr;transition:grid-template-rows .22s cubic-bezier(.22,1,.36,1)}
+  .sb-group.folded .sb-group-items{grid-template-rows:0fr}
+  .sb-group-items>div{overflow:hidden;min-height:0}
+  /* Les entrées sont numérotées pour être nommables à l'oral et à l'écrit. */
+  .sb-link-num{flex:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:9.5px;color:var(--faint);opacity:.7;min-width:18px}
+  .sb-link.active .sb-link-num{color:var(--gold);opacity:1}
+  @media (prefers-reduced-motion:reduce){ .sb-group-items{transition:none} }
   .sb-link{position:relative;display:flex;align-items:center;gap:12px;width:100%;background:transparent;border:none;color:var(--muted);border-radius:10px;padding:11px 12px 11px 16px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;text-align:left;margin-bottom:3px;transition:background .15s,color .15s}
   .sb-link svg{width:18px;height:18px;flex:none;opacity:.75;transition:opacity .15s}
   .sb-link:hover{background:var(--surface-2);color:var(--text)}
@@ -2251,10 +2265,95 @@
       var fbtn = document.querySelector('#forms-nav .nav-btn[data-form="'+formKey+'"]');
       if (fbtn) fbtn.click();
     }
+    if (typeof sbRevealActive === 'function') sbRevealActive(key);
     if (typeof pinSyncActive === 'function') pinSyncActive();
     closeMobileNav();
     window.scrollTo({top:0});
   }
+  // ===================== NAVIGATION : GROUPES REPLIABLES =====================
+  // Trente-cinq entrées ne tiennent pas dans la hauteur d'un écran. La barre
+  // a bien son propre ascenseur, mais il est facile à manquer : on croit que
+  // la liste s'arrête là où elle est coupée. Replier les groupes rend la
+  // navigation entière visible d'un coup d'œil.
+  //
+  // La numérotation permet aussi de se désigner un écran à l'oral
+  // (« va en 5.2 ») sans décrire le chemin.
+  var SBFOLD_KEY = 'bbc-admin-folded';
+  var sbFolded = {};
+  try { sbFolded = JSON.parse(localStorage.getItem(SBFOLD_KEY) || '{}') || {}; } catch(e){ sbFolded = {}; }
+
+  var SB_CHEV = '<svg class="sb-group-cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+
+  function sbBuildNav(){
+    var groups = document.querySelectorAll('#sidebar .sb-group');
+    var num = 0;
+
+    groups.forEach(function(grp){
+      var lab = grp.querySelector('.sb-group-label');
+      if (!lab || lab.tagName === 'BUTTON') return;   // déjà transformé
+
+      var isPinned = grp.classList.contains('sb-pinned');
+      var text = (lab.textContent || '').trim();
+      // Le groupe Épinglés n'est pas numéroté : son contenu change, un
+      // numéro y serait trompeur.
+      if (!isPinned) num++;
+      var gn = num;
+
+      // Le libellé devient un bouton, et les entrées passent dans un
+      // conteneur dont la hauteur s'anime.
+      var items = Array.prototype.slice.call(grp.children).filter(function(c){ return c !== lab; });
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sb-group-label';
+      btn.innerHTML = (isPinned ? '' : '<span class="sb-group-num">' + gn + '</span>') +
+        '<span>' + esc(text) + '</span>' + SB_CHEV;
+
+      var wrap = document.createElement('div');
+      wrap.className = 'sb-group-items';
+      var inner = document.createElement('div');
+      items.forEach(function(c){ inner.appendChild(c); });
+      wrap.appendChild(inner);
+
+      lab.replaceWith(btn);
+      grp.appendChild(wrap);
+
+      // Numérotation des entrées : 3.1, 3.2, … Posée avant le lien pour
+      // qu'elle s'aligne sur l'icône.
+      if (!isPinned){
+        var k = 0;
+        inner.querySelectorAll('.sb-link[data-section]').forEach(function(b){
+          k++;
+          if (b.querySelector('.sb-link-num')) return;
+          var s = document.createElement('span');
+          s.className = 'sb-link-num';
+          s.textContent = gn + '.' + k;
+          b.insertBefore(s, b.firstChild);
+        });
+      }
+
+      var key = 'g' + gn;
+      if (!isPinned && sbFolded[key]) grp.classList.add('folded');
+
+      btn.addEventListener('click', function(){
+        var now = !grp.classList.contains('folded');
+        grp.classList.toggle('folded', now);
+        if (!isPinned){ sbFolded[key] = now; try { localStorage.setItem(SBFOLD_KEY, JSON.stringify(sbFolded)); } catch(e){} }
+      });
+    });
+  }
+
+  sbBuildNav();
+
+  // Un écran atteint depuis ailleurs (bouton du tableau de bord, lien
+  // interne) peut se trouver dans un groupe replié : on le déplie.
+  function sbRevealActive(key){
+    var b = document.querySelector('#sidebar .sb-group:not(.sb-pinned) .sb-link[data-section="' + key + '"]');
+    if (!b) return;
+    var grp = b.closest('.sb-group');
+    if (grp) grp.classList.remove('folded');
+  }
+
   // ===================== ÉCRANS ÉPINGLÉS =====================
   // La refonte a fait passer la barre latérale à une trentaine d'entrées.
   // Épingler ses écrans du moment évite de parcourir dix groupes pour
