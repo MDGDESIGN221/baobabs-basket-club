@@ -480,6 +480,26 @@
   .subpanel{display:none}
   .subpanel.active{display:block}
 
+  /* ===================== BANNIÈRES ===================== */
+  /* Chaque bannière est montrée à ses vraies proportions : une bannière se
+     juge sur son cadrage, pas sur une ligne de texte. */
+  .bn-card{display:flex;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);margin-bottom:11px}
+  @media (max-width:760px){ .bn-card{flex-direction:column} }
+  .bn-preview{flex:none;width:232px;aspect-ratio:16/9;position:relative;overflow:hidden;background:linear-gradient(150deg,#16231A,#0C1611);cursor:pointer}
+  @media (max-width:760px){ .bn-preview{width:100%} }
+  .bn-preview img{width:100%;height:100%;object-fit:cover;display:block}
+  .bn-preview-txt{position:absolute;left:0;right:0;bottom:0;padding:10px 12px;background:linear-gradient(transparent,rgba(4,10,7,.88))}
+  .bn-preview-k{font-family:'Inter',sans-serif;font-weight:700;font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--lime)}
+  .bn-preview-t{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;line-height:1.15;letter-spacing:-.02em;color:#fff;margin-top:2px}
+  .bn-body{flex:1;min-width:0;padding:13px 15px}
+  .bn-live{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:3px 8px;border-radius:100px}
+  .bn-dot{width:6px;height:6px;border-radius:50%;flex:none}
+  .bn-field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+  .bn-field label{font-weight:600;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
+  .bn-field input,.bn-field select,.bn-field textarea{background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px;width:100%}
+  /* Bandeau d'annonce : montré tel qu'il apparaîtra en haut du site. */
+  .an-strip{display:flex;align-items:center;justify-content:center;gap:11px;flex-wrap:wrap;border-radius:11px;padding:11px 16px;font-weight:600;font-size:13px;text-align:center}
+
   /* ===================== EFFECTIF (fiches joueuses) ===================== */
   /* Carte façon fiche de joueuse : le portrait porte le numéro de maillot,
      comme sur un programme de match. */
@@ -918,6 +938,14 @@
 
       <div class="sb-group">
         <div class="sb-group-label">Pages du site</div>
+        <button class="sb-link" data-section="banners">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 6v12M2 12h20"/></svg>
+          Bannières &amp; slider
+        </button>
+        <button class="sb-link" data-section="announce">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3zM11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          Bandeau d'annonce
+        </button>
         <button class="sb-link" data-section="c_home">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V9.5Z"/></svg>
           Accueil
@@ -1319,6 +1347,39 @@
           <div id="teams-list"><div class="empty">Chargement…</div></div>
         </div>
       </div><!-- /matches-subtab-teams -->
+    </section>
+
+    <!-- ===== SECTION BANNIÈRES ===== -->
+    <section id="section-banners" class="hide">
+      <div id="bn-list-view">
+        <div class="mod-head">
+          <h2 class="mod-head-title">Bannières &amp; slider</h2>
+          <span class="mod-count" id="bn-count">—</span>
+          <button type="button" class="btn btn-primary" id="bn-new" style="padding:10px 16px;font-size:13px">Nouvelle bannière</button>
+        </div>
+        <div class="callout">Le grand bloc d'accueil peut désormais faire défiler plusieurs bannières. Chacune peut être <b>programmée</b>&nbsp;: elle apparaît et disparaît d'elle-même, sans que vous ayez à vous lever le matin du match. Si aucune n'est en ligne, le site retombe sur l'image réglée dans «&nbsp;Image du hero&nbsp;».</div>
+        <div id="bn-rows"></div>
+      </div>
+      <div id="bn-doc-view" class="hide">
+        <button type="button" class="cd-back" id="bn-back">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Toutes les bannières
+        </button>
+        <div id="bn-doc"></div>
+      </div>
+      <div class="msg" id="bn-msg"></div>
+    </section>
+
+    <!-- ===== SECTION BANDEAU D'ANNONCE ===== -->
+    <section id="section-announce" class="hide">
+      <div class="mod-head">
+        <h2 class="mod-head-title">Bandeau d'annonce</h2>
+        <span class="mod-count" id="an-count">—</span>
+        <button type="button" class="btn btn-primary" id="an-new" style="padding:10px 16px;font-size:13px">Nouvelle annonce</button>
+      </div>
+      <div class="callout">Le bandeau en haut du site, pour un report de match ou une ouverture de vente. <b>Une seule annonce peut être en ligne à la fois</b>&nbsp;: en activer une désactive automatiquement l'autre — un bandeau qui annonce deux choses n'annonce rien.</div>
+      <div id="an-rows" style="display:flex;flex-direction:column;gap:11px;max-width:860px"></div>
+      <div class="msg" id="an-msg"></div>
     </section>
 
     <!-- ===== SECTION JOUEUSES ===== -->
@@ -2339,6 +2400,8 @@
     teams:{t:'Adversaires',d:'La liste des clubs que vous affrontez, avec leurs logos.'},
     live:{t:'Diffusion en direct',d:'Reliez la chaîne YouTube du club pour activer le direct sur l\'accueil.'},
     standings:{t:'Classement',d:'Le tableau du championnat affiché sur la page Compétitions. Les lignes se classent par points.'},
+    banners:{t:'Bannières & slider',d:'Les bannières du grand bloc d\'accueil : visuel, titre, bouton, et programmation dans le temps.'},
+    announce:{t:'Bandeau d\'annonce',d:'Le bandeau en haut du site : report de match, ouverture de vente, information urgente.'},
     squad:{t:'Joueuses',d:'Une fiche par joueuse : portrait, poste, statut, mensurations, parcours et statistiques de la saison.'},
     products:{t:'Produits',d:'Le catalogue de la boutique : visuels, prix, description, tailles et stock par taille.'},
     stock:{t:'Stock',d:'L\'état des réserves : ce qui est épuisé, ce qui approche du seuil, et la saisie rapide des quantités.'},
@@ -2371,7 +2434,7 @@
     home:{t:'Image du hero',d:'L\'image de fond et le texte d\'accroche du grand bloc d\'accueil.'},
     audit:{t:'Historique',d:'Qui a modifié quoi, et quand — protégé par mot de passe.'}
   };
-  var ALL_SECTIONS = ['dashboard','matches','live','standings','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
+  var ALL_SECTIONS = ['dashboard','matches','live','standings','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -4037,6 +4100,374 @@
         sbUpdate('products', id, { stock: stock }, 'Stock')
           .then(function(){ showMsg(msg, 'Stock mis à jour.', true); return prLoad(); })
           .catch(function(){ b.disabled = false; b.textContent = 'Enregistrer'; showMsg(msg, "La mise à jour a échoué.", false); });
+      });
+    });
+  }
+
+  // ===================== BANNIÈRES =====================
+  // Le hero était UNE image fixe : mettre en avant le prochain match puis
+  // une actualité demandait de réécrire le réglage à chaque fois. Avec
+  // plusieurs bannières programmables, la page se tient à jour seule.
+  var bnRows = [], bnSel = null, bnStarted = false, bnDirty = false;
+
+  // « En ligne » n'est pas un champ : c'est le croisement de l'activation
+  // et des dates. Le calculer évite un état affiché faux.
+  function bnLive(r){
+    if (!r.is_active) return 'off';
+    var now = Date.now();
+    if (r.starts_at && new Date(r.starts_at).getTime() > now) return 'plus_tard';
+    if (r.ends_at && new Date(r.ends_at).getTime() < now) return 'termine';
+    return 'live';
+  }
+  var BN_LIVE = {
+    live:      ['En ligne',    '#A8D93B'],
+    plus_tard: ['Programmée',  '#9DB8E8'],
+    termine:   ['Terminée',    '#7E8A82'],
+    off:       ['Désactivée',  '#7E8A82']
+  };
+  function bnBadge(r){
+    var s = BN_LIVE[bnLive(r)];
+    return '<span class="bn-live" style="color:' + s[1] + ';background:' + s[1] + '1c">' +
+      '<i class="bn-dot" style="background:' + s[1] + '"></i>' + esc(s[0]) + '</span>';
+  }
+  function bnById(id){ return bnRows.filter(function(r){ return String(r.id) === String(id); })[0]; }
+  function bnDate(d){ if (!d) return ''; try { return new Date(d).toISOString().slice(0, 16); } catch(e){ return ''; } }
+
+  function bnInit(){
+    if (bnStarted){ bnRender(); return; }
+    bnStarted = true;
+    document.getElementById('bn-new').addEventListener('click', function(){
+      sbInsert('banners', { title: 'Nouvelle bannière', is_active: false, sort: (bnRows.length + 1), focus_x: 50, focus_y: 50, zoom: 100 }, 'Bannières')
+        .then(bnLoad)
+        .catch(function(){ showMsg(document.getElementById('bn-msg'), 'La création a échoué.', false); });
+    });
+    document.getElementById('bn-back').addEventListener('click', function(){
+      if (bnDirty && !confirm('Des modifications ne sont pas enregistrées. Quitter quand même ?')) return;
+      bnSel = null; bnDirty = false; bnRender();
+    });
+    bnLoad();
+  }
+
+  function bnLoad(){
+    return sbGet('banners?select=*&order=sort.asc&limit=60')
+      .then(function(rows){ bnRows = rows || []; bnRender(); })
+      .catch(function(){
+        showMsg(document.getElementById('bn-msg'), 'Table des bannières introuvable — MIGRATION-bannieres.sql a-t-elle été exécutée ?', false);
+      });
+  }
+
+  function bnRender(){
+    var lv = document.getElementById('bn-list-view'), dv = document.getElementById('bn-doc-view');
+    if (!lv) return;
+    if (bnSel){ lv.classList.add('hide'); dv.classList.remove('hide'); bnRenderDoc(); return; }
+    lv.classList.remove('hide'); dv.classList.add('hide');
+
+    var live = bnRows.filter(function(r){ return bnLive(r) === 'live'; }).length;
+    document.getElementById('bn-count').textContent = live
+      ? live + (live > 1 ? ' en ligne' : ' en ligne')
+      : (bnRows.length ? 'aucune en ligne' : '—');
+
+    var box = document.getElementById('bn-rows');
+    if (!bnRows.length){
+      box.innerHTML = '<div class="empty">Aucune bannière. Le site affiche l\'image réglée dans « Image du hero ».</div>';
+      return;
+    }
+
+    box.innerHTML = bnRows.map(function(r, i){
+      var fx = r.focus_x == null ? 50 : r.focus_x, fy = r.focus_y == null ? 50 : r.focus_y;
+      var img = r.image_url
+        ? '<img src="' + esc(r.image_url) + '" alt="" loading="lazy" style="object-position:' + fx + '% ' + fy + '%;transform:scale(' + ((r.zoom || 100) / 100) + ')">'
+        : '';
+      return '<div class="bn-card">' +
+        '<div class="bn-preview" data-open="' + r.id + '">' + img +
+          '<div class="bn-preview-txt">' +
+            (r.kicker ? '<div class="bn-preview-k">' + esc(r.kicker) + '</div>' : '') +
+            '<div class="bn-preview-t">' + esc(r.title || 'Sans titre') + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="bn-body">' +
+          '<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:8px">' +
+            bnBadge(r) +
+            (r.starts_at || r.ends_at
+              ? '<span class="cd-card-meta">' + esc([r.starts_at ? 'du ' + fmtDateTime(r.starts_at) : '', r.ends_at ? 'au ' + fmtDateTime(r.ends_at) : ''].filter(Boolean).join(' ')) + '</span>'
+              : '') +
+          '</div>' +
+          '<div class="cd-card-name">' + esc(r.title || 'Sans titre') + '</div>' +
+          '<div class="cd-card-meta">' + esc(r.subtitle || 'Pas de sous-titre') + (r.cta_label ? ' · bouton « ' + esc(r.cta_label) + ' »' : '') + '</div>' +
+          '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:11px">' +
+            '<button type="button" class="btn btn-ghost bn-open" data-id="' + r.id + '" style="padding:8px 13px;font-size:12px">Modifier</button>' +
+            '<button type="button" class="btn btn-ghost bn-toggle" data-id="' + r.id + '" data-on="' + (r.is_active ? '1' : '0') + '" style="padding:8px 13px;font-size:12px">' + (r.is_active ? 'Désactiver' : 'Activer') + '</button>' +
+            (i > 0 ? '<button type="button" class="btn btn-ghost bn-up" data-id="' + r.id + '" title="Monter" style="padding:8px 11px;font-size:12px">▲</button>' : '') +
+            (i < bnRows.length - 1 ? '<button type="button" class="btn btn-ghost bn-down" data-id="' + r.id + '" title="Descendre" style="padding:8px 11px;font-size:12px">▼</button>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var msg = document.getElementById('bn-msg');
+    var open = function(id){ bnSel = id; bnDirty = false; bnRender(); };
+    box.querySelectorAll('[data-open]').forEach(function(el){ el.addEventListener('click', function(){ open(el.getAttribute('data-open')); }); });
+    box.querySelectorAll('.bn-open').forEach(function(b){ b.addEventListener('click', function(){ open(b.getAttribute('data-id')); }); });
+
+    box.querySelectorAll('.bn-toggle').forEach(function(b){
+      b.addEventListener('click', function(){
+        b.disabled = true;
+        sbUpdate('banners', b.getAttribute('data-id'), { is_active: b.getAttribute('data-on') !== '1' }, 'Bannières')
+          .then(bnLoad).catch(function(){ b.disabled = false; showMsg(msg, "Le changement a échoué.", false); });
+      });
+    });
+
+    // Réordonner : on échange les deux valeurs de tri plutôt que de
+    // renuméroter toute la liste.
+    var swap = function(id, dir){
+      var i = bnRows.findIndex(function(x){ return String(x.id) === String(id); });
+      var j = i + dir;
+      if (i < 0 || j < 0 || j >= bnRows.length) return;
+      var a = bnRows[i], b2 = bnRows[j];
+      Promise.all([
+        sbUpdate('banners', a.id, { sort: (b2.sort == null ? j + 1 : b2.sort) }, 'Bannières'),
+        sbUpdate('banners', b2.id, { sort: (a.sort == null ? i + 1 : a.sort) }, 'Bannières')
+      ]).then(bnLoad).catch(function(){ showMsg(msg, "Le déplacement a échoué.", false); });
+    };
+    box.querySelectorAll('.bn-up').forEach(function(b){ b.addEventListener('click', function(){ swap(b.getAttribute('data-id'), -1); }); });
+    box.querySelectorAll('.bn-down').forEach(function(b){ b.addEventListener('click', function(){ swap(b.getAttribute('data-id'), 1); }); });
+  }
+
+  function bnRenderDoc(){
+    var r = bnById(bnSel); if (!r){ bnSel = null; bnRender(); return; }
+    var box = document.getElementById('bn-doc');
+    var fx = r.focus_x == null ? 50 : r.focus_x, fy = r.focus_y == null ? 50 : r.focus_y, zm = r.zoom == null ? 100 : r.zoom;
+
+    var fld = function(id, label, val, type, ph, hint){
+      var inner = type === 'textarea'
+        ? '<textarea id="' + id + '" style="min-height:72px;resize:vertical" placeholder="' + esc(ph || '') + '">' + esc(val == null ? '' : val) + '</textarea>'
+        : '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '">';
+      return '<div class="bn-field"><label for="' + id + '">' + esc(label) + '</label>' + inner +
+        (hint ? '<p style="font-size:11.5px;line-height:1.5;color:var(--faint);margin:0">' + hint + '</p>' : '') + '</div>';
+    };
+
+    box.innerHTML =
+      '<div class="cd-doc">' +
+        '<div style="padding:clamp(16px,2.4vw,24px)">' +
+          '<div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:16px">' + bnBadge(r) + '</div>' +
+
+          '<p class="ar-side-h">Aperçu</p>' +
+          '<div style="max-width:520px;aspect-ratio:16/9;border-radius:13px;overflow:hidden;position:relative;background:linear-gradient(150deg,#16231A,#0C1611);border:1px solid var(--line);margin-bottom:20px" id="bn-pv">' +
+            (r.image_url ? '<img id="bn-pv-img" src="' + esc(r.image_url) + '" alt="" style="width:100%;height:100%;object-fit:cover;object-position:' + fx + '% ' + fy + '%;transform:scale(' + (zm / 100) + ')">' : '') +
+            '<div style="position:absolute;left:0;right:0;bottom:0;padding:16px 18px;background:linear-gradient(transparent,rgba(4,10,7,.9))">' +
+              '<div id="bn-pv-k" style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--lime)">' + esc(r.kicker || '') + '</div>' +
+              '<div id="bn-pv-t" style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:22px;line-height:1.1;letter-spacing:-.025em;color:' + esc(r.title_color || '#ffffff') + ';margin-top:3px">' + esc(r.title || '') + '</div>' +
+              '<div id="bn-pv-s" style="font-size:12.5px;line-height:1.5;color:' + esc(r.subtitle_color || '#C7CFC8') + ';margin-top:5px">' + esc(r.subtitle || '') + '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<p class="ar-side-h">Contenu</p>' +
+          fld('bn-kicker', 'Sur-titre', r.kicker, 'text', 'BAOBABS BASKET CLUB · DAKAR') +
+          fld('bn-title', 'Titre', r.title, 'textarea', 'Le basket sénégalais qui monte') +
+          fld('bn-sub', 'Sous-titre', r.subtitle, 'textarea') +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0 18px">' +
+            fld('bn-cta-l', 'Libellé du bouton', r.cta_label, 'text', 'Voir la billetterie') +
+            fld('bn-cta-h', 'Lien du bouton', r.cta_href, 'text', '#billetterie') +
+            fld('bn-tc', 'Couleur du titre', r.title_color || '#FFFFFF', 'text', '#FFFFFF') +
+            fld('bn-sc', 'Couleur du sous-titre', r.subtitle_color || '#C7CFC8', 'text', '#C7CFC8') +
+          '</div>' +
+
+          '<p class="ar-side-h" style="margin-top:6px">Visuel et cadrage</p>' +
+          fld('bn-img', 'Image (adresse)', r.image_url, 'text', 'https://… .jpg') +
+          fld('bn-alt', 'Description de l\'image', r.image_alt, 'text', 'Ce que montre la photo',
+              'Lue par les lecteurs d\'écran, et affichée si l\'image ne charge pas.') +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0 18px">' +
+            fld('bn-fx', 'Cadrage horizontal (%)', fx, 'number') +
+            fld('bn-fy', 'Cadrage vertical (%)', fy, 'number') +
+            fld('bn-zoom', 'Zoom (%)', zm, 'number') +
+          '</div>' +
+          '<button type="button" class="btn btn-ghost" id="bn-media" style="padding:8px 13px;font-size:12px;margin-bottom:20px">Ouvrir la médiathèque</button>' +
+
+          '<p class="ar-side-h">Mise en ligne</p>' +
+          '<label style="display:flex;align-items:center;gap:9px;margin-bottom:13px;cursor:pointer">' +
+            '<input type="checkbox" id="bn-active"' + (r.is_active ? ' checked' : '') + ' style="width:17px;height:17px;accent-color:var(--gold)">' +
+            '<span style="font-size:13px;color:var(--text)">Bannière activée</span>' +
+          '</label>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0 18px">' +
+            fld('bn-start', 'Afficher à partir du', bnDate(r.starts_at), 'datetime-local', '', 'Laissez vide pour afficher tout de suite.') +
+            fld('bn-end', 'Retirer après le', bnDate(r.ends_at), 'datetime-local', '', 'Laissez vide pour garder en ligne.') +
+            fld('bn-sort', 'Position dans le défilé', r.sort, 'number') +
+          '</div>' +
+        '</div>' +
+
+        '<div class="mc-savebar">' +
+          '<span class="cd-draft" id="bn-note"></span>' +
+          '<div style="display:flex;gap:8px">' +
+            '<button type="button" class="btn btn-ghost" id="bn-del" style="padding:10px 14px;font-size:13px;color:var(--danger)">Supprimer</button>' +
+            '<button type="button" class="btn btn-primary" id="bn-save" style="padding:10px 18px;font-size:13px">Enregistrer</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    var note = document.getElementById('bn-note');
+    var v = function(id){ var e = document.getElementById(id); return e ? e.value : ''; };
+
+    // L'aperçu suit la frappe : sans lui, on enregistre pour voir, on
+    // corrige, on réenregistre.
+    function sync(){
+      var im = document.getElementById('bn-pv-img');
+      var url = v('bn-img').trim();
+      if (url){
+        if (!im){ bnRenderDoc(); return; }
+        im.src = url;
+        im.style.objectPosition = (v('bn-fx') || 50) + '% ' + (v('bn-fy') || 50) + '%';
+        im.style.transform = 'scale(' + ((parseInt(v('bn-zoom'), 10) || 100) / 100) + ')';
+      }
+      document.getElementById('bn-pv-k').textContent = v('bn-kicker');
+      var t = document.getElementById('bn-pv-t');
+      t.textContent = v('bn-title'); t.style.color = v('bn-tc') || '#ffffff';
+      var s = document.getElementById('bn-pv-s');
+      s.textContent = v('bn-sub'); s.style.color = v('bn-sc') || '#C7CFC8';
+    }
+
+    ['bn-kicker','bn-title','bn-sub','bn-cta-l','bn-cta-h','bn-tc','bn-sc','bn-img','bn-alt','bn-fx','bn-fy','bn-zoom','bn-active','bn-start','bn-end','bn-sort']
+      .forEach(function(id){
+        var el = document.getElementById(id); if (!el) return;
+        var mark = function(){ bnDirty = true; note.textContent = 'Modifications non enregistrées.'; sync(); };
+        el.addEventListener('input', mark); el.addEventListener('change', mark);
+      });
+
+    document.getElementById('bn-media').addEventListener('click', function(){
+      showSection('media');
+      if (!mdStarted) mdInit();
+      mdDir = 'club'; mdRenderTree(); mdRender();
+    });
+
+    document.getElementById('bn-save').addEventListener('click', function(){
+      var b = this; b.disabled = true; note.textContent = 'Enregistrement…';
+      var num = function(id, d){ var x = v(id); return x === '' ? d : (parseInt(x, 10) || 0); };
+      sbUpdate('banners', r.id, {
+        kicker: v('bn-kicker').trim() || null,
+        title: v('bn-title').trim() || null,
+        subtitle: v('bn-sub').trim() || null,
+        cta_label: v('bn-cta-l').trim() || null,
+        cta_href: v('bn-cta-h').trim() || null,
+        title_color: v('bn-tc').trim() || null,
+        subtitle_color: v('bn-sc').trim() || null,
+        image_url: v('bn-img').trim() || null,
+        image_alt: v('bn-alt').trim() || null,
+        focus_x: Math.min(100, Math.max(0, num('bn-fx', 50))),
+        focus_y: Math.min(100, Math.max(0, num('bn-fy', 50))),
+        zoom: Math.max(100, num('bn-zoom', 100)),
+        is_active: document.getElementById('bn-active').checked,
+        starts_at: v('bn-start') ? new Date(v('bn-start')).toISOString() : null,
+        ends_at: v('bn-end') ? new Date(v('bn-end')).toISOString() : null,
+        sort: num('bn-sort', null)
+      }, 'Bannières')
+        .then(function(){ bnDirty = false; note.textContent = 'Enregistré.'; return bnLoad(); })
+        .then(function(){ b.disabled = false; if (bnSel) bnRenderDoc(); })
+        .catch(function(){ b.disabled = false; note.textContent = "L'enregistrement a échoué."; });
+    });
+
+    document.getElementById('bn-del').addEventListener('click', function(){
+      if (!confirm('Supprimer définitivement cette bannière ?')) return;
+      sbDelete('banners', r.id, 'Bannières')
+        .then(function(){ bnSel = null; bnDirty = false; return bnLoad(); })
+        .catch(function(){ note.textContent = 'La suppression a échoué.'; });
+    });
+  }
+
+  // ===================== BANDEAU D'ANNONCE =====================
+  var anRows = [], anStarted = false;
+  var AN_TONE = {
+    info:   ['Information', '#9DB8E8', '#0A1B0D'],
+    alerte: ['Alerte',      '#C0271B', '#ffffff'],
+    succes: ['Bonne nouvelle', '#A8D93B', '#0A1B0D']
+  };
+
+  function anInit(){
+    if (anStarted){ anLoad(); return; }
+    anStarted = true;
+    document.getElementById('an-new').addEventListener('click', function(){
+      var m = prompt('Message du bandeau ?');
+      if (!m || !m.trim()) return;
+      sbInsert('announcements', { message: m.trim(), tone: 'info', is_active: false }, 'Annonces')
+        .then(anLoad)
+        .catch(function(){ showMsg(document.getElementById('an-msg'), 'La création a échoué.', false); });
+    });
+    anLoad();
+  }
+
+  function anLoad(){
+    return sbGet('announcements?select=*&order=created_at.desc&limit=40')
+      .then(function(rows){ anRows = rows || []; anRender(); })
+      .catch(function(){
+        showMsg(document.getElementById('an-msg'), 'Table des annonces introuvable — MIGRATION-bannieres.sql a-t-elle été exécutée ?', false);
+      });
+  }
+
+  function anRender(){
+    var box = document.getElementById('an-rows'); if (!box) return;
+    var live = anRows.filter(function(r){ return bnLive(r) === 'live'; })[0];
+    document.getElementById('an-count').textContent = live ? 'une annonce en ligne' : (anRows.length ? 'aucune en ligne' : '—');
+
+    if (!anRows.length){ box.innerHTML = '<div class="empty">Aucune annonce. Aucun bandeau n\'apparaît sur le site.</div>'; return; }
+
+    box.innerHTML = anRows.map(function(r){
+      var t = AN_TONE[r.tone] || AN_TONE.info;
+      return '<div style="border:1px solid var(--line);border-radius:13px;background:var(--surface);padding:13px">' +
+        '<div class="an-strip" style="background:' + t[1] + ';color:' + t[2] + ';margin-bottom:12px">' +
+          '<span>' + esc(r.message) + '</span>' +
+          (r.cta_label ? '<span style="font-weight:700;text-decoration:underline">' + esc(r.cta_label) + '</span>' : '') +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:11px">' + bnBadge(r) +
+          (r.starts_at || r.ends_at ? '<span class="cd-card-meta">' + esc([r.starts_at ? 'du ' + fmtDateTime(r.starts_at) : '', r.ends_at ? 'au ' + fmtDateTime(r.ends_at) : ''].filter(Boolean).join(' ')) + '</span>' : '') +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0 14px">' +
+          '<div class="bn-field"><label>Message</label><input class="an-f" data-id="' + r.id + '" data-k="message" type="text" value="' + esc(r.message || '') + '"></div>' +
+          '<div class="bn-field"><label>Ton</label><select class="an-f" data-id="' + r.id + '" data-k="tone">' +
+            Object.keys(AN_TONE).map(function(k){ return '<option value="' + k + '"' + (r.tone === k ? ' selected' : '') + '>' + esc(AN_TONE[k][0]) + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="bn-field"><label>Libellé du lien</label><input class="an-f" data-id="' + r.id + '" data-k="cta_label" type="text" value="' + esc(r.cta_label || '') + '" placeholder="Réserver"></div>' +
+          '<div class="bn-field"><label>Lien</label><input class="an-f" data-id="' + r.id + '" data-k="cta_href" type="text" value="' + esc(r.cta_href || '') + '" placeholder="#billetterie"></div>' +
+          '<div class="bn-field"><label>À partir du</label><input class="an-f" data-id="' + r.id + '" data-k="starts_at" type="datetime-local" value="' + esc(bnDate(r.starts_at)) + '"></div>' +
+          '<div class="bn-field"><label>Jusqu\'au</label><input class="an-f" data-id="' + r.id + '" data-k="ends_at" type="datetime-local" value="' + esc(bnDate(r.ends_at)) + '"></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:7px;flex-wrap:wrap">' +
+          '<button type="button" class="btn btn-primary an-save" data-id="' + r.id + '" style="padding:9px 14px;font-size:12px">Enregistrer</button>' +
+          '<button type="button" class="btn btn-ghost an-toggle" data-id="' + r.id + '" data-on="' + (r.is_active ? '1' : '0') + '" style="padding:9px 14px;font-size:12px">' + (r.is_active ? 'Retirer du site' : 'Mettre en ligne') + '</button>' +
+          '<button type="button" class="btn btn-ghost an-del" data-id="' + r.id + '" style="padding:9px 12px;font-size:12px;color:var(--danger)">Supprimer</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var msg = document.getElementById('an-msg');
+    box.querySelectorAll('.an-save').forEach(function(b){
+      b.addEventListener('click', function(){
+        var id = b.getAttribute('data-id'), body = {};
+        box.querySelectorAll('.an-f[data-id="' + id + '"]').forEach(function(i){
+          var k = i.getAttribute('data-k'), val = i.value;
+          if (k === 'starts_at' || k === 'ends_at') body[k] = val ? new Date(val).toISOString() : null;
+          else body[k] = val.trim() || (k === 'message' ? 'Annonce' : null);
+        });
+        b.disabled = true;
+        sbUpdate('announcements', id, body, 'Annonces')
+          .then(function(){ showMsg(msg, 'Annonce enregistrée.', true); return anLoad(); })
+          .catch(function(){ b.disabled = false; showMsg(msg, "L'enregistrement a échoué.", false); });
+      });
+    });
+    box.querySelectorAll('.an-toggle').forEach(function(b){
+      b.addEventListener('click', function(){
+        var on = b.getAttribute('data-on') !== '1';
+        b.disabled = true;
+        sbUpdate('announcements', b.getAttribute('data-id'), { is_active: on }, 'Annonces')
+          .then(function(){
+            if (on) showMsg(msg, 'En ligne. Les autres annonces ont été retirées automatiquement.', true);
+            return anLoad();
+          })
+          .catch(function(){ b.disabled = false; showMsg(msg, "Le changement a échoué.", false); });
+      });
+    });
+    box.querySelectorAll('.an-del').forEach(function(b){
+      b.addEventListener('click', function(){
+        if (!confirm('Supprimer cette annonce ?')) return;
+        sbDelete('announcements', b.getAttribute('data-id'), 'Annonces')
+          .then(anLoad).catch(function(){ showMsg(msg, 'La suppression a échoué.', false); });
       });
     });
   }
@@ -6845,6 +7276,8 @@
     shop:function(){ qgvInit('shop'); },
     standings:function(){ qgvInit('standings'); },
     tickets:function(){ tkInit(); },
+    banners:function(){ bnInit(); },
+    announce:function(){ anInit(); },
     squad:function(){ efInit(); },
     products:function(){ prInit(); },
     stock:function(){ skInit(); },
