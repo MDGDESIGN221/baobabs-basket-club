@@ -2425,6 +2425,7 @@ window.bbCloud = function(url, w){
 
   var eqGenderFilter = 'all';
   function renderPlayers(){
+    if (window.bbAppFeed) bbAppFeed.players(typeof players !== 'undefined' ? players : []);
     var a = document.getElementById('bb-effectif');
     if (a) a.innerHTML = playerCards('all') + recruitCard();
     var b = document.getElementById('bb-effectif-equipes');
@@ -2495,6 +2496,7 @@ window.bbCloud = function(url, w){
   }
 
   function renderShopGrid(){
+    if (window.bbAppFeed) bbAppFeed.shop(products);
     var el = document.getElementById('bb-shop-grid');
     if (!el) return;
     el.innerHTML = products.map(function(p){
@@ -3534,6 +3536,95 @@ window.bbCloud = function(url, w){
   window.bbTilt = bbTilt;
   window.bbFavPaint = function(root){ return bbFavPaint(root); };
   window.bbFavLoad = function(){ return bbFavLoad(); };
+
+  /* ===== Les téléphones de la section Appli : vraies données =====
+     Les écrans étaient des maquettes figées. Chaque écran se met à jour
+     quand la donnée correspondante arrive ; sans donnée, la maquette
+     d'origine reste affichée telle quelle. */
+  var bbAppFeed = {
+    _short: function(s, n){ s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; },
+    _when: function(m){
+      if (!m.match_date) return '';
+      var d = new Date(m.match_date + 'T12:00:00');
+      var J = ['DIM','LUN','MAR','MER','JEU','VEN','SAM'];
+      var h = m.match_time ? String(m.match_time).slice(0,5).replace(':','H').replace(/H00$/,'H') : '';
+      return J[d.getDay()] + ' ' + d.getDate() + ' ' + BB_MOIS[d.getMonth()] + (h ? ' · ' + h : '');
+    },
+    matches: function(past, next){
+      var cal = document.getElementById('bb-asc-cal');
+      if (cal && next && next.length){
+        cal.innerHTML = next.slice(0,3).map(function(m){
+          var a = m.is_home ? 'Baobabs' : bbAppFeed._short(m.opponent_name, 10);
+          var b = m.is_home ? bbAppFeed._short(m.opponent_name, 10) : 'Baobabs';
+          return '<div style="background:rgba(243,239,230,.05);border:1px solid rgba(243,239,230,.09);border-radius:9px;padding:8px 9px"><div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:6.5px;letter-spacing:.1em;color:#C6A257">' + escHtml(bbAppFeed._when(m)) + '</div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;font-family:\'Inter\',sans-serif;font-weight:600;font-size:8.5px;color:#F3EFE6"><span>' + escHtml(a) + '</span><span style="color:#7E8A82">vs</span><span>' + escHtml(b) + '</span></div></div>';
+        }).join('');
+      }
+      if (next && next.length){
+        var n0 = next[0];
+        var teams = document.getElementById('bb-asc-tick-teams');
+        var info = document.getElementById('bb-asc-tick-info');
+        if (teams) teams.textContent = (n0.is_home ? 'Baobabs vs ' : 'Baobabs chez ') + bbAppFeed._short(n0.opponent_name, 14);
+        if (info) info.textContent = bbAppFeed._when(n0) + (n0.venue ? ' · ' + bbAppFeed._short(n0.venue, 18) : '');
+      }
+      if (past && past.length){
+        var L = past[past.length - 1];
+        var sc = document.getElementById('bb-asc-score');
+        var opp = document.getElementById('bb-asc-opp');
+        var lv = document.getElementById('bb-asc-live');
+        if (sc && L.score_baobabs != null){ sc.textContent = L.score_baobabs + '–' + L.score_opponent; if (lv) lv.textContent = 'Score final'; }
+        if (opp) opp.textContent = (L.is_home ? 'vs ' : 'chez ') + bbAppFeed._short(L.opponent_name, 14);
+      }
+    },
+    standings: function(rows){
+      var el = document.getElementById('bb-asc-std');
+      if (!el || !rows || rows.length < 3) return;
+      el.innerHTML = rows.slice(0,5).map(function(r, i){
+        var pts = r.points != null ? r.points : (r.pts != null ? r.pts : '');
+        if (/baobab/i.test(r.team_name || '')) return '<div style="display:flex;align-items:center;gap:7px;font-family:\'Inter\',sans-serif;font-size:8px;color:#F3EFE6;background:linear-gradient(90deg,rgba(198,162,87,.16),transparent);border-radius:6px;padding:3px 4px;margin:0 -4px"><span style="color:#C6A257;font-weight:800;width:9px">' + (i+1) + '</span><span style="flex:1;font-weight:800;color:#C6A257">Baobabs</span><b>' + pts + '</b></div>';
+        return '<div style="display:flex;align-items:center;gap:7px;font-family:\'Inter\',sans-serif;font-size:8px;color:#C7CFC8"><span style="color:#7E8A82;font-weight:800;width:9px">' + (i+1) + '</span><span style="flex:1">' + escHtml(bbAppFeed._short(r.team_name, 14)) + '</span><b style="color:#F3EFE6">' + pts + '</b></div>';
+      }).join('');
+    },
+    shop: function(prods){
+      var el = document.getElementById('bb-asc-shop');
+      if (!el || !prods || !prods.length) return;
+      var img = function(p, w){ var u = (p.images && p.images[0]) || p.image_url || ''; return u ? (window.bbCloud ? window.bbCloud(u, w) : u) : ''; };
+      var p0 = prods[0];
+      var html = '<div style="border-radius:9px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:16/12;background:#0A150F">' + (img(p0,300) ? '<img src="' + img(p0,300) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:6px 8px"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:8px;color:#F3EFE6">' + escHtml(bbAppFeed._short(p0.name, 20)) + '</div><div style="font-family:\'Inter\',sans-serif;font-weight:800;font-size:8.5px;color:#C6A257;margin-top:2px">' + escHtml(money(p0.price)) + '</div></div></div>';
+      if (prods.length > 1){
+        html += '<div style="display:flex;gap:7px">' + prods.slice(1,3).map(function(p){
+          return '<div style="flex:1;border-radius:8px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:1/1;background:#0A150F">' + (img(p,240) ? '<img src="' + img(p,240) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:4px 6px;font-family:\'Inter\',sans-serif;font-weight:700;font-size:6.5px;color:#C6A257">' + escHtml(bbAppFeed._short(p.name, 12)) + '</div></div>';
+        }).join('') + '</div>';
+      }
+      el.innerHTML = html;
+    },
+    players: function(rows){
+      if (!rows || !rows.length) return;
+      var p = null;
+      for (var i = 0; i < rows.length; i++){ if (rows[i].photo_url || rows[i].image_url){ p = rows[i]; break; } }
+      if (!p) return;
+      var img = document.getElementById('bb-asc-roster-img');
+      var nm = document.getElementById('bb-asc-roster-name');
+      var mt = document.getElementById('bb-asc-roster-meta');
+      var u = p.photo_url || p.image_url;
+      if (img) img.src = window.bbCloud ? window.bbCloud(u, 800) : u;
+      if (nm && p.name) nm.textContent = p.name;
+      if (mt){
+        var meta = [p.position || p.poste, (p.number != null ? '#' + p.number : (p.numero != null ? '#' + p.numero : null))].filter(Boolean).join(' · ');
+        if (meta) mt.textContent = meta;
+      }
+    },
+    news: function(rows){
+      if (!rows || !rows.length) return;
+      var n = rows[0];
+      var img = document.getElementById('bb-asc-news-img');
+      var tag = document.getElementById('bb-asc-news-tag');
+      var ti = document.getElementById('bb-asc-news-title');
+      if (img && n.image_url) img.src = window.bbCloud ? window.bbCloud(n.image_url, 500) : n.image_url;
+      if (tag && n.category) tag.textContent = n.category;
+      if (ti && n.title) ti.textContent = bbAppFeed._short(n.title, 60);
+    }
+  };
+  window.bbAppFeed = bbAppFeed;
 
   /* ===== Favoris =====
      Le cœur sur un maillot ou un match l'épingle au compte. La table est
@@ -4987,6 +5078,7 @@ window.bbCloud = function(url, w){
   window.renderAppLive = renderAppLive;
 
   function renderStandings(rows){
+    if (window.bbAppFeed) bbAppFeed.standings(rows || []);
     var body=document.getElementById('bb-standings-body'); var wrap=document.getElementById('bb-standings-wrap'); if(!body||!wrap) return;
     function isBao(n){ return /baobab/i.test(n||''); }
     body.innerHTML=rows.map(function(r,i){
@@ -5007,6 +5099,7 @@ window.bbCloud = function(url, w){
   }
 
   function renderActus(rows){
+    if (window.bbAppFeed) bbAppFeed.news(rows || []);
     var el=document.getElementById('bb-actus-grid'); var sec=document.getElementById('bb-actus'); if(!el||!sec) return;
     function fdate(d){ if(!d) return ''; try{ return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return d; } }
     el.innerHTML=rows.map(function(n){
@@ -5318,6 +5411,7 @@ document.addEventListener('keydown', function(e){
     html += next.map(function(m, i){ return row(m, false, i === 0); }).join('');
     el.innerHTML = html;
     if (window.bbFavPaint) bbFavPaint(el);
+    if (window.bbAppFeed) bbAppFeed.matches(past, next);
 
     bbSeasonReveal(el);
   }
