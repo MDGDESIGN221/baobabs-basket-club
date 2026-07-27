@@ -287,6 +287,11 @@
 
   /* Les Épinglés restent visibles même quand on défile dans le menu. */
   .sidebar .sb-group.sb-pinned{position:sticky;top:0;z-index:3;background:var(--bg);padding-top:8px;margin-top:-8px;box-shadow:0 10px 14px -12px rgba(0,0,0,.6)}
+  .sidebar{scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent}
+  .sidebar::-webkit-scrollbar{width:8px}
+  .sidebar::-webkit-scrollbar-track{background:transparent}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:99px}
+  .sidebar::-webkit-scrollbar-thumb:hover{background:var(--gold)}
 
   /* ===== V2 — historique : un journal qui se lit ===== */
   .aud-day{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:22px 0 8px;display:flex;align-items:center;gap:12px}
@@ -3498,6 +3503,17 @@
     if (!b) return;
     var grp = b.closest('.sb-group');
     if (grp) grp.classList.remove('folded');
+    // L'écran actif doit être visible dans le menu, même quand on y arrive
+    // par un raccourci : on fait défiler la barre elle-même, jamais la page.
+    var sb = document.getElementById('sidebar');
+    if (sb && sb.scrollHeight > sb.clientHeight){
+      requestAnimationFrame(function(){
+        var r = b.getBoundingClientRect(), s = sb.getBoundingClientRect();
+        if (r.top < s.top + 70 || r.bottom > s.bottom - 24){
+          sb.scrollTop += (r.top - s.top) - s.height / 2 + 40;
+        }
+      });
+    }
   }
 
   // ===================== ÉCRANS ÉPINGLÉS =====================
@@ -6531,6 +6547,36 @@
     { id:'club',        name:'Club & histoire' },
     { id:'divers',      name:'Divers' }
   ];
+  // Les visuels du site ne sont pas tous dans le bucket : la plupart sont
+  // des liens enregistrés dans les fiches (adversaires, joueuses, produits,
+  // articles, partenaires, réglages). Ces dossiers-là reflètent les fiches :
+  // on y copie une adresse, on n'y téléverse pas.
+  var MD_DB_SOURCES = [
+    { id:'@teams',    name:'Logos des adversaires',  query:'teams?select=name,logo_url&order=name.asc' },
+    { id:'@players',  name:'Photos des joueuses',    query:'players?select=name,photo_url,image_url' },
+    { id:'@products', name:'Visuels de la boutique', query:'products?select=name,image_url,images' },
+    { id:'@news',     name:'Images des articles',    query:'news?select=title,image_url&order=created_at.desc' },
+    { id:'@partners', name:'Logos des partenaires',  query:'partners?select=name,logo_url' },
+    { id:'@staff',    name:'Photos du staff',        query:'staff?select=name,photo_url,image_url' },
+    { id:'@settings', name:'Réglages (hero, logos)', query:'site_settings?select=key,value' }
+  ];
+  function mdAllFolders(){ return MD_FOLDERS.concat(MD_DB_SOURCES); }
+  function mdLooksImg(v){ return /^https?:\/\//i.test(v||'') && (/\.(jpe?g|png|gif|webp|svg|avif)(\?|$)/i.test(v) || /cloudinary|supabase\.co\/storage/i.test(v)); }
+  function mdDbItems(src, rows){
+    var out=[];
+    (rows||[]).forEach(function(r){
+      var label = r.name || r.title || r.key || 'visuel';
+      var urls = [];
+      ['logo_url','photo_url','image_url','value'].forEach(function(k){ if (mdLooksImg(r[k])) urls.push(r[k]); });
+      var imgs = r.images;
+      if (typeof imgs === 'string'){ try { imgs = JSON.parse(imgs); } catch(e){ imgs = null; } }
+      if (Array.isArray(imgs)) imgs.forEach(function(u){ if (mdLooksImg(u)) urls.push(u); });
+      urls.forEach(function(u, i){
+        out.push({ name: label + (i ? ' ('+(i+1)+')' : ''), dir: src.id, path: src.id + ':' + u, url: u, size: 0, db: true });
+      });
+    });
+    return out;
+  }
   var MD_BUCKET = 'site-media';
   var mdFiles = [], mdDir = '', mdStarted = false, mdCounts = {}, mdPick = null;
 
@@ -6591,6 +6637,16 @@
       });
       mdCounts[''] = mdFiles.filter(function(x){ return x.dir === ''; }).length;
       mdRender();
+      return Promise.all(MD_DB_SOURCES.map(function(src){
+        return sbGet(src.query).then(function(rows){ return mdDbItems(src, rows); }).catch(function(){ return []; });
+      })).then(function(lots){
+        lots.forEach(function(lot, i){
+          mdCounts[MD_DB_SOURCES[i].id] = lot.length;
+          mdFiles = mdFiles.concat(lot);
+        });
+        mdRenderTree();
+        mdRender();
+      });
     }).catch(function(){
       if (msg) showMsg(msg, "La médiathèque n'a pas pu être lue. Le bucket « site-media » existe-t-il, et est-il public ?", false);
     });
@@ -6628,7 +6684,9 @@
       MD_FOLDERS.filter(function(x){ return x.root; }).map(function(fo){ return mdNode(fo); }).join('') +
       '<div class="md-kids">' +
         MD_FOLDERS.filter(function(x){ return !x.root; }).map(function(fo){ return mdNode(fo); }).join('') +
-      '</div>';
+      '</div>' +
+      '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:16px 0 7px">Utilisées par le site</div>' +
+      '<div class="md-kids">' + MD_DB_SOURCES.map(function(fo){ return mdNode(fo); }).join('') + '</div>';
     box.querySelectorAll('.md-node').forEach(function(b){
       b.addEventListener('click', function(){
         mdDir = b.getAttribute('data-dir') || '';
@@ -6661,16 +6719,19 @@
 
   function mdRender(){
     var grid = document.getElementById('md-grid'); if (!grid) return;
-    var fo = MD_FOLDERS.filter(function(x){ return x.id === mdDir; })[0] || MD_FOLDERS[0];
+    var fo = mdAllFolders().filter(function(x){ return x.id === mdDir; })[0] || MD_FOLDERS[0];
+    var isDb = mdDir.charAt(0) === '@';
     var rows = mdVisible();
 
     document.getElementById('md-count').textContent = mdFiles.length + (mdFiles.length > 1 ? ' fichiers' : ' fichier');
     document.getElementById('md-crumb').innerHTML = mdDir
       ? 'Médiathèque <i>/</i>' + esc(fo.name)
       : 'Fichiers non rangés';
-    document.getElementById('md-drop').textContent = mdDir
-      ? 'Glissez vos images ici — elles iront dans « ' + fo.name + ' ».'
-      : 'Choisissez un dossier à gauche avant d\'envoyer, pour ne pas repartir d\'un tas à la racine.';
+    document.getElementById('md-drop').textContent = isDb
+      ? 'Ces visuels viennent des fiches du site — un clic copie l\'adresse ; pour changer l\'image, passez par la fiche concernée.'
+      : (mdDir
+        ? 'Glissez vos images ici — elles iront dans « ' + fo.name + ' ».'
+        : 'Choisissez un dossier à gauche avant d\'envoyer, pour ne pas repartir d\'un tas à la racine.');
 
     if (!rows.length){
       grid.innerHTML = '<div class="empty" style="grid-column:1/-1">' +
@@ -6679,9 +6740,10 @@
     }
 
     grid.innerHTML = rows.map(function(x){
+      var href = x.url || mdUrl(x.path);
       var thumb = mdIsVideo(x.name)
         ? '<div class="md-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:11px">vidéo</div>'
-        : '<img class="md-thumb" src="' + esc(mdUrl(x.path)) + '" alt="" loading="lazy">';
+        : '<img class="md-thumb" src="' + esc(href) + '" alt="" loading="lazy">';
       return '<div class="md-item' + (mdPick === x.path ? ' sel' : '') + '" data-path="' + esc(x.path) + '" title="' + esc(x.name) + '">' +
         thumb +
         '<div class="md-name">' + esc(x.name.length > 34 ? x.name.slice(0, 31) + '…' : x.name) + '</div>' +
@@ -6694,7 +6756,10 @@
         var p = el.getAttribute('data-path');
         mdPick = mdPick === p ? null : p;
         mdRender();
-        if (mdPick) mdCopy(mdUrl(mdPick));
+        if (mdPick){
+          var row = mdFiles.filter(function(x){ return x.path === mdPick; })[0];
+          mdCopy(row && row.url ? row.url : mdUrl(mdPick));
+        }
       });
     });
   }
@@ -6709,6 +6774,11 @@
   }
 
   function mdUpload(files){
+    if (mdDir.charAt(0) === '@'){
+      var m0 = document.getElementById('md-msg');
+      if (m0) showMsg(m0, 'Ce dossier reflète les fiches du site — changez l\'image depuis la fiche concernée (joueuse, produit, article…).', false);
+      return;
+    }
     var msg = document.getElementById('md-msg');
     if (!mdDir){ showMsg(msg, 'Choisissez d\'abord un dossier à gauche.', false); return; }
     var list = Array.prototype.slice.call(files);
