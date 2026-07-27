@@ -115,6 +115,38 @@
   .sb-link-badge{margin-left:auto;flex:none;background:var(--danger);color:#fff;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10px;line-height:1;border-radius:20px;padding:4px 7px;min-width:18px;text-align:center}
   .app-main{flex:1;min-width:0}
 
+  /* Épinglage : la punaise ne se révèle qu'au survol, pour ne pas encombrer
+     une barre latérale déjà dense. Toujours visible si l'écran est épinglé. */
+  .sb-pin{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:7px;color:var(--faint);cursor:pointer;opacity:0;transition:opacity .15s,color .15s,background .15s}
+  .sb-pin svg{width:13px;height:13px;opacity:1}
+  .sb-link:hover .sb-pin{opacity:1}
+  .sb-pin:hover{background:var(--surface);color:var(--gold-bright)}
+  .sb-pin.on{opacity:1;color:var(--gold)}
+  .sb-link:has(.sb-link-badge) .sb-pin{right:34px}
+  .sb-pinned-empty{font-size:11.5px;line-height:1.55;color:var(--faint);padding:2px 12px 4px;margin:0}
+  /* Le décalage d'entrée part de la gauche : l'écran vient rejoindre la liste. */
+  @keyframes sbPinIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+  .sb-pinned .sb-link{animation:sbPinIn .22s cubic-bezier(.22,1,.36,1) both}
+
+  /* Sections repliables des fiches — remplace les blocs toujours ouverts.
+     La hauteur est animée par grid-template-rows, qui accepte une valeur
+     inconnue à l'avance (contrairement à max-height). */
+  .acc{border-top:1px solid var(--line)}
+  .acc:first-child{border-top:none}
+  .acc-h{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;color:var(--text);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;padding:15px 2px;cursor:pointer;text-align:left}
+  .acc-h:hover{color:var(--gold-bright)}
+  .acc-h-n{font-family:'Inter',sans-serif;font-weight:600;font-size:10.5px;letter-spacing:0;text-transform:none;color:var(--faint);margin-left:auto;padding-right:8px}
+  .acc-chev{flex:none;width:14px;height:14px;color:var(--faint);transition:transform .24s cubic-bezier(.22,1,.36,1)}
+  .acc.open .acc-chev{transform:rotate(90deg);color:var(--gold)}
+  .acc-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s cubic-bezier(.22,1,.36,1)}
+  .acc.open .acc-b{grid-template-rows:1fr}
+  .acc-b>div{overflow:hidden;min-height:0}
+  .acc-b-inner{padding:0 2px 18px}
+  @media (prefers-reduced-motion:reduce){
+    .acc-b{transition:none}
+    .sb-pinned .sb-link{animation:none}
+  }
+
   .mobile-nav-toggle{display:none;background:transparent;border:1px solid var(--line-strong);color:var(--text);border-radius:9px;width:40px;height:40px;align-items:center;justify-content:center;flex:none}
   .mobile-nav-toggle svg{width:19px;height:19px}
   .sidebar-scrim{display:none}
@@ -705,6 +737,11 @@
       <button class="sidebar-close" id="sidebar-close" aria-label="Fermer la navigation">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
+
+      <div class="sb-group sb-pinned hide" id="sb-pinned">
+        <div class="sb-group-label">Épinglés</div>
+        <div id="sb-pinned-list"></div>
+      </div>
 
       <div class="sb-group">
         <div class="sb-group-label">Aperçu</div>
@@ -2081,10 +2118,101 @@
       var fbtn = document.querySelector('#forms-nav .nav-btn[data-form="'+formKey+'"]');
       if (fbtn) fbtn.click();
     }
+    if (typeof pinSyncActive === 'function') pinSyncActive();
     closeMobileNav();
     window.scrollTo({top:0});
   }
-  document.querySelectorAll('#sidebar .sb-link, #dash-stats .dash-stat, .dash-quick-btn[data-section]').forEach(function(b){
+  // ===================== ÉCRANS ÉPINGLÉS =====================
+  // La refonte a fait passer la barre latérale à une trentaine d'entrées.
+  // Épingler ses écrans du moment évite de parcourir dix groupes pour
+  // revenir à celui qu'on utilise vingt fois par jour.
+  var PIN_KEY = 'bbc-admin-pins';
+  var pins = [];
+  try { pins = JSON.parse(localStorage.getItem(PIN_KEY) || '[]'); } catch(e){ pins = []; }
+  if (!Array.isArray(pins)) pins = [];
+  // On ne garde que des écrans qui existent encore : une section retirée
+  // ne doit pas laisser une entrée morte dans la liste.
+  pins = pins.filter(function(k){ return ALL_SECTIONS.indexOf(k) >= 0; });
+
+  var PIN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>';
+
+  function pinSave(){ try { localStorage.setItem(PIN_KEY, JSON.stringify(pins)); } catch(e){} }
+
+  function pinToggle(key){
+    var i = pins.indexOf(key);
+    if (i >= 0) pins.splice(i, 1); else pins.push(key);
+    pinSave();
+    pinRender();
+  }
+
+  // Ajoute la punaise à chaque entrée d'origine (pas aux copies épinglées,
+  // qui reçoivent la leur au moment du clonage).
+  function pinDecorate(){
+    document.querySelectorAll('#sidebar .sb-group:not(.sb-pinned) .sb-link[data-section]').forEach(function(b){
+      if (b.querySelector('.sb-pin')) return;
+      var key = b.getAttribute('data-section');
+      var t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'sb-pin';
+      t.innerHTML = PIN_SVG;
+      t.addEventListener('click', function(e){ e.stopPropagation(); pinToggle(key); });
+      b.appendChild(t);
+    });
+  }
+
+  function pinRender(){
+    var box = document.getElementById('sb-pinned-list');
+    var grp = document.getElementById('sb-pinned');
+    if (!box || !grp) return;
+
+    grp.classList.toggle('hide', pins.length === 0);
+    box.innerHTML = '';
+
+    pins.forEach(function(key){
+      var src = document.querySelector('#sidebar .sb-group:not(.sb-pinned) .sb-link[data-section="'+key+'"]');
+      if (!src) return;
+      var c = src.cloneNode(true);
+      c.classList.remove('active');
+      // Le badge de notification appartient à l'entrée d'origine : le
+      // dupliquer ferait compter deux fois la même alerte.
+      var bg = c.querySelector('.sb-link-badge'); if (bg) bg.remove();
+      var old = c.querySelector('.sb-pin'); if (old) old.remove();
+
+      var t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'sb-pin on';
+      t.title = 'Retirer des épinglés';
+      t.innerHTML = PIN_SVG;
+      t.addEventListener('click', function(e){ e.stopPropagation(); pinToggle(key); });
+      c.appendChild(t);
+      c.addEventListener('click', function(){ showSection(key); });
+      box.appendChild(c);
+    });
+
+    // Les punaises d'origine reflètent l'état courant.
+    document.querySelectorAll('#sidebar .sb-group:not(.sb-pinned) .sb-link[data-section]').forEach(function(b){
+      var p = b.querySelector('.sb-pin'); if (!p) return;
+      var on = pins.indexOf(b.getAttribute('data-section')) >= 0;
+      p.classList.toggle('on', on);
+      p.title = on ? 'Retirer des épinglés' : 'Épingler cet écran';
+    });
+
+    pinSyncActive();
+  }
+
+  // La copie épinglée doit s'allumer en même temps que l'originale.
+  function pinSyncActive(){
+    var cur = document.querySelector('#sidebar .sb-group:not(.sb-pinned) .sb-link.active');
+    var key = cur ? cur.getAttribute('data-section') : null;
+    document.querySelectorAll('#sb-pinned-list .sb-link').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-section') === key);
+    });
+  }
+
+  pinDecorate();
+  pinRender();
+
+  document.querySelectorAll('#sidebar .sb-group:not(.sb-pinned) .sb-link, #dash-stats .dash-stat, .dash-quick-btn[data-section]').forEach(function(b){
     b.addEventListener('click', function(e){
       var sec = b.getAttribute('data-section'); if (!sec) return;
       e.preventDefault();
@@ -3245,6 +3373,80 @@
     }).catch(function(){ document.getElementById('dash-recruitment-num').textContent='—'; });
   }
 
+  // ===================== SECTIONS REPLIABLES =====================
+  // Les fiches (dossier de candidature, bon de commande, client) empilent
+  // huit à dix blocs. Replier les secondaires réduit le défilement sans
+  // rien retirer : le contenu reste dans le DOM, donc imprimable et
+  // trouvable par la recherche du navigateur.
+  //
+  // On transforme après coup plutôt que de réécrire chaque fiche : une
+  // seule fonction à maintenir, et les fiches restent lisibles en source.
+  var ACC_KEY = 'bbc-admin-acc';
+  var accState = {};
+  try { accState = JSON.parse(localStorage.getItem(ACC_KEY) || '{}') || {}; } catch(e){ accState = {}; }
+
+  var ACC_CHEV = '<svg class="acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+
+  // closedByDefault : les titres qui démarrent repliés. Tout le reste
+  // reste ouvert — on ne cache jamais ce qui sert à décider.
+  function accWire(root, scope, closedByDefault){
+    if (!root) return;
+    closedByDefault = closedByDefault || [];
+    root.querySelectorAll('.cd-sec').forEach(function(sec){
+      if (sec.classList.contains('acc')) return;
+      var h = sec.querySelector('.cd-sec-h'), b = sec.querySelector('.cd-sec-b');
+      if (!h || !b) return;
+
+      var title = (h.textContent || '').trim();
+      var id = scope + '::' + title.replace(/[^a-zA-Zà-ÿ]+/g,'-').slice(0,40);
+      var open = accState[id];
+      if (open === undefined){
+        open = !closedByDefault.some(function(t){ return title.indexOf(t) === 0; });
+      }
+
+      sec.classList.add('acc');
+      sec.classList.toggle('open', !!open);
+
+      // Le compte d'éléments annonce ce qu'on trouvera sans déplier.
+      var n = b.querySelectorAll('.cd-jrnl, .cd-kv, .cd-row, .cd-doclink').length;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'acc-h';
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.innerHTML = ACC_CHEV + '<span>' + title + '</span>' + (n > 1 ? '<span class="acc-h-n">' + n + '</span>' : '');
+
+      var wrap = document.createElement('div');
+      wrap.className = 'acc-b';
+      var inner = document.createElement('div');
+      var pad = document.createElement('div');
+      pad.className = 'acc-b-inner';
+      while (b.firstChild) pad.appendChild(b.firstChild);
+      inner.appendChild(pad);
+      wrap.appendChild(inner);
+
+      h.remove(); b.remove();
+      sec.appendChild(btn);
+      sec.appendChild(wrap);
+
+      btn.addEventListener('click', function(){
+        var now = !sec.classList.contains('open');
+        sec.classList.toggle('open', now);
+        btn.setAttribute('aria-expanded', now ? 'true' : 'false');
+        accState[id] = now;
+        try { localStorage.setItem(ACC_KEY, JSON.stringify(accState)); } catch(e){}
+      });
+    });
+  }
+
+  // À l'impression, tout doit être déplié : un bon de commande replié
+  // sortirait incomplet.
+  window.addEventListener('beforeprint', function(){
+    document.querySelectorAll('.acc').forEach(function(a){ a.setAttribute('data-was', a.classList.contains('open')?'1':'0'); a.classList.add('open'); });
+  });
+  window.addEventListener('afterprint', function(){
+    document.querySelectorAll('.acc').forEach(function(a){ if (a.getAttribute('data-was')==='0') a.classList.remove('open'); a.removeAttribute('data-was'); });
+  });
+
   // ===================== MATCH CENTER =====================
   // Une seule source de données pour les trois écrans (calendrier, matchs,
   // résultats) : ce sont trois lectures d'un même jeu, pas trois contenus.
@@ -3840,6 +4042,7 @@
     var s = odSt(r.status);
     var items = odItems(r);
     var box = document.getElementById('od-doc');
+    var accAfter = function(){ accWire(box, 'od', ['Remarque du client','Notes internes','Historique des statuts']); };
     var history; try{ history = Array.isArray(r.status_history)?r.status_history:JSON.parse(r.status_history||'[]'); }catch(e){ history=[]; }
 
     var lines = items.map(function(it, idx){
@@ -3928,6 +4131,8 @@
           '</div></div>'+
         '</div>'+
       '</div>';
+
+    accAfter();
 
     box.querySelectorAll('[data-od-pick]').forEach(function(el){
       el.addEventListener('click', function(){
@@ -4054,6 +4259,7 @@
     var c = clRow(); if (!c){ clSel=null; clRender(); return; }
     var nm = c.name || c.email || '—';
     var box = document.getElementById('cl-doc');
+    var accAfter = function(){ accWire(box, 'cl', ['Réservations','Notes internes']); };
     var panier = (Number(c.nb_commandes)||0) > 0 ? Math.round((Number(c.total_depense)||0)/Number(c.nb_commandes)) : 0;
 
     function kv(k,v){ return v ? '<div class="cd-kv"><span>'+esc(k)+'</span><span>'+esc(v)+'</span></div>' : ''; }
@@ -4093,6 +4299,8 @@
           '</div></div>'+
         '</div>'+
       '</div>';
+
+    accAfter();
 
     // Historique : chargé à l'ouverture de la fiche, pas dans la liste.
     sbGet('orders?select=*&customer_id=eq.'+c.id+'&order=created_at.desc')
@@ -4724,6 +4932,7 @@
     var r = cdRow(); if (!r) { cdSel=null; cdRender(); return; }
     var s = cdSt(r.status||'nouvelle');
     var box = document.getElementById('cd-doc');
+    var accAfter = function(){ accWire(box, 'cd', ['Message du candidat','Documents','Notes internes','Journal du dossier']); };
     var rating = parseInt(r.rating,10)||0;
     var stars=''; for (var i=1;i<=5;i++) stars += '<button type="button" class="'+(i<=rating?'on':'')+'" data-star="'+i+'" aria-label="'+i+' sur 5">★</button>';
 
@@ -4838,6 +5047,8 @@
 
         '</div>'+
       '</div>';
+
+    accAfter();
 
     // --- Statut ---
     box.querySelectorAll('.cd-st').forEach(function(b){
