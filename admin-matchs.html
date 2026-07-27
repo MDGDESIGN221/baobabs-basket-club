@@ -1366,6 +1366,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
           Stock
         </button>
+        <button class="sb-link" data-section="promos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9h.01M15 15h.01M16 8l-8 8"/><circle cx="12" cy="12" r="9"/></svg>
+          Codes promo
+        </button>
         <button class="sb-link" data-section="shop">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
           Produits <span style="font-size:9px;opacity:.5;margin-left:4px">ancien</span>
@@ -2182,6 +2186,7 @@
           
           <span class="mod-count" id="od-count">—</span>
           <input type="search" class="mod-search" id="od-search" placeholder="Numéro, nom, téléphone…">
+          <button type="button" class="btn btn-ghost" id="od-export" style="padding:10px 14px;font-size:12.5px">Exporter CSV</button>
           <div class="mod-view" id="od-view-switch">
             <button type="button" class="on" data-odview="board">Colonnes</button>
             <button type="button" data-odview="list">Liste</button>
@@ -2208,6 +2213,7 @@
           
           <span class="mod-count" id="cl-count">—</span>
           <input type="search" class="mod-search" id="cl-search" placeholder="Nom, téléphone, email…">
+          <button type="button" class="btn btn-ghost" id="cl-export" style="padding:10px 14px;font-size:12.5px">Exporter CSV</button>
           <select id="cl-sort" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px">
             <option value="spent">Trier : total dépensé</option>
             <option value="recent">Trier : commande récente</option>
@@ -2308,6 +2314,7 @@
               <option value="annulee">Annulées</option>
             </select>
             <input id="tk-resa-search" type="search" placeholder="Nom, téléphone ou référence…">
+            <button type="button" class="btn btn-ghost" id="tk-resa-export" style="padding:10px 14px;font-size:12.5px;flex:none">Exporter CSV</button>
           </div>
           <div id="tk-resa-list"><div class="empty">Chargement…</div></div>
           <div class="msg" id="tk-resa-msg"></div>
@@ -2315,6 +2322,40 @@
       </div>
 
       <div id="tk-sub-texts" class="hide"><div id="qgc-tk-texts"></div></div>
+    </section>
+
+    <!-- ===== SECTION CODES PROMO ===== -->
+    <section id="section-promos" class="hide">
+      <div class="mod-head"><span class="mod-count" id="pm-count">—</span></div>
+      <div class="callout">Un code se partage partout et s'applique <b>dans le panier de la boutique</b>. Tant que la migration « codes promo » n'a pas été exécutée dans Supabase, cet écran ne peut rien enregistrer.</div>
+      <div class="grid-2" style="align-items:start"><div>
+        <div class="card">
+          <h2 class="card-title">Nouveau code</h2>
+          <p class="card-sub">Court et parlant : TRIBU10, MATCHDAY…</p>
+          <div class="field"><label for="pm-code">Code</label><input type="text" id="pm-code" placeholder="TRIBU10" style="text-transform:uppercase"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field"><label for="pm-kind">Type</label><select id="pm-kind"><option value="percent">Pourcentage (%)</option><option value="amount">Montant (FCFA)</option></select></div>
+            <div class="field"><label for="pm-value">Valeur</label><input type="number" id="pm-value" min="1" placeholder="10"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field"><label for="pm-min">Minimum d'achat <span class="opt">(optionnel)</span></label><input type="number" id="pm-min" min="0" step="500" placeholder="0"></div>
+            <div class="field"><label for="pm-max">Limite d'utilisation <span class="opt">(optionnel)</span></label><input type="number" id="pm-max" min="1" placeholder="Illimité"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field"><label for="pm-start">Début <span class="opt">(optionnel)</span></label><input type="date" id="pm-start"></div>
+            <div class="field"><label for="pm-end">Fin <span class="opt">(optionnel)</span></label><input type="date" id="pm-end"></div>
+          </div>
+          <button type="button" class="btn btn-primary" id="pm-create">Créer le code</button>
+          <div class="msg" id="pm-form-msg"></div>
+        </div>
+      </div><div>
+        <div class="card">
+          <h2 class="card-title">Codes existants</h2>
+          <p class="card-sub">Le compteur avance à chaque commande.</p>
+          <div id="pm-list"><div class="empty">Chargement…</div></div>
+          <div class="msg" id="pm-msg"></div>
+        </div>
+      </div></div>
     </section>
 
     <!-- ===== SECTION DIRECT ===== -->
@@ -3005,6 +3046,7 @@
   // ===================== NAVIGATION =====================
   var SECTION_META = {
     dashboard:{t:'Tableau de bord',d:'Vue d\'ensemble de votre club — ce qui se passe, ce qui vous attend.'},
+    promos:{t:'Codes promo',d:'Des remises à partager : pourcentage ou montant, avec période, minimum d\'achat et limite d\'utilisation.'},
     gameday:{t:'Soir de match',d:'L\'écran du jour J : le score d\'un côté, le guichet de retrait des billets de l\'autre.'},
     matches:{t:'Gestion des matchs',d:'Ajoutez un match, saisissez un score, gérez vos adversaires. Tout se met à jour sur le site public.'},
     teams:{t:'Adversaires',d:'Les clubs que vous affrontez : ajout en un clic, logos, historique des confrontations.'},
@@ -3062,6 +3104,7 @@
 
   var SECTION_HELP = {
     dashboard: ["<b>Le point de départ.</b> Les chiffres résument l'activité : matchs, inscrits, messages, commandes, candidatures.","Cliquez une carte pour aller directement à l'écran concerné.","L'affiche en haut montre le prochain match ; ses deux boutons mènent à la billetterie et à la fiche du match."],
+    promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b> : un clic ajoute le club, logo compris. Pour un club absent, le formulaire du bas fait l'affaire.","<b>Changer un logo</b> : le bouton image sur une ligne ouvre l'éditeur — les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo."],
     gameday: ["<b>L'écran du jour de match</b>, pensé pour la personne au guichet et à la table de marque.","Le tableau de marque se pilote avec les touches +1 / +2 / +3 / −1. <b>Publier le score</b> l'envoie sur le site — à faire au coup de sifflet final, le site l'affiche comme définitif.","Le guichet retrouve une réservation par référence, nom ou téléphone ; <b>Retirer</b> pointe le billet à l'entrée.","Les jauges de droite montrent les places restantes par catégorie, mises à jour à chaque retrait."],
     matches: ["<b>L'ancien écran de gestion des matchs</b> : ajout d'une rencontre, saisie du score, gestion des adversaires et de leurs logos.","Tout ce qui est enregistré ici apparaît sur le site : calendrier, résultats, prochain match de l'accueil.","L'icône « copier » sur une ligne duplique le match à J+7, sans score — pratique pour les rencontres régulières.","Les écrans plus récents (Calendrier, Matchs, Résultats) montrent les mêmes données sous d'autres angles."],
@@ -3103,7 +3146,7 @@
     audit: ["<b>Qui a modifié quoi, et quand.</b> Chaque ligne est une phrase, regroupée par jour ; l'ancienne valeur est barrée, la nouvelle à côté.","Protégé par mot de passe. La recherche et les filtres retrouvent une modification précise.","Rien ne s'efface : c'est la mémoire de l'admin."]
   };
 
-  var ALL_SECTIONS = ['dashboard','gameday','teams','matches','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
+  var ALL_SECTIONS = ['dashboard','gameday','teams','matches','promos','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -3154,6 +3197,7 @@
     results:   [['Fiches des matchs','matches2'],['Classement','standings'],['Direct','live']],
     tickets:   [['Composer un match','matches'],['Fiches des matchs','matches2'],['Clients','clients']],
     orders2:   [['Produits','products'],['Stock','stock'],['Clients','clients']],
+    promos:    [['Produits','products'],['Commandes','orders2'],['Clients','clients']],
     clients:   [['Commandes','orders2'],['Billetterie','tickets'],['Historique','audit']],
     products:  [['Stock','stock'],['Commandes','orders2'],['Médiathèque','media']],
     stock:     [['Produits','products'],['Commandes','orders2'],['Médiathèque','media']],
@@ -3322,6 +3366,147 @@
       box.classList.remove('hide');
     }).catch(function(){ box.classList.add('hide'); });
   }
+
+  // ===================== CODES PROMO =====================
+  var pmRows = [], pmStarted = false;
+
+  function pmLoad(){
+    if (!pmStarted){ pmStarted = true; pmWire(); }
+    sbGet('promo_codes?select=*&order=created_at.desc').then(function(rows){
+      pmRows = rows || [];
+      pmRender();
+    }).catch(function(){
+      document.getElementById('pm-list').innerHTML = '<div class="empty">Impossible de charger — la migration «\u00a0codes promo\u00a0» a-t-elle été exécutée dans Supabase ?</div>';
+      document.getElementById('pm-count').textContent = '—';
+    });
+  }
+
+  function pmState(c){
+    var today = new Date().toISOString().slice(0, 10);
+    if (!c.is_active) return ['Désactivé', '#7E8A82'];
+    if (c.starts_at && today < c.starts_at) return ['Programmé', '#9DB8E8'];
+    if (c.ends_at && today > c.ends_at) return ['Expiré', '#C0271B'];
+    if (c.max_uses != null && c.uses >= c.max_uses) return ['Épuisé', '#C0271B'];
+    return ['Actif', '#A8D93B'];
+  }
+
+  function pmRender(){
+    document.getElementById('pm-count').textContent = pmRows.length ? pmRows.length + ' code' + (pmRows.length > 1 ? 's' : '') : 'aucun code';
+    var box = document.getElementById('pm-list');
+    if (!pmRows.length){
+      box.innerHTML = '<div class="empty">Aucun code pour le moment — le premier se crée à gauche.</div>';
+      return;
+    }
+    box.innerHTML = pmRows.map(function(c){
+      var st = pmState(c);
+      var det = [
+        c.kind === 'percent' ? '−' + c.value + ' %' : '−' + tkFcfa(c.value),
+        c.min_total ? 'dès ' + tkFcfa(c.min_total) : null,
+        c.max_uses != null ? c.uses + ' / ' + c.max_uses + ' utilisés' : c.uses + ' utilisé' + (c.uses > 1 ? 's' : ''),
+        (c.starts_at || c.ends_at) ? [c.starts_at ? 'du ' + formatDateShort(c.starts_at) : null, c.ends_at ? 'au ' + formatDateShort(c.ends_at) : null].filter(Boolean).join(' ') : null
+      ].filter(Boolean).join(' · ');
+      return '<div class="rec-item">' +
+        '<div class="rec-main"><div class="rec-title" style="display:flex;align-items:center;gap:9px;flex-wrap:wrap"><span class="tk-ref" style="font-size:14px">' + esc(c.code) + '</span><span class="status-pill" style="color:' + st[1] + ';border:1px solid ' + st[1] + '55;background:' + st[1] + '14">' + st[0] + '</span></div>' +
+        '<div class="rec-meta">' + esc(det) + '</div></div>' +
+        '<div class="item-actions">' +
+        '<button class="btn btn-ghost pm-toggle" data-id="' + c.id + '" style="padding:8px 12px;font-size:12px">' + (c.is_active ? 'Désactiver' : 'Activer') + '</button>' +
+        '<button class="icon-btn danger pm-del" data-id="' + c.id + '" title="Supprimer" aria-label="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
+        '</div></div>';
+    }).join('');
+    box.querySelectorAll('.pm-toggle').forEach(function(b){
+      b.addEventListener('click', function(){
+        var c = pmRows.filter(function(x){ return String(x.id) === String(b.getAttribute('data-id')); })[0];
+        if (!c) return;
+        b.disabled = true;
+        sbUpdate('promo_codes', c.id, { is_active: !c.is_active }, 'Codes promo').then(pmLoad)
+          .catch(function(){ b.disabled = false; showMsg(document.getElementById('pm-msg'), 'Le changement a échoué.', false); });
+      });
+    });
+    box.querySelectorAll('.pm-del').forEach(function(b){
+      b.addEventListener('click', function(){
+        if (!confirm('Supprimer ce code ? Les commandes déjà passées gardent leur remise.')) return;
+        sbDelete('promo_codes', b.getAttribute('data-id'), 'Codes promo').then(pmLoad)
+          .catch(function(){ showMsg(document.getElementById('pm-msg'), 'La suppression a échoué.', false); });
+      });
+    });
+  }
+
+  function pmWire(){
+    document.getElementById('pm-create').addEventListener('click', function(){
+      var msg = document.getElementById('pm-form-msg');
+      var code = document.getElementById('pm-code').value.trim().toUpperCase().replace(/\s+/g, '');
+      var value = parseInt(document.getElementById('pm-value').value, 10);
+      var kind = document.getElementById('pm-kind').value;
+      if (!code){ showMsg(msg, 'Donnez un nom au code (ex : TRIBU10).', false); return; }
+      if (!value || value <= 0){ showMsg(msg, 'Indiquez la valeur de la remise.', false); return; }
+      if (kind === 'percent' && value > 100){ showMsg(msg, 'Un pourcentage ne peut pas dépasser 100.', false); return; }
+      var payload = {
+        code: code, kind: kind, value: value,
+        min_total: parseInt(document.getElementById('pm-min').value, 10) || 0,
+        max_uses: parseInt(document.getElementById('pm-max').value, 10) || null,
+        starts_at: document.getElementById('pm-start').value || null,
+        ends_at: document.getElementById('pm-end').value || null
+      };
+      if (payload.starts_at && payload.ends_at && payload.ends_at < payload.starts_at){
+        showMsg(msg, 'La date de fin est avant la date de début.', false); return;
+      }
+      var btn = this; btn.disabled = true;
+      sbInsert('promo_codes', payload, 'Codes promo')
+        .then(function(){
+          showMsg(msg, 'Code ' + code + ' créé.', true);
+          ['pm-code','pm-value','pm-min','pm-max','pm-start','pm-end'].forEach(function(id){ document.getElementById(id).value = ''; });
+          pmLoad();
+        })
+        .catch(function(err){
+          showMsg(msg, (err && err.message === 'duplicate') ? 'Un code avec ce nom existe déjà.' : "La création a échoué. La migration «\u00a0codes promo\u00a0» a-t-elle été exécutée ?", false);
+        })
+        .finally(function(){ btn.disabled = false; });
+    });
+  }
+
+  // ===================== EXPORTS CSV =====================
+  // Excel (français) attend le point-virgule ; le BOM évite les accents
+  // cassés à l'ouverture.
+  function bbCsvDownload(filename, headers, rows){
+    var q = function(v){ v = v == null ? '' : String(v); return '"' + v.replace(/"/g, '""') + '"'; };
+    var lines = [headers.map(q).join(';')].concat(rows.map(function(r){ return r.map(q).join(';'); }));
+    var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 300);
+  }
+  function bbCsvDate(){ return new Date().toISOString().slice(0, 10); }
+
+  function odExportCsv(){
+    bbCsvDownload('commandes-' + bbCsvDate() + '.csv',
+      ['Numéro','Date','Client','Téléphone','Email','Articles','Total FCFA','Remise FCFA','Code promo','Statut','Retrait'],
+      (odRows || []).map(function(o){
+        var items = (o.items || []).map(function(it){ return it.name + (it.size ? ' (' + it.size + ')' : '') + ' ×' + it.qty; }).join(' + ');
+        return [o.order_number || o.id, o.created_at ? String(o.created_at).slice(0, 10) : '', o.customer_name, o.customer_phone, o.customer_email, items, o.total, o.discount_fcfa || '', o.promo_code || '', normalizeOrderStatus(o.status), o.pickup_location];
+      }));
+  }
+  function clExportCsv(){
+    bbCsvDownload('clients-' + bbCsvDate() + '.csv',
+      ['Nom','Téléphone','Email','Commandes','Total dépensé FCFA','Billets actifs','Inscrit le'],
+      (clRows || []).map(function(c){
+        return [c.name, c.phone, c.email, c.nb_commandes || 0, c.total_depense || 0, c.reservations_actives || 0, c.created_at ? String(c.created_at).slice(0, 10) : ''];
+      }));
+  }
+  function tkExportCsv(){
+    bbCsvDownload('reservations-' + bbCsvDate() + '.csv',
+      ['Référence','Match','Catégorie','Nom','Téléphone','Email','Billets','Total FCFA','Statut','Réservée le'],
+      (tkResa || []).map(function(r){
+        var m = tkMatchById(r.match_id);
+        return [r.reference, m ? tkLabel(m) : '', (r.ticket_offers && r.ticket_offers.category) || '', r.buyer_name, r.buyer_phone, r.buyer_email, r.quantity, r.total_fcfa, r.status, r.created_at ? String(r.created_at).slice(0, 10) : ''];
+      }));
+  }
+  [['od-export', odExportCsv], ['cl-export', clExportCsv], ['tk-resa-export', tkExportCsv]].forEach(function(pair){
+    var el = document.getElementById(pair[0]);
+    if (el) el.addEventListener('click', pair[1]);
+  });
 
   // ===================== SOIR DE MATCH =====================
   // Un seul écran pour le jour J : le tableau de marque au centre, le
@@ -9017,6 +9202,7 @@
   var LOADERS = {
     dashboard:function(){ loadDashboard(); },
     gameday:function(){ gdLoad(); },
+    promos:function(){ pmLoad(); },
     teams:function(){ loadTeams(); },
     live:function(){ loadSettings().then(function(){ LOADERS_live(); }); },
     home:function(){ loadSettings().then(function(){ LOADERS_home(); }); },

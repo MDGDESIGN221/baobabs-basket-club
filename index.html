@@ -1865,6 +1865,10 @@
           <div class="bb-field"><label for="bb-order-email">Email <span style="text-transform:none;color:#7E8A82">(optionnel — reçois ta confirmation par email)</span></label><input id="bb-order-email" type="email" placeholder="toi@exemple.com"></div>
           <div class="bb-field"><label for="bb-order-pickup">Lieu de retrait <span style="text-transform:none;color:#7E8A82">(optionnel)</span></label><input id="bb-order-pickup" type="text" placeholder="Ex : Complexe Patrick Semedo"></div>
           <div class="bb-field"><label for="bb-order-note">Précisions <span style="text-transform:none;color:#7E8A82">(optionnel)</span></label><textarea id="bb-order-note" rows="2" placeholder="Remarque, disponibilité…"></textarea></div>
+          <div class="bb-field"><label for="bb-order-promo">Code promo <span style="text-transform:none;color:#7E8A82">(optionnel)</span></label>
+            <div style="display:flex;gap:8px"><input id="bb-order-promo" type="text" placeholder="Ex : TRIBU10" autocapitalize="characters" style="flex:1;min-width:0"><button type="button" id="bb-order-promo-btn" style="flex:none;padding:0 16px;border-radius:10px;border:1px solid rgba(198,162,87,.5);background:transparent;color:#C6A257;font-family:'Inter',sans-serif;font-weight:700;font-size:12.5px;cursor:pointer">Appliquer</button></div>
+            <p id="bb-order-promo-msg" class="bb-hide" style="font-size:12.5px;margin:7px 0 0"></p>
+          </div>
           <button type="submit" class="bb-btn-solid" style="margin-top:2px">Confirmer la commande</button>
         </form>
         <div id="bb-order-success" class="bb-hide" style="text-align:center;padding:8px 0 4px">
@@ -3374,6 +3378,32 @@ window.bbCloud = function(url, w){
         .finally(function(){ btn.disabled = false; });
     });
 
+    // Le code promo est vérifié par la base (jamais lisible en clair) ;
+    // il est revalidé à l'envoi car le panier a pu changer entre-temps.
+    var bbPromo = null;
+    function bbPromoApply(){
+      var inp = document.getElementById('bb-order-promo');
+      var msgEl = document.getElementById('bb-order-promo-msg');
+      var btn = document.getElementById('bb-order-promo-btn');
+      var code = (inp.value || '').trim();
+      var show = function(t, ok){ msgEl.textContent = t; msgEl.classList.remove('bb-hide'); msgEl.style.color = ok ? '#A8D93B' : '#E5564A'; };
+      if (!code){ bbPromo = null; show('Entrez un code.', false); return; }
+      btn.disabled = true;
+      bbTkRpc('bbc_valider_promo', { p_code: code, p_total: cartTotal() }).then(function(rows){
+        var r = rows && rows[0];
+        if (r && r.code){
+          bbPromo = { code: r.code, discount: r.discount };
+          show('Code ' + r.code + ' appliqué : −' + money(r.discount) + ' — nouveau total ' + money(Math.max(cartTotal() - r.discount, 0)) + '.', true);
+        } else {
+          bbPromo = null;
+          show((r && r.message) || 'Code invalide.', false);
+        }
+      }).catch(function(){ bbPromo = null; show('Vérification impossible — réessaie dans un instant.', false); })
+        .finally(function(){ btn.disabled = false; });
+    }
+    var bbPromoBtn = document.getElementById('bb-order-promo-btn');
+    if (bbPromoBtn) bbPromoBtn.addEventListener('click', bbPromoApply);
+
     document.getElementById('bb-order-form').addEventListener('submit', function(e){
       e.preventDefault();
       var form = this;
@@ -3388,8 +3418,24 @@ window.bbCloud = function(url, w){
       });
       var btn = form.querySelector('button[type=submit]');
       btn.disabled = true;
-      sbInsert('orders', { customer_name: name, customer_phone: phone, customer_email: email || null, pickup_location: pickup || null, note: note || null, items: items, total: cartTotal(), customer_id: (currentCustomer && currentCustomer.user.id) || null }, true)
+      var pv = bbPromo
+        ? bbTkRpc('bbc_valider_promo', { p_code: bbPromo.code, p_total: cartTotal() })
+            .then(function(rows){ var r = rows && rows[0]; return (r && r.code) ? { code: r.code, discount: r.discount } : null; })
+            .catch(function(){ return null; })
+        : Promise.resolve(null);
+      pv.then(function(promo){
+        var payload = { customer_name: name, customer_phone: phone, customer_email: email || null, pickup_location: pickup || null, note: note || null, items: items, total: cartTotal(), customer_id: (currentCustomer && currentCustomer.user.id) || null };
+        if (promo){
+          payload.promo_code = promo.code;
+          payload.discount_fcfa = promo.discount;
+          payload.total = Math.max(cartTotal() - promo.discount, 0);
+        }
+        return sbInsert('orders', payload, true);
+      })
         .then(function(){
+          bbPromo = null;
+          var pi = document.getElementById('bb-order-promo'); if (pi) pi.value = '';
+          var pm = document.getElementById('bb-order-promo-msg'); if (pm) pm.classList.add('bb-hide');
           state.cart = [];
           updateBadge();
           form.classList.add('bb-hide');
