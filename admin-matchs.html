@@ -3018,6 +3018,16 @@
   // par plusieurs personnes, l'explication doit vivre dans l'écran, pas
   // dans la mémoire de celui qui l'a commandé. Vocabulaire : ce que la
   // personne contrôle, jamais comment c'est construit.
+  function helpFill(key){
+    var hb = document.getElementById('help-toggle'), hp = document.getElementById('page-help');
+    if (!hb || !hp) return;
+    var tips = SECTION_HELP[key];
+    hb.classList.toggle('hide', !tips);
+    hp.classList.add('hide');
+    hb.setAttribute('aria-expanded', 'false');
+    hp.innerHTML = tips ? '<ul>' + tips.map(function(t){ return '<li><span>' + t + '</span></li>'; }).join('') + '</ul>' : '';
+  }
+
   var SECTION_HELP = {
     dashboard: ["<b>Le point de départ.</b> Les chiffres résument l'activité : matchs, inscrits, messages, commandes, candidatures.","Cliquez une carte pour aller directement à l'écran concerné.","L'affiche en haut montre le prochain match ; ses deux boutons mènent à la billetterie et à la fiche du match."],
     gameday: ["<b>L'écran du jour de match</b>, pensé pour la personne au guichet et à la table de marque.","Le tableau de marque se pilote avec les touches +1 / +2 / +3 / −1. <b>Publier le score</b> l'envoie sur le site — à faire au coup de sifflet final, le site l'affiche comme définitif.","Le guichet retrouve une réservation par référence, nom ou téléphone ; <b>Retirer</b> pointe le billet à l'entrée.","Les jauges de droite montrent les places restantes par catégorie, mises à jour à chaque retrait."],
@@ -3071,14 +3081,7 @@
     var m = SECTION_META[key];
     document.getElementById('page-title').textContent = m.t;
     document.getElementById('page-desc').textContent = m.d;
-    var hb = document.getElementById('help-toggle'), hp = document.getElementById('page-help');
-    if (hb && hp){
-      var tips = SECTION_HELP[key];
-      hb.classList.toggle('hide', !tips);
-      hp.classList.add('hide');
-      hb.setAttribute('aria-expanded', 'false');
-      hp.innerHTML = tips ? '<ul>' + tips.map(function(t){ return '<li><span>' + t + '</span></li>'; }).join('') + '</ul>' : '';
-    }
+    helpFill(key);
     if (!loadedSections[key]) { loadedSections[key]=true; if (LOADERS[key]) LOADERS[key](); }
     if (key==='forms' && formKey) {
       var fbtn = document.querySelector('#forms-nav .nav-btn[data-form="'+formKey+'"]');
@@ -3607,6 +3610,7 @@
     var open = hp.classList.toggle('hide');
     this.setAttribute('aria-expanded', open ? 'false' : 'true');
   });
+  helpFill('dashboard');
   document.getElementById('mobile-nav-toggle').addEventListener('click', function(){
     document.getElementById('sidebar').classList.add('open');
     document.getElementById('sidebar-scrim').classList.add('open');
