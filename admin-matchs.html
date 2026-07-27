@@ -1418,6 +1418,10 @@
           Messages
           <span class="sb-link-badge hide" id="sb-messages-badge">0</span>
         </button>
+        <button class="sb-link" data-section="newsl">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          Newsletter
+        </button>
       </div>
 
       <div class="sb-group">
@@ -2358,6 +2362,34 @@
       </div></div>
     </section>
 
+    <!-- ===== SECTION NEWSLETTER ===== -->
+    <section id="section-newsl" class="hide">
+      <div class="mod-head"><span class="mod-count" id="nw-count">—</span></div>
+      <div class="callout">Chaque inscrit reçoit <b>son propre e-mail</b> — personne ne voit la liste. Testez toujours sur votre adresse avant l'envoi général.</div>
+      <div class="grid-2" style="align-items:start"><div>
+        <div class="card">
+          <h2 class="card-title">Nouveau message</h2>
+          <p class="card-sub" id="nw-sub">Chargement du nombre d'inscrits…</p>
+          <div class="field"><label for="nw-subject">Sujet</label><input type="text" id="nw-subject" placeholder="Ex : Ce samedi, les Baobabs reçoivent Ouakam"></div>
+          <div class="field"><label for="nw-body">Message</label><textarea id="nw-body" style="min-height:180px" placeholder="Écrivez comme vous parlez. Un paragraphe vide sépare les blocs."></textarea></div>
+          <div class="field"><label for="nw-test">M'envoyer un test <span class="opt">(votre adresse)</span></label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <input type="email" id="nw-test" placeholder="vous@exemple.com" style="flex:1;min-width:180px">
+              <button type="button" class="btn btn-ghost" id="nw-test-btn" style="flex:none">Envoyer le test</button>
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" id="nw-send-btn">Envoyer à tous</button>
+          <div class="msg" id="nw-msg"></div>
+        </div>
+      </div><div>
+        <div class="card">
+          <h2 class="card-title">Envois précédents</h2>
+          <p class="card-sub">Le journal se remplit à chaque envoi général.</p>
+          <div id="nw-history"><div class="empty">Chargement…</div></div>
+        </div>
+      </div></div>
+    </section>
+
     <!-- ===== SECTION DIRECT ===== -->
     <section id="section-live" class="hide">
       <div class="live-stage">
@@ -3046,6 +3078,7 @@
   // ===================== NAVIGATION =====================
   var SECTION_META = {
     dashboard:{t:'Tableau de bord',d:'Vue d\'ensemble de votre club — ce qui se passe, ce qui vous attend.'},
+    newsl:{t:'Newsletter',d:'Écrivez aux inscrits : test sur votre adresse d\'abord, envoi à tous ensuite, avec le journal des envois.'},
     promos:{t:'Codes promo',d:'Des remises à partager : pourcentage ou montant, avec période, minimum d\'achat et limite d\'utilisation.'},
     gameday:{t:'Soir de match',d:'L\'écran du jour J : le score d\'un côté, le guichet de retrait des billets de l\'autre.'},
     matches:{t:'Gestion des matchs',d:'Ajoutez un match, saisissez un score, gérez vos adversaires. Tout se met à jour sur le site public.'},
@@ -3104,6 +3137,7 @@
 
   var SECTION_HELP = {
     dashboard: ["<b>Le point de départ.</b> Les chiffres résument l'activité : matchs, inscrits, messages, commandes, candidatures.","Cliquez une carte pour aller directement à l'écran concerné.","L'affiche en haut montre le prochain match ; ses deux boutons mènent à la billetterie et à la fiche du match."],
+    newsl: ["<b>Écrire à tous les inscrits de la newsletter.</b> Chaque personne reçoit son propre e-mail — jamais de liste visible.","<b>Testez d'abord</b> : votre adresse dans « M'envoyer un test », le message arrive avec [TEST] devant le sujet.","« Envoyer à tous » demande confirmation, et deux envois à moins de 10 minutes d'écart sont refusés.","Nécessite la fonction serveur « envoi-newsletter » (voir NOTICE-NEWSLETTER.txt) — sans elle, l'écran explique quoi installer.","Un inscrit qui répond « STOP » se retire dans Messages → Newsletter."],
     promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b> : un clic ajoute le club, logo compris. Pour un club absent, le formulaire du bas fait l'affaire.","<b>Changer un logo</b> : le bouton image sur une ligne ouvre l'éditeur — les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo."],
     gameday: ["<b>L'écran du jour de match</b>, pensé pour la personne au guichet et à la table de marque.","Le tableau de marque se pilote avec les touches +1 / +2 / +3 / −1. <b>Publier le score</b> l'envoie sur le site — à faire au coup de sifflet final, le site l'affiche comme définitif.","Le guichet retrouve une réservation par référence, nom ou téléphone ; <b>Retirer</b> pointe le billet à l'entrée.","Les jauges de droite montrent les places restantes par catégorie, mises à jour à chaque retrait."],
@@ -3146,7 +3180,7 @@
     audit: ["<b>Qui a modifié quoi, et quand.</b> Chaque ligne est une phrase, regroupée par jour ; l'ancienne valeur est barrée, la nouvelle à côté.","Protégé par mot de passe. La recherche et les filtres retrouvent une modification précise.","Rien ne s'efface : c'est la mémoire de l'admin."]
   };
 
-  var ALL_SECTIONS = ['dashboard','gameday','teams','matches','promos','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
+  var ALL_SECTIONS = ['dashboard','gameday','teams','matches','promos','newsl','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -3198,6 +3232,7 @@
     tickets:   [['Composer un match','matches'],['Fiches des matchs','matches2'],['Clients','clients']],
     orders2:   [['Produits','products'],['Stock','stock'],['Clients','clients']],
     promos:    [['Produits','products'],['Commandes','orders2'],['Clients','clients']],
+    newsl:     [['Messages','forms'],['Articles','articles'],['Bannières','banners']],
     clients:   [['Commandes','orders2'],['Billetterie','tickets'],['Historique','audit']],
     products:  [['Stock','stock'],['Commandes','orders2'],['Médiathèque','media']],
     stock:     [['Produits','products'],['Commandes','orders2'],['Médiathèque','media']],
@@ -3366,6 +3401,75 @@
       box.classList.remove('hide');
     }).catch(function(){ box.classList.add('hide'); });
   }
+
+  // ===================== NEWSLETTER =====================
+  var nwBusy = false;
+
+  function nwLoad(){
+    sbGet('newsletter_subscribers?select=id').then(function(rows){
+      var n = (rows || []).length;
+      document.getElementById('nw-count').textContent = n + ' inscrit' + (n > 1 ? 's' : '');
+      document.getElementById('nw-sub').textContent = n
+        ? 'L\'envoi général partira à ' + n + ' inscrit' + (n > 1 ? 's' : '') + '.'
+        : 'Aucun inscrit pour le moment — le formulaire du site remplit la liste.';
+    }).catch(function(){ document.getElementById('nw-count').textContent = '—'; });
+    sbGet('newsletter_sends?select=*&order=created_at.desc&limit=20').then(function(rows){
+      var box = document.getElementById('nw-history');
+      rows = rows || [];
+      if (!rows.length){ box.innerHTML = '<div class="empty">Aucun envoi pour le moment.</div>'; return; }
+      box.innerHTML = rows.map(function(s){
+        var d = new Date(s.created_at);
+        var ok = !s.failed;
+        return '<div class="rec-item"><div class="rec-main">' +
+          '<div class="rec-title">' + esc(s.subject) + '</div>' +
+          '<div class="rec-meta">' + d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) +
+          ' · ' + s.sent + ' / ' + s.recipients + ' envoyé' + (s.sent > 1 ? 's' : '') +
+          (s.failed ? ' · <span style="color:var(--danger, #C0271B)">' + s.failed + ' échec' + (s.failed > 1 ? 's' : '') + '</span>' : '') + '</div>' +
+          '</div><span class="status-pill" style="flex:none;color:' + (ok ? '#A8D93B' : '#C0271B') + ';border:1px solid ' + (ok ? '#A8D93B55' : '#C0271B55') + ';background:' + (ok ? '#A8D93B14' : '#C0271B14') + '">' + (ok ? 'Envoyée' : 'Partielle') + '</span></div>';
+      }).join('');
+    }).catch(function(){
+      document.getElementById('nw-history').innerHTML = '<div class="empty">Journal indisponible — la migration «\u00a0newsletter\u00a0» a-t-elle été exécutée ?</div>';
+    });
+  }
+
+  function nwSend(testEmail){
+    if (nwBusy) return;
+    var msg = document.getElementById('nw-msg');
+    var subject = document.getElementById('nw-subject').value.trim();
+    var body = document.getElementById('nw-body').value.trim();
+    if (!subject){ showMsg(msg, 'Écrivez un sujet.', false); return; }
+    if (!body){ showMsg(msg, 'Écrivez le message.', false); return; }
+    if (testEmail && !/@/.test(testEmail)){ showMsg(msg, 'Entrez votre adresse pour le test.', false); return; }
+    if (!testEmail){
+      var n = document.getElementById('nw-count').textContent;
+      if (!confirm('Envoyer ce message à ' + n + ' ? Cette action est immédiate.')) return;
+    }
+    nwBusy = true;
+    showMsg(msg, testEmail ? 'Envoi du test…' : 'Envoi en cours — ne fermez pas la page…', true);
+    var payload = { subject: subject, body: body };
+    if (testEmail) payload.test_email = testEmail;
+    fetch(SUPABASE_URL + '/functions/v1/envoi-newsletter', {
+      method: 'POST',
+      headers: sbHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload)
+    })
+      .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+      .then(function(x){
+        if (x.ok && x.j && x.j.test){ showMsg(msg, 'Test envoyé à ' + testEmail + ' — vérifiez votre boîte (et les spams).', true); return; }
+        if (x.ok && x.j){
+          showMsg(msg, x.j.sent + ' e-mail' + (x.j.sent > 1 ? 's' : '') + ' envoyé' + (x.j.sent > 1 ? 's' : '') + (x.j.failed ? ' · ' + x.j.failed + ' échec(s)' : '') + '.', !x.j.failed);
+          document.getElementById('nw-subject').value = '';
+          document.getElementById('nw-body').value = '';
+          nwLoad();
+          return;
+        }
+        showMsg(msg, 'Envoi refusé : ' + ((x.j && x.j.error) || 'raison inconnue') + '. La fonction «\u00a0envoi-newsletter\u00a0» est-elle déployée (NOTICE-NEWSLETTER.txt) ?', false);
+      })
+      .catch(function(){ showMsg(msg, "L'envoi a échoué — vérifiez que la fonction «\u00a0envoi-newsletter\u00a0» est déployée.", false); })
+      .finally(function(){ nwBusy = false; });
+  }
+  document.getElementById('nw-test-btn').addEventListener('click', function(){ nwSend(document.getElementById('nw-test').value.trim()); });
+  document.getElementById('nw-send-btn').addEventListener('click', function(){ nwSend(null); });
 
   // ===================== CODES PROMO =====================
   var pmRows = [], pmStarted = false;
@@ -9203,6 +9307,7 @@
     dashboard:function(){ loadDashboard(); },
     gameday:function(){ gdLoad(); },
     promos:function(){ pmLoad(); },
+    newsl:function(){ nwLoad(); },
     teams:function(){ loadTeams(); },
     live:function(){ loadSettings().then(function(){ LOADERS_live(); }); },
     home:function(){ loadSettings().then(function(){ LOADERS_home(); }); },
