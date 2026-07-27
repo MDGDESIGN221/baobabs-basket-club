@@ -89,6 +89,16 @@
   .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 96px}
   .page-head{margin:6px 0 18px}
   .page-head h1{font-family:'Anton',sans-serif;font-weight:400;font-size:clamp(26px,4.5vw,38px);margin:0;letter-spacing:.02em;text-transform:uppercase;line-height:1.05}
+  #help-toggle{display:inline-flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:100px;padding:8px 14px;color:var(--muted);font:600 12px 'Inter',sans-serif;cursor:pointer;transition:border-color .15s,color .15s;flex:none;margin-top:8px}
+  #help-toggle svg{width:14px;height:14px;color:var(--gold)}
+  #help-toggle:hover{border-color:var(--gold);color:var(--text)}
+  #help-toggle:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  #help-toggle[aria-expanded="true"]{border-color:var(--gold);color:var(--text);background:rgba(198,162,87,.1)}
+  #page-help{margin-top:14px;background:linear-gradient(155deg,#101F14,#0B1710);border:1px solid rgba(198,162,87,.3);border-radius:14px;padding:16px 18px}
+  #page-help ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+  #page-help li{display:flex;gap:10px;font-size:13.5px;line-height:1.55;color:var(--muted)}
+  #page-help li::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--gold);flex:none;margin-top:8px}
+  #page-help li b{color:var(--text);font-weight:600}
   .page-head p{color:var(--muted);font-size:14px;margin:6px 0 0;max-width:60ch;text-wrap:pretty}
 
   /* nav sections (legacy horizontal — kept for forms sub-nav) */
@@ -1410,8 +1420,15 @@
   <div class="wrap">
     <div class="page-head">
       <div class="page-kicker" id="page-kicker">Aperçu</div>
-      <h1 id="page-title">Tableau de bord</h1>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <h1 id="page-title">Tableau de bord</h1>
+        <button type="button" id="help-toggle" aria-expanded="false" aria-controls="page-help">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.4-3 4"/><path d="M12 17.5h.01"/></svg>
+          Comment ça marche ?
+        </button>
+      </div>
       <p id="page-desc">Vue d'ensemble de votre club — ce qui se passe, ce qui vous attend.</p>
+      <div id="page-help" class="hide" role="region" aria-label="Aide de l'écran"></div>
     </div>
 
     <!-- ===== SECTION TABLEAU DE BORD ===== -->
@@ -2996,6 +3013,53 @@
     home:{t:'Image du hero',d:'L\'image de fond et le texte d\'accroche du grand bloc d\'accueil.'},
     audit:{t:'Historique',d:'Qui a modifié quoi, et quand — protégé par mot de passe.'}
   };
+  // ===================== AIDE PAR ÉCRAN =====================
+  // Chaque écran a sa bulle « Comment ça marche ? » : l'admin est utilisé
+  // par plusieurs personnes, l'explication doit vivre dans l'écran, pas
+  // dans la mémoire de celui qui l'a commandé. Vocabulaire : ce que la
+  // personne contrôle, jamais comment c'est construit.
+  var SECTION_HELP = {
+    dashboard: ["<b>Le point de départ.</b> Les chiffres résument l'activité : matchs, inscrits, messages, commandes, candidatures.","Cliquez une carte pour aller directement à l'écran concerné.","L'affiche en haut montre le prochain match ; ses deux boutons mènent à la billetterie et à la fiche du match."],
+    gameday: ["<b>L'écran du jour de match</b>, pensé pour la personne au guichet et à la table de marque.","Le tableau de marque se pilote avec les touches +1 / +2 / +3 / −1. <b>Publier le score</b> l'envoie sur le site — à faire au coup de sifflet final, le site l'affiche comme définitif.","Le guichet retrouve une réservation par référence, nom ou téléphone ; <b>Retirer</b> pointe le billet à l'entrée.","Les jauges de droite montrent les places restantes par catégorie, mises à jour à chaque retrait."],
+    matches: ["<b>L'ancien écran de gestion des matchs</b> : ajout d'une rencontre, saisie du score, gestion des adversaires et de leurs logos.","Tout ce qui est enregistré ici apparaît sur le site : calendrier, résultats, prochain match de l'accueil.","L'icône « copier » sur une ligne duplique le match à J+7, sans score — pratique pour les rencontres régulières.","Les écrans plus récents (Calendrier, Matchs, Résultats) montrent les mêmes données sous d'autres angles."],
+    live: ["<b>Relie la chaîne YouTube du club au site.</b> C'est le seul réglage nécessaire.","Un jour de match, lancez votre direct sur YouTube comme d'habitude : le bloc « En direct » de l'accueil bascule tout seul, puis revient à la normale à la fin.","Le message hors-direct s'affiche quand rien n'est diffusé."],
+    standings: ["<b>Le classement affiché sur la page Compétitions du site.</b>","Le podium en haut montre ce que voit le public ; l'éditeur en dessous permet de corriger chaque ligne (victoires, défaites, points).","L'éditeur visuel se manipule à la souris ; le formulaire classique reste disponible via l'onglet."],
+    coherence: ["<b>Compare la page publique en ligne avec le contenu de l'admin</b> : écarts de texte, contenu codé en dur, réglages inutilisés.","Protégé par le mot de passe de l'historique — l'écran expose la structure interne du site.","« Adopter » récupère la valeur du site dans l'admin en un clic."],
+    banners: ["<b>Les grandes bannières du bloc d'accueil</b> : visuel, titre, bouton, et période d'affichage.","Une bannière programmée s'affiche toute seule à sa date de début et disparaît à sa date de fin.","Sans bannière active, le site affiche l'image du hero classique — rien ne casse."],
+    announce: ["<b>Le bandeau tout en haut du site</b> : report de match, ouverture de vente, information urgente.","Trois tons au choix : information (bleu), alerte (rouge), succès (vert).","Un visiteur peut fermer le bandeau ; il ne réapparaît pas pour lui tant que l'annonce ne change pas."],
+    squad: ["<b>Une fiche par joueuse</b> : portrait, poste, numéro, statut (apte, blessée, partie…), parcours et statistiques.","Le statut s'affiche sur le site dans la section Équipes.","La photo se glisse directement sur la fiche ou se colle en lien."],
+    products: ["<b>Le catalogue de la boutique</b> : visuels, prix, description, tailles.","<b>Dupliquer</b> sur une fiche crée une copie suffixée « (copie) » — pratique pour décliner un maillot.","Le stock se gère par taille dans l'écran Stock voisin ; un produit épuisé reste visible mais non commandable."],
+    stock: ["<b>L'état des réserves, par taille.</b> Saisie rapide des quantités, seuil d'alerte par produit.","« Épuisé » et « stock bas » se calculent tout seuls ; le site suit automatiquement.","Le rail de droite (grands écrans) et le tableau de bord remontent les produits à recommander."],
+    articles: ["<b>La rédaction des actualités</b> : texte, chapô, image de couverture, catégorie, auteur, référencement.","Un article passe par des statuts : brouillon → publié. Seuls les publiés apparaissent sur le site.","Le chapô et la catégorie s'affichent sur les cartes d'actualité du site."],
+    categories: ["<b>Les rubriques des actualités</b>, chacune avec sa couleur.","Utilisées sur le site (étiquettes des articles) et dans l'admin pour filtrer."],
+    media: ["<b>Tous les visuels du site, rangés par dossier</b> : matchs, joueuses, boutique, actualités, partenaires.","Déposez un fichier pour l'envoyer ; cliquez une image pour copier son lien et l'utiliser ailleurs.","Supprimer une image ici ne la retire pas des endroits où son lien est déjà utilisé."],
+    calendar: ["<b>La saison en un coup d'œil</b> : vue mois ou liste chronologique.","Cliquez une rencontre pour ouvrir sa fiche complète.","Les matchs sans lieu à moins de 48 h sont signalés."],
+    matches2: ["<b>Une fiche par rencontre</b>, en onglets : feuille de match, résultat, billetterie, diffusion, médias.","C'est le centre de gestion d'un match — tout ce qui le concerne au même endroit.","Les autres écrans (Calendrier, Résultats, Billetterie) mènent ici."],
+    results: ["<b>La file d'après-match</b> : les rencontres jouées dont le score manque encore.","Saisissez les deux scores dans les cases façon tableau d'affichage, puis <b>Publier</b> — le site se met à jour immédiatement.","« Tout est à jour » = rien en attente, tout va bien."],
+    tickets: ["<b>La vente de billets, match par match.</b> Une ligne par catégorie de place : tarif, quota, vente ouverte ou fermée.","<b>Le paiement se fait sur place</b> : le site enregistre la réservation et donne une référence à présenter au guichet.","Tant qu'aucune catégorie n'est ouverte, rien n'apparaît sur le site.","« Copier la grille d'un autre match » recopie les catégories d'un coup — elles arrivent vente fermée.","L'onglet Réservations liste tout ; le retrait le jour J se fait plutôt dans Soir de match."],
+    orders2: ["<b>Chaque commande est un bon de préparation</b> : le client, les articles à emballer, le montant, le paiement.","Faites glisser une carte d'une colonne à l'autre pour changer son statut — le client peut suivre sa commande.","La fiche imprime un bon de préparation propre.","Chaque changement de statut est tracé dans l'historique de la commande."],
+    clients: ["<b>Vos supporters</b> : coordonnées, historique de commandes, total dépensé, réservations, notes internes.","Les comptes se créent sur le site (connexion / inscription) ; cette liste se remplit toute seule.","Cliquez une ligne pour ouvrir la fiche complète."],
+    applications: ["<b>Chaque candidature est un dossier de recrutement</b> : profil, coordonnées, parcours, documents, notes.","Faites glisser une carte pour changer son statut (nouvelle, à étudier, entretien, acceptée…) — chaque décision est tracée dans le journal du dossier.","Les candidatures arrivent du formulaire Tryouts du site."],
+    roster: ["<b>L'ancien écran d'effectif</b>, conservé le temps de la transition.","Préférez l'écran Joueuses, plus complet (statuts, statistiques, fiches)."],
+    founder: ["<b>La fiche du fondateur</b>, affichée sur la page « Le Club » du site, sous « Notre histoire ».","Photo, nom, titre et présentation — l'aperçu de droite montre le rendu réel."],
+    bureau: ["<b>L'organigramme du club.</b> La structure de l'arbre est fixe ; vous éditez le titulaire, la photo et la fiche de chaque poste.","S'affiche sur la page « Le Club » du site."],
+    staff: ["<b>Les membres de l'encadrement</b> affichés dans le bloc « Le staff » du site.","Une carte par personne : photo, nom, rôle."],
+    timeline: ["<b>La chronologie du club</b> affichée sur la page « Le Club ».","Une étape = une année ou un moment marquant. L'ordre suit les dates."],
+    c_home: ["<b>Les textes et visuels de la page d'accueil</b> : hero, Face-Off, bandeau de chiffres, section Médias.","Le sommaire en haut saute directement au bloc voulu.","Chaque bloc a son aperçu réel à droite : ce que vous voyez est ce que le site affiche."],
+    c_club: ["<b>Les textes de la page « Le Club »</b> : intro, cartes d'objectifs, camp de base.","Aperçu réel à droite de chaque bloc."],
+    c_tryouts: ["<b>La page de détection</b> : dates, lieu, contact, teaser vidéo et affiches.","Le formulaire de candidature du site envoie vers l'écran Candidatures."],
+    c_app: ["<b>Le bloc « L'appli des Baobabs »</b> : textes, points forts, badges.","Les écrans des téléphones affichent les vraies données du site (calendrier, classement, boutique, effectif, actus) — rien à gérer ici."],
+    c_promo: ["<b>Newsletter et bandeau « Rejoins la tribu »</b>, avec leurs fenêtres d'abonnement et de contact.","Contenu commun du bas de page, visible sur tout le site."],
+    c_legal: ["<b>Le pied de page</b> : les trois colonnes de liens, les mentions légales, la confidentialité."],
+    reglages: ["<b>L'identité du site</b> : logo, coordonnées, réseaux sociaux, pied de page.","Appliqué partout sur le site — un changement ici se voit sur toutes les pages."],
+    news: ["<b>L'ancien écran des actualités</b>, conservé le temps de la transition.","Préférez l'écran Articles, plus complet (chapô, catégorie, référencement, statuts)."],
+    partners: ["<b>Les logos et liens des partenaires</b> affichés en bas du site.","Les logos passent automatiquement en blanc sur le fond sombre ; cochez « couleur » pour garder l'original."],
+    shop: ["<b>L'ancien écran boutique</b>, conservé le temps de la transition.","Préférez les écrans Produits et Stock, plus complets."],
+    forms: ["<b>Ce que le site vous envoie</b> : inscriptions newsletter, messages de contact, commandes.","Les candidatures ont leur propre écran, avec un vrai suivi de dossier."],
+    home: ["<b>L'image de fond et l'accroche du grand bloc d'accueil.</b>","Si des bannières sont actives (écran Bannières & slider), elles passent devant cette image."],
+    audit: ["<b>Qui a modifié quoi, et quand.</b> Chaque ligne est une phrase, regroupée par jour ; l'ancienne valeur est barrée, la nouvelle à côté.","Protégé par mot de passe. La recherche et les filtres retrouvent une modification précise.","Rien ne s'efface : c'est la mémoire de l'admin."]
+  };
+
   var ALL_SECTIONS = ['dashboard','gameday','matches','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
@@ -3007,6 +3071,14 @@
     var m = SECTION_META[key];
     document.getElementById('page-title').textContent = m.t;
     document.getElementById('page-desc').textContent = m.d;
+    var hb = document.getElementById('help-toggle'), hp = document.getElementById('page-help');
+    if (hb && hp){
+      var tips = SECTION_HELP[key];
+      hb.classList.toggle('hide', !tips);
+      hp.classList.add('hide');
+      hb.setAttribute('aria-expanded', 'false');
+      hp.innerHTML = tips ? '<ul>' + tips.map(function(t){ return '<li><span>' + t + '</span></li>'; }).join('') + '</ul>' : '';
+    }
     if (!loadedSections[key]) { loadedSections[key]=true; if (LOADERS[key]) LOADERS[key](); }
     if (key==='forms' && formKey) {
       var fbtn = document.querySelector('#forms-nav .nav-btn[data-form="'+formKey+'"]');
@@ -3529,6 +3601,11 @@
       document.getElementById('matches-subtab-matches').classList.toggle('hide', key!=='matches');
       document.getElementById('matches-subtab-teams').classList.toggle('hide', key!=='teams');
     });
+  });
+  document.getElementById('help-toggle').addEventListener('click', function(){
+    var hp = document.getElementById('page-help');
+    var open = hp.classList.toggle('hide');
+    this.setAttribute('aria-expanded', open ? 'false' : 'true');
   });
   document.getElementById('mobile-nav-toggle').addEventListener('click', function(){
     document.getElementById('sidebar').classList.add('open');
