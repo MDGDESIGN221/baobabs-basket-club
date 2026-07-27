@@ -3047,7 +3047,7 @@
     stock: ["<b>L'état des réserves, par taille.</b> Saisie rapide des quantités, seuil d'alerte par produit.","« Épuisé » et « stock bas » se calculent tout seuls ; le site suit automatiquement.","Le rail de droite (grands écrans) et le tableau de bord remontent les produits à recommander."],
     articles: ["<b>La rédaction des actualités</b> : texte, chapô, image de couverture, catégorie, auteur, référencement.","Un article passe par des statuts : brouillon → publié. Seuls les publiés apparaissent sur le site.","Le chapô et la catégorie s'affichent sur les cartes d'actualité du site."],
     categories: ["<b>Les rubriques des actualités</b>, chacune avec sa couleur.","Utilisées sur le site (étiquettes des articles) et dans l'admin pour filtrer."],
-    media: ["<b>Tous les visuels du site, rangés par dossier</b> : matchs, joueuses, boutique, actualités, partenaires.","Déposez un fichier pour l'envoyer ; cliquez une image pour copier son lien et l'utiliser ailleurs.","Supprimer une image ici ne la retire pas des endroits où son lien est déjà utilisé."],
+    media: ["<b>Tous les visuels du site, en trois familles.</b> <b>Vos fichiers</b> : ce que vous téléversez ici, rangé par dossier. <b>Utilisées par les fiches</b> : les images enregistrées dans les fiches (joueuses, produits, articles…). <b>Codées dans le site</b> : les visuels écrits dans la page elle-même (hero, affiches, logos).","Un clic sur une image copie son adresse — collez-la dans n'importe quel champ image.","Le téléversement ne marche que dans « Vos fichiers » ; les deux autres familles se modifient depuis leur source (la fiche, ou moi pour le codé en dur)."],
     calendar: ["<b>La saison en un coup d'œil</b> : vue mois ou liste chronologique.","Cliquez une rencontre pour ouvrir sa fiche complète.","Les matchs sans lieu à moins de 48 h sont signalés."],
     matches2: ["<b>Une fiche par rencontre</b>, en onglets : feuille de match, résultat, billetterie, diffusion, médias.","C'est le centre de gestion d'un match — tout ce qui le concerne au même endroit.","Les autres écrans (Calendrier, Résultats, Billetterie) mènent ici."],
     results: ["<b>La file d'après-match</b> : les rencontres jouées dont le score manque encore.","Saisissez les deux scores dans les cases façon tableau d'affichage, puis <b>Publier</b> — le site se met à jour immédiatement.","« Tout est à jour » = rien en attente, tout va bien."],
@@ -6560,7 +6560,7 @@
     { id:'@staff',    name:'Photos du staff',        query:'staff?select=name,photo_url,image_url' },
     { id:'@settings', name:'Réglages (hero, logos)', query:'site_settings?select=key,value' }
   ];
-  function mdAllFolders(){ return MD_FOLDERS.concat(MD_DB_SOURCES); }
+  function mdAllFolders(){ return MD_FOLDERS.concat(MD_DB_SOURCES, MD_SITE_GROUPS); }
   function mdLooksImg(v){ return /^https?:\/\//i.test(v||'') && (/\.(jpe?g|png|gif|webp|svg|avif)(\?|$)/i.test(v) || /cloudinary|supabase\.co\/storage/i.test(v)); }
   function mdDbItems(src, rows){
     var out=[];
@@ -6577,6 +6577,53 @@
     });
     return out;
   }
+  var MD_SITE_GROUPS = [
+    { id:'@site-identite', name:'Identité & logos' },
+    { id:'@site-accueil', name:'Accueil' },
+    { id:'@site-tryouts', name:'Tryouts' },
+    { id:'@site-effectif', name:'Effectif (portraits)' },
+    { id:'@site-boutique', name:'Boutique' },
+    { id:'@site-partenaires', name:'Partenaires' }
+  ];
+  // Inventaire des visuels codés directement dans index.html (relevé automatique).
+  var MD_SITE_ASSETS = [
+    { n:'Og banner', u:'https://www.baobabsbasketclub.com/og-banner.png', g:'@site-identite' },
+    { n:'BBC COLORED LOGO', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_320,c_limit/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png', g:'@site-identite' },
+    { n:'Person on basketball court 2K 202607220359', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_1800,c_limit/v1784692836/Person_on_basketball_court_2K_202607220359_qdn8q9.jpg', g:'@site-accueil' },
+    { n:'DUC Dakar logo', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_200,c_limit/v1784688526/DUC_Dakar_logo_zyqx86.png', g:'@site-accueil' },
+    { n:'Duo Baobabs contre plong e', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_1200,c_limit/v1784924700/Duo_Baobabs___contre-plong_e_snmhff.png', g:'@site-accueil' },
+    { n:'Trio Baobabs trois quarts', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_1800,c_limit/v1784924531/Trio_Baobabs___trois_quarts_f5uqkz.png', g:'@site-accueil' },
+    { n:'Maillot blanc Baobabs', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_300,c_limit/v1784828234/Maillot_blanc_Baobabs_dpzaxu.png', g:'@site-boutique' },
+    { n:'Nouvel num 4', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_800,c_limit/v1784826251/nouvel_num_4_umsjcf.png', g:'@site-effectif' },
+    { n:'Nouvel num 7', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_800,c_limit/v1784824755/nouvel_num_7_j1d2uc.png', g:'@site-effectif' },
+    { n:'Joueuse maillot blanc fond transparent', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_800,c_limit/v1784829760/Joueuse_maillot_blanc___fond_transparent_b0fu2e.png', g:'@site-boutique' },
+    { n:'18 juil. 2026 02 12 16 Photoroom', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto:good,w_900,c_limit,dpr_auto/v1784852882/18_juil._2026_02_12_16-Photoroom_dm3j1p.png', g:'@site-tryouts' },
+    { n:'JOURNEES DE DETECTION', u:'https://res.cloudinary.com/djdkpihuz/video/upload/so_0,f_jpg,q_auto/v1784754196/JOURNEES_DE_DETECTION_hnuoih.jpg', g:'@site-tryouts' },
+    { n:'BBC TRYOUTS 2026 SAISON 2026 2027', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_1000,c_limit/v1784691223/BBC_-_TRYOUTS_2026_SAISON_2026-2027_r3n5np.png', g:'@site-tryouts' },
+    { n:'BBC TRYOUTS 2026 SAISON 2026 2027 v3', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_1000,c_limit/v1784691222/BBC_-_TRYOUTS_2026_SAISON_2026-2027_v3_cel80k.png', g:'@site-tryouts' },
+    { n:'Logo TotalEnergies fond transparent', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_400,c_limit/v1784841126/Logo_TotalEnergies___fond_transparent_dtnyof.png', g:'@site-partenaires' },
+    { n:'Yas jaune fond transparent', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_400,c_limit/v1784832662/Yas_jaune___fond_transparent_faxpwt.png', g:'@site-partenaires' },
+    { n:'Eiffage 2400 01 colour RGB', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_400,c_limit/v1784832662/Eiffage_2400_01_colour_RGB_iwzuto.png', g:'@site-partenaires' },
+    { n:'Ecobank logo FR', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784832661/ecobank-logo-FR_f9obdg.svg', g:'@site-partenaires' },
+    { n:'Auchan', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_400,c_limit/v1784832661/auchan_nevc5t.png', g:'@site-partenaires' },
+    { n:'Calque 0', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_1600,c_limit/v1784691229/Calque_0_xdlgac.png', g:'@site-effectif' },
+    { n:'Nouvel num 7', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_800,c_limit/v1784826770/nouvel_num_7_ee3qcx.png', g:'@site-effectif' },
+    { n:'Nouvel num 10', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784825232/nouvel_num_10_sztbqj.png', g:'@site-effectif' },
+    { n:'Num 23', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784694465/num_23_dliztl.png', g:'@site-effectif' },
+    { n:'Numero 15', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784696740/numero_15_aijnyv.png', g:'@site-effectif' },
+    { n:'Numero 6', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784695624/numero_6_hkmpa0.png', g:'@site-effectif' },
+    { n:'Numero 33', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784696208/numero_33_kgoopf.png', g:'@site-effectif' },
+    { n:'Replace jersey with Baobabs club 202607220257', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784689094/Replace_jersey_with_Baobabs_club_202607220257_uda4kz.jpg', g:'@site-boutique' },
+    { n:'Replace jersey with Baobabs club 202607221933', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784748816/Replace_jersey_with_Baobabs_club_202607221933_oaaj6k.jpg', g:'@site-boutique' },
+    { n:'ET', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784688966/ET_a462kv.jpg', g:'@site-boutique' },
+    { n:'Replace jersey with Baobabs 2K 202607220253', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784688856/Replace_jersey_with_Baobabs_2K_202607220253_fmyqm7.jpg', g:'@site-boutique' },
+    { n:'Replace jersey with Baobabs 2K 202607220252 1', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784688811/Replace_jersey_with_Baobabs_2K_202607220252_1_y8nrdr.jpg', g:'@site-boutique' },
+    { n:'Replace jersey with Baobabs club 202607221931', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784748698/Replace_jersey_with_Baobabs_club_202607221931_wypaa3.jpg', g:'@site-boutique' },
+    { n:'Replace jersey with Baobabs 2K 202607220252', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784688810/Replace_jersey_with_Baobabs_2K_202607220252_mfbrbt.jpg', g:'@site-boutique' },
+    { n:'Replace logo on cap 2K 202607222141', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784756926/Replace_logo_on_cap_2K_202607222141_mtizyy.jpg', g:'@site-boutique' },
+    { n:'Another pose of cap 2K 202607222144', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784756926/Another_pose_of_cap_2K_202607222144_gbyhjs.jpg', g:'@site-boutique' },
+    { n:'Cap in black 2K 202607222143', u:'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto/v1784756926/Cap_in_black_2K_202607222143_rdhxvf.jpg', g:'@site-boutique' }
+  ];
   var MD_BUCKET = 'site-media';
   var mdFiles = [], mdDir = '', mdStarted = false, mdCounts = {}, mdPick = null;
 
@@ -6637,6 +6684,13 @@
       });
       mdCounts[''] = mdFiles.filter(function(x){ return x.dir === ''; }).length;
       mdRender();
+      MD_SITE_GROUPS.forEach(function(g){
+        var lot = MD_SITE_ASSETS.filter(function(a){ return a.g === g.id; }).map(function(a){
+          return { name: a.n, dir: g.id, path: g.id + ':' + a.u, url: a.u, size: 0, db: true };
+        });
+        mdCounts[g.id] = lot.length;
+        mdFiles = mdFiles.concat(lot);
+      });
       return Promise.all(MD_DB_SOURCES.map(function(src){
         return sbGet(src.query).then(function(rows){ return mdDbItems(src, rows); }).catch(function(){ return []; });
       })).then(function(lots){
@@ -6685,8 +6739,10 @@
       '<div class="md-kids">' +
         MD_FOLDERS.filter(function(x){ return !x.root; }).map(function(fo){ return mdNode(fo); }).join('') +
       '</div>' +
-      '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:16px 0 7px">Utilisées par le site</div>' +
-      '<div class="md-kids">' + MD_DB_SOURCES.map(function(fo){ return mdNode(fo); }).join('') + '</div>';
+      '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:16px 0 7px">Utilisées par les fiches</div>' +
+      '<div class="md-kids">' + MD_DB_SOURCES.map(function(fo){ return mdNode(fo); }).join('') + '</div>' +
+      '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:16px 0 7px">Codées dans le site</div>' +
+      '<div class="md-kids">' + MD_SITE_GROUPS.map(function(fo){ return mdNode(fo); }).join('') + '</div>';
     box.querySelectorAll('.md-node').forEach(function(b){
       b.addEventListener('click', function(){
         mdDir = b.getAttribute('data-dir') || '';
