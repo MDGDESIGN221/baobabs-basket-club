@@ -308,6 +308,24 @@
   .cl-stats b{font-family:'Anton',sans-serif;font-weight:400;font-size:19px;letter-spacing:.03em;color:var(--gold-bright);line-height:1.1}
   .cl-stats span{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:2px}
 
+  /* ===== V2 — soir de match : le tableau de marque ===== */
+  .gd-board{position:relative;overflow:hidden;background:linear-gradient(160deg,#0F2214,#071208);border:1px solid rgba(198,162,87,.35);border-radius:var(--radius);padding:26px 22px;box-shadow:0 24px 60px -30px rgba(0,0,0,.7)}
+  .gd-kicker{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright);text-align:center;margin:0 0 18px}
+  .gd-row{display:flex;align-items:flex-start;justify-content:center;gap:clamp(12px,4vw,44px);flex-wrap:wrap}
+  .gd-team{display:flex;flex-direction:column;align-items:center;gap:11px;min-width:0}
+  .gd-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(13px,2vw,16px);text-transform:uppercase;letter-spacing:.08em;text-align:center;max-width:230px}
+  .gd-score{font-family:'Anton',sans-serif;font-weight:400;font-size:clamp(54px,9vw,88px);line-height:1;color:var(--gold-bright);background:rgba(6,17,9,.75);border:1px solid var(--line-strong);border-radius:16px;padding:12px 24px;min-width:124px;text-align:center;font-variant-numeric:tabular-nums}
+  .gd-mid{font-family:'Anton',sans-serif;font-size:32px;color:var(--faint);align-self:center;padding-top:8px}
+  .gd-keys{display:flex;gap:7px}
+  .gd-key{width:44px;height:44px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--text);font:700 14px 'Space Grotesk',sans-serif;cursor:pointer;transition:border-color .15s,color .15s,transform .1s}
+  .gd-key:hover{border-color:var(--gold);color:var(--gold-bright)}
+  .gd-key:active{transform:scale(.93)}
+  .gd-key:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  .gd-key.minus{color:var(--faint)}
+  .gd-meta{text-align:center;font-size:12.5px;color:var(--muted);margin-top:16px}
+  .tk-copygrid{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line-strong)}
+  .tk-copygrid select{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13px}
+
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:0 1px 2px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.02)}
   @media(min-width:600px){.card{padding:26px}}
   .card + .card{margin-top:18px}
@@ -1201,6 +1219,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18M3 12h18M4.5 7.5c2 1.3 13 1.3 15 0M4.5 16.5c2-1.3 13-1.3 15 0"/></svg>
           Matchs &amp; adversaires <span style="font-size:9px;opacity:.5;margin-left:4px">ancien</span>
         </button>
+        <button class="sb-link" data-section="gameday">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+          Soir de match
+        </button>
         <button class="sb-link" data-section="live">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
           Direct
@@ -1476,6 +1498,64 @@
           Voir le site public
         </a>
       </div>
+    </section>
+
+    <!-- ===== SECTION SOIR DE MATCH ===== -->
+    <section id="section-gameday" class="hide">
+      <div id="gd-empty" class="rs-done hide">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--gold)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        <b>Aucun match à venir</b>
+        <span>Cet écran s'allume tout seul dès qu'un match est au calendrier.</span>
+      </div>
+      <div id="gd-main" class="hide">
+        <div class="gd-board">
+          <p class="gd-kicker" id="gd-kicker">Ce soir</p>
+          <div class="gd-row">
+            <div class="gd-team">
+              <div class="gd-name">Baobabs</div>
+              <div class="gd-score" id="gd-score-b">0</div>
+              <div class="gd-keys">
+                <button type="button" class="gd-key" data-side="b" data-delta="1">+1</button>
+                <button type="button" class="gd-key" data-side="b" data-delta="2">+2</button>
+                <button type="button" class="gd-key" data-side="b" data-delta="3">+3</button>
+                <button type="button" class="gd-key minus" data-side="b" data-delta="-1">−1</button>
+              </div>
+            </div>
+            <div class="gd-mid">–</div>
+            <div class="gd-team">
+              <div class="gd-name" id="gd-opp-name">Adversaire</div>
+              <div class="gd-score" id="gd-score-o">0</div>
+              <div class="gd-keys">
+                <button type="button" class="gd-key" data-side="o" data-delta="1">+1</button>
+                <button type="button" class="gd-key" data-side="o" data-delta="2">+2</button>
+                <button type="button" class="gd-key" data-side="o" data-delta="3">+3</button>
+                <button type="button" class="gd-key minus" data-side="o" data-delta="-1">−1</button>
+              </div>
+            </div>
+          </div>
+          <div class="gd-meta" id="gd-meta"></div>
+          <div style="text-align:center;margin-top:16px">
+            <button class="btn btn-primary" id="gd-publish">Publier le score</button>
+            <div style="font-size:11.5px;color:var(--faint);margin-top:8px">À publier au coup de sifflet final — le site l'affiche comme résultat définitif.</div>
+          </div>
+          <div class="msg" id="gd-score-msg" style="text-align:center"></div>
+        </div>
+        <div class="grid-2" style="margin-top:18px;align-items:start">
+          <div class="card">
+            <h2 class="card-title">Guichet — retrait des billets</h2>
+            <p class="card-sub" id="gd-resa-count">Chargement…</p>
+            <input type="search" id="gd-resa-search" class="mod-search" placeholder="Référence, nom ou téléphone…" style="width:100%;margin-bottom:12px">
+            <div id="gd-resa-list"></div>
+            <div class="msg" id="gd-resa-msg"></div>
+          </div>
+          <div class="card">
+            <h2 class="card-title">Places restantes</h2>
+            <p class="card-sub">Par catégorie, sur ce match.</p>
+            <div id="gd-offers"></div>
+          </div>
+        </div>
+      </div>
+      <div class="msg" id="gd-msg"></div>
     </section>
 
     <!-- ===== SECTION MATCHS ===== -->
@@ -2156,6 +2236,10 @@
                 <input id="tk-new-price" type="number" min="0" step="500" placeholder="Tarif" aria-label="Tarif en FCFA">
                 <input id="tk-new-quota" type="number" min="0" placeholder="Places" aria-label="Nombre de places">
                 <button type="button" class="btn btn-ghost" id="tk-new-add">Ajouter</button>
+              </div>
+              <div class="tk-copygrid hide" id="tk-copygrid">
+                <select id="tk-copy-src" aria-label="Match source"><option value="">Copier la grille d'un autre match…</option></select>
+                <button type="button" class="btn btn-ghost" id="tk-copy-btn">Copier</button>
               </div>
             </div>
             <div class="msg" id="tk-offers-msg"></div>
@@ -2872,6 +2956,7 @@
   // ===================== NAVIGATION =====================
   var SECTION_META = {
     dashboard:{t:'Tableau de bord',d:'Vue d\'ensemble de votre club — ce qui se passe, ce qui vous attend.'},
+    gameday:{t:'Soir de match',d:'L\'écran du jour J : le score d\'un côté, le guichet de retrait des billets de l\'autre.'},
     matches:{t:'Gestion des matchs',d:'Ajoutez un match, saisissez un score, gérez vos adversaires. Tout se met à jour sur le site public.'},
     teams:{t:'Adversaires',d:'La liste des clubs que vous affrontez, avec leurs logos.'},
     live:{t:'Diffusion en direct',d:'Reliez la chaîne YouTube du club pour activer le direct sur l\'accueil.'},
@@ -2911,7 +2996,7 @@
     home:{t:'Image du hero',d:'L\'image de fond et le texte d\'accroche du grand bloc d\'accueil.'},
     audit:{t:'Historique',d:'Qui a modifié quoi, et quand — protégé par mot de passe.'}
   };
-  var ALL_SECTIONS = ['dashboard','matches','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
+  var ALL_SECTIONS = ['dashboard','gameday','matches','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -2952,7 +3037,8 @@
   // Raccourcis : trois liens qui répondent à « et maintenant ? » depuis
   // l'écran où l'on est. Tout écran non listé reçoit le trio par défaut.
   var CTX_LINKS = {
-    dashboard: [['Composer un match','matches'],['Billetterie','tickets'],['Bannières','banners']],
+    dashboard: [['Soir de match','gameday'],['Composer un match','matches'],['Billetterie','tickets']],
+    gameday:   [['Billetterie','tickets'],['Fiches des matchs','matches2'],['Direct','live']],
     matches:   [['Résultats à saisir','results'],['Calendrier','calendar'],['Billetterie','tickets']],
     matches2:  [['Composer un match','matches'],['Calendrier','calendar'],['Direct','live']],
     calendar:  [['Composer un match','matches'],['Fiches des matchs','matches2'],['Résultats','results']],
@@ -3127,6 +3213,133 @@
       box.classList.remove('hide');
     }).catch(function(){ box.classList.add('hide'); });
   }
+
+  // ===================== SOIR DE MATCH =====================
+  // Un seul écran pour le jour J : le tableau de marque au centre, le
+  // guichet et les places restantes en dessous. Le match affiché est celui
+  // du jour, sinon le prochain au calendrier.
+  var gdMatch=null, gdScore={b:0,o:0}, gdResa=[], gdWired=false;
+
+  function gdLoad(){
+    gdWire();
+    var today=new Date().toISOString().slice(0,10);
+    sbGet('matches?select=*&score_baobabs=is.null&match_date=gte.'+today+'&order=match_date.asc,match_time.asc&limit=1').then(function(rows){
+      gdMatch=(rows||[])[0]||null;
+      var main=document.getElementById('gd-main'), empty=document.getElementById('gd-empty');
+      if(!gdMatch){ main.classList.add('hide'); empty.classList.remove('hide'); return; }
+      empty.classList.add('hide'); main.classList.remove('hide');
+      gdScore={b:gdMatch.score_baobabs||0,o:gdMatch.score_opponent||0};
+      document.getElementById('gd-kicker').textContent = gdMatch.match_date===today ? 'Ce soir' : 'Prochain match';
+      document.getElementById('gd-opp-name').textContent = gdMatch.opponent_name||'Adversaire';
+      document.getElementById('gd-meta').textContent = [formatDateShort(gdMatch.match_date), gdMatch.match_time?String(gdMatch.match_time).slice(0,5):null, gdMatch.venue, gdMatch.is_home?'À domicile':'Déplacement'].filter(Boolean).join(' · ');
+      gdPaintScore();
+      gdLoadSide();
+    }).catch(function(){ showMsg(document.getElementById('gd-msg'),'Impossible de charger le match.',false); });
+  }
+
+  function gdPaintScore(){
+    document.getElementById('gd-score-b').textContent=gdScore.b;
+    document.getElementById('gd-score-o').textContent=gdScore.o;
+  }
+
+  function gdLoadSide(){
+    sbGet('reservations?select=*,ticket_offers(category)&match_id=eq.'+gdMatch.id+'&order=created_at.desc')
+      .then(function(rows){ gdResa=rows||[]; gdRenderResa(); })
+      .catch(function(){ gdResa=[]; gdRenderResa(); });
+    sbGet('ticket_offers?select=*&match_id=eq.'+gdMatch.id+'&order=price_fcfa.asc').then(function(rows){
+      var box=document.getElementById('gd-offers');
+      rows=rows||[];
+      if(!rows.length){ box.innerHTML='<div class="empty">Aucune catégorie de billet sur ce match. Ouvrez la vente dans Billetterie.</div>'; return; }
+      box.innerHTML=rows.map(function(o){
+        var left=Math.max((o.quota||0)-(o.sold||0),0);
+        var pct=(o.quota||0)>0?Math.min(Math.round((o.sold||0)/o.quota*100),100):0;
+        return '<div style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;gap:10px;font-size:13px"><b style="font-family:\'Space Grotesk\',sans-serif">'+esc(o.category)+'</b><span style="color:var(--faint)">'+left+' restante'+(left>1?'s':'')+'</span></div><div class="tk-gauge"><i style="width:'+pct+'%"></i></div></div>';
+      }).join('');
+    }).catch(function(){});
+  }
+
+  function gdRenderResa(){
+    var q=(document.getElementById('gd-resa-search').value||'').trim().toLowerCase();
+    var rows=gdResa.filter(function(r){ return r.status!=='annulee'; });
+    var done=rows.filter(function(r){ return r.status==='retiree'; }).length;
+    document.getElementById('gd-resa-count').textContent = rows.length ? done+' retiré(s) sur '+rows.length+' réservation(s)' : 'Aucune réservation sur ce match.';
+    if(q) rows=rows.filter(function(r){ return [r.reference,r.buyer_name,r.buyer_phone].join(' ').toLowerCase().indexOf(q)>=0; });
+    rows.sort(function(a,b){ return (a.status==='reservee'?0:1)-(b.status==='reservee'?0:1); });
+    var box=document.getElementById('gd-resa-list');
+    box.innerHTML = rows.length ? rows.map(function(r){
+      var cat=(r.ticket_offers&&r.ticket_offers.category)||'—';
+      return '<div class="rec-item tk-resa-row">'+
+        '<div class="tk-resa-qty"><b>'+r.quantity+'</b><span>'+(r.quantity>1?'billets':'billet')+'</span></div>'+
+        '<div class="rec-main"><div class="rec-title">'+esc(r.buyer_name||'Client')+' '+tkResaPill(r.status)+'</div>'+
+        '<div class="rec-meta"><span class="tk-ref">'+esc(r.reference)+'</span> · '+esc(cat)+(r.buyer_phone?' · '+esc(r.buyer_phone):'')+'</div></div>'+
+        (r.status==='reservee'?'<button type="button" class="btn btn-primary gd-checkin" data-id="'+r.id+'" style="padding:9px 15px;font-size:12.5px;flex:none">Retirer</button>':'')+
+      '</div>';
+    }).join('') : '<div class="empty">'+(q?'Rien ne correspond à cette recherche.':'Aucune réservation à afficher.')+'</div>';
+    box.querySelectorAll('.gd-checkin').forEach(function(b){
+      b.addEventListener('click',function(){
+        b.disabled=true;
+        tkRpc('bbc_retirer_reservation',{p_reservation_id:b.getAttribute('data-id')})
+          .then(function(){ showMsg(document.getElementById('gd-resa-msg'),'Billet retiré.',true); gdLoadSide(); })
+          .catch(function(){ showMsg(document.getElementById('gd-resa-msg'),'Impossible de retirer ce billet.',false); b.disabled=false; });
+      });
+    });
+  }
+
+  function gdWire(){
+    if(gdWired) return; gdWired=true;
+    document.getElementById('gd-resa-search').addEventListener('input', gdRenderResa);
+    document.querySelectorAll('.gd-key').forEach(function(k){
+      k.addEventListener('click',function(){
+        var side=k.getAttribute('data-side'), d=parseInt(k.getAttribute('data-delta'),10);
+        gdScore[side]=Math.max(0,(gdScore[side]||0)+d);
+        gdPaintScore();
+      });
+    });
+    document.getElementById('gd-publish').addEventListener('click',function(){
+      if(!gdMatch) return;
+      var btn=this; btn.disabled=true;
+      sbUpdate('matches',gdMatch.id,{score_baobabs:gdScore.b,score_opponent:gdScore.o},'Matchs')
+        .then(function(){ showMsg(document.getElementById('gd-score-msg'),'Score publié sur le site.',true); })
+        .catch(function(){ showMsg(document.getElementById('gd-score-msg'),'La publication a échoué.',false); })
+        .finally(function(){ btn.disabled=false; });
+    });
+  }
+
+  // ===================== DUPLICATION (match, produit) =====================
+  // Un clic recopie la fiche ; la copie reste inoffensive tant qu'on ne
+  // l'a pas ajustée : match décalé à J+7 sans score, produit suffixé
+  // « copie ».
+  function gmDuplicate(id){
+    sbGet('matches?select=*&id=eq.'+id).then(function(rows){
+      var m=rows&&rows[0]; if(!m){ qgToast('Match introuvable',true); return; }
+      var p={}; for(var k in m){ if(['id','created_at','score_baobabs','score_opponent'].indexOf(k)<0) p[k]=m[k]; }
+      if(p.match_date){ var d=new Date(p.match_date+'T12:00:00'); d.setDate(d.getDate()+7); p.match_date=d.toISOString().slice(0,10); }
+      return sbInsert('matches',p,'Matchs').then(function(){
+        qgToast('Match dupliqué à J+7 — ajustez la date.');
+        loadMatches();
+        if(typeof mcLoad==='function') mcLoad();
+      });
+    }).catch(function(){ qgToast('La duplication a échoué',true); });
+  }
+
+  function prDuplicate(id){
+    sbGet('products?select=*&id=eq.'+id).then(function(rows){
+      var r=rows&&rows[0]; if(!r){ qgToast('Produit introuvable',true); return; }
+      var p={}; for(var k in r){ if(['id','created_at'].indexOf(k)<0) p[k]=r[k]; }
+      p.name=(r.name||'Produit')+' (copie)';
+      return sbInsert('products',p,'Boutique').then(function(){
+        qgToast('Produit dupliqué — «\u00a0'+p.name+'\u00a0»');
+        if(typeof prLoad==='function') prLoad();
+      });
+    }).catch(function(){ qgToast('La duplication a échoué',true); });
+  }
+
+  document.addEventListener('click', function(e){
+    var t=e.target && e.target.closest ? e.target.closest('.gm-dup,.pr-dup') : null;
+    if(!t) return;
+    if(t.classList.contains('gm-dup')) gmDuplicate(t.getAttribute('data-id'));
+    else prDuplicate(t.getAttribute('data-id'));
+  });
 
   // ===================== NAVIGATION : GROUPES REPLIABLES =====================
   // Trente-cinq entrées ne tiennent pas dans la hauteur d'un écran. La barre
@@ -4013,7 +4226,7 @@
   function renderMatchList(container,rows,played){
     if(!rows.length){ container.innerHTML='<div class="empty">'+(played?'Aucun match joué pour le moment.':'Aucun match à venir.')+'</div>'; return; }
     container.innerHTML=rows.map(function(m){
-      var lieu=m.is_home?'vs':'@';
+      var lieu=m.is_home?'vs':'chez';
       var logo=m.opponent_logo_url?'<img class="rec-thumb circle" src="'+esc(m.opponent_logo_url)+'" alt="">':'<div class="rec-noimg circle" style="background:'+fallbackColor(m.opponent_name)+'">'+esc(initials(m.opponent_name))+'</div>';
       var pill,score='';
       if(played){ var win=m.score_baobabs>m.score_opponent; pill='<span class="status-pill '+(win?'status-win':'status-loss')+'">'+(win?'Victoire':(m.score_baobabs===m.score_opponent?'Nul':'Défaite'))+'</span>'; score=' · <b>'+m.score_baobabs+' – '+m.score_opponent+'</b>'; }
@@ -4024,7 +4237,7 @@
         else pill='<span class="status-pill status-upcoming">À venir</span>';
       }
       return '<div class="rec-item">'+logo+'<div class="rec-main"><div class="rec-title">'+pill+' Baobabs '+lieu+' '+esc(m.opponent_name)+score+'</div><div class="rec-meta">'+esc(formatDateShort(m.match_date))+(m.match_time?' · '+esc(m.match_time):'')+(m.competition?' · '+esc(m.competition):'')+'</div></div>'+
-        '<div class="item-actions"><button class="icon-btn edit-btn" data-id="'+m.id+'" title="Modifier" aria-label="Modifier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>'+
+        '<div class="item-actions"><button class="icon-btn gm-dup" data-id="'+m.id+'" title="Dupliquer" aria-label="Dupliquer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><button class="icon-btn edit-btn" data-id="'+m.id+'" title="Modifier" aria-label="Modifier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>'+
         '<button class="icon-btn danger del-btn" data-id="'+m.id+'" title="Supprimer" aria-label="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div></div>';
     }).join('');
     container.querySelectorAll('.edit-btn').forEach(function(b){ b.addEventListener('click',function(){ startEditMatch(b.getAttribute('data-id'),rows); }); });
@@ -5106,7 +5319,7 @@
         '<div class="ef-hero">' +
           (img ? '<img src="' + esc(img) + '" alt="" style="flex:none;width:128px;height:128px;border-radius:12px;object-fit:cover;border:1px solid var(--line-strong);background:#11201a">' : '') +
           '<div style="flex:1;min-width:220px">' +
-            '<div style="margin-bottom:8px">' + prPill(r) + '</div>' +
+            '<div style="margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + prPill(r) + '<button type="button" class="btn btn-ghost pr-dup" data-id="'+r.id+'" style="padding:6px 12px;font-size:11.5px">Dupliquer</button></div>' +
             '<h2 class="cd-doc-name">' + esc(r.name || 'Sans nom') + '</h2>' +
             '<div class="cd-doc-sub">' + esc([r.category, (r.price != null ? Number(r.price).toLocaleString('fr-FR') + ' FCFA' : 'Prix à fixer')].filter(Boolean).join(' · ')) +
               (r.marge_fcfa != null ? '<br>Marge : ' + Number(r.marge_fcfa).toLocaleString('fr-FR') + ' FCFA par pièce' : '') + '</div>' +
@@ -8247,6 +8460,20 @@
       });
     });
     document.getElementById('tk-new-add').addEventListener('click', tkAddOffer);
+    document.getElementById('tk-copy-btn').addEventListener('click', function(){
+      var src=document.getElementById('tk-copy-src').value;
+      var msg=document.getElementById('tk-offers-msg');
+      if(!src||!tkSel){ showMsg(msg,'Choisissez un match source dans la liste.',false); return; }
+      var offs=tkOffers[src]||[];
+      if(!offs.length){ showMsg(msg,'Ce match n\'a pas de grille à copier.',false); return; }
+      var btn=this; btn.disabled=true;
+      Promise.all(offs.map(function(o){
+        return sbInsert('ticket_offers',{match_id:tkSel,category:o.category,price_fcfa:o.price_fcfa,quota:o.quota,is_open:false},'Billetterie');
+      }))
+        .then(function(){ showMsg(msg,offs.length+' catégorie(s) copiée(s) — vente fermée par défaut, ouvrez-la quand vous êtes prêt.',true); return tkLoadOffers(); })
+        .catch(function(){ showMsg(msg,'La copie a échoué — des catégories existent peut-être déjà sur ce match.',false); })
+        .finally(function(){ btn.disabled=false; });
+    });
     ['tk-resa-match','tk-resa-status','tk-resa-search'].forEach(function(id){
       var el=document.getElementById(id);
       el.addEventListener('input', tkRenderResa); el.addEventListener('change', tkRenderResa);
@@ -8314,6 +8541,14 @@
     document.getElementById('tk-offers-title').textContent=tkLabel(m);
     document.getElementById('tk-offers-sub').textContent=formatDateShort(m.match_date)+(m.match_time?' · '+m.match_time:'')+(m.venue?' · '+m.venue:'');
     document.getElementById('tk-offers-add').classList.remove('hide');
+    var srcSel=document.getElementById('tk-copy-src');
+    if(srcSel){
+      var srcs=tkMatches.filter(function(x){ return String(x.id)!==String(matchId) && (tkOffers[x.id]||[]).length; });
+      document.getElementById('tk-copygrid').classList.toggle('hide', !srcs.length);
+      srcSel.innerHTML='<option value="">Copier la grille d\'un autre match…</option>'+srcs.map(function(x){
+        return '<option value="'+x.id+'">'+esc(tkLabel(x))+' — '+(tkOffers[x.id]||[]).length+' catégorie(s)</option>';
+      }).join('');
+    }
     var offs=tkOffers[matchId]||[];
     var list=document.getElementById('tk-offers-list');
     list.innerHTML = offs.length ? offs.map(function(o){
@@ -8464,6 +8699,7 @@
   var LOADERS_live, LOADERS_home, LOADERS_founder, LOADERS_bureau;
   var LOADERS = {
     dashboard:function(){ loadDashboard(); },
+    gameday:function(){ gdLoad(); },
     teams:function(){ /* déjà chargé à l'init */ },
     live:function(){ loadSettings().then(function(){ LOADERS_live(); }); },
     home:function(){ loadSettings().then(function(){ LOADERS_home(); }); },
