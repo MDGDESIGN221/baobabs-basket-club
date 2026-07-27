@@ -89,6 +89,32 @@
   .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 96px}
   .page-head{margin:6px 0 18px}
   .page-head h1{font-family:'Anton',sans-serif;font-weight:400;font-size:clamp(26px,4.5vw,38px);margin:0;letter-spacing:.02em;text-transform:uppercase;line-height:1.05}
+  /* Recherche globale : une seule entrée pour tout l'admin. */
+  #gs-open{display:inline-flex;align-items:center;gap:9px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:100px;padding:8px 12px;color:var(--faint);cursor:pointer;transition:border-color .15s,color .15s;flex:none}
+  #gs-open svg{width:15px;height:15px}
+  #gs-open kbd{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;letter-spacing:.06em;border:1px solid var(--line-strong);border-radius:5px;padding:2px 6px;color:var(--faint)}
+  #gs-open:hover{border-color:var(--gold);color:var(--text)}
+  #gs-open:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  @media(max-width:760px){#gs-open kbd{display:none}}
+  #gs-overlay{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px}
+  #gs-scrim{position:absolute;inset:0;background:rgba(3,8,5,.72);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+  #gs-panel{position:relative;width:min(620px,100%);background:var(--surface);border:1px solid var(--line-strong);border-radius:16px;box-shadow:0 40px 90px rgba(0,0,0,.62);overflow:hidden;display:flex;flex-direction:column;max-height:72vh}
+  #gs-head{display:flex;align-items:center;gap:11px;padding:15px 17px;border-bottom:1px solid var(--line);flex:none}
+  #gs-head svg{width:17px;height:17px;color:var(--gold);flex:none}
+  #gs-input{flex:1;min-width:0;background:none;border:none;color:var(--text);font:inherit;font-size:15.5px;outline:none}
+  #gs-input::placeholder{color:#5C665E}
+  #gs-esc{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;border:1px solid var(--line-strong);border-radius:5px;padding:3px 7px;color:var(--faint);flex:none}
+  #gs-results{overflow-y:auto;padding:8px}
+  .gs-group{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding:12px 10px 6px}
+  .gs-hit{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;border-radius:10px;padding:10px 11px;cursor:pointer;text-align:left;font:inherit;color:var(--muted);transition:background .12s}
+  .gs-hit:hover,.gs-hit.on{background:var(--surface-2);color:var(--text)}
+  .gs-hit.on{box-shadow:inset 0 0 0 1px rgba(198,162,87,.45)}
+  .gs-hit img{width:30px;height:30px;border-radius:50%;object-fit:contain;background:#0A1710;flex:none}
+  .gs-ic{width:30px;height:30px;border-radius:8px;background:var(--gold-soft);color:var(--gold);display:flex;align-items:center;justify-content:center;flex:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px}
+  .gs-hit b{display:block;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;color:var(--text);line-height:1.3}
+  .gs-hit span{display:block;font-size:11.5px;color:var(--faint);margin-top:2px}
+  .gs-empty{padding:26px 14px;text-align:center;font-size:13px;color:var(--faint)}
+
   #help-toggle{display:inline-flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:100px;padding:8px 14px;color:var(--muted);font:600 12px 'Inter',sans-serif;cursor:pointer;transition:border-color .15s,color .15s;flex:none;margin-top:8px}
   #help-toggle svg{width:14px;height:14px;color:var(--gold)}
   #help-toggle:hover{border-color:var(--gold);color:var(--text)}
@@ -1196,6 +1222,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
           <span class="hide-sm">Voir le site</span>
         </a>
+        <button type="button" id="gs-open" title="Rechercher (Ctrl+K)" aria-label="Rechercher">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <kbd>Ctrl K</kbd>
+        </button>
         <button class="link-btn" id="help-btn" title="Revoir la visite guidée">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg>
           <span class="hide-sm">Aide</span>
@@ -1206,6 +1236,18 @@
       </div>
     </div>
   </header>
+
+  <div id="gs-overlay" class="hide" role="dialog" aria-modal="true" aria-label="Recherche">
+    <div id="gs-scrim"></div>
+    <div id="gs-panel">
+      <div id="gs-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" id="gs-input" placeholder="Un match, un club, une joueuse, un écran…" autocomplete="off" spellcheck="false">
+        <kbd id="gs-esc">Échap</kbd>
+      </div>
+      <div id="gs-results"></div>
+    </div>
+  </div>
 
   <div class="sidebar-scrim" id="sidebar-scrim"></div>
 
@@ -3136,7 +3178,7 @@
   }
 
   var SECTION_HELP = {
-    dashboard: ["<b>Le point de départ.</b> Les chiffres résument l'activité : matchs, inscrits, messages, commandes, candidatures.","Cliquez une carte pour aller directement à l'écran concerné.","L'affiche en haut montre le prochain match ; ses deux boutons mènent à la billetterie et à la fiche du match."],
+    dashboard: ["<b>Le point de départ.</b> Les chiffres résument l'activité : matchs, inscrits, messages, commandes, candidatures.","Cliquez une carte pour aller directement à l'écran concerné.","L'affiche en haut montre le prochain match ; ses deux boutons mènent à la billetterie et à la fiche du match.","<b>Ctrl+K</b> (ou la loupe en haut) cherche partout : un match, un club, une joueuse, une référence de billet, un écran."],
     newsl: ["<b>Écrire à tous les inscrits de la newsletter.</b> Chaque personne reçoit son propre e-mail — jamais de liste visible.","<b>Testez d'abord</b> : votre adresse dans « M'envoyer un test », le message arrive avec [TEST] devant le sujet.","« Envoyer à tous » demande confirmation, et deux envois à moins de 10 minutes d'écart sont refusés.","Nécessite la fonction serveur « envoi-newsletter » (voir NOTICE-NEWSLETTER.txt) — sans elle, l'écran explique quoi installer.","Un inscrit qui répond « STOP » se retire dans Messages → Newsletter."],
     promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b> : un clic ajoute le club, logo compris. Pour un club absent, le formulaire du bas fait l'affaire.","<b>Changer un logo</b> : le bouton image sur une ligne ouvre l'éditeur — les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo."],
@@ -3401,6 +3443,161 @@
       box.classList.remove('hide');
     }).catch(function(){ box.classList.add('hide'); });
   }
+
+  // ===================== RECHERCHE GLOBALE =====================
+  // Trente-neuf écrans : chercher un nom est plus rapide que se souvenir
+  // du menu où il se trouve. La palette cherche à la fois les écrans et
+  // le contenu réel (matchs, clubs, joueuses, produits, articles,
+  // réservations, commandes, clients).
+  var gsOpen = false, gsIdx = 0, gsHits = [], gsData = null, gsTimer = null;
+
+  function gsShow(){
+    gsOpen = true;
+    document.getElementById('gs-overlay').classList.remove('hide');
+    var inp = document.getElementById('gs-input');
+    inp.value = ''; inp.focus();
+    gsRender('');
+    if (!gsData) gsFetch();
+  }
+  function gsHide(){
+    gsOpen = false;
+    document.getElementById('gs-overlay').classList.add('hide');
+  }
+
+  // Une seule salve de requêtes, au premier usage. Les listes sont
+  // courtes : tout tient en mémoire et la frappe reste instantanée.
+  function gsFetch(){
+    var q = function(path){ return sbGet(path).then(function(r){ return r || []; }).catch(function(){ return []; }); };
+    Promise.all([
+      q('matches?select=id,opponent_name,opponent_logo_url,match_date,is_home,score_baobabs,score_opponent&order=match_date.desc&limit=300'),
+      q('teams?select=id,name,logo_url&order=name.asc'),
+      q('players?select=id,name,jersey_number,position,photo_url&limit=200'),
+      q('products?select=id,name,price&limit=200'),
+      q('news?select=id,title&order=created_at.desc&limit=200'),
+      q('reservations?select=id,reference,buyer_name,quantity&order=created_at.desc&limit=300'),
+      q('orders?select=id,order_number,customer_name,total&order=created_at.desc&limit=300'),
+      q('customers?select=user_id,name,phone&limit=300')
+    ]).then(function(r){
+      gsData = { matches:r[0], teams:r[1], players:r[2], products:r[3], news:r[4], resa:r[5], orders:r[6], clients:r[7] };
+      gsRender(document.getElementById('gs-input').value);
+    });
+  }
+
+  function gsNorm(s){
+    return String(s == null ? '' : s).toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function gsBuild(term){
+    var t = gsNorm(term).trim();
+    var hits = [];
+    var push = function(group, label, sub, act, img, ic){
+      hits.push({ group:group, label:label, sub:sub, act:act, img:img, ic:ic });
+    };
+    var match = function(){
+      for (var i = 0; i < arguments.length; i++) if (gsNorm(arguments[i]).indexOf(t) >= 0) return true;
+      return false;
+    };
+
+    // Les écrans d'abord : c'est l'usage le plus fréquent.
+    ALL_SECTIONS.forEach(function(k){
+      var m = SECTION_META[k]; if (!m) return;
+      if (!t || match(m.t, m.d, k)) push('Écrans', m.t, m.d, function(){ showSection(k); }, null, m.t.charAt(0));
+    });
+
+    if (t && t.length >= 2 && gsData){
+      gsData.matches.forEach(function(m){
+        if (!match(m.opponent_name)) return;
+        var sc = m.score_baobabs != null ? m.score_baobabs + '–' + m.score_opponent : formatDateShort(m.match_date);
+        push('Matchs', (m.is_home ? 'Baobabs vs ' : 'Baobabs chez ') + (m.opponent_name || '?'), sc + ' · ' + formatDateShort(m.match_date),
+          function(){ showSection('matches2'); if (typeof mcOpen === 'function') setTimeout(function(){ mcOpen(m.id); }, 160); }, m.opponent_logo_url);
+      });
+      gsData.teams.forEach(function(x){
+        if (match(x.name)) push('Adversaires', x.name, 'Fiche du club', function(){ showSection('teams'); }, x.logo_url);
+      });
+      gsData.players.forEach(function(x){
+        if (match(x.name, x.position)) push('Joueuses', x.name, [x.jersey_number != null ? '#' + x.jersey_number : null, x.position].filter(Boolean).join(' · '),
+          function(){ showSection('squad'); if (typeof efSel !== 'undefined'){ efSel = x.id; if (typeof efRender === 'function') setTimeout(efRender, 160); } }, x.photo_url);
+      });
+      gsData.products.forEach(function(x){
+        if (match(x.name)) push('Produits', x.name, tkFcfa(x.price), function(){ showSection('products'); if (typeof prSel !== 'undefined'){ prSel = x.id; if (typeof prRender === 'function') setTimeout(prRender, 160); } }, null, 'P');
+      });
+      gsData.news.forEach(function(x){
+        if (match(x.title)) push('Articles', x.title, 'Actualité', function(){ showSection('articles'); }, null, 'A');
+      });
+      gsData.resa.forEach(function(x){
+        if (match(x.reference, x.buyer_name)) push('Réservations', x.reference + ' — ' + (x.buyer_name || 'Client'), x.quantity + ' billet(s)', function(){ showSection('tickets'); }, null, 'B');
+      });
+      gsData.orders.forEach(function(x){
+        if (match(x.order_number, x.customer_name)) push('Commandes', (x.order_number || 'Commande') + ' — ' + (x.customer_name || 'Client'), tkFcfa(x.total),
+          function(){ showSection('orders2'); if (typeof odSel !== 'undefined'){ odSel = x.id; if (typeof odRender === 'function') setTimeout(odRender, 160); } }, null, 'C');
+      });
+      gsData.clients.forEach(function(x){
+        if (match(x.name, x.phone)) push('Clients', x.name || 'Client', x.phone || '', function(){ showSection('clients'); }, null, 'CL');
+      });
+    }
+    return hits.slice(0, 40);
+  }
+
+  function gsRender(term){
+    gsHits = gsBuild(term);
+    gsIdx = 0;
+    var box = document.getElementById('gs-results');
+    if (!gsHits.length){
+      box.innerHTML = '<div class="gs-empty">' + (gsData ? 'Rien ne correspond à «\u00a0' + esc(term) + '\u00a0».' : 'Chargement du contenu…') + '</div>';
+      return;
+    }
+    var html = '', last = '';
+    gsHits.forEach(function(h, i){
+      if (h.group !== last){ last = h.group; html += '<div class="gs-group">' + esc(h.group) + '</div>'; }
+      html += '<button type="button" class="gs-hit' + (i === 0 ? ' on' : '') + '" data-gs="' + i + '">' +
+        (h.img ? '<img src="' + esc(h.img) + '" alt="">' : '<span class="gs-ic">' + esc(h.ic || '?') + '</span>') +
+        '<span style="flex:1;min-width:0"><b>' + esc(h.label) + '</b>' + (h.sub ? '<span>' + esc(h.sub) + '</span>' : '') + '</span></button>';
+    });
+    box.innerHTML = html;
+    box.querySelectorAll('.gs-hit').forEach(function(b){
+      b.addEventListener('click', function(){ gsGo(parseInt(b.getAttribute('data-gs'), 10)); });
+    });
+  }
+
+  function gsGo(i){
+    var h = gsHits[i]; if (!h) return;
+    gsHide();
+    h.act();
+  }
+
+  function gsMove(d){
+    if (!gsHits.length) return;
+    gsIdx = Math.max(0, Math.min(gsHits.length - 1, gsIdx + d));
+    var box = document.getElementById('gs-results');
+    box.querySelectorAll('.gs-hit').forEach(function(b, i){ b.classList.toggle('on', i === gsIdx); });
+    var on = box.querySelector('.gs-hit.on');
+    if (on){
+      var r = on.getBoundingClientRect(), s = box.getBoundingClientRect();
+      if (r.bottom > s.bottom) box.scrollTop += r.bottom - s.bottom + 8;
+      else if (r.top < s.top) box.scrollTop -= s.top - r.top + 8;
+    }
+  }
+
+  document.getElementById('gs-open').addEventListener('click', gsShow);
+  document.getElementById('gs-scrim').addEventListener('click', gsHide);
+  document.getElementById('gs-input').addEventListener('input', function(){
+    var v = this.value;
+    clearTimeout(gsTimer);
+    gsTimer = setTimeout(function(){ gsRender(v); }, 90);
+  });
+  document.addEventListener('keydown', function(e){
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')){
+      e.preventDefault();
+      gsOpen ? gsHide() : gsShow();
+      return;
+    }
+    if (!gsOpen) return;
+    if (e.key === 'Escape'){ e.preventDefault(); gsHide(); }
+    else if (e.key === 'ArrowDown'){ e.preventDefault(); gsMove(1); }
+    else if (e.key === 'ArrowUp'){ e.preventDefault(); gsMove(-1); }
+    else if (e.key === 'Enter'){ e.preventDefault(); gsGo(gsIdx); }
+  });
 
   // ===================== NEWSLETTER =====================
   var nwBusy = false;

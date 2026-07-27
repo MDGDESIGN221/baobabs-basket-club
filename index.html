@@ -766,6 +766,25 @@
   .bb-pl-season > span{display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#C6A257;margin-bottom:10px}
   .bb-pl-season > div{display:flex;gap:18px;flex-wrap:wrap}
   .bb-pl-stat.season b{color:#A8D93B}
+
+  /* Fiche de match */
+  #bb-match-modal{width:min(680px,94vw);max-height:90vh;overflow:auto;background:#0B1710;border:1px solid rgba(243,239,230,.12);border-radius:18px;box-shadow:0 40px 90px rgba(0,0,0,.6)}
+  .bb-mx-score{display:flex;align-items:baseline;justify-content:center;gap:14px;font-family:'Anton',sans-serif;font-size:clamp(46px,9vw,76px);line-height:1;color:#F3EFE6;padding:6px 0 0}
+  .bb-mx-score i{color:#4E5A50;font-style:normal;font-size:.55em}
+  .bb-mx-verdict{text-align:center;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin:10px 0 0}
+  .bb-mx-h{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#C6A257;margin:26px 0 12px;display:flex;align-items:center;gap:11px}
+  .bb-mx-h::after{content:'';flex:1;height:1px;background:rgba(243,239,230,.12)}
+  .bb-mx-q{display:flex;flex-direction:column;gap:7px}
+  .bb-mx-qrow{display:grid;grid-template-columns:minmax(74px,1.4fr) repeat(4,1fr);gap:7px;align-items:center}
+  .bb-mx-qrow > span{font-family:'Inter',sans-serif;font-weight:600;font-size:11px;color:#7E8A82;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bb-mx-qrow.head > span{text-align:center;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:9.5px;color:#C6A257}
+  .bb-mx-qrow b{font-family:'Anton',sans-serif;font-weight:400;font-size:21px;color:#F3EFE6;text-align:center;background:rgba(243,239,230,.05);border-radius:8px;padding:7px 0;font-variant-numeric:tabular-nums}
+  .bb-mx-hist{display:flex;align-items:center;gap:12px;padding:11px 2px;border-top:1px solid rgba(243,239,230,.08);cursor:pointer}
+  .bb-mx-hist:hover{background:rgba(243,239,230,.03)}
+  .bb-mx-hist span{font-size:12.5px;color:#B9C2BB;flex:1}
+  .bb-mx-hist b{font-family:'Anton',sans-serif;font-weight:400;font-size:19px;flex:none;font-variant-numeric:tabular-nums}
+  .bb-mx-hist i{font-size:11px;color:#7E8A82;font-style:normal;flex:none;min-width:82px;text-align:right}
+  .bb-sm:focus-visible{outline:2px solid #A8D93B;outline-offset:3px;border-radius:10px}
 </style>
 </head>
 <body>
@@ -1957,6 +1976,24 @@
           <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer" style="flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
         </div>
         <div id="bb-role-body" class="bb-legal-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== modal match ===== -->
+  <div id="bb-match-overlay" class="bb-hide">
+    <div class="bb-scrim" data-close-overlay></div>
+    <div class="bb-modal-wrap">
+      <div id="bb-match-modal">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:clamp(18px,3vw,24px) clamp(20px,4vw,32px) 0">
+          <div>
+            <div id="bb-match-kicker" style="font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.18em;color:#A8D93B;text-transform:uppercase;margin-bottom:6px"></div>
+            <h3 id="bb-match-title" style="font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;letter-spacing:.02em;font-size:clamp(24px,3.4vw,36px);line-height:1.04;color:#F3EFE6;margin:0"></h3>
+            <p id="bb-match-meta" style="font-size:12.5px;color:#7E8A82;margin:8px 0 0"></p>
+          </div>
+          <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer" style="flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+        <div id="bb-match-body" class="bb-legal-body"></div>
       </div>
     </div>
   </div>
@@ -3294,6 +3331,9 @@ window.bbCloud = function(url, w){
         return;
       }
 
+      var matchEl = e.target.closest('[data-match]');
+      if (matchEl) { openMatch(matchEl.getAttribute('data-match')); return; }
+
       var playerEl = e.target.closest('[data-player]');
       var recCardEl = e.target.closest('[data-recruit]');
       if (recCardEl) { e.preventDefault(); openRecruit(); return; }
@@ -3468,6 +3508,14 @@ window.bbCloud = function(url, w){
     });
 
     document.addEventListener('keydown', function(e){
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var el = e.target && e.target.closest ? e.target.closest('[data-match]') : null;
+      if (!el) return;
+      e.preventDefault();
+      openMatch(el.getAttribute('data-match'));
+    });
+
+    document.addEventListener('keydown', function(e){
       if (e.key === 'Escape') closeOverlays();
       var playerOpen = !document.getElementById('bb-player-overlay').classList.contains('bb-hide');
       if (playerOpen && e.key === 'ArrowLeft') showPlayer(playerIdx - 1);
@@ -3604,6 +3652,71 @@ window.bbCloud = function(url, w){
   window.bbTilt = bbTilt;
   window.bbFavPaint = function(root){ return bbFavPaint(root); };
   window.bbFavLoad = function(){ return bbFavLoad(); };
+
+  /* ===== Fiche d'un match =====
+     Le score seul ne raconte rien. La fiche ajoute le déroulé par
+     quart-temps, le résumé du club, et l'histoire des rencontres contre
+     cet adversaire — ce que le supporter veut vraiment savoir. */
+  var bbMatches = [];
+  function bbMatchById(id){ for (var i=0;i<bbMatches.length;i++) if (String(bbMatches[i].id)===String(id)) return bbMatches[i]; return null; }
+  function bbQuarters(m){
+    var q = m.quarters;
+    if (typeof q === 'string'){ try { q = JSON.parse(q); } catch(e){ q = null; } }
+    return Array.isArray(q) ? q : [];
+  }
+
+  function openMatch(id){
+    var m = bbMatchById(id); if (!m) return;
+    var joue = m.score_baobabs != null && m.score_opponent != null;
+    var nous = m.is_home ? 'Baobabs' : (m.opponent_name || 'Adversaire');
+    document.getElementById('bb-match-kicker').textContent = joue ? 'Résultat' : 'À venir';
+    document.getElementById('bb-match-title').textContent = (m.is_home ? 'Baobabs reçoit ' : 'Baobabs chez ') + (m.opponent_name || 'Adversaire');
+    document.getElementById('bb-match-meta').textContent = [formatDateShort(m.match_date), m.match_time ? String(m.match_time).slice(0,5) : null, m.venue, m.competition].filter(Boolean).join(' · ');
+
+    var html = '';
+    if (joue){
+      var gagne = m.score_baobabs > m.score_opponent, nul = m.score_baobabs === m.score_opponent;
+      var col = gagne ? '#A8D93B' : (nul ? '#C6A257' : '#E5564A');
+      html += '<div class="bb-mx-score"><b style="color:' + col + '">' + m.score_baobabs + '</b><i>–</i><b>' + m.score_opponent + '</b></div>' +
+        '<p class="bb-mx-verdict" style="color:' + col + '">' + (gagne ? 'Victoire' : (nul ? 'Match nul' : 'Défaite')) + '</p>';
+      var q = bbQuarters(m).slice(0, 4);
+      if (q.length){
+        html += '<div class="bb-mx-h">Le déroulé</div><div class="bb-mx-q">' +
+          '<div class="bb-mx-qrow head"><span></span>' + q.map(function(_, i){ return '<span>Q' + (i+1) + '</span>'; }).join('') + '</div>' +
+          '<div class="bb-mx-qrow"><span>Baobabs</span>' + q.map(function(x){ return '<b>' + (x && x.b != null ? x.b : '–') + '</b>'; }).join('') + '</div>' +
+          '<div class="bb-mx-qrow"><span>' + escHtml(m.opponent_name || 'Adv.') + '</span>' + q.map(function(x){ return '<b>' + (x && x.o != null ? x.o : '–') + '</b>'; }).join('') + '</div>' +
+          '</div>';
+      }
+      if (m.recap) html += '<div class="bb-mx-h">Le match</div><div style="font-size:14px;line-height:1.7;color:#C7CFC8">' + bbRich(m.recap) + '</div>';
+      if (m.attendance) html += '<p style="font-size:12.5px;color:#7E8A82;margin:14px 0 0">' + m.attendance + ' spectateurs</p>';
+    } else {
+      var j = m.match_date ? daysUntil(m.match_date) : null;
+      html += '<div class="bb-mx-score"><b style="color:#C6A257;font-size:.72em">' + (j == null ? '' : (j <= 0 ? "C'est aujourd'hui" : (j === 1 ? 'Demain' : 'J-' + j))) + '</b></div>';
+    }
+
+    // L'histoire contre cet adversaire : ce que le classement ne dit pas.
+    var hist = bbMatches.filter(function(x){
+      return String(x.id) !== String(m.id) && x.opponent_name === m.opponent_name && x.score_baobabs != null;
+    }).sort(function(a, b){ return String(b.match_date || '').localeCompare(String(a.match_date || '')); });
+    if (hist.length){
+      var v = hist.filter(function(x){ return x.score_baobabs > x.score_opponent; }).length;
+      var d = hist.filter(function(x){ return x.score_baobabs < x.score_opponent; }).length;
+      var n = hist.length - v - d;
+      html += '<div class="bb-mx-h">Face à ' + escHtml(m.opponent_name || 'cet adversaire') + '</div>' +
+        '<p style="font-size:13px;color:#B9C2BB;margin:0 0 12px">' + hist.length + ' rencontre' + (hist.length > 1 ? 's' : '') + ' : ' +
+        '<b style="color:#A8D93B">' + v + ' victoire' + (v > 1 ? 's' : '') + '</b>' + (n ? ', ' + n + ' nul' + (n > 1 ? 's' : '') : '') + ', ' + d + ' défaite' + (d > 1 ? 's' : '') + '.</p>' +
+        hist.slice(0, 6).map(function(x){
+          var w = x.score_baobabs > x.score_opponent, e = x.score_baobabs === x.score_opponent;
+          return '<div class="bb-mx-hist" data-match="' + x.id + '"><span>' + escHtml(formatDateShort(x.match_date)) + '</span>' +
+            '<b style="color:' + (w ? '#A8D93B' : (e ? '#C6A257' : '#9C6A63')) + '">' + x.score_baobabs + ' – ' + x.score_opponent + '</b>' +
+            '<i>' + (x.is_home ? 'à domicile' : 'à l\'extérieur') + '</i></div>';
+        }).join('');
+    }
+
+    document.getElementById('bb-match-body').innerHTML = html;
+    openOverlay('bb-match-overlay');
+  }
+  window.openMatch = openMatch;
 
   /* ===== Les téléphones de la section Appli : vraies données =====
      Les écrans étaient des maquettes figées. Chaque écran se met à jour
@@ -5480,7 +5593,7 @@ document.addEventListener('keydown', function(e){
       }
 
       var fav = isPlayed ? '' : bbFavBtn('match', m.id, 'flex:none;align-self:center');
-      return '<div class="bb-sm' + (isPlayed ? ' played' : '') + (isNext ? ' next' : '') + '">' +
+      return '<div class="bb-sm' + (isPlayed ? ' played' : '') + (isNext ? ' next' : '') + '" data-match="' + m.id + '" style="cursor:pointer" tabindex="0" role="button" aria-label="Voir la fiche du match">' +
         '<span class="bb-sm-node"></span>' +
         '<span class="bb-sm-date"><b class="bb-sm-d">' + jour + '</b><b class="bb-sm-m">' + mois + '</b></span>' +
         '<div class="bb-sm-team">' + crest +
@@ -5580,6 +5693,7 @@ document.addEventListener('keydown', function(e){
   .then(function(res){ if (!res.ok) throw new Error('Erreur réseau'); return res.json(); })
   .then(function(matches){
     matches = matches || [];
+    bbMatches = matches;
     var played = matches.filter(isPlayed).sort(function(a, b){ return b.match_date.localeCompare(a.match_date); });
     var upcoming = matches.filter(function(m){ return !isPlayed(m); });
     renderResults(played);
