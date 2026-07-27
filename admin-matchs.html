@@ -278,6 +278,29 @@
   /* Les Épinglés restent visibles même quand on défile dans le menu. */
   .sidebar .sb-group.sb-pinned{position:sticky;top:0;z-index:3;background:var(--bg);padding-top:8px;margin-top:-8px;box-shadow:0 10px 14px -12px rgba(0,0,0,.6)}
 
+  /* ===== V2 — historique : un journal qui se lit ===== */
+  .aud-day{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:22px 0 8px;display:flex;align-items:center;gap:12px}
+  .aud-day:first-child{margin-top:4px}
+  .aud-day::after{content:'';flex:1;height:1px;background:var(--line)}
+  .aud-item{display:flex;gap:12px;padding:13px 4px;border-bottom:1px solid var(--line);align-items:flex-start}
+  .aud-avatar{width:28px;height:28px;border-radius:50%;background:rgba(198,162,87,.18);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12.5px;flex:none;margin-top:1px}
+  .aud-body{flex:1;min-width:0}
+  .aud-sentence{font-size:13.5px;color:var(--muted);line-height:1.5}
+  .aud-sentence b{color:var(--text);font-weight:600}
+  .aud-diff{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;background:var(--surface-2, rgba(255,255,255,.03));border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-top:7px;word-break:break-word}
+  .aud-old{color:var(--faint);text-decoration:line-through;text-decoration-color:rgba(192,39,27,.55)}
+  .aud-old img{outline:1px solid rgba(192,39,27,.4)}
+  .aud-new{color:var(--text)}
+  .aud-when{font-size:11px;color:var(--faint);flex:none;margin-top:3px;font-variant-numeric:tabular-nums}
+
+  /* ===== V2 — billetterie : la jauge dit le remplissage ===== */
+  .tk-gauge{height:5px;border-radius:99px;background:var(--surface-2);margin:8px 0 5px;overflow:hidden}
+  .tk-gauge i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--lime));border-radius:99px;transition:width .3s ease}
+  @media(prefers-reduced-motion:reduce){.tk-gauge i{transition:none}}
+  .tk-resa-qty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;min-width:44px}
+  .tk-resa-qty b{font-family:'Anton',sans-serif;font-weight:400;font-size:24px;color:var(--gold-bright);line-height:1}
+  .tk-resa-qty span{font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:3px}
+
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:0 1px 2px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.02)}
   @media(min-width:600px){.card{padding:26px}}
   .card + .card{margin-top:18px}
@@ -2779,7 +2802,7 @@
     return sbGet(query).then(function(rows){
       var r = rows && rows[0]; var label = null;
       if (r) {
-        if (tableName==='matches') label = 'Match : '+(r.is_home?'Baobabs vs ':'Baobabs @ ')+(r.opponent_name||'?');
+        if (tableName==='matches') label = 'Match : '+(r.is_home?'Baobabs vs ':'Baobabs chez ')+(r.opponent_name||'?');
         else if (tableName==='ticket_offers') label = 'Billet : '+(r.category||'?');
         else if (r.title) label = (tableName==='news'?'Actualité : ':'')+r.title;
         else if (r.name) label = (tableName==='products'?'Produit : ':tableName==='players'?'Joueur : ':tableName==='staff'?'Membre : ':tableName==='partners'?'Partenaire : ':'')+r.name;
@@ -3013,7 +3036,7 @@
         : '<div class="ctx-crest-none" style="background:' + fallbackColor(m.opponent_name || '?') + '">' + esc(String(m.opponent_name || '?').charAt(0).toUpperCase()) + '</div>';
       body.innerHTML =
         '<div class="ctx-vs">' + crest +
-          '<div><div class="ctx-team">' + esc((m.is_home ? 'vs ' : '@ ') + (m.opponent_name || '?')) + '</div>' +
+          '<div><div class="ctx-team">' + esc((m.is_home ? 'vs ' : 'chez ') + (m.opponent_name || '?')) + '</div>' +
           '<div class="ctx-meta">' + esc(formatDateShort(m.match_date)) + (m.match_time ? ' · ' + esc(String(m.match_time).slice(0, 5)) : '') + (m.venue ? '<br>' + esc(m.venue) : '') + '</div></div>' +
         '</div><div id="ctx-cd"></div>';
       ctxPaintCd();
@@ -4886,7 +4909,7 @@
       if(upcoming.length){
         var m=upcoming[0]; var d=m.match_date?daysUntil(m.match_date):null;
         var badge=(d==null)?'':(d<=0?'AUJOURD\u2019HUI':('J-'+d));
-        var lieu=m.is_home?'Baobabs vs ':'Baobabs @ ';
+        var lieu=m.is_home?'Baobabs vs ':'Baobabs chez ';
         var crest=m.opponent_logo_url?'<img class="dash-hero-crest" src="'+esc(m.opponent_logo_url)+'" alt="">':'<div class="dash-hero-crest none" style="background:'+fallbackColor(m.opponent_name||'?')+'">'+esc(String(m.opponent_name||'?').charAt(0).toUpperCase())+'</div>';
         body.className=''; 
         body.innerHTML='<div class="dash-hero"><div class="dash-hero-main">'+crest+
@@ -6508,7 +6531,7 @@
     if (m.match_date === today) return 'aujourdhui';
     return 'a_venir';
   }
-  function mcLabel(m){ return 'Baobabs ' + (m.is_home ? 'vs ' : '@ ') + (m.opponent_name || '?'); }
+  function mcLabel(m){ return 'Baobabs ' + (m.is_home ? 'vs ' : 'chez ') + (m.opponent_name || '?'); }
   function mcById(id){ return mcRows.filter(function(m){ return String(m.id)===String(id); })[0]; }
   function mcCrest(url, name, cls){
     return url ? '<img class="'+cls+'" src="'+esc(url)+'" alt="">'
@@ -6895,7 +6918,7 @@
       var chips = (byDay[key]||[]).map(function(m){
         var cls = m.issue==='V' ? ' won' : (m.issue==='D' ? ' lost' : '');
         var sc = (m.score_baobabs!=null&&m.score_opponent!=null) ? ' '+m.score_baobabs+'–'+m.score_opponent : '';
-        return '<div class="cal-chip'+cls+'" data-id="'+m.id+'">'+esc((m.is_home?'vs ':'@ ')+(m.opponent_name||'?'))+sc+'</div>';
+        return '<div class="cal-chip'+cls+'" data-id="'+m.id+'">'+esc((m.is_home?'vs ':'chez ')+(m.opponent_name||'?'))+sc+'</div>';
       }).join('');
       cells += '<div class="cal-cell'+(out?' out':'')+(key===todayKey?' today':'')+'">'+
         '<span class="cal-day">'+d.getDate()+'</span>'+chips+'</div>';
@@ -8194,7 +8217,7 @@
   var tkMatches=[], tkOffers={}, tkSel=null, tkResa=[], tkStarted=false;
 
   function tkFcfa(n){ return String(Number(n)||0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' FCFA'; }
-  function tkLabel(m){ return 'Baobabs '+(m.is_home?'vs ':'@ ')+(m.opponent_name||'?'); }
+  function tkLabel(m){ return 'Baobabs '+(m.is_home?'vs ':'chez ')+(m.opponent_name||'?'); }
   function tkMatchById(id){ return tkMatches.filter(function(m){ return String(m.id)===String(id); })[0]; }
   function tkRpc(fn, body){
     return fetch(SUPABASE_URL+'/rest/v1/rpc/'+fn, {method:'POST',headers:sbHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body||{})})
@@ -8266,10 +8289,14 @@
       var logo=m.opponent_logo_url
         ? '<img class="rec-thumb circle" src="'+esc(m.opponent_logo_url)+'" alt="">'
         : '<div class="rec-noimg circle" style="background:'+fallbackColor(m.opponent_name)+'">'+esc(String(m.opponent_name||'?').charAt(0))+'</div>';
-      var meta = offs.length ? (sold+' / '+quota+' places réservées') : 'Aucune catégorie de billet';
+      var pct = quota>0 ? Math.min(Math.round(sold/quota*100),100) : 0;
       return '<div class="rec-item tk-match'+(String(tkSel)===String(m.id)?' tk-active':'')+'" data-id="'+m.id+'">'+logo+
-        '<div class="rec-main"><div class="rec-title">'+pill+' '+esc(tkLabel(m))+'</div>'+
-        '<div class="rec-meta">'+esc(formatDateShort(m.match_date))+(m.venue?' · '+esc(m.venue):'')+' — '+esc(meta)+'</div></div></div>';
+        '<div class="rec-main"><div class="rec-title">'+esc(tkLabel(m))+' '+pill+'</div>'+
+        '<div class="rec-meta">'+esc(formatDateShort(m.match_date))+(m.venue?' · '+esc(m.venue):'')+'</div>'+
+        (offs.length
+          ? '<div class="tk-gauge"><i style="width:'+pct+'%"></i></div><div class="rec-meta">'+sold+' / '+quota+' places réservées</div>'
+          : '<div class="rec-meta" style="margin-top:5px">Aucune catégorie de billet</div>')+
+        '</div></div>';
     }).join('');
     box.querySelectorAll('.tk-match').forEach(function(el){
       el.addEventListener('click',function(){ tkSel=el.getAttribute('data-id'); tkRenderMatches(); tkRenderOffers(tkSel); });
@@ -8289,6 +8316,7 @@
         '<input class="tk-price" type="number" min="0" step="500" value="'+(o.price_fcfa||0)+'" aria-label="Tarif en FCFA">'+
         '<input class="tk-quota" type="number" min="'+(o.sold||0)+'" value="'+(o.quota||0)+'" aria-label="Nombre de places">'+
         '<select class="tk-open" aria-label="État de la vente"><option value="1"'+(o.is_open?' selected':'')+'>Ouverte</option><option value="0"'+(o.is_open?'':' selected')+'>Fermée</option></select>'+
+        ((o.quota||0)>0?'<div class="tk-gauge" style="grid-column:1/-1;margin:2px 0 0"><i style="width:'+Math.min(Math.round((o.sold||0)/(o.quota||1)*100),100)+'%"></i></div>':'')+
         '<div class="tk-offer-foot"><span class="tk-sold">'+(o.sold||0)+' réservée(s) · '+esc(tkFcfa(o.price_fcfa))+'</span>'+
         '<span style="display:flex;gap:7px"><button type="button" class="btn btn-ghost tk-save">Enregistrer</button>'+
         '<button type="button" class="btn btn-ghost tk-del">Supprimer</button></span></div>'+
@@ -8383,9 +8411,11 @@
           '<button type="button" class="btn btn-ghost tk-checkin" data-id="'+r.id+'" style="padding:9px 13px;font-size:12px">Retirer</button>'+
           '<button type="button" class="btn btn-ghost tk-cancel" data-id="'+r.id+'" style="padding:9px 13px;font-size:12px">Annuler</button></span>';
       }
-      return '<div class="rec-item"><div class="rec-main">'+
-        '<div class="rec-title">'+tkResaPill(r.status)+' <span class="tk-ref">'+esc(r.reference)+'</span> — '+esc(r.buyer_name||'Client')+' × '+r.quantity+'</div>'+
-        '<div class="rec-meta">'+esc(m?tkLabel(m):'Match supprimé')+' · '+esc(cat)+' · '+esc(tkFcfa(r.total_fcfa))+(r.buyer_phone?' · '+esc(r.buyer_phone):'')+(r.confirmation_email_sent?' · <span style="color:#A8D93B">e-mail envoyé</span>':'')+'</div>'+
+      return '<div class="rec-item tk-resa-row">'+
+        '<div class="tk-resa-qty"><b>'+r.quantity+'</b><span>'+(r.quantity>1?'billets':'billet')+'</span></div>'+
+        '<div class="rec-main">'+
+        '<div class="rec-title">'+esc(r.buyer_name||'Client')+' '+tkResaPill(r.status)+'</div>'+
+        '<div class="rec-meta"><span class="tk-ref">'+esc(r.reference)+'</span> · '+esc(m?tkLabel(m):'Match supprimé')+' · '+esc(cat)+' · <b style="color:var(--text)">'+esc(tkFcfa(r.total_fcfa))+'</b>'+(r.buyer_phone?' · '+esc(r.buyer_phone):'')+(r.confirmation_email_sent?' · <span style="color:#A8D93B">e-mail envoyé</span>':'')+'</div>'+
         '</div>'+actions+'</div>';
     }).join('');
     var msg=document.getElementById('tk-resa-msg');
@@ -8552,35 +8582,47 @@
     if(countEl) countEl.textContent=rows.length+(rows.length>1?' modifications':' modification');
     if(!rows.length){ wrap.innerHTML='<div class="empty">Aucune modification trouvée.</div>'; return; }
 
-    wrap.innerHTML=rows.map(function(r,i){
-      var who=AUDIT_NAMES[r.user_email]||r.user_email||'Inconnu';
+    // Chaque ligne devient une phrase : qui a fait quoi, où, quand — le
+    // détail avant/après reste dessous, en plus discret. Les lignes sont
+    // regroupées par jour pour qu'on s'y retrouve d'un coup d'œil.
+    var out='', prevDay='';
+    rows.forEach(function(r,i){
+      var d=new Date(r.created_at);
+      var dayKey=d.toDateString();
+      if(dayKey!==prevDay){
+        prevDay=dayKey;
+        var lbl = dayKey===new Date().toDateString() ? 'Aujourd\u2019hui'
+                : dayKey===new Date(Date.now()-86400000).toDateString() ? 'Hier'
+                : d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+        out+='<div class="aud-day">'+esc(lbl)+'</div>';
+      }
+      var who=AUDIT_NAMES[r.user_email]||r.user_email||'Quelqu\u2019un';
       var initial=who.charAt(0).toUpperCase();
-      var when=auditFormatWhen(r.created_at);
       var cat=auditCategory(r.section||r.table_name);
       var fieldLabel=auditFieldLabel(r.field_key);
       var uid='r'+i;
-      var oldV=auditRenderValue(r.field_key, r.old_value, uid+'-old');
-      var newV=auditRenderValue(r.field_key, r.new_value, uid+'-new');
-      return '<div class="card" style="margin-bottom:10px;padding:16px 18px" id="audit-card-'+uid+'" data-table="'+esc(r.table_name||'')+'" data-record="'+esc(r.record_id||'')+'">'+
-        '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px">'+
-          '<div style="display:flex;align-items:center;gap:8px">'+
-            '<span style="width:26px;height:26px;border-radius:50%;background:rgba(198,162,87,.18);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:12px">'+esc(initial)+'</span>'+
-            '<span style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:13.5px;color:var(--text)">'+esc(who)+'</span>'+
-          '</div>'+
-          '<span style="font-size:11.5px;color:var(--faint)">'+esc(when)+'</span>'+
+      var oldEmpty=(r.old_value==null||r.old_value===''||r.old_value==='(vide)');
+      var newEmpty=(r.new_value==null||r.new_value===''||r.new_value==='(vide)');
+      var verb = oldEmpty&&!newEmpty ? 'a renseigné' : (!oldEmpty&&newEmpty ? 'a effacé' : 'a modifié');
+      var champ = fieldLabel ? ' «\u00a0'+esc(fieldLabel)+'\u00a0»' : '';
+      var when = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      var diff='';
+      if (verb==='a renseigné') diff='<span class="aud-new">'+auditRenderValue(r.field_key, r.new_value, uid+'-new')+'</span>';
+      else if (verb==='a effacé') diff='<span class="aud-old">'+auditRenderValue(r.field_key, r.old_value, uid+'-old')+'</span>';
+      else diff='<span class="aud-old">'+auditRenderValue(r.field_key, r.old_value, uid+'-old')+'</span>'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;color:var(--faint);flex:none"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'+
+        '<span class="aud-new">'+auditRenderValue(r.field_key, r.new_value, uid+'-new')+'</span>';
+      out+='<div class="aud-item" id="audit-card-'+uid+'" data-table="'+esc(r.table_name||'')+'" data-record="'+esc(r.record_id||'')+'">'+
+        '<span class="aud-avatar">'+esc(initial)+'</span>'+
+        '<div class="aud-body">'+
+          '<div class="aud-sentence"><b>'+esc(who)+'</b> '+verb+champ+' dans <b>'+esc(cat.label)+'</b></div>'+
+          '<div class="aud-diff">'+diff+'</div>'+
+          '<div class="audit-record-label" id="audit-reclabel-'+uid+'" style="font-size:11px;color:var(--faint);margin-top:6px"></div>'+
         '</div>'+
-        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
-          auditBadgeHtml(cat)+
-          (fieldLabel?'<span style="font-size:12px;color:var(--faint)">·</span><span style="font-size:12.5px;color:var(--text)">'+esc(fieldLabel)+'</span>':'')+
-        '</div>'+
-        '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;font-size:12.5px;background:var(--surface-2, rgba(255,255,255,.03));border-radius:8px;padding:10px 12px">'+
-          '<div style="color:var(--faint);word-break:break-word">'+oldV+'</div>'+
-          '<div style="color:var(--faint)">→</div>'+
-          '<div style="color:var(--text);word-break:break-word">'+newV+'</div>'+
-        '</div>'+
-        '<div class="audit-record-label" id="audit-reclabel-'+uid+'" style="font-size:11px;color:var(--faint);margin-top:8px"></div>'+
+        '<span class="aud-when">'+esc(when)+'</span>'+
       '</div>';
-    }).join('');
+    });
+    wrap.innerHTML=out;
 
     // Charge le nom de l'élément concerné (quel match, quelle actualité…)
     // après affichage, sans bloquer le rendu initial de la liste : chaque
