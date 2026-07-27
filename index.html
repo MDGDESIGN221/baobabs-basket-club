@@ -37,7 +37,11 @@
   </script>
   <link rel="canonical" href="https://www.baobabsbasketclub.com/">
 <meta name="theme-color" content="#061109">
-<link rel="icon" href="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_320,c_limit/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3791,10 +3795,10 @@ window.bbCloud = function(url, w){
       if (!el || !prods || !prods.length) return;
       var img = function(p, w){ var u = (p.images && p.images[0]) || p.image_url || ''; return u ? (window.bbCloud ? window.bbCloud(u, w) : u) : ''; };
       var p0 = prods[0];
-      var html = '<div style="border-radius:9px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:16/12;background:#0A150F">' + (img(p0,300) ? '<img src="' + img(p0,300) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:6px 8px"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:8px;color:#F3EFE6">' + bbAppFeed._esc(bbAppFeed._short(p0.name, 20)) + '</div><div style="font-family:\'Inter\',sans-serif;font-weight:800;font-size:8.5px;color:#C6A257;margin-top:2px">' + bbAppFeed._esc(bbAppFeed._fcfa(p0.price)) + '</div></div></div>';
+      var html = '<div style="border-radius:9px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:16/10;background:#0A150F">' + (img(p0,300) ? '<img src="' + img(p0,300) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:6px 8px"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:8px;color:#F3EFE6">' + bbAppFeed._esc(bbAppFeed._short(p0.name, 20)) + '</div><div style="font-family:\'Inter\',sans-serif;font-weight:800;font-size:8.5px;color:#C6A257;margin-top:2px">' + bbAppFeed._esc(bbAppFeed._fcfa(p0.price)) + '</div></div></div>';
       if (prods.length > 1){
         html += '<div style="display:flex;gap:7px">' + prods.slice(1,3).map(function(p){
-          return '<div style="flex:1;border-radius:8px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:1/1;background:#0A150F">' + (img(p,240) ? '<img src="' + img(p,240) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:4px 6px;font-family:\'Inter\',sans-serif;font-weight:700;font-size:6.5px;color:#C6A257">' + bbAppFeed._esc(bbAppFeed._short(p.name, 12)) + '</div></div>';
+          return '<div style="flex:1;border-radius:8px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:4/3;background:#0A150F">' + (img(p,240) ? '<img src="' + img(p,240) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:4px 6px;font-family:\'Inter\',sans-serif;font-weight:700;font-size:6.5px;color:#C6A257">' + bbAppFeed._esc(bbAppFeed._short(p.name, 12)) + '</div></div>';
         }).join('') + '</div>';
       }
       el.innerHTML = html;
@@ -4651,13 +4655,19 @@ window.bbCloud = function(url, w){
       var el = document.getElementById('bb-jsonld');
       if (!el || !settings) return;
       var data = JSON.parse(el.textContent);
-      var liens = ['instagram_url','facebook_url','tiktok_url','youtube_url','x_url','linkedin_url']
+      var liens = ['social_instagram','social_facebook','social_tiktok','social_youtube','social_linkedin']
         .map(function(k){ return settings[k]; })
         .filter(function(v){ return v && /^https?:\/\//i.test(v); });
+      // Le compte Instagram figure aussi en dur dans le pied de page : il
+      // sert de repli si le réglage n'est pas renseigné.
+      document.querySelectorAll('footer a[href^="https://www.instagram.com"], footer a[href^="https://instagram.com"]').forEach(function(a){
+        if (liens.indexOf(a.href) < 0) liens.push(a.href);
+      });
       if (liens.length) data.sameAs = liens;
       if (settings.club_email) data.email = settings.club_email;
       if (settings.club_phone) data.telephone = settings.club_phone;
       if (settings.logo_url) data.logo = settings.logo_url;
+      if (settings.club_address) data.address.streetAddress = settings.club_address;
       el.textContent = JSON.stringify(data);
     } catch(e){}
   }
@@ -4748,7 +4758,7 @@ window.bbCloud = function(url, w){
     }).catch(function(){});
 
     sbFetch('site_settings?select=*').then(function(rows){
-      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyHeroSplit(s); applyContent(s); applySiteSettings(s); applyFaceOff(s); applyNewsletter(s); applyLegal(s); applyMedia(s); applyApp(s); applyAppScreens(s); applyTryouts(s); applyTryMedia(s); applyStats(s); applyTribu(s); applyCamp(s); applyFooterCols(s); applyCtaModals(s);
+      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyHeroSplit(s); applyContent(s); applySiteSettings(s); applyFaceOff(s); applyNewsletter(s); applyLegal(s); applyMedia(s); applyApp(s); applyAppScreens(s); applyTryouts(s); applyTryMedia(s); applyStats(s); applyTribu(s); applyCamp(s); applyFooterCols(s); applyCtaModals(s); bbSeoEnrich(s);
       applyTickets(s);
       if(window.bbApplyLegacySettings) window.bbApplyLegacySettings(s);
       bbRevealSoon();
@@ -4789,7 +4799,7 @@ window.bbCloud = function(url, w){
       });
     }
     // Favicon
-    if(s.favicon_url){ var fav=document.querySelector('link[rel="icon"]'); if(fav) fav.href=s.favicon_url; }
+    if(s.favicon_url){ document.querySelectorAll('link[rel="icon"]').forEach(function(fav){ fav.href=s.favicon_url; }); }
     // Description (SEO)
     if(s.club_description){ var md=document.querySelector('meta[name="description"]'); if(md) md.setAttribute('content', s.club_description); }
     // Texte du footer
