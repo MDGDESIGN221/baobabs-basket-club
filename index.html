@@ -427,6 +427,11 @@
   .bb-btn-ghost{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:13px 24px;border-radius:9px;border:1px solid rgba(243,239,230,.18);background:transparent;color:#F3EFE6;cursor:pointer}
 
   /* boutique / équipes / compétitions */
+  /* Taille épuisée : barrée et estompée, mais toujours lisible. */
+  .bb-size-btn.bb-size-out{opacity:.34;cursor:not-allowed;text-decoration:line-through;text-decoration-thickness:1.5px}
+  .bb-size-btn.bb-size-out:hover{background:inherit;border-color:inherit}
+  /* Statut d'une joueuse : blessée ou en prêt, en haut à droite de la carte. */
+  .bb-player-st{position:absolute;top:12px;right:12px;z-index:5;font-family:'Inter',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;border-radius:100px;padding:4px 9px;line-height:1}
   .bb-shop-card{cursor:pointer;background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:16px;overflow:hidden;transition:border-color .25s ease,transform .25s ease,box-shadow .25s ease}
   .bb-shop-card:hover{border-color:rgba(198,162,87,.5);transform:translateY(-3px);box-shadow:0 16px 34px rgba(0,0,0,.35)}
   .bb-shop-card .bb-shop-img{aspect-ratio:1/1;background:#0C1A12;overflow:hidden}
@@ -2320,6 +2325,10 @@ window.bbCloud = function(url, w){
               '<div class="bb-spot" style="position:absolute;left:50%;top:-12%;width:120%;height:52%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.14),transparent 74%);pointer-events:none;z-index:1"></div>' +
               '<div class="bb-badge" style="position:absolute;top:12px;left:12px;z-index:4;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:13px;color:#0A1B0D;background:#A8D93B;border-radius:8px;padding:4px 9px;line-height:1">#' + p.no + '</div>' +
               '<span class="bb-pos-badge ' + posClass(p.pos) + '">' + esc(p.pos) + '</span>' +
+              // Une blessure ou un prêt se voit sur la carte : le supporter
+              // comprend pourquoi elle n'est pas sur le terrain.
+              (p.status === 'blessee' ? '<span class="bb-player-st" style="color:#fff;background:rgba(192,39,27,.9)">Blessée</span>' : '') +
+              (p.status === 'pret'    ? '<span class="bb-player-st" style="color:#0A1B0D;background:#9DB8E8">En prêt</span>' : '') +
               '<img class="bb-portrait" src="' + p.src + '" alt="' + esc(p.name) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';transform:scale(' + ((p.pz==null?100:p.pz)/100) + ');transform-origin:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';z-index:2;transition:transform .5s cubic-bezier(.16,.8,.3,1)" loading="lazy" decoding="async">' +
               '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(6,13,9,.93) 0%,rgba(6,13,9,.12) 42%,transparent 62%);z-index:3"></div>' +
               '<div class="bb-name" style="position:absolute;left:16px;right:14px;bottom:16px;z-index:5">' +
@@ -2897,9 +2906,20 @@ window.bbCloud = function(url, w){
     var sizeWrap = document.getElementById('bb-product-size-wrap');
     if (productSizes.length > 1){
       sizeWrap.style.display = '';
+      // Une taille épuisée est montrée mais désactivée : la masquer ferait
+      // croire qu'elle n'existe pas, et laisser choisir ferait perdre le
+      // visiteur au moment du panier.
       document.getElementById('bb-product-sizes').innerHTML = productSizes.map(function(s){
-        return '<button type="button" class="bb-size-btn' + (s === modalState.size ? ' active' : '') + '" data-size="' + s + '">' + s + '</button>';
+        var out = p.trackStock && p.stock && Number(p.stock[s] || 0) === 0;
+        return '<button type="button" class="bb-size-btn' + (s === modalState.size ? ' active' : '') + (out ? ' bb-size-out' : '') + '" data-size="' + s + '"' +
+          (out ? ' disabled aria-label="' + esc(s) + ' — épuisé"' : '') + '>' + s + '</button>';
       }).join('');
+      // Si la taille retenue vient d'être épuisée, on repositionne sur la
+      // première disponible plutôt que de garder une sélection impossible.
+      if (p.trackStock && p.stock && Number(p.stock[modalState.size] || 0) === 0){
+        var first = productSizes.filter(function(s){ return Number(p.stock[s] || 0) > 0; })[0];
+        if (first) selectSize(first);
+      }
     } else {
       sizeWrap.style.display = 'none';
       document.getElementById('bb-product-sizes').innerHTML = '';
@@ -2909,6 +2929,8 @@ window.bbCloud = function(url, w){
   }
 
   function selectSize(s){
+    var pp = modalState.product;
+    if (pp && pp.trackStock && pp.stock && Number(pp.stock[s] || 0) === 0) return;
     modalState.size = s;
     document.querySelectorAll('#bb-product-sizes .bb-size-btn').forEach(function(b){
       b.classList.toggle('active', b.getAttribute('data-size') === s);
@@ -3934,8 +3956,12 @@ window.bbCloud = function(url, w){
   function bbHydrate(){
     sbFetch('players?select=*&order=sort.asc,jersey_number.asc').then(function(rows){
       if(!rows || !rows.length) return;
-      players = rows.map(function(r){
+      // Une joueuse partie du club ne doit plus figurer sur le site : jusqu'ici
+      // elle y restait comme si de rien n'était. Les blessées et les prêts
+      // restent visibles, avec leur statut affiché.
+      players = rows.filter(function(r){ return (r.status||'active') !== 'partie'; }).map(function(r){
         return { no: (r.jersey_number!=null?r.jersey_number:''), name:r.name||'', pos:r.position||'',
+          status:(r.status||'active'),
           age:(r.birth_year? (new Date().getFullYear()-r.birth_year):''), height:r.height||'', foot:r.city||'',
           src:(window.bbCloud?window.bbCloud(r.photo_url||'',800):(r.photo_url||'')),
           srcFull:(window.bbCloud?window.bbCloud(r.photo_url||'',1400):(r.photo_url||'')),
@@ -3952,7 +3978,13 @@ window.bbCloud = function(url, w){
         if(!imgs.length) imgs = [''];
         if(window.bbCloud) imgs = imgs.map(function(u){ return window.bbCloud(u, 900); });
         var sz = r.sizes ? String(r.sizes).split(',').map(function(s){return s.trim();}).filter(Boolean) : null;
-        return { id:String(r.id), name:r.name||'', tag:r.category||'', desc:r.description||'', price:r.price||0, images:imgs, sizes:(sz&&sz.length?sz:null), in_stock:(r.in_stock!==false) };
+        // Le stock par taille permet de griser la taille épuisée plutôt que
+        // de laisser le visiteur la choisir puis découvrir qu'elle manque.
+        var stock = r.stock;
+        if (typeof stock === 'string'){ try { stock = JSON.parse(stock); } catch(e){ stock = null; } }
+        if (!stock || typeof stock !== 'object') stock = null;
+        return { id:String(r.id), name:r.name||'', tag:r.category||'', desc:r.description||'', price:r.price||0, images:imgs, sizes:(sz&&sz.length?sz:null), in_stock:(r.in_stock!==false),
+          stock:stock, trackStock:(r.track_stock===true) };
       });
       renderHomeProducts(); renderShopGrid(); renderAppShop();
     }).catch(function(){});
@@ -3970,6 +4002,10 @@ window.bbCloud = function(url, w){
     }).catch(function(){});
 
     sbFetch('news?select=*&order=published_at.desc,sort.asc&limit=12').then(function(rows){
+      // Filet de sécurité côté site : la politique de lecture en base exclut
+      // déjà les brouillons, mais si elle est un jour élargie, rien ne doit
+      // fuiter ici. Les anciennes actualités n'ont pas de statut : on les garde.
+      if(rows) rows = rows.filter(function(n){ return !n.status || n.status === 'publie'; });
       if(rows && rows.length){ renderActus(rows); renderAppNews(rows); }
     }).catch(function(){});
 
@@ -4586,12 +4622,19 @@ window.bbCloud = function(url, w){
     el.innerHTML=rows.map(function(n){
       var nx=(n.image_url_x==null||n.image_url_x==='')?50:n.image_url_x, ny=(n.image_url_y==null||n.image_url_y==='')?50:n.image_url_y, nz=(n.image_url_zoom==null||n.image_url_zoom==='')?100:n.image_url_zoom;
       var img = n.image_url ? '<div style="aspect-ratio:16/10;overflow:hidden;background:#0F1E15"><img src="'+(window.bbCloud?window.bbCloud(n.image_url,1000):(n.image_url))+'" alt="'+esc(n.title||'')+'" style="width:100%;height:100%;object-fit:cover;object-position:'+nx+'% '+ny+'%;transform:scale('+(nz/100)+');transform-origin:'+nx+'% '+ny+'%" loading="lazy" decoding="async"></div>' : '';
-      var body = n.body ? '<p style="font-size:14px;line-height:1.6;color:#B9C2BB;margin:8px 0 0">'+esc(String(n.body).slice(0,140))+(String(n.body).length>140?'…':'')+'</p>' : '';
+      // Le chapô est écrit pour être lu ici : on le préfère au début du
+      // corps de l'article, qui n'a pas été rédigé comme une accroche.
+      var lead = n.excerpt || n.body || '';
+      var body = lead ? '<p style="font-size:14px;line-height:1.6;color:#B9C2BB;margin:8px 0 0">'+esc(String(lead).slice(0,160))+(String(lead).length>160?'…':'')+'</p>' : '';
+      var cat = n.category ? '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#0A1B0D;background:#C6A257;border-radius:100px;padding:4px 9px;margin-bottom:9px">'+esc(n.category)+'</span>' : '';
+      var sign = n.author ? '<div style="font-size:12px;color:#7E8A82;margin-top:11px;padding-top:11px;border-top:1px solid rgba(243,239,230,.09)">Par '+esc(n.author)+'</div>' : '';
       return '<article style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:16px;overflow:hidden">'+img+
         '<div style="padding:18px 20px 22px">'+
+          cat+
           (n.published_at?'<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:11px;letter-spacing:.1em;color:#C6A257;text-transform:uppercase">'+esc(fdate(n.published_at))+'</div>':'')+
           '<h3 style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:21px;color:#F3EFE6;margin:6px 0 0;line-height:1.1">'+esc(n.title||'')+'</h3>'+
           body+
+          sign+
         '</div></article>';
     }).join('');
     sec.classList.remove('bb-hide');
