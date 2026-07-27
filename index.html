@@ -432,6 +432,58 @@
   .bb-size-btn.bb-size-out:hover{background:inherit;border-color:inherit}
   /* Statut d'une joueuse : blessée ou en prêt, en haut à droite de la carte. */
   .bb-player-st{position:absolute;top:12px;right:12px;z-index:5;font-family:'Inter',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;border-radius:100px;padding:4px 9px;line-height:1}
+  /* ===================== LA SAISON ===================== */
+  /* La page découpait la saison en deux listes : le calendrier d'un côté, les
+     résultats de l'autre. Une saison n'est pas deux listes, c'est une ligne
+     continue — et la place d'un match sur cette ligne est une information.
+     D'où une colonne unique, chronologique, traversée par la date du jour. */
+  .bb-season{position:relative;padding-left:clamp(58px,7vw,92px)}
+  /* Le fil : dense là où la saison a eu lieu, en pointillé là où elle reste à jouer. */
+  .bb-season::before{content:'';position:absolute;left:clamp(21px,2.6vw,34px);top:6px;bottom:6px;width:1px;background:linear-gradient(180deg,rgba(198,162,87,.55),rgba(198,162,87,.55) var(--bb-past,50%),rgba(243,239,230,.14) var(--bb-past,50%),rgba(243,239,230,.14))}
+
+  .bb-sm{position:relative;display:grid;grid-template-columns:1fr auto;align-items:center;gap:clamp(12px,2vw,26px);padding:clamp(14px,2vw,20px) 0;border-bottom:1px solid rgba(243,239,230,.07)}
+  .bb-sm:last-child{border-bottom:none}
+  .bb-sm-node{position:absolute;left:calc(clamp(21px,2.6vw,34px) - clamp(58px,7vw,92px) - 4px);top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:#0A1B0D;border:1.5px solid rgba(243,239,230,.28)}
+  .bb-sm.played .bb-sm-node{background:#C6A257;border-color:#C6A257}
+  .bb-sm.next .bb-sm-node{background:#A8D93B;border-color:#A8D93B;box-shadow:0 0 0 4px rgba(168,217,59,.18)}
+  .bb-sm-date{position:absolute;left:calc(0px - clamp(58px,7vw,92px));top:50%;transform:translateY(-50%);width:clamp(36px,4vw,52px);text-align:center;font-family:'Inter',sans-serif;line-height:1.1}
+  .bb-sm-d{display:block;font-family:'Anton',sans-serif;font-weight:400;font-size:clamp(17px,2vw,21px);letter-spacing:.01em;color:#F3EFE6}
+  .bb-sm-m{display:block;font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#7E8A82;margin-top:2px}
+
+  .bb-sm-team{display:flex;align-items:center;gap:clamp(10px,1.4vw,15px);min-width:0}
+  .bb-sm-crest{width:clamp(34px,4vw,46px);height:clamp(34px,4vw,46px);border-radius:50%;object-fit:contain;background:#0c1913;border:1px solid rgba(243,239,230,.14);flex:none}
+  .bb-sm-vs{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82}
+  .bb-sm-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(14px,1.6vw,18px);letter-spacing:-.015em;color:#F3EFE6;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bb-sm-sub{font-family:'Inter',sans-serif;font-size:11.5px;color:#7E8A82;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* Le score est le geste : on lit le résultat avant de lire quoi que ce soit
+     d'autre. Le perdant reste lisible mais s'efface — la hiérarchie dit qui a
+     gagné sans qu'on ait à comparer deux nombres. */
+  .bb-sm-score{display:flex;align-items:baseline;gap:clamp(5px,.8vw,9px);font-family:'Anton',sans-serif;font-weight:400;letter-spacing:.01em;line-height:.86;font-size:clamp(30px,5.4vw,58px);white-space:nowrap}
+  .bb-sm-score .win{color:#A8D93B}
+  .bb-sm-score .lose{color:#7E8A82}
+  .bb-sm-score .draw{color:#C6A257}
+  .bb-sm-score i{font-style:normal;font-size:.44em;color:#5C6961;transform:translateY(-.18em)}
+  .bb-sm-cd{text-align:right;font-family:'Anton',sans-serif;font-weight:400;letter-spacing:.01em;line-height:.9;font-size:clamp(22px,3.4vw,36px);color:#F3EFE6;white-space:nowrap}
+  .bb-sm-cd small{display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:#7E8A82;margin-top:5px}
+  .bb-sm-cd.soon{color:#A8D93B}
+
+  /* La ligne du jour : le seul repère absolu de la colonne. */
+  .bb-today{position:relative;display:flex;align-items:center;gap:12px;padding:clamp(15px,2vw,20px) 0}
+  .bb-today::before{content:'';position:absolute;left:calc(clamp(21px,2.6vw,34px) - clamp(58px,7vw,92px));right:0;top:50%;height:1px;background:linear-gradient(90deg,#A8D93B,rgba(168,217,59,.12))}
+  .bb-today span{position:relative;font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#0A1B0D;background:#A8D93B;border-radius:100px;padding:5px 12px}
+
+  /* La saison se déroule au défilement : un seul mouvement, orchestré. */
+  .bb-sm, .bb-today{opacity:0;transform:translateY(10px);transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1)}
+  .bb-sm.in, .bb-today.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){
+    .bb-sm,.bb-today{opacity:1;transform:none;transition:none}
+  }
+  @media(max-width:560px){
+    .bb-sm{grid-template-columns:1fr;gap:9px}
+    .bb-sm-score,.bb-sm-cd{justify-content:flex-start;text-align:left}
+  }
+
   .bb-shop-card{cursor:pointer;background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-radius:16px;overflow:hidden;transition:border-color .25s ease,transform .25s ease,box-shadow .25s ease}
   .bb-shop-card:hover{border-color:rgba(198,162,87,.5);transform:translateY(-3px);box-shadow:0 16px 34px rgba(0,0,0,.35)}
   .bb-shop-card .bb-shop-img{aspect-ratio:1/1;background:#0C1A12;overflow:hidden}
@@ -1338,17 +1390,10 @@
       </div>
       <div style="margin-bottom:clamp(32px,5vw,48px)">
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 18px">
-          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0">Calendrier</h3>
-          <span style="font-family:'Inter',sans-serif;font-weight:600;font-size:12px;color:#7E8A82">Matchs à venir</span>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0">La saison</h3>
+          <span style="font-family:'Inter',sans-serif;font-weight:600;font-size:12px;color:#7E8A82" id="bb-season-count">Résultats et matchs à venir</span>
         </div>
-        <div id="bb-fixtures" class="bb-fix-grid"></div>
-      </div>
-
-      <div style="margin-bottom:44px">
-        <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0 0 18px">Derniers résultats</h3>
-        <div id="bb-results-list" style="display:flex;flex-direction:column;gap:10px">
-          <span style="font-family:'Inter',sans-serif;font-size:13.5px;color:#7E8A82">Chargement des résultats…</span>
-        </div>
+        <div id="bb-season" class="bb-season"></div>
       </div>
 
       <div id="bb-standings-wrap" class="bb-hide" style="margin-bottom:8px">
@@ -5056,6 +5101,103 @@ document.addEventListener('keydown', function(e){
     return '<div class="bb-fix-team"><div class="bb-fix-badge" style="background:' + (logo ? '#0C1A12' : fallbackColor(name)) + '">' + inner + '</div><span class="bb-fix-abbr">' + escHtml(name) + '</span></div>';
   }
 
+  // ===================== LA SAISON =====================
+  // Une seule colonne chronologique remplace le calendrier et les résultats.
+  // Le passé au-dessus, l'avenir en dessous, la date du jour au milieu :
+  // la position d'un match dans la colonne dit à elle seule où l'on en est.
+  var BB_MOIS = ['JAN','FÉV','MAR','AVR','MAI','JUIN','JUIL','AOÛT','SEPT','OCT','NOV','DÉC'];
+  var BB_LOGO = 'https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_320,c_limit/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png';
+
+  function renderSeason(played, upcoming){
+    var el = document.getElementById('bb-season');
+    if (!el) return;
+
+    var past = (played || []).slice().sort(function(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); });
+    var next = (upcoming || []).slice().sort(function(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); });
+
+    if (!past.length && !next.length){
+      el.innerHTML = '<p style="font-family:\'Inter\',sans-serif;font-size:14px;line-height:1.6;color:#7E8A82;margin:0;padding-left:0">La saison n\'a pas encore commencé. Le premier match apparaîtra ici dès qu\'il sera programmé.</p>';
+      el.style.paddingLeft = '0';
+      return;
+    }
+    el.style.paddingLeft = '';
+
+    // Le fil est doré sur la partie jouée, discret sur ce qui reste : la
+    // proportion se lit sans compteur.
+    var total = past.length + next.length + 1;
+    el.style.setProperty('--bb-past', Math.round((past.length / total) * 100) + '%');
+
+    var cnt = document.getElementById('bb-season-count');
+    if (cnt) cnt.textContent = past.length + ' joué' + (past.length > 1 ? 's' : '') + ' · ' + next.length + ' à venir';
+
+    function row(m, isPlayed, isNext){
+      var d = m.match_date ? new Date(m.match_date + 'T12:00:00') : null;
+      var jour = d ? d.getDate() : '—';
+      var mois = d ? BB_MOIS[d.getMonth()] : '';
+      var logo = m.opponent_logo_url;
+      var crest = logo
+        ? '<img class="bb-sm-crest" src="' + (window.bbCloud ? window.bbCloud(logo, 160) : logo) + '" alt="" loading="lazy" decoding="async">'
+        : '<div class="bb-sm-crest" style="display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:14px;color:#fff;background:' + fallbackColor(m.opponent_name || '?') + '">' + escHtml(initials(m.opponent_name || '?')) + '</div>';
+
+      var right;
+      if (isPlayed){
+        var sb = m.score_baobabs, so = m.score_opponent;
+        var cb = sb > so ? 'win' : (sb < so ? 'lose' : 'draw');
+        var co = so > sb ? 'win' : (so < sb ? 'lose' : 'draw');
+        // L'ordre suit l'affiche : l'équipe qui reçoit à gauche.
+        var l = m.is_home ? [sb, cb] : [so, co];
+        var r = m.is_home ? [so, co] : [sb, cb];
+        right = '<div class="bb-sm-score"><span class="' + l[1] + '">' + l[0] + '</span><i>–</i><span class="' + r[1] + '">' + r[0] + '</span></div>';
+      } else {
+        var j = m.match_date ? daysUntil(m.match_date) : null;
+        var lab = j == null ? '' : (j <= 0 ? "Aujourd'hui" : (j === 1 ? 'Demain' : 'J-' + j));
+        var heure = m.match_time ? String(m.match_time).slice(0, 5) : '';
+        right = '<div class="bb-sm-cd' + (j != null && j <= 3 ? ' soon' : '') + '">' + escHtml(lab) +
+          (heure ? '<small>' + escHtml(heure) + '</small>' : '') + '</div>';
+      }
+
+      return '<div class="bb-sm' + (isPlayed ? ' played' : '') + (isNext ? ' next' : '') + '">' +
+        '<span class="bb-sm-node"></span>' +
+        '<span class="bb-sm-date"><b class="bb-sm-d">' + jour + '</b><b class="bb-sm-m">' + mois + '</b></span>' +
+        '<div class="bb-sm-team">' + crest +
+          '<div style="min-width:0">' +
+            '<div class="bb-sm-name"><span class="bb-sm-vs">' + (m.is_home ? 'Reçoit' : 'Se déplace chez') + '</span><br>' + escHtml(m.opponent_name || 'Adversaire') + '</div>' +
+            '<div class="bb-sm-sub">' + escHtml([m.venue, m.competition].filter(Boolean).join(' · ') || '') + '</div>' +
+          '</div>' +
+        '</div>' + right +
+      '</div>';
+    }
+
+    var html = past.map(function(m){ return row(m, true, false); }).join('');
+    var now = new Date();
+    html += '<div class="bb-today"><span>' + now.getDate() + ' ' + BB_MOIS[now.getMonth()] + " · aujourd'hui</span></div>";
+    html += next.map(function(m, i){ return row(m, false, i === 0); }).join('');
+    el.innerHTML = html;
+
+    bbSeasonReveal(el);
+  }
+
+  // Le déroulé au défilement : un seul moment orchestré plutôt que des effets
+  // dispersés. Sans IntersectionObserver, tout est simplement visible.
+  function bbSeasonReveal(el){
+    var items = el.querySelectorAll('.bb-sm, .bb-today');
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced || !('IntersectionObserver' in window)){
+      items.forEach(function(n){ n.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (!e.isIntersecting) return;
+        var i = [].indexOf.call(items, e.target);
+        e.target.style.transitionDelay = Math.min(i % 8, 7) * 45 + 'ms';
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: .12 });
+    items.forEach(function(n){ io.observe(n); });
+  }
+
   function renderFixtures(upcoming){
     var el = document.getElementById('bb-fixtures');
     if (!el) return;
@@ -5120,6 +5262,7 @@ document.addEventListener('keydown', function(e){
     if (window.renderAppTicket) window.renderAppTicket(upcoming);
     if (window.renderAppLive) window.renderAppLive(played);
     renderFixtures(upcoming);
+    renderSeason(played, upcoming);
     renderFixturesGuard(upcoming);
     renderCompSummary(played, upcoming);
   })
