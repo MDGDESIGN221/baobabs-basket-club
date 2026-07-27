@@ -19,7 +19,23 @@
 <meta name="twitter:title" content="Baobabs Basket Club">
 <meta name="twitter:description" content="Club de basketball fondé à Dakar en 2026. Former, gagner, faire grandir une communauté autour du jeu.">
 <meta name="twitter:image" content="https://www.baobabsbasketclub.com/og-banner.png">
-<link rel="canonical" href="https://www.baobabsbasketclub.com/">
+<script type="application/ld+json" id="bb-jsonld">
+  {
+    "@context": "https://schema.org",
+    "@type": "SportsTeam",
+    "name": "Baobabs Basket Club",
+    "alternateName": ["Baobabs Basket", "BBC Dakar"],
+    "sport": "Basketball",
+    "url": "https://www.baobabsbasketclub.com/",
+    "logo": "https://res.cloudinary.com/djdkpihuz/image/upload/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png",
+    "image": "https://www.baobabsbasketclub.com/og-banner.png",
+    "foundingDate": "2026",
+    "description": "Baobabs Basket Club, club de basketball fondé à Dakar en 2026. Championnat national, effectif, billetterie et boutique officielle.",
+    "address": { "@type": "PostalAddress", "addressLocality": "Dakar", "addressCountry": "SN" },
+    "areaServed": { "@type": "City", "name": "Dakar" }
+  }
+  </script>
+  <link rel="canonical" href="https://www.baobabsbasketclub.com/">
 <meta name="theme-color" content="#061109">
 <link rel="icon" href="https://res.cloudinary.com/djdkpihuz/image/upload/f_auto,q_auto,w_320,c_limit/v1784689119/BBC_-_COLORED_LOGO_jjcrux.png">
 
@@ -4627,6 +4643,25 @@ window.bbCloud = function(url, w){
       try { localStorage.setItem('bbc-announce-closed', String(a.id)); } catch(e){}
     });
   }
+
+  // La fiche d'identité gagne les liens sociaux réels dès qu'ils sont connus :
+  // c'est ce qui relie le site aux comptes du club aux yeux des moteurs.
+  function bbSeoEnrich(settings){
+    try {
+      var el = document.getElementById('bb-jsonld');
+      if (!el || !settings) return;
+      var data = JSON.parse(el.textContent);
+      var liens = ['instagram_url','facebook_url','tiktok_url','youtube_url','x_url','linkedin_url']
+        .map(function(k){ return settings[k]; })
+        .filter(function(v){ return v && /^https?:\/\//i.test(v); });
+      if (liens.length) data.sameAs = liens;
+      if (settings.club_email) data.email = settings.club_email;
+      if (settings.club_phone) data.telephone = settings.club_phone;
+      if (settings.logo_url) data.logo = settings.logo_url;
+      el.textContent = JSON.stringify(data);
+    } catch(e){}
+  }
+  window.bbSeoEnrich = bbSeoEnrich;
 
   function bbHydrate(){
     // Les deux tables peuvent ne pas exister : le site doit continuer de
