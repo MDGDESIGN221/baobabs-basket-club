@@ -3542,13 +3542,18 @@ window.bbCloud = function(url, w){
      quand la donnée correspondante arrive ; sans donnée, la maquette
      d'origine reste affichée telle quelle. */
   var bbAppFeed = {
+    // Autonome : ce module vit dans un autre bloc de script que les
+    // fonctions du site (escHtml, BB_MOIS…) — il embarque les siennes.
+    _esc: function(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); },
+    _mois: ['JAN','FÉV','MAR','AVR','MAI','JUIN','JUIL','AOÛT','SEPT','OCT','NOV','DÉC'],
+    _fcfa: function(n){ return String(Number(n) || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA'; },
     _short: function(s, n){ s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; },
     _when: function(m){
       if (!m.match_date) return '';
       var d = new Date(m.match_date + 'T12:00:00');
       var J = ['DIM','LUN','MAR','MER','JEU','VEN','SAM'];
       var h = m.match_time ? String(m.match_time).slice(0,5).replace(':','H').replace(/H00$/,'H') : '';
-      return J[d.getDay()] + ' ' + d.getDate() + ' ' + BB_MOIS[d.getMonth()] + (h ? ' · ' + h : '');
+      return J[d.getDay()] + ' ' + d.getDate() + ' ' + bbAppFeed._mois[d.getMonth()] + (h ? ' · ' + h : '');
     },
     matches: function(past, next){
       var cal = document.getElementById('bb-asc-cal');
@@ -3556,7 +3561,7 @@ window.bbCloud = function(url, w){
         cal.innerHTML = next.slice(0,3).map(function(m){
           var a = m.is_home ? 'Baobabs' : bbAppFeed._short(m.opponent_name, 10);
           var b = m.is_home ? bbAppFeed._short(m.opponent_name, 10) : 'Baobabs';
-          return '<div style="background:rgba(243,239,230,.05);border:1px solid rgba(243,239,230,.09);border-radius:9px;padding:8px 9px"><div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:6.5px;letter-spacing:.1em;color:#C6A257">' + escHtml(bbAppFeed._when(m)) + '</div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;font-family:\'Inter\',sans-serif;font-weight:600;font-size:8.5px;color:#F3EFE6"><span>' + escHtml(a) + '</span><span style="color:#7E8A82">vs</span><span>' + escHtml(b) + '</span></div></div>';
+          return '<div style="background:rgba(243,239,230,.05);border:1px solid rgba(243,239,230,.09);border-radius:9px;padding:8px 9px"><div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:6.5px;letter-spacing:.1em;color:#C6A257">' + bbAppFeed._esc(bbAppFeed._when(m)) + '</div><div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;font-family:\'Inter\',sans-serif;font-weight:600;font-size:8.5px;color:#F3EFE6"><span>' + bbAppFeed._esc(a) + '</span><span style="color:#7E8A82">vs</span><span>' + bbAppFeed._esc(b) + '</span></div></div>';
         }).join('');
       }
       if (next && next.length){
@@ -3581,7 +3586,7 @@ window.bbCloud = function(url, w){
       el.innerHTML = rows.slice(0,5).map(function(r, i){
         var pts = r.points != null ? r.points : (r.pts != null ? r.pts : '');
         if (/baobab/i.test(r.team_name || '')) return '<div style="display:flex;align-items:center;gap:7px;font-family:\'Inter\',sans-serif;font-size:8px;color:#F3EFE6;background:linear-gradient(90deg,rgba(198,162,87,.16),transparent);border-radius:6px;padding:3px 4px;margin:0 -4px"><span style="color:#C6A257;font-weight:800;width:9px">' + (i+1) + '</span><span style="flex:1;font-weight:800;color:#C6A257">Baobabs</span><b>' + pts + '</b></div>';
-        return '<div style="display:flex;align-items:center;gap:7px;font-family:\'Inter\',sans-serif;font-size:8px;color:#C7CFC8"><span style="color:#7E8A82;font-weight:800;width:9px">' + (i+1) + '</span><span style="flex:1">' + escHtml(bbAppFeed._short(r.team_name, 14)) + '</span><b style="color:#F3EFE6">' + pts + '</b></div>';
+        return '<div style="display:flex;align-items:center;gap:7px;font-family:\'Inter\',sans-serif;font-size:8px;color:#C7CFC8"><span style="color:#7E8A82;font-weight:800;width:9px">' + (i+1) + '</span><span style="flex:1">' + bbAppFeed._esc(bbAppFeed._short(r.team_name, 14)) + '</span><b style="color:#F3EFE6">' + pts + '</b></div>';
       }).join('');
     },
     shop: function(prods){
@@ -3589,10 +3594,10 @@ window.bbCloud = function(url, w){
       if (!el || !prods || !prods.length) return;
       var img = function(p, w){ var u = (p.images && p.images[0]) || p.image_url || ''; return u ? (window.bbCloud ? window.bbCloud(u, w) : u) : ''; };
       var p0 = prods[0];
-      var html = '<div style="border-radius:9px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:16/12;background:#0A150F">' + (img(p0,300) ? '<img src="' + img(p0,300) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:6px 8px"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:8px;color:#F3EFE6">' + escHtml(bbAppFeed._short(p0.name, 20)) + '</div><div style="font-family:\'Inter\',sans-serif;font-weight:800;font-size:8.5px;color:#C6A257;margin-top:2px">' + escHtml(money(p0.price)) + '</div></div></div>';
+      var html = '<div style="border-radius:9px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:16/12;background:#0A150F">' + (img(p0,300) ? '<img src="' + img(p0,300) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:6px 8px"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:8px;color:#F3EFE6">' + bbAppFeed._esc(bbAppFeed._short(p0.name, 20)) + '</div><div style="font-family:\'Inter\',sans-serif;font-weight:800;font-size:8.5px;color:#C6A257;margin-top:2px">' + bbAppFeed._esc(bbAppFeed._fcfa(p0.price)) + '</div></div></div>';
       if (prods.length > 1){
         html += '<div style="display:flex;gap:7px">' + prods.slice(1,3).map(function(p){
-          return '<div style="flex:1;border-radius:8px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:1/1;background:#0A150F">' + (img(p,240) ? '<img src="' + img(p,240) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:4px 6px;font-family:\'Inter\',sans-serif;font-weight:700;font-size:6.5px;color:#C6A257">' + escHtml(bbAppFeed._short(p.name, 12)) + '</div></div>';
+          return '<div style="flex:1;border-radius:8px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:1/1;background:#0A150F">' + (img(p,240) ? '<img src="' + img(p,240) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:4px 6px;font-family:\'Inter\',sans-serif;font-weight:700;font-size:6.5px;color:#C6A257">' + bbAppFeed._esc(bbAppFeed._short(p.name, 12)) + '</div></div>';
         }).join('') + '</div>';
       }
       el.innerHTML = html;
@@ -3624,6 +3629,11 @@ window.bbCloud = function(url, w){
       if (ti && n.title) ti.textContent = bbAppFeed._short(n.title, 60);
     }
   };
+    // Aucune erreur d'un écran de téléphone ne doit casser le rendu du site.
+  ['matches','standings','shop','players','news'].forEach(function(k){
+    var fn = bbAppFeed[k];
+    bbAppFeed[k] = function(){ try { return fn.apply(null, arguments); } catch (e) {} };
+  });
   window.bbAppFeed = bbAppFeed;
 
   /* ===== Favoris =====
@@ -3682,6 +3692,14 @@ window.bbCloud = function(url, w){
 
   // L'onglet « Mes favoris » : les cœurs posés partout sur le site,
   // résolus en fiches lisibles (produit ou match).
+  function bbFavDate(d){
+    if (!d) return '';
+    var t = new Date(String(d).slice(0,10) + 'T12:00:00');
+    var M = ['jan','fév','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
+    return t.getDate() + ' ' + M[t.getMonth()] + ' ' + t.getFullYear();
+  }
+  function bbFavColor(){ return '#1C4532'; }
+
   function bbFavRenderTab(body, note){
     if (!currentCustomer){ body.innerHTML = '<p style="' + note + '">Connectez-vous pour retrouver vos favoris.</p>'; return; }
     body.innerHTML = '<p style="' + note + '">Chargement…</p>';
@@ -3709,10 +3727,10 @@ window.bbCloud = function(url, w){
             html += matchs.map(function(m){
               var crest = m.opponent_logo_url
                 ? '<img src="' + (window.bbCloud ? window.bbCloud(m.opponent_logo_url, 120) : m.opponent_logo_url) + '" alt="" style="width:38px;height:38px;border-radius:50%;object-fit:contain;background:#0B1810;flex:none">'
-                : '<div style="width:38px;height:38px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:13px;color:#fff;background:' + fallbackColor(m.opponent_name || '?') + '">' + bbTkEsc(String(m.opponent_name || '?').charAt(0)) + '</div>';
+                : '<div style="width:38px;height:38px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:13px;color:#fff;background:' + bbFavColor() + '">' + bbTkEsc(String(m.opponent_name || '?').charAt(0)) + '</div>';
               return '<div style="' + rowStyle + '">' + crest +
                 '<div style="flex:1;min-width:0"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6">' + (m.is_home ? 'Baobabs reçoit ' : 'Baobabs chez ') + bbTkEsc(m.opponent_name || '?') + '</div>' +
-                '<div style="font-size:12px;color:#7E8A82;margin-top:2px">' + bbTkEsc(formatDateShort(m.match_date)) + (m.match_time ? ' · ' + bbTkEsc(String(m.match_time).slice(0, 5)) : '') + (m.venue ? ' · ' + bbTkEsc(m.venue) : '') + '</div></div>' +
+                '<div style="font-size:12px;color:#7E8A82;margin-top:2px">' + bbTkEsc(bbFavDate(m.match_date)) + (m.match_time ? ' · ' + bbTkEsc(String(m.match_time).slice(0, 5)) : '') + (m.venue ? ' · ' + bbTkEsc(m.venue) : '') + '</div></div>' +
                 bbFavBtn('match', m.id) + '</div>';
             }).join('');
           }
