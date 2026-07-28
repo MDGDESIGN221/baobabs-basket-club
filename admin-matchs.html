@@ -1,6 +1,371 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<!-- ===== INSPECTEUR DE CLICS — BLOC TEMPORAIRE : tout supprimer jusqu'au marqueur FIN ===== -->
+<script>
+/* =====================================================================
+   Baobabs Basket Club — INSPECTEUR DE CLICS (outil de debug TEMPORAIRE)
+
+   Ce bloc est posé en tête de <head> pour envelopper addEventListener
+   avant que les scripts de l'admin ne posent leurs écouteurs. C'est ce
+   qui permet de dire, pour chaque clic : quel élément répond, combien
+   d'écouteurs sont posés dessus, et à quelle ligne du fichier.
+
+   UTILISATION
+     Alt + I    ouvre / ferme le panneau (ou le viseur en bas à droite)
+     Geler      vous cliquez partout sans rien déclencher
+     Échap      ferme
+
+   POUR LE RETIRER : supprimez tout, du commentaire HTML d'ouverture
+   jusqu'au marqueur FIN INSPECTEUR DE CLICS. Rien d'autre à toucher.
+   ===================================================================== */
+(function () {
+  'use strict';
+  if (window.__BBCInspecteur) return;
+  window.__BBCInspecteur = true;
+
+  var MOI = 'inspecteur-clics';
+
+  /* ------------------------------------------------------------------
+     1. REGISTRE DES ÉCOUTEURS
+     On enveloppe addEventListener pour noter, par élément, combien
+     d'écouteurs de clic sont posés et à quelle ligne du fichier.
+     C'est ce qui révèle les liaisons en double (un bouton recâblé à
+     chaque rendu déclenche son action deux, trois, dix fois).
+     Cette partie doit tourner avant les scripts de l'application.
+  ------------------------------------------------------------------ */
+  var REG = new WeakMap();
+  var addNatif = EventTarget.prototype.addEventListener;
+  var retirerNatif = EventTarget.prototype.removeEventListener;
+  var SUIVIS = { click: 1, mousedown: 1, pointerdown: 1, change: 1, submit: 1 };
+
+  // Les fonctions de l'inspecteur sont préfixées « bbi » : c'est ce qui
+  // permet de les écarter de la pile d'appels et de remonter à la vraie
+  // ligne appelante, que ce fichier soit externe ou collé dans le HTML.
+  function bbiOrigine() {
+    var pile;
+    try { throw new Error(); } catch (e) { pile = e.stack || ''; }
+    var lignes = pile.split('\n');
+    for (var i = 0; i < lignes.length; i++) {
+      var l = lignes[i];
+      if (l.indexOf(MOI) >= 0 || /\bbbi[A-Z]/.test(l)) continue;
+      var m = l.match(/([^\/\\\s()]+\.(?:html|js))[^)\s]*?:(\d+):(\d+)/);
+      if (m) return m[1] + ' l.' + m[2];
+    }
+    return 'origine inconnue';
+  }
+
+  EventTarget.prototype.addEventListener = function bbiAdd(type, fn, opts) {
+    try {
+      if (SUIVIS[type] && this && this.nodeType === 1) {
+        var rec = REG.get(this);
+        if (!rec) { rec = {}; REG.set(this, rec); }
+        (rec[type] = rec[type] || []).push({ fn: fn, ou: bbiOrigine() });
+      }
+    } catch (e) {}
+    return addNatif.apply(this, arguments);
+  };
+
+  EventTarget.prototype.removeEventListener = function bbiRemove(type, fn, opts) {
+    try {
+      if (SUIVIS[type] && this && this.nodeType === 1) {
+        var rec = REG.get(this);
+        if (rec && rec[type]) {
+          for (var i = 0; i < rec[type].length; i++) {
+            if (rec[type][i].fn === fn) { rec[type].splice(i, 1); break; }
+          }
+        }
+      }
+    } catch (e) {}
+    return retirerNatif.apply(this, arguments);
+  };
+
+  /* ------------------------------------------------------------------
+     2. LECTURE D'UN ÉLÉMENT
+  ------------------------------------------------------------------ */
+  function nom(el) {
+    if (!el || el.nodeType !== 1) return String(el);
+    var s = el.tagName.toLowerCase();
+    if (el.id) s += '#' + el.id;
+    var cls = (el.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean);
+    if (cls.length) s += '.' + cls.slice(0, 3).join('.');
+    return s;
+  }
+
+  function ecouteurs(el) {
+    var rec = REG.get(el);
+    return (rec && rec.click) ? rec.click : [];
+  }
+
+  // Pourquoi cet élément réagirait-il à un clic ?
+  function raisons(el) {
+    var r = [];
+    var n = ecouteurs(el).length;
+    if (n) r.push(n + ' écouteur' + (n > 1 ? 's' : ''));
+    if (el.hasAttribute && el.hasAttribute('onclick')) r.push('onclick inline');
+    var t = el.tagName;
+    if (t === 'BUTTON') r.push('<button>');
+    if (t === 'A' && el.getAttribute('href')) r.push('<a href>');
+    if (t === 'LABEL') r.push('<label> (relaie au champ)');
+    if (t === 'INPUT' || t === 'SELECT' || t === 'TEXTAREA') r.push('champ de saisie');
+    if (el.getAttribute && el.getAttribute('role') === 'button') r.push('role=button');
+    return r;
+  }
+
+  function surfaceEcran(el) {
+    var r = el.getBoundingClientRect();
+    var w = window.innerWidth || 1, h = window.innerHeight || 1;
+    var s = Math.round(r.width) + '×' + Math.round(r.height) + ' px';
+    if (r.width > w * 0.5 || r.height > h * 0.5) {
+      s += ' (' + Math.round((r.width / w) * 100) + '×' + Math.round((r.height / h) * 100) + '% de l\'écran)';
+    }
+    return s;
+  }
+
+  function couvreEcran(el) {
+    var r = el.getBoundingClientRect();
+    return r.width >= window.innerWidth * 0.7 && r.height >= window.innerHeight * 0.7;
+  }
+
+  function transparent(el) {
+    var cs = getComputedStyle(el);
+    if (cs.backgroundImage && cs.backgroundImage !== 'none') return false;
+    var bg = cs.backgroundColor || '';
+    if (bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') return true;
+    var m = bg.match(/rgba?\(([^)]+)\)/);
+    if (m) {
+      var p = m[1].split(',');
+      if (p.length === 4 && parseFloat(p[3]) < 0.06) return true;
+    }
+    return false;
+  }
+
+  /* ------------------------------------------------------------------
+     3. PANNEAU
+  ------------------------------------------------------------------ */
+  var panneau, corps, btnGel, lanceur, cadreA, cadreB;
+  var gele = false;
+  var ouvert = false;
+
+  var CSS = [
+    '#bbi-panneau{position:fixed;right:14px;bottom:14px;width:min(94vw,392px);max-height:min(66vh,560px);',
+    'display:none;flex-direction:column;z-index:2147483000;background:#0B1A12;color:#EDEBE2;',
+    'border:1px solid rgba(198,162,87,.34);border-radius:13px;box-shadow:0 20px 54px rgba(0,0,0,.55);',
+    'font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}',
+    '#bbi-panneau.on{display:flex}',
+    '#bbi-panneau.gel{border-color:rgba(168,217,59,.6)}',
+    '#bbi-tete{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid rgba(237,235,226,.11);flex:none}',
+    '#bbi-titre{font-weight:700;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#C6A257;flex:1}',
+    '.bbi-b{appearance:none;border:1px solid rgba(237,235,226,.2);background:transparent;color:#EDEBE2;',
+    'font:inherit;font-size:11px;padding:5px 10px;border-radius:7px;cursor:pointer}',
+    '.bbi-b:hover{border-color:rgba(198,162,87,.6)}',
+    '.bbi-b.actif{background:#A8D93B;border-color:#A8D93B;color:#07160D;font-weight:700}',
+    '#bbi-corps{padding:12px 13px 14px;overflow:auto;flex:1}',
+    '.bbi-h{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#7E8C81;margin:14px 0 6px}',
+    '.bbi-h:first-child{margin-top:0}',
+    '.bbi-cible{color:#EDEBE2;word-break:break-all}',
+    '.bbi-cle{color:#A8D93B;font-weight:700;word-break:break-all}',
+    '.bbi-ou{color:#C6A257}',
+    '.bbi-note{color:#7E8C81}',
+    '.bbi-alerte{color:#F0A38A}',
+    '.bbi-l{padding:5px 7px;margin:0 -7px;border-radius:6px;cursor:pointer;word-break:break-all}',
+    '.bbi-l:hover{background:rgba(237,235,226,.07)}',
+    '.bbi-vide{color:#7E8C81;padding:22px 0;text-align:center}',
+    '#bbi-lanceur{position:fixed;right:14px;bottom:14px;z-index:2147483000;width:42px;height:42px;',
+    'border-radius:50%;border:1px solid rgba(198,162,87,.45);background:#0B1A12;color:#C6A257;cursor:pointer;',
+    'font:700 15px/1 ui-monospace,monospace;box-shadow:0 8px 22px rgba(0,0,0,.42)}',
+    '.bbi-cadre{position:fixed;pointer-events:none;z-index:2147482990;border-radius:4px}',
+    '#bbi-cadre-a{outline:2px solid #A8D93B;background:rgba(168,217,59,.13)}',
+    '#bbi-cadre-b{outline:1px dashed rgba(198,162,87,.85)}',
+    '@media(max-width:520px){#bbi-panneau{left:10px;right:10px;width:auto;bottom:10px}}'
+  ].join('');
+
+  function construire() {
+    var st = document.createElement('style');
+    st.textContent = CSS;
+    document.head.appendChild(st);
+
+    panneau = document.createElement('div');
+    panneau.id = 'bbi-panneau';
+    panneau.innerHTML =
+      '<div id="bbi-tete">' +
+        '<span id="bbi-titre">Inspecteur de clics</span>' +
+        '<button type="button" class="bbi-b" id="bbi-gel">Geler</button>' +
+        '<button type="button" class="bbi-b" id="bbi-fermer">Fermer</button>' +
+      '</div>' +
+      '<div id="bbi-corps"><p class="bbi-vide">Cliquez n\'importe où dans l\'admin.</p></div>';
+    document.body.appendChild(panneau);
+
+    corps = panneau.querySelector('#bbi-corps');
+    btnGel = panneau.querySelector('#bbi-gel');
+
+    lanceur = document.createElement('button');
+    lanceur.type = 'button';
+    lanceur.id = 'bbi-lanceur';
+    lanceur.title = 'Inspecteur de clics (Alt + I)';
+    lanceur.textContent = '⌖';
+    document.body.appendChild(lanceur);
+
+    cadreA = document.createElement('div');
+    cadreA.className = 'bbi-cadre'; cadreA.id = 'bbi-cadre-a';
+    cadreA.style.display = 'none';
+    document.body.appendChild(cadreA);
+
+    cadreB = document.createElement('div');
+    cadreB.className = 'bbi-cadre'; cadreB.id = 'bbi-cadre-b';
+    cadreB.style.display = 'none';
+    document.body.appendChild(cadreB);
+
+    addNatif.call(lanceur, 'click', function () { basculer(true); });
+    addNatif.call(panneau.querySelector('#bbi-fermer'), 'click', function () { basculer(false); });
+    addNatif.call(btnGel, 'click', function () {
+      gele = !gele;
+      btnGel.classList.toggle('actif', gele);
+      btnGel.textContent = gele ? 'Gelé' : 'Geler';
+      panneau.classList.toggle('gel', gele);
+    });
+  }
+
+  function basculer(v) {
+    ouvert = (v == null) ? !ouvert : v;
+    panneau.classList.toggle('on', ouvert);
+    lanceur.style.display = ouvert ? 'none' : 'block';
+    if (!ouvert) { gele = false; btnGel.classList.remove('actif'); btnGel.textContent = 'Geler'; panneau.classList.remove('gel'); cacherCadres(); }
+  }
+
+  function poserCadre(cadre, el) {
+    if (!el || !el.getBoundingClientRect) { cadre.style.display = 'none'; return; }
+    var r = el.getBoundingClientRect();
+    cadre.style.display = 'block';
+    cadre.style.left = r.left + 'px';
+    cadre.style.top = r.top + 'px';
+    cadre.style.width = r.width + 'px';
+    cadre.style.height = r.height + 'px';
+  }
+
+  function cacherCadres() { cadreA.style.display = 'none'; cadreB.style.display = 'none'; }
+
+  function ech(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /* ------------------------------------------------------------------
+     4. RAPPORT
+  ------------------------------------------------------------------ */
+  function rapporter(e) {
+    var cible = e.target;
+    var chemin = [];
+    var n = cible;
+    while (n && n.nodeType === 1 && n !== document.documentElement) {
+      chemin.push(n);
+      n = n.parentElement;
+    }
+
+    var coupable = null;
+    for (var i = 0; i < chemin.length; i++) {
+      if (raisons(chemin[i]).length) { coupable = chemin[i]; break; }
+    }
+
+    var calques = [];
+    try { calques = document.elementsFromPoint(e.clientX, e.clientY).slice(0, 6); } catch (err) {}
+    calques = calques.filter(function (el) { return !panneau.contains(el) && el !== cadreA && el !== cadreB && el !== lanceur; });
+
+    var voleurs = [];
+    for (var j = 0; j < calques.length; j++) {
+      var el = calques[j];
+      if (el === coupable) break;
+      if (couvreEcran(el) && transparent(el)) voleurs.push(el);
+    }
+
+    var h = '';
+
+    h += '<p class="bbi-h">Élément touché</p><div class="bbi-cible">' + ech(nom(cible)) + '</div>';
+
+    h += '<p class="bbi-h">Ce qui répond</p>';
+    if (!coupable) {
+      h += '<div class="bbi-note">Rien. Ce clic ne déclenche aucune action — sauf via un écouteur délégué posé sur document (il y en a un, filtré sur .gm-dup/.pr-dup).</div>';
+    } else {
+      var ec = ecouteurs(coupable);
+      h += '<div class="bbi-cle" data-i="' + chemin.indexOf(coupable) + '">' + ech(nom(coupable)) + '</div>';
+      h += '<div class="bbi-note">' + ech(raisons(coupable).join(' · ')) + ' — ' + ech(surfaceEcran(coupable)) + '</div>';
+      if (ec.length) {
+        h += '<p class="bbi-h">Écouteurs posés ici</p>';
+        if (ec.length > 1) {
+          var memes = {}, doublon = false;
+          ec.forEach(function (x) { memes[x.ou] = (memes[x.ou] || 0) + 1; if (memes[x.ou] > 1) doublon = true; });
+          if (doublon) h += '<div class="bbi-alerte">Liaison en double : l\'action part plusieurs fois pour un seul clic.</div>';
+        }
+        ec.forEach(function (x) { h += '<div class="bbi-ou">↳ ' + ech(x.ou) + '</div>'; });
+      }
+      if (coupable !== cible) {
+        h += '<div class="bbi-note" style="margin-top:8px">La zone qui réagit est plus large que ce que vous avez visé : ' +
+             'vous avez touché ' + ech(nom(cible)) + ', c\'est l\'ancêtre ci-dessus qui agit.</div>';
+      }
+    }
+
+    if (voleurs.length) {
+      h += '<p class="bbi-h">Calque invisible au-dessus</p>';
+      voleurs.forEach(function (el) {
+        h += '<div class="bbi-alerte">' + ech(nom(el)) + ' — ' + ech(surfaceEcran(el)) +
+             ', fond transparent, capte les clics. Ajoutez pointer-events:none ou display:none quand il est fermé.</div>';
+      });
+    }
+
+    h += '<p class="bbi-h">Chemin du clic</p>';
+    chemin.slice(0, 12).forEach(function (el, i) {
+      var r = raisons(el);
+      h += '<div class="bbi-l" data-i="' + i + '">' +
+           (r.length ? '<span class="bbi-cle">●</span> ' : '<span class="bbi-note">○</span> ') +
+           ech(nom(el)) +
+           (r.length ? ' <span class="bbi-note">— ' + ech(r.join(' · ')) + '</span>' : '') +
+           '</div>';
+    });
+
+    corps.innerHTML = h;
+    corps.scrollTop = 0;
+
+    poserCadre(cadreA, coupable || cible);
+    poserCadre(cadreB, cible);
+
+    corps.querySelectorAll('[data-i]').forEach(function (row) {
+      addNatif.call(row, 'click', function () {
+        poserCadre(cadreA, chemin[parseInt(row.getAttribute('data-i'), 10)]);
+      });
+    });
+  }
+
+  /* ------------------------------------------------------------------
+     5. CAPTURE
+     En phase de capture sur window : on passe avant tous les
+     gestionnaires de la page, donc le gel peut vraiment tout bloquer.
+  ------------------------------------------------------------------ */
+  function surClic(e) {
+    if (!ouvert) return;
+    if (panneau.contains(e.target) || e.target === lanceur) return;
+    if (e.type === 'click') rapporter(e);
+    if (gele) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }
+  }
+
+  function demarrer() {
+    construire();
+    ['click', 'mousedown', 'pointerdown'].forEach(function (t) {
+      addNatif.call(window, t, surClic, true);
+    });
+    addNatif.call(window, 'keydown', function (e) {
+      if (e.altKey && (e.key === 'i' || e.key === 'I')) { e.preventDefault(); basculer(); }
+      if (e.key === 'Escape' && ouvert) basculer(false);
+    }, true);
+    addNatif.call(window, 'scroll', cacherCadres, true);
+    addNatif.call(window, 'resize', cacherCadres);
+    console.info('[Inspecteur] prêt — Alt + I pour ouvrir.');
+  }
+
+  if (document.readyState === 'loading') addNatif.call(document, 'DOMContentLoaded', demarrer);
+  else demarrer();
+})();
+</script>
+<!-- ===== FIN INSPECTEUR DE CLICS ===== -->
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Espace gestion — Baobabs Basket Club</title>
