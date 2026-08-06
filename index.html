@@ -2176,6 +2176,23 @@
 <script>
 /* Transforme une URL Cloudinary pour une largeur donnée. Utilisée à la source,
    dans les données, pour que le navigateur ne télécharge jamais l'original. */
+/* Assainit une URL avant de la poser dans un attribut src/href.
+   Deux protections en une :
+   - refus des schémas exécutables (javascript:, data:, vbscript:) — une valeur
+     de la base ne doit jamais pouvoir exécuter du script chez un visiteur ;
+   - échappement des guillemets, sinon la valeur sort de l'attribut et peut
+     greffer un onerror=.
+   Défini ici, tout en haut : les fonctions d'échappement du fichier vivent
+   chacune dans leur IIFE, celle-ci doit être joignable depuis toutes. */
+window.bbSafeUrl = function(u){
+  var s = String(u == null ? '' : u).trim();
+  if (!s) return '';
+  // on n'autorise que ce qui est inoffensif dans un src/href
+  if (!/^(?:https?:\/\/|\/|\.\/|\.\.\/|#|mailto:|tel:)/i.test(s)) return '';
+  return s.replace(/[&<>"']/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  });
+};
 window.bbCloud = function(url, w){
   if (!url || url.indexOf('res.cloudinary.com') === -1 || url.indexOf('/image/upload/') === -1) return url;
   if (url.indexOf('f_auto') !== -1 || /\.svg($|\?)/i.test(url)) return url;
@@ -2359,8 +2376,14 @@ window.bbCloud = function(url, w){
 
   var cats = ['Benjamins','Minimes','Cadets','Juniors','Seniors'];
 
+  // Échappe aussi " et ' : sans eux, une valeur placée dans un attribut entre
+  // guillemets peut en sortir et injecter un gestionnaire d'événement. Un nom de
+  // joueuse valant  x" onerror="...  suffisait. Même jeu de caractères que la
+  // fonction esc() de admin-matchs.html, pour que les deux pages se comportent pareil.
   function esc(s){
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
   }
   // Rendu sécurisé du texte enrichi (gras / surligné / couleur) saisi dans l'espace gestion.
   function bbRich(html){
@@ -2423,7 +2446,7 @@ window.bbCloud = function(url, w){
               // comprend pourquoi elle n'est pas sur le terrain.
               (p.status === 'blessee' ? '<span class="bb-player-st" style="color:#fff;background:rgba(192,39,27,.9)">Blessée</span>' : '') +
               (p.status === 'pret'    ? '<span class="bb-player-st" style="color:#0A1B0D;background:#9DB8E8">En prêt</span>' : '') +
-              '<img class="bb-portrait" src="' + p.src + '" alt="' + esc(p.name) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';transform:scale(' + ((p.pz==null?100:p.pz)/100) + ');transform-origin:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';z-index:2;transition:transform .5s cubic-bezier(.16,.8,.3,1)" loading="lazy" decoding="async">' +
+              '<img class="bb-portrait" src="' + window.bbSafeUrl(p.src)+ '" alt="' + esc(p.name) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';transform:scale(' + ((p.pz==null?100:p.pz)/100) + ');transform-origin:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';z-index:2;transition:transform .5s cubic-bezier(.16,.8,.3,1)" loading="lazy" decoding="async">' +
               '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(6,13,9,.93) 0%,rgba(6,13,9,.12) 42%,transparent 62%);z-index:3"></div>' +
               '<div class="bb-name" style="position:absolute;left:16px;right:14px;bottom:16px;z-index:5">' +
                 '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:22px;color:' + (p.nameColor||'#F3EFE6') + ';line-height:1.02;letter-spacing:-.01em">' + esc(p.name) + '</div>' +
@@ -2469,7 +2492,7 @@ window.bbCloud = function(url, w){
 
   function recruitCard(){
     var av = players.slice(0, 5).map(function(p){
-      return '<span style="width:38px;height:38px;border-radius:50%;overflow:hidden;border:2px solid #0A2318;background:#12211A;margin-left:-10px;flex:none"><img src="' + p.src + '" alt="" style="width:100%;height:100%;object-fit:cover;object-position:top center" loading="lazy" decoding="async"></span>';
+      return '<span style="width:38px;height:38px;border-radius:50%;overflow:hidden;border:2px solid #0A2318;background:#12211A;margin-left:-10px;flex:none"><img src="' + window.bbSafeUrl(p.src)+ '" alt="" style="width:100%;height:100%;object-fit:cover;object-position:top center" loading="lazy" decoding="async"></span>';
     }).join('');
     return '<div data-recruit="1" role="button" tabindex="0" aria-label="Rejoindre l\'effectif" style="grid-column:1/-1;min-height:330px;border-radius:14px;border:1.5px dashed rgba(198,162,87,.5);background:radial-gradient(120% 130% at 80% 0%,#12402C,#0A2318 62%,#081C13);display:flex;flex-direction:column;justify-content:center;align-items:flex-start;max-width:480px;padding:clamp(22px,3vw,34px);cursor:pointer;position:relative;overflow:hidden">' +
       '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#A8D93B;border-left:2px solid currentColor;padding-left:10px">Recrutement ouvert</span>' +
@@ -2506,11 +2529,11 @@ window.bbCloud = function(url, w){
     if (!el) return;
     el.innerHTML = products.map(function(p){
       var thumbs = p.images.length > 1 ? '<div style="display:flex;gap:6px;padding:0 16px 14px">' + p.images.map(function(src, i){
-        return '<button type="button" data-home-thumb="' + p.id + ':' + i + '" aria-label="Voir la photo ' + (i + 1) + '" style="width:34px;height:34px;flex:none;border-radius:7px;overflow:hidden;padding:0;cursor:pointer;background:#0C1A12;border:1px solid ' + (i === 0 ? '#C6A257' : 'rgba(243,239,230,.14)') + '"><img src="' + src + '" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy" decoding="async"></button>';
+        return '<button type="button" data-home-thumb="' + p.id + ':' + i + '" aria-label="Voir la photo ' + (i + 1) + '" style="width:34px;height:34px;flex:none;border-radius:7px;overflow:hidden;padding:0;cursor:pointer;background:#0C1A12;border:1px solid ' + (i === 0 ? '#C6A257' : 'rgba(243,239,230,.14)') + '"><img src="' + window.bbSafeUrl(src)+ '" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy" decoding="async"></button>';
       }).join('') + '</div>' : '';
       return '' +
         '<div class="bb-shop-card" data-product="' + p.id + '" style="position:relative">' +
-          '<div class="bb-shop-img" style="aspect-ratio:4/5"><img id="bb-home-img-' + p.id + '" src="' + p.images[0] + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async"></div>' +
+          '<div class="bb-shop-img" style="aspect-ratio:4/5"><img id="bb-home-img-' + p.id + '" src="' + window.bbSafeUrl(p.images[0])+ '" alt="' + esc(p.name) + '" loading="lazy" decoding="async"></div>' +
           '<button type="button" data-add-quick="' + p.id + '" aria-label="Ajouter au panier" style="position:absolute;top:12px;right:12px;z-index:2;width:38px;height:38px;border-radius:50%;border:none;background:#A8D93B;color:#0A1B0D;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(0,0,0,.35)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg></button>' +
           '<div style="padding:14px 16px 10px">' +
             '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">' + esc(p.name) + '</div>' +
@@ -2527,7 +2550,7 @@ window.bbCloud = function(url, w){
     el.innerHTML = products.map(function(p){
       return '' +
         '<div class="bb-shop-card" data-product="' + p.id + '">' +
-          '<div class="bb-shop-img">' + bbFavBtn('product', p.id, 'position:absolute;top:10px;right:10px;z-index:2') + '<img src="' + p.images[0] + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async"></div>' +
+          '<div class="bb-shop-img">' + bbFavBtn('product', p.id, 'position:absolute;top:10px;right:10px;z-index:2') + '<img src="' + window.bbSafeUrl(p.images[0])+ '" alt="' + esc(p.name) + '" loading="lazy" decoding="async"></div>' +
           '<div style="padding:16px 18px 20px">' +
             '<span style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.18em;color:#C6A257;text-transform:uppercase">' + esc(p.tag) + '</span>' +
             '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:17px;color:#F3EFE6;margin:8px 0 12px">' + esc(p.name) + '</div>' +
@@ -2853,7 +2876,7 @@ window.bbCloud = function(url, w){
       if (!p) return '';
       return '' +
         '<div class="bb-cart-row">' +
-          '<div style="width:62px;height:62px;flex:none;border-radius:9px;overflow:hidden;background:#0C1A12"><img src="' + p.images[0] + '" alt="' + esc(p.name) + '" style="width:100%;height:100%;object-fit:cover" loading="lazy" decoding="async"></div>' +
+          '<div style="width:62px;height:62px;flex:none;border-radius:9px;overflow:hidden;background:#0C1A12"><img src="' + window.bbSafeUrl(p.images[0])+ '" alt="' + esc(p.name) + '" style="width:100%;height:100%;object-fit:cover" loading="lazy" decoding="async"></div>' +
           '<div style="flex:1;min-width:0">' +
             '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6">' + esc(p.name) + '</div>' +
             '<div style="font-size:12px;color:#7E8A82;margin:2px 0 8px">' + (p.sizes ? esc(it.size) : ('Taille ' + esc(it.size))) + ' · ' + money(p.price) + '</div>' +
@@ -3007,7 +3030,7 @@ window.bbCloud = function(url, w){
     if (p.images.length > 1){
       thumbs.style.display = 'flex';
       thumbs.innerHTML = p.images.map(function(src, i){
-        return '<button type="button" class="bb-thumb-btn' + (i === 0 ? ' active' : '') + '" data-thumb="' + i + '"><img src="' + src + '" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy" decoding="async"></button>';
+        return '<button type="button" class="bb-thumb-btn' + (i === 0 ? ' active' : '') + '" data-thumb="' + i + '"><img src="' + window.bbSafeUrl(src)+ '" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy" decoding="async"></button>';
       }).join('');
     } else {
       thumbs.style.display = 'none';
@@ -3064,7 +3087,7 @@ window.bbCloud = function(url, w){
     var html = '';
     if (r.photo || r.holder) {
       html += '<div style="display:flex;align-items:center;gap:14px;margin-top:16px">' +
-        (r.photo ? '<img src="'+(window.bbCloud?window.bbCloud(r.photo,200):(r.photo))+'" alt="" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:1px solid rgba(198,162,87,.45);flex:none" loading="lazy" decoding="async">' : '') +
+        (r.photo ? '<img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(r.photo,200):(r.photo)))+'" alt="" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:1px solid rgba(198,162,87,.45);flex:none" loading="lazy" decoding="async">' : '') +
         (r.holder ? '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:16px;color:#C6A257">'+esc(r.holder)+'</div>' : '') +
         '</div>';
     }
@@ -3752,10 +3775,10 @@ window.bbCloud = function(url, w){
       if (!el || !prods || !prods.length) return;
       var img = function(p, w){ var u = (p.images && p.images[0]) || p.image_url || ''; return u ? (window.bbCloud ? window.bbCloud(u, w) : u) : ''; };
       var p0 = prods[0];
-      var html = '<div style="border-radius:9px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:16/10;background:#0A150F">' + (img(p0,300) ? '<img src="' + img(p0,300) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:6px 8px"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:8px;color:#F3EFE6">' + bbAppFeed._esc(bbAppFeed._short(p0.name, 20)) + '</div><div style="font-family:\'Inter\',sans-serif;font-weight:800;font-size:8.5px;color:#C6A257;margin-top:2px">' + bbAppFeed._esc(bbAppFeed._fcfa(p0.price)) + '</div></div></div>';
+      var html = '<div style="border-radius:9px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:16/10;background:#0A150F">' + (img(p0,300) ? '<img src="' + window.bbSafeUrl(img(p0,300))+ '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:6px 8px"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:8px;color:#F3EFE6">' + bbAppFeed._esc(bbAppFeed._short(p0.name, 20)) + '</div><div style="font-family:\'Inter\',sans-serif;font-weight:800;font-size:8.5px;color:#C6A257;margin-top:2px">' + bbAppFeed._esc(bbAppFeed._fcfa(p0.price)) + '</div></div></div>';
       if (prods.length > 1){
         html += '<div style="display:flex;gap:7px">' + prods.slice(1,3).map(function(p){
-          return '<div style="flex:1;border-radius:8px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:4/3;background:#0A150F">' + (img(p,240) ? '<img src="' + img(p,240) + '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:4px 6px;font-family:\'Inter\',sans-serif;font-weight:700;font-size:6.5px;color:#C6A257">' + bbAppFeed._esc(bbAppFeed._short(p.name, 12)) + '</div></div>';
+          return '<div style="flex:1;border-radius:8px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><div style="aspect-ratio:4/3;background:#0A150F">' + (img(p,240) ? '<img src="' + window.bbSafeUrl(img(p,240))+ '" style="width:100%;height:100%;object-fit:cover;object-position:top center" alt="" loading="lazy" decoding="async">' : '') + '</div><div style="padding:4px 6px;font-family:\'Inter\',sans-serif;font-weight:700;font-size:6.5px;color:#C6A257">' + bbAppFeed._esc(bbAppFeed._short(p.name, 12)) + '</div></div>';
         }).join('') + '</div>';
       }
       el.innerHTML = html;
@@ -3847,6 +3870,10 @@ window.bbCloud = function(url, w){
     return '<button type="button" class="bb-fav" data-fav-kind="' + kind + '" data-fav-id="' + id + '" aria-pressed="false" aria-label="Ajouter aux favoris"' + (extraStyle ? ' style="' + extraStyle + '"' : '') + '>' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></button>';
   }
+  // renderSeason() vit dans un autre bloc <script> et appelle bbFavBtn : sans cette
+  // ligne l'appel lève un ReferenceError, le rendu du calendrier échoue et la page
+  // retombe silencieusement sur son contenu de secours au lieu des données Supabase.
+  window.bbFavBtn = bbFavBtn;
 
   // L'onglet « Mes favoris » : les cœurs posés partout sur le site,
   // résolus en fiches lisibles (produit ou match).
@@ -3884,7 +3911,7 @@ window.bbCloud = function(url, w){
             html += '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#A8D93B;margin-bottom:4px">Matchs</div>';
             html += matchs.map(function(m){
               var crest = m.opponent_logo_url
-                ? '<img src="' + (window.bbCloud ? window.bbCloud(m.opponent_logo_url, 120) : m.opponent_logo_url) + '" alt="" style="width:38px;height:38px;border-radius:50%;object-fit:contain;background:#0B1810;flex:none">'
+                ? '<img src="' + window.bbSafeUrl((window.bbCloud ? window.bbCloud(m.opponent_logo_url, 120) : m.opponent_logo_url))+ '" alt="" style="width:38px;height:38px;border-radius:50%;object-fit:contain;background:#0B1810;flex:none">'
                 : '<div style="width:38px;height:38px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:13px;color:#fff;background:' + bbFavColor() + '">' + bbTkEsc(String(m.opponent_name || '?').charAt(0)) + '</div>';
               return '<div style="' + rowStyle + '">' + crest +
                 '<div style="flex:1;min-width:0"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6">' + (m.is_home ? 'Baobabs reçoit ' : 'Baobabs chez ') + bbTkEsc(m.opponent_name || '?') + '</div>' +
@@ -3897,7 +3924,7 @@ window.bbCloud = function(url, w){
             html += prods.map(function(p){
               var img = (p.image_url || (p.images && p.images[0]) || '');
               return '<div style="' + rowStyle + '">' +
-                (img ? '<img src="' + (window.bbCloud ? window.bbCloud(img, 120) : img) + '" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex:none;background:#0B1810">' : '') +
+                (img ? '<img src="' + window.bbSafeUrl((window.bbCloud ? window.bbCloud(img, 120) : img))+ '" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex:none;background:#0B1810">' : '') +
                 '<div style="flex:1;min-width:0"><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6">' + bbTkEsc(p.name || 'Produit') + '</div>' +
                 (p.price != null ? '<div style="font-size:12px;color:#C6A257;font-weight:700;margin-top:2px">' + bbTkPrice(p.price) + '</div>' : '') + '</div>' +
                 bbFavBtn('product', p.id) + '</div>';
@@ -4192,7 +4219,7 @@ window.bbCloud = function(url, w){
         '<div>' +
         '<div style="position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:clamp(14px,2vw,26px);padding:clamp(22px,2.8vw,30px) clamp(18px,2.4vw,26px);border-bottom:1px solid rgba(198,162,87,.18)' + (featured ? '' : ';overflow:hidden') + '">' +
           (featured ? '' : '<span style="position:absolute;inset:0;background:linear-gradient(140deg,#0F2417,#081C13)" aria-hidden="true"></span>') +
-          '<img src="' + BBC_LOGO + '" alt="Baobabs" style="position:relative;z-index:2;width:52px;height:52px;object-fit:contain;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy">' +
+          '<img src="' + window.bbSafeUrl(BBC_LOGO)+ '" alt="Baobabs" style="position:relative;z-index:2;width:52px;height:52px;object-fit:contain;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy">' +
           '<span style="position:relative;z-index:2;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:16px;color:#C6A257">' + (m.is_home ? 'VS' : '@') + '</span>' +
           (oppLogo ? '<img src="' + bbTkEsc(oppLogo) + '" alt="" style="position:relative;z-index:2;width:52px;height:52px;object-fit:contain;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy">' : '') +
           '<div style="position:relative;z-index:2;flex:1;min-width:180px">' +
@@ -4399,10 +4426,10 @@ window.bbCloud = function(url, w){
       var color=(p.force_white===false||p.force_white==='false');
       var scale=parseInt(p.logo_scale,10); if(isNaN(scale)||!scale) scale=100;
       var imgStyle=scale!==100?' style="max-height:'+scale+'%;max-width:'+scale+'%"':'';
-      var img = p.logo_url ? '<img src="'+(window.bbCloud?window.bbCloud(p.logo_url,400):(p.logo_url))+'" alt="'+esc(p.name||'')+'"'+imgStyle+' loading="lazy" decoding="async">' : '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:13px;color:#C7CFC8">'+esc(p.name||'')+'</span>';
+      var img = p.logo_url ? '<img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(p.logo_url,400):(p.logo_url)))+'" alt="'+esc(p.name||'')+'"'+imgStyle+' loading="lazy" decoding="async">' : '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:13px;color:#C7CFC8">'+esc(p.name||'')+'</span>';
       var cls='bb-partner'+(color?' is-color':'')+(featured?' is-main':'');
       return p.website_url
-        ? '<a class="'+cls+'" href="'+p.website_url+'" target="_blank" rel="noopener">'+img+'</a>'
+        ? '<a class="'+cls+'" href="'+window.bbSafeUrl(p.website_url)+'" target="_blank" rel="noopener">'+img+'</a>'
         : '<div class="'+cls+'">'+img+'</div>';
     }).join('');
   }
@@ -4411,7 +4438,7 @@ window.bbCloud = function(url, w){
     var el = document.getElementById('bb-staff-list'); if(!el || !rows || !rows.length) return;
     el.innerHTML = rows.map(function(m){
       var ph = m.photo_url
-        ? '<img src="'+(window.bbCloud?window.bbCloud(m.photo_url,150):(m.photo_url))+'" alt="'+esc(m.name||'')+'" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none" loading="lazy" decoding="async">'
+        ? '<img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(m.photo_url,150):(m.photo_url)))+'" alt="'+esc(m.name||'')+'" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none" loading="lazy" decoding="async">'
         : '<div style="width:42px;height:42px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.18);flex:none;display:flex;align-items:center;justify-content:center;font-family:\'Inter\',sans-serif;font-weight:700;font-size:14px;color:#C6A257">'+esc((m.name||'?').trim().charAt(0).toUpperCase())+'</div>';
       return '<div style="display:flex;align-items:center;gap:12px">'+ph+'<div><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">'+esc(m.role||'')+'</div><div style="font-size:12.5px;color:#B9C2BB">'+esc(m.name||'')+'</div></div></div>';
     }).join('');
@@ -5193,7 +5220,7 @@ window.bbCloud = function(url, w){
   function renderAppShop(){
     var el=document.getElementById('bb-asc-shop');
     if(!el || !products || !products.length) return;
-    function img(src,fit){ return src ? '<img src="'+src+'" alt="" style="width:100%;height:100%;object-fit:'+(fit||'cover')+';object-position:top center" loading="lazy" decoding="async">' : ''; }
+    function img(src,fit){ return src ? '<img src="'+window.bbSafeUrl(src)+'" alt="" style="width:100%;height:100%;object-fit:'+(fit||'cover')+';object-position:top center" loading="lazy" decoding="async">' : ''; }
     var p0=products[0], p1=products[1]||products[0], p2=products[2]||products[0];
     var html = '<div style="border-radius:9px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)">'+
         '<div style="aspect-ratio:16/10;background:#0A150F">'+img(p0.images&&p0.images[0])+'</div>'+
@@ -5294,7 +5321,7 @@ window.bbCloud = function(url, w){
     function fdate(d){ if(!d) return ''; try{ return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return d; } }
     el.innerHTML=rows.map(function(n){
       var nx=(n.image_url_x==null||n.image_url_x==='')?50:n.image_url_x, ny=(n.image_url_y==null||n.image_url_y==='')?50:n.image_url_y, nz=(n.image_url_zoom==null||n.image_url_zoom==='')?100:n.image_url_zoom;
-      var img = n.image_url ? '<div style="aspect-ratio:16/10;overflow:hidden;background:#0F1E15"><img src="'+(window.bbCloud?window.bbCloud(n.image_url,1000):(n.image_url))+'" alt="'+esc(n.title||'')+'" style="width:100%;height:100%;object-fit:cover;object-position:'+nx+'% '+ny+'%;transform:scale('+(nz/100)+');transform-origin:'+nx+'% '+ny+'%" loading="lazy" decoding="async"></div>' : '';
+      var img = n.image_url ? '<div style="aspect-ratio:16/10;overflow:hidden;background:#0F1E15"><img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(n.image_url,1000):(n.image_url)))+'" alt="'+esc(n.title||'')+'" style="width:100%;height:100%;object-fit:cover;object-position:'+nx+'% '+ny+'%;transform:scale('+(nz/100)+');transform-origin:'+nx+'% '+ny+'%" loading="lazy" decoding="async"></div>' : '';
       // Le chapô est écrit pour être lu ici : on le préfère au début du
       // corps de l'article, qui n'a pas été rédigé comme une accroche.
       var lead = n.excerpt || n.body || '';
@@ -5316,7 +5343,7 @@ window.bbCloud = function(url, w){
   function applyFounder(s){
     var el=document.getElementById('bb-founder'); if(!el) return;
     if(!s || !s.founder_name){ el.classList.add('bb-hide'); return; }
-    var photo = s.founder_photo_url ? '<img src="'+(window.bbCloud?window.bbCloud(s.founder_photo_url,400):(s.founder_photo_url))+'" alt="'+esc(s.founder_name)+'" style="width:clamp(120px,22vw,168px);height:clamp(120px,22vw,168px);border-radius:18px;object-fit:cover;border:1px solid rgba(198,162,87,.35);flex:none" loading="lazy" decoding="async">' : '';
+    var photo = s.founder_photo_url ? '<img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(s.founder_photo_url,400):(s.founder_photo_url)))+'" alt="'+esc(s.founder_name)+'" style="width:clamp(120px,22vw,168px);height:clamp(120px,22vw,168px);border-radius:18px;object-fit:cover;border:1px solid rgba(198,162,87,.35);flex:none" loading="lazy" decoding="async">' : '';
     var bio = s.founder_bio ? '<div style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:14px 0 0">'+bbRich(s.founder_bio)+'</div>' : '';
     el.innerHTML =
       '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:#C6A257;text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Le fondateur</span>' +
@@ -5496,7 +5523,7 @@ document.addEventListener('keydown', function(e){
 
     function teamBlock(name, logo){
       var img = logo
-        ? '<img src="' + (window.bbCloud?window.bbCloud(logo,200):(logo)) + '" alt="' + escHtml(name) + '" style="width:58px;height:58px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)" loading="lazy" decoding="async">'
+        ? '<img src="' + window.bbSafeUrl((window.bbCloud?window.bbCloud(logo,200):(logo)))+ '" alt="' + escHtml(name) + '" style="width:58px;height:58px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)" loading="lazy" decoding="async">'
         : '<div style="width:58px;height:58px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:16px;color:#fff;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
       return '<div style="text-align:center;flex:1">' + img +
         '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">' + escHtml(name) + '</div></div>';
@@ -5523,7 +5550,7 @@ document.addEventListener('keydown', function(e){
 
   // ===== Calendrier (matchs à venir) =====
   function fixBadge(name, logo){
-    var inner = logo ? '<img src="' + (window.bbCloud?window.bbCloud(logo,200):(logo)) + '" alt="' + escHtml(name) + '" loading="lazy" decoding="async">' : escHtml(initials(name));
+    var inner = logo ? '<img src="' + window.bbSafeUrl((window.bbCloud?window.bbCloud(logo,200):(logo)))+ '" alt="' + escHtml(name) + '" loading="lazy" decoding="async">' : escHtml(initials(name));
     return '<div class="bb-fix-team"><div class="bb-fix-badge" style="background:' + (logo ? '#0C1A12' : fallbackColor(name)) + '">' + inner + '</div><span class="bb-fix-abbr">' + escHtml(name) + '</span></div>';
   }
 
@@ -5562,7 +5589,7 @@ document.addEventListener('keydown', function(e){
       var mois = d ? BB_MOIS[d.getMonth()] : '';
       var logo = m.opponent_logo_url;
       var crest = logo
-        ? '<img class="bb-sm-crest" src="' + (window.bbCloud ? window.bbCloud(logo, 160) : logo) + '" alt="" loading="lazy" decoding="async">'
+        ? '<img class="bb-sm-crest" src="' + window.bbSafeUrl((window.bbCloud ? window.bbCloud(logo, 160) : logo))+ '" alt="" loading="lazy" decoding="async">'
         : '<div class="bb-sm-crest" style="display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:14px;color:#fff;background:' + fallbackColor(m.opponent_name || '?') + '">' + escHtml(initials(m.opponent_name || '?')) + '</div>';
 
       var right;
