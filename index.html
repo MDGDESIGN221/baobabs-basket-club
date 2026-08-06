@@ -230,6 +230,31 @@
   .bb-player .bb-bignum{position:absolute;right:0;top:50%;transform:translateY(-50%) translate(-.22em,-.077em);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:180px;line-height:1;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
   @media (prefers-reduced-motion:reduce){.bb-player .bb-cardbg{animation:none}.bb-player .bb-bignum{animation:none;opacity:.5}.bb-flip-inner{transition:none!important}@media (hover:hover){.bb-player:hover .bb-flip-inner{transform:none!important}}}
 
+  /* ===== Colonnes de lumière derrière l'effectif =====
+     Une seule instance pour toute la section, pas une par carte : le portrait
+     est en object-fit:cover et couvre la carte, l'effet y serait invisible pour
+     huit fois le travail (et visible seulement sur les photos détourées, donc
+     incohérent d'une joueuse à l'autre).
+     Le bloc déborde de 64px sous la section — cet espace appartient à la marge
+     haute des Médias, il est vide, ça évite de toucher au rythme de la page.
+     Le dégradé reste très transparent : on veut des colonnes de lumière, pas
+     un aplat vert qui mangerait les photos. */
+  /* Le bas du bloc tombe en plein milieu de page : sans ce fondu, les barres
+     seraient tranchées net et on verrait une ligne horizontale avant « Médias ».
+     Un masque plutôt qu'un dégradé opaque : ça marche quel que soit le fond. */
+  .bb-aurora{position:absolute;left:0;right:0;top:0;bottom:-64px;overflow:hidden;
+    z-index:0;pointer-events:none;display:flex;align-items:flex-end;opacity:.5;
+    -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 96px),transparent 100%);
+            mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 96px),transparent 100%)}
+  .bb-aurora .bb-au-col{flex:1;height:100%;display:flex;align-items:flex-end;padding:0 1.5px}
+  .bb-aurora .bb-au-bar{width:100%;height:100%;border-radius:9999px 9999px 0 0;
+    transform-origin:bottom center;will-change:transform;
+    background:linear-gradient(to top,rgba(168,217,59,.34) 0%,rgba(143,203,67,.22) 28%,
+      rgba(94,158,74,.11) 56%,rgba(47,92,51,.04) 80%,rgba(12,30,19,0) 100%)}
+  .bb-aurora .bb-au-voute{position:absolute;inset:0;
+    background:radial-gradient(ellipse 78% 74% at 50% 100%,transparent 26%,rgba(6,13,9,.92) 82%)}
+  @media (prefers-reduced-motion:reduce){.bb-aurora{opacity:.32}}
+
   /* ===== flip carte joueuse (fiche scouting) ===== */
   .bb-player{perspective:1400px}
   .bb-flip-inner{position:relative;width:100%;height:100%;min-height:330px;transition:transform .65s cubic-bezier(.4,.2,.2,1);transform-style:preserve-3d}
@@ -1034,12 +1059,13 @@
         <div id="bb-actus-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(16px,2.4vw,22px)"></div>
       </section>
 
-      <section style="padding:44px 0 8px">
-        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap">
+      <section style="padding:44px 0 8px;position:relative">
+        <div id="bb-aurora" class="bb-aurora" aria-hidden="true"></div>
+        <div style="position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap">
           <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,2.8vw,30px);letter-spacing:-.01em;color:#F3EFE6;margin:0">L'effectif</h2>
           <a href="#" style="display:inline-flex;align-items:center;gap:5px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;letter-spacing:.06em;color:#C6A257">Tout l'effectif <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
         </div>
-        <div id="bb-effectif" class="bb-eff" style="display:grid;gap:16px"></div>
+        <div id="bb-effectif" class="bb-eff" style="position:relative;z-index:1;display:grid;gap:16px"></div>
       </section>
 
       <!-- ===== MÉDIAS ===== -->
@@ -6074,6 +6100,84 @@ window.bbImgOpt = (function(){
   scanSoon();
   window.addEventListener('load', function(){ scanSoon(); });
   return { scan: scan, scanSoon: scanSoon };
+})();
+</script>
+
+<script>
+/* ===== Colonnes de lumière derrière l'effectif =====
+   Le mouvement vient de deux sinusoïdes déphasées par barre, sous une enveloppe
+   en arche (plus hautes au centre) : ça évite le balayage mécanique d'une seule onde.
+
+   Deux choix de performance qui comptent, la section portant déjà huit cartes
+   animées sous perspective :
+   - on anime transform:scaleY, jamais height. scaleY est composité par le GPU ;
+     height relancerait un calcul de mise en page à chaque image.
+   - une seule boucle rAF pour toutes les barres, et elle se met en veille hors
+     écran, onglet caché, ou si le visiteur a demandé moins d'animation. */
+(function(){
+  var host = document.getElementById('bb-aurora');
+  if (!host || !window.requestAnimationFrame) return;
+
+  var MIN_H = 0.18, MAX_H = 0.92, VITESSE = 0.35;
+  var barres = [], t = 0, dernier = 0, nb = 0;
+
+  function hauteur(i, total, tps){
+    var norm  = total > 1 ? i / (total - 1) : 0;
+    var arche = Math.sin(norm * Math.PI);
+    var onde  = 0.5 + 0.25 * Math.sin(tps * 1.1 + (i / total) * Math.PI * 2)
+                    + 0.25 * Math.sin(tps * 0.7 + (i / total) * Math.PI * 5.3);
+    return MIN_H + (arche * 0.65 + onde * 0.35) * (MAX_H - MIN_H);
+  }
+
+  function poser(i){
+    barres[i].style.transform = 'scaleY(' + hauteur(i, barres.length, t).toFixed(4) + ')';
+  }
+
+  function construire(){
+    // ~46px par barre : une trentaine sur desktop, une douzaine sur mobile.
+    var vise = Math.max(10, Math.min(34, Math.round((host.clientWidth || window.innerWidth) / 46)));
+    if (vise === nb) return;
+    nb = vise;
+    host.innerHTML = '';
+    barres = [];
+    for (var i = 0; i < nb; i++){
+      var col = document.createElement('div'); col.className = 'bb-au-col';
+      var bar = document.createElement('div'); bar.className = 'bb-au-bar';
+      col.appendChild(bar); host.appendChild(col); barres.push(bar);
+    }
+    var voute = document.createElement('div'); voute.className = 'bb-au-voute';
+    host.appendChild(voute);
+    // Position de départ posée tout de suite : sans ça, sous prefers-reduced-motion
+    // la boucle ne tourne jamais et les barres resteraient à pleine hauteur (un mur).
+    for (var j = 0; j < nb; j++) poser(j);
+  }
+
+  var mqReduit = window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : { matches: false };
+
+  var visible = true;
+  if (window.IntersectionObserver){
+    new IntersectionObserver(function(e){ visible = e[0].isIntersecting; },
+                             { rootMargin: '140px' }).observe(host);
+  }
+
+  function boucle(now){
+    requestAnimationFrame(boucle);
+    if (mqReduit.matches || !visible || document.hidden){ dernier = 0; return; }
+    var dt = dernier ? (now - dernier) / 1000 : 0;
+    dernier = now;
+    if (dt > 0.25) dt = 0.25;   // retour d'un onglet en veille : on n'avance pas d'un bond
+    t += dt * VITESSE;
+    for (var i = 0; i < barres.length; i++) poser(i);
+  }
+
+  construire();
+  var recalc;
+  window.addEventListener('resize', function(){
+    clearTimeout(recalc); recalc = setTimeout(construire, 200);
+  });
+  requestAnimationFrame(boucle);
 })();
 </script>
 </body>
