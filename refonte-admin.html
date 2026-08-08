@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Refonte de l'espace de gestion — Baobabs Basket Club</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SOCLE — les jetons de design
+   L'admin actuel en compte 6 et 827 styles en ligne. Ici, tout
+   part d'une échelle : une couleur, un espacement ou un rayon se
+   change à un seul endroit.
+   ============================================================ */
+:root{
+  /* — Fond & surfaces : noir profond à sous-ton vert, comme le parquet la nuit — */
+  --bg:        #060D09;
+  --surface-1: #0C150F;
+  --surface-2: #121D16;
+  --surface-3: #18271C;
+
+  /* — Traits — */
+  --line:      rgba(240,236,226,.07);
+  --line-2:    rgba(240,236,226,.13);
+  --line-3:    rgba(240,236,226,.22);
+
+  /* — Texte — */
+  --text:      #F4F1E9;
+  --muted:     #A5AFA7;
+  --faint:     #7E8A81;   /* 4,7:1 sur le fond — les libellés en capitales sont petits, ils doivent passer */
+
+  /* — L'accent, unique et assumé — */
+  --gold:      #C6A257;
+  --gold-lit:  #F0CE85;
+  --gold-deep: #8C6E2E;
+  --gold-wash: rgba(198,162,87,.10);
+  --gold-edge: rgba(198,162,87,.34);
+  --gold-grad: linear-gradient(135deg,#F3D390 0%,#C6A257 42%,#7A5E27 100%);
+
+  /* — Signaux d'état : ce qui manquait complètement — */
+  --ok:        #93CE43;  --ok-wash:  rgba(147,206,67,.12);
+  --warn:      #E8A93C;  --warn-wash:rgba(232,169,60,.12);
+  --danger:    #E5564A;  --danger-wash:rgba(229,86,74,.12);
+  --info:      #7FA8E0;  --info-wash:rgba(127,168,224,.12);
+  --live:      #FF4438;
+
+  /* — Espacement : une seule échelle, plus de valeurs au jugé — */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --s8:64px; --s9:96px;
+
+  /* — Rayons — */
+  --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:28px; --r-full:999px;
+
+  /* — Élévation — */
+  --e1:0 1px 2px rgba(0,0,0,.30);
+  --e2:0 8px 24px -12px rgba(0,0,0,.60);
+  --e3:0 32px 64px -28px rgba(0,0,0,.78);
+
+  /* — Typographie — */
+  --font-display:'Archivo',system-ui,sans-serif;
+  --font-ui:'Archivo',system-ui,sans-serif;
+  --font-text:'Inter',system-ui,sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;min-width:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:var(--font-text); font-size:15px; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+img{max-width:100%;display:block}
+
+/* ---- Typographie : une famille variable, plusieurs voix ---- */
+.d-hero{font-family:var(--font-display);font-variation-settings:'wdth' 78,'wght' 800;
+  font-size:clamp(38px,7vw,86px);line-height:.92;letter-spacing:-.02em;text-transform:uppercase}
+.d-1{font-family:var(--font-display);font-variation-settings:'wdth' 82,'wght' 750;
+  font-size:clamp(26px,3.4vw,40px);line-height:1.05;letter-spacing:-.015em;text-transform:uppercase}
+.d-2{font-family:var(--font-display);font-variation-settings:'wdth' 92,'wght' 700;
+  font-size:21px;line-height:1.2;letter-spacing:-.005em}
+.d-num{font-family:var(--font-display);font-variation-settings:'wdth' 64,'wght' 800;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:.9}
+.kicker{font-family:var(--font-ui);font-variation-settings:'wdth' 100,'wght' 700;
+  font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
+.label{font-family:var(--font-ui);font-variation-settings:'wdth' 100,'wght' 650;
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.lede{font-size:17px;line-height:1.7;color:var(--muted);max-width:62ch;text-wrap:pretty}
+p.body{color:var(--muted);max-width:66ch;text-wrap:pretty}
+.gold{color:var(--gold-lit)}
+
+/* ============================================================
+   PAGE DE PRÉSENTATION
+   ============================================================ */
+.page{max-width:1220px;margin:0 auto;padding:0 var(--s5) var(--s9)}
+section.blk{padding:var(--s9) 0 0}
+.blk-head{margin-bottom:var(--s6);max-width:70ch}
+.blk-head .kicker{display:block;margin-bottom:var(--s3)}
+.blk-head p{margin-top:var(--s4)}
+
+/* — Bandeau d'ouverture — */
+.cover{position:relative;overflow:hidden;border-radius:var(--r-xl);
+  background:radial-gradient(120% 140% at 88% 8%, rgba(198,162,87,.30) 0%, rgba(198,162,87,.05) 38%, transparent 68%), var(--surface-1);
+  border:1px solid var(--line-2);padding:clamp(28px,5vw,64px);margin-top:var(--s7);box-shadow:var(--e3)}
+.cover::after{content:'';position:absolute;inset:auto -10% -60% 40%;height:70%;
+  background:radial-gradient(closest-side, rgba(198,162,87,.16), transparent 72%);pointer-events:none}
+.cover-grid{position:relative;z-index:1;display:grid;gap:var(--s6)}
+@media(min-width:900px){.cover-grid{grid-template-columns:1.25fr .75fr;align-items:end}}
+.cover h1{margin:var(--s4) 0 var(--s5)}
+.cover .stat-row{display:flex;flex-wrap:wrap;gap:var(--s5)}
+.cover .stat b{display:block;font-family:var(--font-display);font-variation-settings:'wdth' 70,'wght' 800;
+  font-size:34px;line-height:1;color:var(--gold-lit)}
+.cover .stat span{display:block;margin-top:6px;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+
+/* — Grilles utilitaires — */
+.grid{display:grid;gap:var(--s4)}
+.g2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(158px,1fr))}
+
+.card{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:var(--s5);box-shadow:var(--e1)}
+.card-q{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s4)}
+
+/* — Références — */
+.ref{border-left:2px solid var(--gold);padding-left:var(--s4)}
+.ref b{display:block;font-family:var(--font-ui);font-variation-settings:'wdth' 95,'wght' 700;
+  font-size:14px;letter-spacing:.01em;margin-bottom:5px}
+.ref span{font-size:13.5px;color:var(--muted);line-height:1.6}
+
+/* — Palette — */
+.sw{border-radius:var(--r-md);border:1px solid var(--line);overflow:hidden;background:var(--surface-1)}
+.sw i{display:block;height:76px}
+.sw div{padding:11px 13px}
+.sw b{display:block;font-family:var(--font-ui);font-variation-settings:'wdth' 100,'wght' 650;font-size:12px}
+.sw code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--faint);letter-spacing:.03em}
+
+/* — Échelles — */
+.scale-row{display:flex;align-items:center;gap:var(--s4);padding:11px 0;border-bottom:1px solid var(--line)}
+.scale-row:last-child{border-bottom:0}
+.scale-row code{flex:none;width:64px;font-family:ui-monospace,monospace;font-size:11px;color:var(--faint)}
+.scale-bar{height:12px;background:var(--gold-grad);border-radius:3px}
+.radius-demo{height:56px;background:var(--surface-3);border:1px solid var(--line-2)}
+
+/* ============================================================
+   MAQUETTE D'ÉCRAN — le châssis proposé
+   ============================================================ */
+.frame{border:1px solid var(--line-2);border-radius:var(--r-lg);overflow:hidden;
+  background:var(--bg);box-shadow:var(--e3)}
+.frame-bar{display:flex;align-items:center;gap:7px;padding:11px 15px;background:var(--surface-2);
+  border-bottom:1px solid var(--line)}
+.frame-bar i{width:9px;height:9px;border-radius:50%;background:var(--line-3);display:block}
+.frame-bar span{margin-left:auto;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+.frame-body{display:flex;min-height:520px}
+
+/* — Barre latérale — */
+.sb{flex:none;width:236px;border-right:1px solid var(--line);padding:var(--s4) var(--s3);
+  background:linear-gradient(180deg, var(--surface-1), var(--bg) 42%);overflow:hidden}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:0 8px var(--s4);margin-bottom:var(--s3);
+  border-bottom:1px solid var(--line)}
+.sb-mark{width:30px;height:30px;border-radius:9px;background:var(--gold-grad);flex:none;
+  display:grid;place-items:center;color:#0A140C;font-family:var(--font-display);
+  font-variation-settings:'wdth' 70,'wght' 800;font-size:14px}
+.sb-brand b{font-family:var(--font-ui);font-variation-settings:'wdth' 92,'wght' 700;font-size:12.5px;letter-spacing:.02em}
+.sb-brand em{display:block;font-style:normal;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.sb-grp{margin-bottom:var(--s4)}
+.sb-grp>.label{display:flex;align-items:center;gap:7px;padding:5px 9px;margin-bottom:3px}
+.sb-grp>.label::after{content:'';flex:1;height:1px;background:var(--line)}
+.sb-a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);
+  color:var(--muted);font-family:var(--font-ui);font-variation-settings:'wdth' 96,'wght' 550;
+  font-size:12.5px;cursor:pointer;position:relative}
+.sb-a .dot{width:5px;height:5px;border-radius:50%;background:var(--line-3);flex:none}
+.sb-a:hover{background:var(--surface-2);color:var(--text)}
+.sb-a.on{background:var(--gold-wash);color:var(--gold-lit)}
+.sb-a.on .dot{background:var(--gold);box-shadow:0 0 0 3px var(--gold-wash)}
+.sb-a .n{margin-left:auto;font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums}
+.sb-a .n.hot{color:#0A140C;background:var(--gold);border-radius:var(--r-full);padding:1px 6px;font-weight:700}
+
+/* — Zone principale — */
+.mn{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s5);
+  border-bottom:1px solid var(--line);background:rgba(6,13,9,.7);backdrop-filter:blur(8px)}
+.pill{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:var(--r-full);
+  border:1px solid var(--line-2);background:var(--surface-2);color:var(--muted);
+  font-family:var(--font-ui);font-variation-settings:'wdth' 100,'wght' 600;font-size:12px;cursor:pointer}
+.pill:hover{border-color:var(--gold-edge);color:var(--text)}
+.pill.on{background:var(--gold);border-color:var(--gold);color:#0A140C}
+.pill.live{border-color:rgba(255,68,56,.45);color:#FF7A70;background:rgba(255,68,56,.08)}
+.pill.live::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--live);
+  box-shadow:0 0 0 0 rgba(255,68,56,.6);animation:pulse 1.8s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 7px rgba(255,68,56,0)}100%{box-shadow:0 0 0 0 rgba(255,68,56,0)}}
+@media(prefers-reduced-motion:reduce){.pill.live::before{animation:none}}
+.tb-sp{flex:1}
+.tb-search{display:flex;align-items:center;gap:9px;height:34px;padding:0 12px;border-radius:var(--r-full);
+  border:1px solid var(--line-2);background:var(--surface-2);color:var(--faint);font-size:12px;min-width:180px}
+.tb-search kbd{margin-left:auto;font-family:var(--font-text);font-size:9.5px;font-weight:600;
+  border:1px solid var(--line-2);border-radius:5px;padding:2px 5px}
+.mn-body{padding:var(--s5);overflow:hidden}
+
+/* — En-tête de page — */
+.ph{margin-bottom:var(--s5)}
+.ph .kicker{display:block;margin-bottom:9px}
+.ph p{margin-top:9px;font-size:13.5px;color:var(--muted);max-width:60ch}
+
+/* — Cartes de statistique — */
+.stat-c{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s4);
+  position:relative;overflow:hidden}
+.stat-c .label{display:block;margin-bottom:9px}
+.stat-c b{font-family:var(--font-display);font-variation-settings:'wdth' 68,'wght' 800;
+  font-size:38px;line-height:.88;font-variant-numeric:tabular-nums;display:block}
+.stat-c em{font-style:normal;font-size:11.5px;color:var(--faint);display:block;margin-top:7px}
+.stat-c .tag{position:absolute;top:14px;right:14px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:var(--r-full)}
+.tag.ok{background:var(--ok-wash);color:var(--ok)} .tag.warn{background:var(--warn-wash);color:var(--warn)}
+
+/* — L'affiche du prochain match : le geste fort, tiré de la réf. 1 — */
+.poster{position:relative;overflow:hidden;border-radius:var(--r-lg);border:1px solid var(--gold-edge);
+  background:radial-gradient(110% 130% at 82% 6%, rgba(198,162,87,.26), transparent 60%), var(--surface-1);
+  padding:var(--s5);box-shadow:var(--e2)}
+.poster-top{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s5)}
+.poster-top .kicker{margin:0}
+.poster-cd{margin-left:auto;font-family:var(--font-display);font-variation-settings:'wdth' 64,'wght' 800;
+  font-size:15px;color:#0A140C;background:var(--gold);border-radius:var(--r-full);padding:3px 12px;letter-spacing:.02em}
+.poster-row{display:flex;align-items:center;justify-content:center;gap:clamp(14px,4vw,42px)}
+.poster-team{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;min-width:0}
+.crest{width:54px;height:54px;border-radius:var(--r-md);display:grid;place-items:center;
+  background:var(--surface-3);border:1px solid var(--line-2);font-family:var(--font-display);
+  font-variation-settings:'wdth' 70,'wght' 800;font-size:16px;color:var(--muted)}
+.crest.home{background:var(--gold-grad);color:#0A140C;border-color:transparent}
+.poster-team span{font-family:var(--font-ui);font-variation-settings:'wdth' 92,'wght' 700;
+  font-size:12px;letter-spacing:.09em;text-transform:uppercase}
+.poster-vs{font-family:var(--font-display);font-variation-settings:'wdth' 62,'wght' 800;
+  font-size:28px;color:var(--faint)}
+.poster-meta{display:flex;flex-wrap:wrap;gap:var(--s4);justify-content:center;margin-top:var(--s5);
+  padding-top:var(--s4);border-top:1px solid var(--line-2)}
+.poster-meta div{text-align:center}
+.poster-meta .label{display:block;margin-bottom:3px}
+.poster-meta b{font-family:var(--font-ui);font-variation-settings:'wdth' 96,'wght' 650;font-size:13px}
+
+/* — Tableau éditorial : réf. 3 — grand type, filets fins, air — */
+.tbl{width:100%;border-collapse:collapse}
+.tbl thead th{text-align:left;padding:0 var(--s4) var(--s3);border-bottom:1px solid var(--line-2);
+  font-family:var(--font-ui);font-variation-settings:'wdth' 100,'wght' 700;
+  font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.tbl thead th:last-child,.tbl tbody td:last-child{text-align:right}
+.tbl tbody td{padding:var(--s4);border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tbody tr:hover td{background:var(--surface-1)}
+.tbl .rk{font-family:var(--font-display);font-variation-settings:'wdth' 64,'wght' 800;
+  font-size:20px;color:var(--faint);width:52px}
+.tbl .nm{font-family:var(--font-ui);font-variation-settings:'wdth' 94,'wght' 650;font-size:14.5px}
+.tbl .sub{font-size:11.5px;color:var(--faint);margin-top:2px}
+.tbl .sc{font-family:var(--font-display);font-variation-settings:'wdth' 64,'wght' 800;
+  font-size:22px;font-variant-numeric:tabular-nums}
+.tbl tr.me td{background:linear-gradient(90deg,var(--gold-wash),transparent 72%)}
+.tbl tr.me .rk{color:var(--gold-lit)}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:var(--r-full);
+  font-size:10.5px;font-weight:600;letter-spacing:.02em}
+.chip.ok{background:var(--ok-wash);color:var(--ok)}
+.chip.warn{background:var(--warn-wash);color:var(--warn)}
+.chip.dn{background:var(--danger-wash);color:var(--danger)}
+.chip.nt{background:var(--surface-3);color:var(--muted)}
+
+/* — Formulaire : la disposition déjà corrigée aujourd'hui — */
+.fm-grid{display:grid;gap:var(--s5)}
+@media(min-width:820px){.fm-grid{grid-template-columns:1.06fr .94fr;gap:var(--s6)}}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--s4)}
+.fields .wide{grid-column:1/-1}
+.f label{display:block;font-family:var(--font-ui);font-variation-settings:'wdth' 100,'wght' 600;
+  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+.f .in{background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r-sm);
+  padding:10px 12px;font-family:var(--font-ui);font-variation-settings:'wdth' 100,'wght' 500;
+  font-size:13.5px;color:var(--text)}
+.f .in.ta{min-height:64px;line-height:1.55}
+.f .in:focus-within,.f .in.foc{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-wash);outline:none}
+.pv-frame{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s4)}
+.save-bar{display:flex;align-items:center;gap:var(--s3);margin-top:var(--s5);padding-top:var(--s4);
+  border-top:1px dashed var(--line-2)}
+/* Or plein, pas le dégradé : sur son extrémité sombre le libellé tombait
+   à 3,09:1. Le dégradé reste pour le décoratif (écusson, marque). */
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 20px;border:0;
+  border-radius:var(--r-sm);background:var(--gold);color:#0A140C;cursor:pointer;
+  font-family:var(--font-ui);font-variation-settings:'wdth' 100,'wght' 700;font-size:13px}
+.btn:hover{background:var(--gold-lit)}
+.btn:focus-visible,.pill:focus-visible,.sb-a:focus-visible{outline:2px solid var(--gold-lit);outline-offset:2px}
+.btn.ghost{background:transparent;border:1px solid var(--line-2);color:var(--muted)}
+.toast-ok{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:var(--r-sm);
+  background:var(--ok-wash);border:1px solid rgba(147,206,67,.3);color:var(--ok);font-size:12.5px}
+
+/* — Avant / après — */
+.ba{display:grid;gap:var(--s4)}
+@media(min-width:800px){.ba{grid-template-columns:1fr 1fr}}
+.ba>div{border-radius:var(--r-md);padding:var(--s5);border:1px solid var(--line)}
+.ba .before{background:var(--surface-1)}
+.ba .after{background:linear-gradient(160deg,rgba(198,162,87,.09),transparent 60%),var(--surface-1);border-color:var(--gold-edge)}
+.ba h4{font-family:var(--font-ui);font-variation-settings:'wdth' 100,'wght' 700;font-size:11px;
+  letter-spacing:.16em;text-transform:uppercase;margin-bottom:var(--s3)}
+.ba .before h4{color:var(--faint)} .ba .after h4{color:var(--gold)}
+.ba ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+.ba li{display:flex;gap:10px;font-size:13.5px;color:var(--muted);line-height:1.55}
+.ba li::before{content:'';flex:none;width:5px;height:5px;border-radius:50%;margin-top:8px;background:var(--line-3)}
+.ba .after li::before{background:var(--gold)}
+
+/* — Téléphone — */
+.phone{width:290px;border-radius:34px;border:1px solid var(--line-2);background:var(--bg);
+  padding:9px;box-shadow:var(--e3);flex:none}
+.phone-in{border-radius:26px;overflow:hidden;border:1px solid var(--line);height:560px;display:flex;flex-direction:column}
+.phone-tb{display:flex;align-items:center;gap:9px;padding:12px 13px;border-bottom:1px solid var(--line);background:var(--surface-1)}
+.burger{width:32px;height:32px;border-radius:9px;border:1px solid var(--line-2);display:grid;place-items:center;flex:none}
+.burger i{display:block;width:13px;height:1.5px;background:var(--muted);box-shadow:0 -4px 0 var(--muted),0 4px 0 var(--muted)}
+.phone-body{padding:14px;overflow:hidden;flex:1}
+
+.note{display:flex;gap:11px;padding:var(--s4);border-radius:var(--r-md);
+  background:var(--gold-wash);border:1px solid var(--gold-edge);font-size:13.5px;color:var(--muted);line-height:1.6}
+.note b{color:var(--gold-lit);font-weight:600}
+
+.foot{margin-top:var(--s9);padding-top:var(--s5);border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--faint)}
+
+/* Rendu confortable sur petit écran */
+@media(max-width:900px){
+  .frame-body{flex-direction:column;min-height:0}
+  .sb{width:auto;border-right:0;border-bottom:1px solid var(--line)}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ══════════ OUVERTURE ══════════ -->
+  <header class="cover">
+    <div class="cover-grid">
+      <div>
+        <span class="kicker">Proposition de refonte · Espace de gestion</span>
+        <h1 class="d-hero">Un outil<br>qui a l'air<br><span class="gold">d'un outil<br>de pro.</span></h1>
+        <p class="lede">Vos écrans fonctionnent déjà bien. Ce qui leur manque, c'est un socle :
+          une seule échelle d'espacement, une seule famille de caractères tenue sur toute sa
+          gamme, un accent unique employé franchement. Voici la direction — à valider avant
+          qu'on la propage aux 38 écrans.</p>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><b>38&nbsp;→&nbsp;30</b><span>Entrées de menu</span></div>
+        <div class="stat"><b>6&nbsp;→&nbsp;41</b><span>Jetons de design</span></div>
+        <div class="stat"><b>8&nbsp;→&nbsp;3</b><span>Points de rupture</span></div>
+        <div class="stat"><b>0&nbsp;→&nbsp;38</b><span>Retours annoncés</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════ CE QUE JE RETIENS DES RÉFÉRENCES ══════════ -->
+  <section class="blk">
+    <div class="blk-head">
+      <span class="kicker">01 — Lecture des références</span>
+      <h2 class="d-1">Quatre images, quatre principes</h2>
+      <p class="body">Je n'ai pas copié ces visuels : j'en ai extrait ce qui est transposable à un
+        outil de gestion utilisé tous les jours, souvent dans l'urgence d'un soir de match.</p>
+    </div>
+    <div class="grid g2">
+      <div class="card ref"><b>ASTART — le noir et l'or</b><span>Un fond quasi noir, un seul accent doré,
+        et ce dégradé qui vient éclairer un coin de la carte. C'est exactement votre identité :
+        j'en fais le châssis, pas une décoration.</span></div>
+      <div class="card ref"><b>Novara — la typographie qui affirme</b><span>Des titres énormes, serrés,
+        sans hésitation. Appliqué ici : les chiffres qui comptent (scores, compteurs, J-44) deviennent
+        lisibles d'un coup d'œil, à un mètre du téléphone.</span></div>
+      <div class="card ref"><b>Temporal Sound — le tableau comme éditorial</b><span>Filets fins, en-têtes
+        discrets, valeurs en gros. Vos listes (classement, commandes, candidatures) passent de
+        « tableur » à « page qui se lit ».</span></div>
+      <div class="card ref"><b>QOOK — la barre en pastilles</b><span>Une navigation qui respire, des
+        formes en pilule, beaucoup de blanc entre les blocs. J'en tire le rythme vertical et les
+        commandes de l'en-tête.</span></div>
+    </div>
+  </section>
+
+  <!-- ══════════ TYPOGRAPHIE ══════════ -->
+  <section class="blk">
+    <div class="blk-head">
+      <span class="kicker">02 — Typographie</span>
+      <h2 class="d-1">Trois familles → une famille variable</h2>
+      <p class="body">Aujourd'hui : <b>Anton</b> pour les titres, <b>Space&nbsp;Grotesk</b> pour l'interface,
+        <b>Inter</b> pour le texte. Trois fichiers, trois logiques, et Anton n'a qu'une seule graisse —
+        d'où les titres qui écrasent tout. Je propose <b class="gold">Archivo</b>, une famille variable
+        dont on règle la largeur <em>et</em> la graisse en continu : les scores en très condensé,
+        les titres en large, les libellés en normal. Une seule famille, toute la gamme.
+        <b>Inter</b> reste pour les paragraphes, c'est sa force.</p>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <span class="label" style="display:block;margin-bottom:14px">Archivo · largeur 78 / graisse 800 — titres d'écran</span>
+        <div class="d-hero" style="font-size:52px">Soir de match</div>
+      </div>
+      <div class="card">
+        <span class="label" style="display:block;margin-bottom:14px">Archivo · largeur 64 / graisse 800 — scores &amp; compteurs</span>
+        <div class="d-num" style="font-size:64px;color:var(--gold-lit)">78&nbsp;–&nbsp;64</div>
+      </div>
+      <div class="card">
+        <span class="label" style="display:block;margin-bottom:14px">Archivo · largeur 92 / graisse 700 — titres de bloc</span>
+        <div class="d-2">Hero d'accueil — le grand bloc du haut</div>
+      </div>
+      <div class="card">
+        <span class="label" style="display:block;margin-bottom:14px">Inter · 400 — texte courant</span>
+        <p style="font-size:14.5px;color:var(--muted);line-height:1.7">Le stock se compte par taille.
+          Un maillot peut donc être disponible en M et épuisé en L — ce que l'ancien bouton
+          «&nbsp;Épuisé&nbsp;» ne savait pas dire.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ COULEUR ══════════ -->
+  <section class="blk">
+    <div class="blk-head">
+      <span class="kicker">03 — Couleur</span>
+      <h2 class="d-1">Un accent, et des signaux</h2>
+      <p class="body">L'or reste seul en tête d'affiche. Ce qui manquait vraiment, ce sont les
+        <b>couleurs d'état</b> : aujourd'hui rien ne distingue « enregistré » de « attention » de
+        « erreur » autrement que par le texte.</p>
+    </div>
+    <div class="grid g4">
+      <div class="sw"><i style="background:var(--bg)"></i><div><b>Fond</b><code>#060D09</code></div></div>
+      <div class="sw"><i style="background:var(--surface-1)"></i><div><b>Surface 1</b><code>#0C150F</code></div></div>
+      <div class="sw"><i style="background:var(--surface-2)"></i><div><b>Surface 2</b><code>#121D16</code></div></div>
+      <div class="sw"><i style="background:var(--gold-grad)"></i><div><b>Or · dégradé</b><code>#F3D390 → #7A5E27</code></div></div>
+      <div class="sw"><i style="background:var(--gold)"></i><div><b>Or</b><code>#C6A257</code></div></div>
+      <div class="sw"><i style="background:var(--ok)"></i><div><b>Succès</b><code>#93CE43</code></div></div>
+      <div class="sw"><i style="background:var(--warn)"></i><div><b>Alerte</b><code>#E8A93C</code></div></div>
+      <div class="sw"><i style="background:var(--danger)"></i><div><b>Erreur</b><code>#E5564A</code></div></div>
+      <div class="sw"><i style="background:var(--info)"></i><div><b>Information</b><code>#7FA8E0</code></div></div>
+      <div class="sw"><i style="background:var(--live)"></i><div><b>En direct</b><code>#FF4438</code></div></div>
+    </div>
+
+    <div class="grid g2" style="margin-top:var(--s5)">
+      <div class="card">
+        <span class="label" style="display:block;margin-bottom:16px">Espacement — une seule échelle</span>
+        <div class="scale-row"><code>--s1 4</code><div class="scale-bar" style="width:4px"></div></div>
+        <div class="scale-row"><code>--s2 8</code><div class="scale-bar" style="width:8px"></div></div>
+        <div class="scale-row"><code>--s3 12</code><div class="scale-bar" style="width:12px"></div></div>
+        <div class="scale-row"><code>--s4 16</code><div class="scale-bar" style="width:16px"></div></div>
+        <div class="scale-row"><code>--s5 24</code><div class="scale-bar" style="width:24px"></div></div>
+        <div class="scale-row"><code>--s6 32</code><div class="scale-bar" style="width:32px"></div></div>
+        <div class="scale-row"><code>--s7 48</code><div class="scale-bar" style="width:48px"></div></div>
+        <div class="scale-row"><code>--s8 64</code><div class="scale-bar" style="width:64px"></div></div>
+      </div>
+      <div class="card">
+        <span class="label" style="display:block;margin-bottom:16px">Rayons &amp; élévation</span>
+        <div class="grid g3" style="gap:12px">
+          <div><div class="radius-demo" style="border-radius:var(--r-sm)"></div><code style="font-size:10.5px;color:var(--faint)">--r-sm 10</code></div>
+          <div><div class="radius-demo" style="border-radius:var(--r-md)"></div><code style="font-size:10.5px;color:var(--faint)">--r-md 14</code></div>
+          <div><div class="radius-demo" style="border-radius:var(--r-lg)"></div><code style="font-size:10.5px;color:var(--faint)">--r-lg 20</code></div>
+        </div>
+        <div style="margin-top:22px;display:flex;gap:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:90px;height:56px;border-radius:var(--r-md);background:var(--surface-2);box-shadow:var(--e1)"></div>
+          <div style="flex:1;min-width:90px;height:56px;border-radius:var(--r-md);background:var(--surface-2);box-shadow:var(--e2)"></div>
+          <div style="flex:1;min-width:90px;height:56px;border-radius:var(--r-md);background:var(--surface-2);box-shadow:var(--e3)"></div>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:8px">
+          <code style="flex:1;font-size:10.5px;color:var(--faint)">--e1 repos</code>
+          <code style="flex:1;font-size:10.5px;color:var(--faint)">--e2 flottant</code>
+          <code style="flex:1;font-size:10.5px;color:var(--faint)">--e3 modale</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ÉCRAN 1 — TABLEAU DE BORD ══════════ -->
+  <section class="blk">
+    <div class="blk-head">
+      <span class="kicker">04 — Le châssis</span>
+      <h2 class="d-1">Tableau de bord</h2>
+      <p class="body">Barre latérale groupée et numérotée, en-tête en pastilles, et l'affiche du
+        prochain match traitée comme l'objet principal — le geste emprunté à la première référence.
+        <b>Soir de match</b> n'est plus une entrée de menu : c'est une pastille rouge qui s'allume
+        dans l'en-tête les jours de match.</p>
+    </div>
+
+    <div class="frame">
+      <div class="frame-bar"><i></i><i></i><i></i><span>Écran large · 1440</span></div>
+      <div class="frame-body">
+
+        <!-- barre latérale -->
+        <aside class="sb">
+          <div class="sb-brand">
+            <div class="sb-mark">B</div>
+            <div><b>Baobabs Basket Club</b><em>Espace gestion</em></div>
+          </div>
+
+          <div class="sb-grp">
+            <span class="label">Aperçu</span>
+            <div class="sb-a on"><span class="dot"></span>Tableau de bord</div>
+          </div>
+          <div class="sb-grp">
+            <span class="label">Matchs</span>
+            <div class="sb-a"><span class="dot"></span>Matchs<span class="n hot">2</span></div>
+            <div class="sb-a"><span class="dot"></span>Adversaires</div>
+            <div class="sb-a"><span class="dot"></span>Classement</div>
+          </div>
+          <div class="sb-grp">
+            <span class="label">Équipe &amp; club</span>
+            <div class="sb-a"><span class="dot"></span>Joueuses<span class="n">27</span></div>
+            <div class="sb-a"><span class="dot"></span>Staff</div>
+            <div class="sb-a"><span class="dot"></span>Bureau</div>
+            <div class="sb-a"><span class="dot"></span>Fondateur</div>
+            <div class="sb-a"><span class="dot"></span>Notre histoire</div>
+            <div class="sb-a"><span class="dot"></span>Partenaires</div>
+          </div>
+          <div class="sb-grp">
+            <span class="label">Pages du site</span>
+            <div class="sb-a"><span class="dot"></span>Accueil</div>
+            <div class="sb-a"><span class="dot"></span>Le Club</div>
+            <div class="sb-a"><span class="dot"></span>Tryouts</div>
+            <div class="sb-a"><span class="dot"></span>Mises en avant</div>
+            <div class="sb-a" style="color:var(--faint)"><span class="dot"></span>… 4 autres</div>
+          </div>
+        </aside>
+
+        <!-- zone principale -->
+        <div class="mn">
+          <div class="tb">
+            <div class="tb-search"><span>Rechercher…</span><kbd>Ctrl K</kbd></div>
+            <div class="tb-sp"></div>
+            <div class="pill live">Soir de match</div>
+            <div class="pill">Voir le site</div>
+            <div class="pill">Aide</div>
+          </div>
+
+          <div class="mn-body">
+            <div class="ph">
+              <span class="kicker">Aperçu</span>
+              <h3 class="d-1" style="font-size:32px">Bonsoir Mouhamed</h3>
+              <p>Deux résultats attendent leur score, et la billetterie du prochain match n'est pas encore ouverte.</p>
+            </div>
+
+            <div class="poster">
+              <div class="poster-top">
+                <span class="kicker">Prochain match</span>
+                <span class="poster-cd">J-4</span>
+              </div>
+              <div class="poster-row">
+                <div class="poster-team"><div class="crest home">BBC</div><span>Baobabs</span></div>
+                <div class="poster-vs">VS</div>
+                <div class="poster-team"><div class="crest">DUC</div><span>DUC Dakar</span></div>
+              </div>
+              <div class="poster-meta">
+                <div><span class="label">Date</span><b>Sam. 12 sept. · 19:00</b></div>
+                <div><span class="label">Lieu</span><b>Marius Ndiaye</b></div>
+                <div><span class="label">Billetterie</span><b style="color:var(--warn)">Fermée</b></div>
+                <div><span class="label">Diffusion</span><b>YouTube</b></div>
+              </div>
+            </div>
+
+            <div class="grid g4" style="margin-top:var(--s5)">
+              <div class="stat-c"><span class="label">Scores à saisir</span><b style="color:var(--warn)">2</b><em>depuis 3 jours</em><span class="tag warn">à faire</span></div>
+              <div class="stat-c"><span class="label">Réservations</span><b>148</b><em>+12 cette semaine</em></div>
+              <div class="stat-c"><span class="label">Commandes</span><b>7</b><em>à préparer</em><span class="tag ok">à jour</span></div>
+              <div class="stat-c"><span class="label">Candidatures</span><b>23</b><em>4 non lues</em></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ÉCRAN 2 — LISTE ══════════ -->
+  <section class="blk">
+    <div class="blk-head">
+      <span class="kicker">05 — Les listes</span>
+      <h2 class="d-1">Un tableau qui se lit</h2>
+      <p class="body">Le principe de la troisième référence : en-têtes minuscules et discrets,
+        valeurs en très gros, filets d'un pixel, beaucoup d'air vertical. La ligne des Baobabs
+        se distingue par un lavis doré plutôt que par une bordure de plus.</p>
+    </div>
+
+    <div class="frame">
+      <div class="frame-bar"><i></i><i></i><i></i><span>Classement</span></div>
+      <div style="padding:var(--s5)">
+        <div style="display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s5);flex-wrap:wrap">
+          <div class="pill on">Championnat</div>
+          <div class="pill">Coupe</div>
+          <div class="pill">Amicaux</div>
+          <div class="tb-sp"></div>
+          <button class="btn">Ajouter une ligne</button>
+        </div>
+        <table class="tbl">
+          <thead><tr><th></th><th>Club</th><th>J</th><th>V — D</th><th>Forme</th><th>Points</th></tr></thead>
+          <tbody>
+            <tr><td class="rk">01</td>
+              <td><div class="nm">ASC Ville de Dakar</div><div class="sub">Invaincu à domicile</div></td>
+              <td>14</td><td>12 — 2</td><td><span class="chip ok">5 victoires</span></td><td class="sc">26</td></tr>
+            <tr class="me"><td class="rk">02</td>
+              <td><div class="nm">Baobabs Basket Club</div><div class="sub">Votre club</div></td>
+              <td>14</td><td>11 — 3</td><td><span class="chip ok">3 victoires</span></td><td class="sc" style="color:var(--gold-lit)">25</td></tr>
+            <tr><td class="rk">03</td>
+              <td><div class="nm">DUC Dakar</div><div class="sub">Prochain adversaire</div></td>
+              <td>14</td><td>9 — 5</td><td><span class="chip warn">1 défaite</span></td><td class="sc">23</td></tr>
+            <tr><td class="rk">04</td>
+              <td><div class="nm">Jaraaf BC</div><div class="sub">—</div></td>
+              <td>14</td><td>6 — 8</td><td><span class="chip dn">3 défaites</span></td><td class="sc">20</td></tr>
+            <tr><td class="rk">05</td>
+              <td><div class="nm">Saint-Louis Basket</div><div class="sub">Match reporté</div></td>
+              <td>13</td><td>4 — 9</td><td><span class="chip nt">Sans série</span></td><td class="sc">17</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ÉCRAN 3 — FORMULAIRE ══════════ -->
+  <section class="blk">
+    <div class="blk-head">
+      <span class="kicker">06 — Les formulaires</span>
+      <h2 class="d-1">Page d'accueil, respirée</h2>
+      <p class="body">C'est le point que vous m'avez signalé. La correction est <b>déjà en place</b>
+        dans votre admin : la colonne de saisie passe de 314 à 541&nbsp;px, les champs courts se
+        rangent par deux, l'aperçu reste collé en haut pendant qu'on descend, et le message
+        «&nbsp;Enregistré&nbsp;» est enfin annoncé aux lecteurs d'écran. Voici le même écran
+        avec la typographie et les couleurs proposées.</p>
+    </div>
+
+    <div class="frame">
+      <div class="frame-bar"><i></i><i></i><i></i><span>Pages du site · Accueil</span></div>
+      <div style="padding:var(--s5)">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:var(--s4);
+                    margin-bottom:var(--s5);border-bottom:1px solid var(--line)">
+          <span class="label" style="margin-right:4px">Aller à</span>
+          <div class="pill on">Hero d'accueil</div>
+          <div class="pill">Face-Off</div>
+          <div class="pill">Bandeau de chiffres</div>
+          <div class="pill">Boutique</div>
+          <div class="pill">Médias</div>
+        </div>
+
+        <div class="card" style="border-radius:var(--r-lg)">
+          <div style="padding-bottom:var(--s4);margin-bottom:var(--s5);border-bottom:1px solid var(--line)">
+            <span class="kicker" style="display:block;margin-bottom:7px">Accueil · Hero</span>
+            <h4 class="d-2">Hero d'accueil — le grand bloc du haut</h4>
+          </div>
+
+          <div class="fm-grid">
+            <div>
+              <div class="fields">
+                <div class="f wide"><label>Sur-titre (à côté du logo)</label><div class="in">Baobabs Basket Club · Dakar</div></div>
+                <div class="f wide"><label>Titre — partie blanche</label><div class="in ta">Le basket<br>sénégalais</div></div>
+                <div class="f wide"><label>Titre — dernière ligne en doré</label><div class="in foc">qui monte</div></div>
+                <div class="f"><label>Bouton vert · libellé</label><div class="in">Rejoindre le club</div></div>
+                <div class="f"><label>Bouton vert · destination</label><div class="in">tryouts</div></div>
+                <div class="f"><label>Chiffre 1</label><div class="in">2026</div></div>
+                <div class="f"><label>Légende 1</label><div class="in">Fondation</div></div>
+                <div class="f"><label>Chiffre 2</label><div class="in">27</div></div>
+                <div class="f"><label>Légende 2</label><div class="in">Licenciées</div></div>
+              </div>
+              <div class="save-bar">
+                <button class="btn">Enregistrer</button>
+                <div class="toast-ok" role="status">✓ Enregistré.</div>
+              </div>
+            </div>
+
+            <aside>
+              <div class="label" style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+                Aperçu réel <i style="flex:1;height:1px;background:var(--line)"></i>
+              </div>
+              <div class="pv-frame">
+                <div style="border-radius:var(--r-md);padding:var(--s5);
+                            background:radial-gradient(110% 130% at 88% 0%, rgba(198,162,87,.22), transparent 62%), #08120C;
+                            border:1px solid var(--line)">
+                  <div class="kicker" style="font-size:9px">Baobabs Basket Club · Dakar</div>
+                  <div class="d-hero" style="font-size:34px;margin:14px 0 6px">Le basket<br>sénégalais<br><span class="gold">qui monte</span></div>
+                  <p style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:12px">
+                    Formation, compétition, communauté. Depuis 2026, les Baobabs construisent à Dakar
+                    un club où les joueuses progressent.</p>
+                  <div style="display:flex;gap:8px;margin-top:16px">
+                    <span class="pill on" style="height:28px;font-size:10.5px">Rejoindre le club</span>
+                    <span class="pill" style="height:28px;font-size:10.5px">Voir le calendrier</span>
+                  </div>
+                  <div style="display:flex;gap:20px;margin-top:20px;padding-top:14px;border-top:1px solid var(--line)">
+                    <div><div class="d-num" style="font-size:22px;color:var(--gold-lit)">2026</div><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:4px">Fondation</div></div>
+                    <div><div class="d-num" style="font-size:22px;color:var(--gold-lit)">27</div><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:4px">Licenciées</div></div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ MOBILE ══════════ -->
+  <section class="blk">
+    <div class="blk-head">
+      <span class="kicker">07 — Le téléphone</span>
+      <h2 class="d-1">Le soir de match, au bord du terrain</h2>
+      <p class="body">C'est là que l'admin est le plus difficile aujourd'hui : quatre blocs empilés
+        avant d'atteindre le premier champ. La proposition met le geste utile en premier écran —
+        marquer, publier — et repousse le reste.</p>
+    </div>
+
+    <div style="display:flex;gap:var(--s6);flex-wrap:wrap;align-items:flex-start">
+      <div class="phone">
+        <div class="phone-in">
+          <div class="phone-tb">
+            <div class="burger"><i></i></div>
+            <div><div style="font-family:var(--font-ui);font-variation-settings:'wdth' 92,'wght' 700;font-size:12px">Soir de match</div>
+                 <div style="font-size:9.5px;color:var(--faint)">Baobabs vs DUC · 19:00</div></div>
+            <div class="pill live" style="margin-left:auto;height:26px;padding:0 10px;font-size:10px">Direct</div>
+          </div>
+          <div class="phone-body">
+            <div style="border-radius:var(--r-lg);padding:18px 14px;text-align:center;
+                        background:radial-gradient(120% 120% at 50% 0%, rgba(198,162,87,.22), transparent 65%), var(--surface-1);
+                        border:1px solid var(--gold-edge)">
+              <div class="label">3e quart-temps · 04:12</div>
+              <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px">
+                <div><div class="d-num" style="font-size:52px;color:var(--gold-lit)">64</div>
+                     <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:6px">Baobabs</div></div>
+                <div class="d-num" style="font-size:22px;color:var(--faint)">–</div>
+                <div><div class="d-num" style="font-size:52px">58</div>
+                     <div style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:6px">DUC</div></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px">
+              <div class="pill on" style="justify-content:center;height:52px;font-size:15px">+1</div>
+              <div class="pill on" style="justify-content:center;height:52px;font-size:15px">+2</div>
+              <div class="pill on" style="justify-content:center;height:52px;font-size:15px">+3</div>
+              <div class="pill" style="justify-content:center;height:52px;font-size:15px">−1</div>
+            </div>
+            <button class="btn" style="width:100%;justify-content:center;height:48px;margin-top:12px">Publier le score sur le site</button>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+              <span class="label">Guichet</span>
+              <div class="f" style="margin-top:10px"><div class="in">Référence, nom ou téléphone…</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1;min-width:280px">
+        <div class="note" style="margin-bottom:var(--s4)">
+          <span>◆</span><div><b>Trois points de rupture au lieu de huit.</b> Aujourd'hui l'admin en
+          utilise huit valeurs différentes (400, 480, 600, 760, 820, 1000…), ajoutées au fil du temps.
+          La proposition en garde trois — téléphone, tablette, bureau — et tout le reste s'adapte tout seul.</div>
+        </div>
+        <div class="ba">
+          <div class="before">
+            <h4>Aujourd'hui</h4>
+            <ul>
+              <li>En-tête + titre + description + 4 sous-onglets avant le premier champ</li>
+              <li>Cibles tactiles à 31&nbsp;px par endroits</li>
+              <li>Aucun retour d'enregistrement annoncé</li>
+              <li>4 règles <code>:focus-visible</code> sur tout l'admin</li>
+            </ul>
+          </div>
+          <div class="after">
+            <h4>Proposé</h4>
+            <ul>
+              <li>Le geste du moment en premier écran, le reste sous le pli</li>
+              <li>44&nbsp;px minimum partout où l'on touche</li>
+              <li>Chaque zone de message annoncée (<code>aria-live</code>)</li>
+              <li>Focus clavier visible sur tous les contrôles</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ NAVIGATION ══════════ -->
+  <section class="blk">
+    <div class="blk-head">
+      <span class="kicker">08 — Navigation</span>
+      <h2 class="d-1">38 entrées → 30, sans rien perdre</h2>
+      <p class="body">Les trois écrans «&nbsp;ancien&nbsp;» sont déjà retirés (41&nbsp;→&nbsp;38).
+        Le reste consiste à finir ce que vous aviez commencé : ce qui est une <em>vue</em> d'une même
+        chose redevient un onglet, ce qui se règle une fois par saison va dans Réglages.</p>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <span class="label" style="display:block;margin-bottom:14px">Ce qui bouge</span>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:12px">
+          <li style="display:flex;gap:12px;font-size:13.5px;color:var(--muted)"><b class="gold" style="flex:none;width:120px;font-weight:600">Calendrier</b><span>devient une vue de <b>Matchs</b> — l'écran le dit déjà lui-même</span></li>
+          <li style="display:flex;gap:12px;font-size:13.5px;color:var(--muted)"><b class="gold" style="flex:none;width:120px;font-weight:600">Résultats</b><span>devient la vue « À compléter », avec un compteur quand il y en a</span></li>
+          <li style="display:flex;gap:12px;font-size:13.5px;color:var(--muted)"><b class="gold" style="flex:none;width:120px;font-weight:600">Billetterie</b><span>rejoint la fiche du match — elle commence déjà par « choisissez un match »</span></li>
+          <li style="display:flex;gap:12px;font-size:13.5px;color:var(--muted)"><b class="gold" style="flex:none;width:120px;font-weight:600">Direct</b><span>part dans Réglages : une chaîne YouTube se relie une fois</span></li>
+          <li style="display:flex;gap:12px;font-size:13.5px;color:var(--muted)"><b class="gold" style="flex:none;width:120px;font-weight:600">Soir de match</b><span>devient la pastille rouge de l'en-tête, allumée les jours de match</span></li>
+          <li style="display:flex;gap:12px;font-size:13.5px;color:var(--muted)"><b class="gold" style="flex:none;width:120px;font-weight:600">Image du hero</b><span>fusionne avec Pages du site → Accueil</span></li>
+          <li style="display:flex;gap:12px;font-size:13.5px;color:var(--muted)"><b class="gold" style="flex:none;width:120px;font-weight:600">Actualités</b><span>l'aide le dit : c'est l'ancien écran d'Articles</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="label" style="display:block;margin-bottom:14px">Le contre, honnêtement</span>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:12px">
+          <li style="display:flex;gap:10px;font-size:13.5px;color:var(--muted)"><span style="color:var(--warn)">→</span><span>Le calendrier passe de 1 clic à 2 (menu, puis onglet de vue).</span></li>
+          <li style="display:flex;gap:10px;font-size:13.5px;color:var(--muted)"><span style="color:var(--warn)">→</span><span>Ouvrir la billetterie de 5 matchs d'affilée devient plus lent : 5 fiches à ouvrir.</span></li>
+          <li style="display:flex;gap:10px;font-size:13.5px;color:var(--muted)"><span style="color:var(--warn)">→</span><span>Si la détection du soir de match rate, l'écran est plus dur à trouver — je garde un chemin de repli dans Réglages.</span></li>
+          <li style="display:flex;gap:10px;font-size:13.5px;color:var(--muted)"><span style="color:var(--warn)">→</span><span>Vos habitudes sont cassées le temps de vous y refaire.</span></li>
+        </ul>
+        <div class="note" style="margin-top:var(--s5)">
+          <span>◆</span><div>Rien de tout cela n'est irréversible : chaque fusion est un déplacement
+          d'écran, pas une suppression de fonction.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    Proposition — Espace de gestion Baobabs Basket Club · Aucune donnée réelle n'est modifiée par cette page.
+  </footer>
+</div>
+</body>
+</html>

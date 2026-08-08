@@ -342,8 +342,52 @@
   .tk-resa-qty b{font-family:'Anton',sans-serif;font-weight:400;font-size:24px;color:var(--gold-bright);line-height:1}
   .tk-resa-qty span{font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:3px}
 
-  /* ===== V2 — écrans de contenu : sommaire collant + signature des cartes ===== */
-  .qgc-nav{display:flex;flex-wrap:wrap;gap:7px 6px;position:sticky;top:64px;z-index:5;background:linear-gradient(var(--bg) 78%,transparent);padding:10px 0 14px;margin-bottom:10px}
+  /* ===== V2 — écrans de contenu : sommaire collant + signature des cartes =====
+     Ces écrans (Pages du site, Réglages) empilent des blocs éditables :
+     le formulaire à gauche, l'aperçu réel du site à droite. La largeur est
+     celle de la zone de contenu — à 760px les deux colonnes s'écrasaient et
+     l'aperçu ne montrait plus rien d'utile. */
+  .qgc-page{max-width:1120px}
+
+  .qgc-nav{position:sticky;top:64px;z-index:5;display:flex;align-items:center;gap:13px;background:var(--bg);padding:12px 0 13px;margin:0 0 24px;border-bottom:1px solid var(--line)}
+  .qgc-nav-label{flex:none;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+  .qgc-nav-list{display:flex;flex-wrap:wrap;gap:7px;min-width:0}
+  .qgc-chip{display:inline-flex;align-items:center;min-height:36px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:100px;padding:7px 14px;color:var(--muted);font:600 12px 'Inter',sans-serif;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s,background .15s}
+  .qgc-chip:hover{border-color:var(--gold);color:var(--text)}
+  .qgc-chip:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  .qgc-chip.on{background:var(--gold-soft);border-color:var(--gold);color:var(--gold-bright)}
+  @media(max-width:760px){
+    .qgc-nav{flex-direction:column;align-items:flex-start;gap:8px;padding:10px 0 11px;margin-bottom:20px}
+    .qgc-nav-list{flex-wrap:nowrap;overflow-x:auto;width:100%;padding-bottom:3px;scrollbar-width:none}
+    .qgc-nav-list::-webkit-scrollbar{display:none}
+    .qgc-chip{min-height:42px;padding:10px 15px}   /* cible tactile */
+  }
+
+  .qgc-block{margin-bottom:26px}
+  .qgc-block + .qgc-block{margin-top:0}   /* neutralise .card + .card */
+  .qgc-block-head{margin-bottom:22px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+  .qgc-block-page{display:block;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:7px}
+  .qgc-block-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;letter-spacing:.01em;margin:0;line-height:1.3}
+
+  .qgc-block-body{display:grid;grid-template-columns:minmax(0,1fr);gap:30px;align-items:start}
+  @media(min-width:1200px){
+    .qgc-block-body{grid-template-columns:minmax(0,1.08fr) minmax(300px,.92fr);gap:40px}
+    .qgc-preview{position:sticky;top:98px}
+  }
+
+  /* Une seule colonne de champs pleine largeur allongeait la page sans
+     raison : les champs courts vont désormais par deux, les textes longs
+     et les images gardent toute la largeur. */
+  .qgc-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:17px 18px}
+  .qgc-fields .qg-field{margin:0;min-width:0}
+  .qgc-fields .qgc-wide{grid-column:1/-1}
+
+  .qgc-actions{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:26px;padding-top:20px;border-top:1px dashed var(--line-strong)}
+  .qgc-actions .msg{margin-top:0;flex:1;min-width:190px}
+
+  .qgc-preview-label{display:flex;align-items:center;gap:9px;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+  .qgc-preview-label::after{content:'';flex:1;height:1px;background:var(--line)}
+
   .card-title::after{content:'';display:block;width:26px;height:2px;border-radius:2px;background:var(--gold);margin-top:7px;opacity:.85}
   .cl-stats{display:flex;flex-direction:column;align-items:flex-end;flex:none;min-width:104px}
   .cl-stats b{font-family:'Anton',sans-serif;font-weight:400;font-size:19px;letter-spacing:.03em;color:var(--gold-bright);line-height:1.1}
@@ -1260,10 +1304,6 @@
 
       <div class="sb-group">
         <div class="sb-group-label">Match day</div>
-        <button class="sb-link" data-section="matches">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18M3 12h18M4.5 7.5c2 1.3 13 1.3 15 0M4.5 16.5c2-1.3 13-1.3 15 0"/></svg>
-          Matchs &amp; adversaires <span style="font-size:9px;opacity:.5;margin-left:4px">ancien</span>
-        </button>
         <button class="sb-link" data-section="teams">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Adversaires
@@ -1303,10 +1343,6 @@
         <button class="sb-link" data-section="squad">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Joueuses
-        </button>
-        <button class="sb-link" data-section="roster">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Effectif <span style="font-size:9px;opacity:.5;margin-left:4px">ancien</span>
         </button>
         <button class="sb-link" data-section="staff">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -1400,10 +1436,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9h.01M15 15h.01M16 8l-8 8"/><circle cx="12" cy="12" r="9"/></svg>
           Codes promo
         </button>
-        <button class="sb-link" data-section="shop">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
-          Produits <span style="font-size:9px;opacity:.5;margin-left:4px">ancien</span>
-        </button>
         <button class="sb-link" data-section="orders2">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
           Commandes
@@ -1486,7 +1518,7 @@
       </div>
 
       <div class="dash-grid" id="dash-stats">
-        <button class="dash-stat" data-section="matches">
+        <button class="dash-stat" data-section="matches2">
           <div class="dash-stat-top">
             <div class="dash-stat-icon" style="background:var(--gold-soft);color:var(--gold)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg>
@@ -1495,7 +1527,7 @@
           <div class="dash-stat-num" id="dash-upcoming-num">—</div>
           <div class="dash-stat-label">Matchs à venir</div>
         </button>
-        <button class="dash-stat" data-section="matches">
+        <button class="dash-stat" data-section="matches2">
           <div class="dash-stat-top">
             <div class="dash-stat-icon" style="background:rgba(28,122,58,.12);color:var(--lime)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
@@ -1545,7 +1577,7 @@
 
       <div class="dash-section-title">Accès rapide</div>
       <div class="dash-quick">
-        <button class="dash-quick-btn" data-section="matches">
+        <button class="dash-quick-btn" data-section="matches2">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           Ajouter un match
         </button>
@@ -2509,14 +2541,6 @@
       <div id="qgv-standings"></div>
       <div id="coll-standings" class="hide"></div>
     </section>
-    <section id="section-roster" class="hide">
-      <div class="qg-tabbar">
-        <button type="button" class="qg-tab active" data-qg-tab="visual"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Éditeur visuel</button>
-        <button type="button" class="qg-tab" data-qg-tab="form"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Formulaire classique</button>
-      </div>
-      <div id="qg-roster"></div>
-      <div id="coll-roster" class="hide"></div>
-    </section>
     <section id="section-founder" class="hide">
       <div class="grid-2"><div>
       <div class="card">
@@ -2631,16 +2655,6 @@
       </div>
       <div id="qgv-partners"></div>
       <div id="coll-partners" class="hide"></div>
-    </section>
-    <section id="section-shop" class="hide">
-      <div class="qg-tabbar">
-        <button type="button" class="qg-tab active" data-qg-tab="visual"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>Éditeur visuel</button>
-        <button type="button" class="qg-tab" data-qg-tab="form"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Formulaire classique</button>
-        <button type="button" class="qg-tab" data-qg-tab="reglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Réglages accueil</button>
-      </div>
-      <div id="qgv-shop"></div>
-      <div id="coll-shop" class="hide"></div>
-      <div id="qgv-reglages-shop" class="hide"></div>
     </section>
 
     <!-- ===== SECTION MESSAGES (newsletter / contact / commandes) ===== -->
@@ -3125,7 +3139,6 @@
     newsl:{t:'Newsletter',d:'Écrivez aux inscrits : test sur votre adresse d\'abord, envoi à tous ensuite, avec le journal des envois.'},
     promos:{t:'Codes promo',d:'Des remises à partager : pourcentage ou montant, avec période, minimum d\'achat et limite d\'utilisation.'},
     gameday:{t:'Soir de match',d:'L\'écran du jour J : le score d\'un côté, le guichet de retrait des billets de l\'autre.'},
-    matches:{t:'Gestion des matchs',d:'Ajoutez un match, saisissez un score, gérez vos adversaires. Tout se met à jour sur le site public.'},
     teams:{t:'Adversaires',d:'Les clubs que vous affrontez : ajout en un clic, logos, historique des confrontations.'},
     live:{t:'Diffusion en direct',d:'Reliez la chaîne YouTube du club pour activer le direct sur l\'accueil.'},
     standings:{t:'Classement',d:'Le tableau du championnat affiché sur la page Compétitions. Les lignes se classent par points.'},
@@ -3145,7 +3158,6 @@
     clients:{t:'Clients',d:'Vos supporters : coordonnées, historique de commandes, total dépensé, réservations et notes internes.'},
     applications:{t:'Candidatures',d:'Chaque candidature est un dossier de recrutement : profil, coordonnées, parcours, documents, notes internes et journal des décisions.'},
     tickets:{t:'Billetterie',d:'Ouvrez la vente match par match : catégories, tarifs, quotas — et suivez les réservations.'},
-    roster:{t:'Effectif',d:'Les joueuses et joueurs affichés dans la section Équipes.'},
     staff:{t:'Staff',d:'Les membres de l\'encadrement affichés dans le bloc « Le staff » du site.'},
     timeline:{t:'Notre histoire',d:'La chronologie du club affichée sur la page « Le Club ».'},
     c_home:{t:'Page d\'accueil',d:'Le hero, le Face-Off, le bandeau de chiffres et la section Médias. Aperçu en direct à droite de chaque bloc.'},
@@ -3159,7 +3171,6 @@
     bureau:{t:'Bureau / organigramme',d:'Éditez le titulaire et la fiche de chaque poste de l\'organigramme.'},
     news:{t:'Actualités',d:'Les annonces et actualités publiées sur le site.'},
     partners:{t:'Partenaires',d:'Les logos et liens des partenaires du club.'},
-    shop:{t:'Boutique — produits',d:'Les produits proposés dans la boutique : photos, noms, prix, tailles.'},
     forms:{t:'Messages',d:'Les inscriptions newsletter, messages de contact et commandes boutique envoyés depuis le site public.'},
     home:{t:'Image du hero',d:'L\'image de fond et le texte d\'accroche du grand bloc d\'accueil.'},
     audit:{t:'Historique',d:'Qui a modifié quoi, et quand — protégé par mot de passe.'}
@@ -3185,7 +3196,6 @@
     promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b> : un clic ajoute le club, logo compris. Pour un club absent, le formulaire du bas fait l'affaire.","<b>Changer un logo</b> : le bouton image sur une ligne ouvre l'éditeur — les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo."],
     gameday: ["<b>L'écran du jour de match</b>, pensé pour la personne au guichet et à la table de marque.","Le tableau de marque se pilote avec les touches +1 / +2 / +3 / −1. <b>Publier le score</b> l'envoie sur le site — à faire au coup de sifflet final, le site l'affiche comme définitif.","Le guichet retrouve une réservation par référence, nom ou téléphone ; <b>Retirer</b> pointe le billet à l'entrée.","Les jauges de droite montrent les places restantes par catégorie, mises à jour à chaque retrait."],
-    matches: ["<b>L'ancien écran de gestion des matchs</b> : ajout d'une rencontre, saisie du score, gestion des adversaires et de leurs logos.","Tout ce qui est enregistré ici apparaît sur le site : calendrier, résultats, prochain match de l'accueil.","L'icône « copier » sur une ligne duplique le match à J+7, sans score — pratique pour les rencontres régulières.","Les écrans plus récents (Calendrier, Matchs, Résultats) montrent les mêmes données sous d'autres angles."],
     live: ["<b>Relie la chaîne YouTube du club au site.</b> C'est le seul réglage nécessaire.","Un jour de match, lancez votre direct sur YouTube comme d'habitude : le bloc « En direct » de l'accueil bascule tout seul, puis revient à la normale à la fin.","Le message hors-direct s'affiche quand rien n'est diffusé."],
     standings: ["<b>Le classement affiché sur la page Compétitions du site.</b>","Le podium en haut montre ce que voit le public ; l'éditeur en dessous permet de corriger chaque ligne (victoires, défaites, points).","L'éditeur visuel se manipule à la souris ; le formulaire classique reste disponible via l'onglet."],
     coherence: ["<b>Compare la page publique en ligne avec le contenu de l'admin</b> : écarts de texte, contenu codé en dur, réglages inutilisés.","Protégé par le mot de passe de l'historique — l'écran expose la structure interne du site.","« Adopter » récupère la valeur du site dans l'admin en un clic."],
@@ -3204,7 +3214,6 @@
     orders2: ["<b>Chaque commande est un bon de préparation</b> : le client, les articles à emballer, le montant, le paiement.","Faites glisser une carte d'une colonne à l'autre pour changer son statut — le client peut suivre sa commande.","La fiche imprime un bon de préparation propre.","Chaque changement de statut est tracé dans l'historique de la commande."],
     clients: ["<b>Vos supporters</b> : coordonnées, historique de commandes, total dépensé, réservations, notes internes.","Les comptes se créent sur le site (connexion / inscription) ; cette liste se remplit toute seule.","Cliquez une ligne pour ouvrir la fiche complète."],
     applications: ["<b>Chaque candidature est un dossier de recrutement</b> : profil, coordonnées, parcours, documents, notes.","Faites glisser une carte pour changer son statut (nouvelle, à étudier, entretien, acceptée…) — chaque décision est tracée dans le journal du dossier.","Les candidatures arrivent du formulaire Tryouts du site."],
-    roster: ["<b>L'ancien écran d'effectif</b>, conservé le temps de la transition.","Préférez l'écran Joueuses, plus complet (statuts, statistiques, fiches)."],
     founder: ["<b>La fiche du fondateur</b>, affichée sur la page « Le Club » du site, sous « Notre histoire ».","Photo, nom, titre et présentation — l'aperçu de droite montre le rendu réel."],
     bureau: ["<b>L'organigramme du club.</b> La structure de l'arbre est fixe ; vous éditez le titulaire, la photo et la fiche de chaque poste.","S'affiche sur la page « Le Club » du site."],
     staff: ["<b>Les membres de l'encadrement</b> affichés dans le bloc « Le staff » du site.","Une carte par personne : photo, nom, rôle."],
@@ -3218,13 +3227,16 @@
     reglages: ["<b>L'identité du site</b> : logo, coordonnées, réseaux sociaux, pied de page.","Appliqué partout sur le site — un changement ici se voit sur toutes les pages."],
     news: ["<b>L'ancien écran des actualités</b>, conservé le temps de la transition.","Préférez l'écran Articles, plus complet (chapô, catégorie, référencement, statuts)."],
     partners: ["<b>Les logos et liens des partenaires</b> affichés en bas du site.","Les logos passent automatiquement en blanc sur le fond sombre ; cochez « couleur » pour garder l'original."],
-    shop: ["<b>L'ancien écran boutique</b>, conservé le temps de la transition.","Préférez les écrans Produits et Stock, plus complets."],
     forms: ["<b>Ce que le site vous envoie</b> : inscriptions newsletter, messages de contact, commandes.","Les candidatures ont leur propre écran, avec un vrai suivi de dossier."],
     home: ["<b>L'image de fond et l'accroche du grand bloc d'accueil.</b>","Si des bannières sont actives (écran Bannières & slider), elles passent devant cette image."],
     audit: ["<b>Qui a modifié quoi, et quand.</b> Chaque ligne est une phrase, regroupée par jour ; l'ancienne valeur est barrée, la nouvelle à côté.","Protégé par mot de passe. La recherche et les filtres retrouvent une modification précise.","Rien ne s'efface : c'est la mémoire de l'admin."]
   };
 
-  var ALL_SECTIONS = ['dashboard','gameday','teams','matches','promos','newsl','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','roster','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','shop','forms','home','audit'];
+  // 'matches', 'roster' et 'shop' — les trois écrans « ancien » — ont été
+  // retirés de la navigation. Leur balisage reste masqué dans la page le
+  // temps du démêlage du code (loadTeams alimente encore l'ancien
+  // formulaire), mais aucun chemin de l'admin n'y mène plus.
+  var ALL_SECTIONS = ['dashboard','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
   function showSection(key, formKey){
@@ -3266,26 +3278,25 @@
   // Raccourcis : trois liens qui répondent à « et maintenant ? » depuis
   // l'écran où l'on est. Tout écran non listé reçoit le trio par défaut.
   var CTX_LINKS = {
-    dashboard: [['Soir de match','gameday'],['Composer un match','matches'],['Billetterie','tickets']],
-    gameday:   [['Billetterie','tickets'],['Fiches des matchs','matches2'],['Direct','live']],
-    matches:   [['Résultats à saisir','results'],['Calendrier','calendar'],['Billetterie','tickets']],
-    teams:     [['Composer un match','matches'],['Fiches des matchs','matches2'],['Calendrier','calendar']],
-    matches2:  [['Composer un match','matches'],['Calendrier','calendar'],['Direct','live']],
-    calendar:  [['Composer un match','matches'],['Fiches des matchs','matches2'],['Résultats','results']],
-    results:   [['Fiches des matchs','matches2'],['Classement','standings'],['Direct','live']],
-    tickets:   [['Composer un match','matches'],['Fiches des matchs','matches2'],['Clients','clients']],
+    dashboard: [['Soir de match','gameday'],['Matchs','matches2'],['Billetterie','tickets']],
+    gameday:   [['Billetterie','tickets'],['Matchs','matches2'],['Direct','live']],
+    teams:     [['Matchs','matches2'],['Calendrier','calendar'],['Classement','standings']],
+    matches2:  [['Calendrier','calendar'],['Résultats à saisir','results'],['Direct','live']],
+    calendar:  [['Matchs','matches2'],['Résultats à saisir','results'],['Adversaires','teams']],
+    results:   [['Matchs','matches2'],['Classement','standings'],['Direct','live']],
+    tickets:   [['Matchs','matches2'],['Soir de match','gameday'],['Clients','clients']],
     orders2:   [['Produits','products'],['Stock','stock'],['Clients','clients']],
     promos:    [['Produits','products'],['Commandes','orders2'],['Clients','clients']],
     newsl:     [['Messages','forms'],['Articles','articles'],['Bannières','banners']],
     clients:   [['Commandes','orders2'],['Billetterie','tickets'],['Historique','audit']],
     products:  [['Stock','stock'],['Commandes','orders2'],['Médiathèque','media']],
     stock:     [['Produits','products'],['Commandes','orders2'],['Médiathèque','media']],
-    squad:     [['Candidatures','candidatures'],['Médiathèque','media'],['Effectif (ancien)','roster']],
+    squad:     [['Candidatures','applications'],['Médiathèque','media'],['Staff','staff']],
     articles:  [['Catégories','categories'],['Médiathèque','media'],['Bannières','banners']],
     banners:   [['Bandeau d\'annonce','announce'],['Médiathèque','media'],['Image du hero','c_home']],
     coherence: [['Réglages','reglages'],['Historique','audit'],['Billetterie','tickets']]
   };
-  var CTX_DEFAULT = [['Composer un match','matches'],['Cohérence','coherence'],['Historique','audit']];
+  var CTX_DEFAULT = [['Matchs','matches2'],['Cohérence','coherence'],['Historique','audit']];
 
   function ctxInit(){
     if (document.getElementById('ctx-rail')) return;
@@ -9514,7 +9525,6 @@
     teams:function(){ loadTeams(); },
     live:function(){ loadSettings().then(function(){ LOADERS_live(); }); },
     home:function(){ loadSettings().then(function(){ LOADERS_home(); }); },
-    roster:function(){ qgRosterInit(); },
     founder:function(){ loadSettings().then(function(){ LOADERS_founder(); }); },
     bureau:function(){ LOADERS_bureau(); },
     staff:function(){ qgvInit('staff'); },
@@ -9528,7 +9538,6 @@
     reglages:function(){ loadSettings().then(function(){ qgcRender(SETTINGS_BLOCKS,'qgs-mount'); }); },
     news:function(){ qgvInit('news'); },
     partners:function(){ qgvInit('partners'); },
-    shop:function(){ qgvInit('shop'); },
     standings:function(){ qgvInit('standings'); },
     tickets:function(){ tkInit(); },
     coherence:function(){ coInit(); },
@@ -10059,11 +10068,6 @@
     var v=document.getElementById('qgv-'+key), f=document.getElementById('coll-'+key);
     if(v) v.classList.toggle('hide', t!=='visual');
     if(f) f.classList.toggle('hide', t!=='form');
-    if(key==='shop'){
-      var r=document.getElementById('qgv-reglages-shop');
-      if(r) r.classList.toggle('hide', t!=='reglages');
-      if(t==='reglages' && !qgvState(key).reglagesBuilt){ qgvBuildReglagesShop(); qgvState(key).reglagesBuilt=true; }
-    }
   }
   function qgvBuildShell(key){
     var mount=document.getElementById('qgv-'+key); if(!mount) return; var hd=QGV_HEAD[key]||{k:'',h:'',p:''};
@@ -10077,9 +10081,6 @@
     document.querySelectorAll('#section-'+key+' .qg-tab').forEach(function(b){ b.addEventListener('click',function(){ qgvSetTab(key,b.getAttribute('data-qg-tab')); }); });
     var sb=document.getElementById('qgv-search-'+key); if(sb) sb.addEventListener('input',function(){ qgvState(key).q=sb.value; qgvRenderCards(key); });
     qgvRenderInspector(key);
-  }
-  function qgvBuildReglagesShop(){
-    loadSettings().then(function(){ qgcRender(qgcGroup('shop_reglages'),'qgv-reglages-shop'); });
   }
   function qgvLoad(key){
     var c=COLLECTIONS[key]; var box=document.getElementById('qgv-body-'+key);
@@ -10849,7 +10850,10 @@
   // barre latérale : chaque section n'affiche que ses propres blocs, ce qui
   // évite la page unique à rallonge.
   var CONTENT_GROUPS = {
-    c_home:['club_hero','club_faceoff','club_stats','club_media'],
+    // « Boutique — en-tête sur l'accueil » vivait dans un 3e onglet de
+    // l'ancien écran Boutique, supprimé depuis. C'est un bloc de la page
+    // d'accueil : sa place est ici, avec les autres.
+    c_home:['club_hero','club_faceoff','club_stats','club_shop_home','club_media'],
     c_club:['club_intro','club_obj','club_camp'],
     c_tryouts:['club_tryouts','club_try_media'],
     c_app:['club_app','club_app_screens'],
@@ -10857,10 +10861,7 @@
     c_legal:['club_footer_cols','club_legal_mentions','club_legal_confid'],
     // Pas une entrée de « Pages du site » : rendu depuis le sous-onglet
     // « Page publique » de la section Billetterie (voir tickets-subtabs).
-    tk_texts:['club_tickets_page'],
-    // Pas une entrée de « Pages du site » : rendu depuis le 3e onglet
-    // « Réglages accueil » de la section Boutique (voir qgvBuildReglagesShop).
-    shop_reglages:['club_shop_home']
+    tk_texts:['club_tickets_page']
   };
   function qgcGroup(key){
     return (CONTENT_GROUPS[key]||[]).map(function(id){
@@ -10873,29 +10874,50 @@
     var m=document.getElementById(mountId); if(!m) return;
     // Plus de deux blocs = un sommaire collant en tête : on saute au bloc
     // voulu au lieu de faire défiler toute la page.
-    var nav = blocks.length>2 ? '<div class="qgc-nav">'+blocks.map(function(b){
-      return '<button type="button" class="ctx-link" data-qgc-go="'+esc(b.id)+'">'+esc(b.label)+'</button>';
-    }).join('')+'</div>' : '';
-    m.innerHTML='<div style="max-width:760px">'+nav+blocks.map(function(bl){
+    var nav = blocks.length>2 ? '<nav class="qgc-nav" aria-label="Blocs de cette page"><span class="qgc-nav-label">Aller à</span><div class="qgc-nav-list">'+blocks.map(function(b){
+      return '<button type="button" class="qgc-chip" data-qgc-go="'+esc(b.id)+'">'+esc(b.label)+'</button>';
+    }).join('')+'</div></nav>' : '';
+    m.innerHTML='<div class="qgc-page">'+nav+blocks.map(function(bl){
       var fields=bl.fields.map(function(f){
-        var v=qgcVal(f.key);
-        if(f.type==='image') return '<div class="qg-field"><label>'+esc(f.label)+'</label><input class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'" placeholder="https://…" style="font-size:12.5px"><div class="qg-photo-actions"><label class="qg-file-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Téléverser</span><input type="file" data-kfile="'+f.key+'" accept="image/*" style="display:none"></label></div></div>';
-        if(f.type==='textarea') return '<div class="qg-field"><label>'+esc(f.label)+'</label><textarea class="qg-in qgc-in" data-k="'+f.key+'" rows="3">'+esc(v)+'</textarea></div>';
-        return '<div class="qg-field"><label>'+esc(f.label)+'</label><input class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'"></div>';
+        var v=qgcVal(f.key), fid='qgc-f-'+f.key;
+        // Textes longs et images prennent toute la largeur ; le reste se
+        // range par deux, ce qui raccourcit la page de moitié.
+        var wide=(f.type==='textarea'||f.type==='image')?' qgc-wide':'';
+        if(f.type==='image') return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><input id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'" placeholder="https://…" style="font-size:12.5px"><div class="qg-photo-actions"><label class="qg-file-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Téléverser</span><input type="file" data-kfile="'+f.key+'" accept="image/*" style="display:none"></label></div></div>';
+        if(f.type==='textarea') return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><textarea id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" rows="3">'+esc(v)+'</textarea></div>';
+        return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><input id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'"></div>';
       }).join('');
-      return '<div class="card" id="qgc-card-'+esc(bl.id)+'" style="margin-bottom:20px"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px"><h2 class="card-title" style="margin:0">'+esc(bl.label)+'</h2><span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)">'+esc(bl.page)+'</span></div>'+
-        '<div class="grid-2" style="align-items:start;gap:20px"><div>'+fields+'<button type="button" class="btn btn-primary qgc-save" data-block="'+bl.id+'">Enregistrer</button><div class="msg" id="qgc-msg-'+bl.id+'"></div></div>'+
-        '<div><div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:9px">Aperçu réel</div><div id="qgc-pv-'+bl.id+'"></div></div></div></div>';
+      return '<article class="card qgc-block" id="qgc-card-'+esc(bl.id)+'">'+
+        '<header class="qgc-block-head"><span class="qgc-block-page">'+esc(bl.page)+'</span><h2 class="qgc-block-title">'+esc(bl.label)+'</h2></header>'+
+        '<div class="qgc-block-body">'+
+          '<div class="qgc-form"><div class="qgc-fields">'+fields+'</div>'+
+            '<div class="qgc-actions"><button type="button" class="btn btn-primary qgc-save" data-block="'+bl.id+'">Enregistrer</button>'+
+            '<div class="msg" id="qgc-msg-'+bl.id+'" role="status" aria-live="polite"></div></div></div>'+
+          '<aside class="qgc-preview"><div class="qgc-preview-label">Aperçu réel</div><div id="qgc-pv-'+bl.id+'"></div></aside>'+
+        '</div></article>';
     }).join('')+'</div>';
     blocks.forEach(function(bl){ qgcPreview(bl); });
-    m.querySelectorAll('[data-qgc-go]').forEach(function(b){
+    var chips = m.querySelectorAll('[data-qgc-go]');
+    chips.forEach(function(b){
       b.addEventListener('click', function(){
         var c=document.getElementById('qgc-card-'+b.getAttribute('data-qgc-go'));
         if(!c) return;
-        var y=c.getBoundingClientRect().top+window.scrollY-118;
+        var nv=m.querySelector('.qgc-nav');
+        var y=c.getBoundingClientRect().top+window.scrollY-(64+(nv?nv.offsetHeight:0)+16);
         window.scrollTo({top:y, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
       });
     });
+    // Le sommaire suit la lecture : on sait toujours dans quel bloc on est.
+    if (chips.length && 'IntersectionObserver' in window){
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(en){
+          if(!en.isIntersecting) return;
+          var id = en.target.id.slice(9); // 'qgc-card-'
+          chips.forEach(function(c){ c.classList.toggle('on', c.getAttribute('data-qgc-go')===id); });
+        });
+      }, {rootMargin:'-140px 0px -62% 0px'});
+      blocks.forEach(function(bl){ var c=document.getElementById('qgc-card-'+bl.id); if(c) io.observe(c); });
+    }
     m.querySelectorAll('.qgc-in').forEach(function(el){ el.addEventListener('input',function(){ var bl=qgcAll().filter(function(b){ return b.fields.some(function(f){return f.key===el.getAttribute('data-k');}); })[0]; if(bl) qgcPreview(bl); }); });
     m.querySelectorAll('input[data-kfile]').forEach(function(fe){ fe.addEventListener('change',function(){ var file=fe.files[0]; if(!file) return; var key=fe.getAttribute('data-kfile'); var span=fe.parentNode.querySelector('span'); if(span) span.textContent='Envoi…'; uploadFile(MEDIA_BUCKET,file).then(function(url){ var inp=document.querySelector('.qgc-in[data-k="'+key+'"]'); if(inp){ inp.value=url; inp.dispatchEvent(new Event('input',{bubbles:true})); } if(span) span.textContent='Téléverser'; qgToast('Image envoyée ✓'); }).catch(function(){ if(span) span.textContent='Téléverser'; qgToast('Échec de l\'envoi',true); }); }); });
     m.querySelectorAll('.qgc-save').forEach(function(btn){ btn.addEventListener('click',function(){ qgcSave(btn.getAttribute('data-block'),btn); }); });
