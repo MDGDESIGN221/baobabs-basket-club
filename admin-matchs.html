@@ -10896,10 +10896,11 @@
           : '';
         return '<div style="background:radial-gradient(120% 140% at 78% 0%,#123322 0%,#081C13 46%,#05130D 100%);border:1px solid rgba(198,162,87,.22);border-radius:14px;padding:20px"><div style="display:flex;align-items:center;gap:8px"><span style="width:6px;height:6px;border-radius:50%;background:'+teinte+'"></span><span style="font-family:var(--font-ui);font-weight:700;font-size:9.5px;letter-spacing:.22em;color:'+teinte+';text-transform:uppercase">'+esc(v.try_kicker)+'</span></div><div style="font-family:var(--font-ui);font-weight:700;font-size:44px;line-height:.9;color:#F3EFE6;margin:10px 0 8px">'+esc(v.try_title_a)+'<span style="color:#A8D93B">'+esc(v.try_title_b)+'</span></div><div style="font-size:12.5px;line-height:1.6;color:#C7CFC8">'+esc(v.try_text)+'</div>'+note+'<div style="display:flex;flex-wrap:wrap;gap:20px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(243,239,230,.08)">'+info('Dates',v.try_dates)+info('Heure',v.try_time)+info('Lieu',v.try_place)+info('Contact',v.try_contact)+'</div></div><p class="pv-hint">Ce bloc alimente l\'accueil <b>et</b> la page Tryouts. Passer l\'état à « clôturée » affiche le message ci-dessus sur le site ; <b>le formulaire de candidature reste ouvert</b>. Les catégories de recrutement se gèrent dans l\'onglet Recrutement.</p>';
       } },
-    { id:'club_try_media', page:'Tryouts · Teaser & affiches', label:'Tryouts — teaser vidéo et affiches', fields:[
-        {key:'try_video_url', label:'Teaser · adresse de la vidéo MP4 (vide = teaser masqué partout)', type:'text', def:''},
-        {key:'try_video_poster', label:'Teaser · image affichée avant lecture', type:'image', def:''},
-        {key:'try_teaser_tag', label:'Teaser · étiquette', type:'text', def:'TEASER'},
+    // Le teaser vidéo a été retiré du site le 01/08/2026 : index.html ne
+    // lit plus try_video_url, try_video_poster ni try_teaser_tag. Trois
+    // champs qui donnaient l'illusion d'éditer quelque chose — et dont
+    // l'aperçu chargeait une image morte. Retirés.
+    { id:'club_try_media', page:'Tryouts · Affiches', label:'Tryouts — affiches', fields:[
         {key:'try_poster1_url', label:'Affiche 1', type:'image', def:'/media/img/BBC_-_TRYOUTS_2026_SAISON_2026-2027_r3n5np.webp'},
         {key:'try_poster2_url', label:'Affiche 2 (vide = une seule affiche)', type:'image', def:'/media/img/BBC_-_TRYOUTS_2026_SAISON_2026-2027_v3_cel80k.webp'},
         {key:'try_poster_badge', label:'Affiches · pastille sur la vignette', type:'text', def:'Voir'},
@@ -10910,17 +10911,6 @@
         var deux = !!v.try_poster2_url;
         function carte(url,rot,z){ return '<div style="position:absolute;width:100%;aspect-ratio:3/4;border-radius:6px;overflow:hidden;border:1px solid rgba(198,162,87,.28);box-shadow:0 8px 24px rgba(0,0,0,.65);transform:rotate('+rot+'deg);z-index:'+z+'">'+(url?'<img src="'+esc(url)+'" alt="" style="width:100%;height:100%;object-fit:cover;opacity:.92">':'<div style="width:100%;height:100%;background:#0F1E15"></div>')+'<span style="position:absolute;top:5px;left:5px;background:rgba(5,14,9,.85);color:#A8D93B;font-family:var(--font-ui);font-size:7px;font-weight:700;letter-spacing:.1em;padding:2px 5px;border-radius:3px">'+esc(v.try_poster_badge)+'</span></div>'; }
         return '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">'+
-          '<div style="flex:1;min-width:180px">'+
-            '<div style="font-family:var(--font-ui);font-weight:700;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:8px">Teaser</div>'+
-            (v.try_video_url
-              ? '<div style="position:relative;border-radius:12px;overflow:hidden;border:1px solid rgba(198,162,87,.28);background:#0A150F;aspect-ratio:9/13;max-width:200px">'+
-                  (v.try_video_poster?'<img src="'+esc(v.try_video_poster)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">':'')+
-                  '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,.75),transparent 55%)"></div>'+
-                  '<span style="position:absolute;top:8px;left:8px;font-family:var(--font-ui);font-weight:700;font-size:7.5px;letter-spacing:.14em;color:#0A1B0D;background:#A8D93B;padding:3px 7px;border-radius:4px">'+esc(v.try_teaser_tag)+'</span>'+
-                  '<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:rgba(198,162,87,.92);display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="#07130D"><path d="M8 5v14l11-7z"></path></svg></div>'+
-                '</div>'
-              : '<div style="border-radius:12px;border:1px dashed rgba(243,239,230,.2);padding:22px;text-align:center;font-size:11px;color:#7E8A82">Teaser masqué sur le site</div>')+
-          '</div>'+
           '<div style="flex:1;min-width:180px">'+
             '<div style="font-family:var(--font-ui);font-weight:700;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:8px">Affiches</div>'+
             (v.try_poster1_url||v.try_poster2_url
