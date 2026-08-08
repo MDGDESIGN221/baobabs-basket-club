@@ -369,6 +369,18 @@
   .aud-old img{outline:1px solid rgba(192,39,27,.4)}
   .aud-new{color:var(--text)}
   .aud-when{font-size:11px;color:var(--faint);flex:none;margin-top:3px;font-variant-numeric:tabular-nums}
+  .aud-grouped-note{font-weight:400;text-transform:none;letter-spacing:0;color:var(--faint);font-size:11.5px;margin-left:2px}
+  /* Compte rendu groupé : un geste (créer une fiche, modifier plusieurs
+     champs d'un coup) donnait jusqu'ici une ligne par champ touché. */
+  .aud-fields{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .aud-fields li{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12.5px;background:var(--surface-2, rgba(255,255,255,.03));border:1px solid var(--line);border-radius:9px;padding:7px 11px}
+  .aud-fk{color:var(--faint);font-weight:600;flex:none}
+  .aud-fields .aud-undo{margin-left:auto}
+  .aud-thumb-row{display:flex;align-items:center;gap:11px;margin-top:8px}
+  .aud-thumb-row img{width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid var(--line-strong);flex:none}
+  .aud-thumb-name{font-family:var(--font-ui);font-weight:650;font-size:13.5px;color:var(--text)}
+  .aud-item.is-delete .aud-avatar{background:var(--danger-wash);color:var(--danger)}
+  .aud-item.is-create .aud-avatar{background:var(--ok-wash);color:var(--ok)}
 
   /* ===== V2 — billetterie : la jauge dit le remplissage ===== */
   .tk-gauge{height:5px;border-radius:99px;background:var(--surface-2);margin:8px 0 5px;overflow:hidden}
@@ -3005,11 +3017,21 @@
       })}).catch(function(){});
     } catch(e){}
   }
+  // Un tableau d'objets (ex : status_history) ou un objet brut ne se réduit
+  // pas proprement en texte — String() donne littéralement "[object Object]".
+  // On ne journalise pas ces colonnes de bookkeeping interne : ce ne sont
+  // pas des saisies humaines, et les afficher ne renseigne personne.
+  function isAuditInternalValue(v){
+    if (!v || typeof v !== 'object') return false;
+    if (Array.isArray(v)) return v.some(function(x){ return x && typeof x === 'object'; });
+    return true;
+  }
   function auditDiffFields(before, after, section, table, recordId){
     before = before || {};
     var keys = Object.keys(after||{});
     keys.forEach(function(k){
       var ov = before[k], nv = after[k];
+      if (isAuditInternalValue(nv) || isAuditInternalValue(ov)) return;
       var ovs = ov==null?'':String(ov), nvs = nv==null?'':String(nv);
       if (ovs === nvs) return;
       auditSend(section, table, recordId, k, ovs, nvs);
@@ -3083,7 +3105,13 @@
     // --- Billetterie ---
     category:'Catégorie de billet', price_fcfa:'Tarif (FCFA)', quota:'Nombre de places', is_open:'Vente ouverte', sort_order:'Ordre d\'affichage',
     // --- Matchs ---
-    opponent_name:'Nom de l\'adversaire', opponent_logo_url:'Logo de l\'adversaire', match_date:'Date du match', match_time:'Heure du match', is_home:'Domicile / extérieur', venue:'Salle / stade', competition:'Compétition', stream_url:'Lien du direct / replay', notes:'Notes internes', score_baobabs:'Score Baobabs', score_opponent:'Score adverse'
+    opponent_name:'Nom de l\'adversaire', opponent_logo_url:'Logo de l\'adversaire', match_date:'Date du match', match_time:'Heure du match', is_home:'Domicile / extérieur', venue:'Salle / stade', competition:'Compétition', stream_url:'Lien du direct / replay', notes:'Notes internes', score_baobabs:'Score Baobabs', score_opponent:'Score adverse',
+    // --- Champs communs à plusieurs écrans (commandes, candidatures…) ---
+    status:'Statut', rating:'Note interne', admin_notes:'Notes internes',
+    first_name:'Prénom', last_name:'Nom', phone:'Téléphone', email:'Email',
+    order_number:'Numéro de commande', customer_name:'Client', total:'Montant total',
+    quantity:'Quantité', reference:'Référence', interview_at:'Date d\'entretien',
+    assigned_to:'Personne en charge', decision_note:'Note de décision'
   };
   // Champs de recadrage d'image : gérés par un curseur commun (Horizontal /
   // Vertical / Zoom) réutilisé pour toute photo recadrable, quel que soit le
@@ -3159,12 +3187,18 @@
     else if (tableName === 'partners') query = 'partners?select=name&id=eq.'+recordId;
     else if (tableName === 'standings') query = 'standings?select=team_name&id=eq.'+recordId;
     else if (tableName === 'timeline_events') query = 'timeline_events?select=title&id=eq.'+recordId;
+    else if (tableName === 'teams') query = 'teams?select=name&id=eq.'+recordId;
+    else if (tableName === 'orders') query = 'orders?select=order_number,customer_name&id=eq.'+recordId;
+    else if (tableName === 'recruitment_requests') query = 'recruitment_requests?select=first_name,last_name&id=eq.'+recordId;
     if (!query) { auditRecordLabelCache[cacheKey]=null; return Promise.resolve(null); }
     return sbGet(query).then(function(rows){
       var r = rows && rows[0]; var label = null;
       if (r) {
         if (tableName==='matches') label = 'Match : '+(r.is_home?'Baobabs vs ':'Baobabs chez ')+(r.opponent_name||'?');
         else if (tableName==='ticket_offers') label = 'Billet : '+(r.category||'?');
+        else if (tableName==='orders') label = 'Commande : '+(r.order_number||'?')+(r.customer_name?' — '+r.customer_name:'');
+        else if (tableName==='recruitment_requests') label = 'Candidature : '+([r.first_name,r.last_name].filter(Boolean).join(' ')||'?');
+        else if (tableName==='teams') label = 'Club : '+(r.name||'?');
         else if (r.title) label = (tableName==='news'?'Actualité : ':'')+r.title;
         else if (r.name) label = (tableName==='products'?'Produit : ':tableName==='players'?'Joueur : ':tableName==='staff'?'Membre : ':tableName==='partners'?'Partenaire : ':'')+r.name;
         else if (r.team_name) label = 'Équipe : '+r.team_name;
@@ -3185,6 +3219,48 @@
   }
   function auditLooksLikeUrl(value){ return /^https?:\/\//i.test(value||''); }
   var AUDIT_TEXT_TRUNCATE = 90;
+
+  // Champs booléens génériques : « true »/« false » devient Oui/Non plutôt
+  // que le mot technique stocké en base.
+  var AUDIT_BOOL_FIELDS = { featured:1, force_white:1, hidden:1, is_open:1, in_stock:1 };
+  // « status » ne veut pas dire la même chose selon la table : un
+  // dictionnaire par table, pas un seul global.
+  var AUDIT_STATUS_LABELS = {
+    orders: { 'nouvelle':'Nouvelle', 'confirmée':'Confirmée', 'prête':'Prête', 'récupérée':'Récupérée', 'annulée':'Annulée' },
+    recruitment_requests: {
+      // Vocabulaire actuel de l'écran Candidatures.
+      nouvelle:'Nouvelle', a_etudier:'À étudier', a_revoir:'À revoir', entretien:'Entretien',
+      en_attente:'En attente', acceptee:'Acceptée', refusee:'Refusée', archivee:'Archivée',
+      // Vocabulaire de l'ancien écran (Messages → Candidatures recrutement),
+      // retiré du menu mais dont l'historique garde la trace.
+      preselection:'Présélection', convoquee:'Convoqué·e', retenue:'Retenu·e'
+    }
+  };
+  function auditFormatDate(v){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v||'');
+    if (!m) return null;
+    var d = new Date(v+'T00:00:00');
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+  }
+  // Rend une valeur lisible quand on connaît son sens (date, booléen,
+  // statut) ; renvoie null pour laisser auditRenderValue faire son travail
+  // habituel (image, lien, texte long) sur tout le reste.
+  function auditSmartLabel(tableName, fieldKey, v){
+    if (v==null || v==='') return null;
+    var s = String(v);
+    if (fieldKey==='is_home' && (s==='true'||s==='false')) return s==='true' ? 'À domicile' : 'À l’extérieur';
+    if (AUDIT_BOOL_FIELDS[fieldKey] && (s==='true'||s==='false')) return s==='true' ? 'Oui' : 'Non';
+    if (fieldKey==='status' && AUDIT_STATUS_LABELS[tableName] && AUDIT_STATUS_LABELS[tableName][s]) return AUDIT_STATUS_LABELS[tableName][s];
+    var dateLabel = auditFormatDate(s);
+    if (dateLabel) return dateLabel;
+    return null;
+  }
+  function auditSmartValue(tableName, fieldKey, value, uid){
+    var lab = auditSmartLabel(tableName, fieldKey, value);
+    if (lab!=null) return esc(lab);
+    return auditRenderValue(fieldKey, value, uid);
+  }
   // Rend une valeur (ancienne ou nouvelle) sous forme de HTML compact :
   // miniature si image, lien cliquable si URL, aperçu + "voir le texte
   // complet" si texte long, sinon simple texte échappé.
@@ -9889,6 +9965,83 @@
     secSel.value=curSec; whoSel.value=curWho;
   }
 
+  // ===================== HISTORIQUE — REGROUPEMENT PAR GESTE =====================
+  // Une seule sauvegarde (créer un match, remplir une fiche) journalise un
+  // champ à la fois : sans regroupement, créer un match donnait 7 lignes
+  // identiques à la même seconde. On rassemble ce qui appartient au même
+  // geste — même fiche, même personne, même minute ou deux — en une seule
+  // carte, avec le détail des champs en dessous plutôt qu'une ligne par
+  // champ.
+  //
+  // Règle qui protège contre le faux regroupement : si un champ DÉJÀ VU
+  // dans le groupe réapparaît alors que ce n'est pas le champ immédiatement
+  // précédent, c'est qu'une autre fiche a commencé (ex : ajouter 6
+  // adversaires d'affilée écrit Nom, Logo, Nom, Logo… — le second "Nom"
+  // n'est pas adjacent au premier, donc nouvelle carte). En revanche, un
+  // même champ répété plusieurs fois D'AFFILÉE (glisser un curseur de
+  // recadrage trois fois de suite) reste un seul geste, fusionné en une
+  // ligne.
+  function auditGroupsBuild(rows){
+    var groups = [];
+    var GAP_MS = 120000; // deux minutes : au-delà, ce n'est plus le même geste
+    var i = 0;
+    while (i < rows.length){
+      var first = rows[i];
+      var g = { table:first.table_name, record:first.record_id, email:first.user_email, items:[first] };
+      if (first.field_key === '(supprimé)'){
+        i++; groups.push(g); continue;
+      }
+      var seen = {}; seen[first.field_key] = true;
+      var j = i+1;
+      while (j < rows.length){
+        var r = rows[j];
+        if (r.table_name!==g.table || r.record_id!==g.record || r.user_email!==g.email) break;
+        if (r.field_key === '(supprimé)') break; // une suppression ne rejoint jamais un groupe
+        var prevItem = g.items[g.items.length-1];
+        var gapMs = Math.abs(new Date(prevItem.created_at) - new Date(r.created_at));
+        if (gapMs > GAP_MS) break;
+        if (seen[r.field_key] && prevItem.field_key !== r.field_key) break;
+        seen[r.field_key] = true;
+        g.items.push(r); j++;
+      }
+      i = j;
+      groups.push(g);
+    }
+    return groups;
+  }
+  // À l'intérieur d'un groupe, fusionne les répétitions d'un même champ :
+  // ancienne valeur = celle du premier passage, nouvelle = celle du
+  // dernier. Rendu dans l'ordre chronologique (premier champ touché en
+  // premier), pas dans l'ordre d'affichage (plus récent en premier).
+  function auditMergeGroupFields(items){
+    var chrono = items.slice().reverse();
+    var order = [], byKey = {};
+    chrono.forEach(function(it){
+      if (!byKey[it.field_key]){
+        byKey[it.field_key] = { field_key:it.field_key, old_value:it.old_value, new_value:it.new_value,
+          table_name:it.table_name, record_id:it.record_id, user_email:it.user_email, created_at:it.created_at };
+        order.push(it.field_key);
+      } else {
+        byKey[it.field_key].new_value = it.new_value;
+        byKey[it.field_key].created_at = it.created_at;
+      }
+    });
+    return order.map(function(k){ return byKey[k]; });
+  }
+  // Le nom d'une fiche fraîchement créée est déjà dans le groupe lui-même —
+  // inutile d'attendre la requête réseau de auditFetchRecordLabel.
+  var AUDIT_NAME_FIELDS = ['name','team_name','title','opponent_name','order_number'];
+  function auditGroupDisplayName(merged){
+    for (var i=0;i<merged.length;i++){ if (AUDIT_NAME_FIELDS.indexOf(merged[i].field_key)>=0 && merged[i].new_value) return merged[i].new_value; }
+    var fn=null, ln=null;
+    merged.forEach(function(it){ if(it.field_key==='first_name') fn=it.new_value; if(it.field_key==='last_name') ln=it.new_value; });
+    return (fn||ln) ? [fn,ln].filter(Boolean).join(' ') : null;
+  }
+  function auditGroupImage(merged){
+    for (var i=0;i<merged.length;i++){ if (auditLooksLikeImage(merged[i].field_key, merged[i].new_value)) return merged[i].new_value; }
+    return null;
+  }
+
   function auditRenderList(){
     var wrap=document.getElementById('audit-list'); if(!wrap) return;
     var countEl=document.getElementById('audit-count');
@@ -9924,68 +10077,127 @@
     if(countEl) countEl.textContent=rows.length+(rows.length>1?' modifications':' modification');
     if(!rows.length){ wrap.innerHTML='<div class="empty">Aucune modification trouvée.</div>'; return; }
 
-    // Chaque ligne devient une phrase : qui a fait quoi, où, quand — le
-    // détail avant/après reste dessous, en plus discret. Les lignes sont
+    var groups = auditGroupsBuild(rows);
+
+    // Chaque groupe devient une carte : qui a fait quoi, où, quand — le
+    // détail avant/après reste dessous, en plus discret. Les cartes sont
     // regroupées par jour pour qu'on s'y retrouve d'un coup d'œil.
     var out='', prevDay='';
-    rows.forEach(function(r,i){
-      var d=new Date(r.created_at);
-      var dayKey=d.toDateString();
-      if(dayKey!==prevDay){
-        prevDay=dayKey;
+    var pendingLabels = []; // {uid, table, record} : sous-titre à charger après affichage
+    var undoRows = {};      // uid-de-bouton -> ligne synthétique à annuler
+
+    groups.forEach(function(g, gi){
+      var rep = g.items[0]; // le plus récent du groupe (rows est trié du plus récent au plus ancien)
+      var d = new Date(rep.created_at);
+      var dayKey = d.toDateString();
+      if (dayKey!==prevDay){
+        prevDay = dayKey;
         var lbl = dayKey===new Date().toDateString() ? 'Aujourd\u2019hui'
                 : dayKey===new Date(Date.now()-86400000).toDateString() ? 'Hier'
                 : d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
         out+='<div class="aud-day">'+esc(lbl)+'</div>';
       }
-      var who=AUDIT_NAMES[r.user_email]||r.user_email||'Quelqu\u2019un';
-      var initial=who.charAt(0).toUpperCase();
-      var cat=auditCategory(r.section||r.table_name);
-      var fieldLabel=auditFieldLabel(r.field_key);
-      var uid='r'+i;
-      var oldEmpty=(r.old_value==null||r.old_value===''||r.old_value==='(vide)');
-      var newEmpty=(r.new_value==null||r.new_value===''||r.new_value==='(vide)');
-      var verb = oldEmpty&&!newEmpty ? 'a renseigné' : (!oldEmpty&&newEmpty ? 'a effacé' : 'a modifié');
-      var champ = fieldLabel ? ' «\u00a0'+esc(fieldLabel)+'\u00a0»' : '';
+
+      var who = AUDIT_NAMES[rep.user_email]||rep.user_email||'Quelqu\u2019un';
+      var initial = who.charAt(0).toUpperCase();
+      var cat = auditCategory(rep.section||rep.table_name);
       var when = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-      var diff='';
-      if (verb==='a renseigné') diff='<span class="aud-new">'+auditRenderValue(r.field_key, r.new_value, uid+'-new')+'</span>';
-      else if (verb==='a effacé') diff='<span class="aud-old">'+auditRenderValue(r.field_key, r.old_value, uid+'-old')+'</span>';
-      else diff='<span class="aud-old">'+auditRenderValue(r.field_key, r.old_value, uid+'-old')+'</span>'+
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;color:var(--faint);flex:none"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'+
-        '<span class="aud-new">'+auditRenderValue(r.field_key, r.new_value, uid+'-new')+'</span>';
-      out+='<div class="aud-item" id="audit-card-'+uid+'" data-table="'+esc(r.table_name||'')+'" data-record="'+esc(r.record_id||'')+'">'+
+      var uid = 'g'+gi;
+      var isDelete = g.items.length===1 && g.items[0].field_key==='(supprimé)';
+      var isCreate = g.record==='(nouveau)' && !isDelete;
+      var itemClass = 'aud-item'+(isDelete?' is-delete':'')+(isCreate?' is-create':'');
+      var groupedNote = (g.items.length>1) ? '<span class="aud-grouped-note">('+g.items.length+' champs)</span>' : '';
+
+      var sentence, body;
+
+      if (isDelete){
+        sentence = '<b>'+esc(who)+'</b> a supprimé une fiche dans <b>'+esc(cat.label)+'</b>';
+        body = '';
+      } else {
+        var merged = auditMergeGroupFields(g.items);
+
+        if (isCreate){
+          var dispName = auditGroupDisplayName(merged);
+          var img = auditGroupImage(merged);
+          sentence = '<b>'+esc(who)+'</b> a créé'+(dispName ? ' « '+esc(dispName)+' »' : ' une fiche')+' dans <b>'+esc(cat.label)+'</b>'+groupedNote;
+          var thumb = img ? '<div class="aud-thumb-row"><img src="'+esc(img)+'" alt="" loading="lazy">'+(dispName?'<span class="aud-thumb-name">'+esc(dispName)+'</span>':'')+'</div>' : '';
+          var usedKeys = {};
+          if (dispName) AUDIT_NAME_FIELDS.concat(['first_name','last_name']).forEach(function(k){ usedKeys[k]=true; });
+          if (img){ merged.forEach(function(m){ if (m.new_value===img) usedKeys[m.field_key]=true; }); }
+          var restFields = merged.filter(function(m){ return !usedKeys[m.field_key]; });
+          var bullets = restFields.map(function(m){
+            var fl = auditFieldLabel(m.field_key);
+            return '<li><span class="aud-fk">'+esc(fl)+'</span><span class="aud-fv">'+auditSmartValue(m.table_name, m.field_key, m.new_value, uid+'-'+m.field_key)+'</span></li>';
+          }).join('');
+          body = thumb + (bullets ? '<ul class="aud-fields">'+bullets+'</ul>' : '');
+        } else if (merged.length===1){
+          var mv = merged[0];
+          var fieldLabel = auditFieldLabel(mv.field_key);
+          var oldEmpty=(mv.old_value==null||mv.old_value===''||mv.old_value==='(vide)');
+          var newEmpty=(mv.new_value==null||mv.new_value===''||mv.new_value==='(vide)');
+          var verb = oldEmpty&&!newEmpty ? 'a renseigné' : (!oldEmpty&&newEmpty ? 'a effacé' : 'a modifié');
+          var champ = fieldLabel ? ' « '+esc(fieldLabel)+' »' : '';
+          sentence = '<b>'+esc(who)+'</b> '+verb+champ+' dans <b>'+esc(cat.label)+'</b>'+groupedNote;
+          var diff;
+          if (verb==='a renseigné') diff='<span class="aud-new">'+auditSmartValue(mv.table_name, mv.field_key, mv.new_value, uid+'-new')+'</span>';
+          else if (verb==='a effacé') diff='<span class="aud-old">'+auditSmartValue(mv.table_name, mv.field_key, mv.old_value, uid+'-old')+'</span>';
+          else diff='<span class="aud-old">'+auditSmartValue(mv.table_name, mv.field_key, mv.old_value, uid+'-old')+'</span>'+
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;color:var(--faint);flex:none"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'+
+            '<span class="aud-new">'+auditSmartValue(mv.table_name, mv.field_key, mv.new_value, uid+'-new')+'</span>';
+          body = '<div class="aud-diff">'+diff+'</div>';
+          if (auditCanUndo(mv)) undoRows[uid] = mv;
+        } else {
+          sentence = '<b>'+esc(who)+'</b> a modifié '+merged.length+' champs dans <b>'+esc(cat.label)+'</b>';
+          var lis = merged.map(function(m, mi){
+            var fl = auditFieldLabel(m.field_key);
+            var subUid = uid+'-'+mi;
+            var v = '<span class="aud-fv"><span class="aud-old">'+auditSmartValue(m.table_name, m.field_key, m.old_value, subUid+'-old')+'</span>'+
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;color:var(--faint);flex:none"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'+
+              '<span class="aud-new">'+auditSmartValue(m.table_name, m.field_key, m.new_value, subUid+'-new')+'</span></span>';
+            var canUndo = auditCanUndo(m);
+            if (canUndo) undoRows[subUid] = m;
+            return '<li><span class="aud-fk">'+esc(fl)+'</span>'+v+(canUndo?'<button type="button" class="aud-undo" data-undo="'+subUid+'">Annuler</button>':'')+'</li>';
+          }).join('');
+          body = '<ul class="aud-fields">'+lis+'</ul>';
+        }
+      }
+
+      out+='<div class="'+itemClass+'" id="audit-card-'+uid+'" data-table="'+esc(g.table||'')+'" data-record="'+esc(g.record||'')+'">'+
         '<span class="aud-avatar">'+esc(initial)+'</span>'+
         '<div class="aud-body">'+
-          '<div class="aud-sentence"><b>'+esc(who)+'</b> '+verb+champ+' dans <b>'+esc(cat.label)+'</b></div>'+
-          '<div class="aud-diff">'+diff+'</div>'+
+          '<div class="aud-sentence">'+sentence+'</div>'+
+          body+
           '<div class="audit-record-label" id="audit-reclabel-'+uid+'" style="font-size:11px;color:var(--faint);margin-top:6px"></div>'+
         '</div>'+
         '<div class="aud-side">'+
           '<span class="aud-when">'+esc(when)+'</span>'+
-          (auditCanUndo(r) ? '<button type="button" class="aud-undo" data-undo="'+i+'">Annuler</button>' : '')+
+          (!isDelete && !isCreate && undoRows[uid] ? '<button type="button" class="aud-undo" data-undo="'+uid+'">Annuler</button>' : '')+
         '</div>'+
       '</div>';
+
+      if (!isCreate && !isDelete) pendingLabels.push({ uid:uid, table:g.table, record:g.record });
     });
     wrap.innerHTML=out;
 
-    // L'annulation rétablit l'ancienne valeur du champ. Elle n'est
-    // proposée que sur les modifications, jamais sur une création ni une
-    // suppression — voir auditCanUndo.
+    // L'annulation rétablit l'ancienne valeur d'un champ. Elle n'est
+    // proposée que sur les modifications d'un champ sur une fiche qui
+    // existe encore — voir auditCanUndo. Chaque bouton connaît sa propre
+    // ligne synthétique (fusionnée si le champ a été touché plusieurs
+    // fois d'affilée dans le même geste).
     wrap.querySelectorAll('[data-undo]').forEach(function(b){
-      b.addEventListener('click', function(){
-        auditUndo(rows[parseInt(b.getAttribute('data-undo'),10)], b);
-      });
+      var key = b.getAttribute('data-undo');
+      if (!undoRows[key]) return;
+      b.addEventListener('click', function(){ auditUndo(undoRows[key], b); });
     });
 
-    // Charge le nom de l'élément concerné (quel match, quelle actualité…)
-    // après affichage, sans bloquer le rendu initial de la liste : chaque
-    // carte reçoit son libellé dès que la petite requête associée répond.
-    rows.forEach(function(r,i){
-      var uid='r'+i;
-      auditFetchRecordLabel(r.table_name, r.record_id).then(function(label){
+    // Charge le nom de l'élément concerné (quel match, quel adversaire,
+    // quelle commande…) après affichage, sans bloquer le rendu initial :
+    // chaque carte reçoit son libellé dès que sa requête répond. Inutile
+    // pour les créations, qui affichent déjà leur nom dans la phrase.
+    pendingLabels.forEach(function(p){
+      auditFetchRecordLabel(p.table, p.record).then(function(label){
         if(!label) return;
-        var el=document.getElementById('audit-reclabel-'+uid);
+        var el=document.getElementById('audit-reclabel-'+p.uid);
         if(el) el.textContent=label;
       });
     });
@@ -10072,7 +10284,10 @@
           btn.disabled=false;
           return;
         }
-        auditRows=rows; auditPwdCache=pwd;
+        // 'test' / 'test_table' : restes de mise au point de l'historique
+        // lui-même, jamais une vraie action sur le club — masqués pour de bon.
+        auditRows=rows.filter(function(r){ return r.table_name!=='test' && r.table_name!=='test_table'; });
+        auditPwdCache=pwd;
         document.getElementById('audit-lock-card').classList.add('hide');
         document.getElementById('audit-content').classList.remove('hide');
         showMsg(msg,'',true);
