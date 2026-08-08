@@ -145,12 +145,27 @@ section.blk{padding:var(--s9) 0 0}
 /* ============================================================
    MAQUETTE D'ÉCRAN — le châssis proposé
    ============================================================ */
-.frame{border:1px solid var(--line-2);border-radius:var(--r-lg);overflow:hidden;
-  background:var(--bg);box-shadow:var(--e3)}
-.frame-bar{display:flex;align-items:center;gap:7px;padding:11px 15px;background:var(--surface-2);
-  border-bottom:1px solid var(--line)}
-.frame-bar i{width:9px;height:9px;border-radius:50%;background:var(--line-3);display:block}
-.frame-bar span{margin-left:auto;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+/* Ces cadres sont des PHOTOS d'un écran de bureau. Ils ne se réorganisent
+   donc jamais : ils gardent leur largeur de conception et sont mis à
+   l'échelle pour tenir dans la page. Sans ça, sous 900px la barre latérale
+   passait au-dessus du contenu et la fenêtre perdait tout son sens. */
+.win-wrap{position:relative;width:100%;overflow:hidden}
+.win{width:1240px;transform-origin:top left;will-change:transform}
+
+.frame{position:relative;border-radius:13px;overflow:hidden;background:var(--bg);
+  box-shadow:0 0 0 1px rgba(240,236,226,.10), 0 2px 6px rgba(0,0,0,.5), 0 44px 90px -34px rgba(0,0,0,.85)}
+.frame::before{content:'';position:absolute;inset:0;border-radius:13px;pointer-events:none;z-index:3;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09)}
+.frame-bar{position:relative;display:flex;align-items:center;gap:9px;height:40px;padding:0 15px;
+  background:linear-gradient(180deg,#1A231C,#121B15);border-bottom:1px solid rgba(0,0,0,.55)}
+.frame-bar i{width:12px;height:12px;border-radius:50%;display:block;
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.22), inset 0 -1px 1px rgba(0,0,0,.14)}
+.frame-bar i:nth-of-type(1){background:#FF5F57}
+.frame-bar i:nth-of-type(2){background:#FEBC2E}
+.frame-bar i:nth-of-type(3){background:#28C840}
+.frame-bar span{position:absolute;left:50%;transform:translateX(-50%);
+  font-family:var(--font-ui);font-variation-settings:'wdth' 100,'wght' 600;
+  font-size:12px;letter-spacing:.01em;text-transform:none;color:var(--muted);white-space:nowrap}
 .frame-body{display:flex;min-height:520px}
 
 /* — Barre latérale — */
@@ -205,7 +220,7 @@ section.blk{padding:var(--s9) 0 0}
 /* — Cartes de statistique — */
 .stat-c{background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s4);
   position:relative;overflow:hidden}
-.stat-c .label{display:block;margin-bottom:9px}
+.stat-c .label{display:block;margin-bottom:9px;padding-right:58px}  /* la pastille d'état vit dans ce coin */
 .stat-c b{font-family:var(--font-display);font-variation-settings:'wdth' 68,'wght' 800;
   font-size:38px;line-height:.88;font-variant-numeric:tabular-nums;display:block}
 .stat-c em{font-style:normal;font-size:11.5px;color:var(--faint);display:block;margin-top:7px}
@@ -315,11 +330,8 @@ section.blk{padding:var(--s9) 0 0}
 .foot{margin-top:var(--s9);padding-top:var(--s5);border-top:1px solid var(--line);
   font-size:12.5px;color:var(--faint)}
 
-/* Rendu confortable sur petit écran */
-@media(max-width:900px){
-  .frame-body{flex-direction:column;min-height:0}
-  .sb{width:auto;border-right:0;border-bottom:1px solid var(--line)}
-}
+/* Les fenêtres ne se réorganisent plus : elles se mettent à l'échelle.
+   Le reste de la page (texte, cartes, grilles) reste fluide comme avant. */
 </style>
 </head>
 <body>
@@ -470,8 +482,8 @@ section.blk{padding:var(--s9) 0 0}
         dans l'en-tête les jours de match.</p>
     </div>
 
-    <div class="frame">
-      <div class="frame-bar"><i></i><i></i><i></i><span>Écran large · 1440</span></div>
+    <div class="win-wrap"><div class="win"><div class="frame">
+      <div class="frame-bar"><i></i><i></i><i></i><span>Tableau de bord — Espace de gestion</span></div>
       <div class="frame-body">
 
         <!-- barre latérale -->
@@ -554,7 +566,7 @@ section.blk{padding:var(--s9) 0 0}
           </div>
         </div>
       </div>
-    </div>
+    </div></div></div>
   </section>
 
   <!-- ══════════ ÉCRAN 2 — LISTE ══════════ -->
@@ -567,8 +579,8 @@ section.blk{padding:var(--s9) 0 0}
         se distingue par un lavis doré plutôt que par une bordure de plus.</p>
     </div>
 
-    <div class="frame">
-      <div class="frame-bar"><i></i><i></i><i></i><span>Classement</span></div>
+    <div class="win-wrap"><div class="win"><div class="frame">
+      <div class="frame-bar"><i></i><i></i><i></i><span>Classement — Espace de gestion</span></div>
       <div style="padding:var(--s5)">
         <div style="display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s5);flex-wrap:wrap">
           <div class="pill on">Championnat</div>
@@ -598,7 +610,7 @@ section.blk{padding:var(--s9) 0 0}
           </tbody>
         </table>
       </div>
-    </div>
+    </div></div></div>
   </section>
 
   <!-- ══════════ ÉCRAN 3 — FORMULAIRE ══════════ -->
@@ -613,8 +625,8 @@ section.blk{padding:var(--s9) 0 0}
         avec la typographie et les couleurs proposées.</p>
     </div>
 
-    <div class="frame">
-      <div class="frame-bar"><i></i><i></i><i></i><span>Pages du site · Accueil</span></div>
+    <div class="win-wrap"><div class="win"><div class="frame">
+      <div class="frame-bar"><i></i><i></i><i></i><span>Accueil — Espace de gestion</span></div>
       <div style="padding:var(--s5)">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:var(--s4);
                     margin-bottom:var(--s5);border-bottom:1px solid var(--line)">
@@ -678,7 +690,7 @@ section.blk{padding:var(--s9) 0 0}
           </div>
         </div>
       </div>
-    </div>
+    </div></div></div>
   </section>
 
   <!-- ══════════ MOBILE ══════════ -->
@@ -800,5 +812,35 @@ section.blk{padding:var(--s9) 0 0}
     Proposition — Espace de gestion Baobabs Basket Club · Aucune donnée réelle n'est modifiée par cette page.
   </footer>
 </div>
+
+<script>
+// Les fenêtres gardent leur largeur de conception (1240px) et sont
+// réduites pour tenir dans la page. Elles ne se réorganisent jamais :
+// ce sont des images d'un écran de bureau, pas du contenu fluide.
+(function(){
+  var W = 1240;
+  function fitOne(wrap){
+    var el = wrap.firstElementChild;
+    if(!el) return;
+    // On mesure la largeur DISPONIBLE, pas celle du wrap : le wrap suit la
+    // hauteur qu'on lui impose, et son enfant est transformé — se fier à
+    // wrap.clientWidth donnait une échelle fausse et rognait la fenêtre.
+    var avail = wrap.parentElement.clientWidth;
+    var k = Math.min(1, avail / W);
+    el.style.transform = k < 1 ? 'scale(' + k + ')' : 'none';
+    wrap.style.height = Math.round(el.getBoundingClientRect().height) + 'px';
+  }
+  function fit(){ document.querySelectorAll('.win-wrap').forEach(fitOne); }
+
+  if (window.ResizeObserver){
+    var ro = new ResizeObserver(function(){ fit(); });
+    document.querySelectorAll('.win-wrap').forEach(function(w){ ro.observe(w.parentElement); });
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  fit();
+})();
+</script>
 </body>
 </html>
