@@ -2507,20 +2507,67 @@
           <div class="live-step"><b>3</b><div><strong>Le direct se termine</strong>L'accueil revient à la normale et affiche votre message hors-direct.</div></div>
         </div>
       </div>
-      <div class="card" style="max-width:640px">
-        <h2 class="card-title">Chaîne du club</h2>
-        <p class="card-sub">C'est le seul réglage nécessaire.</p>
+      <div class="card" style="max-width:660px">
+        <h2 class="card-title">L'interrupteur</h2>
+        <p class="card-sub">Un soir de match ne doit dépendre d'aucune détection automatique. Ce réglage prime sur tout le reste.</p>
         <div class="field">
-          <label for="set_yt_channel">ID de la chaîne YouTube</label>
-          <input type="text" id="set_yt_channel" placeholder="Ex : UCxxxxxxxxxxxxxxxxxxxxxx">
-          <span class="hint">Se trouve dans l'URL de votre chaîne (youtube.com/channel/<b>UC…</b>) ou via les paramètres avancés YouTube.</span>
+          <label for="set_live_mode">État de la diffusion</label>
+          <select id="set_live_mode">
+            <option value="auto">Automatique — le site suit la détection YouTube</option>
+            <option value="on">Forcé allumé — le direct s'affiche maintenant</option>
+            <option value="off">Forcé éteint — aucun direct, message hors-direct</option>
+          </select>
+          <span class="hint">« Forcé allumé » est le geste du soir de match si la détection ne suit pas. Pensez à repasser en automatique après la rencontre.</span>
         </div>
         <div class="field">
           <label for="set_live_note">Message hors-direct <span class="opt">(optionnel)</span></label>
           <input type="text" id="set_live_note" placeholder="Aucun match en direct pour le moment">
         </div>
+      </div>
+
+      <div class="card" style="max-width:660px;margin-top:18px">
+        <h2 class="card-title">Par quel canal</h2>
+        <p class="card-sub">YouTube, Facebook et TikTok s'intègrent directement dans la page. Pour toute autre plateforme, le site affiche un bouton qui y renvoie — ça marche partout.</p>
+        <div class="field">
+          <label for="set_live_channel">Canal de diffusion</label>
+          <select id="set_live_channel">
+            <option value="youtube">YouTube</option>
+            <option value="facebook">Facebook Live</option>
+            <option value="tiktok">TikTok Live</option>
+            <option value="lien">Une autre plateforme (bouton de renvoi)</option>
+          </select>
+        </div>
+
+        <div class="field live-ch live-ch-youtube">
+          <label for="set_yt_channel">ID de la chaîne YouTube</label>
+          <input type="text" id="set_yt_channel" placeholder="Ex : UCxxxxxxxxxxxxxxxxxxxxxx">
+          <span class="hint">Se trouve dans l'URL de votre chaîne (youtube.com/channel/<b>UC…</b>) ou via les paramètres avancés YouTube.</span>
+        </div>
+
+        <div class="field live-ch live-ch-facebook hide">
+          <label for="set_live_fb">Adresse de la vidéo Facebook</label>
+          <input type="text" id="set_live_fb" placeholder="https://www.facebook.com/…/videos/…">
+          <span class="hint">Collez l'adresse de la publication en direct. Elle change à chaque match&nbsp;: pensez à la mettre à jour.</span>
+        </div>
+
+        <div class="field live-ch live-ch-tiktok hide">
+          <label for="set_live_tiktok">Compte TikTok</label>
+          <input type="text" id="set_live_tiktok" placeholder="@baobabsbasketclub">
+          <span class="hint">Le nom du compte, avec ou sans l'arobase. Le lecteur s'ouvre sur son direct en cours.</span>
+        </div>
+
+        <div class="field live-ch live-ch-lien hide">
+          <label for="set_live_link">Adresse du direct</label>
+          <input type="text" id="set_live_link" placeholder="https://…">
+          <span class="hint">Twitch, Instagram, une chaîne de télévision… Le site affichera un bouton vers cette adresse.</span>
+        </div>
+        <div class="field live-ch live-ch-lien hide">
+          <label for="set_live_link_label">Libellé du bouton <span class="opt">(optionnel)</span></label>
+          <input type="text" id="set_live_link_label" placeholder="Regarder le direct">
+        </div>
+
         <button class="btn btn-primary" id="save-live-btn">Enregistrer</button>
-        <div class="msg" id="live-msg"></div>
+        <div class="msg" id="live-msg" role="status" aria-live="polite"></div>
       </div>
     </section>
 
@@ -5208,16 +5255,68 @@
 
   wireImageControl(document.getElementById('hero_mode_upload'), document.getElementById('hero_mode_url'), document.getElementById('hero_file'), document.getElementById('hero_url'), document.getElementById('hero_preview'));
 
+  // Le canal choisi décide des champs à montrer : afficher les quatre
+  // en même temps laisserait croire qu'il faut tous les remplir.
+  function livePaintChannel(){
+    var ch=(document.getElementById('set_live_channel')||{}).value||'youtube';
+    ['youtube','facebook','tiktok','lien'].forEach(function(k){
+      document.querySelectorAll('.live-ch-'+k).forEach(function(el){ el.classList.toggle('hide', k!==ch); });
+    });
+  }
+  // La lampe disait « reliée » dès qu'une chaîne était saisie, ce qui ne
+  // veut rien dire : elle annonce maintenant l'état réel de diffusion.
   function livePaintLamp(){
     var lamp=document.getElementById('live-lamp'); if(!lamp) return;
-    var has=!!document.getElementById('set_yt_channel').value.trim();
-    lamp.className='live-lamp '+(has?'on':'off');
-    document.getElementById('live-lamp-text').textContent=has?'Chaîne reliée — détection automatique':'Aucune chaîne reliée';
+    var mode=(document.getElementById('set_live_mode')||{}).value||'auto';
+    var ch=(document.getElementById('set_live_channel')||{}).value||'youtube';
+    var NOM={youtube:'YouTube',facebook:'Facebook',tiktok:'TikTok',lien:'lien externe'};
+    var renseigne = ({
+      youtube:function(){ return !!document.getElementById('set_yt_channel').value.trim(); },
+      facebook:function(){ return !!document.getElementById('set_live_fb').value.trim(); },
+      tiktok:function(){ return !!document.getElementById('set_live_tiktok').value.trim(); },
+      lien:function(){ return !!document.getElementById('set_live_link').value.trim(); }
+    }[ch])();
+
+    var etat, texte;
+    if (mode==='off'){ etat='off'; texte='Éteint — le site affiche le message hors-direct'; }
+    else if (mode==='on'){
+      etat = renseigne ? 'on' : 'off';
+      texte = renseigne ? 'EN DIRECT sur '+NOM[ch]+' — visible sur le site maintenant'
+                        : 'Forcé allumé, mais le canal '+NOM[ch]+' n’est pas renseigné';
+    } else {
+      etat = renseigne ? 'on' : 'off';
+      texte = ch!=='youtube' ? 'Automatique : seul YouTube est détecté — passez en « forcé allumé » pour '+NOM[ch]
+            : (renseigne ? 'Chaîne reliée — détection automatique' : 'Aucune chaîne reliée');
+    }
+    lamp.className='live-lamp '+etat;
+    document.getElementById('live-lamp-text').textContent=texte;
   }
-  LOADERS_live=function(){ document.getElementById('set_yt_channel').value=settings.yt_channel_id||''; document.getElementById('set_live_note').value=settings.live_offline_note||''; livePaintLamp(); };
-  document.getElementById('set_yt_channel').addEventListener('input', livePaintLamp);
+  LOADERS_live=function(){
+    document.getElementById('set_live_mode').value    = settings.live_mode || 'auto';
+    document.getElementById('set_live_channel').value = settings.live_channel || 'youtube';
+    document.getElementById('set_yt_channel').value   = settings.yt_channel_id || '';
+    document.getElementById('set_live_fb').value      = settings.live_fb_url || '';
+    document.getElementById('set_live_tiktok').value  = settings.live_tiktok_user || '';
+    document.getElementById('set_live_link').value    = settings.live_link_url || '';
+    document.getElementById('set_live_link_label').value = settings.live_link_label || '';
+    document.getElementById('set_live_note').value    = settings.live_offline_note || '';
+    livePaintChannel(); livePaintLamp();
+  };
+  ['set_yt_channel','set_live_fb','set_live_tiktok','set_live_link','set_live_mode']
+    .forEach(function(id){ document.getElementById(id).addEventListener('input', livePaintLamp); });
+  document.getElementById('set_live_mode').addEventListener('change', livePaintLamp);
+  document.getElementById('set_live_channel').addEventListener('change', function(){ livePaintChannel(); livePaintLamp(); });
   document.getElementById('save-live-btn').addEventListener('click',function(){
-    saveSettings({ yt_channel_id:document.getElementById('set_yt_channel').value.trim(), live_offline_note:document.getElementById('set_live_note').value.trim() }, document.getElementById('live-msg'), this, 'Réglages · Live');
+    saveSettings({
+      live_mode:        document.getElementById('set_live_mode').value,
+      live_channel:     document.getElementById('set_live_channel').value,
+      yt_channel_id:    document.getElementById('set_yt_channel').value.trim(),
+      live_fb_url:      document.getElementById('set_live_fb').value.trim(),
+      live_tiktok_user: document.getElementById('set_live_tiktok').value.trim().replace(/^@/,''),
+      live_link_url:    document.getElementById('set_live_link').value.trim(),
+      live_link_label:  document.getElementById('set_live_link_label').value.trim(),
+      live_offline_note:document.getElementById('set_live_note').value.trim()
+    }, document.getElementById('live-msg'), this, 'Réglages · Live');
   });
   LOADERS_home=function(){
     document.getElementById('set_hero_title').value=settings.hero_title||''; document.getElementById('set_hero_subtitle').value=settings.hero_subtitle||'';

@@ -1016,18 +1016,104 @@
             var offlineBadge = document.getElementById('bb-offline-badge');
             var fallbackText = fallback.querySelector('span:last-child');
 
-            // Appelée une fois que index.html a chargé site_settings (yt_channel_id, live_offline_note).
-            window.bbInitLive = function(channelId, offlineNote){
-              if (offlineNote && fallbackText) fallbackText.textContent = offlineNote;
-              if (!channelId) return; // rien à faire tant qu'aucune chaîne n'est configurée
-              // Embed "live channel" : YouTube bascule automatiquement sur le direct en cours.
-              // On affiche le lecteur ; YouTube lui-même montre son propre message si aucun direct
-              // n'est en cours à cet instant (le site ne peut pas savoir à l'avance si c'est le cas).
-              iframe.src = "https://www.youtube.com/embed/live_stream?channel=" + channelId + "&autoplay=0";
-              iframe.style.display = "block";
-              fallback.style.display = "none";
-              liveBadge.style.display = "flex";
-              offlineBadge.style.display = "none";
+            // Appelée une fois que index.html a chargé site_settings.
+            // Reçoit tout l'objet : le direct ne dépend plus d'un seul
+            // réglage YouTube.
+            //
+            // Trois états, et c'est l'admin qui tranche :
+            //   off  → jamais de lecteur, message hors-direct
+            //   on   → lecteur du canal choisi, badge EN DIRECT
+            //   auto → comportement historique, YouTube seulement
+            //
+            // L'ancienne version allumait le badge « EN DIRECT » dès
+            // qu'une chaîne était configurée, sans savoir s'il y avait
+            // un direct. Le site mentait donc en permanence.
+            // Le bouton de renvoi n'appartient qu'au canal « lien » : sans
+            // ce nettoyage il survivait à un changement de canal et
+            // pointait vers une plateforme qu'on ne diffuse plus.
+            function bbLiveDropLink(){
+              var a = fallback.querySelector('[data-bb-gen="live-link"]');
+              if (a) a.remove();
+            }
+            function bbLiveOff(note){
+              if (note && fallbackText) fallbackText.textContent = note;
+              bbLiveDropLink();
+              iframe.style.display = 'none';
+              iframe.removeAttribute('src');
+              fallback.style.display = '';
+              liveBadge.style.display = 'none';
+              offlineBadge.style.display = 'flex';
+            }
+            function bbLiveEmbed(src){
+              bbLiveDropLink();
+              iframe.src = src;
+              iframe.style.display = 'block';
+              fallback.style.display = 'none';
+              liveBadge.style.display = 'flex';
+              offlineBadge.style.display = 'none';
+            }
+            // Plateformes que la CSP ne peut pas autoriser une à une :
+            // plutôt qu'un lecteur intégré, un bouton qui y renvoie.
+            function bbLiveLink(url, label){
+              iframe.style.display = 'none';
+              iframe.removeAttribute('src');
+              fallback.style.display = '';
+              liveBadge.style.display = 'flex';
+              offlineBadge.style.display = 'none';
+              var a = fallback.querySelector('[data-bb-gen="live-link"]');
+              if (!a){
+                a = document.createElement('a');
+                a.setAttribute('data-bb-gen','live-link');
+                a.target = '_blank'; a.rel = 'noopener';
+                a.style.cssText = 'display:inline-flex;align-items:center;gap:9px;margin-top:14px;'+
+                  'padding:14px 26px;border-radius:9px;background:#A8D93B;color:#0A1B0D;'+
+                  "font-family:'Inter',sans-serif;font-weight:700;font-size:13px;"+
+                  'letter-spacing:.08em;text-transform:uppercase';
+                fallback.appendChild(a);
+              }
+              a.href = url;
+              a.textContent = label || 'Regarder le direct';
+            }
+
+            window.bbInitLive = function(s, legacyNote){
+              // Compatibilité : l'ancien appel passait (channelId, note).
+              if (typeof s === 'string') s = { yt_channel_id: s, live_offline_note: legacyNote };
+              s = s || {};
+              var note = s.live_offline_note || '';
+              var mode = s.live_mode || 'auto';
+              var canal = s.live_channel || 'youtube';
+
+              if (mode === 'off') return bbLiveOff(note);
+
+              if (mode === 'auto'){
+                // Historique : YouTube seul sait basculer tout seul.
+                if (canal !== 'youtube' || !s.yt_channel_id) return bbLiveOff(note);
+                return bbLiveEmbed('https://www.youtube.com/embed/live_stream?channel=' +
+                  encodeURIComponent(s.yt_channel_id) + '&autoplay=0');
+              }
+
+              // mode === 'on' : on montre le canal choisi, s'il est renseigné.
+              if (canal === 'youtube'){
+                if (!s.yt_channel_id) return bbLiveOff(note);
+                return bbLiveEmbed('https://www.youtube.com/embed/live_stream?channel=' +
+                  encodeURIComponent(s.yt_channel_id) + '&autoplay=0');
+              }
+              if (canal === 'facebook'){
+                if (!s.live_fb_url) return bbLiveOff(note);
+                return bbLiveEmbed('https://www.facebook.com/plugins/video.php?href=' +
+                  encodeURIComponent(s.live_fb_url) + '&show_text=false&autoplay=false');
+              }
+              if (canal === 'tiktok'){
+                if (!s.live_tiktok_user) return bbLiveOff(note);
+                return bbLiveEmbed('https://www.tiktok.com/embed/live/@' +
+                  encodeURIComponent(String(s.live_tiktok_user).replace(/^@/,'')));
+              }
+              if (canal === 'lien'){
+                if (!s.live_link_url) return bbLiveOff(note);
+                if (note && fallbackText) fallbackText.textContent = note;
+                return bbLiveLink(s.live_link_url, s.live_link_label);
+              }
+              return bbLiveOff(note);
             };
           })();
           </script>
@@ -5779,7 +5865,7 @@ document.addEventListener('keydown', function(e){
         }
       });
     }
-    if (window.bbInitLive) window.bbInitLive(settings.yt_channel_id || '', settings.live_offline_note || '');
+    if (window.bbInitLive) window.bbInitLive(settings);
   };
 })();
 </script>
