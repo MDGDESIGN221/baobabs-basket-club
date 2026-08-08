@@ -4989,6 +4989,40 @@ window.bbCloud = function(url, w){
       var digits=String(s.try_contact).replace(/[^\d]/g,'');
       if(digits){ document.querySelectorAll('[data-bb="try-call"]').forEach(function(a){ a.href='tel:+'+digits; }); }
     }
+    applyTryStatus(s);
+  }
+
+  // État de la détection. Tant que rien ne le disait, le site continuait
+  // d'inviter au présent à une session déjà passée. Quand elle est
+  // clôturée : pastille et sur-titre passent à l'ambre, et un encart
+  // l'annonce. Le formulaire, lui, reste ouvert — une candidature hors
+  // période vaut mieux qu'une candidate perdue.
+  function applyTryStatus(s){
+    var clos = String(s.try_closed||'') === 'oui';
+    var note = clos ? String(s.try_closed_note||'').trim() : '';
+    var teinte = clos ? '#E8A93C' : '#A8D93B';
+
+    document.querySelectorAll('[data-bb="try-kicker"]').forEach(function(el){
+      el.style.color = teinte;
+      var pastille = el.parentElement && el.parentElement.firstElementChild;
+      if (pastille && pastille !== el) pastille.style.background = teinte;
+
+      var ligne = el.closest('.r-eye') || el.parentElement;
+      if (!ligne || !ligne.parentElement) return;
+      var encart = ligne.parentElement.querySelector('[data-bb-gen="try-closed"]');
+      if (!note){ if (encart) encart.remove(); return; }
+      if (!encart){
+        encart = document.createElement('div');
+        encart.setAttribute('data-bb-gen','try-closed');
+        encart.setAttribute('role','status');
+        encart.style.cssText = 'margin-top:14px;padding:12px 15px;border-radius:9px;'+
+          'background:rgba(232,169,60,.12);border:1px solid rgba(232,169,60,.32);'+
+          'border-left:3px solid #E8A93C;font-family:\'Inter\',sans-serif;'+
+          'font-size:13.5px;line-height:1.6;color:#E8C88F;max-width:62ch';
+        ligne.insertAdjacentElement('afterend', encart);
+      }
+      encart.textContent = note;
+    });
   }
 
   // Affiches des Tryouts : une seule saisie dans l'admin met à jour les 4
