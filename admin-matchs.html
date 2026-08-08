@@ -3652,7 +3652,53 @@
       return false;
     };
 
-    // Les écrans d'abord : c'est l'usage le plus fréquent.
+    // Les actions d'abord : Ctrl+K répondait « où aller ? », il répond
+    // maintenant aussi « faire quoi ? ». Chacune ouvre l'écran et la
+    // bonne fiche — aucune n'écrit quoi que ce soit toute seule.
+    var auj = new Date(); auj.setHours(0,0,0,0);
+    var prochain = null, aSaisir = [];
+    if (gsData && gsData.matches){
+      gsData.matches.forEach(function(m){
+        if (!m.match_date) return;
+        var d = new Date(m.match_date+'T00:00:00');
+        var joue = m.score_baobabs != null && m.score_opponent != null;
+        if (joue) return;
+        if (d >= auj){ if (!prochain || d < new Date(prochain.match_date+'T00:00:00')) prochain = m; }
+        else aSaisir.push(m);
+      });
+    }
+    var advers = prochain ? (prochain.opponent_name || 'adversaire') : null;
+    var pushAct = function(label, sub, act, mots){
+      if (t && !match(label, sub, mots||'')) return;
+      push('Actions', label, sub, act, null, '⌘');
+    };
+
+    if (aSaisir.length){
+      pushAct('Saisir les scores manquants',
+        aSaisir.length + (aSaisir.length>1?' rencontres jouées sans score':' rencontre jouée sans score'),
+        function(){ showSection('results'); }, 'score resultat saisir publier');
+    }
+    if (prochain){
+      pushAct('Ouvrir la fiche du prochain match', 'Baobabs '+(prochain.is_home?'vs ':'chez ')+advers+' · '+formatDateShort(prochain.match_date),
+        function(){ showSection('matches2'); if (typeof mcOpen === 'function') setTimeout(function(){ mcOpen(prochain.id); }, 160); },
+        'match fiche prochain '+advers);
+      pushAct('Ouvrir la billetterie du prochain match', 'Tarifs, quotas, ouverture de la vente',
+        function(){ showSection('tickets'); }, 'billetterie billet vente place tarif');
+    }
+    pushAct('Lancer le soir de match', 'Tableau de marque et guichet',
+      function(){ showSection('gameday'); }, 'soir match direct score guichet marque');
+    pushAct('Ajouter un match', 'Nouvelle rencontre au calendrier',
+      function(){ showSection('matches2'); }, 'ajouter creer nouveau match rencontre');
+    pushAct('Publier une actualité', 'Rédiger un nouvel article',
+      function(){ showSection('articles'); }, 'article actualite publier ecrire news');
+    pushAct('Ajouter une joueuse', 'Nouvelle fiche dans l’effectif',
+      function(){ showSection('squad'); }, 'joueuse joueur effectif ajouter recruter');
+    pushAct('Ajouter un produit', 'Nouvel article de la boutique',
+      function(){ showSection('products'); }, 'produit boutique maillot ajouter vendre');
+    pushAct('Voir le site public', 'Ouvre le site dans un nouvel onglet',
+      function(){ window.open('index.html', '_blank', 'noopener'); }, 'site public voir apercu ligne');
+
+    // Les écrans ensuite : c'est l'usage le plus fréquent.
     ALL_SECTIONS.forEach(function(k){
       var m = SECTION_META[k]; if (!m) return;
       if (!t || match(m.t, m.d, k)) push('Écrans', m.t, m.d, function(){ showSection(k); }, null, m.t.charAt(0));
@@ -9816,10 +9862,22 @@
           '<div class="aud-diff">'+diff+'</div>'+
           '<div class="audit-record-label" id="audit-reclabel-'+uid+'" style="font-size:11px;color:var(--faint);margin-top:6px"></div>'+
         '</div>'+
-        '<span class="aud-when">'+esc(when)+'</span>'+
+        '<div class="aud-side">'+
+          '<span class="aud-when">'+esc(when)+'</span>'+
+          (auditCanUndo(r) ? '<button type="button" class="aud-undo" data-undo="'+i+'">Annuler</button>' : '')+
+        '</div>'+
       '</div>';
     });
     wrap.innerHTML=out;
+
+    // L'annulation rétablit l'ancienne valeur du champ. Elle n'est
+    // proposée que sur les modifications, jamais sur une création ni une
+    // suppression — voir auditCanUndo.
+    wrap.querySelectorAll('[data-undo]').forEach(function(b){
+      b.addEventListener('click', function(){
+        auditUndo(rows[parseInt(b.getAttribute('data-undo'),10)], b);
+      });
+    });
 
     // Charge le nom de l'élément concerné (quel match, quelle actualité…)
     // après affichage, sans bloquer le rendu initial de la liste : chaque
@@ -9832,6 +9890,69 @@
         if(el) el.textContent=label;
       });
     });
+  }
+
+  // ===================== HISTORIQUE — ANNULER =====================
+  // L'historique garde l'ancienne valeur de chaque champ : elle peut donc
+  // être remise. On s'en tient au cas sûr — une modification de champ sur
+  // une fiche qui existe encore. Une création ou une suppression ne
+  // s'annule pas d'ici : ce n'est pas la même opération, et la deviner
+  // ferait plus de dégâts que de bien.
+  function auditCanUndo(r){
+    if (!r || !r.table_name || !r.field_key || !r.record_id) return false;
+    if (r.record_id === '(nouveau)') return false;
+    if (r.field_key === '(supprimé)' || r.field_key === '(upsert)') return false;
+    return String(r.old_value==null?'':r.old_value) !== String(r.new_value==null?'':r.new_value);
+  }
+
+  function auditUndoDone(btn, ok){
+    btn.disabled = !!ok;
+    btn.textContent = ok ? 'Annulé' : 'Annuler';
+    btn.classList.toggle('done', !!ok);
+    if (ok) qgToast('Valeur précédente rétablie ✓');
+    else qgToast('Impossible de rétablir cette valeur.', true);
+  }
+
+  function auditUndo(r, btn){
+    var label = auditFieldLabel(r.field_key) || r.field_key;
+    var ancienne = (r.old_value==null || r.old_value==='' || r.old_value==='(vide)') ? '(vide)' : r.old_value;
+    if (!confirm('Remettre « '+label+' » à sa valeur précédente ?\n\n'+ancienne+
+                 '\n\nLa valeur actuelle sera remplacée. L’opération est elle-même inscrite dans l’historique.')) return;
+
+    var restore = (r.old_value==null || r.old_value==='' || r.old_value==='(vide)') ? null : r.old_value;
+    btn.disabled = true; btn.textContent = 'Vérification…';
+
+    // site_settings n'a pas d'id : la clé du réglage fait office d'identifiant.
+    if (r.table_name === 'site_settings'){
+      sbUpsert('site_settings', [{key:r.record_id, value:restore==null?'':restore}], 'Historique — annulation')
+        .then(function(){
+          if (typeof settings !== 'undefined' && settings) settings[r.record_id] = restore==null?'':restore;
+          auditUndoDone(btn, true);
+        })
+        .catch(function(){ auditUndoDone(btn, false); });
+      return;
+    }
+
+    // Ailleurs : on relit la valeur courante avant d'écrire. Si elle a
+    // changé depuis cette ligne d'historique, quelqu'un est passé après —
+    // rétablir en aveugle effacerait son travail.
+    sbGet(r.table_name+'?select='+encodeURIComponent(r.field_key)+'&id=eq.'+encodeURIComponent(r.record_id))
+      .then(function(rows){
+        if (!rows || !rows.length) throw new Error('fiche introuvable');
+        var cur = rows[0][r.field_key];
+        var curStr = cur==null ? '' : String(cur);
+        var attendu = String(r.new_value==null?'':r.new_value);
+        if (curStr !== attendu){
+          if (!confirm('Ce champ a changé depuis cette modification.\n\nValeur actuelle : '+(curStr||'(vide)')+
+                       '\n\nLe remettre à « '+ancienne+' » écrasera ce changement plus récent. Continuer ?')){
+            btn.disabled=false; btn.textContent='Annuler'; return null;
+          }
+        }
+        var patch = {}; patch[r.field_key] = restore;
+        return sbUpdate(r.table_name, r.record_id, patch, 'Historique — annulation');
+      })
+      .then(function(res){ if (res !== null) auditUndoDone(btn, true); })
+      .catch(function(){ auditUndoDone(btn, false); });
   }
 
   function auditUnlock(){
@@ -11102,8 +11223,14 @@
 </script>
 
 <style>
-  html,body{overflow-x:hidden;max-width:100%}
-  #app,.wrap{max-width:100%;overflow-x:hidden}
+  /* « overflow-x:hidden » se calcule en « overflow-y:auto » : chaque
+     élément qui le portait devenait un conteneur de défilement, et tout
+     ce qui est collant à l'intérieur se collait à LUI — donc partait
+     avec la page. Le garde-fou anti-débordement reste, mais sur <html>
+     seul, où il s'applique à la fenêtre sans créer de conteneur. */
+  html{overflow-x:hidden}
+  body{max-width:100%}
+  #app,.wrap{max-width:100%}
   *{min-width:0}
   @media(max-width:939px){ .preview-collapse{display:flex} .preview-aside{order:-1} }
   @media(max-width:600px){
@@ -11384,6 +11511,37 @@
   .rec-item:last-child{border-bottom:0}
   .rec-title{font-family:var(--font-ui);font-weight:650;font-size:14.5px;letter-spacing:.005em}
   .rec-meta{font-size:11.5px;color:var(--faint);margin-top:3px}
+
+  /* ============================================================
+     SOCLE — les barres d'écran restent atteignables
+     Onglets, sous-onglets et barres d'outils suivent le défilement :
+     on ne doit pas remonter en haut d'une liste de 200 lignes pour
+     changer d'onglet ou relancer une recherche. Le bandeau opaque
+     déborde de part et d'autre pour que le contenu ne transparaisse
+     pas derrière une barre à largeur ajustée.
+     ============================================================ */
+  .qg-tabbar,.subtabs,.mod-head{position:sticky;top:64px;z-index:6}
+  .qg-tabbar::before,.subtabs::before,.mod-head::before{
+    content:'';position:absolute;top:-14px;bottom:-14px;left:-50vw;right:-50vw;
+    background:var(--bg);z-index:-1;pointer-events:none;
+  }
+  .mod-head{padding-top:2px}
+  @media(max-width:820px){
+    .qg-tabbar,.subtabs,.mod-head{position:static}
+    .qg-tabbar::before,.subtabs::before,.mod-head::before{display:none}
+  }
+
+  /* Historique : l'heure et l'annulation partagent la colonne de droite. */
+  .aud-side{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex:none}
+  .aud-undo{
+    background:transparent;border:1px solid var(--line-strong);color:var(--muted);
+    border-radius:var(--r-sm);padding:5px 10px;cursor:pointer;
+    font-family:var(--font-ui);font-weight:650;font-size:11px;letter-spacing:.04em;
+    transition:border-color .15s,color .15s;white-space:nowrap;
+  }
+  .aud-undo:hover{border-color:var(--gold);color:var(--gold-bright)}
+  .aud-undo:disabled{cursor:default;opacity:.75}
+  .aud-undo.done{border-color:rgba(147,206,67,.35);color:var(--ok);background:var(--ok-wash)}
 
   /* ============================================================
      SOCLE — le classement
