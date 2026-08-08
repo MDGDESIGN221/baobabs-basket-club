@@ -75,13 +75,17 @@
     /* — Espacement : une seule échelle, plus de valeurs au jugé — */
     --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
 
-    /* — Rayons — */
-    --r-sm:10px;--r-md:14px;--r-lg:20px;--r-full:999px;--radius:18px;
+    /* — Rayons — Resserrés volontairement : au-delà de ~12px, une
+         interface de gestion prend un air d'application grand public.
+         L'arrondi complet est réservé aux badges, où il se lit comme
+         une étiquette et non comme une décoration. */
+    --r-sm:6px;--r-md:8px;--r-lg:12px;--r-full:999px;--radius:12px;
 
-    /* — Élévation — */
-    --e1:0 1px 2px rgba(0,0,0,.30);
-    --e2:0 10px 28px -14px rgba(0,0,0,.62);
-    --e3:0 34px 68px -30px rgba(0,0,0,.80);
+    /* — Élévation — Nette plutôt que diffuse : un trait franc porte
+         mieux la hiérarchie qu'un halo. */
+    --e1:0 1px 0 rgba(0,0,0,.35);
+    --e2:0 2px 4px rgba(0,0,0,.35), 0 12px 24px -18px rgba(0,0,0,.7);
+    --e3:0 2px 6px rgba(0,0,0,.4), 0 28px 56px -34px rgba(0,0,0,.85);
 
     /* — Polices : changer de famille = changer cette ligne — */
     --font-ui:'Archivo',sans-serif;
@@ -10236,26 +10240,34 @@
 
   function bbRichAdmin(h){ var s=(h==null?'':String(h)); return s.replace(/<\s*script/gi,'&lt;script').replace(/on\w+\s*=/gi,'data-x='); }
   var QGV_RENDER = {
+    // Le classement était une grille de div à styles en ligne, couleurs
+    // codées en dur comprises. Il passe aux classes et aux jetons, et
+    // prend le traitement éditorial : rang en gros condensé, points de
+    // même, filets d'un pixel, la ligne du club signalée par un lavis.
     standings:function(rows, draft, sel){
       function row(r,id,i){
         var bao=/baobab/i.test(r.team_name||''); var isSel=sel!=null&&String(sel)===String(id);
         var played=Number(r.played)||0, wins=Number(r.wins)||0, losses=Number(r.losses)||0;
         var mismatch=(r.played!=null || r.wins!=null || r.losses!=null) && played!==(wins+losses);
-        var logo=r.logo_url?'<img src="'+esc(r.logo_url)+'" alt="" style="width:30px;height:30px;border-radius:50%;object-fit:cover;flex:none;background:#12211A">':'<span style="width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,#183024,#0d1b13);border:1px solid rgba(198,162,87,.3);font-family:var(--font-ui);font-weight:700;font-size:10.5px;color:#C6A257">'+esc(initials(r.team_name||'?'))+'</span>';
-        return '<div data-qgv-id="'+esc(id)+'" title="'+(mismatch?'J ne correspond pas à V+D':'')+'" style="display:grid;grid-template-columns:42px 1fr 42px 42px 42px 52px;align-items:center;padding:11px 16px;cursor:pointer;border-top:1px solid rgba(243,239,230,.05);position:relative;'+(bao?'background:linear-gradient(90deg,rgba(198,162,87,.12),transparent)':'')+'">'+
-          '<span style="font-family:var(--font-ui);font-weight:700;font-size:14px;color:'+(i===0?'#C6A257':(bao?'#E4C179':'#8b968e'))+'">'+(i+1)+'</span>'+
-          '<span style="display:flex;align-items:center;gap:11px;min-width:0">'+logo+'<span style="font-family:var(--font-ui);font-weight:700;font-size:14px;color:'+(bao?'#E4C179':'#F3EFE6')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.team_name||'Nouvelle équipe')+'</span>'+(mismatch?'<span style="flex:none;width:7px;height:7px;border-radius:50%;background:#E5564A" aria-hidden="true"></span>':'')+'</span>'+
-          '<span style="text-align:center;font-size:13px;color:#A9B2AB">'+(r.played||0)+'</span>'+
-          '<span style="text-align:center;font-size:13px;color:#A8D93B;font-weight:700">'+(r.wins||0)+'</span>'+
-          '<span style="text-align:center;font-size:13px;color:#E5564A;font-weight:700">'+(r.losses||0)+'</span>'+
-          '<span style="text-align:right;font-family:var(--font-ui);font-weight:700;font-size:15px;color:#F3EFE6">'+(r.points||0)+'</span>'+
-          (isSel?'<span style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#A8D93B"></span>':'')+
+        var logo=r.logo_url
+          ? '<img class="stt-crest" src="'+esc(r.logo_url)+'" alt="">'
+          : '<span class="stt-crest stt-crest-none">'+esc(initials(r.team_name||'?'))+'</span>';
+        var cls='stt-row'+(bao?' is-us':'')+(i===0?' is-first':'');
+        return '<div class="'+cls+'" data-qgv-id="'+esc(id)+'" title="'+(mismatch?'J ne correspond pas à V+D':'')+'">'+
+          '<span class="stt-rk">'+(i+1<10?'0':'')+(i+1)+'</span>'+
+          '<span class="stt-team">'+logo+'<span class="stt-name">'+esc(r.team_name||'Nouvelle équipe')+'</span>'+
+            (mismatch?'<span class="stt-warn" aria-hidden="true"></span>':'')+'</span>'+
+          '<span class="stt-n">'+(r.played||0)+'</span>'+
+          '<span class="stt-n w">'+(r.wins||0)+'</span>'+
+          '<span class="stt-n l">'+(r.losses||0)+'</span>'+
+          '<span class="stt-pts">'+(r.points||0)+'</span>'+
+          (isSel?'<span class="stt-sel"></span>':'')+
         '</div>';
       }
-      var head='<div style="display:grid;grid-template-columns:42px 1fr 42px 42px 42px 52px;padding:12px 16px;font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#6E7972"><span>#</span><span>Équipe</span><span style="text-align:center">J</span><span style="text-align:center">V</span><span style="text-align:center">D</span><span style="text-align:right">Pts</span></div>';
+      var head='<div class="stt-head"><span>#</span><span>Club</span><span>J</span><span>V</span><span>D</span><span>Pts</span></div>';
       var body=''; rows.forEach(function(r,i){ body+=row(r,r.id,i); }); if(draft) body+=row(draft,'__new__',rows.length);
-      var add='<button type="button" class="qgv-add" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:transparent;border:none;border-top:1px solid rgba(243,239,230,.06);color:#A8D93B;font-family:var(--font-ui);font-weight:700;font-size:12.5px;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Ajouter une équipe</button>';
-      return '<div style="border:1px solid rgba(243,239,230,.09);border-radius:16px;overflow:hidden;background:#0D1A12">'+head+body+add+'</div>';
+      var add='<button type="button" class="qgv-add stt-add"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Ajouter une équipe</button>';
+      return '<div class="stt">'+head+body+add+'</div>';
     },
     news:function(rows, draft, sel){
       function card(n,id){
@@ -11244,16 +11256,25 @@
   .callout{border-radius:var(--r-md);border-color:var(--gold-edge)}
   .empty{border-radius:var(--r-md)}
 
-  /* En-tête : les commandes deviennent des pastilles, comme le bouton
-     de recherche qui les jouxte — elles formaient trois formes
-     différentes côte à côte. */
-  .link-btn{border-radius:var(--r-full);padding:9px 15px}
+  /* En-tête : une seule forme pour toutes les commandes — mais
+     rectangulaire. Les pastilles arrondies alignées donnaient à la
+     barre un air d'application de téléphone. */
+  .link-btn{border-radius:var(--r-sm);padding:9px 14px}
   .icon-btn{border-radius:var(--r-sm)}
+  #gs-open{border-radius:var(--r-sm)}
+  #help-toggle{border-radius:var(--r-sm)}
+  .ctx-link,.qgc-chip{border-radius:var(--r-sm)}
 
   /* Signaux d'état : les variantes existaient déjà, mais chacune avec
      ses rgba() en dur. Elles passent derrière les jetons — changer la
      couleur « alerte » de tout l'admin se fait maintenant dans :root. */
-  .status-pill{border-radius:var(--r-full);padding:5px 11px}
+  /* Étiquette, pas bonbon : coin léger, capitales serrées. */
+  .status-pill{border-radius:4px;padding:4px 8px;letter-spacing:.09em}
+  .sb-link{border-radius:var(--r-sm)}
+  .card{border-radius:var(--r-lg)}
+  .qg-tabbar,.qg-tab{border-radius:var(--r-sm)}
+  .stt{border-radius:var(--r-md)}
+  .stt-crest,.stt-crest-none{border-radius:var(--r-sm)}
   .status-win{background:var(--ok-wash);color:var(--ok);border-color:rgba(147,206,67,.28)}
   .status-loss,.rec-alert{background:var(--danger-wash);color:var(--danger);border-color:rgba(229,86,74,.3)}
   .status-upcoming{background:var(--gold-soft);color:var(--gold-bright);border-color:var(--gold-edge)}
@@ -11270,30 +11291,31 @@
      cartes de chiffres se lisent libellé d'abord, chiffre ensuite,
      l'icône reléguée dans un coin.
      ============================================================ */
+  /* L'affiche : le doré reste, mais posé — un liseré franc en tête
+     plutôt qu'un halo qui déborde. */
   .dash-next-card{
     background:
-      radial-gradient(115% 135% at 84% 4%, rgba(198,162,87,.24) 0%, rgba(198,162,87,.05) 34%, transparent 66%),
-      linear-gradient(160deg, var(--surface-2) 0%, var(--surface) 55%, #060D09 100%);
-    border-color:var(--gold-edge);
+      radial-gradient(120% 150% at 88% 0%, rgba(198,162,87,.15) 0%, transparent 58%),
+      linear-gradient(165deg, var(--surface-2) 0%, var(--surface) 60%, #050B08 100%);
+    border-color:var(--line-strong);
+    border-top:2px solid var(--gold);
     border-radius:var(--r-lg);
-    padding:26px 28px;
-    box-shadow:var(--e2), inset 0 1px 0 rgba(255,255,255,.05);
+    padding:24px 26px;
+    box-shadow:var(--e2);
   }
-  .dash-next-card::before{
-    top:auto;bottom:-70%;left:38%;width:60%;height:150%;
-    background:radial-gradient(closest-side, rgba(198,162,87,.14), transparent 74%);
-  }
+  .dash-next-card::before{display:none}
 
-  .dash-grid{gap:var(--s4)}
+  .dash-grid{gap:var(--s3)}
   .dash-stat{
     position:relative;
-    border-radius:var(--r-lg);
-    border-color:var(--line);
-    padding:var(--s5) var(--s5) 20px;
+    border-radius:var(--r-md);
+    border-color:var(--line-strong);
+    padding:18px 18px 16px;
     gap:0;
-    background:linear-gradient(165deg, var(--surface-2) 0%, var(--surface) 62%);
+    background:var(--surface);
+    box-shadow:none;
   }
-  .dash-stat:hover{border-color:var(--gold-edge)}
+  .dash-stat:hover{border-color:var(--gold-edge);background:var(--surface-2)}
   /* L'icône quitte le fil du texte : elle repère la carte, elle ne
      la titre pas. */
   .dash-stat .dash-stat-top{position:absolute;top:16px;right:16px;margin:0}
@@ -11309,23 +11331,20 @@
     letter-spacing:.15em;text-transform:uppercase;color:var(--faint);
     padding-right:40px;margin-bottom:12px;
   }
-  #dash-stats .dash-stat-num{order:2;font-size:42px;line-height:.92;color:var(--text)}
-  .dash-stat .dash-stat-sub{order:3;margin-top:8px}
+  #dash-stats .dash-stat-num{order:2;font-size:33px;line-height:.95;color:var(--text);letter-spacing:0}
+  .dash-stat .dash-stat-sub{order:3;margin-top:7px;font-size:11.5px}
 
   /* Témoin de saisie non enregistrée — discret tant qu'il n'y a rien
      à signaler, impossible à manquer quand il y a. */
   .dirty-flag{display:none}
   .dirty-flag.on{
-    display:inline-flex;align-items:center;gap:8px;margin-top:var(--s3);
+    display:inline-flex;align-items:center;gap:9px;margin-top:var(--s3);
     background:var(--warn-wash);border:1px solid rgba(232,169,60,.32);
-    color:var(--warn);border-radius:var(--r-full);padding:6px 14px;
-    font-family:var(--font-ui);font-weight:650;font-size:12px;letter-spacing:.01em;
+    border-left:3px solid var(--warn);
+    color:var(--warn);border-radius:var(--r-sm);padding:7px 13px;
+    font-family:var(--font-ui);font-weight:650;font-size:11.5px;
+    letter-spacing:.07em;text-transform:uppercase;
   }
-  .dirty-flag.on::before{
-    content:'';width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none;
-    animation:dirtyPulse 2s ease-in-out infinite;
-  }
-  @keyframes dirtyPulse{0%,100%{opacity:1}50%{opacity:.35}}
 
   .dash-quick-btn{border-radius:var(--r-md);padding:14px 16px;min-height:52px}
   .dash-quick-btn:hover{border-color:var(--gold-edge)}
@@ -11348,6 +11367,56 @@
   .rec-item:last-child{border-bottom:0}
   .rec-title{font-family:var(--font-ui);font-weight:650;font-size:14.5px;letter-spacing:.005em}
   .rec-meta{font-size:11.5px;color:var(--faint);margin-top:3px}
+
+  /* ============================================================
+     SOCLE — le classement
+     En-têtes minuscules et discrets, valeurs en gros, filets d'un
+     pixel, beaucoup d'air vertical. La ligne du club se distingue
+     par un lavis doré plutôt que par une bordure de plus.
+     ============================================================ */
+  .stt{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--surface)}
+  .stt-head,.stt-row{display:grid;grid-template-columns:54px minmax(0,1fr) 46px 46px 46px 64px;align-items:center;gap:10px}
+  .stt-head{
+    padding:15px 20px;border-bottom:1px solid var(--line-strong);
+    font-family:var(--font-ui);font-weight:700;font-size:10px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--faint);
+  }
+  .stt-head span:nth-child(n+3){text-align:center}
+  .stt-head span:last-child{text-align:right}
+  .stt-row{position:relative;padding:15px 20px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .14s}
+  .stt-row:last-of-type{border-bottom:0}
+  .stt-row:hover{background:var(--surface-2)}
+
+  .stt-rk{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:21px;line-height:1;color:var(--faint);font-variant-numeric:tabular-nums}
+  .stt-row.is-first .stt-rk{color:var(--gold)}
+
+  .stt-team{display:flex;align-items:center;gap:12px;min-width:0}
+  .stt-crest{width:32px;height:32px;border-radius:50%;object-fit:cover;flex:none;background:var(--surface-3)}
+  .stt-crest-none{display:flex;align-items:center;justify-content:center;border:1px solid var(--gold-edge);background:linear-gradient(150deg,var(--surface-3),var(--surface));font-family:var(--font-ui);font-weight:700;font-size:10.5px;color:var(--gold)}
+  .stt-name{font-family:var(--font-ui);font-weight:650;font-size:14.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stt-warn{flex:none;width:7px;height:7px;border-radius:50%;background:var(--danger)}
+
+  .stt-n{text-align:center;font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .stt-n.w{color:var(--ok);font-weight:700}
+  .stt-n.l{color:var(--danger);font-weight:700}
+  .stt-pts{text-align:right;font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:23px;line-height:1;color:var(--text);font-variant-numeric:tabular-nums}
+
+  /* Le club, repéré par la lumière — pas par un cadre de plus. */
+  .stt-row.is-us{background:linear-gradient(90deg,var(--gold-soft),transparent 74%)}
+  .stt-row.is-us:hover{background:linear-gradient(90deg,rgba(198,162,87,.17),transparent 74%)}
+  .stt-row.is-us .stt-rk,.stt-row.is-us .stt-name,.stt-row.is-us .stt-pts{color:var(--gold-bright)}
+  .stt-sel{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--lime)}
+
+  .stt-add{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:15px;background:transparent;border:0;border-top:1px solid var(--line);color:var(--lime);font-family:var(--font-ui);font-weight:700;font-size:12.5px;cursor:pointer;transition:background .14s}
+  .stt-add:hover{background:var(--surface-2)}
+
+  /* Sur téléphone, « J » se déduit de V+D : c'est la colonne qu'on
+     sacrifie en premier, jamais les points. */
+  @media(max-width:620px){
+    .stt-head,.stt-row{grid-template-columns:42px minmax(0,1fr) 40px 40px 54px;gap:7px;padding:13px 14px}
+    .stt-head span:nth-child(3),.stt-row .stt-n:not(.w):not(.l){display:none}
+    .stt-rk{font-size:18px} .stt-pts{font-size:20px} .stt-name{font-size:13.5px}
+  }
 </style>
 
 </body>
