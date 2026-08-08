@@ -639,12 +639,19 @@
   section.sec-in{animation:secIn .28s cubic-bezier(.22,1,.36,1) both}
   @media(prefers-reduced-motion:reduce){section.sec-in{animation:none}}
 
-  /* Le rail n'existe qu'au-delà de 1500px : en dessous, il n'y a pas de
-     vide à combler, donc rien à afficher. */
+  /* Le rail porte le compte à rebours et ce qui attend une action :
+     c'est une des meilleures idées de l'écran, et elle disparaissait
+     dès qu'on descendait sous 1500px — soit sur la plupart des
+     portables. Il apparaît maintenant à partir de 1300px, en version
+     resserrée, et reprend sa pleine largeur au-delà de 1560px. */
   .ctx-rail{display:none}
-  @media(min-width:1500px){
+  @media(min-width:1300px){
+    .app-shell{max-width:1660px}
+    .ctx-rail{display:block;flex:none;width:274px;border-left:1px solid var(--line);padding:22px 16px 40px;position:sticky;top:65px;align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
+  }
+  @media(min-width:1560px){
     .app-shell{max-width:1760px}
-    .ctx-rail{display:block;flex:none;width:308px;border-left:1px solid var(--line);padding:22px 18px 40px;position:sticky;top:65px;align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
+    .ctx-rail{width:308px;padding:22px 18px 40px}
   }
   .ctx-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:15px;margin-bottom:12px}
   .ctx-h{font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 11px}
@@ -3271,7 +3278,91 @@
   var ALL_SECTIONS = ['dashboard','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
+
+  // ===================== GARDE-FOU DE SAISIE =====================
+  // 260 champs, 39 écrans, plusieurs personnes aux commandes : rien
+  // n'empêchait jusqu'ici de quitter un formulaire à moitié rempli. Le
+  // travail disparaissait sans un mot — ni au changement d'écran, ni à
+  // la fermeture de l'onglet. On ne bloque personne : on prévient.
+  var dirty = false;
+
+  function dirtyMark(e){
+    var t = e.target;
+    if (!t || !t.matches) return;
+    if (!t.matches('input,select,textarea,[contenteditable="true"]')) return;
+    if (t.type === 'search' || t.type === 'file') return;      // chercher n'est pas saisir
+    if (t.closest('#gs-modal, #gs-panel, .qg-search, .mod-search')) return;
+    // Uniquement l'écran visible : les chargeurs qui remplissent des
+    // écrans en arrière-plan ne doivent pas déclencher l'alerte.
+    var sec = t.closest('section[id^="section-"]');
+    if (!sec || sec.classList.contains('hide')) return;
+    if (dirty) return;
+    dirty = true;
+    dirtyPaint();
+  }
+  function dirtyClear(){ if (!dirty) return; dirty = false; dirtyPaint(); }
+  function dirtyPaint(){
+    var el = document.getElementById('dirty-flag');
+    if (!el){
+      var head = document.querySelector('.page-head');
+      if (!head) return;
+      el = document.createElement('div');
+      el.id = 'dirty-flag';
+      el.setAttribute('role','status');
+      el.setAttribute('aria-live','polite');
+      head.appendChild(el);
+    }
+    el.className = dirty ? 'dirty-flag on' : 'dirty-flag';
+    el.textContent = dirty ? 'Modifications non enregistrées' : '';
+  }
+  document.addEventListener('input', dirtyMark, true);
+  document.addEventListener('change', dirtyMark, true);
+
+  // Un enregistrement réussi affiche « .msg.ok » : c'est le seul signal
+  // commun aux 39 écrans, qui n'ont pas de code de sauvegarde partagé.
+  // On l'observe plutôt que d'aller modifier chaque bouton.
+  if (window.MutationObserver){
+    new MutationObserver(function(muts){
+      for (var i=0;i<muts.length;i++){
+        var t = muts[i].target;
+        if (t.classList && t.classList.contains('msg') && t.classList.contains('ok')){ dirtyClear(); return; }
+      }
+    }).observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
+  }
+
+  window.addEventListener('beforeunload', function(e){
+    if (!dirty) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  // Ctrl+S / Cmd+S enregistre l'écran courant — le geste que tout le
+  // monde tente déjà par réflexe, et qui ouvrait la boîte « enregistrer
+  // la page » du navigateur.
+  document.addEventListener('keydown', function(e){
+    if (!(e.key === 's' && (e.ctrlKey || e.metaKey))) return;
+    // Uniquement si quelque chose a été saisi : sur plusieurs écrans le
+    // bouton principal est « Ajouter », pas « Enregistrer ». Sans cette
+    // condition, un Ctrl+S réflexe créerait une fiche vide.
+    if (!dirty) return;
+    var sec = document.querySelector('section[id^="section-"]:not(.hide)');
+    if (!sec) return;
+    var btn = Array.prototype.filter.call(
+      sec.querySelectorAll('.btn-primary, .qg-btn.primary, .qgc-save'),
+      function(b){ return !b.disabled && b.offsetParent !== null; }
+    )[0];
+    if (!btn) return;
+    e.preventDefault();
+    btn.click();
+  });
+
   function showSection(key, formKey){
+    // Changer d'écran vide le précédent : on demande avant, une seule fois.
+    var current = document.querySelector('#sidebar .sb-link.active');
+    if (dirty && current && current.getAttribute('data-section') !== key){
+      if (!confirm('Des modifications ne sont pas enregistrées sur cet écran.\n\nQuitter quand même ? Elles seront perdues.')) return;
+      dirtyClear();
+    }
     document.querySelectorAll('.sb-link').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-section')===key); });
     ALL_SECTIONS.forEach(function(k){
       var el = document.getElementById('section-'+k); if (el) el.classList.toggle('hide', k!==key);
@@ -11159,12 +11250,14 @@
   .link-btn{border-radius:var(--r-full);padding:9px 15px}
   .icon-btn{border-radius:var(--r-sm)}
 
-  /* Signaux d'état — jusqu'ici seul le texte distinguait un succès
-     d'une alerte. */
-  .status-pill.is-ok{background:var(--ok-wash);color:var(--ok);border-color:rgba(147,206,67,.3)}
-  .status-pill.is-warn{background:var(--warn-wash);color:var(--warn);border-color:rgba(232,169,60,.3)}
-  .status-pill.is-danger{background:var(--danger-wash);color:var(--danger);border-color:rgba(229,86,74,.32)}
-  .status-pill.is-info{background:var(--info-wash);color:var(--info);border-color:rgba(127,168,224,.3)}
+  /* Signaux d'état : les variantes existaient déjà, mais chacune avec
+     ses rgba() en dur. Elles passent derrière les jetons — changer la
+     couleur « alerte » de tout l'admin se fait maintenant dans :root. */
+  .status-pill{border-radius:var(--r-full);padding:5px 11px}
+  .status-win{background:var(--ok-wash);color:var(--ok);border-color:rgba(147,206,67,.28)}
+  .status-loss,.rec-alert{background:var(--danger-wash);color:var(--danger);border-color:rgba(229,86,74,.3)}
+  .status-upcoming{background:var(--gold-soft);color:var(--gold-bright);border-color:var(--gold-edge)}
+  .status-off{background:var(--surface-3);color:var(--muted);border-color:var(--line)}
 
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
@@ -11218,6 +11311,21 @@
   }
   #dash-stats .dash-stat-num{order:2;font-size:42px;line-height:.92;color:var(--text)}
   .dash-stat .dash-stat-sub{order:3;margin-top:8px}
+
+  /* Témoin de saisie non enregistrée — discret tant qu'il n'y a rien
+     à signaler, impossible à manquer quand il y a. */
+  .dirty-flag{display:none}
+  .dirty-flag.on{
+    display:inline-flex;align-items:center;gap:8px;margin-top:var(--s3);
+    background:var(--warn-wash);border:1px solid rgba(232,169,60,.32);
+    color:var(--warn);border-radius:var(--r-full);padding:6px 14px;
+    font-family:var(--font-ui);font-weight:650;font-size:12px;letter-spacing:.01em;
+  }
+  .dirty-flag.on::before{
+    content:'';width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none;
+    animation:dirtyPulse 2s ease-in-out infinite;
+  }
+  @keyframes dirtyPulse{0%,100%{opacity:1}50%{opacity:.35}}
 
   .dash-quick-btn{border-radius:var(--r-md);padding:14px 16px;min-height:52px}
   .dash-quick-btn:hover{border-color:var(--gold-edge)}
