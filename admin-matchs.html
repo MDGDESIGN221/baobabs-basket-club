@@ -1226,6 +1226,13 @@
 
   .gd-console-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 
+  /* Le rôle, en haut à droite : savoir sous quelle casquette on est
+     connecté évite de chercher un écran qu'on n'a simplement pas. */
+  #role-badge{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold);background:rgba(198,162,87,.13);border:1px solid rgba(198,162,87,.32);
+    border-radius:20px;padding:5px 12px;white-space:nowrap}
+  @media(max-width:720px){#role-badge{display:none}}
+
   /* L'effectif : une pastille par joueuse, le numéro d'abord — c'est par
      le numéro qu'on la reconnaît de loin. */
   .gd-roster{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
@@ -1424,6 +1431,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg>
           <span class="hide-sm">Aide</span>
         </button>
+        <span id="role-badge" class="hide" title="Votre rôle dans l'administration">Administration</span>
         <button class="link-btn" id="logout-btn" title="Se déconnecter">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
         </button>
@@ -1650,6 +1658,10 @@
         <button class="sb-link" data-section="audit">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           Historique
+        </button>
+        <button class="sb-link" data-section="comptes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></svg>
+          Comptes &amp; rôles
         </button>
       </div>
     </aside>
@@ -2930,6 +2942,22 @@
     <section id="section-c_club" class="hide"><div id="qgc-c_club"></div></section>
     <section id="section-c_tryouts" class="hide"><div id="qgc-c_tryouts"></div></section>
     <section id="section-c_inscriptions" class="hide"><div id="qgc-c_inscriptions"></div></section>
+
+    <!-- ===== COMPTES & RÔLES ===== -->
+    <section id="section-comptes" class="hide">
+      <div class="callout">Chaque compte a un rôle, et le rôle décide des écrans visibles. Les comptes se créent dans Supabase&nbsp;; ici, on leur donne leur casquette.</div>
+      <div class="card">
+        <h2 class="card-title">Les comptes de l'administration</h2>
+        <p class="card-sub" id="cp-sub">Chargement…</p>
+        <div id="cp-list"></div>
+        <div class="msg" id="cp-msg"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2 class="card-title">Ce que chaque rôle peut ouvrir</h2>
+        <p class="card-sub">Lecture seule. Les droits se modifient dans la table <code>role_permissions</code>.</p>
+        <div style="overflow-x:auto"><table class="gd-sheet" id="cp-matrice"><tbody></tbody></table></div>
+      </div>
+    </section>
     <section id="section-c_app" class="hide"><div id="qgc-c_app"></div></section>
     <section id="section-c_promo" class="hide"><div id="qgc-c_promo"></div></section>
     <section id="section-c_legal" class="hide"><div id="qgc-c_legal"></div></section>
@@ -3117,6 +3145,93 @@
     });
   }
 
+  // ===================== RÔLES =====================
+  // Un compte, un rôle, une matrice de droits. Tant que le rôle n'est pas
+  // connu, on suppose le plus restreint : afficher un écran puis le
+  // retirer sous les yeux de l'utilisateur est pire que d'attendre.
+  //
+  // Ce filtrage est celui de l'INTERFACE. La base, elle, accorde encore
+  // l'accès complet à tout compte de admin_users — le durcissement des
+  // politiques table par table viendra ensuite. Autrement dit : ceci
+  // range l'admin selon le métier de chacun, ça n'enferme pas encore.
+  var currentRole = null, currentPerms = null;
+
+  // Chaque écran appartient à un module. Un module regroupe ce qu'une
+  // même personne gère : le coach ne pense pas « calendrier » et
+  // « résultats » séparément, il pense « mes matchs ».
+  var SECTION_MODULE = {
+    dashboard:null,                                  // toujours accessible
+    gameday:'matchs', teams:'matchs', live:'matchs', standings:'matchs',
+    calendar:'matchs', matches2:'matchs', results:'matchs',
+    squad:'effectif', staff:'effectif', bureau:'effectif', founder:'effectif',
+    tickets:'billetterie',
+    products:'boutique', stock:'boutique', promos:'boutique',
+    orders2:'boutique', clients:'boutique',
+    banners:'contenu', announce:'contenu', articles:'contenu', categories:'contenu',
+    media:'contenu', news:'contenu', partners:'contenu', timeline:'contenu',
+    c_home:'contenu', c_club:'contenu', c_tryouts:'contenu', c_inscriptions:'contenu',
+    c_app:'contenu', c_promo:'contenu', c_legal:'contenu', home:'contenu',
+    newsl:'contenu', forms:'contenu',
+    applications:'recrutement',
+    inscriptions:'inscriptions',
+    reglages:'reglages', coherence:'reglages', comptes:'reglages',
+    audit:'historique'
+  };
+
+  function can(module, action){
+    if (currentRole === 'super_admin') return true;
+    if (!module) return true;                        // écran sans restriction
+    if (!currentPerms) return false;
+    return currentPerms[module + ':' + action] === true;
+  }
+  function canSection(key){
+    var m = SECTION_MODULE[key];
+    return m === null || m === undefined ? true : can(m, 'voir');
+  }
+
+  function chargerRole(){
+    return sb.rpc('bbc_role').then(function(r){
+      currentRole = (r && !r.error && r.data) ? r.data : 'super_admin';
+      if (currentRole === 'super_admin'){ currentPerms = {}; return; }
+      return sbGet('role_permissions?select=module,action&role=eq.'+encodeURIComponent(currentRole))
+        .then(function(rows){
+          currentPerms = {};
+          (rows||[]).forEach(function(p){ currentPerms[p.module + ':' + p.action] = true; });
+        });
+    }).catch(function(){
+      // Rôles pas encore posés en base : on ne bloque personne.
+      currentRole = 'super_admin'; currentPerms = {};
+    });
+  }
+
+  var ROLE_NOMS = {
+    super_admin:'Administration', president:'Présidence',
+    directeur_sportif:'Direction sportive', coach:'Coach',
+    community_manager:'Communication'
+  };
+
+  function appliquerRole(){
+    // Les entrées interdites disparaissent, et un groupe vidé de toutes
+    // ses entrées disparaît avec elles : une rubrique vide donne
+    // l'impression d'une panne.
+    document.querySelectorAll('#sidebar .sb-link[data-section]').forEach(function(b){
+      b.classList.toggle('hide', !canSection(b.getAttribute('data-section')));
+    });
+    document.querySelectorAll('#sidebar .sb-group').forEach(function(g){
+      var liens = g.querySelectorAll('.sb-link');
+      if (!liens.length) return;
+      var visible = Array.prototype.some.call(liens, function(b){ return !b.classList.contains('hide'); });
+      g.classList.toggle('hide', !visible);
+    });
+    // Le rôle s'affiche : savoir sous quelle casquette on est connecté
+    // évite de chercher un écran qu'on n'a simplement pas.
+    var eb = document.getElementById('role-badge');
+    if (eb && currentRole){
+      eb.textContent = ROLE_NOMS[currentRole] || currentRole;
+      eb.classList.remove('hide');
+    }
+  }
+
   function onAuthenticated(){
     gate.classList.add('hide');
     var name = (currentSession.user.user_metadata && currentSession.user.user_metadata.full_name) || currentSession.user.email;
@@ -3142,15 +3257,25 @@
         currentSession = res.data.session;
         gate.classList.add('hide');
         document.getElementById('welcome').classList.add('hide');
-        app.classList.remove('hide');
-        init();
+        // Le rôle est chargé AVANT d'ouvrir l'application : sinon la
+        // barre latérale s'affiche entière une fraction de seconde, puis
+        // des entrées disparaissent. On n'affiche jamais une porte qu'on
+        // s'apprête à refermer.
+        chargerRole().then(function(){
+          app.classList.remove('hide');
+          init();
+          appliquerRole();
+        });
       });
     }
   });
   document.getElementById('enter-btn').addEventListener('click', function(){
     document.getElementById('welcome').classList.add('hide');
-    app.classList.remove('hide');
-    init();
+    chargerRole().then(function(){
+      app.classList.remove('hide');
+      init();
+      appliquerRole();
+    });
   });
 
   // ---------- helpers ----------
@@ -3532,7 +3657,8 @@
     partners:{t:'Partenaires',d:'Les logos et liens des partenaires du club.'},
     forms:{t:'Messages',d:'Les inscriptions newsletter, messages de contact et commandes boutique envoyés depuis le site public.'},
     home:{t:'Image du hero',d:'L\'image de fond et le texte d\'accroche du grand bloc d\'accueil.'},
-    audit:{t:'Historique',d:'Qui a modifié quoi, et quand — protégé par mot de passe.'}
+    audit:{t:'Historique',d:'Qui a modifié quoi, et quand — protégé par mot de passe.'},
+    comptes:{t:'Comptes & rôles',d:'Qui a accès à l\'administration, et sous quelle casquette. Le rôle décide des écrans visibles.'}
   };
   // ===================== AIDE PAR ÉCRAN =====================
   // Chaque écran a sa bulle « Comment ça marche ? » : l'admin est utilisé
@@ -3590,6 +3716,7 @@
     partners: ["<b>Les logos et liens des partenaires</b> affichés en bas du site.","Les logos passent automatiquement en blanc sur le fond sombre ; cochez « couleur » pour garder l'original."],
     forms: ["<b>Ce que le site vous envoie</b> : inscriptions newsletter, messages de contact, commandes.","Les candidatures ont leur propre écran, avec un vrai suivi de dossier."],
     home: ["<b>L'image de fond et l'accroche du grand bloc d'accueil.</b>","Si des bannières sont actives (écran Bannières & slider), elles passent devant cette image."],
+    comptes: ["<b>Un compte, un rôle.</b> Le rôle décide des écrans que la personne voit en se connectant — elle ne trouve pas les autres, elle ne les cherche pas.","<b>Seul un super administrateur</b> peut changer un rôle. Le changement s'applique à la prochaine connexion de la personne concernée.","Les comptes eux-mêmes se créent dans Supabase (Authentication), puis s'ajoutent à la table <code>admin_users</code>. Ici on ne fait que distribuer les casquettes.","Le tableau du bas montre qui voit quoi. Pour affiner les droits, c'est la table <code>role_permissions</code> — une ligne par autorisation.","<b>Ce filtrage range l'admin, il ne l'enferme pas encore</b> : au niveau de la base, tout compte administrateur garde l'accès complet. Le verrouillage viendra module par module."],
     audit: ["<b>Qui a modifié quoi, et quand.</b> Chaque ligne est une phrase, regroupée par jour ; l'ancienne valeur est barrée, la nouvelle à côté.","Protégé par mot de passe. La recherche et les filtres retrouvent une modification précise.","Rien ne s'efface : c'est la mémoire de l'admin."]
   };
 
@@ -3597,7 +3724,7 @@
   // retirés de la navigation. Leur balisage reste masqué dans la page le
   // temps du démêlage du code (loadTeams alimente encore l'ancien
   // formulaire), mais aucun chemin de l'admin n'y mène plus.
-  var ALL_SECTIONS = ['dashboard','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit'];
+  var ALL_SECTIONS = ['dashboard','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
 
@@ -3679,6 +3806,13 @@
   });
 
   function showSection(key, formKey){
+    // Cacher l'entrée de menu ne suffit pas : la recherche, les
+    // raccourcis et le rail contextuel appellent showSection directement.
+    // La garde est ici, au seul passage obligé.
+    if (typeof canSection === 'function' && !canSection(key)){
+      if (typeof qgToast === 'function') qgToast('Cet écran ne fait pas partie de votre rôle.', true);
+      key = 'dashboard';
+    }
     // Changer d'écran vide le précédent : on demande avant, une seule fois.
     var current = document.querySelector('#sidebar .sb-link.active');
     if (dirty && current && current.getAttribute('data-section') !== key){
@@ -4021,6 +4155,8 @@
     // Les écrans ensuite : c'est l'usage le plus fréquent.
     ALL_SECTIONS.forEach(function(k){
       var m = SECTION_META[k]; if (!m) return;
+      // La recherche ne propose pas ce que le rôle ne peut pas ouvrir.
+      if (typeof canSection === 'function' && !canSection(k)) return;
       if (!t || match(m.t, m.d, k)) push('Écrans', m.t, m.d, function(){ showSection(k); }, null, m.t.charAt(0));
     });
 
@@ -10601,6 +10737,81 @@
     doc.save('recu-' + (r.reference||'inscription') + '-' + (p.period || p.kind) + '.pdf');
   }
 
+  // ===================== COMPTES & RÔLES =====================
+  var cpStarted = false;
+
+  function cpInit(){
+    if (cpStarted) return; cpStarted = true;
+    cpLoad();
+  }
+
+  function cpLoad(){
+    var estSuper = currentRole === 'super_admin';
+    sbGet('admin_users?select=user_id,email,role&order=email.asc').then(function(rows){
+      rows = rows || [];
+      document.getElementById('cp-sub').textContent =
+        rows.length + ' compte' + (rows.length>1?'s':'') +
+        (estSuper ? '' : ' — seul un super administrateur peut changer un rôle.');
+      var box = document.getElementById('cp-list');
+      box.innerHTML = rows.map(function(u){
+        var moi = currentSession && currentSession.user && currentSession.user.email === u.email;
+        return '<div class="rec-item" style="align-items:center">'+
+          '<div class="rec-main"><div class="rec-title">'+esc(u.email||'—')+
+            (moi?' <span class="status-pill" style="color:var(--gold);border:1px solid rgba(198,162,87,.4);background:rgba(198,162,87,.12)">vous</span>':'')+'</div>'+
+          '<div class="rec-meta">'+esc(ROLE_NOMS[u.role]||u.role||'—')+'</div></div>'+
+          (estSuper
+            ? '<select class="qg-in" data-cprole="'+esc(u.user_id)+'" style="flex:none;width:auto;min-width:180px">'+
+              Object.keys(ROLE_NOMS).map(function(r){
+                return '<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+esc(ROLE_NOMS[r])+'</option>';
+              }).join('')+'</select>'
+            : '')+
+        '</div>';
+      }).join('') || '<div class="empty">Aucun compte.</div>';
+
+      box.querySelectorAll('[data-cprole]').forEach(function(sel){
+        var avant = sel.value;
+        sel.addEventListener('change', function(){
+          var uid = sel.getAttribute('data-cprole');
+          // Se retirer soi-même le rôle de super administrateur, c'est se
+          // fermer la porte de l'intérieur : on prévient avant.
+          var moi = rows.filter(function(u){ return String(u.user_id)===String(uid); })[0];
+          var estMoi = moi && currentSession && currentSession.user && currentSession.user.email === moi.email;
+          if (estMoi && sel.value !== 'super_admin' &&
+              !confirm('Vous changez VOTRE propre rôle.\n\nVous perdrez l\'accès à plusieurs écrans, et seul un autre super administrateur pourra vous le rendre.\n\nContinuer ?')){
+            sel.value = avant; return;
+          }
+          sel.disabled = true;
+          sbPatchBy('admin_users','user_id',uid,{role:sel.value},'Comptes')
+            .then(function(){
+              avant = sel.value;
+              showMsg(document.getElementById('cp-msg'), 'Rôle enregistré. Il s\'appliquera à la prochaine connexion de la personne.', true);
+              if (estMoi) setTimeout(function(){ location.reload(); }, 1200);
+            })
+            .catch(function(){ sel.value = avant; showMsg(document.getElementById('cp-msg'), 'Le rôle n\'a pas pu être changé.', false); })
+            .finally(function(){ sel.disabled = false; });
+        });
+      });
+    }).catch(function(){
+      document.getElementById('cp-sub').textContent = 'Comptes indisponibles.';
+      document.getElementById('cp-list').innerHTML = '<div class="empty">Passez MIGRATION-phase0-socle.sql pour activer les rôles.</div>';
+    });
+
+    // La matrice : qui voit quoi, d'un coup d'œil.
+    sbGet('role_permissions?select=role,module,action&action=eq.voir').then(function(rows){
+      rows = rows || [];
+      var modules = ['matchs','effectif','stats','billetterie','boutique','contenu','inscriptions','recrutement','reglages','historique'];
+      var roles = Object.keys(ROLE_NOMS);
+      var t = document.getElementById('cp-matrice');
+      var head = '<tr><th>Module</th>'+roles.map(function(r){ return '<th>'+esc(ROLE_NOMS[r])+'</th>'; }).join('')+'</tr>';
+      t.innerHTML = head + modules.map(function(m){
+        return '<tr><td>'+esc(m)+'</td>'+roles.map(function(r){
+          var ok = r === 'super_admin' || rows.some(function(p){ return p.role===r && p.module===m; });
+          return '<td style="color:'+(ok?'#A8D93B':'var(--line-strong)')+'">'+(ok?'✓':'·')+'</td>';
+        }).join('')+'</tr>';
+      }).join('');
+    }).catch(function(){});
+  }
+
   function inExportCsv(){
     var rows = inVisible();
     bbCsvDownload('inscriptions-' + bbCsvDate() + '.csv',
@@ -10909,6 +11120,7 @@
     c_tryouts:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_tryouts'),'qgc-c_tryouts'); }); },
     c_inscriptions:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_inscriptions'),'qgc-c_inscriptions'); }); },
     inscriptions:function(){ inInit(); },
+    comptes:function(){ cpInit(); },
     c_app:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_app'),'qgc-c_app'); }); },
     c_promo:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_promo'),'qgc-c_promo'); }); },
     c_legal:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_legal'),'qgc-c_legal'); }); },
