@@ -1208,6 +1208,13 @@
   .cd-back{display:inline-flex;align-items:center;gap:7px;background:none;border:none;color:var(--muted);font:inherit;font-weight:600;font-size:12.5px;cursor:pointer;padding:0;margin-bottom:14px}
   .cd-back:hover{color:var(--gold)}
 
+  /* --- Écran Comptes verrouillé --- */
+  .cp-lock{max-width:520px;text-align:center;padding:34px 30px}
+  .cp-lock-i{width:38px;height:38px;color:var(--gold);margin:0 auto 14px;display:block}
+  .cp-lock .card-sub{margin:0 auto 18px;max-width:44ch}
+  .cp-lock-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .cp-lock .msg{margin-top:12px}
+
   /* --- Analytics : des barres en CSS, pas une bibliothèque --- */
   .an-chart{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:8px}
   .an-col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;min-width:0}
@@ -3166,17 +3173,30 @@
 
     <!-- ===== COMPTES & RÔLES ===== -->
     <section id="section-comptes" class="hide">
-      <div class="callout">Chaque compte a un rôle, et le rôle décide des écrans visibles. Les comptes se créent dans Supabase&nbsp;; ici, on leur donne leur casquette.</div>
-      <div class="card">
-        <h2 class="card-title">Les comptes de l'administration</h2>
-        <p class="card-sub" id="cp-sub">Chargement…</p>
-        <div id="cp-list"></div>
-        <div class="msg" id="cp-msg"></div>
+      <div class="card cp-lock" id="cp-lock">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="cp-lock-i"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <h2 class="card-title">Écran protégé</h2>
+        <p class="card-sub">Distribuer les casquettes engage tout le club. Entrez le mot de passe pour ouvrir la liste des comptes.</p>
+        <div class="cp-lock-row">
+          <input type="password" id="cp-pwd" class="qg-in" placeholder="Mot de passe" autocomplete="off" style="max-width:280px">
+          <button type="button" class="btn btn-primary" id="cp-unlock">Déverrouiller</button>
+        </div>
+        <div class="msg" id="cp-lock-msg"></div>
       </div>
+
+      <div id="cp-inner" class="hide">
+        <div class="callout">Chaque compte a un rôle, et le rôle décide des écrans visibles. Les comptes se créent dans Supabase&nbsp;; ici, on leur donne leur casquette.</div>
+        <div class="card">
+          <h2 class="card-title">Les comptes de l'administration</h2>
+          <p class="card-sub" id="cp-sub">Chargement…</p>
+          <div id="cp-list"></div>
+          <div class="msg" id="cp-msg"></div>
+        </div>
       <div class="card" style="margin-top:16px">
         <h2 class="card-title">Ce que chaque rôle peut ouvrir</h2>
         <p class="card-sub">Lecture seule. Les droits se modifient dans la table <code>role_permissions</code>.</p>
         <div style="overflow-x:auto"><table class="gd-sheet" id="cp-matrice"><tbody></tbody></table></div>
+      </div>
       </div>
     </section>
     <section id="section-c_app" class="hide"><div id="qgc-c_app"></div></section>
@@ -11867,12 +11887,43 @@
 
   function cpInit(){
     if (cpStarted) return; cpStarted = true;
-    cpLoad();
+    var champ = document.getElementById('cp-pwd');
+    document.getElementById('cp-unlock').addEventListener('click', cpUnlock);
+    champ.addEventListener('keydown', function(e){ if (e.key === 'Enter') cpUnlock(); });
   }
 
-  function cpLoad(){
+  // Le mot de passe n'est jamais comparé ici : il part au serveur, qui
+  // répond par la liste des comptes ou par rien. Rien à cacher dans la
+  // page, donc rien à y trouver.
+  function cpUnlock(){
+    var champ = document.getElementById('cp-pwd');
+    var msg = document.getElementById('cp-lock-msg');
+    var btn = document.getElementById('cp-unlock');
+    var pwd = (champ.value || '').trim();
+    if (!pwd){ showMsg(msg, 'Entrez le mot de passe.', false); return; }
+    btn.disabled = true; showMsg(msg, 'Vérification…', true);
+    tkRpc('bbc_comptes_deverrouiller', { pwd: pwd })
+      .then(function(rows){
+        if (!rows || !rows.length){
+          showMsg(msg, 'Mot de passe refusé.', false);
+          btn.disabled = false; champ.select();
+          return;
+        }
+        champ.value = '';
+        showMsg(msg, '', true);
+        document.getElementById('cp-lock').classList.add('hide');
+        document.getElementById('cp-inner').classList.remove('hide');
+        cpLoad(rows);
+      })
+      .catch(function(){
+        showMsg(msg, "Vérification impossible. Passez MIGRATION-phase2b-comptes-verrouilles.sql.", false);
+        btn.disabled = false;
+      });
+  }
+
+  function cpLoad(rows){
     var estSuper = currentRole === 'super_admin';
-    sbGet('admin_users?select=user_id,email,role&order=email.asc').then(function(rows){
+    Promise.resolve(rows || sbGet('admin_users?select=user_id,email,role&order=email.asc')).then(function(rows){
       rows = rows || [];
       document.getElementById('cp-sub').textContent =
         rows.length + ' compte' + (rows.length>1?'s':'') +
