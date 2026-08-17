@@ -1316,6 +1316,34 @@
 
   .gd-console-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 
+  /* Le chrono : gros, lisible de loin, un seul bouton. */
+  .gd-clock{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:18px}
+  .gd-clock-btn{min-width:118px;min-height:44px;border-radius:10px;border:none;cursor:pointer;
+    font:inherit;font-weight:700;font-size:14px;background:var(--lime,#A8D93B);color:#0A1B0D}
+  .gd-clock-btn.on{background:#C0271B;color:#fff}
+  .gd-clock-t{font-family:var(--font-ui);font-weight:800;font-size:34px;line-height:1;
+    color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+  .gd-clock-t.run{color:var(--gold)}
+  .gd-clock-h{font-size:12px;color:var(--faint);flex:1;min-width:170px}
+  .gd-file{font-size:12px;font-weight:700;color:#E08A5B;background:rgba(224,138,91,.12);
+    border:1px solid rgba(224,138,91,.35);border-radius:7px;padding:5px 10px}
+  .gd-court-t{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
+    margin:0 0 9px;padding-top:4px}
+  /* Une joueuse sur le terrain porte son temps de jeu : c'est ce qu'on
+     regarde pour décider d'un changement. */
+  .gd-p.court{border-color:rgba(168,217,59,.5);background:rgba(168,217,59,.09)}
+  .gd-p.court.on{border-color:var(--gold);background:rgba(198,162,87,.16)}
+  .gd-p .gd-min{font-family:var(--font-ui);font-size:11.5px;color:var(--faint);
+    font-variant-numeric:tabular-nums;margin-left:2px}
+  .gd-p .gd-sw{border:none;background:rgba(243,239,230,.09);color:var(--muted);border-radius:6px;
+    width:24px;height:24px;font-size:13px;line-height:1;cursor:pointer;flex:none;margin-left:4px}
+  .gd-p .gd-sw:hover{background:var(--gold);color:#07130D}
+  .gd-p.sortante{border-color:#E08A5B;background:rgba(224,138,91,.14)}
+  .gd-p.fout{opacity:.45}
+  .gd-p .gd-f5{font-size:10px;font-weight:800;color:#E8837A;letter-spacing:.06em}
+
   /* Le rôle, en haut à droite : savoir sous quelle casquette on est
      connecté évite de chercher un écran qu'on n'a simplement pas. */
   #role-badge{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
@@ -1980,6 +2008,23 @@
             <button type="button" class="btn btn-ghost" id="gd-undo" style="flex:none">Annuler le dernier geste</button>
           </div>
 
+          <!-- Le chrono. Sans lui, le temps de jeu ne peut pas exister —
+               et le temps de jeu est le seul chiffre qu'on ne retrouve
+               pas sur une feuille papier après le match. -->
+          <div class="gd-clock">
+            <button type="button" id="gd-clock-btn" class="gd-clock-btn">Démarrer</button>
+            <span class="gd-clock-t" id="gd-clock-t">10:00</span>
+            <span class="gd-clock-h" id="gd-clock-h">Le chrono fait tourner le temps de jeu des cinq sur le terrain.</span>
+            <span class="gd-file hide" id="gd-file"></span>
+          </div>
+
+          <div class="gd-court-t">
+            <span id="gd-court-l">Sur le terrain</span>
+            <button type="button" class="gd-per-btn" id="gd-court-reset">Refaire le cinq</button>
+          </div>
+          <div class="gd-roster" id="gd-court"></div>
+
+          <div class="gd-court-t"><span>Banc et effectif</span></div>
           <div class="gd-roster" id="gd-roster"><div class="empty">Chargement de l'effectif…</div></div>
 
           <div class="gd-pad" id="gd-pad">
@@ -4593,6 +4638,9 @@
       empty.classList.add('hide'); main.classList.remove('hide');
       gdScore={b:gdMatch.score_baobabs||0,o:gdMatch.score_opponent||0};
       gdSel=null; gdSheet=[]; gdPeriod=1;
+      gdCourt=[]; gdSecs={}; gdSwapOut=null; gdReste=GD_PERIODE_S;
+      if (gdRun){ gdRun=false; clearInterval(gdTick); gdTick=null; }
+      gdClockPaint(); gdQPaint(); gdQVider();
       gdLoadRoster(); gdLoadSheet(); gdLoadLive();
       document.getElementById('gd-kicker').textContent = gdMatch.match_date===today ? 'Ce soir' : 'Prochain match';
       document.getElementById('gd-opp-name').textContent = gdMatch.opponent_name||'Adversaire';
@@ -4885,6 +4933,133 @@
   // l'une écrase l'autre.
   var gdRoster = [], gdSel = null, gdSheet = [], gdPeriod = 1, gdBusy = false;
 
+  // --- Chrono, terrain, temps de jeu ---
+  // Le chrono du club, pas celui de la salle : le but n'est pas d'être à
+  // la seconde près sur l'affichage officiel, c'est d'attribuer honnêtement
+  // les minutes. Une minute de jeu approchée vaut infiniment mieux qu'un
+  // zéro, qui est la seule alternative.
+  var GD_PERIODE_S = 600;                 // 10 minutes, format FIBA
+  var gdCourt = [], gdSecs = {}, gdRun = false, gdTick = null;
+  var gdReste = GD_PERIODE_S, gdSwapOut = null, gdSauveT = null;
+
+  function gdMMSS(s){
+    s = Math.max(0, Math.round(s));
+    return Math.floor(s/60) + ':' + ('0' + (s%60)).slice(-2);
+  }
+  function gdMin(pid){ return Math.floor((gdSecs[pid]||0)/60); }
+
+  function gdClockPaint(){
+    var t = document.getElementById('gd-clock-t'), b = document.getElementById('gd-clock-btn');
+    if(!t||!b) return;
+    t.textContent = gdMMSS(gdReste);
+    t.classList.toggle('run', gdRun);
+    b.textContent = gdRun ? 'Arrêter' : 'Démarrer';
+    b.classList.toggle('on', gdRun);
+  }
+
+  function gdClockToggle(){
+    if (gdRun){ gdRun = false; clearInterval(gdTick); gdTick = null; gdSauverMinutes(); }
+    else {
+      if (gdCourt.length !== 5 && !confirm('Le cinq de départ n\'est pas complet ('+gdCourt.length+' joueuse'+(gdCourt.length>1?'s':'')+' sur le terrain).\n\nDémarrer quand même ? Le temps de jeu ne sera compté que pour celles qui y sont.')) return;
+      gdRun = true;
+      gdTick = setInterval(function(){
+        gdReste = Math.max(0, gdReste - 1);
+        gdCourt.forEach(function(pid){ gdSecs[pid] = (gdSecs[pid]||0) + 1; });
+        gdClockPaint();
+        if (gdReste === 0){ gdClockToggle(); qgToast('Fin de la période — pensez à passer à la suivante.'); }
+        else if (gdReste % 30 === 0) gdPaintCourt();     // rafraîchir les minutes affichées
+      }, 1000);
+    }
+    gdClockPaint();
+  }
+
+  // Les minutes ne partent en base qu'aux moments calmes : arrêt du
+  // chrono, changement de période, coup de sifflet. Une écriture par
+  // seconde n'apporterait rien et tiendrait la connexion occupée.
+  function gdSauverMinutes(){
+    if (!gdMatch) return Promise.resolve();
+    clearTimeout(gdSauveT);
+    var lignes = Object.keys(gdSecs).filter(function(pid){ return gdSecs[pid] > 0; });
+    if (!lignes.length) return Promise.resolve();
+    return Promise.all(lignes.map(function(pid){
+      return sbPatchBy2('match_stats', gdMatch.id, pid, { minutes: gdMin(pid) });
+    })).then(function(){ return gdLoadSheet(); }).catch(function(){});
+  }
+  function sbPatchBy2(table, mid, pid, body){
+    return fetch(SUPABASE_URL+'/rest/v1/'+table+'?match_id=eq.'+mid+'&player_id=eq.'+pid,
+      { method:'PATCH', headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+        body:JSON.stringify(body) })
+      .then(function(r){ if(!r.ok) throw new Error('patch'); });
+  }
+
+  function gdPaintCourt(){
+    var box = document.getElementById('gd-court'); if(!box) return;
+    var lbl = document.getElementById('gd-court-l');
+    if (lbl) lbl.textContent = 'Sur le terrain — ' + gdCourt.length + ' sur 5';
+
+    if (!gdCourt.length){
+      box.innerHTML = '<div class="empty" style="width:100%">Choisissez le cinq de départ dans la liste ci-dessous.</div>';
+      return;
+    }
+    box.innerHTML = gdCourt.map(function(pid){
+      var p = gdRoster.filter(function(x){ return String(x.id)===String(pid); })[0] || {};
+      var f = gdFautes(pid);
+      return '<div class="gd-p court'+(String(gdSel)===String(pid)?' on':'')+(String(gdSwapOut)===String(pid)?' sortante':'')+'" data-pid="'+esc(pid)+'">'+
+        '<b>'+(p.jersey_number!=null?esc(p.jersey_number):'–')+'</b>'+
+        '<span>'+esc(p.name||'—')+'</span>'+
+        '<i class="gd-min">'+gdMin(pid)+'\'</i>'+
+        (f>=5?'<span class="gd-f5">5 F</span>':'')+
+        '<button type="button" class="gd-sw" data-out="'+esc(pid)+'" title="Faire sortir">⇄</button>'+
+      '</div>';
+    }).join('');
+    box.querySelectorAll('.gd-p').forEach(function(el){
+      el.addEventListener('click', function(e){
+        if (e.target.closest('.gd-sw')) return;
+        var id = el.getAttribute('data-pid');
+        gdSel = (String(gdSel)===String(id)) ? null : id;
+        gdPaintCourt(); gdPaintRoster(); gdArm();
+      });
+    });
+    box.querySelectorAll('[data-out]').forEach(function(b){
+      b.addEventListener('click', function(e){
+        e.stopPropagation();
+        var id = b.getAttribute('data-out');
+        gdSwapOut = (String(gdSwapOut)===String(id)) ? null : id;
+        gdPaintCourt(); gdPaintRoster();
+        if (gdSwapOut) qgToast('Qui entre ? Touchez une joueuse du banc.');
+      });
+    });
+  }
+
+  function gdFautes(pid){
+    var l = gdSheet.filter(function(s){ return String(s.player_id)===String(pid); })[0];
+    return l ? (l.pf||0) : 0;
+  }
+
+  function gdEntre(pid){
+    if (gdSwapOut){
+      var i = gdCourt.indexOf(String(gdSwapOut));
+      if (i >= 0) gdCourt.splice(i, 1);
+      gdSwapOut = null;
+    }
+    if (gdCourt.length >= 5){ qgToast('Cinq joueuses déjà sur le terrain — faites-en sortir une (⇄).', true); return; }
+    if (gdCourt.indexOf(String(pid)) < 0) gdCourt.push(String(pid));
+    // Le cinq de départ est enregistré tel quel : c'est une information
+    // de feuille de match, pas un détail d'affichage.
+    if (gdCourt.length === 5 && !gdRun && gdReste === GD_PERIODE_S && gdPeriod === 1) gdMarquerTitulaires();
+    gdPaintCourt(); gdPaintRoster();
+  }
+
+  function gdMarquerTitulaires(){
+    gdCourt.forEach(function(pid){
+      sbGet('match_stats?select=id&match_id=eq.'+gdMatch.id+'&player_id=eq.'+pid).then(function(rows){
+        if (rows && rows.length) return sbPatchBy2('match_stats', gdMatch.id, pid, { is_starter:true });
+        return sbInsert('match_stats', { match_id:gdMatch.id, player_id:pid, is_starter:true }, 'Matchs');
+      }).catch(function(){});
+    });
+    qgToast('Cinq de départ enregistré');
+  }
+
   var GD_COLS = [
     ['pts','PTS'], ['reb','REB'], ['ast','PD'], ['stl','INT'],
     ['blk','CT'], ['tov','BP'], ['pf','F'], ['eval','ÉVAL']
@@ -4907,19 +5082,27 @@
   function gdPaintRoster(){
     var box = document.getElementById('gd-roster'); if(!box) return;
     if(!gdRoster.length){ box.innerHTML='<div class="empty">Aucune joueuse disponible dans l\'effectif.</div>'; return; }
-    box.innerHTML = gdRoster.map(function(p){
+    var banc = gdRoster.filter(function(p){ return gdCourt.indexOf(String(p.id)) < 0; });
+    if(!banc.length){ box.innerHTML='<div class="empty">Tout l\'effectif est sur le terrain.</div>'; gdArm(); return; }
+
+    box.innerHTML = banc.map(function(p){
       var l = gdSheet.filter(function(s){ return String(s.player_id)===String(p.id); })[0];
-      return '<button type="button" class="gd-p'+(String(gdSel)===String(p.id)?' on':'')+'" data-pid="'+esc(p.id)+'">'+
+      var f = l ? (l.pf||0) : 0;
+      return '<button type="button" class="gd-p'+(String(gdSel)===String(p.id)?' on':'')+(f>=5?' fout':'')+'" data-pid="'+esc(p.id)+'"'+(f>=5?' disabled':'')+'>'+
         '<b>'+(p.jersey_number!=null?esc(p.jersey_number):'–')+'</b>'+
         '<span>'+esc(p.name||'—')+'</span>'+
-        (l && l.pts ? '<i>'+l.pts+' pts</i>' : '')+
+        (gdSecs[p.id] ? '<i class="gd-min">'+gdMin(p.id)+'\'</i>' : '')+
+        (f>=5 ? '<span class="gd-f5">5 F</span>' : (l && l.pts ? '<i>'+l.pts+' pts</i>' : ''))+
       '</button>';
     }).join('');
     box.querySelectorAll('.gd-p').forEach(function(b){
       b.addEventListener('click', function(){
         var id = b.getAttribute('data-pid');
-        gdSel = (String(gdSel)===String(id)) ? null : id;   // re-cliquer désélectionne
-        gdPaintRoster(); gdArm();
+        // Un changement est en cours : ce clic désigne l'entrante.
+        // Sinon, il désigne simplement qui reçoit le prochain geste.
+        if (gdSwapOut || gdCourt.length < 5){ gdEntre(id); return; }
+        gdSel = (String(gdSel)===String(id)) ? null : id;
+        gdPaintRoster(); gdPaintCourt(); gdArm();
       });
     });
     gdArm();
@@ -4930,31 +5113,117 @@
     if (pad) pad.classList.toggle('armed', !!gdSel);
   }
 
+  // --- File d'attente ---
+  // Un gymnase n'a pas le wifi d'un bureau. Si le réseau tombe entre deux
+  // paniers, la table ne doit ni s'arrêter ni perdre un geste : on garde
+  // le geste sur l'appareil, on avance le score localement, et on rejoue
+  // dans l'ordre au retour du réseau. L'ordre compte — annuler le dernier
+  // geste n'a de sens que si les gestes sont arrivés dans le bon.
+  function gdQKey(){ return 'bbc-gd-file-' + (gdMatch ? gdMatch.id : 'x'); }
+  function gdQGet(){ try { return JSON.parse(localStorage.getItem(gdQKey())) || []; } catch(e){ return []; } }
+  function gdQSet(q){ try { localStorage.setItem(gdQKey(), JSON.stringify(q)); } catch(e){} gdQPaint(); }
+  function gdQPaint(){
+    var el = document.getElementById('gd-file'); if(!el) return;
+    var n = gdQGet().length;
+    el.textContent = n + ' geste' + (n>1?'s':'') + ' en attente de réseau';
+    el.classList.toggle('hide', n === 0);
+  }
+
+  var gdQBusy = false;
+  function gdQVider(){
+    if (gdQBusy) return Promise.resolve();
+    var q = gdQGet();
+    if (!q.length) return Promise.resolve();
+    gdQBusy = true;
+    // Un par un, dans l'ordre : rejouer en parallèle mélangerait la
+    // chronologie du match.
+    function suivant(){
+      var reste = gdQGet();
+      if (!reste.length){ gdQBusy = false; return gdLoadSheet().then(gdLoadLive); }
+      return tkRpc('bbc_marquer', reste[0]).then(function(){
+        var r = gdQGet(); r.shift(); gdQSet(r);
+        return suivant();
+      }).catch(function(){ gdQBusy = false; });   // toujours hors ligne : on retentera
+    }
+    return suivant();
+  }
+
   // Un geste. Le serveur fait tout le travail : déroulé, feuille de
   // match et tableau d'affichage dans la même transaction.
   function gdGeste(kind, team){
     if(!gdMatch || gdBusy) return;
     if(team !== 'adv' && !gdSel){ qgToast('Choisissez d\'abord une joueuse', true); return; }
-    gdBusy = true;
-    tkRpc('bbc_marquer', {
+
+    var payload = {
       p_match_id: gdMatch.id,
       p_kind: kind,
       p_player_id: team === 'adv' ? null : gdSel,
       p_team: team || 'bbc',
       p_period: gdPeriod
-    }).then(function(live){
+    };
+    var pts = kind==='panier2' ? 2 : kind==='panier3' ? 3 : kind==='lf' ? 1 : 0;
+
+    // Des gestes attendent déjà : celui-ci passe derrière eux, sinon il
+    // arriverait avant et le déroulé serait faux.
+    if (gdQGet().length){
+      var q = gdQGet(); q.push(payload); gdQSet(q);
+      gdAppliqueLocal(payload, pts);
+      gdQVider();
+      return;
+    }
+
+    gdBusy = true;
+    tkRpc('bbc_marquer', payload).then(function(live){
       var l = Array.isArray(live) ? live[0] : live;
       if(l){ gdScore = { b:l.score_bbc, o:l.score_adv }; gdPaintScore(); gdPaintLive(l); }
       return gdLoadSheet();
     }).catch(function(){
-      showMsg(document.getElementById('gd-score-msg'), 'Le geste n\'a pas été enregistré. Vérifiez la connexion.', false);
+      var q = gdQGet(); q.push(payload); gdQSet(q);
+      gdAppliqueLocal(payload, pts);
+      showMsg(document.getElementById('gd-score-msg'),
+        'Réseau indisponible — le geste est gardé sur cet appareil et partira tout seul. Continuez.', false);
     }).finally(function(){ gdBusy = false; });
+  }
+
+  // Affichage optimiste : le score et les fautes doivent suivre le terrain
+  // même hors ligne, sinon la table perd le fil.
+  function gdAppliqueLocal(p, pts){
+    if (pts){
+      if (p.p_team === 'adv') gdScore.o += pts; else gdScore.b += pts;
+      gdPaintScore();
+    }
+    if (p.p_team === 'bbc' && p.p_player_id){
+      var l = gdSheet.filter(function(s){ return String(s.player_id)===String(p.p_player_id); })[0];
+      if (!l){ l = { player_id:p.p_player_id, pts:0, pf:0, reb:0, ast:0 }; gdSheet.push(l); }
+      if (pts) l.pts = (l.pts||0) + pts;
+      if (p.p_kind === 'faute'){ l.pf = (l.pf||0) + 1; gdVerifFautes(p.p_player_id); }
+      gdPaintSheet(); gdPaintCourt(); gdPaintRoster();
+    }
+  }
+
+  // Cinq fautes : la joueuse est exclue. C'est le fait le plus lourd de
+  // conséquence d'un match, et le système le connaît avant le banc.
+  function gdVerifFautes(pid){
+    if (gdFautes(pid) < 5) return;
+    var p = gdRoster.filter(function(x){ return String(x.id)===String(pid); })[0] || {};
+    var i = gdCourt.indexOf(String(pid));
+    if (i >= 0) gdCourt.splice(i, 1);
+    if (String(gdSel) === String(pid)) gdSel = null;
+    qgToast((p.name || 'La joueuse') + ' — 5 fautes, elle sort', true);
+    if (gdRun) gdClockToggle();
+    gdPaintCourt(); gdPaintRoster(); gdArm();
   }
 
   function gdLoadSheet(){
     if(!gdMatch) return Promise.resolve();
     return sbGet('match_stats?select=*&match_id=eq.'+gdMatch.id)
-      .then(function(rows){ gdSheet = rows||[]; gdPaintSheet(); gdPaintRoster(); })
+      .then(function(rows){
+        gdSheet = rows||[];
+        gdPaintSheet(); gdPaintCourt(); gdPaintRoster();
+        // Cinq fautes constatées côté serveur : on sort la joueuse même si
+        // la faute a été saisie depuis un autre appareil.
+        gdCourt.slice().forEach(gdVerifFautes);
+      })
       .catch(function(){});
   }
 
@@ -5038,16 +5307,39 @@
         .finally(function(){ b.disabled=false; });
     });
 
-    document.getElementById('gd-period-next').addEventListener('click', function(){
-      gdPeriod = Math.min(gdPeriod+1, 8);
-      document.getElementById('gd-period').textContent = gdPeriod;
-      qgToast('Période '+gdPeriod);
+    document.getElementById('gd-clock-btn').addEventListener('click', gdClockToggle);
+
+    document.getElementById('gd-court-reset').addEventListener('click', function(){
+      if (gdCourt.length && !confirm('Vider le terrain et refaire le cinq ?\n\nLe temps de jeu déjà compté est conservé.')) return;
+      gdCourt = []; gdSwapOut = null;
+      gdPaintCourt(); gdPaintRoster();
     });
+
+    document.getElementById('gd-period-next').addEventListener('click', function(){
+      if (gdRun) gdClockToggle();                 // arrêter le chrono enregistre les minutes
+      gdPeriod = Math.min(gdPeriod+1, 8);
+      gdReste = GD_PERIODE_S;
+      document.getElementById('gd-period').textContent = gdPeriod;
+      gdClockPaint();
+      qgToast('Période '+gdPeriod+' — chrono remis à '+gdMMSS(GD_PERIODE_S));
+    });
+
+    // Le retour du réseau vide la file tout seul. On tente aussi
+    // régulièrement : « en ligne » selon le navigateur ne veut pas dire
+    // que le serveur répond.
+    window.addEventListener('online', gdQVider);
+    setInterval(function(){ if (gdMatch && gdQGet().length) gdQVider(); }, 15000);
 
     document.getElementById('gd-publish').addEventListener('click',function(){
       if(!gdMatch) return;
+      if (gdQGet().length){
+        qgToast('Des gestes attendent encore le réseau — patientez avant de conclure.', true);
+        gdQVider(); return;
+      }
       if(!confirm('Coup de sifflet final ?\n\nLe score '+gdScore.b+'–'+gdScore.o+' devient le résultat officiel, le direct se ferme et le classement est mis à jour.')) return;
       var btn=this; btn.disabled=true;
+      if (gdRun) gdClockToggle();
+      gdSauverMinutes();
       tkRpc('bbc_terminer_match', { p_match_id: gdMatch.id })
         .then(function(){
           showMsg(document.getElementById('gd-score-msg'),'Match terminé. Score publié et classement à jour.',true);
