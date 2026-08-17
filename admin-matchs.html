@@ -1208,6 +1208,50 @@
   .cd-back{display:inline-flex;align-items:center;gap:7px;background:none;border:none;color:var(--muted);font:inherit;font-weight:600;font-size:12.5px;cursor:pointer;padding:0;margin-bottom:14px}
   .cd-back:hover{color:var(--gold)}
 
+  /* --- Cloche --- */
+  #notif-wrap{position:relative;flex:none}
+  #notif-bell{position:relative;background:transparent;border:1px solid var(--line-strong);
+    color:var(--muted);border-radius:9px;width:36px;height:36px;display:flex;align-items:center;
+    justify-content:center;cursor:pointer;padding:0}
+  #notif-bell svg{width:17px;height:17px}
+  #notif-bell:hover{border-color:var(--gold);color:var(--gold)}
+  #notif-bell.urgent{border-color:#C0271B;color:#E8837A}
+  #notif-n{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;
+    border-radius:9px;background:#C0271B;color:#fff;font-size:11px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+  #notif-pop{position:absolute;top:calc(100% + 10px);right:0;width:min(380px,88vw);z-index:60;
+    background:var(--surface);border:1px solid var(--line-strong);border-radius:13px;
+    box-shadow:0 18px 44px rgba(0,0,0,.5);overflow:hidden;max-height:70vh;overflow-y:auto}
+  .notif-head{padding:13px 16px;font-size:12px;font-weight:700;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--line)}
+  .notif-row{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;
+    background:none;border:none;border-bottom:1px solid var(--line);border-left:3px solid transparent;
+    padding:12px 16px;cursor:pointer;font:inherit;color:var(--text)}
+  .notif-row:hover{background:var(--surface-2)}
+  .notif-row:last-child{border-bottom:none}
+  .notif-row.urgent{border-left-color:#C0271B}
+  .notif-row.important{border-left-color:#E08A5B}
+  .notif-row.attention{border-left-color:var(--gold)}
+  .notif-row.info{border-left-color:#7CC1EC}
+  .notif-row .att-niv{width:auto;min-width:64px;padding-top:2px}
+  .notif-row.urgent .att-niv{color:#E8837A}
+  .notif-row.important .att-niv{color:#E08A5B}
+  .notif-row.attention .att-niv{color:var(--gold)}
+  .notif-row.info .att-niv{color:#7CC1EC}
+  .notif-vide{padding:22px 16px;text-align:center;font-size:13.5px;color:var(--faint)}
+  @media(max-width:600px){#notif-pop{position:fixed;top:64px;right:8px;left:8px;width:auto}}
+
+  /* --- Joueuse du match : une proposition, pas un palmarès --- */
+  .mc-mvp{background:linear-gradient(150deg,rgba(198,162,87,.16),rgba(198,162,87,.05));
+    border:1px solid rgba(198,162,87,.36);border-radius:13px;padding:18px 20px}
+  .mc-mvp.none{background:var(--surface-2);border-color:var(--line)}
+  .mc-mvp-t{display:block;font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--gold);font-weight:700;margin-bottom:8px}
+  .mc-mvp.none .mc-mvp-t{color:var(--faint)}
+  .mc-mvp b{display:block;font-family:var(--font-ui);font-weight:700;font-size:24px;
+    line-height:1.1;color:var(--text);margin-bottom:6px}
+  .mc-mvp-l{display:block;font-size:13px;color:var(--muted);line-height:1.55}
+
   /* --- Fiche joueuse : ce qui est calculé, distinct de ce qui est saisi --- */
   .ef-statbox.ef-calc{background:rgba(198,162,87,.08);border-color:rgba(198,162,87,.3)}
   .ef-statbox.ef-calc b{display:block;font-family:var(--font-ui);font-weight:700;font-size:26px;
@@ -1477,6 +1521,16 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg>
           <span class="hide-sm">Aide</span>
         </button>
+        <div id="notif-wrap">
+          <button type="button" id="notif-bell" title="Ce qui demande une décision" aria-label="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            <span id="notif-n" class="hide">0</span>
+          </button>
+          <div id="notif-pop" class="hide">
+            <div class="notif-head">Ce qui demande une décision</div>
+            <div id="notif-list"><div class="notif-vide">Analyse en cours…</div></div>
+          </div>
+        </div>
         <span id="role-badge" class="hide" title="Votre rôle dans l'administration">Administration</span>
         <button class="link-btn" id="logout-btn" title="Se déconnecter">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
@@ -3322,6 +3376,7 @@
           app.classList.remove('hide');
           init();
           appliquerRole();
+          notifInit();
         });
       });
     }
@@ -3332,6 +3387,7 @@
       app.classList.remove('hide');
       init();
       appliquerRole();
+      notifInit();
     });
   });
 
@@ -4606,8 +4662,32 @@
   //   3. Le rôle filtre : on ne signale pas au coach un stock épuisé.
   var ATT_NIV = { urgent:0, important:1, attention:2, info:3 };
 
+  // Les règles sont évaluées UNE fois et servent deux affichages : la
+  // liste du tableau de bord et la cloche de la barre du haut. Deux
+  // moteurs auraient fini par se contredire — l'un signalant ce que
+  // l'autre ignore.
+  var attFaits = null, attQuand = 0, attEnCours = null;
+
+  function attCollecte(force){
+    // Deux minutes de fraîcheur : passer d'un écran à l'autre ne doit
+    // pas relancer neuf requêtes.
+    if (!force && attFaits && (Date.now() - attQuand) < 120000) return Promise.resolve(attFaits);
+    if (attEnCours) return attEnCours;
+    attEnCours = attRegles().then(function(f){
+      attFaits = f; attQuand = Date.now(); attEnCours = null;
+      notifPeindre();
+      return f;
+    }).catch(function(){ attEnCours = null; return []; });
+    return attEnCours;
+  }
+
   function attInit(){
     var box = document.getElementById('att-list'); if(!box) return;
+    box.innerHTML = '';
+    attCollecte(true).then(function(faits){ attPeindre(faits); });
+  }
+
+  function attRegles(){
     var faits = [];
 
     function ajout(niveau, titre, detail, section, module){
@@ -4715,31 +4795,88 @@
       }
     }).catch(function(){}));
 
-    Promise.all(travaux).then(function(){
+    return Promise.all(travaux).then(function(){
       faits.sort(function(a,b){ return ATT_NIV[a.niveau] - ATT_NIV[b.niveau]; });
-      var sub = document.getElementById('att-sub');
-      if (!faits.length){
-        sub.textContent = '';
-        box.innerHTML = '<div class="att-vide"><b>✓</b><span>Rien ne réclame de décision aujourd\'hui. Le club tourne.</span></div>';
-        return;
-      }
-      var urg = faits.filter(function(f){ return f.niveau==='urgent'; }).length;
-      sub.textContent = faits.length + ' point' + (faits.length>1?'s':'') +
-        (urg ? ' · ' + urg + ' urgent' + (urg>1?'s':'') : '');
-      var NOM = { urgent:'Urgent', important:'Important', attention:'Attention', info:'Information' };
-      box.innerHTML = faits.map(function(f,i){
-        return '<button type="button" class="att-row '+f.niveau+'" data-att="'+i+'">'+
-          '<span class="att-niv">'+NOM[f.niveau]+'</span>'+
-          '<span class="att-txt"><b>'+esc(f.titre)+'</b><span>'+esc(f.detail)+'</span></span>'+
-          '<span class="att-go">›</span></button>';
-      }).join('');
-      box.querySelectorAll('[data-att]').forEach(function(b){
-        b.addEventListener('click', function(){
-          var f = faits[parseInt(b.getAttribute('data-att'),10)];
-          if (f && f.section) showSection(f.section);
-        });
+      return faits;
+    });
+  }
+
+  var ATT_NOM = { urgent:'Urgent', important:'Important', attention:'Attention', info:'Information' };
+
+  function attPeindre(faits){
+    var box = document.getElementById('att-list'), sub = document.getElementById('att-sub');
+    if (!box) return;
+    if (!faits.length){
+      if (sub) sub.textContent = '';
+      box.innerHTML = '<div class="att-vide"><b>✓</b><span>Rien ne réclame de décision aujourd\'hui. Le club tourne.</span></div>';
+      return;
+    }
+    var urg = faits.filter(function(f){ return f.niveau==='urgent'; }).length;
+    if (sub) sub.textContent = faits.length + ' point' + (faits.length>1?'s':'') +
+      (urg ? ' · ' + urg + ' urgent' + (urg>1?'s':'') : '');
+    box.innerHTML = faits.map(function(f,i){
+      return '<button type="button" class="att-row '+f.niveau+'" data-att="'+i+'">'+
+        '<span class="att-niv">'+ATT_NOM[f.niveau]+'</span>'+
+        '<span class="att-txt"><b>'+esc(f.titre)+'</b><span>'+esc(f.detail)+'</span></span>'+
+        '<span class="att-go">›</span></button>';
+    }).join('');
+    box.querySelectorAll('[data-att]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var f = faits[parseInt(b.getAttribute('data-att'),10)];
+        if (f && f.section) showSection(f.section);
       });
     });
+  }
+
+  // ===================== CLOCHE =====================
+  // La pastille ne compte que l'urgent et l'important. Compter aussi les
+  // informations donnerait un chiffre qui ne redescend jamais — et une
+  // pastille permanente cesse d'être regardée au bout d'une semaine.
+  function notifPeindre(){
+    var pastille = document.getElementById('notif-n'), liste = document.getElementById('notif-list');
+    if (!pastille || !attFaits) return;
+    var chauds = attFaits.filter(function(f){ return f.niveau==='urgent' || f.niveau==='important'; });
+    pastille.textContent = chauds.length > 9 ? '9+' : chauds.length;
+    pastille.classList.toggle('hide', chauds.length === 0);
+    document.getElementById('notif-bell').classList.toggle('urgent',
+      attFaits.some(function(f){ return f.niveau==='urgent'; }));
+
+    if (!attFaits.length){
+      liste.innerHTML = '<div class="notif-vide">Rien à signaler. Le club tourne.</div>';
+      return;
+    }
+    liste.innerHTML = attFaits.map(function(f,i){
+      return '<button type="button" class="notif-row '+f.niveau+'" data-notif="'+i+'">'+
+        '<span class="att-niv">'+ATT_NOM[f.niveau]+'</span>'+
+        '<span class="att-txt"><b>'+esc(f.titre)+'</b><span>'+esc(f.detail)+'</span></span></button>';
+    }).join('');
+    liste.querySelectorAll('[data-notif]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var f = attFaits[parseInt(b.getAttribute('data-notif'),10)];
+        document.getElementById('notif-pop').classList.add('hide');
+        if (f && f.section) showSection(f.section);
+      });
+    });
+  }
+
+  function notifInit(){
+    var bell = document.getElementById('notif-bell'), pop = document.getElementById('notif-pop');
+    if (!bell || !pop) return;
+    bell.addEventListener('click', function(e){
+      e.stopPropagation();
+      pop.classList.toggle('hide');
+      if (!pop.classList.contains('hide')) attCollecte();
+    });
+    document.addEventListener('click', function(e){
+      if (!pop.classList.contains('hide') && !pop.contains(e.target) && e.target !== bell) pop.classList.add('hide');
+    });
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape') pop.classList.add('hide');
+    });
+    attCollecte();
+    // Un rappel toutes les cinq minutes : assez pour qu'un match qui
+    // approche remonte, assez rare pour ne pas peser.
+    setInterval(function(){ attCollecte(true); }, 300000);
   }
 
   // ===================== TABLE DE MARQUE =====================
@@ -8807,6 +8944,7 @@
     var TABS = [
       ['feuille','Feuille de match', null],
       ['resultat','Résultat', null],
+      ['stats','Statistiques', null],
       ['billetterie','Billetterie', Number(m.nb_categories)||null],
       ['diffusion','Diffusion', null],
       ['medias','Médias', null]
@@ -8861,6 +8999,69 @@
     function saveBar(){
       return '<div class="mc-savebar"><span class="cd-draft" id="mc-save-note"></span>'+
         '<button type="button" class="btn btn-primary" id="mc-save" style="padding:10px 18px;font-size:13px">Enregistrer</button></div>';
+    }
+
+    if (mcTab === 'stats'){
+      p.innerHTML = '<div class="empty">Lecture de la feuille de match…</div>';
+      Promise.all([
+        sbGet('match_stats?select=*,players(name,jersey_number)&match_id=eq.'+m.id).catch(function(){ return []; }),
+        tkRpc('bbc_mvp_match', { p_match_id: m.id }).catch(function(){ return []; })
+      ]).then(function(res){
+        var lignes = (res[0]||[]).filter(function(l){ return l.players; })
+          .sort(function(a,b){ return (b.pts||0)-(a.pts||0); });
+        var mvp = (res[1]||[])[0];
+
+        if (!lignes.length){
+          p.innerHTML = '<div class="empty">Aucune feuille de match pour cette rencontre.<br><br>'+
+            'Les statistiques se saisissent à la table de marque, dans <b>Soir de match</b> — chaque geste alimente cette page.</div>';
+          return;
+        }
+
+        var tot = lignes.reduce(function(a,l){
+          ['pts','reb','ast','stl','blk','tov','pf'].forEach(function(k){ a[k]=(a[k]||0)+(l[k]||0); });
+          a.fgm=(a.fgm||0)+(l.fg2_made||0)+(l.fg3_made||0);
+          a.fga=(a.fga||0)+(l.fg2_att||0)+(l.fg3_att||0);
+          return a;
+        }, {});
+
+        // Le MVP est une proposition, pas un verdict : la fonction ne le
+        // désigne que si son évaluation se détache d'au moins deux points.
+        // Un écart d'un point ne désigne personne.
+        var blocMvp = mvp
+          ? '<div class="mc-mvp"><span class="mc-mvp-t">Joueuse du match — proposition</span>'+
+            '<b>'+esc(mvp.name||'—')+'</b>'+
+            '<span class="mc-mvp-l">'+(mvp.pts||0)+' pts · '+(mvp.reb||0)+' rebonds · '+(mvp.ast||0)+' passes · '+
+            (mvp.eval||0)+' d\'évaluation, soit '+(mvp.ecart||0)+' de plus que la suivante.</span></div>'
+          : '<div class="mc-mvp none"><span class="mc-mvp-t">Joueuse du match</span>'+
+            '<span class="mc-mvp-l">Aucune ne se détache nettement — les évaluations sont trop proches pour désigner quelqu\'un.</span></div>';
+
+        p.innerHTML = blocMvp +
+          '<div class="gd-sheet-scroll" style="margin-top:18px"><table class="gd-sheet"><tbody>'+
+            '<tr><th>Joueuse</th><th>MIN</th><th>PTS</th><th>Tirs</th><th>3 pts</th><th>LF</th>'+
+            '<th>REB</th><th>PD</th><th>INT</th><th>CT</th><th>BP</th><th>F</th><th>ÉVAL</th></tr>'+
+            lignes.map(function(l){
+              var pl = l.players || {};
+              return '<tr><td>'+(pl.jersey_number!=null?'#'+esc(pl.jersey_number)+' ':'')+esc(pl.name||'—')+
+                (l.is_starter?'<span style="color:var(--gold)"> ●</span>':'')+'</td>'+
+                '<td>'+(l.minutes||0)+'</td><td class="pts">'+(l.pts||0)+'</td>'+
+                '<td>'+((l.fg2_made||0)+(l.fg3_made||0))+'/'+((l.fg2_att||0)+(l.fg3_att||0))+'</td>'+
+                '<td>'+(l.fg3_made||0)+'/'+(l.fg3_att||0)+'</td>'+
+                '<td>'+(l.ft_made||0)+'/'+(l.ft_att||0)+'</td>'+
+                '<td>'+(l.reb||0)+'</td><td>'+(l.ast||0)+'</td><td>'+(l.stl||0)+'</td>'+
+                '<td>'+(l.blk||0)+'</td><td>'+(l.tov||0)+'</td><td>'+(l.pf||0)+'</td>'+
+                '<td>'+(l.eval||0)+'</td></tr>';
+            }).join('')+
+            '<tr style="border-top:2px solid var(--line-strong)"><td><b>Total équipe</b></td><td></td>'+
+              '<td class="pts">'+(tot.pts||0)+'</td><td>'+(tot.fgm||0)+'/'+(tot.fga||0)+'</td><td></td><td></td>'+
+              '<td>'+(tot.reb||0)+'</td><td>'+(tot.ast||0)+'</td><td>'+(tot.stl||0)+'</td>'+
+              '<td>'+(tot.blk||0)+'</td><td>'+(tot.tov||0)+'</td><td>'+(tot.pf||0)+'</td><td></td></tr>'+
+          '</tbody></table></div>'+
+          '<p style="font-size:12px;color:var(--faint);margin-top:12px">● titulaire · ÉVAL = points + rebonds + passes + interceptions + contres − tirs manqués − balles perdues − fautes.'+
+          (tot.pts !== m.score_baobabs && m.score_baobabs != null
+            ? '<br><span style="color:#E08A5B">Les '+tot.pts+' points attribués ne correspondent pas au score officiel de '+m.score_baobabs+'. Il manque des gestes dans la feuille, ou le score a été corrigé à la main.</span>'
+            : '')+'</p>';
+      });
+      return;
     }
 
     if (mcTab === 'feuille'){
