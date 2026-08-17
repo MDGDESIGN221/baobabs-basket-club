@@ -1208,6 +1208,52 @@
   .cd-back{display:inline-flex;align-items:center;gap:7px;background:none;border:none;color:var(--muted);font:inherit;font-weight:600;font-size:12.5px;cursor:pointer;padding:0;margin-bottom:14px}
   .cd-back:hover{color:var(--gold)}
 
+  /* --- Fiche joueuse : ce qui est calculé, distinct de ce qui est saisi --- */
+  .ef-statbox.ef-calc{background:rgba(198,162,87,.08);border-color:rgba(198,162,87,.3)}
+  .ef-statbox.ef-calc b{display:block;font-family:var(--font-ui);font-weight:700;font-size:26px;
+    line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
+  .ef-statbox.ef-calc label{margin-top:6px}
+  .ef-meta-row{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12.5px;color:var(--faint);margin-bottom:18px}
+  .ef-meta-row b{color:var(--text);font-family:var(--font-ui);font-weight:700}
+  /* La courbe : une barre par match, la plus récente à droite. On voit la
+     pente avant de lire un seul chiffre. */
+  .ef-curve{display:flex;align-items:flex-end;gap:4px;height:64px;padding:0 2px;
+    border-bottom:1px solid var(--line)}
+  .ef-bar{flex:1;min-width:6px;background:linear-gradient(180deg,var(--gold),rgba(198,162,87,.35));
+    border-radius:3px 3px 0 0;cursor:default}
+  .ef-curve-l{font-size:11px;color:var(--faint);margin:7px 0 0}
+
+  /* ===================== CENTRE D'ATTENTION =====================
+     Le niveau se lit à la couleur du liseré avant même le texte. Quatre
+     niveaux seulement : au-delà, plus personne ne fait la différence. */
+  .att{margin-bottom:20px}
+  .att-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .att-title{font-family:var(--font-ui);font-size:17px;font-weight:700;color:var(--text);margin:0}
+  .att-sub{font-size:12.5px;color:var(--faint)}
+  .att-row{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+    background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--line-strong);
+    border-radius:11px;padding:13px 16px;margin-bottom:8px;cursor:pointer;font:inherit;color:var(--text);
+    transition:border-color .15s,background .15s}
+  .att-row:hover{background:var(--surface);border-color:var(--line-strong)}
+  .att-row.urgent{border-left-color:#C0271B}
+  .att-row.important{border-left-color:#E08A5B}
+  .att-row.attention{border-left-color:var(--gold)}
+  .att-row.info{border-left-color:#7CC1EC}
+  .att-niv{font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;
+    flex:none;width:76px}
+  .att-row.urgent .att-niv{color:#E8837A}
+  .att-row.important .att-niv{color:#E08A5B}
+  .att-row.attention .att-niv{color:var(--gold)}
+  .att-row.info .att-niv{color:#7CC1EC}
+  .att-txt{flex:1;min-width:0}
+  .att-txt b{display:block;font-size:14px;font-weight:600;line-height:1.35}
+  .att-txt span{display:block;font-size:12.5px;color:var(--faint);margin-top:2px}
+  .att-go{flex:none;color:var(--faint);font-size:18px;line-height:1}
+  .att-row:hover .att-go{color:var(--gold)}
+  .att-vide{display:flex;align-items:center;gap:12px;background:rgba(28,122,58,.09);
+    border:1px solid rgba(28,122,58,.28);border-radius:11px;padding:16px 18px;font-size:14px;color:var(--text)}
+  .att-vide b{color:var(--lime,#A8D93B)}
+
   /* ===================== TABLE DE MARQUE =====================
      Écran tenu debout, à la table, dans une salle bruyante : cibles
      larges, contraste franc, aucun ornement. Une erreur de saisie coûte
@@ -1683,6 +1729,17 @@
 
     <!-- ===== SECTION TABLEAU DE BORD ===== -->
     <section id="section-dashboard">
+      <!-- Ce qui demande une décision aujourd'hui, trié par gravité.
+           Placé avant le prochain match : un compteur répond « combien »,
+           cette liste répond « quoi d'abord ». -->
+      <div class="att" id="att">
+        <div class="att-head">
+          <h2 class="att-title">Ce qui vous attend</h2>
+          <span class="att-sub" id="att-sub">Analyse en cours…</span>
+        </div>
+        <div id="att-list"></div>
+      </div>
+
       <div class="dash-next-card" id="dash-next-card">
         <span class="dash-next-label">Prochain match</span>
         <div class="dash-next-empty" id="dash-next-body">Chargement…</div>
@@ -4533,6 +4590,154 @@
         tkRpc('bbc_retirer_reservation',{p_reservation_id:b.getAttribute('data-id')})
           .then(function(){ showMsg(document.getElementById('gd-resa-msg'),'Billet retiré.',true); gdLoadSide(); })
           .catch(function(){ showMsg(document.getElementById('gd-resa-msg'),'Impossible de retirer ce billet.',false); b.disabled=false; });
+      });
+    });
+  }
+
+  // ===================== CENTRE D'ATTENTION =====================
+  // Un compteur dit « combien ». Cette liste dit « quoi d'abord ».
+  //
+  // Trois règles de conception, pour qu'elle reste lue au bout d'un mois :
+  //   1. Une ligne ne s'affiche que si quelqu'un peut agir dessus. Une
+  //      alerte sans geste possible est un reproche, pas une aide.
+  //   2. Chaque ligne mène à l'écran où l'on règle le problème. Une
+  //      alerte qu'il faut aller chercher ailleurs coûte plus qu'elle
+  //      ne rapporte.
+  //   3. Le rôle filtre : on ne signale pas au coach un stock épuisé.
+  var ATT_NIV = { urgent:0, important:1, attention:2, info:3 };
+
+  function attInit(){
+    var box = document.getElementById('att-list'); if(!box) return;
+    var faits = [];
+
+    function ajout(niveau, titre, detail, section, module){
+      if (module && !can(module,'voir')) return;
+      faits.push({ niveau:niveau, titre:titre, detail:detail, section:section });
+    }
+    function jours(d){
+      if(!d) return null;
+      var t=new Date(); t.setHours(0,0,0,0);
+      return Math.round((new Date(d+'T00:00:00') - t)/86400000);
+    }
+
+    var travaux = [];
+
+    // --- Matchs : ce qui se prépare, et ce qui traîne ---
+    travaux.push(sbGet('match_center?select=*&order=match_date.asc').then(function(rows){
+      (rows||[]).forEach(function(m){
+        var j = jours(m.match_date);
+        if (m.statut === 'a_saisir'){
+          var depuis = j === null ? 0 : -j;
+          ajout(depuis >= 2 ? 'important' : 'attention',
+            'Score non saisi — ' + (m.opponent_name||'match'),
+            'Joué il y a ' + depuis + ' jour' + (depuis>1?'s':'') + '. Le site affiche encore ce match comme à venir.',
+            'results', 'matchs');
+        }
+        if (m.statut === 'a_venir' && j !== null && j <= 3 && !m.vente_ouverte){
+          ajout('important',
+            'Billetterie fermée — ' + (m.opponent_name||'match') + ' dans ' + j + ' jour' + (j>1?'s':''),
+            'Aucune catégorie de place n\'est ouverte à la vente.',
+            'tickets', 'billetterie');
+        }
+        if (m.statut === 'a_venir' && j !== null && j <= 2 && !m.venue){
+          ajout('attention',
+            'Salle non renseignée — ' + (m.opponent_name||'match'),
+            'Le match est dans ' + j + ' jour' + (j>1?'s':'') + ' et le site n\'indique pas où il se joue.',
+            'matches2', 'matchs');
+        }
+      });
+    }).catch(function(){}));
+
+    // --- Un direct resté ouvert : la barre rouge tourne encore sur le site ---
+    travaux.push(sbGet('match_live?select=match_id,is_live,updated_at&is_live=is.true').then(function(rows){
+      (rows||[]).forEach(function(l){
+        var h = hoursSince(l.updated_at);
+        if (h !== null && h > 4){
+          ajout('urgent', 'Le direct est encore ouvert',
+            'Aucun point marqué depuis ' + Math.round(h) + ' h. La barre rouge tourne toujours sur le site.',
+            'gameday', 'matchs');
+        }
+      });
+    }).catch(function(){}));
+
+    // --- École de basket : l'argent et la santé ---
+    travaux.push(sbGet('inscriptions_admin?select=status,medical_recu,periodes_payees,fee_monthly_fcfa,created_at,jours_depuis_reception').then(function(rows){
+      rows = rows||[];
+      var nouvelles = rows.filter(function(r){
+        return (r.status||'nouvelle')==='nouvelle' && (r.jours_depuis_reception||0) >= 2;
+      }).length;
+      if (nouvelles) ajout('important',
+        nouvelles + ' inscription' + (nouvelles>1?'s':'') + ' sans réponse',
+        'La page annonce un rappel sous 48 h.', 'inscriptions', 'inscriptions');
+
+      var sansMed = rows.filter(function(r){ return r.status==='inscrite' && r.medical_recu === false; }).length;
+      if (sansMed) ajout('urgent',
+        sansMed + ' enfant' + (sansMed>1?'s':'') + ' sans certificat médical',
+        'Ils s\'entraînent sans attestation d\'aptitude.', 'inscriptions', 'inscriptions');
+
+      var mois = new Date().getFullYear()+'-'+('0'+(new Date().getMonth()+1)).slice(-2);
+      var retard = rows.filter(function(r){
+        return r.status==='inscrite' && String(r.periodes_payees||'').split(',').indexOf(mois) < 0;
+      }).length;
+      if (retard) ajout('attention',
+        retard + ' mensualité' + (retard>1?'s':'') + ' non réglée' + (retard>1?'s':''),
+        'Pour le mois en cours.', 'inscriptions', 'inscriptions');
+    }).catch(function(){}));
+
+    // --- Candidatures ---
+    travaux.push(sbGet('recruitment_requests?select=status,created_at').then(function(rows){
+      var n = (rows||[]).filter(function(r){
+        var h = hoursSince(r.created_at);
+        return (r.status||'nouvelle')==='nouvelle' && h !== null && h > 72;
+      }).length;
+      if (n) ajout('attention', n + ' candidature' + (n>1?'s':'') + ' en attente',
+        'Reçues il y a plus de trois jours.', 'applications', 'recrutement');
+    }).catch(function(){}));
+
+    // --- Boutique ---
+    travaux.push(sbGet('orders?select=id,status,created_at').then(function(rows){
+      var n = (rows||[]).filter(function(o){
+        var s = normalizeOrderStatus(o.status);
+        var h = hoursSince(o.created_at);
+        return s !== 'récupérée' && s !== 'annulée' && h !== null && h > 48;
+      }).length;
+      if (n) ajout('attention', n + ' commande' + (n>1?'s':'') + ' à préparer',
+        'En attente depuis plus de deux jours.', 'orders2', 'boutique');
+    }).catch(function(){}));
+
+    // --- Contenu : le site qui s'endort ---
+    travaux.push(sbGet('news?select=published_at,status&order=published_at.desc&limit=1').then(function(rows){
+      var d = (rows||[])[0];
+      var h = d && d.published_at ? hoursSince(d.published_at) : null;
+      if (h !== null && h > 24*30){
+        ajout('info', 'Aucune actualité depuis ' + Math.round(h/24/7) + ' semaines',
+          'Le site donne l\'impression d\'un club à l\'arrêt.', 'articles', 'contenu');
+      }
+    }).catch(function(){}));
+
+    Promise.all(travaux).then(function(){
+      faits.sort(function(a,b){ return ATT_NIV[a.niveau] - ATT_NIV[b.niveau]; });
+      var sub = document.getElementById('att-sub');
+      if (!faits.length){
+        sub.textContent = '';
+        box.innerHTML = '<div class="att-vide"><b>✓</b><span>Rien ne réclame de décision aujourd\'hui. Le club tourne.</span></div>';
+        return;
+      }
+      var urg = faits.filter(function(f){ return f.niveau==='urgent'; }).length;
+      sub.textContent = faits.length + ' point' + (faits.length>1?'s':'') +
+        (urg ? ' · ' + urg + ' urgent' + (urg>1?'s':'') : '');
+      var NOM = { urgent:'Urgent', important:'Important', attention:'Attention', info:'Information' };
+      box.innerHTML = faits.map(function(f,i){
+        return '<button type="button" class="att-row '+f.niveau+'" data-att="'+i+'">'+
+          '<span class="att-niv">'+NOM[f.niveau]+'</span>'+
+          '<span class="att-txt"><b>'+esc(f.titre)+'</b><span>'+esc(f.detail)+'</span></span>'+
+          '<span class="att-go">›</span></button>';
+      }).join('');
+      box.querySelectorAll('[data-att]').forEach(function(b){
+        b.addEventListener('click', function(){
+          var f = faits[parseInt(b.getAttribute('data-att'),10)];
+          if (f && f.section) showSection(f.section);
+        });
       });
     });
   }
@@ -7549,7 +7754,11 @@
         '</div>' +
 
         '<div style="padding:clamp(16px,2.4vw,24px)">' +
-          '<p class="ar-side-h">Statistiques de la saison</p>' +
+          // Ce que disent les feuilles de match. Rempli après coup :
+          // la fiche s'ouvre sans attendre la requête.
+          '<div id="ef-real"></div>' +
+          '<p class="ar-side-h">Statistiques de la saison — saisie manuelle</p>' +
+          '<p style="font-size:12.5px;color:var(--faint);margin:-6px 0 12px;max-width:62ch">Ces chiffres alimentent le site. Ils restent utiles pour une saison passée&nbsp;; dès qu\'un match est saisi à la table de marque, fiez-vous au bloc calculé ci-dessus.</p>' +
           '<div class="ef-statgrid" style="margin-bottom:22px">' +
             EF_STATS.map(function(k){
               return '<div class="ef-statbox"><input id="ef-s-' + k[0] + '" type="number" step="0.1" min="0" value="' + esc(st[k[0]] == null ? '' : st[k[0]]) + '" placeholder="—"><label>' + esc(k[1]) + '</label></div>';
@@ -7632,6 +7841,71 @@
         .then(function(){ efSel = null; efDirty = false; return efLoad(); })
         .catch(function(){ note.textContent = 'La suppression a échoué.'; });
     });
+
+    efLoadReal(r.id);
+  }
+
+  // Ce que les feuilles de match disent d'une joueuse. Aucun chiffre
+  // saisi ici : tout vient de ce qui a été tapé à la table de marque.
+  function efLoadReal(pid){
+    var box = document.getElementById('ef-real'); if(!box) return;
+    Promise.all([
+      sbGet('player_season_stats?select=*&player_id=eq.'+pid).catch(function(){ return []; }),
+      sbGet('match_stats?select=*,matches(opponent_name,match_date,score_baobabs,score_opponent,is_home)&player_id=eq.'+pid).catch(function(){ return []; })
+    ]).then(function(res){
+      var s = (res[0]||[])[0];
+      var lignes = (res[1]||[]).filter(function(l){ return l.matches; })
+        .sort(function(a,b){ return (b.matches.match_date||'').localeCompare(a.matches.match_date||''); });
+
+      if (!s || !s.matchs_joues){
+        box.innerHTML = '<p class="ar-side-h">Sur le terrain</p>'+
+          '<div class="empty" style="margin-bottom:22px">Aucune feuille de match pour cette joueuse. Les chiffres apparaîtront dès le premier match saisi à la table de marque.</div>';
+        return;
+      }
+
+      var CH = [['pts_moy','Points'],['reb_moy','Rebonds'],['ast_moy','Passes'],['eval_moy','Évaluation']];
+      var pcts = [['pct_tirs','Tirs'],['pct_3pts','3 points'],['pct_lf','Lancers francs']]
+        .filter(function(p){ return s[p[0]] != null; });
+
+      // Une barre par match, la plus récente à droite : on voit la pente
+      // avant de lire les chiffres.
+      var recents = lignes.slice(0, 12).reverse();
+      var max = Math.max.apply(null, recents.map(function(l){ return l.pts||0; }).concat([1]));
+      var courbe = recents.map(function(l){
+        var h = Math.max(Math.round((l.pts||0)/max*100), 3);
+        var d = l.matches.match_date ? formatDateShort(l.matches.match_date) : '';
+        return '<span class="ef-bar" style="height:'+h+'%" title="'+esc(l.matches.opponent_name||'')+' — '+(l.pts||0)+' pts'+(d?' ('+d+')':'')+'"></span>';
+      }).join('');
+
+      box.innerHTML =
+        '<p class="ar-side-h">Sur le terrain — calculé depuis les feuilles de match</p>'+
+        '<div class="ef-statgrid" style="margin-bottom:16px">'+
+          CH.map(function(c){
+            return '<div class="ef-statbox ef-calc"><b>'+(s[c[0]] != null ? s[c[0]] : '—')+'</b><label>'+c[1]+' / match</label></div>';
+          }).join('')+
+        '</div>'+
+        '<div class="ef-meta-row">'+
+          '<span><b>'+s.matchs_joues+'</b> match'+(s.matchs_joues>1?'s':'')+'</span>'+
+          '<span><b>'+(s.titularisations||0)+'</b> comme titulaire</span>'+
+          '<span><b>'+(s.pts_total||0)+'</b> points au total</span>'+
+          pcts.map(function(p){ return '<span><b>'+s[p[0]]+'%</b> '+p[1]+'</span>'; }).join('')+
+        '</div>'+
+        (recents.length > 1 ? '<div class="ef-curve" aria-hidden="true">'+courbe+'</div>'+
+          '<p class="ef-curve-l">Points marqués, du plus ancien au plus récent</p>' : '')+
+        '<div class="gd-sheet-scroll" style="margin-top:16px"><table class="gd-sheet"><tbody>'+
+          '<tr><th>Match</th><th>PTS</th><th>REB</th><th>PD</th><th>ÉVAL</th><th>Tirs</th></tr>'+
+          lignes.slice(0,10).map(function(l){
+            var m = l.matches;
+            var res = (m.score_baobabs!=null && m.score_opponent!=null)
+              ? (m.score_baobabs>m.score_opponent?'V ':'D ')+m.score_baobabs+'–'+m.score_opponent : '';
+            return '<tr><td>'+(m.is_home?'vs ':'à ')+esc(m.opponent_name||'—')+
+              '<span style="color:var(--faint);font-weight:400"> '+esc(res)+'</span></td>'+
+              '<td class="pts">'+(l.pts||0)+'</td><td>'+(l.reb||0)+'</td><td>'+(l.ast||0)+'</td>'+
+              '<td>'+(l.eval||0)+'</td><td>'+((l.fg2_made||0)+(l.fg3_made||0))+'/'+((l.fg2_att||0)+(l.fg3_att||0))+'</td></tr>';
+          }).join('')+
+        '</tbody></table></div>'+
+        '<div style="height:22px"></div>';
+    }).catch(function(){});
   }
 
   // ===================== ARTICLES =====================
@@ -11104,7 +11378,7 @@
   // ===================== LOADERS =====================
   var LOADERS_live, LOADERS_home, LOADERS_founder, LOADERS_bureau;
   var LOADERS = {
-    dashboard:function(){ loadDashboard(); },
+    dashboard:function(){ loadDashboard(); attInit(); },
     gameday:function(){ gdLoad(); },
     promos:function(){ pmLoad(); },
     newsl:function(){ nwLoad(); },
