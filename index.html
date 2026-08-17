@@ -529,6 +529,39 @@
   .bb-poster-modal-close:hover{background:rgba(243,239,230,.14)}
   @media(max-width:640px){.bb-poster-modal{align-items:flex-start;padding:72px 16px 28px}.bb-poster-modal-inner{flex-direction:column;margin:0 auto}.bb-poster-modal-inner img{max-width:min(88vw,420px)}}
 
+  /* ===================== SCORE EN DIRECT =====================
+     Une barre, pas une section : le direct doit suivre le visiteur quelle
+     que soit la page qu'il consulte. Le chiffre bat brièvement à chaque
+     panier — c'est le seul mouvement de la barre, et il porte une
+     information : quelque chose vient de se passer. */
+  #bb-livescore{background:linear-gradient(90deg,#7E1710,#C0271B 45%,#7E1710);color:#fff;
+    border-bottom:1px solid rgba(0,0,0,.28)}
+  .bb-ls-inner{max-width:1500px;margin:0 auto;padding:9px clamp(16px,4vw,24px);
+    display:flex;align-items:center;justify-content:center;gap:clamp(12px,3vw,28px);flex-wrap:wrap}
+  .bb-ls-tag{display:inline-flex;align-items:center;gap:7px;font-family:'Inter',sans-serif;
+    font-weight:800;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+    background:rgba(0,0,0,.26);padding:5px 11px;border-radius:5px;flex:none}
+  .bb-ls-tag i{width:7px;height:7px;border-radius:50%;background:#fff;animation:bbPulse 1.3s infinite}
+  .bb-ls-match{display:flex;align-items:center;gap:clamp(8px,1.6vw,16px);min-width:0}
+  .bb-ls-team{font-family:'Inter',sans-serif;font-weight:700;font-size:13.5px;letter-spacing:.02em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:32vw}
+  .bb-ls-num{font-family:'Anton',sans-serif;font-size:26px;line-height:1;letter-spacing:.02em;
+    font-variant-numeric:tabular-nums;min-width:1.6ch;text-align:center;display:inline-block}
+  .bb-ls-num.bump{animation:bbLsBump .45s cubic-bezier(.34,1.56,.64,1)}
+  @keyframes bbLsBump{0%{transform:scale(1)}35%{transform:scale(1.32)}100%{transform:scale(1)}}
+  .bb-ls-sep{opacity:.6;font-family:'Anton',sans-serif;font-size:20px}
+  .bb-ls-per{font-family:'Inter',sans-serif;font-weight:600;font-size:12px;opacity:.82;flex:none}
+  .bb-ls-per sup{font-size:8px}
+  @media(prefers-reduced-motion:reduce){
+    .bb-ls-tag i{animation:none}
+    .bb-ls-num.bump{animation:none}
+  }
+  @media(max-width:640px){
+    .bb-ls-per{display:none}
+    .bb-ls-team{font-size:12px;max-width:26vw}
+    .bb-ls-num{font-size:22px}
+  }
+
   /* ===================== PRÉ-SAISON ET INSCRIPTIONS =====================
      Deux ajouts du 17/08/2026. La vidéo de reprise est verticale (9:16) :
      elle a été tournée pour un téléphone, on ne la recadre pas de force en
@@ -892,6 +925,23 @@
 
   <!-- Bandeau d'annonce : rempli par applyAnnouncement(), masqué s'il n'y a rien. -->
   <div id="bb-announce" style="display:none"></div>
+
+  <!-- Score en direct. Invisible tant qu'aucun match n'est en cours ;
+       quand la table de marque ouvre le direct, la barre apparaît d'elle-même
+       sur toutes les pages et suit chaque panier. -->
+  <div id="bb-livescore" class="bb-hide" role="status" aria-live="polite">
+    <div class="bb-ls-inner">
+      <span class="bb-ls-tag"><i></i>En direct</span>
+      <div class="bb-ls-match">
+        <span class="bb-ls-team" id="bb-ls-home">Baobabs</span>
+        <span class="bb-ls-num" id="bb-ls-score-h">0</span>
+        <span class="bb-ls-sep">–</span>
+        <span class="bb-ls-num" id="bb-ls-score-a">0</span>
+        <span class="bb-ls-team" id="bb-ls-away">Adversaire</span>
+      </div>
+      <span class="bb-ls-per" id="bb-ls-per">1<sup>er</sup> quart-temps</span>
+    </div>
+  </div>
 
   <div id="bb-utility" style="background:#0C1A12;border-bottom:1px solid rgba(243,239,230,.06)">
     <div style="max-width:1500px;margin:0 auto;padding:9px clamp(16px,4vw,24px);display:flex;align-items:center;justify-content:space-between;font-size:12px">
@@ -2569,6 +2619,9 @@ window.bbCloud = function(url, w){
   var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: { storageKey: 'bbc-client-auth' }
   });
+  // Exposé pour l'abonnement au score en direct, plus bas dans le fichier :
+  // le client temps réel n'a pas à être créé une seconde fois.
+  window.sb = sb;
   var currentCustomer = null; // { user, name, phone } une fois connecté, sinon null
   function sbInsert(table, payload, useSession){
     var token = (useSession && typeof sbSession !== 'undefined' && sbSession && sbSession.access_token) || SUPABASE_KEY;
@@ -5633,6 +5686,79 @@ window.bbCloud = function(url, w){
     if (form) form.classList.toggle('bb-hide', ferme);
   }
 
+  // ============================================================================
+  // SCORE EN DIRECT
+  // Deux chemins vers la même barre : l'abonnement temps réel, qui reçoit
+  // chaque panier dans la seconde, et un rappel toutes les 20 secondes qui
+  // prend le relais si la connexion tombe ou si le navigateur refuse les
+  // WebSockets. Un score en direct qui se fige est pire que pas de score.
+  // ============================================================================
+  var bbLs = { h:null, a:null, id:null, timer:null, canal:null };
+
+  function bbLsPeriode(n){
+    n = parseInt(n,10) || 1;
+    if (n >= 5) return 'Prolongation' + (n > 5 ? ' ' + (n-4) : '');
+    return n + '<sup>' + (n === 1 ? 'er' : 'e') + '</sup> quart-temps';
+  }
+
+  function bbLsPeindre(l, match){
+    var bar = document.getElementById('bb-livescore');
+    if (!bar) return;
+    if (!l || !l.is_live){ bar.classList.add('bb-hide'); return; }
+    bar.classList.remove('bb-hide');
+
+    // Les Baobabs à gauche quand ils reçoivent, à droite en déplacement :
+    // c'est la convention de toutes les feuilles de match.
+    var dom = !match || match.is_home !== false;
+    var nomAdv = (match && match.opponent_name) || 'Adversaire';
+    document.getElementById('bb-ls-home').textContent = dom ? 'Baobabs' : nomAdv;
+    document.getElementById('bb-ls-away').textContent = dom ? nomAdv : 'Baobabs';
+
+    var sH = dom ? l.score_bbc : l.score_adv;
+    var sA = dom ? l.score_adv : l.score_bbc;
+    [['bb-ls-score-h', sH, 'h'], ['bb-ls-score-a', sA, 'a']].forEach(function(p){
+      var el = document.getElementById(p[0]); if(!el) return;
+      var avant = bbLs[p[2]];
+      el.textContent = p[1];
+      if (avant !== null && avant !== p[1]){
+        el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+      }
+      bbLs[p[2]] = p[1];
+    });
+    document.getElementById('bb-ls-per').innerHTML = bbLsPeriode(l.period);
+  }
+
+  function bbLsCharger(){
+    return sbFetch('match_live?select=*&is_live=is.true&limit=1').then(function(rows){
+      var l = (rows||[])[0];
+      if (!l){ bbLsPeindre(null); bbLs.id = null; return; }
+      if (String(bbLs.id) === String(l.match_id)) { bbLsPeindre(l, bbLs.match); return; }
+      bbLs.id = l.match_id;
+      return sbFetch('matches?select=opponent_name,is_home&id=eq.'+l.match_id).then(function(ms){
+        bbLs.match = (ms||[])[0] || null;
+        bbLsPeindre(l, bbLs.match);
+      });
+    }).catch(function(){});
+  }
+
+  function bbLsInit(){
+    if (!document.getElementById('bb-livescore')) return;
+    bbLsCharger();
+    // Le rappel régulier est le filet : il tourne quoi qu'il arrive.
+    clearInterval(bbLs.timer);
+    bbLs.timer = setInterval(bbLsCharger, 20000);
+
+    // L'abonnement, lui, donne la seconde près. S'il échoue, on ne
+    // signale rien au visiteur : le filet a déjà pris le relais.
+    try {
+      if (window.sb && window.sb.channel){
+        bbLs.canal = window.sb.channel('bbc-livescore')
+          .on('postgres_changes', { event:'*', schema:'public', table:'match_live' }, function(){ bbLsCharger(); })
+          .subscribe();
+      }
+    } catch(e){}
+  }
+
   function bbInsInit(){
     var form = document.getElementById('bb-ins-form');
     if (!form) return;
@@ -5804,6 +5930,7 @@ window.bbCloud = function(url, w){
     else bbVidWire();
   }
   bbInsInit();
+  bbLsInit();
 
   function applyStats(s){
     if(!s) return;
