@@ -3332,12 +3332,29 @@ window.bbCloud = function(url, w){
     var fiche = [[p.age, 'ans'], [p.height, 'Taille'], [p.weight, 'Poids'], [p.foot, 'Origine']]
       .filter(function(x){ return x[0] !== '' && x[0] != null; })
       .map(function(x){ return '<div class="bb-pl-stat"><b>' + esc(x[0]) + '</b><span>' + x[1] + '</span></div>'; }).join('');
-    var S = p.stats || {};
-    var saison = [['points','Pts/match'],['rebonds','Reb/match'],['passes','Pd/match'],['matchs','Matchs']]
-      .filter(function(k){ return S[k[0]] !== '' && S[k[0]] != null; })
-      .map(function(k){ return '<div class="bb-pl-stat season"><b>' + esc(S[k[0]]) + '</b><span>' + k[1] + '</span></div>'; }).join('');
+    // Deux sources possibles pour la saison. Celle calculée depuis les
+    // feuilles de match gagne dès qu'elle existe : elle ne peut pas être
+    // fausse. Les chiffres saisis à la main restent le repli, notamment
+    // pour les saisons antérieures à la table de marque.
+    var R = p.saison, saison, titre;
+    if (R && R.matchs_joues){
+      titre = 'Saison en cours · ' + R.matchs_joues + ' match' + (R.matchs_joues > 1 ? 's' : '');
+      saison = [
+        [R.pts_moy,  'Pts/match'], [R.reb_moy, 'Reb/match'], [R.ast_moy, 'Pd/match'],
+        [R.eval_moy, 'Évaluation'],
+        [R.pct_tirs != null ? R.pct_tirs + '%' : null, 'Aux tirs'],
+        [R.pct_3pts != null ? R.pct_3pts + '%' : null, 'À 3 points']
+      ].filter(function(k){ return k[0] !== '' && k[0] != null; })
+       .map(function(k){ return '<div class="bb-pl-stat season"><b>' + esc(k[0]) + '</b><span>' + k[1] + '</span></div>'; }).join('');
+    } else {
+      var S = p.stats || {};
+      titre = 'Saison en cours';
+      saison = [['points','Pts/match'],['rebonds','Reb/match'],['passes','Pd/match'],['matchs','Matchs']]
+        .filter(function(k){ return S[k[0]] !== '' && S[k[0]] != null; })
+        .map(function(k){ return '<div class="bb-pl-stat season"><b>' + esc(S[k[0]]) + '</b><span>' + k[1] + '</span></div>'; }).join('');
+    }
     document.getElementById('bb-player-stats').innerHTML = fiche +
-      (saison ? '<div class="bb-pl-season"><span>Saison en cours</span><div>' + saison + '</div></div>' : '');
+      (saison ? '<div class="bb-pl-season"><span>' + esc(titre) + '</span><div>' + saison + '</div></div>' : '');
     var fav = document.getElementById('bb-player-fav');
     if (fav){
       if (p.id){
@@ -5090,6 +5107,14 @@ window.bbCloud = function(url, w){
           id:r.id, weight:r.weight||'', stats:(function(s){ if(typeof s==='string'){ try{ s=JSON.parse(s); }catch(e){ s=null; } } return (s&&typeof s==='object')?s:{}; })(r.stats) };
       });
       renderPlayers(); renderAppRoster();
+      // Les vraies statistiques, calculées depuis les feuilles de match.
+      // Second appel volontaire : la fiche s'affiche sans l'attendre, et
+      // une joueuse sans match saisi garde les chiffres de l'admin.
+      sbFetch('player_season_stats?select=*').then(function(st){
+        if(!st || !st.length) return;
+        var par = {}; st.forEach(function(s){ par[String(s.player_id)] = s; });
+        players.forEach(function(p){ if(par[String(p.id)]) p.saison = par[String(p.id)]; });
+      }).catch(function(){});
     }).catch(function(){});
 
     sbFetch('products?select=*&order=sort.asc').then(function(rows){
