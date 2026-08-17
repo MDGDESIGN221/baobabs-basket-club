@@ -1208,6 +1208,19 @@
   .cd-back{display:inline-flex;align-items:center;gap:7px;background:none;border:none;color:var(--muted);font:inherit;font-weight:600;font-size:12.5px;cursor:pointer;padding:0;margin-bottom:14px}
   .cd-back:hover{color:var(--gold)}
 
+  /* --- Sélection multiple --- */
+  .blk-case{display:flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;cursor:pointer}
+  .blk-case input{width:17px;height:17px;accent-color:var(--gold);cursor:pointer}
+  .cd-row.blk-on{border-color:var(--gold);background:rgba(198,162,87,.08)}
+  .blk-barre{display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:64px;z-index:5;
+    background:var(--surface);border:1px solid var(--gold);border-radius:11px;padding:10px 12px;margin-bottom:10px;
+    box-shadow:0 8px 22px rgba(0,0,0,.35)}
+  .blk-n{font-size:13px;font-weight:700;color:var(--gold);white-space:nowrap}
+  .blk-total{font-size:11.5px;color:var(--faint)}
+  .blk-del{color:#E8837A!important;border-color:rgba(192,39,27,.4)!important}
+  .blk-del:hover{background:rgba(192,39,27,.12)!important}
+  @media(max-width:640px){.blk-barre{position:static}.blk-total{display:none}}
+
   /* --- Cloche --- */
   #notif-wrap{position:relative;flex:none}
   #notif-bell{position:relative;background:transparent;border:1px solid var(--line-strong);
@@ -4241,9 +4254,15 @@
       q('news?select=id,title&order=created_at.desc&limit=200'),
       q('reservations?select=id,reference,buyer_name,quantity&order=created_at.desc&limit=300'),
       q('orders?select=id,order_number,customer_name,total&order=created_at.desc&limit=300'),
-      q('customers?select=user_id,name,phone&limit=300')
+      q('customers?select=user_id,name,phone&limit=300'),
+      // Deux modules ajoutés depuis : ils avaient leur écran mais restaient
+      // introuvables à la recherche. Un parent qui appelle en citant sa
+      // référence doit se retrouver en trois lettres.
+      q('inscriptions_admin?select=id,reference,full_name,guardian_name,guardian_phone,category&order=created_at.desc&limit=300'),
+      q('candidatures_admin?select=id,full_name,phone,category&order=created_at.desc&limit=300')
     ]).then(function(r){
-      gsData = { matches:r[0], teams:r[1], players:r[2], products:r[3], news:r[4], resa:r[5], orders:r[6], clients:r[7] };
+      gsData = { matches:r[0], teams:r[1], players:r[2], products:r[3], news:r[4], resa:r[5],
+                 orders:r[6], clients:r[7], inscr:r[8], cand:r[9] };
       gsRender(document.getElementById('gs-input').value);
     });
   }
@@ -4347,6 +4366,20 @@
       });
       gsData.clients.forEach(function(x){
         if (match(x.name, x.phone)) push('Clients', x.name || 'Client', x.phone || '', function(){ showSection('clients'); }, null, 'CL');
+      });
+      (gsData.inscr||[]).forEach(function(x){
+        if (match(x.full_name, x.reference, x.guardian_name, x.guardian_phone))
+          push('Inscriptions', x.full_name || 'Inscription',
+            [x.reference, x.category, x.guardian_name].filter(Boolean).join(' · '),
+            function(){ showSection('inscriptions'); if (typeof inOpen === 'function') setTimeout(function(){ inOpen(x.id); }, 160); },
+            null, 'IN');
+      });
+      (gsData.cand||[]).forEach(function(x){
+        if (match(x.full_name, x.phone))
+          push('Candidatures', x.full_name || 'Candidature',
+            [x.category, x.phone].filter(Boolean).join(' · '),
+            function(){ showSection('applications'); if (typeof cdOpen === 'function') setTimeout(function(){ cdOpen(x.id); }, 160); },
+            null, 'CA');
       });
     }
     return hits.slice(0, 40);
@@ -4696,6 +4729,100 @@
           .catch(function(){ showMsg(document.getElementById('gd-resa-msg'),'Impossible de retirer ce billet.',false); b.disabled=false; });
       });
     });
+  }
+
+  // ===================== SÉLECTION MULTIPLE =====================
+  // Un moteur pour les deux listes qui en ont besoin. La barre n'apparaît
+  // qu'une fois quelque chose de coché : une barre d'actions permanente
+  // sur une liste où l'on ne fait que lire est un encombrement.
+  //
+  // Règle de sûreté : ce qui détruit demande de retaper le nombre. Un
+  // « êtes-vous sûr ? » se clique sans lire, écrire « 7 » suppose d'avoir
+  // regardé combien de dossiers vont disparaître.
+  var blkSel = {};
+
+  function blkCase(id){
+    return '<label class="blk-case" onclick="event.stopPropagation()">'+
+      '<input type="checkbox" data-blk="'+esc(id)+'"></label>';
+  }
+
+  function blkBarre(scope, total){
+    return '<div class="blk-barre hide" id="blk-'+scope+'">'+
+      '<label class="blk-case blk-all"><input type="checkbox" id="blk-'+scope+'-all"></label>'+
+      '<span class="blk-n" id="blk-'+scope+'-n">0 sélectionné</span>'+
+      '<select class="qg-in" id="blk-'+scope+'-st" style="width:auto;min-width:170px"></select>'+
+      '<button type="button" class="btn btn-ghost" id="blk-'+scope+'-go" style="padding:8px 14px;font-size:12.5px">Appliquer</button>'+
+      '<span style="flex:1"></span>'+
+      '<button type="button" class="btn btn-ghost" id="blk-'+scope+'-csv" style="padding:8px 14px;font-size:12.5px">Exporter</button>'+
+      '<button type="button" class="btn btn-ghost blk-del" id="blk-'+scope+'-del" style="padding:8px 14px;font-size:12.5px">Supprimer</button>'+
+      '<span class="blk-total">sur '+total+'</span></div>';
+  }
+
+  function blkWire(scope, root, rows, statuts, appliquer, supprimer, mot){
+    blkSel[scope] = {};
+    var barre = document.getElementById('blk-'+scope);
+    var sel = document.getElementById('blk-'+scope+'-st');
+    if (!barre || !sel) return;
+    sel.innerHTML = '<option value="">Changer le statut…</option>' +
+      statuts.map(function(s){ return '<option value="'+esc(s.key)+'">'+esc(s.label)+'</option>'; }).join('');
+
+    function ids(){ return Object.keys(blkSel[scope]).filter(function(k){ return blkSel[scope][k]; }); }
+    function peindre(){
+      var n = ids().length;
+      document.getElementById('blk-'+scope+'-n').textContent = n + ' sélectionné' + (n>1?'s':'');
+      barre.classList.toggle('hide', n === 0);
+      var all = document.getElementById('blk-'+scope+'-all');
+      if (all) all.checked = n > 0 && n === rows.length;
+    }
+
+    root.querySelectorAll('[data-blk]').forEach(function(c){
+      c.addEventListener('change', function(){
+        blkSel[scope][c.getAttribute('data-blk')] = c.checked;
+        c.closest('.cd-row').classList.toggle('blk-on', c.checked);
+        peindre();
+      });
+    });
+    var all = document.getElementById('blk-'+scope+'-all');
+    if (all) all.addEventListener('change', function(){
+      root.querySelectorAll('[data-blk]').forEach(function(c){
+        c.checked = all.checked;
+        blkSel[scope][c.getAttribute('data-blk')] = all.checked;
+        c.closest('.cd-row').classList.toggle('blk-on', all.checked);
+      });
+      peindre();
+    });
+
+    document.getElementById('blk-'+scope+'-go').addEventListener('click', function(){
+      var l = ids(), st = sel.value;
+      if (!l.length || !st) { qgToast('Choisissez un statut.', true); return; }
+      var lab = statuts.filter(function(s){ return s.key===st; })[0];
+      if (!confirm('Passer ' + l.length + ' ' + mot + (l.length>1?'s':'') + ' au statut « ' + (lab?lab.label:st) + ' » ?')) return;
+      this.disabled = true;
+      appliquer(l, st).then(function(){ qgToast(l.length + ' fiche' + (l.length>1?'s':'') + ' mise' + (l.length>1?'s':'') + ' à jour ✓'); })
+        .catch(function(){ qgToast('Le changement a échoué.', true); });
+    });
+
+    document.getElementById('blk-'+scope+'-csv').addEventListener('click', function(){
+      var l = ids();
+      var choisies = rows.filter(function(r){ return l.indexOf(String(r.id)) >= 0; });
+      if (!choisies.length) return;
+      var cols = Object.keys(choisies[0]).filter(function(k){ return typeof choisies[0][k] !== 'object'; });
+      bbCsvDownload(mot + 's-selection-' + bbCsvDate() + '.csv', cols,
+        choisies.map(function(r){ return cols.map(function(c){ return r[c]; }); }));
+    });
+
+    document.getElementById('blk-'+scope+'-del').addEventListener('click', function(){
+      var l = ids();
+      if (!l.length) return;
+      var rep = prompt('Supprimer définitivement ' + l.length + ' ' + mot + (l.length>1?'s':'') +
+        ' ?\n\nCette action est irréversible. Tapez le nombre ' + l.length + ' pour confirmer.');
+      if (String(rep||'').trim() !== String(l.length)) { qgToast('Suppression annulée.'); return; }
+      this.disabled = true;
+      supprimer(l).then(function(){ qgToast(l.length + ' fiche' + (l.length>1?'s':'') + ' supprimée' + (l.length>1?'s':'')); })
+        .catch(function(){ qgToast('La suppression a échoué.', true); });
+    });
+
+    peindre();
   }
 
   // ===================== CENTRE D'ATTENTION =====================
@@ -10608,18 +10735,31 @@
       }).join('');
       cdWireBoard();
     } else {
-      list.innerHTML = rows.length ? rows.map(function(r){
+      list.innerHTML = (rows.length ? blkBarre('cd', rows.length) : '') + (rows.length ? rows.map(function(r){
         var s = cdSt(r.status||'nouvelle');
         return '<div class="cd-row" data-id="'+r.id+'">'+
+          blkCase(r.id)+
           cdAvatar(r,'cd-avatar')+
           '<div style="flex:1;min-width:0"><div class="cd-card-name">'+esc(r.full_name||'—')+'</div>'+
           '<div class="cd-card-meta">'+esc(cdSubline(r)||'—')+'</div></div>'+
           '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
           '<span class="cd-card-meta" style="flex:none;margin:0">'+esc(fmtDateTime(r.created_at))+'</span></div>';
-      }).join('') : '<div class="empty">Aucune candidature pour ce filtre.</div>';
+      }).join('') : '<div class="empty">Aucune candidature pour ce filtre.</div>');
       list.querySelectorAll('.cd-row').forEach(function(el){
-        el.addEventListener('click', function(){ cdOpen(el.getAttribute('data-id')); });
+        el.addEventListener('click', function(e){
+          if (e.target.closest('.blk-case')) return;
+          cdOpen(el.getAttribute('data-id'));
+        });
       });
+      blkWire('cd', list, rows, CD_ST, function(ids, statut){
+        return Promise.all(ids.map(function(id){
+          return sbUpdate('recruitment_requests', id, { status:statut }, 'Candidatures');
+        })).then(function(){ cdLoad(); });
+      }, function(ids){
+        return Promise.all(ids.map(function(id){
+          return sbDelete('recruitment_requests', id, 'Candidatures');
+        })).then(function(){ cdLoad(); });
+      }, 'candidature');
     }
   }
 
@@ -11086,19 +11226,32 @@
       }).join('');
       inWireBoard();
     } else {
-      list.innerHTML = rows.length ? rows.map(function(r){
+      list.innerHTML = (rows.length ? blkBarre('in', rows.length) : '') + (rows.length ? rows.map(function(r){
         var s = inSt(r.status||'nouvelle');
         return '<div class="cd-row" data-id="'+esc(r.id)+'">'+
+          blkCase(r.id)+
           inAvatar(r,'cd-avatar')+
           '<div style="flex:1;min-width:0"><div class="cd-card-name">'+esc(r.full_name||'—')+'</div>'+
           '<div class="cd-card-meta">'+esc(inSubline(r)||'—')+' — '+esc(r.guardian_name||'')+'</div></div>'+
           retardPill(r)+
           '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
           '<span class="cd-card-meta" style="flex:none;margin:0">'+esc(fmtDateTime(r.created_at))+'</span></div>';
-      }).join('') : '<div class="empty">Aucune inscription pour ce filtre.</div>';
+      }).join('') : '<div class="empty">Aucune inscription pour ce filtre.</div>');
       list.querySelectorAll('.cd-row').forEach(function(el){
-        el.addEventListener('click', function(){ inOpen(el.getAttribute('data-id')); });
+        el.addEventListener('click', function(e){
+          if (e.target.closest('.blk-case')) return;   // cocher n'ouvre pas la fiche
+          inOpen(el.getAttribute('data-id'));
+        });
       });
+      blkWire('in', list, rows, IN_ST, function(ids, statut){
+        return Promise.all(ids.map(function(id){
+          return sbUpdate('academy_registrations', id, { status:statut }, 'Inscriptions');
+        })).then(function(){ inLoad(); });
+      }, function(ids){
+        return Promise.all(ids.map(function(id){
+          return sbDelete('academy_registrations', id, 'Inscriptions');
+        })).then(function(){ inLoad(); });
+      }, 'inscription');
     }
   }
 
