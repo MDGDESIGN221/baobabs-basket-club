@@ -3451,7 +3451,13 @@ window.bbCloud = function(url, w){
 
   /* ===== modal CTA ===== */
   var ctaKey = null;
+  // Détection clôturée : le formulaire ne s'ouvre plus du tout. Il était
+  // jusqu'ici laissé ouvert « au cas où », mais une candidature déposée
+  // hors période n'est lue par personne — elle promet un rappel qui ne
+  // viendra pas. Mieux vaut dire non clairement et donner le téléphone.
+  window.bbTryClosed = false;
   function openRecruit(){
+    if (window.bbTryClosed){ openCta('contact'); return; }
     var f = document.getElementById('bb-recruit-form');
     f.classList.remove('bb-hide'); f.reset();
     var pp = document.getElementById('bb-rec-photo-preview'); if (pp) pp.style.backgroundImage = '';
@@ -5329,14 +5335,23 @@ window.bbCloud = function(url, w){
     applyTryStatus(s);
   }
 
-  // État de la détection. Tant que rien ne le disait, le site continuait
-  // d'inviter au présent à une session déjà passée. Quand elle est
-  // clôturée : pastille et sur-titre passent à l'ambre, et un encart
-  // l'annonce. Le formulaire, lui, reste ouvert — une candidature hors
-  // période vaut mieux qu'une candidate perdue.
+  // État de la détection. Quand elle est clôturée : pastille et sur-titre
+  // passent à l'ambre, un encart l'annonce, et le bouton « S'inscrire »
+  // cesse d'ouvrir le formulaire — il devient une mention inerte, à côté
+  // du bouton Appeler qui reste, lui, un vrai moyen de joindre le club.
+  //
+  // Le réglage absent vaut CLÔTURÉE. Une détection est un événement daté :
+  // hors période, ne rien savoir doit fermer la porte, pas l'ouvrir. C'est
+  // le sens de lecture le plus sûr pour un formulaire que personne ne
+  // dépouille entre deux sessions.
   function applyTryStatus(s){
-    var clos = String(s.try_closed||'') === 'oui';
-    var note = clos ? String(s.try_closed_note||'').trim() : '';
+    var clos = String(s.try_closed||'oui') === 'oui';
+    // Un bouton éteint sans un mot d'explication passe pour une panne.
+    // Si l'admin n'a rien écrit, le site dit au moins l'essentiel.
+    var note = clos
+      ? (String(s.try_closed_note||'').trim() ||
+         'La détection 2026–2027 est terminée. Les inscriptions de l\'école de basket (U9 à U17) restent ouvertes — voir la page Inscriptions.')
+      : '';
     var teinte = clos ? '#E8A93C' : '#A8D93B';
 
     document.querySelectorAll('[data-bb="try-kicker"]').forEach(function(el){
@@ -5359,6 +5374,36 @@ window.bbCloud = function(url, w){
         ligne.insertAdjacentElement('afterend', encart);
       }
       encart.textContent = note;
+    });
+
+    // Le bouton d'inscription. Clôturée, il ne doit plus ressembler à une
+    // porte : il perd son vert, son curseur et sa flèche, et devient
+    // l'énoncé de l'état. Il n'est pas retiré — un bouton qui disparaît
+    // laisse croire à une erreur d'affichage, un bouton grisé explique.
+    window.bbTryClosed = clos;
+    document.querySelectorAll('[data-recruit]').forEach(function(b){
+      // La grande carte « Rejoindre l'effectif » de la page Équipes garde
+      // son traitement propre : on ne touche qu'aux boutons de la barre.
+      if (!b.closest('.r-ctas')) { b.style.opacity = clos ? '.55' : ''; b.style.cursor = clos ? 'default' : ''; return; }
+      var fleche = b.querySelector('svg');
+      if (clos){
+        b.textContent = 'Détection clôturée';
+        b.style.background = 'transparent';
+        b.style.border = '1px solid rgba(232,169,60,.45)';
+        b.style.color = '#E8A93C';
+        b.style.cursor = 'default';
+        b.setAttribute('aria-disabled','true');
+        b.removeAttribute('role');
+      } else {
+        b.textContent = "S'inscrire ";
+        if (fleche) b.appendChild(fleche);
+        b.style.background = '#A8D93B';
+        b.style.border = 'none';
+        b.style.color = '#0A1B0D';
+        b.style.cursor = '';
+        b.removeAttribute('aria-disabled');
+        b.setAttribute('role','button');
+      }
     });
   }
 
