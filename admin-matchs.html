@@ -2433,9 +2433,11 @@
             <option value="">Toutes catégories</option>
           </select>
           <select id="in-filter-pay" aria-label="Filtrer par état de paiement" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px">
-            <option value="">Tous les paiements</option>
+            <option value="">Tous les dossiers</option>
             <option value="retard">En retard de mensualité</option>
             <option value="noreg">Frais d'inscription non réglés</option>
+            <option value="incomplet">Pièces manquantes</option>
+            <option value="nomedical">Sans certificat médical</option>
             <option value="ajour">À jour</option>
           </select>
           <div class="mod-view" id="in-view-switch">
@@ -9700,8 +9702,16 @@
   }
   var IN_METHODES = [['especes','Espèces'],['wave','Wave'],['orange_money','Orange Money'],['free_money','Free Money'],['virement','Virement'],['autre','Autre']];
   var IN_MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  // Les quatre pièces d'un dossier de licence. L'ordre est celui dans
+  // lequel on les demande à la famille, pas l'ordre alphabétique.
+  var IN_PIECES = [
+    ['photo',        'Photo d\'identité',      'Pour la licence et la fiche de l\'enfant.'],
+    ['naissance',    'Extrait de naissance',   'Justifie la catégorie d\'âge.'],
+    ['medical',      'Certificat médical',     'Aptitude à la pratique. Sans lui, l\'enfant ne joue pas.'],
+    ['autorisation', 'Autorisation parentale', 'Signée par le responsable légal.']
+  ];
 
-  var inRows = [], inSel = null, inView = 'board', inPayments = [], inEvents = [], inStarted = false, inDegrade = false;
+  var inRows = [], inSel = null, inView = 'board', inPayments = [], inEvents = [], inDocs = [], inStarted = false, inDegrade = false;
 
   function inFcfa(n){
     var v = parseInt(n,10); if (isNaN(v)) return '—';
@@ -9785,7 +9795,11 @@
   // d'être lu au bout d'une semaine.
   function inBadge(){
     var b = document.getElementById('sb-inscriptions-badge'); if (!b) return;
-    var n = inRows.filter(function(r){ return (r.status||'nouvelle')==='nouvelle' || inEnRetard(r); }).length;
+    var n = inRows.filter(function(r){
+      return (r.status||'nouvelle')==='nouvelle'
+          || inEnRetard(r)
+          || ((r.status||'')==='inscrite' && r.medical_recu === false);
+    }).length;
     b.textContent = n;
     b.classList.toggle('hide', n===0);
   }
@@ -9806,9 +9820,11 @@
     var pay = document.getElementById('in-filter-pay').value;
     return inRows.filter(function(r){
       if (cat && r.category !== cat) return false;
-      if (pay === 'retard' && !inEnRetard(r)) return false;
-      if (pay === 'noreg'  && r.inscription_payee !== false) return false;
-      if (pay === 'ajour'  && (inEnRetard(r) || r.inscription_payee === false)) return false;
+      if (pay === 'retard'    && !inEnRetard(r)) return false;
+      if (pay === 'noreg'     && r.inscription_payee !== false) return false;
+      if (pay === 'incomplet' && r.dossier_complet !== false) return false;
+      if (pay === 'nomedical' && r.medical_recu !== false) return false;
+      if (pay === 'ajour'  && (inEnRetard(r) || r.inscription_payee === false || r.dossier_complet === false)) return false;
       if (!q) return true;
       return [r.full_name, r.guardian_name, r.guardian_phone, r.guardian_phone2, r.guardian_email, r.reference, r.district, r.school, r.category]
         .join(' ').toLowerCase().indexOf(q) >= 0;
@@ -9832,11 +9848,13 @@
       return t + (inPayees(r).indexOf(mois)>=0 ? (parseInt(r.fee_monthly_fcfa,10)||0) : 0);
     }, 0);
     var nouvelles = inRows.filter(function(r){ return (r.status||'nouvelle')==='nouvelle'; }).length;
+    var sansMed = inscrits.filter(function(r){ return r.medical_recu === false; }).length;
     box.innerHTML =
       '<div class="in-kpi"><b>'+inRows.length+'</b><span>Dossiers</span></div>'+
       '<div class="in-kpi good"><b>'+inscrits.length+'</b><span>Enfants inscrits</span></div>'+
       '<div class="in-kpi'+(nouvelles?' warn':'')+'"><b>'+nouvelles+'</b><span>À traiter</span></div>'+
       '<div class="in-kpi'+(retards.length?' warn':'')+'"><b>'+retards.length+'</b><span>Mensualité en retard</span></div>'+
+      '<div class="in-kpi'+(sansMed?' warn':'')+'"><b>'+sansMed+'</b><span>Sans certificat médical</span></div>'+
       '<div class="in-kpi"><b style="font-size:17px">'+esc(inFcfa(encaisseMois))+'</b><span>Encaissé — '+esc(inPeriodeLabel(mois))+'</span></div>';
   }
 
@@ -9859,8 +9877,14 @@
     list.style.display  = inView==='list'  ? 'flex' : 'none';
     board.style.display = inView==='board' ? 'flex' : 'none';
 
+    // Deux pastilles seulement sur une carte : l'argent en retard et le
+    // certificat médical absent. Tout signaler revient à ne rien signaler.
     function retardPill(r){
-      return inEnRetard(r) ? '<span class="status-pill" style="color:#E08A5B;border:1px solid #E08A5B55;background:#E08A5B14;flex:none">Retard</span>' : '';
+      var out = '';
+      if (inEnRetard(r)) out += '<span class="status-pill" style="color:#E08A5B;border:1px solid #E08A5B55;background:#E08A5B14;flex:none">Retard</span>';
+      if ((r.status||'')==='inscrite' && r.medical_recu === false)
+        out += '<span class="status-pill" style="color:#fff;border:1px solid #C0271B;background:#C0271B;flex:none" title="Certificat médical manquant">Médical</span>';
+      return out;
     }
 
     if (inView === 'board'){
@@ -9916,12 +9940,14 @@
   function inRow(){ return inRows.filter(function(r){ return String(r.id)===String(inSel); })[0]; }
 
   function inOpen(id){
-    inSel = id; inPayments = []; inEvents = [];
+    inSel = id; inPayments = []; inEvents = []; inDocs = [];
     inRender();
     sbGet('academy_payments?select=*&registration_id=eq.'+id+'&order=paid_on.desc')
       .then(function(rows){ inPayments = rows||[]; if (String(inSel)===String(id)) inRenderDoc(); }).catch(function(){});
     sbGet('academy_events?select=*&registration_id=eq.'+id+'&order=created_at.desc')
       .then(function(rows){ inEvents = rows||[]; if (String(inSel)===String(id)) inRenderDoc(); }).catch(function(){});
+    sbGet('academy_documents?select=*&registration_id=eq.'+id+'&order=created_at.asc')
+      .then(function(rows){ inDocs = rows||[]; if (String(inSel)===String(id)) inRenderDoc(); }).catch(function(){});
   }
 
   function inSetStatus(id, key){
@@ -9958,6 +9984,14 @@
     inPayments.forEach(function(p){ if (p.kind==='mensualite' && p.period) paiementPar[p.period] = p; });
     if (!payees.length) payees = Object.keys(paiementPar);
 
+    var nbPieces = IN_PIECES.filter(function(p){
+      return inDocs.some(function(d){ return d.kind===p[0]; });
+    }).length;
+    // L'absence de certificat médical chez un enfant qui s'entraîne déjà
+    // est le seul manque qui expose le club. Il monte en haut de la fiche,
+    // en rouge, pas au fond d'une section repliée.
+    var sansMedical = (r.status||'')==='inscrite' && !inDocs.some(function(d){ return d.kind==='medical'; });
+
     var retard = inEnRetard(r);
     var jours = r.jours_depuis_reception!=null ? Math.floor(r.jours_depuis_reception) : null;
     var alerte = (r.status||'nouvelle')==='nouvelle' && jours!=null && jours>=2
@@ -9989,6 +10023,7 @@
               '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
               (r.gender==='M'?'<span class="rec-gender m">Garçon</span>':(r.gender==='F'?'<span class="rec-gender f">Fille</span>':''))+
               (retard?'<span class="status-pill" style="color:#E08A5B;border:1px solid #E08A5B55;background:#E08A5B14">Mensualité de '+esc(inPeriodeLabel(moisCourant))+' non réglée</span>':'')+
+              (sansMedical?'<span class="status-pill" style="color:#fff;border:1px solid #C0271B;background:#C0271B">Certificat médical manquant</span>':'')+
               alerte+
               (r.reference?'<span class="in-ref">'+esc(r.reference)+'</span>':'')+
             '</div>'+
@@ -10026,9 +10061,34 @@
                 inPayments.map(function(p){
                   var lib = p.kind==='inscription' ? 'Frais d\'inscription' : (p.kind==='mensualite' ? inPeriodeLabel(p.period) : 'Versement');
                   var meth = (IN_METHODES.filter(function(m){ return m[0]===p.method; })[0]||['','—'])[1];
-                  return '<div class="cd-kv"><span>'+esc(String(p.paid_on||'').split('-').reverse().join('/'))+' — '+esc(lib)+'</span><span>'+esc(inFcfa(p.amount_fcfa))+' · '+esc(meth)+'</span></div>';
+                  return '<div class="cd-kv"><span>'+esc(String(p.paid_on||'').split('-').reverse().join('/'))+' — '+esc(lib)+'</span>'+
+                    '<span>'+esc(inFcfa(p.amount_fcfa))+' · '+esc(meth)+
+                    ' <button type="button" data-inrecu="'+esc(p.id)+'" style="margin-left:8px;background:none;border:none;color:var(--gold);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;text-decoration:underline">Reçu</button></span></div>';
                 }).join('')
               : '')+
+          '</div></div>'+
+
+          // Les pièces. Une ligne par document exigé, verte quand elle est
+          // là. Le compteur du titre évite d'avoir à déplier la section
+          // pour savoir où en est le dossier.
+          '<div class="cd-sec"><div class="cd-sec-h">Pièces du dossier — '+nbPieces+' sur 4</div><div class="cd-sec-b">'+
+            IN_PIECES.map(function(p){
+              var d = inDocs.filter(function(x){ return x.kind===p[0]; })[0];
+              var lien = (d && /^https?:\/\//i.test(d.url||''))
+                ? '<a href="'+esc(d.url)+'" target="_blank" rel="noopener noreferrer" style="color:var(--gold);font-size:12px;font-weight:600;text-decoration:underline">Voir</a>' : '';
+              return '<div class="in-line'+(d?' paid':'')+'" style="margin-bottom:8px">'+
+                '<div><div class="in-line-t">'+esc(p[1])+'</div>'+
+                '<div class="in-line-s">'+(d
+                    ? 'Reçue le '+esc(String(d.received_on||'').split('-').reverse().join('/'))
+                    : esc(p[2]))+'</div></div>'+
+                '<div style="display:flex;align-items:center;gap:10px">'+ lien +
+                  (d
+                    ? '<button type="button" class="btn btn-ghost" data-inpiece-del="'+esc(d.id)+'" style="padding:7px 12px;font-size:11.5px">Retirer</button>'
+                    : '<label class="qg-file-btn" style="margin:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Téléverser</span>'+
+                      '<input type="file" data-inpiece="'+p[0]+'" accept="image/*,application/pdf" style="display:none"></label>')+
+                '</div></div>';
+            }).join('')+
+            '<p class="cd-prose" style="color:var(--faint);margin-top:12px">Photographiez le document avec le téléphone, il n\'a pas besoin d\'être scanné. Les pièces sont rangées dans la médiathèque, jamais accessibles depuis le site public.</p>'+
           '</div></div>'+
 
           '<div class="cd-sec"><div class="cd-sec-h">Le responsable légal</div><div class="cd-sec-b">'+
@@ -10082,6 +10142,44 @@
     });
     var regBtn = document.getElementById('in-pay-reg');
     if (regBtn) regBtn.addEventListener('click', function(){ inPayForm('inscription', null, r); });
+
+    // Pièces : téléversement puis enregistrement. L'ordre compte — on
+    // n'écrit la ligne qu'une fois le fichier réellement en ligne, sinon
+    // la fiche annoncerait une pièce reçue pointant vers du vide.
+    box.querySelectorAll('input[data-inpiece]').forEach(function(fe){
+      fe.addEventListener('change', function(){
+        var file = fe.files[0]; if (!file) return;
+        var kind = fe.getAttribute('data-inpiece');
+        var span = fe.parentNode.querySelector('span'); if (span) span.textContent = 'Envoi…';
+        uploadFile(MEDIA_BUCKET, file).then(function(url){
+          return sbInsert('academy_documents', {
+            registration_id: r.id, kind: kind, url: url,
+            author: (currentSession && currentSession.user && currentSession.user.email) || null
+          }, 'Inscriptions');
+        }).then(function(){
+          qgToast('Pièce enregistrée ✓');
+          inLoad().then(function(){ if (inSel) inOpen(inSel); });
+        }).catch(function(){
+          if (span) span.textContent = 'Téléverser';
+          showMsg(document.getElementById('in-msg'), "La pièce n'a pas pu être enregistrée.", false);
+        });
+      });
+    });
+    box.querySelectorAll('[data-inpiece-del]').forEach(function(b){
+      b.addEventListener('click', function(){
+        if (!confirm('Retirer cette pièce du dossier ?')) return;
+        b.disabled = true;
+        sbDelete('academy_documents', b.getAttribute('data-inpiece-del'), 'Inscriptions')
+          .then(function(){ inLoad().then(function(){ if (inSel) inOpen(inSel); }); })
+          .catch(function(){ b.disabled = false; showMsg(document.getElementById('in-msg'), 'Le retrait a échoué.', false); });
+      });
+    });
+    box.querySelectorAll('[data-inrecu]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var p = inPayments.filter(function(x){ return String(x.id)===String(b.getAttribute('data-inrecu')); })[0];
+        if (p) inRecuPdf(r, p);
+      });
+    });
 
     var ta = document.getElementById('in-notes'), dn = document.getElementById('in-draft-note');
     var dk = 'bbc-in-notes-draft-' + r.id;
@@ -10160,6 +10258,68 @@
             : "L'encaissement n'a pas pu être enregistré.", false);
       });
     });
+  }
+
+  // Reçu de paiement. On encaisse en espèces : une famille qui donne
+  // 5 000 F veut une preuve, et le club veut la même trace de son côté.
+  // Deux exemplaires sur la page — un pour la famille, un pour le club.
+  function inRecuPdf(r, p){
+    var jsPDFLib = window.jspdf && window.jspdf.jsPDF;
+    if (!jsPDFLib){ showMsg(document.getElementById('in-msg'), 'Génération PDF indisponible.', false); return; }
+    var doc = new jsPDFLib({ unit:'mm', format:'a4' });
+    var lib = p.kind==='inscription' ? "Frais d'inscription"
+            : (p.kind==='mensualite' ? 'Mensualité — ' + inPeriodeLabel(p.period) : 'Versement');
+    var meth = (IN_METHODES.filter(function(m){ return m[0]===p.method; })[0]||['','—'])[1];
+    var num  = 'REC-' + String(p.id||'').slice(0,8).toUpperCase();
+
+    function volet(y){
+      doc.setDrawColor(198,162,87); doc.setLineWidth(0.4);
+      doc.rect(15, y, 180, 118);
+
+      doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(11,36,25);
+      doc.text('BAOBABS BASKET CLUB', 24, y+14);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(120,130,122);
+      doc.text('École de basket — Terrain de basket Sicap Baobabs, Dakar', 24, y+20);
+
+      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(198,162,87);
+      doc.text('REÇU DE PAIEMENT', 24, y+33);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,100,94);
+      doc.text('N° ' + num, 150, y+33);
+
+      doc.setDrawColor(225,222,214); doc.line(24, y+38, 186, y+38);
+
+      var l = y + 50;
+      function ligne(k, v){
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(120,130,122);
+        doc.text(k, 24, l);
+        doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(20,30,24);
+        doc.text(String(v==null?'—':v), 78, l);
+        l += 9;
+      }
+      ligne('Enfant',       r.full_name || '—');
+      ligne('Référence',    r.reference || '—');
+      ligne('Responsable',  r.guardian_name || '—');
+      ligne('Objet',        lib);
+      ligne('Moyen',        meth);
+      ligne('Date',         String(p.paid_on||'').split('-').reverse().join('/'));
+
+      doc.setFillColor(11,36,25); doc.rect(24, l+2, 162, 16, 'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(255,255,255);
+      doc.text('MONTANT REÇU', 30, l+13);
+      doc.text(inFcfa(p.amount_fcfa), 180, l+13, { align:'right' });
+
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,158,150);
+      doc.text('Cachet et signature du club', 24, y+112);
+    }
+    volet(12);
+    doc.setDrawColor(210,206,198); doc.setLineDashPattern([2,2],0);
+    doc.line(15, 140, 195, 140);
+    doc.setLineDashPattern([],0);
+    doc.setFontSize(7.5); doc.setTextColor(160,168,160);
+    doc.text('— exemplaire club —', 105, 144, { align:'center' });
+    volet(150);
+
+    doc.save('recu-' + (r.reference||'inscription') + '-' + (p.period || p.kind) + '.pdf');
   }
 
   function inExportCsv(){

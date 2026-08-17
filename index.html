@@ -1867,6 +1867,21 @@
               <div><dt>Contact</dt><dd><a id="bb-ins-contact-link" href="tel:+221778587453" style="color:#C6A257"><span id="bb-ins-contact">+221 77 858 74 53</span></a></dd></div>
             </dl>
           </section>
+
+          <!-- Suivi : le parent a une référence, il doit pouvoir s'en
+               servir sans appeler le club. Référence ET téléphone sont
+               demandés — une référence seule suffirait sinon à lire le
+               dossier d'un autre enfant. -->
+          <section>
+            <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(21px,2.4vw,27px);letter-spacing:-.01em;color:#F3EFE6;margin:0 0 8px">Suivre mon inscription</h2>
+            <p style="font-size:13.5px;line-height:1.6;color:#93A099;margin:0 0 16px;max-width:46ch">Vous avez déjà inscrit votre enfant&nbsp;? Entrez la référence reçue et votre numéro pour voir où en est le dossier.</p>
+            <form id="bb-suivi-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <div class="bb-field" style="flex:1 1 150px"><label for="bb-suivi-ref">Référence</label><input id="bb-suivi-ref" type="text" placeholder="INS-XXXXX" maxlength="12" autocomplete="off"></div>
+              <div class="bb-field" style="flex:1 1 150px"><label for="bb-suivi-tel">Téléphone</label><input id="bb-suivi-tel" type="tel" placeholder="77 …" maxlength="25" autocomplete="off"></div>
+              <button type="submit" class="bb-btn-ghost" id="bb-suivi-btn" style="flex:none">Vérifier</button>
+            </form>
+            <div id="bb-suivi-res" class="bb-hide" role="status" style="margin-top:16px;background:#0A150F;border:1px solid rgba(198,162,87,.24);border-radius:14px;padding:18px 20px"></div>
+          </section>
         </div>
 
         <div id="bb-ins-form-anchor" style="min-width:0;scroll-margin-top:90px">
@@ -1883,7 +1898,7 @@
                 <div class="bb-field"><label for="bb-ins-first">Prénom *</label><input id="bb-ins-first" name="child_first" type="text" required maxlength="60" autocomplete="off"></div>
                 <div class="bb-field"><label for="bb-ins-last">Nom *</label><input id="bb-ins-last" name="child_last" type="text" required maxlength="60" autocomplete="off"></div>
                 <div class="bb-field"><label for="bb-ins-birth">Date de naissance *</label><input id="bb-ins-birth" name="birth_date" type="date" required></div>
-                <div class="bb-field"><label for="bb-ins-cat">Catégorie</label><select id="bb-ins-cat" name="category"><option value="">À déterminer par le club</option></select></div>
+                <div class="bb-field"><label for="bb-ins-cat">Catégorie</label><select id="bb-ins-cat" name="category"><option value="">À déterminer par le club</option></select><small id="bb-ins-cat-auto" class="bb-hide" style="font-family:'Inter',sans-serif;font-size:11.5px;color:#A8D93B">Catégorie proposée d'après la date de naissance.</small></div>
               </div>
               <div class="bb-field"><label>Sexe *</label><div class="bb-radio-row" id="bb-ins-gender">
                 <label class="bb-radio on"><input type="radio" name="gender" value="F" checked>Fille</label>
@@ -5622,6 +5637,31 @@ window.bbCloud = function(url, w){
     var form = document.getElementById('bb-ins-form');
     if (!form) return;
 
+    // La catégorie se déduit de l'année de naissance : « U13 » veut dire
+    // « moins de 13 ans au 31 décembre ». Un parent se trompe une fois sur
+    // deux, et une catégorie fausse fait recommencer le dossier au bureau.
+    // On propose, on ne force pas : le club reste juge.
+    var birth = document.getElementById('bb-ins-birth');
+    if (birth) birth.addEventListener('change', function(){
+      var sel = document.getElementById('bb-ins-cat');
+      var aide = document.getElementById('bb-ins-cat-auto');
+      var d = new Date(birth.value);
+      if (!sel || !birth.value || isNaN(d.getTime())) return;
+      // Saison sportive : elle démarre en septembre, l'âge de référence
+      // est celui atteint dans l'année civile de fin de saison.
+      var now = new Date();
+      var finSaison = now.getMonth() >= 8 ? now.getFullYear() + 1 : now.getFullYear();
+      var age = finSaison - d.getFullYear();
+      var cible = null;
+      [9, 11, 13, 15, 17].forEach(function(u){ if (cible === null && age < u) cible = 'U' + u; });
+      if (!cible) return;
+      var trouve = false;
+      Array.prototype.forEach.call(sel.options, function(o){
+        if (!trouve && o.value === cible){ sel.value = o.value; trouve = true; }
+      });
+      if (aide) aide.classList.toggle('bb-hide', !trouve);
+    });
+
     ['bb-ins-gender','bb-ins-exp'].forEach(function(id){
       var wrap = document.getElementById(id);
       if (!wrap) return;
@@ -5678,6 +5718,65 @@ window.bbCloud = function(url, w){
       }).finally(function(){
         btn.disabled = false; btn.textContent = libelle;
       });
+    });
+
+    // Suivi du dossier. La base ne renvoie que l'essentiel : prénom,
+    // statut, ce qui est payé, ce qui manque. Ni adresse, ni santé, ni
+    // notes internes — même au bon parent, ces champs n'ont pas à sortir.
+    var suivi = document.getElementById('bb-suivi-form');
+    if (suivi) suivi.addEventListener('submit', function(e){
+      e.preventDefault();
+      var res = document.getElementById('bb-suivi-res');
+      var btn = document.getElementById('bb-suivi-btn');
+      var lib = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Recherche…';
+      function bulle(html, ok){
+        res.classList.remove('bb-hide');
+        res.style.borderColor = ok ? 'rgba(168,217,59,.34)' : 'rgba(232,169,60,.36)';
+        res.innerHTML = html;
+      }
+      fetch(SB_URL + '/rest/v1/rpc/bbc_inscription_suivi', {
+        method: 'POST',
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_reference: document.getElementById('bb-suivi-ref').value,
+          p_phone: document.getElementById('bb-suivi-tel').value
+        })
+      }).then(function(r){ return r.json().then(function(d){ return { ok:r.ok, d:d }; }); })
+      .then(function(o){
+        if (!o.ok) throw new Error((o.d && o.d.message) || 'echec');
+        var x = Array.isArray(o.d) ? o.d[0] : o.d;
+        if (!x) throw new Error('dossier_introuvable');
+        var ETATS = { nouvelle:'Reçue — en attente de traitement', contactee:'Le club vous a contacté',
+                      essai:'Séance d\'essai prévue', inscrite:'Inscription validée',
+                      en_pause:'En pause', refusee:'Non retenue', archivee:'Archivée' };
+        function ligne(k, v, teinte){
+          return '<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid rgba(243,239,230,.06)">'+
+                 '<span style="font-size:12.5px;color:#7E8A82">'+k+'</span>'+
+                 '<span style="font-size:13px;font-weight:600;color:'+(teinte||'#F3EFE6')+';text-align:right">'+esc(v)+'</span></div>';
+        }
+        bulle(
+          '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:19px;color:#F3EFE6;margin-bottom:12px">'+
+            esc(x.prenom || '') + ' <span style="color:#A8D93B;font-size:14px;letter-spacing:.06em">' + esc(x.reference || '') + '</span></div>'+
+          ligne('État du dossier', ETATS[x.statut] || x.statut || '—', '#A8D93B')+
+          (x.categorie ? ligne('Catégorie', x.categorie) : '')+
+          ligne('Frais d\'inscription', x.frais_payes ? 'Réglés' : 'À régler', x.frais_payes ? '#A8D93B' : '#E8A93C')+
+          ligne('Mensualités réglées', (x.mois_payes || 0) + (x.mois_payes > 1 ? ' mois' : ' mois'))+
+          ligne('Pièces du dossier', x.dossier_complet ? 'Complet' : 'Il manque : ' + (x.pieces_manquantes || '—'),
+                x.dossier_complet ? '#A8D93B' : '#E8A93C')+
+          '<p style="font-size:12px;line-height:1.55;color:#7E8A82;margin:12px 0 0">Les pièces se déposent au bureau du club. Une question&nbsp;: appelez le numéro ci-dessus.</p>',
+          true);
+      })
+      .catch(function(ex){
+        var m = String(ex && ex.message || '');
+        bulle('<p style="font-size:13.5px;line-height:1.6;color:#E8C88F;margin:0">'+
+          (m.indexOf('dossier_introuvable') >= 0
+            ? 'Aucun dossier ne correspond à cette référence et à ce numéro. Vérifiez la référence, ou utilisez le numéro donné lors de l\'inscription.'
+            : m.indexOf('reference_ou_telephone') >= 0
+              ? 'Entrez la référence et le numéro de téléphone.'
+              : 'La vérification a échoué. Réessayez dans un instant.')+'</p>', false);
+      })
+      .finally(function(){ btn.disabled = false; btn.textContent = lib; });
     });
 
     // Vidéo : la carte entière est cliquable, mais elle reste atteignable au
