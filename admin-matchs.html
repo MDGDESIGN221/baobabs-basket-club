@@ -1303,6 +1303,122 @@
     border-radius:3px 3px 0 0;cursor:default}
   .ef-curve-l{font-size:11px;color:var(--faint);margin:7px 0 0}
 
+  /* ===================== TABLEAU DE BORD — REFONTE =====================
+     Le principe : un club de basket a un cœur qui bat, et c'est le
+     prochain match. L'ancien écran mettait trois blocs de poids égal
+     côte à côte — le match, les compteurs, les alertes — et l'œil ne
+     savait pas où se poser. Ici une seule chose domine, le reste
+     s'organise autour. */
+
+  .db{display:grid;gap:var(--s5)}
+
+  /* --- L'affiche. Plein cadre, comme une affiche de match placardée --- */
+  .db-hero{position:relative;overflow:hidden;border-radius:var(--r-lg);min-height:320px;
+    background:linear-gradient(148deg,#12452F 0%,#0B2A1C 52%,#071711 100%);
+    border:1px solid var(--gold-edge);isolation:isolate}
+  /* Le numéro de journée en filigrane géant : il donne l'échelle et
+     remplit le vide à droite sans ajouter d'information à lire. */
+  /* La photo deborde du bloc et se fond dans le vert : elle donne la
+     presence que le filigrane ne donnait pas. Degradee vers la gauche
+     pour que le texte reste sur un fond calme. */
+  .db-hero-photo{position:absolute;right:0;bottom:0;height:100%;width:auto;z-index:0;
+    object-fit:contain;object-position:bottom right;opacity:.5;
+    /* Un seul fondu, a gauche, pour degager le texte. La photo est
+       recadree au buste : elle tient entiere dans le bloc, il n'y a
+       donc rien a masquer en haut. */
+    -webkit-mask-image:linear-gradient(100deg,transparent 4%,#000 44%);
+    mask-image:linear-gradient(100deg,transparent 4%,#000 44%);pointer-events:none}
+  @media(max-width:860px){.db-hero-photo{display:none}}
+  .db-hero-in{position:relative;z-index:1;padding:clamp(22px,3vw,38px);
+    display:grid;grid-template-columns:1fr auto;gap:clamp(20px,3vw,40px);align-items:start}
+  @media(max-width:860px){.db-hero-in{grid-template-columns:1fr}}
+
+  .db-kick{display:flex;align-items:center;gap:9px;font-family:var(--font-ui);font-weight:700;
+    font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright)}
+  .db-kick i{width:6px;height:6px;border-radius:50%;background:var(--lime);flex:none}
+
+  /* L'affiche proprement dite : deux écussons face à face. On reconnaît
+     un club à son écusson bien avant d'en lire le nom. */
+  .db-vs{display:flex;align-items:center;gap:clamp(14px,2.2vw,26px);margin:20px 0 18px}
+  .db-team.adv b{font-size:clamp(24px,3.4vw,40px);letter-spacing:-.02em;color:var(--gold-lit)}
+  .db-crest{width:clamp(54px,7vw,74px);height:clamp(54px,7vw,74px);border-radius:var(--r-md);
+    background:rgba(243,239,230,.06);border:1px solid var(--line-strong);flex:none;
+    display:grid;place-items:center;overflow:hidden}
+  .db-crest img{width:82%;height:82%;object-fit:contain}
+  .db-crest.none{font-family:var(--font-ui);font-weight:800;font-size:24px;color:var(--gold)}
+  .db-vs-mid{font-family:var(--font-ui);font-weight:800;font-size:13px;letter-spacing:.14em;
+    color:var(--faint);flex:none}
+  .db-team{min-width:0}
+  .db-team b{display:block;font-family:var(--font-ui);font-weight:800;font-size:clamp(20px,2.6vw,30px);
+    line-height:1.1;letter-spacing:-.01em;color:var(--text)}
+  .db-team span{display:block;font-size:12px;color:var(--faint);margin-top:3px}
+
+  .db-meta{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:13.5px;color:var(--muted)}
+  .db-meta b{color:var(--text);font-weight:600}
+
+  /* Le compte à rebours : trois cases, chiffres en chasse fixe. Un
+     nombre qui bouge se lit d'un coup d'œil, une phrase se déchiffre. */
+  .db-cd{display:flex;gap:8px;margin-top:20px}
+  .db-cd div{min-width:66px;text-align:center;background:rgba(4,12,8,.55);
+    border:1px solid var(--line-strong);border-radius:var(--r-md);padding:10px 12px}
+  .db-cd b{display:block;font-family:var(--font-ui);font-weight:800;font-size:26px;line-height:1;
+    color:var(--gold-lit);font-variant-numeric:tabular-nums}
+  .db-cd span{display:block;font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--faint);margin-top:6px}
+
+  .db-cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+
+  /* Le panneau de droite : la billetterie du match, seule information
+     qui mérite d'être là — c'est la seule qui rapporte de l'argent et
+     la seule qu'on peut encore changer avant le coup d'envoi. */
+  .db-tick{background:rgba(4,12,8,.72);backdrop-filter:blur(6px);border:1px solid var(--line-strong);
+    border-radius:var(--r-lg);padding:20px 22px;min-width:230px}
+  .db-tick-h{font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+  .db-tick-n{font-family:var(--font-ui);font-weight:800;font-size:38px;line-height:1;
+    color:var(--text);font-variant-numeric:tabular-nums}
+  .db-tick-n em{font-style:normal;font-size:15px;color:var(--faint);font-weight:600}
+  .db-gauge{height:6px;border-radius:99px;background:rgba(243,239,230,.09);overflow:hidden;margin:14px 0 8px}
+  .db-gauge i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--lime))}
+  .db-tick-s{font-size:12px;color:var(--muted)}
+
+  /* --- La colonne de travail : ce qui attend, puis les compteurs --- */
+  .db-two{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:var(--s5);align-items:start}
+  @media(max-width:1040px){.db-two{grid-template-columns:1fr}}
+
+  .db-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .db-h h2{font-family:var(--font-ui);font-weight:700;font-size:17px;margin:0;letter-spacing:-.01em}
+  .db-h span{font-size:12.5px;color:var(--faint)}
+
+  /* Les compteurs deviennent une liste dense plutôt que six cartes qui
+     se disputent l'attention. Un compteur n'est pas une destination :
+     c'est une ligne qu'on lit et sur laquelle on clique parfois. */
+  .db-nums{display:flex;flex-direction:column;background:var(--surface);
+    border:1px solid var(--line-strong);border-radius:var(--r-lg);overflow:hidden}
+  .db-num{display:flex;align-items:center;gap:14px;padding:13px 16px;background:none;border:none;
+    border-bottom:1px solid var(--line);cursor:pointer;font:inherit;color:var(--text);text-align:left;
+    transition:background .15s}
+  .db-num:last-child{border-bottom:none}
+  .db-num:hover{background:var(--surface-2)}
+  .db-num-i{width:30px;height:30px;border-radius:var(--r-sm);display:grid;place-items:center;flex:none;
+    background:var(--gold-soft);color:var(--gold)}
+  .db-num-i svg{width:15px;height:15px}
+  .db-num b{font-family:var(--font-ui);font-weight:800;font-size:20px;min-width:2.2ch;
+    font-variant-numeric:tabular-nums;flex:none}
+  .db-num span{flex:1;font-size:13.5px;color:var(--muted)}
+  .db-num em{font-style:normal;font-size:11.5px;color:var(--gold);font-weight:600;flex:none}
+  .db-num .chev{color:var(--faint);font-size:17px;flex:none}
+  /* --- Corrections de cascade ---------------------------------------
+     .btn-primary porte width:100% dans le systeme : dans une barre
+     d'actions horizontale il faut le rendre a sa largeur naturelle.
+     Et .db-num span (0,1,1) battait .db-num-i (0,1,0) : l'icone
+     heritait flex:1 et s'etirait. On qualifie, on ne surenchtrit pas
+     avec !important. */
+  .db-cta .btn{width:auto;min-width:0}
+  .db-num .db-num-i{flex:0 0 30px;width:30px}
+  .db-num .chev{flex:none}
+  .db-num .db-num-lab{flex:1;font-size:13.5px;color:var(--muted)}
+
   /* ===================== CENTRE D'ATTENTION =====================
      Le niveau se lit à la couleur du liseré avant même le texte. Quatre
      niveaux seulement : au-delà, plus personne ne fait la différence. */
@@ -1865,98 +1981,46 @@
 
     <!-- ===== SECTION TABLEAU DE BORD ===== -->
     <section id="section-dashboard">
-      <!-- Ce qui demande une décision aujourd'hui, trié par gravité.
-           Placé avant le prochain match : un compteur répond « combien »,
-           cette liste répond « quoi d'abord ». -->
-      <div class="att" id="att">
-        <div class="att-head">
-          <h2 class="att-title">Ce qui vous attend</h2>
-          <span class="att-sub" id="att-sub">Analyse en cours…</span>
+      <div class="db">
+        <div class="db-hero" id="db-hero">
+          <img class="db-hero-photo" src="/media/img/joueuse-buste_admin.webp" alt="">
+          <div class="db-hero-in">
+            <div>
+              <div class="db-kick"><i></i><span id="db-kick-t">Prochain match</span></div>
+              <div class="db-vs" id="db-vs"></div>
+              <div class="db-meta" id="db-meta"></div>
+              <div class="db-cd" id="db-cd"></div>
+              <div class="db-cta">
+                <button class="btn btn-primary" data-go="gameday">Ouvrir Soir de match</button>
+                <button class="btn btn-ghost" data-go="matches2">Fiche du match</button>
+              </div>
+            </div>
+            <div class="db-tick" id="db-tick">
+              <div class="db-tick-h">Billetterie</div>
+              <div class="db-tick-n" id="db-tick-n">â</div>
+              <div class="db-gauge"><i id="db-gauge" style="width:0%"></i></div>
+              <div class="db-tick-s" id="db-tick-s">Chargementâ¦</div>
+            </div>
+          </div>
         </div>
-        <div id="att-list"></div>
-      </div>
 
-      <div class="dash-next-card" id="dash-next-card">
-        <span class="dash-next-label">Prochain match</span>
-        <div class="dash-next-empty" id="dash-next-body">Chargement…</div>
-      </div>
-
-      <div class="dash-grid" id="dash-stats">
-        <button class="dash-stat" data-section="matches2">
-          <div class="dash-stat-top">
-            <div class="dash-stat-icon" style="background:var(--gold-soft);color:var(--gold)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg>
+        <div class="db-two">
+          <div>
+            <div class="db-h"><h2>Ce qui vous attend</h2><span id="att-sub"></span></div>
+            <div id="att-list"></div>
+          </div>
+          <div>
+            <div class="db-h"><h2>En un coup dâÅil</h2></div>
+            <div class="db-nums">
+              <button class="db-num" data-go="matches2"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg></span><b id="dash-upcoming-num">â</b><span class="db-num-lab">Matchs Ã  venir</span><span class="chev">âº</span></button>
+              <button class="db-num" data-go="inscriptions"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><b id="dash-played-num">â</b><span class="db-num-lab">Matchs jouÃ©s</span><span class="chev">âº</span></button>
+              <button class="db-num" data-go="orders2"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/></svg></span><b id="dash-orders-num">â</b><span class="db-num-lab">Commandes</span><em id="dash-orders-new-sub"></em><span class="chev">âº</span></button>
+              <button class="db-num" data-go="applications"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span><b id="dash-recruitment-num">â</b><span class="db-num-lab">Candidatures</span><span class="chev">âº</span></button>
+              <button class="db-num" data-go="forms"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1Z"/></svg></span><b id="dash-contact-num">â</b><span class="db-num-lab">Messages</span><span class="chev">âº</span></button>
+              <button class="db-num" data-go="newsl"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/></svg></span><b id="dash-newsletter-num">â</b><span class="db-num-lab">AbonnÃ©s newsletter</span><span class="chev">âº</span></button>
             </div>
           </div>
-          <div class="dash-stat-num" id="dash-upcoming-num">—</div>
-          <div class="dash-stat-label">Matchs à venir</div>
-        </button>
-        <button class="dash-stat" data-section="matches2">
-          <div class="dash-stat-top">
-            <div class="dash-stat-icon" style="background:rgba(28,122,58,.12);color:var(--lime)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-            </div>
-          </div>
-          <div class="dash-stat-num" id="dash-played-num">—</div>
-          <div class="dash-stat-label">Matchs joués</div>
-        </button>
-        <button class="dash-stat" data-section="forms" data-form="newsletter">
-          <div class="dash-stat-top">
-            <div class="dash-stat-icon" style="background:rgba(120,155,210,.14);color:#9DB8E8">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
-            </div>
-          </div>
-          <div class="dash-stat-num" id="dash-newsletter-num">—</div>
-          <div class="dash-stat-label">Inscrits newsletter</div>
-        </button>
-        <button class="dash-stat" data-section="forms" data-form="contact">
-          <div class="dash-stat-top">
-            <div class="dash-stat-icon" style="background:rgba(120,155,210,.14);color:#9DB8E8">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg>
-            </div>
-          </div>
-          <div class="dash-stat-num" id="dash-contact-num">—</div>
-          <div class="dash-stat-label">Messages de contact</div>
-        </button>
-        <button class="dash-stat" data-section="forms" data-form="orders">
-          <div class="dash-stat-top">
-            <div class="dash-stat-icon" style="background:var(--gold-soft);color:var(--gold)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
-            </div>
-          </div>
-          <div class="dash-stat-num" id="dash-orders-num">—</div>
-          <div class="dash-stat-label">Commandes</div>
-          <div class="dash-stat-sub" id="dash-orders-new-sub"></div>
-        </button>
-        <button class="dash-stat" data-section="applications">
-          <div class="dash-stat-top">
-            <div class="dash-stat-icon" style="background:var(--gold-soft);color:var(--gold)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m19 8 2 2 4-4" transform="translate(-3 0)"/></svg>
-            </div>
-          </div>
-          <div class="dash-stat-num" id="dash-recruitment-num">—</div>
-          <div class="dash-stat-label">Candidatures</div>
-        </button>
-      </div>
-
-      <div class="dash-section-title">Accès rapide</div>
-      <div class="dash-quick">
-        <button class="dash-quick-btn" data-section="matches2">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-          Ajouter un match
-        </button>
-        <button class="dash-quick-btn" data-section="news">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-          Publier une actualité
-        </button>
-        <button class="dash-quick-btn" data-section="forms">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>
-          Voir les messages
-        </button>
-        <a class="dash-quick-btn" href="index.html" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-          Voir le site public
-        </a>
+        </div>
       </div>
     </section>
 
@@ -7579,32 +7643,72 @@
 
   // ===================== TABLEAU DE BORD =====================
   function loadDashboard(){
-    // Prochain match + compteurs matchs (réutilise les données déjà en base)
-    sbGet('matches?select=*&order=match_date.asc&limit=300').then(function(rows){
+    // L'affiche du prochain match. Deux ecussons face a face, un compte
+    // a rebours, et l'etat de la billetterie â la seule information
+    // qu'on peut encore changer avant le coup d'envoi.
+    sbGet('match_center?select=*&order=match_date.asc&limit=300').then(function(rows){
       rows=rows||[];
-      var upcoming=rows.filter(function(m){return !isPlayed(m);}).sort(function(a,b){return (a.match_date||'').localeCompare(b.match_date||'');});
-      var played=rows.filter(isPlayed);
-      document.getElementById('dash-upcoming-num').textContent=upcoming.length;
-      document.getElementById('dash-played-num').textContent=played.length;
-      var body=document.getElementById('dash-next-body');
-      if(upcoming.length){
-        var m=upcoming[0]; var d=m.match_date?daysUntil(m.match_date):null;
-        var badge=(d==null)?'':(d<=0?'AUJOURD\u2019HUI':('J-'+d));
-        var lieu=m.is_home?'Baobabs vs ':'Baobabs chez ';
-        var crest=m.opponent_logo_url?'<img class="dash-hero-crest" src="'+esc(m.opponent_logo_url)+'" alt="">':'<div class="dash-hero-crest none" style="background:'+fallbackColor(m.opponent_name||'?')+'">'+esc(String(m.opponent_name||'?').charAt(0).toUpperCase())+'</div>';
-        body.className=''; 
-        body.innerHTML='<div class="dash-hero"><div class="dash-hero-main">'+crest+
-          '<div><div class="dash-next-teams">'+lieu+esc(m.opponent_name||'—')+'</div>'+
-          '<div class="dash-next-meta">'+esc(formatDateShort(m.match_date))+(m.match_time?(' · '+esc(m.match_time)):'')+(m.competition?(' · '+esc(m.competition)):'')+(m.venue?(' · '+esc(m.venue)):'')+'</div>'+
-          '<div class="dash-hero-cta"><button type="button" class="dash-cta" data-go="tickets">Préparer la billetterie</button><button type="button" class="dash-cta ghost" data-go="matches2">Ouvrir la fiche du match</button></div></div></div>'+
-          (badge?'<div class="dash-hero-badge'+((d!=null&&d<=0)?' today':'')+'">'+badge+'</div>':'')+'</div>';
-        body.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click', function(){ showSection(b.getAttribute('data-go')); }); });
-      } else {
-        body.className='dash-next-empty';
-        body.textContent='Aucun match à venir programmé pour le moment.';
+      var aVenir=rows.filter(function(m){return m.statut==='a_venir'||m.statut==='aujourdhui';});
+      var joues=rows.filter(function(m){return m.statut==='termine';});
+      document.getElementById('dash-upcoming-num').textContent=aVenir.length;
+      document.getElementById('dash-played-num').textContent=joues.length;
+
+      var hero=document.getElementById('db-hero');
+      var m=aVenir[0];
+      if(!m){
+        hero.classList.add('hide');
+        return;
       }
+      hero.classList.remove('hide');
+      var j=m.match_date?daysUntil(m.match_date):null;
+      document.getElementById('db-kick-t').textContent =
+        j===null?'Prochain match':(j<=0?'Match aujourdâhui':(j===1?'Prochain match Â· demain':'Prochain match Â· dans '+j+' jours'));
+
+      function ecusson(url,nom){
+        return url? '<div class="db-crest"><img src="'+esc(url)+'" alt=""></div>'
+                  : '<div class="db-crest none">'+esc(String(nom||'?').charAt(0).toUpperCase())+'</div>';
+      }
+      document.getElementById('db-vs').innerHTML =
+        ecusson(LOGO_DEF,'B')+
+        '<div class="db-team"><b>Baobabs</b><span>'+(m.is_home?'reÃ§oit':'se dÃ©place')+'</span></div>'+
+        '<span class="db-vs-mid">VS</span>'+
+        ecusson(m.opponent_logo_url,m.opponent_name)+
+        '<div class="db-team adv"><b>'+esc(m.opponent_name||'Adversaire')+'</b><span>'+
+          esc([m.competition,m.round_label].filter(Boolean).join(' Â· ')||'')+'</span></div>';
+
+      document.getElementById('db-meta').innerHTML =
+        [ m.match_date?'<span>'+esc(formatDateLong(m.match_date))+'</span>':'',
+          m.match_time?'<span><b>'+esc(String(m.match_time).slice(0,5))+'</b></span>':'',
+          m.venue?'<span>'+esc(m.venue)+'</span>':'' ].join('');
+
+      // Le compte a rebours ne s'affiche que s'il reste du temps a
+      // compter : un zero fige ne dit rien.
+      var cd=document.getElementById('db-cd');
+      if(m.match_date && j!==null && j>=0){
+        var cible=new Date(m.match_date+'T'+(m.match_time?String(m.match_time).slice(0,5):'18:00'));
+        var ms=cible.getTime()-Date.now();
+        if(ms>0){
+          cd.innerHTML=[[Math.floor(ms/86400000),'jours'],[Math.floor(ms/3600000)%24,'heures'],[Math.floor(ms/60000)%60,'minutes']]
+            .map(function(x){return '<div><b>'+('0'+x[0]).slice(-2)+'</b><span>'+x[1]+'</span></div>';}).join('');
+        } else cd.innerHTML='';
+      } else cd.innerHTML='';
+
+      var t=Number(m.places_totales)||0, v=Number(m.places_reservees)||0;
+      document.getElementById('db-tick-n').innerHTML = t? v+' <em>/ '+t+'</em>' : 'â';
+      document.getElementById('db-gauge').style.width = (t? Math.min(Math.round(v/t*100),100):0)+'%';
+      document.getElementById('db-tick-s').textContent = t
+        ? (Number(m.nb_categories)||0)+' catÃ©gorie'+((m.nb_categories>1)?'s':'')+' Â· '+Math.max(t-v,0)+' places restantes'
+        : 'Aucune catÃ©gorie ouverte Ã  la vente.';
+
+      document.querySelectorAll('#db-hero [data-go]').forEach(function(b){
+        b.addEventListener('click',function(){ showSection(b.getAttribute('data-go')); });
+      });
     }).catch(function(){
-      document.getElementById('dash-next-body').textContent='Impossible de charger les matchs.';
+      var h=document.getElementById('db-hero'); if(h) h.classList.add('hide');
+    });
+
+    document.querySelectorAll('.db-num[data-go]').forEach(function(b){
+      b.addEventListener('click',function(){ showSection(b.getAttribute('data-go')); });
     });
 
     // Compteurs boîte de réception (une requête légère par table, déjà utilisées ailleurs)
