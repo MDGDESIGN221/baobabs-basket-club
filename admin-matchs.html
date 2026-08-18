@@ -1511,30 +1511,44 @@
 
 <!-- ===== WELCOME ===== -->
 <style>
-  #welcome{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden}
-  .wc-inner{position:relative;width:100%;max-width:1080px;display:grid;grid-template-columns:1fr;gap:10px;align-items:center}
-  @media(min-width:820px){.wc-inner{grid-template-columns:1.05fr .95fr;gap:30px}}
-  .wc-bgname{position:absolute;left:-2%;top:50%;transform:translateY(-50%);font-family:var(--font-ui);font-weight:700;font-size:clamp(120px,30vw,300px);line-height:.8;letter-spacing:-.03em;color:rgba(243,239,230,.045);white-space:nowrap;pointer-events:none;z-index:0;animation:wcBg 1.2s ease both}
-  .wc-text{position:relative;z-index:2;order:2}
-  @media(min-width:820px){.wc-text{order:1}}
-  .wc-brand{display:flex;align-items:center;gap:9px;font-family:var(--font-ui);font-weight:600;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-bright);margin-bottom:22px;animation:wcUp .6s ease both .1s}
-  .wc-brand img{width:26px;height:26px;object-fit:contain}
-  .wc-hi{font-family:var(--font-ui);font-weight:600;font-size:clamp(20px,4vw,26px);color:var(--muted);margin-bottom:2px;animation:wcUp .6s ease both .2s}
-  .wc-name{font-family:var(--font-ui);font-weight:700;font-size:clamp(38px,8.5vw,74px);line-height:.98;letter-spacing:-.01em;color:var(--text);margin:0}
-  .wc-name .m{font-size:.6em;font-weight:700;color:var(--gold)}
-  .wc-name span{display:block;overflow:hidden}
-  .wc-name span i{display:block;font-style:normal;animation:wcReveal .7s cubic-bezier(.2,.8,.2,1) both}
-  .wc-name span:nth-child(1) i{animation-delay:.28s}
-  .wc-name span:nth-child(2) i{animation-delay:.38s}
-  .wc-name span:nth-child(3) i{animation-delay:.48s}
-  .wc-line{height:3px;width:0;background:linear-gradient(90deg,var(--gold),var(--lime));border-radius:3px;margin:22px 0;animation:wcLine .8s ease both .7s}
-  .wc-sub{font-size:14.5px;color:var(--muted);margin:0 0 24px;max-width:38ch;animation:wcUp .6s ease both .8s}
-  .wc-btn{width:auto;padding:15px 26px;animation:wcUp .6s ease both .95s}
-  .wc-photo-wrap{position:relative;z-index:1;order:1;display:flex;align-items:center;justify-content:center;min-height:min(44vh,380px)}
-  @media(min-width:820px){.wc-photo-wrap{order:2;min-height:520px}}
-  .wc-halo{position:absolute;width:min(76vw,380px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 50% 45%,rgba(28,122,58,.15),rgba(180,135,58,.08) 55%,transparent 72%);animation:wcHalo 1.1s ease both .15s}
-  .wc-halo::after{content:'';position:absolute;inset:6%;border-radius:50%;border:1.5px solid rgba(180,135,58,.32)}
-  .wc-photo{position:relative;z-index:2;width:min(72vw,350px);max-height:min(52vh,480px);object-fit:cover;border-radius:20px;filter:drop-shadow(0 24px 40px rgba(17,17,17,.22));animation:wcPhoto 1s cubic-bezier(.2,.8,.2,1) both .2s}
+  /* ===================== ÉCRAN D'ACCUEIL =====================
+     Un interstitiel ne se justifie que s'il apprend quelque chose. Celui-ci
+     donne le relevé du jour avant d'entrer ; sinon il ne ferait que
+     retarder le travail d'un clic. Une seule colonne, centrée : il n'y a
+     rien à mettre en face. */
+  #welcome{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;
+    align-items:center;justify-content:center;padding:32px 24px;overflow-y:auto}
+  .wc-inner{width:100%;max-width:520px;animation:wcUp .5s ease both}
+  .wc-head{display:flex;align-items:center;gap:12px;margin-bottom:38px}
+  .wc-head img{width:38px;height:38px;object-fit:contain;flex:none}
+  .wc-head b{display:block;font-family:var(--font-ui);font-weight:700;font-size:14px;color:var(--text);line-height:1.2}
+  .wc-head span{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+  .wc-role{margin-left:auto;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold);background:rgba(198,162,87,.13);border:1px solid rgba(198,162,87,.32);
+    border-radius:20px;padding:5px 12px;white-space:nowrap}
+  /* Le titre ne peut pas déborder : il ne contient jamais une adresse
+     e-mail, seulement un prénom connu ou une salutation. */
+  .wc-name{font-family:var(--font-ui);font-weight:700;font-size:clamp(34px,6vw,46px);
+    line-height:1.05;letter-spacing:-.02em;color:var(--text);margin:0 0 6px;overflow-wrap:anywhere}
+  .wc-who{font-size:13.5px;color:var(--faint);margin:0 0 28px}
+  .wc-brief{border:1px solid var(--line);border-radius:13px;background:var(--surface-2);
+    padding:18px 20px;margin-bottom:26px}
+  .wc-brief-l{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+  .wc-brief-wait{font-size:13.5px;color:var(--faint)}
+  .wc-b{display:flex;align-items:flex-start;gap:11px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:1.45}
+  .wc-b:last-child{border-bottom:none}
+  .wc-b i{font-style:normal;width:7px;height:7px;border-radius:50%;flex:none;margin-top:7px;background:var(--line-strong)}
+  .wc-b.urgent i{background:#C0271B}
+  .wc-b.important i{background:#E08A5B}
+  .wc-b.attention i{background:var(--gold)}
+  .wc-b.info i{background:#7CC1EC}
+  .wc-b.calme i{background:var(--lime,#A8D93B)}
+  .wc-b b{font-weight:600;color:var(--text)}
+  .wc-b span{color:var(--faint)}
+  .wc-btn{width:100%;padding:15px 26px}
+  .wc-tip{font-size:11.5px;color:var(--faint);text-align:center;margin:12px 0 0}
+  .wc-tip kbd{font-family:inherit;background:var(--surface);border:1px solid var(--line-strong);
+    border-radius:5px;padding:1px 6px;font-size:11px}
   @keyframes wcBg{from{opacity:0}to{opacity:1}}
   @keyframes wcUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
   @keyframes wcReveal{from{opacity:0;transform:translateY(105%)}to{opacity:1;transform:none}}
@@ -1545,19 +1559,24 @@
 </style>
 <div id="welcome" class="hide">
   <div class="wc-inner">
-    <div class="wc-bgname">NDONG</div>
-    <div class="wc-text">
-      <div class="wc-brand"><img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="">Baobabs Basket Club · Espace de gestion</div>
-      <div class="wc-hi">Bienvenue,</div>
-      <h1 class="wc-name"><span><i id="wc-name-text">—</i></span></h1>
-      <div class="wc-line"></div>
-      <p class="wc-sub">Votre tableau de bord est prêt. Vous pouvez tout gérer d'ici, en toute simplicité.</p>
-      <button id="enter-btn" class="btn btn-primary wc-btn">Entrer dans l'espace →</button>
+    <header class="wc-head">
+      <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="">
+      <div><b>Baobabs Basket Club</b><span>Espace de gestion</span></div>
+      <span class="wc-role hide" id="wc-role"></span>
+    </header>
+
+    <h1 class="wc-name" id="wc-name">Bonjour</h1>
+    <p class="wc-who" id="wc-who"></p>
+
+    <!-- Le briefing. C'est ce qui justifie que cet écran existe : sans
+         lui, il ne fait que retarder l'entrée d'un clic. -->
+    <div class="wc-brief" id="wc-brief">
+      <div class="wc-brief-l">Relevé du jour</div>
+      <div id="wc-brief-body"><div class="wc-brief-wait">Lecture en cours…</div></div>
     </div>
-    <div class="wc-photo-wrap">
-      <div class="wc-halo"></div>
-      <img class="wc-photo" src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" style="width:min(50vw,220px);max-height:min(40vh,300px);object-fit:contain;filter:none;background:transparent;border-radius:0;box-shadow:none">
-    </div>
+
+    <button id="enter-btn" class="btn btn-primary wc-btn">Entrer dans l'espace</button>
+    <p class="wc-tip">ou appuyez sur <kbd>Entrée</kbd></p>
   </div>
 </div>
 
@@ -3474,12 +3493,66 @@
     }
   }
 
+  // Le prénom s'il est connu, une salutation sinon. Jamais l'adresse
+  // e-mail en gros titre : « mdgdesign221@gmail.com » ne rentre pas dans
+  // 46 px et se faisait couper au milieu.
+  function wcSalutation(user){
+    var m = (user && user.user_metadata) || {};
+    var nom = (m.full_name || m.name || '').trim();
+    if (nom) return 'Bonjour ' + nom.split(/\s+/)[0];
+    var h = new Date().getHours();
+    return h < 5 ? 'Bonsoir' : h < 18 ? 'Bonjour' : 'Bonsoir';
+  }
+
   function onAuthenticated(){
     gate.classList.add('hide');
-    var name = (currentSession.user.user_metadata && currentSession.user.user_metadata.full_name) || currentSession.user.email;
-    var welcomeName = document.getElementById('wc-name-text');
-    if (welcomeName) welcomeName.textContent = name;
+    var u = currentSession.user;
+    document.getElementById('wc-name').textContent = wcSalutation(u);
+    document.getElementById('wc-who').textContent = u.email || '';
     document.getElementById('welcome').classList.remove('hide');
+    document.getElementById('enter-btn').focus();
+
+    // Le rôle est chargé ici : la barre latérale est ainsi déjà filtrée
+    // quand on entre, et le relevé ne signale que ce qui nous concerne.
+    chargerRole().then(function(){
+      var badge = document.getElementById('wc-role');
+      if (badge && currentRole){
+        badge.textContent = ROLE_NOMS[currentRole] || currentRole;
+        badge.classList.remove('hide');
+      }
+      wcBriefing();
+    });
+  }
+
+  // Le relevé du jour : le prochain match, puis ce qui demande une
+  // décision. Trois lignes au plus — au-delà, ce n'est plus un relevé,
+  // c'est l'écran suivant.
+  function wcBriefing(){
+    var box = document.getElementById('wc-brief-body'); if (!box) return;
+    var lignes = [];
+
+    var prochain = sbGet('match_center?select=opponent_name,match_date,statut,is_home&statut=eq.a_venir&order=match_date.asc&limit=1')
+      .then(function(rows){
+        var m = (rows||[])[0]; if (!m) return;
+        var j = m.match_date ? daysUntil(m.match_date) : null;
+        lignes.push({ n:'info',
+          t: (m.is_home ? 'Baobabs reçoit ' : 'Déplacement chez ') + (m.opponent_name||'—'),
+          s: j === null ? '' : (j === 0 ? "aujourd'hui" : j === 1 ? 'demain' : 'dans ' + j + ' jours') });
+      }).catch(function(){});
+
+    Promise.all([prochain, attCollecte(true)]).then(function(r){
+      (r[1]||[]).slice(0,3).forEach(function(f){ lignes.push({ n:f.niveau, t:f.titre, s:f.detail }); });
+      if (!lignes.length){
+        box.innerHTML = '<div class="wc-b calme"><i></i><span>Rien ne réclame de décision aujourd\'hui.</span></div>';
+        return;
+      }
+      box.innerHTML = lignes.slice(0,4).map(function(l){
+        return '<div class="wc-b '+l.n+'"><i></i><div><b>'+esc(l.t)+'</b>'+
+               (l.s ? ' <span>· '+esc(l.s)+'</span>' : '')+'</div></div>';
+      }).join('');
+    }).catch(function(){
+      box.innerHTML = '<div class="wc-brief-wait">Relevé indisponible — vous pouvez entrer.</div>';
+    });
   }
 
   // Garde le token à jour automatiquement (rafraîchi tout seul par le SDK,
@@ -3512,14 +3585,21 @@
       });
     }
   });
-  document.getElementById('enter-btn').addEventListener('click', function(){
-    document.getElementById('welcome').classList.add('hide');
-    chargerRole().then(function(){
-      app.classList.remove('hide');
-      init();
-      appliquerRole();
-      notifInit();
-    });
+  function wcEntrer(){
+    var w = document.getElementById('welcome');
+    if (!w || w.classList.contains('hide')) return;
+    w.classList.add('hide');
+    // Le rôle est déjà chargé par onAuthenticated : on entre sans délai.
+    app.classList.remove('hide');
+    init();
+    appliquerRole();
+    notifInit();
+  }
+  document.getElementById('enter-btn').addEventListener('click', wcEntrer);
+  // Entrée ouvre l'espace. Personne ne vient ici pour lire un écran de
+  // bienvenue : la touche la plus proche doit mener au travail.
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') wcEntrer();
   });
 
   // ---------- helpers ----------
