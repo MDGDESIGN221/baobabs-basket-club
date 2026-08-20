@@ -3854,14 +3854,35 @@
     }
     return page(0);
   }
+  // « return=representation » plutôt que « minimal » : sans l'identifiant
+  // renvoyé, on ne saurait pas quoi supprimer pour annuler une création.
   function sbInsert(table,body,sectionLabel){
-    return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)})
-      .then(function(r){ if(!r.ok) return sbThrow(r, r.status===409?'duplicate':'insert', table); auditLogInsert(table,body,sectionLabel); }, sbNet(table,'insert'));
+    return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=representation'}),body:JSON.stringify(body)})
+      .then(function(r){
+        if(!r.ok) return sbThrow(r, r.status===409?'duplicate':'insert', table);
+        auditLogInsert(table,body,sectionLabel);
+        return r.json().then(function(cree){
+          var ligne = Array.isArray(cree) ? cree[0] : cree;
+          if (ligne && ligne.id != null)
+            undoPousser({ type:'creation', table:table, id:ligne.id, quoi:undoNom(table, ligne), section:sectionLabel });
+        }).catch(function(){});
+      }, sbNet(table,'insert'));
   }
   function sbUpdate(table,id,body,sectionLabel){
     return sbGet(table+'?select=*&id=eq.'+id).then(function(rows){ return (rows&&rows[0])||null; }).catch(function(){ return null; }).then(function(before){
       return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'PATCH',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)})
-        .then(function(r){ if(!r.ok) return sbThrow(r, 'update', table); auditLogUpdate(table,id,before,body,sectionLabel); }, sbNet(table,'update'));
+        .then(function(r){
+          if(!r.ok) return sbThrow(r, 'update', table);
+          auditLogUpdate(table,id,before,body,sectionLabel);
+          // On ne retient QUE les champs réellement touchés : réécrire la
+          // ligne entière à l'annulation écraserait ce qu'une autre
+          // personne aurait modifié entre-temps.
+          if (before){
+            var avant = {};
+            Object.keys(body).forEach(function(k){ avant[k] = before[k] === undefined ? null : before[k]; });
+            undoPousser({ type:'modif', table:table, id:id, avant:avant, quoi:undoNom(table, before) , section:sectionLabel });
+          }
+        }, sbNet(table,'update'));
     });
   }
   // Certaines tables n'ont pas de colonne « id » : customers est identifiée
@@ -3871,14 +3892,141 @@
       {method:'PATCH',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)})
       .then(function(r){ if(!r.ok) return sbThrow(r, 'patch '+table, table); try{ auditLogUpdate(table,keyVal,{},body,sectionLabel); }catch(e){} }, sbNet(table,'patch '+table));
   }
+  // La ligne est relue AVANT d'être supprimée : sans ça, rien ne permet
+  // de la remettre. Le journal d'audit ne garde qu'un « (supprimé) », il
+  // ne sait pas restaurer. C'est la suppression qui fait le plus peur —
+  // c'est donc elle qu'il fallait rendre réversible en premier.
   function sbDelete(table,id,sectionLabel){
-    return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'DELETE',headers:sbHeaders()})
-      .then(function(r){ if(!r.ok) return sbThrow(r, 'delete', table); auditLogDelete(table,id,sectionLabel); }, sbNet(table,'delete'));
+    return sbGet(table+'?select=*&id=eq.'+id).then(function(rows){ return (rows&&rows[0])||null; }).catch(function(){ return null; }).then(function(avant){
+      return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'DELETE',headers:sbHeaders()})
+        .then(function(r){
+          if(!r.ok) return sbThrow(r, 'delete', table);
+          auditLogDelete(table,id,sectionLabel);
+          if (avant) undoPousser({ type:'suppression', table:table, ligne:avant, quoi:undoNom(table, avant), section:sectionLabel });
+        }, sbNet(table,'delete'));
+    });
   }
   function sbUpsert(table,body,sectionLabel){
     return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)})
       .then(function(r){ if(!r.ok) return sbThrow(r, 'upsert', table); auditLogUpsert(table,body,sectionLabel); }, sbNet(table,'upsert'));
   }
+
+  // ===================== ANNULER =====================
+  //
+  // « J'ai peur de remplacer un logo partenaire ou une joueuse, parce
+  // qu'il n'y a pas de Ctrl+Z. » Un outil qui fait peur ne sert pas :
+  // on n'ose plus rien y changer, et il se périme.
+  //
+  // Le journal d'audit ne suffisait pas : il enregistre bien les
+  // modifications champ par champ, mais d'une suppression il ne garde
+  // qu'un « (supprimé) » — la ligne effacée est perdue. On capture donc
+  // l'état d'avant AU MOMENT de l'écriture, là où on l'a encore sous la
+  // main, et on le garde en mémoire pour la session.
+  //
+  // Trois gestes réversibles :
+  //   modif       -> on réécrit les seuls champs touchés
+  //   suppression -> on réinsère la ligne telle qu'elle était
+  //   creation    -> on supprime la ligne créée
+  //
+  // L'annulation est elle-même une écriture : elle passe par les mêmes
+  // helpers, donc elle apparaît dans l'historique. Rien ne se fait dans
+  // le dos de personne.
+  var undoPile = [], UNDO_MAX = 25, _undoEnCours = false, _undoT = null;
+
+  // Le nom lisible d'une ligne, pour que la barre dise « la joueuse
+  // Aïda Diop » et pas « players / 3f2a… ».
+  var UNDO_TABLES = {
+    players:'la joueuse', staff:'le membre du staff', partners:'le partenaire',
+    teams:'l’adversaire', news:'l’article', news_categories:'la catégorie',
+    products:'le produit', banners:'la bannière', announcements:'l’annonce',
+    standings:'la ligne de classement', timeline_events:'l’étape',
+    ticket_offers:'la catégorie de billet', matches:'le match',
+    promo_codes:'le code promo', academy_registrations:'le dossier',
+    recruitment_requests:'la candidature', orders:'la commande',
+    reservations:'la réservation', site_settings:'le réglage'
+  };
+  function undoNom(table, ligne){
+    var quoi = UNDO_TABLES[table] || 'l’élément';
+    var nom = ligne && (ligne.name || ligne.title || ligne.full_name || ligne.team_name ||
+                        ligne.opponent_name || ligne.category || ligne.code || ligne.reference || ligne.key);
+    return nom ? quoi + ' « ' + String(nom).slice(0,40) + ' »' : quoi;
+  }
+
+  function undoPousser(entree){
+    if (_undoEnCours) return;               // annuler une annulation, non
+    undoPile.push(entree);
+    if (undoPile.length > UNDO_MAX) undoPile.shift();
+    undoBarre(entree);
+  }
+
+  function undoBarre(entree){
+    var bar = document.getElementById('undo-bar');
+    if (!bar){
+      bar = document.createElement('div');
+      bar.id = 'undo-bar'; bar.className = 'undo-bar';
+      bar.setAttribute('role','status');
+      document.body.appendChild(bar);
+    }
+    var verbe = entree.type === 'suppression' ? 'Supprimé'
+              : entree.type === 'creation'    ? 'Créé' : 'Modifié';
+    bar.innerHTML =
+      '<span class="undo-bar-txt">' + esc(verbe) + ' : <b>' + esc(entree.quoi) + '</b></span>' +
+      '<span class="undo-kbd">Ctrl+Z</span>' +
+      '<button type="button" id="undo-go">Annuler</button>';
+    bar.querySelector('#undo-go').addEventListener('click', undoDernier);
+    bar.className = 'undo-bar';
+    // Un reflow forcé plutôt que requestAnimationFrame : dans un onglet en
+    // arrière-plan, les callbacks rAF ne partent pas, et la barre ne
+    // s'afficherait jamais. Or on change d'onglet précisément après avoir
+    // enregistré — c'est le moment où l'annulation compte le plus.
+    void bar.offsetWidth;
+    bar.classList.add('show');
+    clearTimeout(_undoT);
+    _undoT = setTimeout(function(){ bar.classList.remove('show'); }, 12000);
+  }
+  function undoCacher(){
+    var bar = document.getElementById('undo-bar');
+    if (bar) bar.classList.remove('show');
+    clearTimeout(_undoT);
+  }
+
+  function undoDernier(){
+    var e = undoPile.pop();
+    if (!e){ qgToast('Rien à annuler.', true); return Promise.resolve(); }
+    var btn = document.getElementById('undo-go');
+    if (btn){ btn.disabled = true; btn.textContent = 'Annulation…'; }
+    _undoEnCours = true;
+
+    var op;
+    if (e.type === 'modif')            op = sbUpdate(e.table, e.id, e.avant, (e.section||'') + ' · annulation');
+    else if (e.type === 'creation')    op = sbDelete(e.table, e.id, (e.section||'') + ' · annulation');
+    else if (e.type === 'suppression') op = sbInsert(e.table, e.ligne, (e.section||'') + ' · annulation');
+    else                               op = Promise.resolve();
+
+    return op.then(function(){
+      undoCacher();
+      qgToast('Annulé : ' + e.quoi, false);
+      // L'écran affiché doit refléter le retour en arrière tout de suite.
+      if (typeof sectionRefresh === 'function') sectionRefresh(sectionCourante, true);
+    }).catch(function(err){
+      undoPile.push(e);                     // l'annulation a échoué : on ne perd pas le geste
+      qgToast('Annulation impossible : ' + ((err && err.reason) || 'la base a refusé.'), true);
+    }).finally(function(){
+      _undoEnCours = false;
+      if (btn){ btn.disabled = false; btn.textContent = 'Annuler'; }
+    });
+  }
+
+  document.addEventListener('keydown', function(ev){
+    if (!(ev.ctrlKey || ev.metaKey) || ev.key !== 'z' || ev.shiftKey) return;
+    // Dans un champ de saisie, Ctrl+Z appartient au navigateur : on ne
+    // vole pas l'annulation de frappe pour défaire un enregistrement.
+    var t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (!undoPile.length) return;
+    ev.preventDefault();
+    undoDernier();
+  });
 
   // ===================== HISTORIQUE / AUDIT LOG =====================
   // Écrit discrètement une ligne dans admin_audit_log à chaque sauvegarde.
@@ -13572,7 +13720,10 @@
     if(!el){ el=document.createElement('div'); el.id='qg-toast'; el.className='qg-toast'; document.body.appendChild(el); }
     el.className='qg-toast'+(isErr?' err':'');
     el.innerHTML=(isErr?'':'<span style="width:20px;height:20px;border-radius:50%;background:#A8D93B;display:flex;align-items:center;justify-content:center;flex:none"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0A1B0D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>')+'<span>'+esc(msg)+'</span>';
-    requestAnimationFrame(function(){ el.classList.add('show'); });
+    // Même raison que pour la barre d'annulation : rAF ne s'exécute pas
+    // dans un onglet en arrière-plan, le bandeau resterait invisible.
+    void el.offsetWidth;
+    el.classList.add('show');
     clearTimeout(_qgToastT); _qgToastT=setTimeout(function(){ el.classList.remove('show'); },2600);
   }
 
@@ -14760,6 +14911,26 @@
   .qg-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(10px);z-index:120;display:flex;align-items:center;gap:10px;background:#0F2417;border:1px solid rgba(168,217,59,.4);color:var(--text);border-radius:12px;padding:12px 20px;font-weight:600;font-size:13.5px;box-shadow:0 18px 44px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
   .qg-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .qg-toast.err{border-color:rgba(229,86,74,.5)}
+
+  /* ===================== ANNULER =====================
+     La barre s'affiche au-dessus du bandeau de message, et reste plus
+     longtemps que lui : un message se lit, une annulation se décide.
+     Douze secondes, c'est le temps de comprendre qu'on s'est trompé. */
+  .undo-bar{position:fixed;left:50%;bottom:82px;transform:translateX(-50%) translateY(12px);z-index:130;
+    display:flex;align-items:center;gap:14px;background:#12130E;border:1px solid rgba(198,162,87,.45);
+    color:var(--text);border-radius:12px;padding:11px 12px 11px 18px;font-size:13px;
+    box-shadow:0 18px 44px rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:min(92vw,560px)}
+  .undo-bar.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .undo-bar-txt{flex:1;min-width:0;line-height:1.4}
+  .undo-bar-txt b{color:var(--gold)}
+  .undo-bar button{flex:none;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--text);
+    border-radius:8px;padding:8px 14px;font:700 12.5px var(--font-ui);cursor:pointer;transition:border-color .15s,color .15s}
+  .undo-bar button:hover{border-color:var(--gold);color:var(--gold)}
+  .undo-bar button:disabled{opacity:.5;cursor:default}
+  .undo-bar .undo-kbd{flex:none;font:600 10.5px var(--font-ui);color:var(--faint);border:1px solid var(--line);
+    border-radius:5px;padding:3px 6px;letter-spacing:.04em}
+  @media(max-width:560px){ .undo-bar{bottom:74px;font-size:12.5px} .undo-bar .undo-kbd{display:none} }
+  @media(prefers-reduced-motion:reduce){ .undo-bar{transition:none} }
 
   /* ============================================================
      SOCLE — focus clavier
