@@ -1741,6 +1741,9 @@
           </div>
         </div>
         <span id="role-badge" class="hide" title="Votre rôle dans l'administration">Administration</span>
+        <button class="link-btn" id="refresh-btn" title="Recharger les données de cet écran">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        </button>
         <button class="link-btn" id="logout-btn" title="Se déconnecter">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
         </button>
@@ -3794,7 +3797,62 @@
   function sbGet(path){
     var table = String(path).split('?')[0];
     return fetch(SUPABASE_URL+'/rest/v1/'+path, {headers:sbHeaders()})
-      .then(function(r){ if(!r.ok) return sbThrow(r, 'GET '+path, table); return r.json(); }, sbNet(table, 'GET '+path));
+      .then(function(r){ if(!r.ok) return sbThrow(r, 'GET '+path, table); return r.json(); }, sbNet(table, 'GET '+path))
+      .then(function(rows){ sbAvertirTroncature(path, rows); return rows; });
+  }
+
+  // ---------------------------------------------------------------------
+  // LES LISTES TRONQUÉES EN SILENCE
+  //
+  // Trente-neuf requêtes portent un plafond en dur (limit=300, 400, 500)
+  // et aucune ne pagine. Le jour où l'école dépasse 500 dossiers, l'écran
+  // affiche les 500 premiers — sans erreur, sans message, sans rien. Des
+  // dossiers deviennent invisibles et personne ne l'apprend.
+  //
+  // Une liste qui ramène EXACTEMENT son plafond est presque toujours
+  // tronquée. On le dit. Un avertissement par table et par session : la
+  // répétition ferait du bruit sans rien ajouter.
+  // ---------------------------------------------------------------------
+  var _sbTronque = {};
+  function sbAvertirTroncature(path, rows){
+    try {
+      var m = /[?&]limit=(\d+)/.exec(path);
+      if (!m || !Array.isArray(rows)) return rows;
+      var lim = parseInt(m[1], 10);
+      // limit=1 et consorts servent à piocher une ligne, pas à lister.
+      if (lim < 20 || rows.length < lim) return rows;
+      var table = String(path).split('?')[0];
+      if (_sbTronque[table]) return rows;
+      _sbTronque[table] = true;
+      console.warn('[Liste tronquée] ' + table + ' : ' + lim + ' lignes chargées, il en existe probablement davantage.');
+      if (typeof qgToast === 'function')
+        qgToast('Liste tronquée : « ' + table + ' » n\'affiche que ' + lim + ' lignes. Utilisez les filtres, ou signalez-le.', true);
+    } catch(e){}
+    return rows;
+  }
+
+  // Charge une table entière par tranches, sans plafond arbitraire.
+  // Les écrans de l'admin filtrent et cherchent EN MÉMOIRE : paginer
+  // côté serveur casserait la recherche, qui ne verrait plus que la page
+  // affichée. On récupère donc tout, et c'est le rendu qu'on pagine.
+  function sbGetAll(path, tranche){
+    var pas = tranche || 1000;
+    var base = String(path).replace(/[?&]limit=\d+/, '').replace(/[?&]offset=\d+/, '');
+    var sep = base.indexOf('?') >= 0 ? '&' : '?';
+    var tout = [];
+    function page(offset){
+      return sbGet(base + sep + 'limit=' + pas + '&offset=' + offset).then(function(rows){
+        rows = rows || [];
+        tout = tout.concat(rows);
+        // Garde-fou : au-delà de 20 000 lignes, on s'arrête et on le dit.
+        // Mieux vaut une liste incomplète annoncée qu'un navigateur figé.
+        if (rows.length === pas && tout.length < 20000) return page(offset + pas);
+        if (tout.length >= 20000 && typeof qgToast === 'function')
+          qgToast('Plus de 20 000 lignes dans « ' + base.split('?')[0] + ' » : affichage limité.', true);
+        return tout;
+      });
+    }
+    return page(0);
   }
   function sbInsert(table,body,sectionLabel){
     return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)})
@@ -4325,6 +4383,123 @@
     btn.click();
   });
 
+  // ---------------------------------------------------------------------
+  // RAFRAÎCHIR EN REVENANT SUR UN ÉCRAN
+  //
+  // loadedSections empêchait un écran de se recharger deux fois. C'était
+  // voulu — recharger efface un formulaire à moitié rempli — mais le
+  // résultat était qu'un écran gardait indéfiniment les données de sa
+  // première ouverture. On lisait « 180 places restantes » quand le
+  // guichet en avait écoulé 160 depuis, et rien ne le disait.
+  //
+  // On recharge donc au retour, mais seulement si rien n'est en cours de
+  // saisie et si les données ont vieilli. Chaque écran nomme sa fonction
+  // de DONNÉES, jamais son init : rappeler un init recâblerait ses
+  // boutons une seconde fois, et chaque clic partirait en double.
+  //
+  // Les écrans absents de cette table gardent l'ancien comportement :
+  // réglages, pages de contenu, Historique et Cohérence n'ont rien à
+  // rafraîchir tout seuls, et Médias comme Stock ont déjà leur bouton.
+  // ---------------------------------------------------------------------
+  var SECTION_AGE = {};
+  var REFRESH_APRES_MS = 20000;
+  function sectionRefreshers(){
+    return {
+      dashboard: loadDashboard, gameday: gdLoad, teams: loadTeams,
+      tickets: tkLoadOffers, promos: pmLoad, newsl: nwLoad,
+      banners: bnLoad, announce: anLoad, squad: efLoad,
+      products: prLoad, articles: arLoad, categories: ctLoad,
+      matches2: mcLoad, orders2: odLoad, clients: clLoad,
+      applications: cdLoad, inscriptions: inLoad, analytics: anaLoad,
+      comptes: cpLoad, forms: loadForms,
+      staff:     function(){ qgvLoad('staff'); },
+      timeline:  function(){ qgvLoad('timeline'); },
+      news:      function(){ qgvLoad('news'); },
+      partners:  function(){ qgvLoad('partners'); },
+      standings: function(){ qgvLoad('standings'); }
+    };
+  }
+  // force = clic sur le bouton Actualiser. Même là, on ne passe pas
+  // au-dessus d'une saisie en cours sans demander.
+  function sectionRefresh(key, force){
+    var fn = sectionRefreshers()[key];
+    if (!fn) return force ? 'rien-a-rafraichir' : false;
+    if (dirty){
+      if (!force) return false;
+      if (!confirm('Des modifications ne sont pas enregistrées sur cet écran.\n\nRecharger quand même ? Elles seront perdues.')) return false;
+      dirtyClear();
+    }
+    if (!force && Date.now() - (SECTION_AGE[key] || 0) < REFRESH_APRES_MS) return false;
+    try { fn(); SECTION_AGE[key] = Date.now(); return true; } catch(e){ return false; }
+  }
+
+  // ---------------------------------------------------------------------
+  // PAGINATION D'AFFICHAGE
+  //
+  // pgnPage(rows, etat) rend la tranche à dessiner ; pgnBarre(...) pose
+  // les boutons sous la liste. L'état vit dans l'écran appelant : un
+  // objet {page, parPage}. Changer de filtre doit remettre page à 1,
+  // sinon on cherche « Diop » et on atterrit sur une page vide.
+  // ---------------------------------------------------------------------
+  var PGN_PAR_PAGE = 50;
+  function pgnPage(rows, etat){
+    rows = rows || [];
+    var pp = etat.parPage || PGN_PAR_PAGE;
+    var nb = Math.max(1, Math.ceil(rows.length / pp));
+    if (!etat.page || etat.page > nb) etat.page = 1;
+    return rows.slice((etat.page - 1) * pp, (etat.page - 1) * pp + pp);
+  }
+  function pgnBarre(hote, rows, etat, redessiner){
+    if (!hote) return;
+    rows = rows || [];
+    var pp = etat.parPage || PGN_PAR_PAGE;
+    var nb = Math.max(1, Math.ceil(rows.length / pp));
+    if (nb <= 1){ hote.innerHTML = ''; return; }
+    var p = etat.page || 1;
+    var d = (p - 1) * pp + 1, f = Math.min(p * pp, rows.length);
+
+    // Fenêtre de numéros : première, dernière, courante et ses voisines.
+    // Au-delà, des points de suspension — vingt boutons ne se lisent pas.
+    var nums = [];
+    for (var i = 1; i <= nb; i++){
+      if (i === 1 || i === nb || Math.abs(i - p) <= 1) nums.push(i);
+      else if (nums[nums.length - 1] !== '…') nums.push('…');
+    }
+    var chev = function(d){
+      return d === 'g'
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
+    };
+    hote.className = 'pgn';
+    hote.innerHTML =
+      '<div class="pgn-info">' + d + '–' + f + ' sur ' + rows.length + '</div>' +
+      '<button type="button" data-pgn="prec" aria-label="Page précédente"' + (p === 1 ? ' disabled' : '') + '>' + chev('g') + '</button>' +
+      nums.map(function(n){
+        return n === '…' ? '<span class="pgn-gap">…</span>'
+          : '<button type="button" data-pgn="' + n + '" class="' + (n === p ? 'on' : '') + '"' +
+            (n === p ? ' aria-current="page"' : '') + '>' + n + '</button>';
+      }).join('') +
+      '<button type="button" data-pgn="suiv" aria-label="Page suivante"' + (p === nb ? ' disabled' : '') + '>' + chev('d') + '</button>';
+
+    hote.querySelectorAll('[data-pgn]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var v = b.getAttribute('data-pgn');
+        etat.page = v === 'prec' ? Math.max(1, p - 1) : v === 'suiv' ? Math.min(nb, p + 1) : parseInt(v, 10);
+        redessiner();
+        // Revenir en haut de la liste : sans ça, on change de page et on
+        // se retrouve au milieu de la suivante sans comprendre.
+        try { hote.scrollIntoView({ block: 'nearest' }); } catch(e){}
+      });
+    });
+  }
+
+  var sectionCourante = null;
+  document.getElementById('refresh-btn').addEventListener('click', function(){
+    var r = sectionRefresh(sectionCourante, true);
+    if (r === true) qgToast('Données rechargées.', false);
+    else if (r === 'rien-a-rafraichir') qgToast('Cet écran n\'a rien à recharger.', false);
+  });
+
   function showSection(key, formKey){
     // Cacher l'entrée de menu ne suffit pas : la recherche, les
     // raccourcis et le rail contextuel appellent showSection directement.
@@ -4347,7 +4522,9 @@
     document.getElementById('page-title').textContent = m.t;
     document.getElementById('page-desc').textContent = m.d;
     helpFill(key);
-    if (!loadedSections[key]) { loadedSections[key]=true; if (LOADERS[key]) LOADERS[key](); }
+    sectionCourante = key;
+    if (!loadedSections[key]) { loadedSections[key]=true; SECTION_AGE[key]=Date.now(); if (LOADERS[key]) LOADERS[key](); }
+    else sectionRefresh(key);
     roAppliquer(key);
     if (key==='forms' && formKey) {
       var fbtn = document.querySelector('#forms-nav .nav-btn[data-form="'+formKey+'"]');
@@ -10182,6 +10359,7 @@
   function odNum(r){ return r.order_number || ('#'+String(r.id).slice(0,4).toUpperCase()); }
 
   var odRows = [], odSel = null, odView = 'board', odStarted = false;
+  var odPgn = { page: 1, sig: null };
 
   function odInit(){
     if (odStarted) return; odStarted = true;
@@ -10200,10 +10378,10 @@
   function odLoad(){
     // On tente la vue enrichie, avec repli sur la table brute : le module
     // reste utilisable si la migration n'a pas encore été passée.
-    return sbGet('commandes_admin?select=*&order=created_at.desc&limit=500')
+    return sbGetAll('commandes_admin?select=*&order=created_at.desc')
       .then(function(rows){ odRows = rows||[]; odRender(); })
       .catch(function(){
-        return sbGet('orders?select=*&order=created_at.desc&limit=500')
+        return sbGetAll('orders?select=*&order=created_at.desc')
           .then(function(rows){ odRows = rows||[]; odRender();
             showMsg(document.getElementById('od-msg'), 'Migration MIGRATION-commandes-clients.sql non détectée : les numéros de commande et les notes internes ne sont pas encore disponibles.', false); })
           .catch(function(){ document.getElementById('od-board').innerHTML = '<div class="empty">Commandes indisponibles.</div>'; });
@@ -10251,7 +10429,12 @@
       }).join('');
       odWireBoard();
     } else {
-      list.innerHTML = rows.length ? rows.map(function(r){
+      var sigOd = ['od-search','orders-filter-status'].map(function(id){
+        var e = document.getElementById(id); return e ? e.value : '';
+      }).join('|');
+      if (odPgn.sig !== sigOd){ odPgn.sig = sigOd; odPgn.page = 1; }
+      var vuesOd = pgnPage(rows, odPgn);
+      list.innerHTML = rows.length ? vuesOd.map(function(r){
         var s = odSt(r.status);
         var n = odItems(r).reduce(function(a,it){ return a + (it.qty||it.quantity||1); }, 0);
         return '<div class="cd-row" data-id="'+r.id+'">'+
@@ -10262,6 +10445,9 @@
           '<span class="status-pill" style="flex:none;color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
         '</div>';
       }).join('') : '<div class="empty">Aucune commande pour ce filtre.</div>';
+      var hoteOd = document.createElement('div');
+      list.appendChild(hoteOd);
+      pgnBarre(hoteOd, rows, odPgn, odRender);
       list.querySelectorAll('.cd-row').forEach(function(el){
         el.addEventListener('click', function(){ odSel = el.getAttribute('data-id'); odRender(); });
       });
@@ -10617,6 +10803,7 @@
     return CD_ST[0];
   }
   var cdRows = [], cdSel = null, cdView = 'board', cdEvents = [], cdDocs = [], cdStarted = false;
+  var cdPgn = { page: 1, sig: null };
   var CD_DRAFT_KEY = 'bbc-cd-notes-draft';
 
   function cdInit(){
@@ -10635,7 +10822,7 @@
   }
 
   function cdLoad(){
-    return sbGet('candidatures_admin?select=*&order=created_at.desc&limit=500')
+    return sbGetAll('candidatures_admin?select=*&order=created_at.desc')
       .then(function(rows){ cdRows = rows||[]; cdFillCats(); cdRender(); })
       .catch(function(){
         // Repli sur la table brute : le module reste utilisable même si la
@@ -11133,7 +11320,12 @@
       }).join('');
       cdWireBoard();
     } else {
-      list.innerHTML = (rows.length ? blkBarre('cd', rows.length) : '') + (rows.length ? rows.map(function(r){
+      var sigCd = ['cd-search','cd-filter-cat'].map(function(id){
+        var e = document.getElementById(id); return e ? e.value : '';
+      }).join('|');
+      if (cdPgn.sig !== sigCd){ cdPgn.sig = sigCd; cdPgn.page = 1; }
+      var vuesCd = pgnPage(rows, cdPgn);
+      list.innerHTML = (rows.length ? blkBarre('cd', vuesCd.length) : '') + (rows.length ? vuesCd.map(function(r){
         var s = cdSt(r.status||'nouvelle');
         return '<div class="cd-row" data-id="'+r.id+'">'+
           blkCase(r.id)+
@@ -11143,13 +11335,16 @@
           '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
           '<span class="cd-card-meta" style="flex:none;margin:0">'+esc(fmtDateTime(r.created_at))+'</span></div>';
       }).join('') : '<div class="empty">Aucune candidature pour ce filtre.</div>');
+      var hoteCd = document.createElement('div');
+      list.appendChild(hoteCd);
+      pgnBarre(hoteCd, rows, cdPgn, cdRender);
       list.querySelectorAll('.cd-row').forEach(function(el){
         el.addEventListener('click', function(e){
           if (e.target.closest('.blk-case')) return;
           cdOpen(el.getAttribute('data-id'));
         });
       });
-      blkWire('cd', list, rows, CD_ST, function(ids, statut){
+      blkWire('cd', list, vuesCd, CD_ST, function(ids, statut){
         return Promise.all(ids.map(function(id){
           return sbUpdate('recruitment_requests', id, { status:statut }, 'Candidatures');
         })).then(function(){ cdLoad(); });
@@ -11432,6 +11627,7 @@
   ];
 
   var inRows = [], inSel = null, inView = 'board', inPayments = [], inEvents = [], inDocs = [], inStarted = false, inDegrade = false;
+  var inPgn = { page: 1, sig: null };
 
   function inFcfa(n){
     var v = parseInt(n,10); if (isNaN(v)) return '—';
@@ -11487,7 +11683,7 @@
   }
 
   function inLoad(){
-    return sbGet('inscriptions_admin?select=*&order=created_at.desc&limit=500')
+    return sbGetAll('inscriptions_admin?select=*&order=created_at.desc')
       .then(function(rows){ inDegrade = false; inRows = rows||[]; inFillCats(); inRender(); inBadge(); })
       .catch(function(){
         // La vue manque : on retombe sur la table brute pour que l'écran
@@ -11624,7 +11820,14 @@
       }).join('');
       inWireBoard();
     } else {
-      list.innerHTML = (rows.length ? blkBarre('in', rows.length) : '') + (rows.length ? rows.map(function(r){
+      // Changer de filtre remet à la première page : chercher « Diop » et
+      // atterrir sur une page 4 vide n'a aucun sens.
+      var sigIn = ['in-search','in-filter-cat','in-filter-pay'].map(function(id){
+        var e = document.getElementById(id); return e ? e.value : '';
+      }).join('|');
+      if (inPgn.sig !== sigIn){ inPgn.sig = sigIn; inPgn.page = 1; }
+      var vues = pgnPage(rows, inPgn);
+      list.innerHTML = (rows.length ? blkBarre('in', vues.length) : '') + (rows.length ? vues.map(function(r){
         var s = inSt(r.status||'nouvelle');
         return '<div class="cd-row" data-id="'+esc(r.id)+'">'+
           blkCase(r.id)+
@@ -11635,13 +11838,20 @@
           '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
           '<span class="cd-card-meta" style="flex:none;margin:0">'+esc(fmtDateTime(r.created_at))+'</span></div>';
       }).join('') : '<div class="empty">Aucune inscription pour ce filtre.</div>');
+      // La barre de pages vit dans la liste : elle disparaît d'elle-même
+      // quand un filtre ramène tout sous une page.
+      var hoteIn = document.createElement('div');
+      list.appendChild(hoteIn);
+      pgnBarre(hoteIn, rows, inPgn, inRender);
       list.querySelectorAll('.cd-row').forEach(function(el){
         el.addEventListener('click', function(e){
           if (e.target.closest('.blk-case')) return;   // cocher n'ouvre pas la fiche
           inOpen(el.getAttribute('data-id'));
         });
       });
-      blkWire('in', list, rows, IN_ST, function(ids, statut){
+      // vues, pas rows : « tout cocher » ne doit sélectionner que ce qui
+      // est sous les yeux, jamais des lignes d'une autre page.
+      blkWire('in', list, vues, IN_ST, function(ids, statut){
         return Promise.all(ids.map(function(id){
           return sbUpdate('academy_registrations', id, { status:statut }, 'Inscriptions');
         })).then(function(){ inLoad(); });
@@ -14267,7 +14477,14 @@
         {key:'club_tagline', label:'Slogan', type:'text', def:'Former, gagner, rassembler'},
         {key:'club_description', label:'Description', type:'textarea', def:'Club de basketball fondé à Dakar en 2026.'},
         {key:'logo_url', label:'Logo principal', type:'image', def:LOGO_DEF},
-        {key:'logo_secondary_url', label:'Logo secondaire', type:'image', def:''},
+        // « Logo secondaire » a été retiré : le champ s'enregistrait bien
+        // mais aucune page ne le lisait — on pouvait téléverser un logo
+        // et ne jamais le voir apparaître nulle part. Le logo principal,
+        // lui, se substitue partout en reconnaissant son nom de fichier
+        // (index.html : img[src*="BBC_-_COLORED_LOGO_jjcrux"]), ce qui ne
+        // laisse aucune cible naturelle à un second. Le jour où le site
+        // aura un emplacement pour lui — pied de page, version blanche
+        // sur fond sombre — remettre le champ ET le brancher.
         {key:'favicon_url', label:'Favicon', type:'image', def:LOGO_DEF}
       ],
       preview:function(v){ return '<div style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:20px;text-align:center"><img src="'+esc(v.logo_url||LOGO_DEF)+'" alt="" style="width:60px;height:60px;object-fit:contain;margin:0 auto 12px"><div style="font-family:var(--font-ui);font-weight:700;font-size:18px;color:#F3EFE6">'+esc(v.club_name)+'</div><div style="font-size:12.5px;color:#C6A257;margin-top:4px">'+esc(v.club_tagline)+'</div><div style="font-size:12px;color:#B9C2BB;margin-top:8px">'+esc(v.club_description)+'</div></div>'; } },
@@ -14790,6 +15007,26 @@
     .stt-head span:nth-child(3),.stt-row .stt-n:not(.w):not(.l){display:none}
     .stt-rk{font-size:18px} .stt-pts{font-size:20px} .stt-name{font-size:13.5px}
   }
+
+  /* ===================== PAGINATION D'AFFICHAGE =====================
+     Les données sont toutes en mémoire : cette barre ne découpe que le
+     rendu. La recherche et les filtres continuent donc de porter sur
+     l'ensemble, pas sur la page visible — l'inverse aurait été un piège.
+
+     Le relief est volontairement discret. Le composant d'origine soulève
+     les boutons de 6px avec une ombre portée : joli sur une vitrine,
+     fatigant sur un écran qu'on regarde deux heures par jour. */
+  .pgn{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin:18px 0 4px}
+  .pgn-info{flex:1 1 100%;text-align:center;font-size:11.5px;color:var(--faint);margin-bottom:4px}
+  .pgn button{min-width:36px;height:36px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;
+    background:var(--surface);border:1px solid var(--line);border-radius:9px;color:var(--muted);
+    font:600 12.5px var(--font-ui);cursor:pointer;transition:border-color .15s,color .15s,background .15s,transform .12s}
+  .pgn button:hover:not(:disabled){border-color:var(--gold);color:var(--text);transform:translateY(-1px)}
+  .pgn button:disabled{opacity:.35;cursor:default}
+  .pgn button.on{background:var(--surface-2);border-color:var(--gold);color:var(--gold);font-weight:800}
+  .pgn svg{width:15px;height:15px}
+  .pgn .pgn-gap{color:var(--faint);padding:0 2px;user-select:none}
+  @media(prefers-reduced-motion:reduce){ .pgn button{transition:none} .pgn button:hover:not(:disabled){transform:none} }
 
   /* ===================== ÉCRAN EN LECTURE SEULE =====================
      La barre latérale filtrait sur « voir », rien ne filtrait sur
