@@ -655,19 +655,22 @@
   section.sec-in{animation:secIn .28s cubic-bezier(.22,1,.36,1) both}
   @media(prefers-reduced-motion:reduce){section.sec-in{animation:none}}
 
-  /* Le rail porte le compte à rebours et ce qui attend une action :
-     c'est une des meilleures idées de l'écran, et elle disparaissait
-     dès qu'on descendait sous 1500px — soit sur la plupart des
-     portables. Il apparaît maintenant à partir de 1300px, en version
-     resserrée, et reprend sa pleine largeur au-delà de 1560px. */
+  /* Le rail porte le compte à rebours et ce qui attend une action.
+     Il avait été descendu à 1300px pour être visible sur les portables.
+     C'était trop bas : entre 1300 et 1560px il prenait 274px à un écran
+     qui n'en avait pas de trop, et les blocs en deux colonnes passaient
+     dessous — la ligne de billets débordait de sa carte, le bouton
+     « Supprimer » finissait sous le rail. Mesuré à 1366px : quatre
+     écrans touchés (Billetterie, Candidatures, Inscriptions, Commandes).
+
+     Il ne s'affiche donc plus qu'à partir de 1560px, là où la place
+     existe vraiment. En dessous, l'écran reprend toute sa largeur : rien
+     n'est perdu, le rail n'est que le rappel de ce qu'on trouve
+     ailleurs. Ne pas le redescendre sans remesurer. */
   .ctx-rail{display:none}
-  @media(min-width:1300px){
-    .app-shell{max-width:1660px}
-    .ctx-rail{display:block;flex:none;width:274px;border-left:1px solid var(--line);padding:22px 16px 40px;position:sticky;top:65px;align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
-  }
   @media(min-width:1560px){
     .app-shell{max-width:1760px}
-    .ctx-rail{width:308px;padding:22px 18px 40px}
+    .ctx-rail{display:block;flex:none;width:308px;border-left:1px solid var(--line);padding:22px 18px 40px;position:sticky;top:65px;align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
   }
   .ctx-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:15px;margin-bottom:12px}
   .ctx-h{font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 11px}
@@ -1582,7 +1585,14 @@
 
   /* ===================== BILLETTERIE ===================== */
   .rec-item.tk-active{border-color:var(--gold);background:var(--surface-2)}
-  .tk-offer{display:grid;grid-template-columns:minmax(88px,1.4fr) 94px 80px 106px;gap:8px;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px;margin-bottom:9px}
+  /* Quatre colonnes figées (88+94+80+106 + 3 gouttières) réclamaient
+     392px. La carte qui les accueille est la colonne droite de .grid-2,
+     large de 372px fixes, soit 320px utiles : la ligne débordait donc
+     systématiquement, à toute largeur d'écran, et le bouton
+     « Supprimer » sortait de la carte. Avec auto-fit, les quatre champs
+     se rangent sur deux lignes quand la place manque et reprennent une
+     seule ligne dès qu'elle revient. */
+  .tk-offer{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px;margin-bottom:9px}
   .tk-offer input,.tk-offer select{background:var(--surface);border:1px solid var(--line-strong);color:var(--text);border-radius:8px;padding:9px 10px;font:inherit;font-size:13px;width:100%}
   .tk-offer-foot{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
   .tk-offer .btn{padding:9px 14px;font-size:12px}
@@ -2894,7 +2904,7 @@
             <div id="tk-offers-list"></div>
             <div id="tk-offers-add" class="hide">
               <div class="tk-presets" id="tk-preset-row"></div>
-              <div class="tk-offer" style="grid-template-columns:minmax(88px,1.4fr) 94px 80px 106px">
+              <div class="tk-offer">
                 <input id="tk-new-cat" type="text" placeholder="Catégorie" aria-label="Catégorie">
                 <input id="tk-new-price" type="number" min="0" step="500" placeholder="Tarif" aria-label="Tarif en FCFA">
                 <input id="tk-new-quota" type="number" min="0" placeholder="Places" aria-label="Nombre de places">
@@ -3257,7 +3267,7 @@
         </div>
       </div>
       <div style="margin-top:16px"><button type="button" class="btn btn-ghost" id="an-csv">Exporter les recettes (CSV)</button></div>
-      <div class="msg" id="an-msg"></div>
+      <div class="msg" id="ana-msg"></div>
     </section>
 
     <!-- ===== COMPTES & RÔLES ===== -->
@@ -3563,6 +3573,36 @@
     }
   }
 
+  // Le second étage du filtrage par rôle. « voir » décide si l'écran
+  // existe ; « modifier » décide s'il est utilisable. Sans ce second
+  // étage, un rôle en consultation trouvait un formulaire complet,
+  // remplissait, cliquait — et la base refusait sans que rien ne
+  // l'explique. Le compte du club a passé des semaines dans ce cas.
+  var MODULE_NOMS = {
+    matchs:'les matchs', effectif:'l’effectif', stats:'les statistiques',
+    billetterie:'la billetterie', boutique:'la boutique', contenu:'le contenu',
+    inscriptions:'les inscriptions', recrutement:'le recrutement',
+    reglages:'les réglages', historique:'l’historique'
+  };
+  function roAppliquer(key){
+    var sec = document.getElementById('section-'+key); if (!sec) return;
+    var mod = SECTION_MODULE[key];
+    var peut = !mod || can(mod,'modifier') || can(mod,'creer');
+    sec.classList.toggle('lecture-seule', !peut);
+    var b = sec.querySelector('.ro-banner');
+    if (peut){ if (b) b.remove(); return; }
+    if (!b){
+      b = document.createElement('div');
+      b.className = 'ro-banner';
+      sec.insertBefore(b, sec.firstChild);
+    }
+    b.innerHTML = '<span class="ro-ico">⚠</span><span><b>Écran en consultation.</b> Votre rôle ('+
+      esc(ROLE_NOMS[currentRole] || currentRole || 'inconnu')+') peut consulter '+
+      esc(MODULE_NOMS[mod] || mod)+' mais pas les modifier. Les commandes d’enregistrement sont désactivées : '+
+      'la base les refuserait de toute façon. Pour obtenir l’écriture, un super administrateur doit ajouter '+
+      '« '+esc(mod)+' / modifier » à votre rôle, dans <b>Comptes &amp; rôles</b>.</span>';
+  }
+
   // Le prénom s'il est connu, une salutation sinon. Jamais l'adresse
   // e-mail en gros titre : « mdgdesign221@gmail.com » ne rentre pas dans
   // 46 px et se faisait couper au milieu.
@@ -3674,7 +3714,27 @@
 
   // ---------- helpers ----------
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-  function showMsg(el, text, ok){ if(!el)return; el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); if(!text) el.className='msg'; }
+  // Un retour qu'on ne voit pas n'est pas un retour. Les messages vivent
+  // en bas de leur carte : sur la billetterie, « Enregistré. » s'affichait
+  // 1255px sous le bouton, dans une fenêtre de 768px. On cliquait, la
+  // ligne se redessinait à l'identique, et il ne se passait « rien » —
+  // alors que la base avait bien répondu 204. Quand le message tombe hors
+  // de l'écran, on le redit en bandeau flottant.
+  function showMsg(el, text, ok){
+    if(!el)return;
+    el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); if(!text) el.className='msg';
+    if(!text) return;
+    try {
+      var r = el.getBoundingClientRect();
+      // Un élément dans une section masquée mesure 0 partout : pas de
+      // bandeau pour lui, il ne s'adresse à personne.
+      if (r.width === 0 && r.height === 0) return;
+      var horsChamp = r.bottom < 0 || r.top > (window.innerHeight || 0);
+      // sbFail vient peut-être d'annoncer la vraie cause : ne pas l'écraser
+      // par le message deviné de l'écran.
+      if (horsChamp && typeof qgToast === 'function' && !(Date.now() - _sbLastToast <= 1500)) qgToast(text, !ok);
+    } catch(e){}
+  }
   function sbHeaders(extra){ var token = (currentSession && currentSession.access_token) || SUPABASE_KEY; var h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token }; if (extra) for (var k in extra) h[k]=extra[k]; return h; }
   var FALLBACK_COLORS = ['#c0392b','#2457c5','#15803d','#d97706','#7c3aed','#0891b2','#be185d','#b45309'];
   function fallbackColor(name){ var h=0,s=String(name||'?'); for(var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return FALLBACK_COLORS[h%FALLBACK_COLORS.length]; }
@@ -3685,18 +3745,82 @@
   function hoursSince(ts){ if(!ts) return null; var d=new Date(ts); if(isNaN(d.getTime())) return null; return (Date.now()-d.getTime())/3600000; }
   function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
 
-  function sbGet(path){ return fetch(SUPABASE_URL+'/rest/v1/'+path, {headers:sbHeaders()}).then(function(r){ if(!r.ok) throw new Error('GET '+path); return r.json(); }); }
-  function sbInsert(table,body,sectionLabel){ return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){ if(!r.ok){ if(r.status===409) throw new Error('duplicate'); throw new Error('insert'); } auditLogInsert(table,body,sectionLabel); }); }
-  function sbUpdate(table,id,body,sectionLabel){ return sbGet(table+'?select=*&id=eq.'+id).then(function(rows){ return (rows&&rows[0])||null; }).catch(function(){ return null; }).then(function(before){ return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'PATCH',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){ if(!r.ok) throw new Error('update'); auditLogUpdate(table,id,before,body,sectionLabel); }); }); }
+  // ---------------------------------------------------------------------
+  // LA VÉRITÉ SUR L'ERREUR
+  //
+  // Jusqu'ici, un refus de droits, une colonne inconnue, un doublon et
+  // une connexion coupée ressortaient tous sous la même étiquette nue.
+  // Chaque écran devinait alors une cause dans son catch — et se
+  // trompait : « cette catégorie existe peut-être déjà » s'affichait
+  // quand la base avait en fait refusé l'écriture. On cherchait un
+  // doublon qui n'existait pas.
+  //
+  // Les étiquettes historiques ('duplicate', 'insert'…) sont conservées
+  // telles quelles : du code s'appuie dessus. On leur attache la vérité
+  // (.status, .detail, .reason) et on l'affiche, même si le catch
+  // appelant l'ignore.
+  // ---------------------------------------------------------------------
+  var _sbLastToast = 0;
+  function sbReason(status, table){
+    var qui = currentRole ? ' (' + (ROLE_NOMS[currentRole] || currentRole) + ')' : '';
+    if (!status)                   return 'Le serveur n\'a pas répondu — connexion coupée ?';
+    if (status===401||status===403) return 'Droits refusés sur « '+table+' » : votre rôle'+qui+' n\'autorise pas cette action.';
+    if (status===409)              return 'Doublon : une ligne identique existe déjà dans « '+table+' ».';
+    if (status===404)              return 'Table ou vue « '+table+' » introuvable — migration SQL manquante ?';
+    if (status===400)              return 'La base a refusé la requête sur « '+table+' ».';
+    return 'Erreur '+status+' sur « '+table+' ».';
+  }
+  function sbFail(label, status, bodyText, table){
+    var detail = '';
+    try { var j = bodyText ? JSON.parse(bodyText) : null; if (j) detail = j.message || j.hint || j.details || ''; } catch(e){}
+    var e = new Error(label);                 // étiquette historique : ne pas changer
+    e.status = status; e.detail = detail; e.table = table;
+    e.reason = sbReason(status, table) + (detail ? ' — ' + detail : '');
+    try {
+      // Un seul bandeau à la fois : une page qui charge dix tables d'un
+      // coup ne doit pas empiler dix fois le même refus.
+      if (typeof qgToast === 'function' && Date.now() - _sbLastToast > 1200){
+        _sbLastToast = Date.now(); qgToast(e.reason, true);
+      }
+      console.error('[Supabase] ' + status + ' ' + table + ' — ' + (detail || label));
+    } catch(_){}
+    return e;
+  }
+  // Le corps de la réponse porte le message de Postgres : il faut le lire
+  // avant de lever, d'où le passage par r.text().
+  function sbThrow(r, label, table){ return r.text().then(function(t){ throw sbFail(label, r.status, t, table); }); }
+  function sbNet(table, label){ return function(err){ if (err && err.reason) throw err; throw sbFail(label, 0, null, table); }; }
+
+  function sbGet(path){
+    var table = String(path).split('?')[0];
+    return fetch(SUPABASE_URL+'/rest/v1/'+path, {headers:sbHeaders()})
+      .then(function(r){ if(!r.ok) return sbThrow(r, 'GET '+path, table); return r.json(); }, sbNet(table, 'GET '+path));
+  }
+  function sbInsert(table,body,sectionLabel){
+    return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)})
+      .then(function(r){ if(!r.ok) return sbThrow(r, r.status===409?'duplicate':'insert', table); auditLogInsert(table,body,sectionLabel); }, sbNet(table,'insert'));
+  }
+  function sbUpdate(table,id,body,sectionLabel){
+    return sbGet(table+'?select=*&id=eq.'+id).then(function(rows){ return (rows&&rows[0])||null; }).catch(function(){ return null; }).then(function(before){
+      return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'PATCH',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)})
+        .then(function(r){ if(!r.ok) return sbThrow(r, 'update', table); auditLogUpdate(table,id,before,body,sectionLabel); }, sbNet(table,'update'));
+    });
+  }
   // Certaines tables n'ont pas de colonne « id » : customers est identifiée
   // par user_id. sbUpdate suppose « id », d'où cette variante.
   function sbPatchBy(table,keyCol,keyVal,body,sectionLabel){
     return fetch(SUPABASE_URL+'/rest/v1/'+table+'?'+keyCol+'=eq.'+encodeURIComponent(keyVal),
       {method:'PATCH',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)})
-      .then(function(r){ if(!r.ok) throw new Error('patch '+table); try{ auditLogUpdate(table,keyVal,{},body,sectionLabel); }catch(e){} });
+      .then(function(r){ if(!r.ok) return sbThrow(r, 'patch '+table, table); try{ auditLogUpdate(table,keyVal,{},body,sectionLabel); }catch(e){} }, sbNet(table,'patch '+table));
   }
-  function sbDelete(table,id,sectionLabel){ return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'DELETE',headers:sbHeaders()}).then(function(r){ if(!r.ok) throw new Error('delete'); auditLogDelete(table,id,sectionLabel); }); }
-  function sbUpsert(table,body,sectionLabel){ return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)}).then(function(r){ if(!r.ok) throw new Error('upsert'); auditLogUpsert(table,body,sectionLabel); }); }
+  function sbDelete(table,id,sectionLabel){
+    return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'DELETE',headers:sbHeaders()})
+      .then(function(r){ if(!r.ok) return sbThrow(r, 'delete', table); auditLogDelete(table,id,sectionLabel); }, sbNet(table,'delete'));
+  }
+  function sbUpsert(table,body,sectionLabel){
+    return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)})
+      .then(function(r){ if(!r.ok) return sbThrow(r, 'upsert', table); auditLogUpsert(table,body,sectionLabel); }, sbNet(table,'upsert'));
+  }
 
   // ===================== HISTORIQUE / AUDIT LOG =====================
   // Écrit discrètement une ligne dans admin_audit_log à chaque sauvegarde.
@@ -4224,6 +4348,7 @@
     document.getElementById('page-desc').textContent = m.d;
     helpFill(key);
     if (!loadedSections[key]) { loadedSections[key]=true; if (LOADERS[key]) LOADERS[key](); }
+    roAppliquer(key);
     if (key==='forms' && formKey) {
       var fbtn = document.querySelector('#forms-nav .nav-btn[data-form="'+formKey+'"]');
       if (fbtn) fbtn.click();
@@ -9104,11 +9229,16 @@
   // on y copie une adresse, on n'y téléverse pas.
   var MD_DB_SOURCES = [
     { id:'@teams',    name:'Logos des adversaires',  query:'teams?select=name,logo_url&order=name.asc' },
-    { id:'@players',  name:'Photos des joueuses',    query:'players?select=name,photo_url,image_url' },
+    // players et staff n'ont qu'une colonne photo_url. Demander aussi
+    // image_url faisait répondre 400 à PostgREST — pas « colonne vide »,
+    // mais requête refusée : les deux dossiers restaient donc vides sans
+    // rien dire, et l'inventaire des médias comptait ces images comme
+    // inutilisées.
+    { id:'@players',  name:'Photos des joueuses',    query:'players?select=name,photo_url' },
     { id:'@products', name:'Visuels de la boutique', query:'products?select=name,image_url,images' },
     { id:'@news',     name:'Images des articles',    query:'news?select=title,image_url&order=created_at.desc' },
     { id:'@partners', name:'Logos des partenaires',  query:'partners?select=name,logo_url' },
-    { id:'@staff',    name:'Photos du staff',        query:'staff?select=name,photo_url,image_url' },
+    { id:'@staff',    name:'Photos du staff',        query:'staff?select=name,photo_url' },
     { id:'@settings', name:'Réglages (hero, logos)', query:'site_settings?select=key,value' }
   ];
   function mdAllFolders(){ return MD_FOLDERS.concat(MD_DB_SOURCES, MD_SITE_GROUPS); }
@@ -11929,16 +12059,21 @@
   // Les statistiques sportives disent si l'équipe joue bien. Celles-ci
   // disent si le club tient debout. Ce sont deux questions différentes,
   // posées par deux personnes différentes — d'où deux écrans.
-  var anStarted = false, anRecettes = [];
+  // Préfixe « ana » et non « an » : l'écran Bandeau d'annonce occupait
+  // déjà anInit / anLoad / anStarted. Deux fonctions de même nom dans la
+  // même portée, et la seconde efface la première en silence — c'est
+  // Annonces qui perdait, son bouton « Nouvelle annonce » n'était jamais
+  // câblé et sa liste restait vide.
+  var anaStarted = false, anRecettes = [];
 
-  function anInit(){
-    if (anStarted) return; anStarted = true;
+  function anaInit(){
+    if (anaStarted) return; anaStarted = true;
     document.getElementById('an-csv').addEventListener('click', function(){
       if (!anRecettes.length) return;
       bbCsvDownload('recettes-'+bbCsvDate()+'.csv', ['Mois','Source','Montant FCFA'],
         anRecettes.map(function(r){ return [r.mois, r.source, r.montant]; }));
     });
-    anLoad();
+    anaLoad();
   }
 
   function anMois(n){
@@ -11975,7 +12110,7 @@
     }).join('') +'</div>';
   }
 
-  function anLoad(){
+  function anaLoad(){
     var mois6 = anMois(6), moisCourant = inPeriodeCourante();
     var fcfa = function(v){ return v >= 1000 ? Math.round(v/1000)+'k' : String(v); };
 
@@ -12071,7 +12206,7 @@
           (jours!=null && jours>30 ? '#E08A5B':'inherit')+'">'+
           (jours==null ? '—' : (jours===0 ? "aujourd'hui" : 'il y a '+jours+' jour'+(jours>1?'s':'')))+'</span></div>';
     }).catch(function(){
-      showMsg(document.getElementById('an-msg'), 'Analytics indisponibles — passez MIGRATION-phase2-analytics.sql.', false);
+      showMsg(document.getElementById('ana-msg'), 'Analytics indisponibles — passez MIGRATION-phase2-analytics.sql.', false);
     });
   }
 
@@ -12490,7 +12625,7 @@
     c_inscriptions:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_inscriptions'),'qgc-c_inscriptions'); }); },
     inscriptions:function(){ inInit(); },
     comptes:function(){ cpInit(); },
-    analytics:function(){ anInit(); },
+    analytics:function(){ anaInit(); },
     c_app:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_app'),'qgc-c_app'); }); },
     c_promo:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_promo'),'qgc-c_promo'); }); },
     c_legal:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_legal'),'qgc-c_legal'); }); },
@@ -14643,6 +14778,44 @@
     .stt-head span:nth-child(3),.stt-row .stt-n:not(.w):not(.l){display:none}
     .stt-rk{font-size:18px} .stt-pts{font-size:20px} .stt-name{font-size:13.5px}
   }
+
+  /* ===================== ÉCRAN EN LECTURE SEULE =====================
+     La barre latérale filtrait sur « voir », rien ne filtrait sur
+     « modifier » : un rôle en consultation voyait un écran complet,
+     boutons compris, que la base refusait ensuite en silence. On ne
+     retire pas l'écran — consulter est légitime — on désarme ce qui
+     écrit, et le bandeau dit pourquoi.
+
+     Le désarmement passe par le style et non par l'attribut disabled :
+     l'admin active et désactive ses propres boutons pendant les
+     enregistrements, on ne veut pas lui marcher dessus. */
+  .ro-banner{display:flex;gap:10px;align-items:flex-start;margin:0 0 16px;padding:12px 14px;
+    border:1px solid rgba(198,162,87,.34);background:rgba(198,162,87,.06);border-radius:10px;
+    font-size:12.5px;line-height:1.55;color:#E4D9BF;max-width:900px}
+  .ro-banner b{color:var(--gold)}
+  .ro-banner .ro-ico{flex:none;font-size:15px;line-height:1.3}
+
+  .lecture-seule button,
+  .lecture-seule input:not([type="search"]),
+  .lecture-seule select,
+  .lecture-seule textarea{opacity:.42;pointer-events:none;filter:grayscale(.55)}
+
+  /* Consulter n'est pas écrire : onglets, filtres, recherche, tri,
+     retour et export restent vivants. */
+  .lecture-seule .ro-banner,
+  .lecture-seule .subtabs button,
+  .lecture-seule .subtab,
+  .lecture-seule .nav-btn,
+  .lecture-seule [data-qg-tab],
+  .lecture-seule [data-tksub],
+  .lecture-seule [data-form],
+  .lecture-seule [id$="-export"],
+  .lecture-seule [id$="-search"],
+  .lecture-seule [id$="-sort"],
+  .lecture-seule [id$="-back"],
+  .lecture-seule [id$="-refresh"],
+  .lecture-seule [id*="-filter"],
+  .lecture-seule [id*="-view-switch"]{opacity:1;pointer-events:auto;filter:none}
 </style>
 
 </body>
