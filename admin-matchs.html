@@ -5042,7 +5042,7 @@
     sbGet('reservations?select=*,ticket_offers(category)&match_id=eq.'+gdMatch.id+'&order=created_at.desc')
       .then(function(rows){ gdResa=rows||[]; gdRenderResa(); })
       .catch(function(){ gdResa=[]; gdRenderResa(); });
-    sbGet('ticket_offers?select=*&match_id=eq.'+gdMatch.id+'&order=price_fcfa.asc').then(function(rows){
+    sbGet('ticket_offers?select=*&match_id=eq.'+gdMatch.id+'&order=price_fcfa.asc,sort_order.asc').then(function(rows){
       var box=document.getElementById('gd-offers');
       rows=rows||[];
       if(!rows.length){ box.innerHTML='<div class="empty">Aucune catégorie de billet sur ce match. Ouvrez la vente dans Billetterie.</div>'; return; }
@@ -9960,7 +9960,7 @@
 
     if (mcTab === 'billetterie'){
       p.innerHTML = '<p class="cd-prose" style="color:var(--faint)">Chargement des catégories…</p>';
-      sbGet('ticket_offers?select=*&match_id=eq.'+m.id+'&order=sort_order.asc')
+      sbGet('ticket_offers?select=*&match_id=eq.'+m.id+'&order=price_fcfa.asc,sort_order.asc')
         .then(function(rows){
           if (String(mcSel)!==String(m.id) || mcTab!=='billetterie') return;
           mcOffers = rows||[];
@@ -12405,7 +12405,7 @@
   function tkLoadOffers(){
     return Promise.all([
       sbGet('matches?select=*&order=match_date.asc&limit=300'),
-      sbGet('ticket_offers?select=*&order=sort_order.asc')
+      sbGet('ticket_offers?select=*&order=price_fcfa.asc,sort_order.asc')
     ]).then(function(res){
       tkMatches=res[0]||[]; tkOffers={};
       (res[1]||[]).forEach(function(o){ (tkOffers[o.match_id]=tkOffers[o.match_id]||[]).push(o); });
@@ -12424,11 +12424,20 @@
     if(!rows.length){ box.innerHTML='<div class="empty">Aucun match à venir. Ajoutez-en un dans « Matchs &amp; adversaires ».</div>'; return; }
     box.innerHTML=rows.map(function(m){
       var offs=tkOffers[m.id]||[];
-      var quota=0, sold=0, open=false;
-      offs.forEach(function(o){ quota+=o.quota||0; sold+=o.sold||0; if(o.is_open) open=true; });
+      // La jauge ne compte que les catégories réellement en vente. Elle
+      // additionnait tous les quotas, fermés compris : avec deux
+      // catégories ouvertes sur quatre, elle annonçait 1250 places quand
+      // 200 seulement étaient achetables. Et la pastille disait « Vente
+      // ouverte » dès qu'une seule l'était, sans dire que les autres
+      // restaient invisibles sur le site.
+      var quota=0, sold=0, nbOuvertes=0;
+      offs.forEach(function(o){
+        if(o.is_open){ nbOuvertes++; quota+=o.quota||0; sold+=o.sold||0; }
+      });
       var pill = !offs.length ? '<span class="status-pill status-upcoming">À configurer</span>'
-               : open ? '<span class="status-pill status-win">Vente ouverte</span>'
-                      : '<span class="status-pill status-off">Vente fermée</span>';
+               : !nbOuvertes ? '<span class="status-pill status-off">Vente fermée</span>'
+               : nbOuvertes===offs.length ? '<span class="status-pill status-win">Vente ouverte</span>'
+                      : '<span class="status-pill status-upcoming">'+nbOuvertes+' catégorie(s) sur '+offs.length+' en vente</span>';
       var logo=m.opponent_logo_url
         ? '<img class="rec-thumb circle" src="'+esc(m.opponent_logo_url)+'" alt="">'
         : '<div class="rec-noimg circle" style="background:'+fallbackColor(m.opponent_name)+'">'+esc(String(m.opponent_name||'?').charAt(0))+'</div>';
@@ -12436,9 +12445,12 @@
       return '<div class="rec-item tk-match'+(String(tkSel)===String(m.id)?' tk-active':'')+'" data-id="'+m.id+'">'+logo+
         '<div class="rec-main"><div class="rec-title">'+esc(tkLabel(m))+' '+pill+'</div>'+
         '<div class="rec-meta">'+esc(formatDateShort(m.match_date))+(m.venue?' · '+esc(m.venue):'')+'</div>'+
-        (offs.length
-          ? '<div class="tk-gauge"><i style="width:'+pct+'%"></i></div><div class="rec-meta">'+sold+' / '+quota+' places réservées</div>'
-          : '<div class="rec-meta" style="margin-top:5px">Aucune catégorie de billet</div>')+
+        (!offs.length
+          ? '<div class="rec-meta" style="margin-top:5px">Aucune catégorie de billet</div>'
+          : !nbOuvertes
+            ? '<div class="rec-meta" style="margin-top:5px">'+offs.length+' catégorie(s) prête(s), aucune en vente — rien n\'apparaît sur le site</div>'
+            : '<div class="tk-gauge"><i style="width:'+pct+'%"></i></div><div class="rec-meta">'+sold+' / '+quota+' places réservées'+
+              (nbOuvertes<offs.length ? ' · '+(offs.length-nbOuvertes)+' catégorie(s) fermée(s), invisible(s) sur le site' : '')+'</div>')+
         '</div></div>';
     }).join('');
     box.querySelectorAll('.tk-match').forEach(function(el){
