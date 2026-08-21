@@ -1791,6 +1791,8 @@
         <div id="st-champs"></div>
         <p class="st-titre">Ambiance</p>
         <div class="st-couleurs" id="st-couleurs"></div>
+        <p class="st-titre">Image de fond</p>
+        <div id="st-fond"></div>
         <p class="st-note" id="st-note"></p>
       </div>
     </div>
@@ -3981,11 +3983,44 @@
     { id:'or',     nom:'Or',      fond1:'#1A1408', fond2:'#080602', halo:'#5A4416', accent:'#E4C179', texte:'#F8F3E7' },
     { id:'brique', nom:'Brique',  fond1:'#2A0F0B', fond2:'#0A0403', halo:'#7A2A1C', accent:'#E8837A', texte:'#F8EFEC' }
   ];
-  var ST = { format:'story', modele:'match', ambiance:'nuit', valeurs:{}, images:{}, pretes:false };
+  var ST = { format:'story', modele:'match', ambiance:'nuit', valeurs:{}, images:{}, pretes:false,
+             fond:{ url:'', fx:50, fy:50, zoom:100, voile:55 }, fondImg:null, mediaListe:null };
 
   // ---- petits outils de dessin ----
   function stU(W){ return W / 1080; }                       // unité proportionnelle
+
+  // Recadre comme un object-fit:cover, avec un point de visée. Une photo
+  // de match est rarement cadrée pour une story : sans point de visée,
+  // le sujet se retrouve coupé une fois sur deux.
+  function stCouvrir(ctx, img, W, H, fx, fy, zoom){
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return;
+    var k = Math.max(W / iw, H / ih) * ((zoom == null ? 100 : zoom) / 100);
+    var w = iw * k, h = ih * k;
+    ctx.drawImage(img, (W - w) * ((fx == null ? 50 : fx) / 100),
+                       (H - h) * ((fy == null ? 50 : fy) / 100), w, h);
+  }
+  // Sans voile, le texte blanc disparaît dès que la photo est claire.
+  // Assombrissement général + renforts en haut et en bas, là où se
+  // posent le sur-titre et la mention.
+  function stVoile(ctx, W, H, force){
+    var f = (force == null ? 55 : force) / 100;
+    ctx.save();
+    ctx.fillStyle = 'rgba(5,10,7,' + (0.16 + f * 0.58).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0,    'rgba(5,10,7,' + (0.20 + f * 0.45).toFixed(3) + ')');
+    g.addColorStop(0.42, 'rgba(5,10,7,0)');
+    g.addColorStop(1,    'rgba(5,10,7,' + (0.28 + f * 0.60).toFixed(3) + ')');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
   function stFond(ctx, W, H, a){
+    if (ST.fondImg){
+      stCouvrir(ctx, ST.fondImg, W, H, ST.fond.fx, ST.fond.fy, ST.fond.zoom);
+      stVoile(ctx, W, H, ST.fond.voile);
+      return;
+    }
     var g = ctx.createLinearGradient(0, 0, W * 0.4, H);
     g.addColorStop(0, a.fond1); g.addColorStop(1, a.fond2);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -4227,6 +4262,58 @@
         });
         stTxt(ctx, v.mention || '', { x:cx, y:H - marge - 30*u, taille:22*u, poids:600, couleur:'rgba(243,239,230,.5)', align:'center', maxW:W-marge*2 });
       }
+    },
+    {
+      id:'joueuse', nom:'Fiche joueuse', sous:'Portrait, numéro, poste',
+      champs:[
+        {k:'kicker', l:'Sur-titre', type:'text'},
+        {k:'nom',    l:'Nom',       type:'text'},
+        {k:'numero', l:'Numéro',    type:'text'},
+        {k:'poste',  l:'Poste',     type:'text'},
+        {k:'phrase', l:'Phrase',    type:'textarea'}
+      ],
+      // Ce modèle pose la photo de la joueuse EN FOND : c'est le seul qui
+      // choisit une image tout seul, parce qu'elle est le sujet.
+      prefill:function(){
+        return sbGet('players?select=*&order=sort.asc,jersey_number.asc&limit=60').then(function(rows){
+          var p = (rows||[])[0] || {};
+          if (p.photo_url){ ST.fond.url = p.photo_url; ST.fond.fy = 30; ST.fond.voile = 45;
+                            stImage(p.photo_url).then(function(im){ ST.fondImg = im; stFondPanneau(); stRendre(); }); }
+          return { kicker:'L\'effectif', nom:p.name||'Joueuse', numero:p.jersey_number==null?'':String(p.jersey_number),
+                   poste:p.position||'', phrase:'' };
+        }).catch(function(){ return { kicker:'L\'effectif', nom:'Joueuse', numero:'', poste:'', phrase:'' }; });
+      },
+      dessiner:function(ctx, W, H, v, a){
+        var u = stU(W), marge = 84*u, bas = H - marge;
+        stFond(ctx, W, H, a);
+        stTxt(ctx, String(v.kicker||'').toUpperCase(), { x:marge, y:marge*1.1, taille:24*u, poids:800, couleur:a.accent });
+
+        // Le numéro en très grand, calé à droite et derrière le nom :
+        // c'est le repère qu'on lit de loin sur une story.
+        if (v.numero){
+          ctx.save();
+          ctx.font = '400 ' + Math.min(W*0.52, H*0.34) + "px 'Anton',sans-serif";
+          ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+          ctx.fillStyle = 'rgba(243,239,230,.13)';
+          ctx.fillText(String(v.numero), W - marge*0.5, bas - 150*u);
+          ctx.restore();
+        }
+        var y = bas - 30*u;
+        if (v.phrase){
+          var hp = stTxt(ctx, v.phrase, { x:marge, y:0, taille:26*u, poids:500, couleur:'rgba(243,239,230,.78)',
+                                          maxW:W-marge*2, interligne:36*u });
+          y -= hp; stTxt(ctx, v.phrase, { x:marge, y:y, taille:26*u, poids:500, couleur:'rgba(243,239,230,.78)',
+                                          maxW:W-marge*2, interligne:36*u });
+          y -= 22*u;
+        }
+        if (v.poste){ y -= 34*u; stTxt(ctx, String(v.poste).toUpperCase(), { x:marge, y:y, taille:26*u, poids:700, couleur:a.accent }); }
+        var tn = Math.min(W*0.13, H*0.085);
+        var lignes = String(v.nom||'').trim().split(/\s+/);
+        for (var i = lignes.length - 1; i >= 0; i--){
+          y -= tn*1.0;
+          stTxt(ctx, lignes[i].toUpperCase(), { x:marge, y:y, taille:tn, police:"'Anton',sans-serif", poids:400, couleur:a.texte });
+        }
+      }
     }
   ];
   function stModele(){ return STUDIO_MODELES.filter(function(m){ return m.id === ST.modele; })[0]; }
@@ -4305,11 +4392,113 @@
     zone.querySelectorAll('[data-stf]').forEach(function(el){
       el.addEventListener('input', function(){ ST.valeurs[el.getAttribute('data-stf')] = el.value; stRendre(); });
     });
+    stFondPanneau();
     document.getElementById('st-note').textContent =
       'Les champs sont pré-remplis avec les vraies données du club. Modifiez librement : rien n\'est enregistré, le Studio ne touche pas à la base.';
   }
+
+  // ---- image de fond ----
+  // La liste du bucket n'est chargée qu'une fois par ouverture du Studio :
+  // elle ne bouge pas pendant qu'on compose une affiche.
+  // Le bucket Supabase ne contient que ce qui a été téléversé depuis
+  // l'admin. L'essentiel des photos du club vit dans /media/ et n'est
+  // connu que par les adresses enregistrées dans les fiches — joueuses,
+  // matchs, articles. Un sélecteur qui ignorerait ces fiches paraîtrait
+  // vide alors que le club a des dizaines d'images.
+  function stMedias(){
+    if (ST.mediaListe) return Promise.resolve(ST.mediaListe);
+    var img = function(v){ return typeof v === 'string' && /\.(jpe?g|png|webp|avif)(\?|$)/i.test(v) ? v : null; };
+    var bucket = fetch(SUPABASE_URL + '/storage/v1/object/list/' + MEDIA_BUCKET, {
+      method:'POST', headers: sbHeaders({ 'Content-Type':'application/json' }),
+      body: JSON.stringify({ prefix:'', limit:60, offset:0, sortBy:{ column:'created_at', order:'desc' } })
+    }).then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(rows){
+        return (rows||[]).filter(function(o){ return o && o.id && o.name && img(o.name); })
+          .map(function(o){ return SUPABASE_URL + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + o.name; });
+      }).catch(function(){ return []; });
+
+    var fiches = Promise.all([
+      sbGet('players?select=photo_url&order=sort.asc&limit=40').catch(function(){ return []; }),
+      sbGet('matches?select=photo_url&order=match_date.desc&limit=20').catch(function(){ return []; }),
+      sbGet('news?select=image_url&order=published_at.desc&limit=20').catch(function(){ return []; })
+    ]).then(function(r){
+      var out = [];
+      (r[0]||[]).forEach(function(x){ if (img(x.photo_url)) out.push(x.photo_url); });
+      (r[1]||[]).forEach(function(x){ if (img(x.photo_url)) out.push(x.photo_url); });
+      (r[2]||[]).forEach(function(x){ if (img(x.image_url)) out.push(x.image_url); });
+      return out;
+    }).catch(function(){ return []; });
+
+    return Promise.all([bucket, fiches]).then(function(r){
+      var vus = {};
+      ST.mediaListe = r[0].concat(r[1]).filter(function(u){ if (vus[u]) return false; vus[u] = 1; return true; });
+      return ST.mediaListe;
+    });
+  }
+  function stFondAppliquer(url){
+    ST.fond.url = url || '';
+    if (!url){ ST.fondImg = null; stFondPanneau(); stRendre(); return; }
+    stImage(url).then(function(im){
+      if (!im) qgToast('Cette image n\'a pas pu être chargée — elle ne pourra pas être exportée.', true);
+      ST.fondImg = im; stFondPanneau(); stRendre();
+    });
+  }
+  function stFondPanneau(){
+    var z = document.getElementById('st-fond'); if (!z) return;
+    var f = ST.fond;
+    var curseur = function(cle, lib, min, max, suf){
+      return '<div class="st-curseur"><label for="stb-'+cle+'">'+lib+'</label>'+
+        '<input id="stb-'+cle+'" type="range" min="'+min+'" max="'+max+'" value="'+f[cle]+'" data-stb="'+cle+'">'+
+        '<output>'+f[cle]+(suf||'')+'</output></div>';
+    };
+    z.innerHTML =
+      '<div class="st-vign" id="st-vign">'+
+        '<button type="button" class="st-aucune'+(f.url?'':' on')+'" data-sturl="">Aucune<br>image</button>'+
+      '</div>'+
+      '<div class="st-champ"><label for="stb-url">Adresse de l\'image</label>'+
+        '<input id="stb-url" type="text" value="'+esc(f.url)+'" placeholder="https://… ou /media/img/…"></div>'+
+      '<div class="st-champ"><label for="stb-file">Téléverser</label><input id="stb-file" type="file" accept="image/*" style="font-size:11.5px;color:var(--muted)"></div>'+
+      (f.url ? curseur('fx','Cadrage ←→',0,100,'%') + curseur('fy','Cadrage ↑↓',0,100,'%') +
+               curseur('zoom','Zoom',100,220,'%')  + curseur('voile','Voile',0,100,'%') : '');
+
+    stMedias().then(function(urls){
+      var g = document.getElementById('st-vign'); if (!g) return;
+      g.innerHTML = '<button type="button" class="st-aucune'+(f.url?'':' on')+'" data-sturl="">Aucune<br>image</button>' +
+        urls.slice(0,11).map(function(u){
+          return '<button type="button" data-sturl="'+esc(u)+'" class="'+(u===f.url?'on':'')+'">'+
+                 '<img src="'+esc(u)+'" alt="" loading="lazy"></button>';
+        }).join('');
+      g.querySelectorAll('[data-sturl]').forEach(function(b){
+        b.addEventListener('click', function(){ stFondAppliquer(b.getAttribute('data-sturl')); });
+      });
+    });
+
+    var u = document.getElementById('stb-url');
+    u.addEventListener('change', function(){ stFondAppliquer(u.value.trim()); });
+    document.getElementById('stb-file').addEventListener('change', function(){
+      var fi = this.files && this.files[0]; if (!fi) return;
+      qgToast('Envoi de l\'image…', false);
+      uploadFile(MEDIA_BUCKET, fi).then(function(url){
+        ST.mediaListe = null;           // la liste vient de changer
+        stFondAppliquer(url);
+      }).catch(function(){ qgToast('Téléversement impossible.', true); });
+    });
+    z.querySelectorAll('[data-stb]').forEach(function(el){
+      el.addEventListener('input', function(){
+        ST.fond[el.getAttribute('data-stb')] = parseInt(el.value, 10);
+        var o = el.parentNode.querySelector('output');
+        if (o) o.textContent = el.value + '%';
+        stRendre();
+      });
+    });
+  }
   function stCharger(){
     var m = stModele();
+    // Le fond repart à zéro : garder la photo d'une joueuse sur l'affiche
+    // du match suivant serait une surprise désagréable. Un modèle qui
+    // veut son image la repose lui-même dans son prefill.
+    ST.fond = { url:'', fx:50, fy:50, zoom:100, voile:55 };
+    ST.fondImg = null;
     document.getElementById('st-champs').innerHTML = '<p class="st-note">Chargement…</p>';
     m.prefill().then(function(v){ ST.valeurs = v || {}; stPanneaux(); stRendre(); });
   }
@@ -15429,6 +15618,21 @@
   .st-bascule button{background:none;border:none;border-radius:7px;padding:6px 12px;color:var(--faint);
     font:700 11.5px var(--font-ui);cursor:pointer}
   .st-bascule button.on{background:var(--surface-3);color:var(--text)}
+
+  /* Vignettes de la médiathèque : assez grandes pour reconnaître une
+     photo, assez petites pour en voir douze sans faire défiler. */
+  .st-vign{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+  .st-vign button{position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;border:2px solid transparent;
+    background:var(--surface-2);cursor:pointer;padding:0}
+  .st-vign button img{width:100%;height:100%;object-fit:cover;display:block}
+  .st-vign button.on{border-color:var(--gold)}
+  .st-vign button.st-aucune{display:flex;align-items:center;justify-content:center;color:var(--faint);font:700 9px var(--font-ui);
+    text-align:center;line-height:1.2;padding:4px}
+  .st-curseur{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .st-curseur label{flex:none;width:74px;margin:0;font-family:var(--font-ui);font-weight:600;font-size:9.5px;
+    letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+  .st-curseur input[type=range]{flex:1;accent-color:var(--gold);background:transparent}
+  .st-curseur output{flex:none;width:34px;text-align:right;font:600 11px var(--font-ui);color:var(--muted)}
 
   @media(max-width:1080px){
     .st-body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto}
