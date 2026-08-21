@@ -7,7 +7,10 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400..900&display=swap" rel="stylesheet">
+<!-- Anton et Space Grotesk ne servent pas à l'administration : ce sont les
+     polices du SITE. Le Studio les charge pour que les affiches qu'il
+     compose portent la typographie de la marque, et pas celle de l'outil. -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
@@ -1722,6 +1725,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
           <span class="hide-sm">Voir le site</span>
         </a>
+        <button type="button" class="link-btn studio-open" id="studio-open" title="Composer une affiche">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19a7 7 0 1 0 0-14h-1a7 7 0 0 0 0 14Z"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="15" cy="11" r="1"/><path d="M12 19c0-1.5 1-2 2-2h1a3 3 0 0 0 3-3"/></svg>
+          <span class="hide-sm">Studio</span>
+        </button>
         <button type="button" id="gs-open" title="Rechercher (Ctrl+K)" aria-label="Rechercher">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <kbd>Ctrl K</kbd>
@@ -1750,6 +1757,44 @@
       </div>
     </div>
   </header>
+
+  <!-- ===== BAOBABS STUDIO =====
+       Volontairement hors de <main> et hors de la barre latérale : ce
+       n'est pas un écran de gestion, c'est un atelier. On y entre par le
+       bouton de la barre du haut, on en ressort par Échap. -->
+  <div class="st-wrap" id="studio" role="dialog" aria-modal="true" aria-label="Baobabs Studio">
+    <div class="st-head">
+      <span class="st-logo">BAOBABS <i>STUDIO</i></span>
+      <span class="st-sep"></span>
+      <div class="st-bascule" id="st-vue">
+        <button type="button" data-vue="desk" class="on">Ordinateur</button>
+        <button type="button" data-vue="mob">Téléphone</button>
+      </div>
+      <button type="button" class="btn btn-ghost" id="st-media" style="padding:9px 14px;font-size:12.5px">Envoyer dans les médias</button>
+      <button type="button" class="btn btn-primary" id="st-png" style="padding:9px 16px;font-size:12.5px">Télécharger le PNG</button>
+      <button type="button" class="link-btn" id="st-close" title="Fermer (Échap)" aria-label="Fermer le Studio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="st-body">
+      <div class="st-col left">
+        <p class="st-titre">Modèle</p>
+        <div class="st-choix" id="st-modeles"></div>
+        <p class="st-titre">Format</p>
+        <div class="st-choix" id="st-formats"></div>
+      </div>
+      <div class="st-scene" id="st-scene">
+        <div class="st-canvas-hote" id="st-hote"><canvas id="st-canvas"></canvas></div>
+      </div>
+      <div class="st-col right">
+        <p class="st-titre">Contenu</p>
+        <div id="st-champs"></div>
+        <p class="st-titre">Ambiance</p>
+        <div class="st-couleurs" id="st-couleurs"></div>
+        <p class="st-note" id="st-note"></p>
+      </div>
+    </div>
+  </div>
 
   <div class="sidebar-scrim" id="sidebar-scrim"></div>
 
@@ -3910,6 +3955,426 @@
     return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)})
       .then(function(r){ if(!r.ok) return sbThrow(r, 'upsert', table); auditLogUpsert(table,body,sectionLabel); }, sbNet(table,'upsert'));
   }
+
+  // ===================== BAOBABS STUDIO =====================
+  //
+  // Un atelier d'affiches dans l'administration. Pas un Figma : devant
+  // une page blanche, personne ne sait quoi faire. Ici on part d'un
+  // modèle déjà rempli avec les vraies données du club — l'adversaire,
+  // la date, la salle, les tarifs — et on ajuste.
+  //
+  // Rendu en CANVAS et non en SVG : le canvas se sert des polices déjà
+  // chargées par la page, donc l'aperçu à l'écran et le PNG exporté sont
+  // le même dessin. Avec du SVG converti en image, les polices ne
+  // suivent pas et l'export ne ressemble plus à l'aperçu.
+  // ---------------------------------------------------------------------
+  var STUDIO_FORMATS = [
+    { id:'story',    nom:'Story',        w:1080, h:1920, note:'Instagram, WhatsApp' },
+    { id:'post',     nom:'Post',         w:1080, h:1350, note:'Instagram, Facebook' },
+    { id:'carre',    nom:'Carré',        w:1080, h:1080, note:'Post carré' },
+    { id:'banniere', nom:'Bannière',     w:1600, h:900,  note:'Slider du site' },
+    { id:'og',       nom:'Aperçu de lien',w:1200, h:630, note:'Partage WhatsApp' }
+  ];
+  var STUDIO_AMBIANCES = [
+    { id:'nuit',   nom:'Nuit',    fond1:'#0B1810', fond2:'#050A07', halo:'#133A26', accent:'#C6A257', texte:'#F3EFE6' },
+    { id:'terrain',nom:'Terrain', fond1:'#0F4030', fond2:'#071A13', halo:'#1B6B4A', accent:'#A8D93B', texte:'#F3EFE6' },
+    { id:'or',     nom:'Or',      fond1:'#1A1408', fond2:'#080602', halo:'#5A4416', accent:'#E4C179', texte:'#F8F3E7' },
+    { id:'brique', nom:'Brique',  fond1:'#2A0F0B', fond2:'#0A0403', halo:'#7A2A1C', accent:'#E8837A', texte:'#F8EFEC' }
+  ];
+  var ST = { format:'story', modele:'match', ambiance:'nuit', valeurs:{}, images:{}, pretes:false };
+
+  // ---- petits outils de dessin ----
+  function stU(W){ return W / 1080; }                       // unité proportionnelle
+  function stFond(ctx, W, H, a){
+    var g = ctx.createLinearGradient(0, 0, W * 0.4, H);
+    g.addColorStop(0, a.fond1); g.addColorStop(1, a.fond2);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    var r = ctx.createRadialGradient(W * 0.75, H * 0.08, 0, W * 0.75, H * 0.08, W * 0.9);
+    r.addColorStop(0, a.halo); r.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = .55; ctx.fillStyle = r; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+  }
+  // Retourne la hauteur occupée : les blocs suivants s'empilent dessous
+  // sans qu'on ait à deviner combien de lignes le texte a pris.
+  function stTxt(ctx, texte, o){
+    texte = String(texte == null ? '' : texte);
+    if (!texte) return 0;
+    ctx.save();
+    ctx.font = (o.poids || 700) + ' ' + o.taille + 'px ' + (o.police || "'Inter',sans-serif");
+    ctx.fillStyle = o.couleur; ctx.textAlign = o.align || 'left'; ctx.textBaseline = 'top';
+    if (o.espacement && ctx.letterSpacing !== undefined) ctx.letterSpacing = o.espacement + 'px';
+    var mots = texte.split(/\s+/), lignes = [], cur = '';
+    var maxW = o.maxW || 1e9;
+    mots.forEach(function(m){
+      var essai = cur ? cur + ' ' + m : m;
+      if (ctx.measureText(essai).width > maxW && cur){ lignes.push(cur); cur = m; }
+      else cur = essai;
+    });
+    if (cur) lignes.push(cur);
+    var lh = o.interligne || o.taille * 1.08;
+    lignes.forEach(function(l, i){ ctx.fillText(l, o.x, o.y + i * lh); });
+    ctx.restore();
+    return lignes.length * lh;
+  }
+  function stCercle(ctx, img, cx, cy, r, a){
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.closePath();
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fill();
+    ctx.clip();
+    if (img) ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(243,239,230,.22)'; ctx.lineWidth = Math.max(2, r * .035); ctx.stroke();
+    ctx.restore();
+  }
+  function stPastille(ctx, texte, x, y, a, u){
+    ctx.save();
+    ctx.font = '700 ' + (22 * u) + "px 'Inter',sans-serif";
+    if (ctx.letterSpacing !== undefined) ctx.letterSpacing = (3 * u) + 'px';
+    var w = ctx.measureText(texte).width + 44 * u, h = 52 * u;
+    ctx.fillStyle = a.accent;
+    if (ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x, y, w, h, h / 2); ctx.fill(); }
+    else ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#07130D'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(texte, x + 22 * u, y + h / 2 + 1);
+    ctx.restore();
+    return h;
+  }
+  function stImage(url){
+    return new Promise(function(res){
+      if (!url) return res(null);
+      if (ST.images[url] !== undefined) return res(ST.images[url]);
+      var im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.onload  = function(){ ST.images[url] = im; res(im); };
+      // Une image qui ne charge pas ne doit pas vider l'affiche : on
+      // retombe sur le cercle vide, le reste du dessin tient.
+      im.onerror = function(){ ST.images[url] = null; res(null); };
+      im.src = url;
+    });
+  }
+
+  // ---- les modèles ----
+  var STUDIO_MODELES = [
+    {
+      id:'match', nom:'Affiche de match', sous:'Prochaine rencontre',
+      champs:[
+        {k:'kicker',   l:'Sur-titre',     type:'text'},
+        {k:'adv',      l:'Adversaire',    type:'text'},
+        {k:'date',     l:'Date',          type:'text'},
+        {k:'heure',    l:'Heure',         type:'text'},
+        {k:'lieu',     l:'Salle',         type:'text'},
+        {k:'mention',  l:'Mention basse', type:'text'}
+      ],
+      prefill:function(){
+        return sbGet('matches?select=*&order=match_date.asc&limit=40').then(function(rows){
+          var auj = todayISO();
+          var m = (rows||[]).filter(function(x){ return x.match_date >= auj; })[0] || (rows||[])[0] || {};
+          return {
+            kicker: m.competition || 'Championnat National D2',
+            adv:    m.opponent_name || 'Adversaire',
+            date:   m.match_date ? formatDateLong(m.match_date) : '',
+            heure:  m.match_time ? String(m.match_time).slice(0,5) : '19:00',
+            lieu:   m.venue || 'Stadium Marius Ndiaye',
+            mention:'baobabsbasketclub.com',
+            _logo:  m.opponent_logo_url || '',
+            _dom:   m.is_home !== false
+          };
+        }).catch(function(){ return { kicker:'Championnat National D2', adv:'Adversaire', date:'', heure:'19:00', lieu:'Stadium Marius Ndiaye', mention:'baobabsbasketclub.com' }; });
+      },
+      dessiner:function(ctx, W, H, v, a, imgs){
+        var u = stU(W), marge = 84 * u, cx = W / 2;
+        stFond(ctx, W, H, a);
+        var y = marge * 1.1;
+        ctx.save();
+        ctx.font = '700 ' + (24*u) + "px 'Inter',sans-serif";
+        if (ctx.letterSpacing !== undefined) ctx.letterSpacing = (5*u)+'px';
+        ctx.fillStyle = a.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(String(v.kicker||'').toUpperCase(), cx, y);
+        ctx.restore();
+        y += 56 * u;
+
+        // Les deux blasons : la hauteur disponible décide de leur taille,
+        // sinon une bannière 16/9 les ferait déborder.
+        var r = Math.min(W * 0.115, H * 0.085);
+        var ecart = r * 2.5;
+        var cy = y + r + 24 * u;
+        stCercle(ctx, imgs.club, cx - ecart, cy, r, a);
+        stCercle(ctx, imgs.adv,  cx + ecart, cy, r, a);
+        ctx.save();
+        ctx.font = '400 ' + (r * 0.9) + "px 'Anton',sans-serif";
+        ctx.fillStyle = a.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(v._dom === false ? '@' : 'VS', cx, cy + r * 0.04);
+        ctx.restore();
+        y = cy + r + 54 * u;
+
+        var tailleNom = Math.min(W * 0.115, H * 0.075);
+        y += stTxt(ctx, 'BAOBABS', { x:cx, y:y, taille:tailleNom, police:"'Anton',sans-serif", poids:400,
+                                     couleur:a.texte, align:'center', maxW:W - marge*2, interligne:tailleNom*1.02 });
+        y += stTxt(ctx, String(v.adv||'').toUpperCase(), { x:cx, y:y, taille:tailleNom, police:"'Anton',sans-serif", poids:400,
+                                     couleur:a.accent, align:'center', maxW:W - marge*2, interligne:tailleNom*1.02 });
+
+        // Le bas est ancré au pied : sur une story très haute, le bloc
+        // date ne doit pas flotter au milieu de nulle part.
+        var bas = H - marge;
+        stTxt(ctx, v.mention || '', { x:cx, y:bas - 30*u, taille:22*u, couleur:'rgba(243,239,230,.5)', align:'center', poids:600 });
+        var ligne = [v.heure, v.lieu].filter(Boolean).join('  ·  ');
+        var hLieu = stTxt(ctx, ligne, { x:cx, y:bas - 96*u, taille:26*u, couleur:'rgba(243,239,230,.8)', align:'center', poids:500, maxW:W - marge*2 });
+        stTxt(ctx, String(v.date||'').toUpperCase(), { x:cx, y:bas - 96*u - 62*u, taille:44*u,
+              police:"'Space Grotesk',sans-serif", poids:700, couleur:a.texte, align:'center', maxW:W - marge*2 });
+      }
+    },
+    {
+      id:'resultat', nom:'Résultat', sous:'Score final',
+      champs:[
+        {k:'kicker', l:'Sur-titre',  type:'text'},
+        {k:'adv',    l:'Adversaire', type:'text'},
+        {k:'sb',     l:'Score Baobabs',   type:'text'},
+        {k:'so',     l:'Score adversaire',type:'text'},
+        {k:'note',   l:'Phrase',     type:'textarea'}
+      ],
+      prefill:function(){
+        return sbGet('matches?select=*&order=match_date.desc&limit=40').then(function(rows){
+          var m = (rows||[]).filter(function(x){ return x.score_baobabs != null; })[0] || {};
+          return { kicker:m.competition||'Championnat National D2', adv:m.opponent_name||'Adversaire',
+                   sb:String(m.score_baobabs==null?'':m.score_baobabs), so:String(m.score_opponent==null?'':m.score_opponent),
+                   note:'', _logo:m.opponent_logo_url||'' };
+        }).catch(function(){ return { kicker:'', adv:'Adversaire', sb:'', so:'', note:'' }; });
+      },
+      dessiner:function(ctx, W, H, v, a, imgs){
+        var u = stU(W), marge = 84*u, cx = W/2;
+        stFond(ctx, W, H, a);
+        var gagne = (parseInt(v.sb,10)||0) > (parseInt(v.so,10)||0);
+        var y = marge * 1.1;
+        ctx.save();
+        ctx.font = '700 ' + (24*u) + "px 'Inter',sans-serif";
+        if (ctx.letterSpacing !== undefined) ctx.letterSpacing = (5*u)+'px';
+        ctx.fillStyle = a.accent; ctx.textAlign='center'; ctx.textBaseline='top';
+        ctx.fillText(String(v.kicker||'').toUpperCase(), cx, y);
+        ctx.restore();
+        y += 62*u;
+        var hp = stPastille(ctx, gagne ? 'VICTOIRE' : 'DÉFAITE', cx - (gagne?92*u:84*u), y, a, u);
+        y += hp + 58*u;
+
+        var taille = Math.min(W*0.30, H*0.20);
+        ctx.save();
+        ctx.font = '400 ' + taille + "px 'Anton',sans-serif";
+        ctx.textAlign='center'; ctx.textBaseline='top';
+        ctx.fillStyle = a.texte;  ctx.fillText(String(v.sb||'0'), cx - taille*0.62, y);
+        ctx.fillStyle = 'rgba(243,239,230,.28)'; ctx.fillText('–', cx, y);
+        ctx.fillStyle = gagne ? 'rgba(243,239,230,.55)' : a.accent; ctx.fillText(String(v.so||'0'), cx + taille*0.62, y);
+        ctx.restore();
+        y += taille * 1.16;
+
+        var tn = Math.min(W*0.072, H*0.05);
+        y += stTxt(ctx, 'BAOBABS', { x:cx - taille*0.62, y:y, taille:tn, police:"'Anton',sans-serif", poids:400, couleur:'rgba(243,239,230,.75)', align:'center' });
+        stTxt(ctx, String(v.adv||'').toUpperCase(), { x:cx + taille*0.62, y:y - tn*1.08, taille:tn, police:"'Anton',sans-serif", poids:400, couleur:'rgba(243,239,230,.75)', align:'center', maxW:W*0.34 });
+
+        if (v.note) stTxt(ctx, v.note, { x:cx, y:H - marge - 90*u, taille:28*u, couleur:'rgba(243,239,230,.8)', align:'center', poids:500, maxW:W - marge*2, interligne:38*u });
+      }
+    },
+    {
+      id:'billetterie', nom:'Billetterie ouverte', sous:'Tarifs du match',
+      champs:[
+        {k:'kicker', l:'Sur-titre',   type:'text'},
+        {k:'adv',    l:'Adversaire',  type:'text'},
+        {k:'date',   l:'Date',        type:'text'},
+        {k:'tarifs', l:'Tarifs (une ligne par catégorie)', type:'textarea'},
+        {k:'mention',l:'Mention basse', type:'text'}
+      ],
+      prefill:function(){
+        return Promise.all([
+          sbGet('matches?select=*&order=match_date.asc&limit=40'),
+          sbGet('ticket_offers?select=category,price_fcfa,is_open&order=price_fcfa.asc,sort_order.asc')
+        ]).then(function(r){
+          var auj = todayISO();
+          var m = (r[0]||[]).filter(function(x){ return x.match_date >= auj; })[0] || {};
+          var t = (r[1]||[]).filter(function(o){ return o.is_open; })
+                  .map(function(o){ return o.category + ' — ' + tkFcfa(o.price_fcfa); }).join('\n');
+          return { kicker:'Billetterie ouverte', adv:m.opponent_name||'Adversaire',
+                   date:m.match_date?formatDateLong(m.match_date):'', tarifs:t || 'Tribune — 5 000 FCFA',
+                   mention:'Paiement sur place · baobabsbasketclub.com', _logo:m.opponent_logo_url||'' };
+        }).catch(function(){ return { kicker:'Billetterie ouverte', adv:'Adversaire', date:'', tarifs:'', mention:'' }; });
+      },
+      dessiner:function(ctx, W, H, v, a, imgs){
+        var u = stU(W), marge = 84*u, cx = W/2;
+        stFond(ctx, W, H, a);
+        var y = marge * 1.1;
+        stTxt(ctx, String(v.kicker||'').toUpperCase(), { x:cx, y:y, taille:30*u, poids:800, couleur:a.accent, align:'center' });
+        y += 66*u;
+        var tn = Math.min(W*0.10, H*0.068);
+        y += stTxt(ctx, 'BAOBABS', { x:cx, y:y, taille:tn, police:"'Anton',sans-serif", poids:400, couleur:a.texte, align:'center' });
+        y += stTxt(ctx, String(v.adv||'').toUpperCase(), { x:cx, y:y, taille:tn, police:"'Anton',sans-serif", poids:400, couleur:a.accent, align:'center', maxW:W-marge*2 });
+        y += 12*u;
+        y += stTxt(ctx, String(v.date||'').toUpperCase(), { x:cx, y:y, taille:26*u, poids:600, couleur:'rgba(243,239,230,.72)', align:'center' });
+        y += 48*u;
+
+        // Une ligne = une catégorie. On s'arrête quand le pied approche :
+        // mieux vaut couper la liste que de la faire sortir du cadre.
+        var lignes = String(v.tarifs||'').split('\n').filter(function(s){ return s.trim(); });
+        var hL = 66*u, limite = H - marge - 70*u;
+        lignes.forEach(function(l){
+          if (y + hL > limite) return;
+          var p = l.split('—');
+          ctx.save();
+          ctx.fillStyle = 'rgba(243,239,230,.07)';
+          if (ctx.roundRect){ ctx.beginPath(); ctx.roundRect(marge, y, W-marge*2, hL-12*u, 14*u); ctx.fill(); }
+          else ctx.fillRect(marge, y, W-marge*2, hL-12*u);
+          ctx.restore();
+          stTxt(ctx, (p[0]||'').trim(), { x:marge+26*u, y:y+(hL-12*u)/2-15*u, taille:27*u, poids:600, couleur:a.texte });
+          stTxt(ctx, (p[1]||'').trim(), { x:W-marge-26*u, y:y+(hL-12*u)/2-15*u, taille:27*u, poids:800, couleur:a.accent, align:'right' });
+          y += hL;
+        });
+        stTxt(ctx, v.mention || '', { x:cx, y:H - marge - 30*u, taille:22*u, poids:600, couleur:'rgba(243,239,230,.5)', align:'center', maxW:W-marge*2 });
+      }
+    }
+  ];
+  function stModele(){ return STUDIO_MODELES.filter(function(m){ return m.id === ST.modele; })[0]; }
+  function stFormat(){ return STUDIO_FORMATS.filter(function(f){ return f.id === ST.format; })[0]; }
+  function stAmbiance(){ return STUDIO_AMBIANCES.filter(function(x){ return x.id === ST.ambiance; })[0]; }
+
+  // ---- rendu ----
+  function stRendre(){
+    var f = stFormat(), m = stModele(), a = stAmbiance();
+    var cv = document.getElementById('st-canvas'); if (!cv || !f || !m) return;
+    cv.width = f.w; cv.height = f.h;
+    var ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, f.w, f.h);
+    Promise.all([ stImage(BAOBABS_LOGO), stImage(ST.valeurs._logo) ]).then(function(im){
+      try { m.dessiner(ctx, f.w, f.h, ST.valeurs, a, { club:im[0], adv:im[1] }); }
+      catch(e){ console.error('[Studio] rendu', e); }
+      stAjuster();
+    });
+  }
+  // L'affiche est dessinée à sa taille réelle et seulement AFFICHÉE plus
+  // petite : l'export garde donc la pleine résolution.
+  var _stEssais = 0;
+  function stAjuster(){
+    var f = stFormat(), scene = document.getElementById('st-scene'), hote = document.getElementById('st-hote');
+    if (!f || !scene || !hote) return;
+    var mob = document.getElementById('studio').classList.contains('st-mob');
+    var dispoW = scene.clientWidth - 52, dispoH = scene.clientHeight - 52;
+    // Une scène qui mesure zéro — onglet masqué, ou Studio ouvert avant
+    // que la mise en page soit posée — donnerait une échelle négative,
+    // que le navigateur rejette : l'affiche resterait invisible sans la
+    // moindre erreur. On réessaie, puis on se rabat sur une taille sûre.
+    if (dispoW <= 0 || dispoH <= 0){
+      if (_stEssais++ < 20){ setTimeout(stAjuster, 120); return; }
+      dispoW = 760; dispoH = 620;
+    }
+    _stEssais = 0;
+    if (mob) dispoW = Math.min(dispoW, 360);
+    var k = Math.max(Math.min(dispoW / f.w, dispoH / f.h), 0.02);
+    hote.style.width  = Math.round(f.w * k) + 'px';
+    hote.style.height = Math.round(f.h * k) + 'px';
+  }
+
+  // ---- panneaux ----
+  function stPanneaux(){
+    var lm = document.getElementById('st-modeles'), lf = document.getElementById('st-formats');
+    lm.innerHTML = STUDIO_MODELES.map(function(m){
+      return '<button type="button" data-mod="'+m.id+'" class="'+(m.id===ST.modele?'on':'')+'">'+
+             '<span>'+esc(m.nom)+'<span class="st-dim">'+esc(m.sous)+'</span></span></button>';
+    }).join('');
+    lf.innerHTML = STUDIO_FORMATS.map(function(f){
+      return '<button type="button" data-fmt="'+f.id+'" class="'+(f.id===ST.format?'on':'')+'">'+
+             '<span>'+esc(f.nom)+'<span class="st-dim">'+f.w+' × '+f.h+' · '+esc(f.note)+'</span></span></button>';
+    }).join('');
+    lm.querySelectorAll('[data-mod]').forEach(function(b){
+      b.addEventListener('click', function(){ ST.modele = b.getAttribute('data-mod'); stCharger(); });
+    });
+    lf.querySelectorAll('[data-fmt]').forEach(function(b){
+      b.addEventListener('click', function(){ ST.format = b.getAttribute('data-fmt'); stPanneaux(); stRendre(); });
+    });
+    var lc = document.getElementById('st-couleurs');
+    lc.innerHTML = STUDIO_AMBIANCES.map(function(x){
+      return '<button type="button" data-amb="'+x.id+'" title="'+esc(x.nom)+'" aria-label="'+esc(x.nom)+'" class="'+(x.id===ST.ambiance?'on':'')+
+             '" style="background:linear-gradient(135deg,'+x.fond1+' 40%,'+x.accent+')"></button>';
+    }).join('');
+    lc.querySelectorAll('[data-amb]').forEach(function(b){
+      b.addEventListener('click', function(){ ST.ambiance = b.getAttribute('data-amb'); stPanneaux(); stRendre(); });
+    });
+    var m = stModele(), zone = document.getElementById('st-champs');
+    zone.innerHTML = m.champs.map(function(c){
+      var val = esc(ST.valeurs[c.k] == null ? '' : ST.valeurs[c.k]);
+      return '<div class="st-champ"><label for="stf-'+c.k+'">'+esc(c.l)+'</label>'+
+        (c.type === 'textarea'
+          ? '<textarea id="stf-'+c.k+'" data-stf="'+c.k+'" rows="4">'+val+'</textarea>'
+          : '<input id="stf-'+c.k+'" data-stf="'+c.k+'" type="text" value="'+val+'">')+'</div>';
+    }).join('');
+    zone.querySelectorAll('[data-stf]').forEach(function(el){
+      el.addEventListener('input', function(){ ST.valeurs[el.getAttribute('data-stf')] = el.value; stRendre(); });
+    });
+    document.getElementById('st-note').textContent =
+      'Les champs sont pré-remplis avec les vraies données du club. Modifiez librement : rien n\'est enregistré, le Studio ne touche pas à la base.';
+  }
+  function stCharger(){
+    var m = stModele();
+    document.getElementById('st-champs').innerHTML = '<p class="st-note">Chargement…</p>';
+    m.prefill().then(function(v){ ST.valeurs = v || {}; stPanneaux(); stRendre(); });
+  }
+
+  // ---- export ----
+  function stNomFichier(ext){
+    return 'baobabs-' + ST.modele + '-' + ST.format + '-' + todayISO() + '.' + ext;
+  }
+  function stBlob(){
+    var cv = document.getElementById('st-canvas');
+    return new Promise(function(res, rej){
+      if (!cv || !cv.toBlob) return rej(new Error('canvas'));
+      cv.toBlob(function(b){ b ? res(b) : rej(new Error('blob')); }, 'image/png');
+    });
+  }
+
+  var studioPret = false;
+  function studioOuvrir(){
+    var w = document.getElementById('studio');
+    w.classList.add('on');
+    if (!studioPret){
+      studioPret = true;
+      // Les polices doivent être prêtes AVANT le premier dessin : sinon
+      // le canvas écrit en police de repli et l'affiche est méconnaissable.
+      var attente = document.fonts && document.fonts.load
+        ? Promise.all([ document.fonts.load("400 100px 'Anton'"), document.fonts.load("700 40px 'Space Grotesk'"),
+                        document.fonts.load("700 40px 'Inter'"), document.fonts.load("800 40px 'Inter'") ]).catch(function(){})
+        : Promise.resolve();
+      attente.then(stCharger);
+      window.addEventListener('resize', stAjuster);
+      document.getElementById('st-close').addEventListener('click', studioFermer);
+      document.querySelectorAll('#st-vue button').forEach(function(b){
+        b.addEventListener('click', function(){
+          document.querySelectorAll('#st-vue button').forEach(function(x){ x.classList.toggle('on', x === b); });
+          w.classList.toggle('st-mob', b.getAttribute('data-vue') === 'mob');
+          stAjuster();
+        });
+      });
+      document.getElementById('st-png').addEventListener('click', function(){
+        stBlob().then(function(b){
+          var u = URL.createObjectURL(b), a = document.createElement('a');
+          a.href = u; a.download = stNomFichier('png');
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
+          qgToast('Affiche téléchargée.', false);
+        }).catch(function(){ qgToast('Export impossible — une image du visuel bloque la copie.', true); });
+      });
+      document.getElementById('st-media').addEventListener('click', function(){
+        var btn = this; btn.disabled = true;
+        stBlob().then(function(b){
+          var f = new File([b], stNomFichier('png'), { type:'image/png' });
+          return uploadFile(MEDIA_BUCKET, f);
+        }).then(function(url){
+          qgToast('Envoyée dans la médiathèque.', false);
+          console.info('[Studio] adresse de l\'affiche : ' + url);
+        }).catch(function(){ qgToast('Envoi impossible dans la médiathèque.', true); })
+          .finally(function(){ btn.disabled = false; });
+      });
+    } else { stAjuster(); }
+  }
+  function studioFermer(){ document.getElementById('studio').classList.remove('on'); }
+  document.getElementById('studio-open').addEventListener('click', studioOuvrir);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && document.getElementById('studio').classList.contains('on')) studioFermer();
+  });
 
   // ===================== ANNULER =====================
   //
@@ -14911,6 +15376,67 @@
   .qg-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(10px);z-index:120;display:flex;align-items:center;gap:10px;background:#0F2417;border:1px solid rgba(168,217,59,.4);color:var(--text);border-radius:12px;padding:12px 20px;font-weight:600;font-size:13.5px;box-shadow:0 18px 44px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
   .qg-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .qg-toast.err{border-color:rgba(229,86,74,.5)}
+
+  /* ===================== BAOBABS STUDIO =====================
+     Un plein écran, pas un écran de plus dans la liste. Le Studio ne
+     gère rien : il compose. Le fond descend plus bas que celui de
+     l'admin pour que l'affiche soit la seule chose lumineuse. */
+  .studio-open{border-color:rgba(198,162,87,.4)!important;color:var(--gold)!important}
+  .studio-open:hover{border-color:var(--gold)!important;background:rgba(198,162,87,.1)!important}
+
+  .st-wrap{position:fixed;inset:0;z-index:200;background:#050806;display:none;flex-direction:column}
+  .st-wrap.on{display:flex}
+  .st-head{flex:none;display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid rgba(243,239,230,.09);background:#080D09}
+  .st-logo{font-family:var(--font-ui);font-weight:800;font-stretch:70%;font-size:15px;letter-spacing:.02em;color:var(--text)}
+  .st-logo i{color:var(--gold);font-style:normal}
+  .st-head .st-sep{flex:1}
+  .st-body{flex:1;display:grid;grid-template-columns:212px minmax(0,1fr) 300px;min-height:0}
+  .st-col{overflow-y:auto;padding:16px;min-height:0}
+  .st-col.left{border-right:1px solid rgba(243,239,230,.08)}
+  .st-col.right{border-left:1px solid rgba(243,239,230,.08);background:#070C08}
+  .st-titre{font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 10px}
+  .st-titre + .st-titre{margin-top:22px}
+
+  .st-choix{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+  .st-choix button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);
+    border:1px solid var(--line);border-radius:9px;padding:9px 11px;color:var(--muted);font:600 12.5px var(--font-text);
+    cursor:pointer;transition:border-color .14s,color .14s,background .14s}
+  .st-choix button:hover{border-color:var(--gold);color:var(--text)}
+  .st-choix button.on{border-color:var(--gold);background:rgba(198,162,87,.1);color:var(--gold)}
+  .st-choix .st-dim{display:block;font-size:10px;color:var(--faint);font-weight:500;margin-top:1px}
+  .st-choix button.on .st-dim{color:rgba(198,162,87,.75)}
+
+  /* La scène : l'affiche flotte, centrée, à l'échelle qui tient. */
+  .st-scene{display:flex;align-items:center;justify-content:center;padding:26px;overflow:auto;background:
+    radial-gradient(ellipse 60% 50% at 50% 0%,rgba(198,162,87,.06),transparent 70%)}
+  .st-canvas-hote{position:relative;box-shadow:0 30px 90px rgba(0,0,0,.7);border-radius:2px;overflow:hidden;
+    background:#000;transition:width .18s,height .18s}
+  .st-canvas-hote canvas{display:block;width:100%;height:100%}
+  .st-mob .st-canvas-hote{outline:8px solid #1A1C19;outline-offset:0;border-radius:22px}
+
+  .st-champ{margin-bottom:13px}
+  .st-champ label{display:block;font-family:var(--font-ui);font-weight:600;font-size:10px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+  .st-champ input[type=text],.st-champ textarea,.st-champ select{width:100%;background:var(--surface);
+    border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;color:var(--text);font:inherit;font-size:12.5px}
+  .st-champ textarea{resize:vertical;min-height:56px;line-height:1.45}
+  .st-couleurs{display:flex;gap:7px;flex-wrap:wrap}
+  .st-couleurs button{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+  .st-couleurs button.on{border-color:var(--text)}
+  .st-note{font-size:11px;line-height:1.5;color:var(--faint);margin:10px 0 0}
+
+  .st-bascule{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
+  .st-bascule button{background:none;border:none;border-radius:7px;padding:6px 12px;color:var(--faint);
+    font:700 11.5px var(--font-ui);cursor:pointer}
+  .st-bascule button.on{background:var(--surface-3);color:var(--text)}
+
+  @media(max-width:1080px){
+    .st-body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto}
+    .st-col.left{border-right:none;border-bottom:1px solid rgba(243,239,230,.08)}
+    .st-col.right{border-left:none;border-top:1px solid rgba(243,239,230,.08);max-height:38vh}
+    .st-choix{flex-direction:row;flex-wrap:wrap}
+    .st-choix button{width:auto}
+  }
 
   /* ===================== ANNULER =====================
      La barre s'affiche au-dessus du bandeau de message, et reste plus
