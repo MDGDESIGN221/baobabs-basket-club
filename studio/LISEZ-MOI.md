@@ -345,6 +345,63 @@ Anniversaire, Stage de vacances, C'est demain. **43 modèles au total.**
 
 ---
 
+## 4quinquies. Version 3.3
+
+### Barre de typographie flottante
+
+Sélectionner un texte fait apparaître au-dessus la barre qu'on attend :
+police, corps, gras, italique, casse, contour, alignement, couleur avec
+quatre nuances de la palette à un clic. Pendant l'édition, si des
+lettres sont sélectionnées, une pastille annonce « 3 lettres » et **tous
+ces réglages ne touchent qu'elles** — c'est le chemin le plus court vers
+la couleur d'une seule lettre.
+
+### Panneaux redimensionnables
+
+Trois poignées : largeur du panneau de gauche, largeur de la colonne de
+droite, hauteur des Calques. Les gestionnaires écoutent sur le
+`document` et non sur la poignée : une capture de pointeur qui échoue ne
+doit pas empêcher le glisser (elle l'empêchait).
+
+### Suppression dans la médiathèque
+
+Une croix au survol d'une vignette. La confirmation dit combien de fois
+l'image sert sur l'affiche ouverte, et rappelle que la suppression
+touche **le fichier**, pas seulement la liste. Côté hôte,
+`api.deleteImage(url)` ne supprime que ce qui est réellement dans le
+bucket du club : une URL forgée ou une photo hébergée ailleurs est
+refusée. Sans cette fonction dans l'`api`, la croix n'apparaît pas.
+
+### Openverse — banque d'images sans clé
+
+Unsplash réclame une clé. **Openverse** (fondation WordPress) n'en
+demande aucune et cherche dans Flickr, Wikimedia et consorts, sous
+licences libres. C'est désormais la source par défaut ; Unsplash reste
+disponible si la clé est posée.
+
+Une photo choisie est **rapatriée dans la médiathèque du club** : elle
+devient un fichier à nous, elle ne disparaîtra pas le jour où
+l'hébergeur change d'avis, et l'export ne bute plus sur les
+autorisations d'un domaine tiers. Si l'hébergeur refuse la copie, le
+lien direct est posé et le Studio prévient. L'auteur et la licence sont
+ajoutés aux crédits du projet et repris dans le texte de publication.
+
+CSP à ajouter côté hôte : `api.openverse.org`, `live.staticflickr.com`
+et `upload.wikimedia.org` en `connect-src` et `img-src`.
+
+### Grille d'audit appliquée
+
+- **Ligne d'aide contextuelle** dans la barre d'état : ce que l'outil
+  courant va faire, compte tenu de la sélection. Dit *avant* le clic.
+- **Menus grisés avec leur raison** : le survol dit « Sélectionnez au
+  moins deux formes », « Ce cadre est vide », « Aucun style en mémoire ».
+- **Opérations qui font perdre la modifiabilité** marquées d'un point
+  orange ; *Aplatir* demande confirmation en disant ce qu'on perd.
+- **L'outil Texte ouvre un texte existant** au lieu d'en empiler un
+  second par-dessus.
+
+---
+
 ## 5. Raccourcis
 
 | | |

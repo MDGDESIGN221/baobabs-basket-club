@@ -24,7 +24,7 @@ window.BaobabsStudio = (function () {
   /* 3:4 est le rapport de la maquette d'origine : c'est le format par
      défaut, celui dans lequel les modèles ont été dessinés. `cat` sert
      à regrouper les préréglages sur l'écran d'accueil. */
-  var VERSION = '3.2';
+  var VERSION = '3.3';
 
   var FORMATS = [
     { id: 'affiche', cat: 'Affiche du club', label: 'Affiche 3:4', w: 1080, h: 1440 },
@@ -2347,11 +2347,14 @@ window.BaobabsStudio = (function () {
   function renderFloat() {
     if (!els.float) return;
     var ls = selectedLayers();
-    if (!ls.length || edit || contentEdit || preview || drag) {
+    if (!ls.length || contentEdit || preview || (drag && drag.kind !== 'textsel')) {
       els.float.classList.remove('is-on');
       return;
     }
     var l = ls[0];
+    els.float.classList.remove('bs-float-txt');
+    if (ls.length === 1 && l.type === 'text') { renderFloatTexte(l); return; }
+    if (edit) { els.float.classList.remove('is-on'); return; }
     var b = bboxOf(ls);
     var p = d2s(b.x + b.w / 2, b.y);
     var s = sceneSize();
@@ -2388,6 +2391,146 @@ window.BaobabsStudio = (function () {
       b2.addEventListener('click', function (ev) {
         ev.stopPropagation();
         floatAction(b2.getAttribute('data-fact'));
+      });
+    });
+  }
+
+  /* ---------- barre de typographie ----------
+     Sur un texte, la barre flottante devient la barre qu'on attend
+     quand on sélectionne des lettres. C'est aussi le chemin le plus
+     court vers la couleur d'une seule lettre : la sélection est déjà
+     faite, la pastille est juste au-dessus. */
+  function renderFloatTexte(l) {
+    var b = bboxOf([l]), s = sceneSize();
+    var p = d2s(b.x + b.w / 2, b.y);
+    var top = p.y - 12;
+    if (top < 46) top = d2s(0, b.y + b.h).y + 52;
+    els.float.style.left = clamp(p.x, 240, Math.max(240, s.w - 240)) + 'px';
+    els.float.style.top = clamp(top, 40, s.h - 8) + 'px';
+
+    var r = edit ? selRange() : null;
+    var surSel = !!(r && r.a !== r.b);
+    var st = activeTextStyle(l);
+    var f = null, i;
+    for (i = 0; i < FONTS.length; i++) if (FONTS[i].id === st.font) f = FONTS[i];
+    f = f || FONTS[4];
+
+    var S = 'fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"';
+    var B = function (act, titre, contenu, on, cls) {
+      return '<button type="button" data-fact="' + act + '" title="' + esc(titre) + '"' +
+        ' class="' + (cls || '') + (on ? ' is-on' : '') + '">' + contenu + '</button>';
+    };
+
+    var h = '';
+    if (surSel) {
+      h += '<span class="bs-float-tag" title="Les réglages ci-dessous ne touchent que ces caractères">' +
+        (r.b - r.a) + ' lettre' + (r.b - r.a > 1 ? 's' : '') + '</span>';
+    }
+
+    h += '<select class="bs-float-sel" data-fsel="font" title="Police">' +
+      FONTS.map(function (x) {
+        return '<option value="' + esc(x.id) + '"' + (x.id === st.font ? ' selected' : '') + '>' + esc(x.label) + '</option>';
+      }).join('') + '</select>';
+
+    h += '<div class="bs-float-num"><button type="button" data-fact="size-" title="Réduire le corps">−</button>' +
+      '<input type="number" data-fnum="size" value="' + Math.round(st.size) + '" min="4" max="4000" title="Corps du texte">' +
+      '<button type="button" data-fact="size+" title="Agrandir le corps">+</button></div>';
+
+    var gras = (st.weight || 400) >= 700;
+    h += B('bold', gras ? 'Revenir en graisse normale' : 'Mettre en gras',
+      '<b style="font-weight:800;font-size:13px">B</b>', gras);
+    var peutItal = /Archivo|Playfair|Instrument|DM Serif/.test(f.id);
+    h += B('ital', peutItal ? 'Italique' : 'Cette police n a pas d italique',
+      '<i style="font-family:Georgia,serif;font-size:13px">I</i>', st.italic, peutItal ? '' : 'is-off');
+    h += B('case', 'Alterner la casse : normale, MAJUSCULES, minuscules',
+      '<span style="font-size:11px;font-weight:700;letter-spacing:-.03em">Aa</span>', st.transform !== 'none');
+    h += B('hollow', st.hollow ? 'Remplir le texte' : 'Texte en contour',
+      '<span style="font-size:12px;font-weight:800;-webkit-text-stroke:1px currentColor;color:transparent">O</span>', st.hollow);
+
+    h += '<span class="bs-float-sep"></span>';
+    h += B('al-left', 'Aligner à gauche', ALIGN_ICONS.left, st.align === 'left');
+    h += B('al-center', 'Centrer', ALIGN_ICONS.center, st.align === 'center');
+    h += B('al-right', 'Aligner à droite', ALIGN_ICONS.right, st.align === 'right');
+
+    h += '<span class="bs-float-sep"></span>';
+    h += '<button type="button" class="bs-float-col" data-fact="color" title="' +
+      (surSel ? 'Couleur de ces lettres seulement' : 'Couleur du texte') + '">' +
+      '<i style="background:' + css(st.color) + '"></i></button>' +
+      '<input type="color" class="bs-hidden-color" data-fcol="1" value="' + esc((st.color && st.color.hex) || '#ffffff') + '">';
+    [doc.palette.accent, doc.palette.fg, doc.palette.fg2, doc.palette.bg].forEach(function (c) {
+      h += '<button type="button" class="bs-float-sw" data-fswatch="' + c + '" style="background:' + c + '" title="' + c + '"></button>';
+    });
+
+    h += '<span class="bs-float-sep"></span>';
+    h += B('dup', 'Dupliquer (Ctrl+D)',
+      '<svg width="14" height="14" viewBox="0 0 24 24" ' + S + '><rect x="3.5" y="3.5" width="12" height="12" rx="2"/><path d="M8 20.5h10a2.5 2.5 0 0 0 2.5-2.5V8"/></svg>');
+    h += B('del', 'Supprimer (Suppr)',
+      '<svg width="14" height="14" viewBox="0 0 24 24" ' + S + '><path d="M4 6.5h16M9 6.5V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5v2M17.5 6.5V19a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2V6.5"/></svg>',
+      false, 'bs-f-danger');
+
+    els.float.innerHTML = h;
+    els.float.classList.add('is-on');
+    els.float.classList.add('bs-float-txt');
+    brancherFloatTexte(l);
+  }
+
+  /* Les réglages s'appliquent à la sélection de lettres si elle existe,
+     sinon à tout le calque : applyTextProp() s'en charge, c'est le même
+     chemin que le panneau de droite. */
+  function brancherFloatTexte(l) {
+    var maj = function (fn, label) { change(fn, label); renderFloat(); };
+    var st = function () { return activeTextStyle(l); };
+
+    var selFont = els.float.querySelector('[data-fsel="font"]');
+    if (selFont) selFont.addEventListener('change', function () {
+      maj(function () { applyTextProp('font', selFont.value); }, 'Police');
+    });
+
+    var num = els.float.querySelector('[data-fnum="size"]');
+    if (num) num.addEventListener('change', function () {
+      var v = clamp(parseFloat(num.value) || 12, 4, 4000);
+      maj(function () { applyTextProp('size', v); }, 'Corps du texte');
+    });
+
+    var col = els.float.querySelector('[data-fcol]');
+    var pastille = els.float.querySelector('.bs-float-col');
+    if (pastille && col) {
+      pastille.addEventListener('click', function (e) { e.stopPropagation(); col.click(); });
+      col.addEventListener('input', function () {
+        beginChange('Couleur du texte');
+        applyTextProp('color', color(col.value, 1));
+        requestDraw();
+      });
+      col.addEventListener('change', function () { endChange('Couleur du texte'); refreshAll(); renderFloat(); });
+    }
+    $$('[data-fswatch]', els.float).forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        maj(function () { applyTextProp('color', color(b.getAttribute('data-fswatch'), 1)); }, 'Couleur du texte');
+      });
+    });
+
+    $$('button[data-fact]', els.float).forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var a = b.getAttribute('data-fact'), s0 = st(), i;
+        if (a === 'size+') return maj(function () { applyTextProp('size', Math.round(s0.size * 1.12) + 1); }, 'Corps du texte');
+        if (a === 'size-') return maj(function () { applyTextProp('size', Math.max(4, Math.round(s0.size / 1.12))); }, 'Corps du texte');
+        if (a === 'bold') {
+          var f2 = null;
+          for (i = 0; i < FONTS.length; i++) if (FONTS[i].id === s0.font) f2 = FONTS[i];
+          var poids = f2 ? f2.weights : [400, 700];
+          var cible = (s0.weight || 400) >= 700 ? poids[0] : poids[poids.length - 1];
+          return maj(function () { applyTextProp('weight', cible); }, 'Graisse');
+        }
+        if (a === 'ital') return maj(function () { applyTextProp('italic', !s0.italic); }, 'Italique');
+        if (a === 'case') {
+          var suite = { none: 'upper', upper: 'lower', lower: 'none', title: 'none' };
+          return maj(function () { applyTextProp('transform', suite[s0.transform] || 'upper'); }, 'Casse');
+        }
+        if (a === 'hollow') return maj(function () { applyTextProp('hollow', !s0.hollow); }, 'Texte en contour');
+        if (/^al-/.test(a)) return maj(function () { l.ts.align = a.slice(3); syncTextBox(l); }, 'Alignement');
+        floatAction(a);
       });
     });
   }
@@ -2764,6 +2907,22 @@ window.BaobabsStudio = (function () {
       drag = { kind: 'crop', x0: p.x, y0: p.y, x1: p.x, y1: p.y, moved: false };
       capture(e);
       return;
+    }
+
+    /* L'outil Texte sur un texte existant l'ouvre, il n'en empile pas
+       un second par-dessus. Sans cela on se retrouve avec des calques
+       superposés dont on ne comprend pas l'origine. */
+    if (tool === 'text') {
+      var dejaLa = topLayerAt(p.x, p.y, 3 / view.zoom);
+      if (dejaLa && dejaLa.type === 'text') {
+        select([dejaLa.id]);
+        var loc0 = toLocal(dejaLa, p.x, p.y);
+        var idx0 = dejaLa.path ? 0 : indexAtPoint(dejaLa, loc0.x, loc0.y);
+        enterTextEdit(dejaLa, idx0, idx0);
+        setTool('select');
+        capture(e);
+        return;
+      }
     }
 
     /* --- outils de création --- */
@@ -3845,7 +4004,7 @@ window.BaobabsStudio = (function () {
             ev.preventDefault();
             var x0 = ev.clientX, v0 = num(el.value, 0), step = parseFloat(el.step) || 1;
             beginChange(nomReglage(path));
-            unit.setPointerCapture(ev.pointerId);
+            try { unit.setPointerCapture(ev.pointerId); } catch (err) {}
             function mv(e2) {
               var v = v0 + Math.round((e2.clientX - x0) / 3) * step;
               el.value = fmtNum(v, 2);
@@ -4122,10 +4281,49 @@ window.BaobabsStudio = (function () {
     els.propsBody.innerHTML = html;
     wireFields(els.propsBody);
     updateStatusDims();
+    majAide();
     /* la barre flottante suit la sélection sans attendre le prochain
        rendu : sélectionner et la voir apparaître doivent être le même
        instant */
     renderFloat();
+  }
+
+  /* Ce que l'outil courant va faire, compte tenu de ce qui est
+     sélectionné. Dit AVANT le clic, la phrase évite l'essai-erreur :
+     c'est la différence entre « je sais où cliquer » et « je sais ce
+     qui va se passer ». */
+  function majAide() {
+    if (!els.hint) return;
+    var l = selOne(), n = sel.length, t;
+    switch (tool) {
+      case 'select':
+        t = !n ? 'Cliquez un élément pour le sélectionner, ou tracez un rectangle autour de plusieurs.'
+          : (n > 1 ? n + ' calques — glissez pour les déplacer ensemble, Ctrl+G pour les grouper.'
+            : (l && l.locked ? '« ' + (l.name || defaultName(l)) + ' » est verrouillé : ouvrez le cadenas dans la pile.'
+              : 'Glissez pour déplacer · poignées pour redimensionner · Alt pour dupliquer · double-clic pour entrer dedans.'));
+        break;
+      case 'text':  t = 'Cliquez pour un texte libre, glissez pour une boîte qui revient à la ligne. Sur un texte existant, vous l ouvrez.'; break;
+      case 'pen':   t = pathDraft ? (pathDraft.nodes.length + ' point(s) — Entrée ferme, Ctrl+Z retire le dernier, Échap abandonne.')
+                                  : 'Cliquez pour un angle, glissez pour une courbe. Maj contraint l angle.'; break;
+      case 'node':  t = (l && l.type === 'path') ? 'Glissez un point ou ses poignées · Alt+clic retire un point · clic sur le trait en ajoute un.'
+                                                 : 'Sélectionnez un tracé pour en modifier les points.'; break;
+      case 'hand':  t = 'Glissez pour déplacer la vue. Espace fait la même chose depuis n importe quel outil.'; break;
+      case 'zoom':  t = 'Cliquez pour zoomer, Alt+clic pour dézoomer. La molette zoome depuis n importe où.'; break;
+      case 'rect': case 'ellipse': t = 'Glissez pour tracer · Maj pour un carré ou un cercle · Alt depuis le centre.'; break;
+      case 'line':  t = 'Glissez d un point à l autre · Maj contraint par 45°.'; break;
+      case 'frame': t = 'Glissez pour poser un cadre photo. Vide, il reste visible à l écran mais absent de l export.'; break;
+      case 'eyedrop': t = n ? 'Cliquez une couleur de l affiche : elle est appliquée au calque sélectionné.'
+                            : 'Cliquez une couleur : elle devient la couleur d accent de l affiche.'; break;
+      case 'wand':  t = (l && (l.type === 'image' || l.type === 'frame') && l.src)
+        ? 'Cliquez le fond à retirer. Tolérance ' + wandOpts.tol + ' · rien n est effacé de la photo, on peint un pochoir.'
+        : 'Sélectionnez d abord une image, puis cliquez le fond à retirer.'; break;
+      case 'erase': t = 'Peignez pour effacer · Alt inverse et restaure · rien n est perdu, le masque est réversible.'; break;
+      case 'restore': t = 'Peignez pour faire revenir ce que la gomme a effacé · Alt inverse.'; break;
+      case 'crop':  t = 'Tracez la zone à garder. L affiche est recadrée, les calques suivent. Échap renonce.'; break;
+      default: t = '';
+    }
+    els.hint.textContent = t || '';
+    els.hint.title = t || '';
   }
 
   function updateStatusDims() {
@@ -6451,10 +6649,17 @@ window.BaobabsStudio = (function () {
   function panelImages() {
     var q = panelFilter.q.toLowerCase();
     var list = medias.filter(function (m) { return !q || (m.nom || '').toLowerCase().indexOf(q) >= 0; });
+    var peutSupprimer = !!(api && api.deleteImage);
     var grid = '<div class="bs-grid bs-grid-3">';
-    list.forEach(function (m) {
-      grid += '<button type="button" class="bs-card" data-act="useImage" data-url="' + esc(m.url) + '" title="' + esc(m.nom || '') + '">' +
-        '<span class="bs-card-thumb bs-sq"><img src="' + esc(m.url) + '" alt="" loading="lazy"></span></button>';
+    list.forEach(function (m, i) {
+      grid += '<div class="bs-card bs-card-media">' +
+        '<button type="button" class="bs-card-pick" data-act="useImage" data-url="' + esc(m.url) + '" title="' + esc(m.nom || '') + '">' +
+        '<span class="bs-card-thumb bs-sq"><img src="' + esc(m.url) + '" alt="" loading="lazy"></span></button>' +
+        (peutSupprimer
+          ? '<button type="button" class="bs-card-del" data-act="delMedia" data-i="' + i + '" title="Supprimer de la médiathèque">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>'
+          : '') +
+        '</div>';
     });
     grid += '</div>';
     if (!list.length) grid = '<div class="bs-empty"><b>Aucune image</b>Téléversez-en une, ou déposez un fichier sur l affiche.</div>';
@@ -6465,7 +6670,8 @@ window.BaobabsStudio = (function () {
       '<button type="button" class="bs-btn bs-btn-accent bs-btn-sm bs-btn-block" data-act="uploadImage">Téléverser une image</button>' +
       '</div>' +
       '<div class="bs-sec-lab">Médiathèque du club</div>' + grid +
-      '<div class="bs-note">Cliquer sur une image la place dans le <b>cadre sélectionné</b>. Sans sélection, elle est ajoutée comme nouveau calque.</div>';
+      '<div class="bs-note">Cliquer sur une image la place dans le <b>cadre sélectionné</b>. Sans sélection, elle est ajoutée comme nouveau calque.' +
+      ((api && api.deleteImage) ? '<br><br>La croix supprime le fichier <b>de la médiathèque</b>, pas seulement de cette liste.' : '') + '</div>';
   }
 
   /* ---------- photos Unsplash ----------
@@ -6473,20 +6679,31 @@ window.BaobabsStudio = (function () {
      sont appelées chez eux (jamais recopiées), le photographe est
      crédité avec un lien, et l'endpoint de téléchargement est prévenu
      quand une photo est réellement posée sur une affiche. */
-  var uns = { q: '', orient: 'portrait', page: 1, res: [], total: 0, etat: 'vide', msg: '' };
+  var uns = { q: '', orient: 'portrait', page: 1, res: [], total: 0, etat: 'vide', msg: '', src: 'openverse' };
 
   function unsplashKey() { return (api && api.unsplashKey) || ''; }
 
   function panelUnsplash() {
-    var h = ph('Photos', uns.total ? uns.total + ' résultats' : 'Unsplash');
-    if (!unsplashKey()) {
-      return h + '<div class="bs-note" style="margin:0 12px 12px"><b>Recherche d’images non branchée.</b><br><br>' +
-        'Pour l’activer, il faut une clé Unsplash (gratuite) :<br>' +
+    var h = ph('Photos', uns.total ? uns.total + ' résultats' : (uns.src === 'openverse' ? 'Openverse' : 'Unsplash'));
+
+    /* Deux banques. Openverse ne demande aucune clé — c'est elle par
+       défaut. Unsplash a de plus belles photos mais réclame une clé
+       gratuite à poser dans studioApi(). */
+    h += '<div class="bs-chips">' +
+      [['openverse', 'Openverse', 'Libre, sans aucune clé'],
+       ['unsplash', 'Unsplash', unsplashKey() ? 'Clé posée' : 'Clé manquante']].map(function (o) {
+        return '<button type="button" class="bs-chip' + (uns.src === o[0] ? ' is-on' : '') +
+          '" data-act="unsSrc" data-v="' + o[0] + '" title="' + esc(o[2]) + '">' + esc(o[1]) + '</button>';
+      }).join('') + '</div>';
+
+    if (uns.src === 'unsplash' && !unsplashKey()) {
+      return h + '<div class="bs-note" style="margin:0 12px 12px"><b>Unsplash réclame une clé.</b><br><br>' +
         '1. créer une application sur unsplash.com/oauth/applications ;<br>' +
         '2. copier l’<b>Access Key</b> ;<br>' +
         '3. la poser dans <b>studioApi()</b> de l’administration, champ <b>unsplashKey</b>.<br><br>' +
-        'En attendant, la médiathèque du club et le téléversement fonctionnent normalement.</div>' +
-        '<div class="bs-list"><button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" data-act="panelImages">Aller à la médiathèque</button></div>';
+        '<b>Openverse</b>, à côté, ne demande rien : elle cherche dans Flickr, Wikimedia et consorts, ' +
+        'sous licences libres.</div>' +
+        '<div class="bs-list"><button type="button" class="bs-btn bs-btn-accent bs-btn-sm bs-btn-block" data-act="unsSrc" data-v="openverse">Utiliser Openverse</button></div>';
     }
 
     h += '<div class="bs-search">' +
@@ -6514,12 +6731,18 @@ window.BaobabsStudio = (function () {
       h += '<div class="bs-list">' +
         (uns.page > 1 ? '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" data-act="unsPage" data-v="-1">Page précédente</button>' : '') +
         '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" data-act="unsPage" data-v="1">Charger la suite</button></div>';
-      h += '<div class="bs-note">Photos <b>Unsplash</b>, libres d’usage. Le crédit du photographe est ajouté au projet automatiquement — gardez-le dans la légende de votre publication.</div>';
+      h += '<div class="bs-note">' +
+        (uns.src === 'openverse'
+          ? 'Photos <b>Openverse</b> — Flickr, Wikimedia et consorts, toutes sous licence libre. ' +
+            'L’auteur et la licence sont ajoutés au projet : <b>gardez-les dans la légende</b>, c’est la contrepartie de la gratuité.'
+          : 'Photos <b>Unsplash</b>, libres d’usage. Le crédit du photographe est ajouté au projet automatiquement.') +
+        '</div>';
     }
     return h;
   }
 
   function unsplashChercher(reset) {
+    if (uns.src === 'openverse') return openverseChercher(reset);
     var k = unsplashKey();
     if (!k || !uns.q.trim()) return;
     if (reset) uns.page = 1;
@@ -6559,9 +6782,51 @@ window.BaobabsStudio = (function () {
       });
   }
 
+  /* Openverse : aucune clé, une simple requête publique. */
+  function openverseChercher(reset) {
+    if (!uns.q.trim()) return;
+    if (reset) uns.page = 1;
+    uns.etat = 'charge';
+    renderPanel();
+    var ratio = uns.orient === 'portrait' ? '&aspect_ratio=tall'
+      : (uns.orient === 'landscape' ? '&aspect_ratio=wide'
+        : (uns.orient === 'squarish' ? '&aspect_ratio=square' : ''));
+    var u = 'https://api.openverse.org/v1/images/?q=' + encodeURIComponent(uns.q) +
+      '&page_size=24&page=' + uns.page + ratio + '&mature=false';
+    fetch(u, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) {
+        if (r.status === 429) throw new Error('Trop de recherches d’affilée. Attendez une minute.');
+        if (!r.ok) throw new Error('Openverse a répondu ' + r.status + '.');
+        return r.json();
+      })
+      .then(function (j) {
+        uns.total = j.result_count || 0;
+        uns.res = (j.results || []).map(function (x) {
+          return {
+            thumb: x.thumbnail || x.url,
+            plein: x.url,
+            couleur: '#1a1a1a',
+            alt: x.title || '',
+            auteur: x.creator || 'Auteur inconnu',
+            lien: x.foreign_landing_url || '',
+            licence: (x.license || '').toUpperCase() + (x.license_version ? ' ' + x.license_version : ''),
+            dl: null
+          };
+        });
+        uns.etat = 'ok';
+        renderPanel();
+      })
+      .catch(function (e) {
+        uns.etat = 'err';
+        uns.msg = (e && e.message) || 'Recherche impossible. Vérifiez que api.openverse.org est autorisé par la CSP.';
+        renderPanel();
+      });
+  }
+
   function unsplashUtiliser(i) {
     var p = uns.res[i];
     if (!p) return;
+    if (uns.src === 'openverse') return openverseUtiliser(p);
     /* obligation de la licence : prévenir Unsplash qu'on utilise la photo */
     if (p.dl && unsplashKey()) {
       fetch(p.dl, { headers: { 'Authorization': 'Client-ID ' + unsplashKey() } }).catch(function () {});
@@ -6572,6 +6837,74 @@ window.BaobabsStudio = (function () {
     placeImage(p.plein);
     medias.unshift({ url: p.plein, nom: p.auteur + ' · Unsplash' });
     medias = dedupe(medias);
+  }
+
+  /* Supprimer une image de la médiathèque touche le fichier lui-même :
+     les affiches déjà enregistrées qui s'en servent afficheront un
+     trou. On le dit, et on compte combien. */
+  function confirmerSuppressionMedia(i) {
+    var q = panelFilter.q.toLowerCase();
+    var list = medias.filter(function (m) { return !q || (m.nom || '').toLowerCase().indexOf(q) >= 0; });
+    var m = list[i];
+    if (!m) return;
+    var usages = 0;
+    walk(doc.layers, function (l) { if ((l.type === 'image' || l.type === 'frame') && l.src === m.url) usages++; });
+    modal('Supprimer cette image ?',
+      '<div style="display:flex;gap:14px;align-items:flex-start">' +
+      '<img src="' + esc(m.url) + '" alt="" style="width:88px;height:88px;object-fit:cover;border-radius:8px;flex:none">' +
+      '<div style="font-size:12.5px;color:var(--bs-fg-2);line-height:1.6">' +
+      '<b style="color:var(--bs-fg)">' + esc(m.nom || fileName(m.url)) + '</b><br><br>' +
+      'Le fichier sera retiré de la médiathèque du club. Cette suppression est <b>définitive</b> : ' +
+      'les affiches déjà enregistrées qui l’utilisent afficheront un cadre vide.' +
+      (usages ? '<br><br><span style="color:var(--bs-warn)">Elle est utilisée ' + usages + ' fois sur l’affiche ouverte.</span>' : '') +
+      '</div></div>',
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Annuler</button>' +
+      '<button type="button" class="bs-btn bs-btn-accent" data-act="delMediaOk" data-url="' + esc(m.url) + '">Supprimer</button>');
+  }
+
+  function supprimerMedia(url) {
+    closeModal();
+    if (!api || !api.deleteImage) { toast('Suppression non disponible ici', true); return; }
+    toast('Suppression…');
+    Promise.resolve(api.deleteImage(url)).then(function (ok) {
+      if (ok === false) throw new Error('refus');
+      medias = medias.filter(function (m) { return m.url !== url; });
+      delete imgCache[url];
+      renderPanel();
+      toast('Image supprimée de la médiathèque', false, true);
+    }).catch(function () { toast('Suppression impossible — le fichier est peut-être protégé', true); });
+  }
+
+  /* Une photo venue d'ailleurs est d'abord rapatriée dans la
+     médiathèque du club : elle devient un fichier à nous, elle ne
+     disparaîtra pas le jour où l'hébergeur change d'avis, et l'export
+     ne se heurte plus aux autorisations d'un domaine tiers. */
+  function openverseUtiliser(p) {
+    var credit = 'Photo : ' + p.auteur + (p.licence ? ' (' + p.licence + ')' : '') + ' / Openverse';
+    if (!doc.credits) doc.credits = [];
+    if (doc.credits.indexOf(credit) < 0) doc.credits.push(credit);
+
+    if (!api || !api.uploadImage) { placeImage(p.plein); return; }
+    toast('Rapatriement de la photo…');
+    fetch(p.plein, { mode: 'cors' })
+      .then(function (r) { if (!r.ok) throw new Error('telechargement'); return r.blob(); })
+      .then(function (b) {
+        var ext = (String(b.type).split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+        return api.uploadImage(new File([b], slug(p.auteur + '-' + (p.alt || 'photo')) + '.' + ext, { type: b.type }));
+      })
+      .then(function (url) {
+        if (!url) throw new Error('envoi');
+        medias.unshift({ url: url, nom: p.auteur + ' · Openverse' });
+        medias = dedupe(medias);
+        placeImage(url);
+        toast('Photo rapatriée dans la médiathèque', false, true);
+      })
+      .catch(function () {
+        /* l'hébergeur refuse la copie : on pose le lien direct et on
+           prévient que l'export peut buter dessus */
+        placeImage(p.plein);
+        toast('Photo posée en lien direct — si l’export échoue, téléversez-la à la main', true);
+      });
   }
 
   /* ---------- éléments ---------- */
@@ -7099,12 +7432,20 @@ window.BaobabsStudio = (function () {
         unsT = setTimeout(function () { unsplashChercher(true); }, 420);
         return;
       case 'unsOrient': uns.orient = el.getAttribute('data-v'); unsplashChercher(true); return;
+      case 'unsSrc':
+        uns.src = el.getAttribute('data-v');
+        uns.res = []; uns.total = 0; uns.etat = uns.q ? 'charge' : 'vide';
+        renderPanel();
+        if (uns.q) unsplashChercher(true);
+        return;
       case 'unsPage':
         uns.page = Math.max(1, uns.page + num(el.getAttribute('data-v'), 1));
         unsplashChercher(false);
         return;
       case 'unsUse': unsplashUtiliser(num(el.getAttribute('data-i'), 0)); return;
       case 'useImage': placeImage(el.getAttribute('data-url')); return;
+      case 'delMedia': confirmerSuppressionMedia(num(el.getAttribute('data-i'), 0)); return;
+      case 'delMediaOk': supprimerMedia(el.getAttribute('data-url')); return;
       case 'uploadImage': pendingFrame = l && (l.type === 'image' || l.type === 'frame') ? l.id : null; els.file.click(); return;
       case 'pickImage': openPanel('images'); toast('Choisissez une image dans le panneau'); return;
       case 'clearImage':
@@ -8228,6 +8569,7 @@ window.BaobabsStudio = (function () {
     tool = t;
     $$('.bs-tool', root).forEach(function (b) { b.classList.toggle('is-on', b.getAttribute('data-tool') === t); });
     renderToolOpts();
+    majAide();
     if (t !== 'select' && t !== 'node' && edit) exitTextEdit();
     if (t !== 'select') contentEdit = null;
     setCursor(t === 'hand' ? 'hand' : (t === 'text' ? 'text' : (t === 'zoom' ? 'zoom-in' : (t === 'select' || t === 'node' ? 'select' : 'cross'))));
@@ -8494,6 +8836,7 @@ window.BaobabsStudio = (function () {
       case 'discardGo': { var f = pendingNav; closeModal(); markDirty(false); if (f) f(); return true; }
       case 'saveThenGo': { var g = pendingNav; closeModal(); saveProject(false).then(function () { if (g) g(); }); return true; }
       case 'zoomFit': fitView(); return true;
+      case 'flattenOk': closeModal(); aplatirConfirme = true; aplatirSelection(); return true;
       case 'palImg': appliquerPaletteImage(el.getAttribute('data-bg'), el.getAttribute('data-ac'), el.getAttribute('data-fg')); return true;
       case 'serieTgl': { var i = num(el.getAttribute('data-i'), 0); serieSel[i] = !serieSel[i]; ouvrirSerie(); return true; }
       case 'serieGo': genererSerie(); return true;
@@ -8746,6 +9089,7 @@ window.BaobabsStudio = (function () {
       menuPop: $('#bs-menu-pop'),
       fileJson: $('#bs-file-json'),
       toolOpts: $('#bs-tool-opts'),
+      hint: $('#bs-status-hint'),
       workspace: $('.bs-workspace'),
       right: $('.bs-right'),
       layersBox: $('.bs-layers')
@@ -9254,7 +9598,12 @@ window.BaobabsStudio = (function () {
 
   function M(label, act, kbd, opts) {
     opts = opts || {};
-    return { label: label, act: act, kbd: kbd, on: opts.on, off: opts.off, danger: opts.danger, arg: opts.arg };
+    return {
+      label: label, act: act, kbd: kbd, on: opts.on, off: opts.off,
+      danger: opts.danger, arg: opts.arg,
+      why: opts.why,        /* pourquoi c'est grisé — affiché au survol */
+      dest: opts.dest       /* opération qui fait perdre de la modifiabilité */
+    };
   }
   var SEP = { sep: true };
   function LAB(t) { return { lab: t }; }
@@ -9292,12 +9641,12 @@ window.BaobabsStudio = (function () {
         SEP,
         M('Couper', 'm.cut', 'Ctrl X', { off: !n }),
         M('Copier', 'm.copy', 'Ctrl C', { off: !n }),
-        M('Coller', 'm.paste', 'Ctrl V', { off: !clipboard }),
+        M('Coller', 'm.paste', 'Ctrl V', { off: !clipboard, why: 'Rien dans le presse-papiers' }),
         M('Dupliquer', 'm.dup', 'Ctrl D', { off: !n }),
         M('Supprimer', 'm.del', 'Suppr', { off: !n, danger: true }),
         SEP,
         M('Copier le style', 'm.copystyle', 'Ctrl Alt C', { off: !n }),
-        M('Coller le style', 'm.pastestyle', 'Ctrl Alt V', { off: !styleClip || !n }),
+        M('Coller le style', 'm.pastestyle', 'Ctrl Alt V', { off: !styleClip || !n, why: !styleClip ? 'Aucun style en mémoire — copiez-en un d’abord' : 'Sélectionnez un calque' }),
         SEP,
         M('Tout sélectionner', 'm.selall', 'Ctrl A'),
         M('Désélectionner', 'm.selnone', 'Échap', { off: !n }),
@@ -9329,7 +9678,7 @@ window.BaobabsStudio = (function () {
         M('Dégradé diagonal', 'm.bg', null, { arg: 'degrade' }),
         M('Halo central', 'm.bg', null, { arg: 'halo' }),
         M('Photo plein cadre', 'm.bg', null, { arg: 'photo' }),
-        M('Palette tirée de la photo…', 'm.palimg', null, { off: !(l && (l.type === 'image' || l.type === 'frame') && l.src) }),
+        M('Palette tirée de la photo…', 'm.palimg', null, { off: !(l && (l.type === 'image' || l.type === 'frame') && l.src), why: 'Sélectionnez une image qui a un contenu' }),
         SEP,
         M('Vérifier avant publication', 'm.check')
       ] },
@@ -9344,20 +9693,20 @@ window.BaobabsStudio = (function () {
         M('Dupliquer le calque', 'm.dup', 'Ctrl D', { off: !n }),
         M('Supprimer le calque', 'm.del', 'Suppr', { off: !n, danger: true }),
         SEP,
-        M(l && l.type === 'group' ? 'Dissocier' : 'Grouper', 'm.group', 'Ctrl G', { off: n < 2 && !(l && l.type === 'group') }),
-        M('Masque d’écrêtage', 'm.clip', 'Ctrl Alt G', { off: !n, on: !!(l && l.clip) }),
+        M(l && l.type === 'group' ? 'Dissocier' : 'Grouper', 'm.group', 'Ctrl G', { off: n < 2 && !(l && l.type === 'group'), why: 'Sélectionnez au moins deux calques' }),
+        M('Masque d’écrêtage', 'm.clip', 'Ctrl Alt G', { off: !n, on: !!(l && l.clip), why: !n ? 'Sélectionnez un calque' : 'Enferme ce calque dans la forme de celui du dessous' }),
         SEP,
         LAB('Combiner les formes'),
-        M('Union', 'm.bool', null, { arg: 'union', off: n < 2 }),
-        M('Soustraction', 'm.bool', null, { arg: 'soustraction', off: n < 2 }),
-        M('Intersection', 'm.bool', null, { arg: 'intersection', off: n < 2 }),
-        M('Exclusion', 'm.bool', null, { arg: 'exclusion', off: n < 2 }),
-        M('Séparer', 'm.unbool', null, { off: !(l && l.type === 'path' && l.subs && l.subs.length > 1) }),
+        M('Union', 'm.bool', null, { arg: 'union', off: n < 2, dest: true, why: 'Sélectionnez au moins deux formes ou tracés' }),
+        M('Soustraction', 'm.bool', null, { arg: 'soustraction', off: n < 2, dest: true, why: 'Sélectionnez au moins deux formes ou tracés' }),
+        M('Intersection', 'm.bool', null, { arg: 'intersection', off: n < 2, dest: true, why: 'Sélectionnez au moins deux formes ou tracés' }),
+        M('Exclusion', 'm.bool', null, { arg: 'exclusion', off: n < 2, dest: true, why: 'Sélectionnez au moins deux formes ou tracés' }),
+        M('Séparer', 'm.unbool', null, { off: !(l && l.type === 'path' && l.subs && l.subs.length > 1), why: 'Ce tracé n’est pas une forme combinée' }),
         SEP,
         LAB('Masque de fusion'),
-        M('Ajouter un masque', 'm.maskadd', null, { off: !n || !!(l && l.mask2) }),
-        M('Inverser le masque', 'm.maskinv', null, { off: !(l && l.mask2) }),
-        M('Effacer le masque', 'm.maskdel', null, { off: !(l && l.mask2) }),
+        M('Ajouter un masque', 'm.maskadd', null, { off: !n || !!(l && l.mask2), why: !n ? 'Sélectionnez un calque' : 'Ce calque a déjà un masque' }),
+        M('Inverser le masque', 'm.maskinv', null, { off: !(l && l.mask2), why: 'Ce calque n’a pas de masque' }),
+        M('Effacer le masque', 'm.maskdel', null, { off: !(l && l.mask2), why: 'Ce calque n’a pas de masque' }),
         SEP,
         LAB('Disposition'),
         M('Premier plan', 'm.front', 'Ctrl ⇧ ]', { off: !l }),
@@ -9367,7 +9716,7 @@ window.BaobabsStudio = (function () {
         SEP,
         M(l && l.locked ? 'Déverrouiller' : 'Verrouiller', 'm.lock', null, { off: !l }),
         M(l && !l.visible ? 'Afficher' : 'Masquer', 'm.vis', null, { off: !l }),
-        M('Aplatir en image', 'm.flatten', null, { off: !n })
+        M('Aplatir en image', 'm.flatten', null, { off: !n, dest: true, why: !n ? 'Sélectionnez un calque' : 'Devient une image : textes et formes ne seront plus modifiables' })
       ] },
 
       { id: 'texte', label: 'Texte', items: (function () {
@@ -9397,12 +9746,12 @@ window.BaobabsStudio = (function () {
         M('Zoom arrière', 'm.zout', 'Ctrl −'),
         M('Taille réelle', 'm.z100', 'Ctrl 1'),
         M('Ajuster à l’écran', 'm.zfit', 'Ctrl 0'),
-        M('Cadrer la sélection', 'm.zsel', 'Ctrl 2', { off: !n }),
+        M('Cadrer la sélection', 'm.zsel', 'Ctrl 2', { off: !n, why: 'Sélectionnez un calque' }),
         SEP,
         M('Grille', 'm.grid', 'Ctrl ’', { on: flags.grid }),
         M('Magnétisme', 'm.snap', null, { on: flags.snap }),
         M('Marges et repères', 'm.safe', null, { on: flags.safe }),
-        M('Effacer les repères', 'm.clearrules', null, { off: !(doc.rules && doc.rules.length) }),
+        M('Effacer les repères', 'm.clearrules', null, { off: !(doc.rules && doc.rules.length), why: 'Aucun repère posé — tirez-en un depuis les règles' }),
         SEP,
         M('Aperçu propre', 'm.preview', '⇧ P', { on: preview })
       ] },
@@ -9469,9 +9818,12 @@ window.BaobabsStudio = (function () {
       if (it.lab) { h += '<div class="bs-menu-lab">' + esc(it.lab) + '</div>'; return; }
       h += '<button type="button" class="bs-menu-i' + (it.danger ? ' bs-menu-danger' : '') + '"' +
         ' data-act2="' + it.act + '"' + (it.arg ? ' data-arg="' + esc(it.arg) + '"' : '') +
+        (it.why ? ' title="' + esc(it.why) + '"' : '') +
         (it.off ? ' disabled' : '') + '>' +
         '<span class="bs-menu-check">' + (it.on ? '✓' : '') + '</span>' +
-        esc(it.label) + (it.kbd ? '<kbd>' + esc(it.kbd) + '</kbd>' : '') + '</button>';
+        esc(it.label) +
+        (it.dest ? '<span class="bs-menu-dest" title="Cette action fait perdre la modifiabilité : le résultat ne sera plus un texte ni des formes, mais une image">•</span>' : '') +
+        (it.kbd ? '<kbd>' + esc(it.kbd) + '</kbd>' : '') + '</button>';
     });
     els.menuPop.innerHTML = h;
     els.menuPop.classList.add('is-on');
@@ -9801,6 +10153,49 @@ window.BaobabsStudio = (function () {
         if (!dockEtat[d.id].loose) return;
         glisserDock(d.id, e);
       });
+    });
+  }
+
+  /* Poignées de redimensionnement. Un panneau dont on ne peut pas
+     changer la largeur oblige à choisir entre voir ses réglages et voir
+     son affiche. */
+  function initGrips() {
+    poserGrip(els.panel, 'x', 'right', 200, 460, function (v) { root.style.setProperty('--bs-panel-w', v + 'px'); },
+      function () { return parseFloat(getComputedStyle(root).getPropertyValue('--bs-panel-w')) || 276; }, 1);
+    poserGrip(els.right, 'x', 'left', 220, 520, function (v) { root.style.setProperty('--bs-right-w', v + 'px'); },
+      function () { return parseFloat(getComputedStyle(root).getPropertyValue('--bs-right-w')) || 288; }, -1);
+    poserGrip(els.layersBox, 'y', 'top', 90, 640, function (v) { els.layersBox.style.height = v + 'px'; },
+      function () { return els.layersBox.getBoundingClientRect().height; }, -1);
+  }
+
+  function poserGrip(cible, axe, bord, min, max, ecrire, lire, sens) {
+    if (!cible) return;
+    var g = document.createElement('div');
+    g.className = 'bs-grip bs-grip-' + axe;
+    g.style[bord] = '-2px';
+    cible.appendChild(g);
+    g.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var d0 = axe === 'x' ? e.clientX : e.clientY;
+      var v0 = lire();
+      g.classList.add('is-drag');
+      function mv(e2) {
+        var d = (axe === 'x' ? e2.clientX : e2.clientY) - d0;
+        ecrire(clamp(Math.round(v0 + d * sens), min, max));
+        onResize();
+      }
+      function up() {
+        g.classList.remove('is-drag');
+        document.removeEventListener('pointermove', mv);
+        document.removeEventListener('pointerup', up);
+        onResize();
+        requestDraw();
+      }
+      /* on écoute sur le document et non sur la poignée : une capture
+         de pointeur qui échoue ne doit pas empêcher le glisser */
+      document.addEventListener('pointermove', mv);
+      document.addEventListener('pointerup', up);
     });
   }
 
@@ -10745,6 +11140,20 @@ window.BaobabsStudio = (function () {
   function aplatirSelection() {
     var ls = selectedLayers();
     if (!ls.length) return;
+    /* Aplatir reste annulable, mais tant qu'on ne l'annule pas le texte
+       n'est plus du texte. On le dit avant, pas après. */
+    var perdus = ls.filter(function (x) { return x.type === 'text' || x.type === 'shape' || x.type === 'path' || x.type === 'group'; });
+    if (perdus.length && !aplatirConfirme) {
+      modal('Aplatir en image ?',
+        '<p style="font-size:12.5px;color:var(--bs-fg-2);line-height:1.65">' +
+        'Les ' + perdus.length + ' calque' + (perdus.length > 1 ? 's' : '') + ' concerné' + (perdus.length > 1 ? 's' : '') +
+        ' deviendront <b>une seule image</b>. Le texte ne sera plus modifiable, les formes non plus.<br><br>' +
+        '<b>Ctrl+Z</b> reste possible tant que vous ne fermez pas le Studio. Au-delà, c’est définitif.</p>',
+        '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Annuler</button>' +
+        '<button type="button" class="bs-btn bs-btn-accent" data-act="flattenOk">Aplatir</button>');
+      return;
+    }
+    aplatirConfirme = false;
     var b = bboxOf(ls);
     if (b.w < 1 || b.h < 1) return;
     var s = clamp(2000 / Math.max(b.w, b.h), 0.5, 3);
@@ -10773,6 +11182,8 @@ window.BaobabsStudio = (function () {
     imagesReady().then(requestDraw);
     toast(ls.length + ' calque(s) aplati(s) en image');
   }
+
+  var aplatirConfirme = false;
 
   /* ===================================================================
      47. VÉRIFICATION AVANT PUBLICATION
@@ -10947,6 +11358,7 @@ window.BaobabsStudio = (function () {
     wireChrome();
     setTool('select');            /* l'état JS et le DOM doivent partir d'accord */
     initDocks();
+    initGrips();
     openPanel('modeles');
     renderProps();
     renderLayers();

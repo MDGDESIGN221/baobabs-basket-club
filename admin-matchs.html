@@ -4142,6 +4142,24 @@
         });
       },
 
+      // Suppression d'un fichier de la médiathèque. On ne supprime que
+      // ce qui est réellement dans notre bucket : une image d'Unsplash
+      // ou une photo de joueuse rangée ailleurs n'a rien à faire ici,
+      // et une URL forgée ne doit pas pouvoir effacer autre chose.
+      deleteImage: function(url){
+        var prefixe = SUPABASE_URL + '/storage/v1/object/public/' + MEDIA_BUCKET + '/';
+        if (String(url).indexOf(prefixe) !== 0) return Promise.resolve(false);
+        var chemin = String(url).slice(prefixe.length).split('?')[0];
+        if (!chemin || chemin.indexOf('..') >= 0) return Promise.resolve(false);
+        return fetch(SUPABASE_URL + '/storage/v1/object/' + MEDIA_BUCKET + '/' + chemin, {
+          method: 'DELETE', headers: sbHeaders()
+        }).then(function(r){
+          if (!r.ok) throw new Error('suppression refusée');
+          studioMedias = null;
+          return true;
+        });
+      },
+
       download: function(blob, nom){
         var u = URL.createObjectURL(blob), a = document.createElement('a');
         a.href = u; a.download = nom;
