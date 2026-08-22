@@ -10,7 +10,7 @@
 <!-- Anton et Space Grotesk ne servent pas à l'administration : ce sont les
      polices du SITE. Le Studio les charge pour que les affiches qu'il
      compose portent la typographie de la marque, et pas celle de l'outil. -->
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..600&family=Bebas+Neue&family=Oswald:wght@200..700&family=Teko:wght@300..700&family=Syne:wght@400..800&family=Outfit:wght@100..900&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/studio/studio.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -4017,6 +4017,24 @@
           }, function(){ return null; });
         },
 
+        // La liste des matchs, pour que le Studio laisse choisir lequel
+        // il affiche : le prochain n'est pas toujours celui qu'on annonce.
+        matches: function(){
+          return sbGet('matches?select=*&order=match_date.asc&limit=80').then(function(rows){
+            var auj = todayISO();
+            var futurs = (rows || []).filter(function(x){ return x.match_date >= auj; });
+            var passes = (rows || []).filter(function(x){ return x.match_date < auj; }).reverse();
+            return futurs.concat(passes).slice(0, 20).map(function(m){
+              return {
+                opponent: m.opponent_name || '', competition: m.competition || '',
+                date: m.match_date || '', time: m.match_time || '', venue: m.venue || '',
+                isHome: m.is_home !== false, opponentLogo: m.opponent_logo_url || '',
+                photo: m.photo_url || ''
+              };
+            });
+          }, function(){ return []; });
+        },
+
         lastResult: function(){
           return sbGet('matches?select=*&order=match_date.desc&limit=80').then(function(rows){
             var m = (rows || []).filter(function(x){ return x.score_baobabs != null; })[0];
@@ -4132,6 +4150,15 @@
       },
 
       toast: function(m, err){ qgToast(m, !!err); },
+
+      // Recherche de photos Unsplash dans le Studio. Laissez vide pour
+      // la désactiver — le Studio le dit alors clairement au lieu de
+      // faire semblant. La clé « Access Key » est prévue pour vivre
+      // côté navigateur ; elle est limitée en nombre d'appels et ne
+      // donne accès à rien d'autre qu'à la recherche publique.
+      // Elle se crée sur unsplash.com/oauth/applications
+      unsplashKey: '',
+
       clubLogo: '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp',
       formatDate: function(iso){ return formatDateLong(iso); },
       today: function(){ return todayISO(); }

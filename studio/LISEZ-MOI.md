@@ -41,7 +41,14 @@ deux fois à la racine de l'IIFE.
 Chargées par l'hôte, déjà présentes dans le lien Google Fonts de
 l'administration :
 
-**Archivo**, **Inter**, **Anton**, **Space Grotesk**, **JetBrains Mono**.
+**Anton**, **Bebas Neue**, **Oswald**, **Teko** (affiche condensée) ·
+**Archivo**, **Syne**, **Bricolage Grotesque**, **Space Grotesk** (titres) ·
+**Playfair Display**, **DM Serif Display** (serif) ·
+**Inter**, **Outfit** (texte) · **JetBrains Mono** (chiffres).
+
+Treize familles. Elles sont toutes dans le lien Google Fonts de
+`admin-matchs.html` ; en ajouter une au tableau `FONTS` sans l'ajouter
+au lien donnerait un rendu en police de repli, silencieusement.
 
 Le Studio attend `document.fonts.load()` avant de mesurer un texte, puis
 recalcule toutes les boîtes. Sans cela le premier rendu est fait en
@@ -71,6 +78,7 @@ api = {
   data: {
     nextMatch(),   // {opponent, competition, date, time, venue, isHome, opponentLogo, photo} | null
     lastResult(),  // {opponent, scoreUs, scoreThem, date} | null
+    matches(),     // [{opponent, competition, date, time, venue, isHome, opponentLogo, photo}]
     players(),     // [{name, number, position, photo}]
     media()        // [{url, name}]
   },
@@ -82,7 +90,8 @@ api = {
   uploadImage(file),      // File -> Promise<url publique>
   download(blob, nom),
   toast(message, isErr),
-  clubLogo,               // string
+  clubLogo,               // string — sert aussi de logo au logiciel
+  unsplashKey,            // string — Access Key Unsplash, ou '' pour désactiver
   formatDate(iso),        // '2026-09-19' -> 'SAMEDI 19 SEPTEMBRE'
   today()                 // '2026-09-19'
 }
@@ -146,6 +155,67 @@ canevas hors écran : l'un porte le contenu, l'autre sert de pochoir.
 
 ---
 
+## 4bis. Ce que la version 3 ajoute
+
+### Écran d'accueil
+
+On n'entre plus directement dans l'atelier. `open()` affiche un accueil :
+reprendre un travail (avec sa date et son heure), partir d'un modèle,
+ou poser des dimensions — préréglages par catégorie, ou taille libre.
+`BaobabsStudio.home()` y ramène depuis l'extérieur.
+
+### Barre de menus
+
+Huit menus — Fichier, Édition, Image, Calque, Texte, Affichage, Fenêtre,
+Aide. Ils sont reconstruits à chaque ouverture : les cases cochées et les
+entrées grisées reflètent l'état réel du document, jamais un état figé.
+
+### Détourage
+
+Trois outils, un seul mécanisme : le **masque de fusion**, une image
+d'alpha rangée avec le calque. Rien n'est retiré de la photo — effacer,
+c'est peindre du transparent dans le pochoir, donc tout est réversible.
+
+- **Baguette magique (W)** — remplissage par propagation depuis le point
+  cliqué, avec tolérance, mode « toute l'image » et adoucissement du
+  bord. Elle travaille sur le calque **tel qu'il s'affiche**, voile et
+  teinte compris, pas sur les pixels d'origine.
+- **Gomme (E)** et **pinceau (B)** — taille et dureté réglables, Alt
+  inverse les deux. Les coups sont interpolés : un geste rapide ne
+  laisse pas de trous.
+- **Plume (P)** — un tracé fermé sert de masque d'écrêtage vectoriel.
+
+### Données modifiables
+
+Le panneau *Données* laisse choisir le match affiché parmi ceux de la
+base, la joueuse, et surtout **ajouter ses propres champs** (un tarif,
+un slogan, un nom de partenaire). Ils s'enregistrent avec le projet et
+se lient comme n'importe quelle donnée du club.
+
+Les données sont **relues à chaque ouverture** du Studio, pas une seule
+fois au chargement de la page : une joueuse ajoutée en base apparaît
+sans qu'il faille recharger l'administration.
+
+### Autres
+
+- **Vérification avant publication** — débordement de marges, contraste
+  faible, texte minuscule, image sous-définie, cadre vide, liaison
+  rompue, image non exportable. Chaque ligne mène au calque fautif.
+- **La série** — la même affiche en story, post et carré d'un seul geste.
+- **Export** — ×1 à ×4 ou largeur libre, PNG / JPEG / WebP, fond
+  transparent, avec le rappel de la taille obtenue en centimètres à
+  300 ppp.
+- **Taille du document** et **rotation** — la composition suit à
+  l'échelle, textes et formes restent nets.
+- **Aplatir en image**, **copier / coller le style**, **nuancier des
+  couleurs employées**, **historique**, **recadrage de l'affiche**.
+- **Photos Unsplash** — recherche intégrée, orientation, pagination.
+  Les trois obligations de leur licence sont tenues : images appelées
+  chez eux, photographe crédité dans le texte de publication, endpoint
+  de téléchargement prévenu.
+
+---
+
 ## 5. Raccourcis
 
 | | |
@@ -179,9 +249,11 @@ plus cher qu'un bouton absent.
 - **Opérations booléennes** (union, soustraction, intersection de
   formes). Le masque d'écrêtage couvre le besoin courant d'un club.
 - **Texte sur un tracé.**
-- **Séries** : générer les cinq affiches d'un mois d'un coup.
-- **Banque d'images externe** (Unsplash, Pexels) : demanderait de
-  modifier la CSP de `vercel.json` et d'exposer une clé d'API en clair.
+- **Détourage automatique par intelligence artificielle.** Les modèles
+  de segmentation pèsent des dizaines de mégaoctets et se chargent
+  depuis un CDN tiers : ni la CSP ni le poids ne le permettent. À la
+  place : baguette magique, gomme et pinceau de masque, qui couvrent le
+  fond uni et le fond dégradé — l'écrasante majorité des cas.
 - **Historique par étape pendant la frappe** : une séance de saisie
   compte pour une seule annulation. Volontaire — annuler lettre à
   lettre est rarement ce qu'on veut.
@@ -201,6 +273,12 @@ plus cher qu'un bouton absent.
 - Le **fond de l'affiche** n'est pas un calque : il est réglé dans le
   panneau de droite quand rien n'est sélectionné. Pour une photo en
   fond, *Styles → Photo plein cadre* crée un vrai calque.
+- Le **masque de fusion** est enregistré en PNG dans le projet, à
+  1 100 px sur le côté le plus long. Assez fin pour un détourage propre
+  à l'écran et en impression courante ; ce n'est pas une découpe au
+  cheveu près.
+- **Unsplash** exige une clé. Sans elle, le panneau *Photos* explique
+  comment l'obtenir au lieu de faire semblant de chercher.
 
 ---
 
@@ -231,8 +309,15 @@ puis `http://localhost:8899/studio/banc-essai.html`.
 - Aucun sélecteur CSS ne commence autrement que par `#bstudio`.
 - Aucun `@import`, aucun `!important`, aucune `url()` externe.
 - Aucun nom déclaré deux fois à la racine de l'IIFE de l'administration.
-- Les 49 `data-act` du Studio ont tous un gestionnaire ; aucun bouton
-  muet.
+- Les 66 `data-act` et les 68 entrées de menu ont tous un gestionnaire ;
+  aucun bouton muet.
+- Détourage vérifié de bout en bout : baguette magique sur une photo,
+  52 % de l'image retirée, pixel de contrôle modifié, `Ctrl+Z` le
+  restaure à l'identique.
+- Garde-fou de fermeture : *Annuler* ne ferme rien, *Ne pas enregistrer*
+  ferme, *Enregistrer* enregistre puis ferme.
+- Cycle complet enregistrer → accueil → rouvrir : calques, masques et
+  champs de données retrouvés.
 - Tous les `id` cherchés par le script existent dans le fragment.
 - Export ×1, ×2, ×3 : dimensions exactes du format.
 - Annuler/rétablir restaure l'état au pixel près.

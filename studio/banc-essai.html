@@ -6,7 +6,7 @@
 <title>Baobabs Studio — banc d'essai</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..600&family=Bebas+Neue&family=Oswald:wght@200..700&family=Teko:wght@300..700&family=Syne:wght@400..800&family=Outfit:wght@100..900&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="studio.css">
 <style>
   /* Ce fichier n'est PAS livré : il sert uniquement à ouvrir le Studio
@@ -81,6 +81,13 @@ FAUX.media = [
 FAUX.players[0].photo = FAUX.media[1].url;
 FAUX.nextMatch.photo  = FAUX.media[0].url;
 FAUX.nextMatch.opponentLogo = damier('#222','#888', 400, 400, 'DUC');
+FAUX.matches = [
+  FAUX.nextMatch,
+  { opponent:'ASC VILLE DE DAKAR', competition:'CHAMPIONNAT NATIONAL D2', date:'2026-10-03',
+    time:'17:30', venue:'SALLE DE PIKINE', isHome:false, opponentLogo:'', photo:'' },
+  { opponent:'JEANNE D ARC', competition:'COUPE DU SENEGAL', date:'2026-10-18',
+    time:'19:00', venue:'STADIUM MARIUS NDIAYE', isHome:true, opponentLogo:'', photo:'' }
+];
 
 /* ---------- projets en mémoire ---------- */
 var projets = [];
@@ -88,6 +95,7 @@ var api = {
   data: {
     nextMatch:  function(){ return Promise.resolve(FAUX.nextMatch); },
     lastResult: function(){ return Promise.resolve(FAUX.lastResult); },
+    matches:    function(){ return Promise.resolve(FAUX.matches); },
     players:    function(){ return Promise.resolve(FAUX.players); },
     media:      function(){ return Promise.resolve(FAUX.media); }
   },
@@ -114,6 +122,7 @@ var api = {
     setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
   },
   toast: function(m, err){ console[err?'error':'log']('[hôte]', m); },
+  unsplashKey: '',
   clubLogo: damier('#0E0E10','#7DFF4F', 400, 400, 'BBC'),
   formatDate: function(iso){
     return new Date(iso+'T00:00:00').toLocaleDateString('fr-FR',

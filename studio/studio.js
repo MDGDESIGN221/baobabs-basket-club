@@ -21,28 +21,61 @@ window.BaobabsStudio = (function () {
      1. CONSTANTES
      =================================================================== */
 
+  /* 3:4 est le rapport de la maquette d'origine : c'est le format par
+     défaut, celui dans lequel les modèles ont été dessinés. `cat` sert
+     à regrouper les préréglages sur l'écran d'accueil. */
+  var VERSION = '3.0';
+
   var FORMATS = [
-    /* 3:4 est le rapport de la maquette d'origine : c'est le format par
-       défaut, celui dans lequel les modèles ont été dessinés. */
-    { id: 'affiche', label: 'Affiche 3:4 · 1080 × 1440', w: 1080, h: 1440 },
-    { id: 'story',   label: 'Story · 1080 × 1920',      w: 1080, h: 1920 },
-    { id: 'post',    label: 'Post portrait · 1080 × 1350', w: 1080, h: 1350 },
-    { id: 'carre',   label: 'Carré · 1080 × 1080',      w: 1080, h: 1080 },
-    { id: 'paysage', label: 'Paysage · 1600 × 900',     w: 1600, h: 900  },
-    { id: 'lien',    label: 'Aperçu de lien · 1200 × 630', w: 1200, h: 630 },
-    { id: 'a4',      label: 'Affiche A4 · 2480 × 3508',  w: 2480, h: 3508 },
-    { id: 'a3',      label: 'Affiche A3 · 3508 × 4961',  w: 3508, h: 4961 }
+    { id: 'affiche', cat: 'Affiche du club', label: 'Affiche 3:4', w: 1080, h: 1440 },
+    { id: 'affiche45', cat: 'Affiche du club', label: 'Affiche 4:5', w: 1080, h: 1350 },
+    { id: 'afficheHD', cat: 'Affiche du club', label: 'Affiche 3:4 haute définition', w: 2160, h: 2880 },
+
+    { id: 'story',   cat: 'Réseaux sociaux', label: 'Story / Reel', w: 1080, h: 1920 },
+    { id: 'post',    cat: 'Réseaux sociaux', label: 'Post portrait', w: 1080, h: 1350 },
+    { id: 'carre',   cat: 'Réseaux sociaux', label: 'Post carré', w: 1080, h: 1080 },
+    { id: 'lien',    cat: 'Réseaux sociaux', label: 'Aperçu de lien', w: 1200, h: 630 },
+    { id: 'couvfb',  cat: 'Réseaux sociaux', label: 'Couverture Facebook', w: 1640, h: 856 },
+    { id: 'banX',    cat: 'Réseaux sociaux', label: 'Bannière X', w: 1500, h: 500 },
+    { id: 'ytb',     cat: 'Réseaux sociaux', label: 'Miniature YouTube', w: 1280, h: 720 },
+
+    { id: 'paysage', cat: 'Site et écran', label: 'Bannière du site', w: 1600, h: 900 },
+    { id: 'ecran',   cat: 'Site et écran', label: 'Plein écran', w: 1920, h: 1080 },
+    { id: 'ecran4k', cat: 'Site et écran', label: 'Écran 4K', w: 3840, h: 2160 },
+
+    { id: 'a5',      cat: 'Impression 300 ppp', label: 'Flyer A5', w: 1748, h: 2480 },
+    { id: 'a4',      cat: 'Impression 300 ppp', label: 'Affiche A4', w: 2480, h: 3508 },
+    { id: 'a4pay',   cat: 'Impression 300 ppp', label: 'A4 paysage', w: 3508, h: 2480 },
+    { id: 'a3',      cat: 'Impression 300 ppp', label: 'Affiche A3', w: 3508, h: 4961 },
+    { id: 'a2',      cat: 'Impression 300 ppp', label: 'Affiche A2', w: 4961, h: 7016 },
+    { id: 'carte',   cat: 'Impression 300 ppp', label: 'Carte de membre', w: 1004, h: 638 }
   ];
+  /* Le libellé affiché ajoute toujours les pixels : on ne choisit pas un
+     format à l'aveugle. */
+  function formatLabel(f) { return f.label + ' · ' + f.w + ' × ' + f.h; }
 
   /* Les cinq familles déjà chargées par l'administration. Rien d'autre
      n'est disponible : ajouter une police ici sans l'ajouter au lien
      Google Fonts de l'hôte donnerait un rendu en police de repli. */
   var FONTS = [
-    { id: 'Anton',         label: 'Anton — assommoir',   weights: [400], stack: "'Anton', 'Archivo', sans-serif" },
-    { id: 'Archivo',       label: 'Archivo — titres',    weights: [400, 500, 600, 700, 800, 900], stack: "'Archivo', system-ui, sans-serif" },
-    { id: 'Space Grotesk', label: 'Space Grotesk',        weights: [400, 500, 600, 700], stack: "'Space Grotesk', system-ui, sans-serif" },
-    { id: 'Inter',         label: 'Inter — texte',        weights: [400, 500, 600, 700, 800, 900], stack: "'Inter', system-ui, sans-serif" },
-    { id: 'JetBrains Mono',label: 'JetBrains Mono — chiffres', weights: [400, 500, 600], stack: "'JetBrains Mono', ui-monospace, monospace" }
+    /* — affiche : capitales condensées, ce qui porte un titre de match — */
+    { id: 'Anton',        label: 'Anton',        cat: 'Affiche', weights: [400], stack: "'Anton', 'Oswald', sans-serif" },
+    { id: 'Bebas Neue',   label: 'Bebas Neue',   cat: 'Affiche', weights: [400], stack: "'Bebas Neue', 'Anton', sans-serif" },
+    { id: 'Oswald',       label: 'Oswald',       cat: 'Affiche', weights: [200, 300, 400, 500, 600, 700], stack: "'Oswald', 'Anton', sans-serif" },
+    { id: 'Teko',         label: 'Teko',         cat: 'Affiche', weights: [300, 400, 500, 600, 700], stack: "'Teko', 'Oswald', sans-serif" },
+    /* — titres — */
+    { id: 'Archivo',      label: 'Archivo',      cat: 'Titres', weights: [400, 500, 600, 700, 800, 900], stack: "'Archivo', system-ui, sans-serif" },
+    { id: 'Syne',         label: 'Syne',         cat: 'Titres', weights: [400, 500, 600, 700, 800], stack: "'Syne', 'Archivo', sans-serif" },
+    { id: 'Bricolage Grotesque', label: 'Bricolage Grotesque', cat: 'Titres', weights: [200, 300, 400, 500, 600, 700, 800], stack: "'Bricolage Grotesque', 'Archivo', sans-serif" },
+    { id: 'Space Grotesk',label: 'Space Grotesk',cat: 'Titres', weights: [400, 500, 600, 700], stack: "'Space Grotesk', system-ui, sans-serif" },
+    /* — serif, pour l'editorial et le solennel — */
+    { id: 'Playfair Display', label: 'Playfair Display', cat: 'Serif', weights: [400, 500, 600, 700, 800, 900], stack: "'Playfair Display', Georgia, serif" },
+    { id: 'DM Serif Display', label: 'DM Serif Display', cat: 'Serif', weights: [400], stack: "'DM Serif Display', Georgia, serif" },
+    /* — texte courant — */
+    { id: 'Inter',        label: 'Inter',        cat: 'Texte', weights: [400, 500, 600, 700, 800, 900], stack: "'Inter', system-ui, sans-serif" },
+    { id: 'Outfit',       label: 'Outfit',       cat: 'Texte', weights: [100, 200, 300, 400, 500, 600, 700, 800, 900], stack: "'Outfit', system-ui, sans-serif" },
+    /* — chiffres — */
+    { id: 'JetBrains Mono', label: 'JetBrains Mono', cat: 'Chiffres', weights: [400, 500, 600], stack: "'JetBrains Mono', ui-monospace, monospace" }
   ];
 
   /* Rôles typographiques : ce qui donne du caractère sans demander à
@@ -50,12 +83,20 @@ window.BaobabsStudio = (function () {
   var ROLES = [
     { id: 'assommoir', label: 'Assommoir',      font: 'Anton',   weight: 400, size: .118, tracking: -.012, lh: .88, upper: true },
     { id: 'contour',   label: 'Assommoir vide', font: 'Anton',   weight: 400, size: .118, tracking: -.012, lh: .88, upper: true, hollow: true },
+    { id: 'affiche',   label: 'Affiche',        font: 'Bebas Neue', weight: 400, size: .135, tracking: .01, lh: .86, upper: true },
+    { id: 'stade',     label: 'Stade',          font: 'Oswald',  weight: 700, size: .095, tracking: -.005, lh: .96, upper: true },
+    { id: 'sportif',   label: 'Sportif',        font: 'Teko',    weight: 600, size: .125, tracking: .015, lh: .84, upper: true },
     { id: 'titre',     label: 'Titre',          font: 'Archivo', weight: 800, size: .062, tracking: -.02, lh: 1.02, upper: false },
+    { id: 'moderne',   label: 'Moderne',        font: 'Syne',    weight: 800, size: .058, tracking: -.015, lh: 1.04, upper: true },
+    { id: 'editorial', label: 'Editorial',      font: 'Playfair Display', weight: 700, size: .07, tracking: -.01, lh: 1.05, upper: false, italic: true },
+    { id: 'solennel',  label: 'Solennel',       font: 'DM Serif Display', weight: 400, size: .075, tracking: -.005, lh: 1.06, upper: false },
     { id: 'soustitre', label: 'Sous-titre',     font: 'Archivo', weight: 600, size: .036, tracking: -.005, lh: 1.2, upper: false },
     { id: 'surtitre',  label: 'Sur-titre',      font: 'Space Grotesk', weight: 700, size: .019, tracking: .16, lh: 1.3, upper: true },
     { id: 'para',      label: 'Paragraphe',     font: 'Inter',   weight: 400, size: .021, tracking: 0, lh: 1.5, upper: false },
     { id: 'pastille',  label: 'Pastille',       font: 'Archivo', weight: 700, size: .019, tracking: .05, lh: 1.2, upper: true },
+    { id: 'etiquette', label: 'Étiquette',      font: 'Outfit',  weight: 600, size: .017, tracking: .12, lh: 1.25, upper: true },
     { id: 'chiffre',   label: 'Chiffre géant',  font: 'Anton',   weight: 400, size: .21,  tracking: -.02, lh: .84, upper: false },
+    { id: 'score',     label: 'Score',          font: 'Teko',    weight: 700, size: .26,  tracking: -.01, lh: .8,  upper: false },
     { id: 'donnee',    label: 'Donnée',         font: 'JetBrains Mono', weight: 600, size: .026, tracking: .02, lh: 1.3, upper: true },
     { id: 'mention',   label: 'Mention',        font: 'Inter',   weight: 500, size: .014, tracking: .06, lh: 1.4, upper: true }
   ];
@@ -241,6 +282,8 @@ window.BaobabsStudio = (function () {
       palette: { id: p.id, bg: p.bg, accent: p.accent, fg: p.fg, fg2: p.fg2 },
       safe: 0.055,
       rules: [],          /* repères posés à la main : {axis:'x'|'y', v} */
+      champs: [],         /* champs de données libres, propres au projet */
+      credits: [],        /* crédits photo à reporter dans la légende */
       layers: [],
       updated: null
     };
@@ -254,7 +297,7 @@ window.BaobabsStudio = (function () {
       font: r.font,
       size: Math.round(r.size * d.w),
       weight: r.weight,
-      italic: false,
+      italic: !!r.italic,
       tracking: r.tracking,     /* en em */
       lh: r.lh,
       align: 'left',
@@ -310,7 +353,19 @@ window.BaobabsStudio = (function () {
   }
   function bindLabel(id) {
     for (var i = 0; i < BINDINGS.length; i++) if (BINDINGS[i].id === id) return BINDINGS[i].label;
+    if (/^champ\./.test(id) && typeof doc !== 'undefined' && doc && doc.champs) {
+      var c = id.slice(6);
+      for (var j = 0; j < doc.champs.length; j++) if (doc.champs[j].cle === c) return doc.champs[j].label;
+    }
     return id;
+  }
+  /* Les liaisons proposées = celles du club + les champs libres du projet. */
+  function allBindings() {
+    var out = BINDINGS.slice();
+    ((doc && doc.champs) || []).forEach(function (c) {
+      out.push({ id: 'champ.' + c.cle, label: c.label, path: 'champ.' + c.cle });
+    });
+    return out;
   }
 
   /* ---- fabriques ---- */
@@ -904,7 +959,7 @@ window.BaobabsStudio = (function () {
     /* fond */
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
-    if (d.bg && d.bg.type !== 'none') {
+    if (d.bg && d.bg.type !== 'none' && !opts.noBg) {
       ctx.fillStyle = paintStyle(ctx, d.bg, d.w, d.h) || css(d.bg.color);
       ctx.fillRect(0, 0, d.w, d.h);
     }
@@ -990,6 +1045,10 @@ window.BaobabsStudio = (function () {
       return;
     }
 
+    /* masque de fusion : le calque se dessine à part, puis on lui
+       applique son pochoir. C'est ce qui permet le détourage. */
+    if (l.mask2 && !opts.noMask) { drawWithMask(ctx, l, d, opts, alpha); return; }
+
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.globalCompositeOperation = l.blend || 'source-over';
@@ -1009,6 +1068,14 @@ window.BaobabsStudio = (function () {
       ctx.shadowOffsetY = l.shadow.y || 0;
     }
 
+    drawContent(ctx, l, d, opts);
+    ctx.restore();
+  }
+
+  /* Le contenu d'un calque, dessiné dans son repère local (0,0 → w,h).
+     Isolé de drawLayer pour que le détourage puisse le rendre seul. */
+  function drawContent(ctx, l, d, opts) {
+    opts = opts || {};
     switch (l.type) {
       case 'text':  drawText(ctx, l, opts); break;
       case 'image':
@@ -1017,7 +1084,6 @@ window.BaobabsStudio = (function () {
       case 'path':  drawPathLayer(ctx, l); break;
       case 'icon':  drawIcon(ctx, l); break;
     }
-    ctx.restore();
   }
 
   /* ---------- icônes ---------- */
@@ -1618,6 +1684,55 @@ window.BaobabsStudio = (function () {
 
     /* points de tracé si outil sélection directe */
     if (tool === 'node' && selLayers.length === 1 && selLayers[0].type === 'path') drawNodes(g, selLayers[0]);
+
+    /* zone de recadrage : on assombrit ce qui va disparaître */
+    if (drag && drag.kind === 'crop' && drag.moved) {
+      var ca = d2s(Math.min(drag.x0, drag.x1), Math.min(drag.y0, drag.y1));
+      var cb = d2s(Math.max(drag.x0, drag.x1), Math.max(drag.y0, drag.y1));
+      g.save();
+      g.fillStyle = 'rgba(6,6,8,.66)';
+      g.beginPath();
+      g.rect(o.x, o.y, doc.w * z, doc.h * z);
+      g.rect(ca.x, ca.y, cb.x - ca.x, cb.y - ca.y);
+      g.fill('evenodd');
+      g.strokeStyle = '#7DFF4F';
+      g.lineWidth = 1.4;
+      g.strokeRect(Math.round(ca.x) + .5, Math.round(ca.y) + .5, Math.round(cb.x - ca.x), Math.round(cb.y - ca.y));
+      /* tiers, pour aider à composer */
+      g.strokeStyle = 'rgba(255,255,255,.22)';
+      g.lineWidth = 1;
+      g.beginPath();
+      for (var ti = 1; ti < 3; ti++) {
+        var gx = ca.x + (cb.x - ca.x) * ti / 3, gy = ca.y + (cb.y - ca.y) * ti / 3;
+        g.moveTo(gx, ca.y); g.lineTo(gx, cb.y);
+        g.moveTo(ca.x, gy); g.lineTo(cb.x, gy);
+      }
+      g.stroke();
+      var tag = Math.round(Math.abs(drag.x1 - drag.x0)) + ' × ' + Math.round(Math.abs(drag.y1 - drag.y0));
+      g.font = "500 11px 'JetBrains Mono', monospace";
+      g.fillStyle = 'rgba(125,255,79,.95)';
+      roundRectPath(g, ca.x, ca.y - 24, g.measureText(tag).width + 14, 18, 4);
+      g.fill();
+      g.fillStyle = '#08130A';
+      g.textAlign = 'left'; g.textBaseline = 'middle';
+      g.fillText(tag, ca.x + 7, ca.y - 15);
+      g.restore();
+    }
+
+    /* cercle du pinceau de masque : on doit voir ce qu'on va effacer */
+    if ((tool === 'erase' || tool === 'restore') && !drag) {
+      g.save();
+      g.strokeStyle = tool === 'erase' ? 'rgba(255,92,77,.9)' : 'rgba(125,255,79,.9)';
+      g.lineWidth = 1.2;
+      g.beginPath();
+      g.arc(lastPointer.x, lastPointer.y, Math.max(2, brushOpts.size / 2 * z), 0, Math.PI * 2);
+      g.stroke();
+      g.strokeStyle = 'rgba(0,0,0,.5)';
+      g.beginPath();
+      g.arc(lastPointer.x, lastPointer.y, Math.max(2, brushOpts.size / 2 * z) + 1, 0, Math.PI * 2);
+      g.stroke();
+      g.restore();
+    }
 
     /* forme en cours de tracé à la souris */
     if (drag && drag.kind === 'create' && drag.moved) {
@@ -2500,6 +2615,24 @@ window.BaobabsStudio = (function () {
     /* --- pipette --- */
     if (tool === 'eyedrop') { pickColor(pt.sx, pt.sy); return; }
 
+    /* --- détourage : baguette, gomme, pinceau --- */
+    if (tool === 'wand' || tool === 'erase' || tool === 'restore') {
+      var cible = selOne();
+      if (!cible || cible.type === 'group' || !hitLayer(cible, p.x, p.y, 0)) cible = topLayerAt(p.x, p.y, 0);
+      if (!cible || cible.type === 'group') { toast('Cliquez sur le calque à détourer', true); return; }
+      if (sel.indexOf(cible.id) < 0) select([cible.id]);
+      var lp = toLocal(cible, p.x, p.y);
+      if (tool === 'wand') { baguette(cible, lp.x, lp.y); return; }
+      beginChange();
+      maskCanvas(cible, true);
+      var eff = (tool === 'erase') !== !!e.altKey;
+      coupDePinceau(cible, lp.x, lp.y, eff);
+      drag = { kind: 'brush', id: cible.id, effacer: eff, last: lp };
+      requestDraw();
+      capture(e);
+      return;
+    }
+
     /* --- recadrage de contenu --- */
     if (contentEdit) {
       var cl = findLayer(doc.layers, contentEdit);
@@ -2539,6 +2672,13 @@ window.BaobabsStudio = (function () {
         }
         exitTextEdit();
       }
+    }
+
+    /* --- recadrage de l'affiche --- */
+    if (tool === 'crop') {
+      drag = { kind: 'crop', x0: p.x, y0: p.y, x1: p.x, y1: p.y, moved: false };
+      capture(e);
+      return;
     }
 
     /* --- outils de création --- */
@@ -2596,7 +2736,12 @@ window.BaobabsStudio = (function () {
 
     if (pathDraft && !drag) { pathDraft.cursor = snapPen(p, e); requestDraw(); }
 
-    if (!drag) { hoverCursor(pt, p); return; }
+    if (!drag) {
+      hoverCursor(pt, p);
+      /* le cercle du pinceau suit le pointeur */
+      if (tool === 'erase' || tool === 'restore') requestDraw();
+      return;
+    }
 
     switch (drag.kind) {
       case 'pan':
@@ -2665,6 +2810,25 @@ window.BaobabsStudio = (function () {
 
       case 'node': doNodeDrag(pt, p, e); break;
 
+      /* pinceau de masque : on relie les points, sinon un geste rapide
+         laisse des trous entre deux positions du pointeur */
+      case 'brush': {
+        var bl = findLayer(doc.layers, drag.id);
+        if (!bl) return;
+        var lc = toLocal(bl, p.x, p.y);
+        var a = drag.last || lc;
+        var dist = Math.hypot(lc.x - a.x, lc.y - a.y);
+        var pas = Math.max(1, brushOpts.size * 0.22);
+        var etapes = Math.min(120, Math.ceil(dist / pas));
+        for (var k = 1; k <= etapes; k++) {
+          coupDePinceau(bl, a.x + (lc.x - a.x) * k / etapes, a.y + (lc.y - a.y) * k / etapes, drag.effacer);
+        }
+        if (!etapes) coupDePinceau(bl, lc.x, lc.y, drag.effacer);
+        drag.last = lc;
+        requestDraw();
+        break;
+      }
+
       /* plume : glisser après le clic sort les poignées de courbure */
       case 'penhandle':
         if (pathDraft) penHandleMove(snapPen(p, e));
@@ -2682,6 +2846,12 @@ window.BaobabsStudio = (function () {
         drawCreatePreview();
         break;
 
+      case 'crop':
+        drag.x1 = p.x; drag.y1 = p.y;
+        drag.moved = Math.hypot(drag.x1 - drag.x0, drag.y1 - drag.y0) > 6 / view.zoom;
+        requestDraw();
+        break;
+
       case 'marquee':
         marquee.x1 = pt.sx; marquee.y1 = pt.sy;
         requestDraw();
@@ -2694,7 +2864,10 @@ window.BaobabsStudio = (function () {
     var pt = scenePoint(e), p = s2d(pt.sx, pt.sy);
     var kind = drag.kind;
 
-    if (kind === 'create') {
+    if (kind === 'crop') {
+      if (drag.moved) appliquerRecadrage(drag);
+      setTool('select');
+    } else if (kind === 'create') {
       if (drag.moved) finishCreate(drag);
       else finishCreateClick(drag);
     } else if (kind === 'marquee') {
@@ -2704,8 +2877,12 @@ window.BaobabsStudio = (function () {
 
     /* le tracé à la plume reste ouvert entre deux clics : on ne clôt
        pas l'instantané tant que le tracé n'est pas validé */
+    if (kind === 'brush') {
+      var bl2 = findLayer(doc.layers, drag.id);
+      if (bl2) maskCommit(bl2);
+    }
     if (kind === 'move' || kind === 'resize' || kind === 'multiresize' || kind === 'rotate' ||
-        kind === 'content' || kind === 'node' || kind === 'create') {
+        kind === 'content' || kind === 'node' || kind === 'create' || kind === 'brush') {
       endChange();
     }
     guides = [];
@@ -2750,6 +2927,8 @@ window.BaobabsStudio = (function () {
     if (tool === 'text') return setCursor('text');
     if (tool === 'pen' || tool === 'rect' || tool === 'ellipse' || tool === 'line' || tool === 'frame') return setCursor('cross');
     if (tool === 'eyedrop') return setCursor('copy');
+    if (tool === 'wand' || tool === 'erase' || tool === 'restore') return setCursor('cross');
+    if (tool === 'crop') return setCursor('cross');
     if (contentEdit) return setCursor('move');
     var cur = selectedLayers();
     if (cur.length === 1) {
@@ -3425,7 +3604,7 @@ window.BaobabsStudio = (function () {
     if (!l || l.type !== 'text' || !id) return;
     var r = roleById(id);
     var patch = {
-      role: r.id, font: r.font, weight: r.weight,
+      role: r.id, font: r.font, weight: r.weight, italic: !!r.italic,
       size: Math.round(r.size * doc.w), tracking: r.tracking, lh: r.lh,
       transform: r.upper ? 'upper' : 'none', hollow: !!r.hollow,
       strokeW: r.hollow ? Math.max(1, Math.round(doc.w * 0.0022)) : 0
@@ -3802,10 +3981,10 @@ window.BaobabsStudio = (function () {
   /* ---------- rien de sélectionné : le document ---------- */
   function propsDoc() {
     var f = formatById(doc.format);
-    var h = head(ICONS.doc, 'Affiche', f.label);
+    var h = head(ICONS.doc, 'Affiche', formatLabel(f));
 
     h += fGroup('Format', fSelect('Dimensions', 'format', doc.format, FORMATS.map(function (x) {
-      return { id: x.id, label: x.label };
+      return { id: x.id, label: formatLabel(x) };
     }), { scope: 'doc' }) +
       '<div class="bs-frow">' +
       fStep('Largeur', 'w', doc.w, { scope: 'doc', unit: 'px', dec: 0 }) +
@@ -4001,7 +4180,7 @@ window.BaobabsStudio = (function () {
         ICONS.dyn + '<span>' + (l.bindBroken ? 'Liaison rompue — ' : 'Lié à ') + '<b>' + esc(bindLabel(l.bind)) + '</b></span>' +
         '<button type="button" data-act="unbind" title="Détacher">✕</button></div>' +
         '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" style="margin-top:8px" data-act="refreshBind">Recharger la valeur</button>'
-      : fSelect('Lier à une donnée', 'bind', '', [{ id: '', label: '— aucun —' }].concat(BINDINGS.map(function (b) {
+      : fSelect('Lier à une donnée', 'bind', '', [{ id: '', label: '— aucun —' }].concat(allBindings().map(function (b) {
           return { id: b.id, label: b.label };
         })));
     h += fGroup('Objet dynamique', bnd);
@@ -4362,6 +4541,140 @@ window.BaobabsStudio = (function () {
     t.name = opts.name ? opts.name + ' — texte' : 'Texte du bandeau';
     syncTextBox(t);
     return [r, t];
+  }
+
+  /* ---------------------------------------------------------------
+     Briques de composition. Les modèles sont écrits avec, ce qui leur
+     donne une famille : mêmes marges, mêmes rapports d'échelle, même
+     pied de page. C'est ce qui fait qu'une série d'affiches se
+     reconnaît comme venant du même club.
+     --------------------------------------------------------------- */
+
+  function tTexte(d, role, txt, box, opts) {
+    opts = opts || {};
+    var t = makeText(d, role, txt, {
+      x: box.x, y: box.y, w: box.w,
+      colHex: opts.col || d.palette.fg,
+      bind: opts.bind || null,
+      wrap: opts.wrap !== false
+    });
+    if (opts.size) t.ts.size = opts.size;
+    if (opts.align) t.ts.align = opts.align;
+    if (opts.font) t.ts.font = opts.font;
+    if (opts.weight) t.ts.weight = opts.weight;
+    if (opts.lh) t.ts.lh = opts.lh;
+    if (opts.track != null) t.ts.tracking = opts.track;
+    if (opts.upper != null) t.ts.transform = opts.upper ? 'upper' : 'none';
+    if (opts.hollow) { t.ts.hollow = true; t.ts.strokeW = opts.stroke || Math.max(2, d.w * 0.0035); }
+    if (opts.ombre) t.shadow = { on: true, x: 0, y: d.w * .01, blur: d.w * .035, color: color('#000000', .5) };
+    if (opts.nom) t.name = opts.nom;
+    if (opts.opacity != null) t.opacity = opts.opacity;
+    syncTextBox(t);
+    return t;
+  }
+
+  /* Photo plein cadre : la moitié des affiches sportives commencent
+     par là. Le voile n'est pas cosmétique — sans lui le texte posé
+     dessus devient illisible dès qu'on change de photo. */
+  function tFondPhoto(d, slot, opts) {
+    opts = opts || {};
+    var f = makeFrame(d, { x: 0, y: opts.y || 0, w: d.w, h: opts.h || d.h, slot: slot || 'photoMatch' });
+    f.fx.veil = opts.veil == null ? .42 : opts.veil;
+    if (opts.gray) f.fx.gray = opts.gray;
+    if (opts.tint) { f.fx.tint = color(opts.tint, 1); f.fx.tintAmt = opts.tintAmt == null ? .34 : opts.tintAmt; }
+    if (opts.contrast) f.fx.contrast = opts.contrast;
+    f.name = opts.nom || 'Photo de fond';
+    return f;
+  }
+
+  function tRect(d, box, hex, opts) {
+    opts = opts || {};
+    var r = makeShape(d, opts.shape || 'rect', { x: box.x, y: box.y, w: box.w, h: box.h, radius: opts.radius || 0 });
+    if (opts.grad) r.fill = { type: 'linear', from: color(hex, opts.a == null ? 1 : opts.a), to: color(opts.grad, opts.a2 == null ? 0 : opts.a2), angle: opts.angle == null ? 90 : opts.angle };
+    else r.fill = { type: 'solid', color: color(hex, opts.a == null ? 1 : opts.a) };
+    r.stroke = { color: color(opts.strokeCol || d.palette.fg, 1), w: opts.stroke || 0, dash: 0 };
+    if (opts.rot) r.rot = opts.rot;
+    r.name = opts.nom || 'Bloc';
+    return r;
+  }
+
+  /* Bande diagonale : le geste le plus économique pour donner du
+     mouvement à une affiche statique. */
+  function tDiagonale(d, hex, opts) {
+    opts = opts || {};
+    var b = tRect(d, { x: -d.w * .3, y: (opts.y == null ? .52 : opts.y) * d.h, w: d.w * 1.6, h: (opts.h || .1) * d.h }, hex, {
+      a: opts.a == null ? 1 : opts.a, rot: opts.rot == null ? -8 : opts.rot, nom: opts.nom || 'Bande diagonale'
+    });
+    return b;
+  }
+
+  /* Sur-titre avec un filet : deux éléments, mais ils se déplacent
+     ensemble parce qu'ils portent le même nom de famille. */
+  function tKicker(d, y, txt, opts) {
+    opts = opts || {};
+    var pad = opts.pad == null ? d.w * .07 : opts.pad;
+    var t = tTexte(d, 'surtitre', txt, { x: pad, y: y, w: d.w - pad * 2 }, {
+      col: opts.col || d.palette.accent, bind: opts.bind, align: opts.align || 'left', nom: opts.nom || 'Sur-titre'
+    });
+    var out = [t];
+    if (opts.filet !== false) {
+      out.push(tRect(d, { x: pad, y: y - d.w * .022, w: d.w * .09, h: Math.max(2, d.w * .006) },
+        opts.col || d.palette.accent, { nom: 'Filet' }));
+    }
+    return out;
+  }
+
+  /* Chiffre géant en filigrane — texture typographique bon marché et
+     toujours juste, puisqu'elle vient d'une vraie donnée. */
+  function tFiligrane(d, txt, bind, opts) {
+    opts = opts || {};
+    var t = tTexte(d, 'chiffre', txt, { x: opts.x == null ? -d.w * .04 : opts.x, y: (opts.y == null ? .04 : opts.y) * d.h, w: d.w }, {
+      bind: bind, size: (opts.size || .5) * d.w, col: opts.col || d.palette.accent,
+      align: opts.align || 'left', nom: opts.nom || 'Chiffre en filigrane'
+    });
+    t.ts.color = color(opts.col || d.palette.accent, opts.a == null ? .14 : opts.a);
+    if (opts.hollow) { t.ts.hollow = true; t.ts.strokeW = Math.max(2, d.w * .004); }
+    return t;
+  }
+
+  function tPied(d, opts) {
+    opts = opts || {};
+    var pad = d.w * .07;
+    var y = (opts.y == null ? .945 : opts.y) * d.h;
+    var t = tTexte(d, 'mention', 'BAOBABSBASKETCLUB.COM   ·   @BAOBABSBC', { x: pad, y: y, w: d.w - pad * 2 }, {
+      col: opts.col || d.palette.fg2, align: opts.align || 'center', nom: 'Pied de page'
+    });
+    t.runs = [
+      { t: 'BAOBABSBASKETCLUB.COM   ', s: {} },
+      { t: '·', s: { color: color(d.palette.accent, 1) } },
+      { t: '   @BAOBABSBC', s: {} }
+    ];
+    syncTextBox(t);
+    return t;
+  }
+
+  function tLogo(d, box, slot, opts) {
+    opts = opts || {};
+    var f = makeFrame(d, { x: box.x, y: box.y, w: box.w, h: box.h, slot: slot || 'logoClub', mask: opts.mask || 'ellipse' });
+    f.fit = 'contain';
+    f.name = opts.nom || (slot === 'logoAdv' ? 'Logo adversaire' : 'Logo du club');
+    return f;
+  }
+
+  /* Titre empilé : la ligne d'accent porte sa propre couleur par run,
+     jamais par un second calque — on le déplace donc d'un seul geste. */
+  function tTitreDouble(d, y, l1, l2, opts) {
+    opts = opts || {};
+    var pad = opts.pad == null ? d.w * .07 : opts.pad;
+    var t = tTexte(d, opts.role || 'assommoir', l1 + '\n' + l2, { x: pad, y: y, w: d.w - pad * 2 }, {
+      size: (opts.size || .13) * d.w, align: opts.align || 'left', ombre: opts.ombre, nom: opts.nom || 'Titre'
+    });
+    t.runs = [
+      { t: l1 + '\n', s: {} },
+      { t: l2, s: { color: color(opts.accent || d.palette.accent, 1) } }
+    ];
+    syncTextBox(t);
+    return t;
   }
 
   var TEMPLATES = [
@@ -4773,6 +5086,328 @@ window.BaobabsStudio = (function () {
         t.ts.size = Math.round(W * 0.14); syncTextBox(t); out.push(t);
         return out;
       }
+    },
+
+    /* =============== MATCH DAY (suite) =============== */
+    {
+      id: 'md-bebas', cat: 'Match Day', label: 'Bloc capitales', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, o = [];
+        o.push(tFondPhoto(d, 'photoMatch', { y: H * .34, h: H * .66, veil: .5, gray: 100, tint: d.palette.accent, tintAmt: .22 }));
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H * .36 }, d.palette.bg, { nom: 'Bandeau haut' }));
+        o = o.concat(tKicker(d, H * .07, 'CHAMPIONNAT NATIONAL D2', { bind: 'match.competition' }));
+        o.push(tTexte(d, 'affiche', 'BAOBABS', { x: p, y: H * .105, w: W - p * 2 }, { size: W * .19, nom: 'BAOBABS' }));
+        o.push(tTexte(d, 'affiche', 'VS DUC DAKAR', { x: p, y: H * .245, w: W - p * 2 }, {
+          size: W * .085, col: d.palette.accent, bind: 'match.affiche', nom: 'Affiche du match'
+        }));
+        o.push(tRect(d, { x: p, y: H * .845, w: W - p * 2, h: Math.max(2, W * .004) }, d.palette.accent, { nom: 'Filet' }));
+        o.push(tTexte(d, 'donnee', 'SAMEDI 00 — 19H00', { x: p, y: H * .865, w: (W - p * 2) * .55 }, { bind: 'match.date', size: W * .028, nom: 'Date' }));
+        o.push(tTexte(d, 'donnee', 'MARIUS NDIAYE', { x: W * .52, y: H * .865, w: (W - p * 2) * .48 }, {
+          bind: 'match.lieu', size: W * .028, align: 'right', col: d.palette.fg2, nom: 'Salle'
+        }));
+        o.push(tPied(d));
+        return o;
+      }
+    },
+    {
+      id: 'md-diagonale', cat: 'Match Day', label: 'Diagonale', pal: 'brique',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .08, o = [];
+        o.push(tFondPhoto(d, 'photoJoueuse', { veil: .46, gray: 70 }));
+        o.push(tDiagonale(d, d.palette.accent, { y: .5, h: .085, rot: -9 }));
+        o.push(tTexte(d, 'stade', 'MATCH DAY', { x: -W * .12, y: H * .482, w: W * 1.3 }, {
+          size: W * .075, align: 'center', col: d.palette.bg, nom: 'MATCH DAY'
+        }));
+        o[o.length - 1].rot = -9;
+        o = o.concat(tKicker(d, H * .1, 'CE SAMEDI À DAKAR', { bind: 'match.date' }));
+        o.push(tTitreDouble(d, H * .14, 'BAOBABS', 'VS DUC', { size: .155, ombre: true }));
+        o.push(tTexte(d, 'donnee', '19H00 · STADIUM MARIUS NDIAYE', { x: p, y: H * .77, w: W - p * 2 }, {
+          bind: 'match.lieu', size: W * .03, nom: 'Lieu et heure'
+        }));
+        o.push(tPied(d, { align: 'left' }));
+        return o;
+      }
+    },
+    {
+      id: 'md-ticket', cat: 'Match Day', label: 'Billet de match', pal: 'or',
+      build: function (d) {
+        var W = d.w, H = d.h, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { grad: d.palette.accent, a2: .18, angle: 130, nom: 'Fond' }));
+        o.push(tRect(d, { x: W * .08, y: H * .09, w: W * .84, h: H * .74 }, d.palette.fg, { a: .04, radius: W * .05, stroke: Math.max(1, W * .0025), strokeCol: d.palette.accent, nom: 'Billet' }));
+        o.push(tRect(d, { x: W * .08, y: H * .55, w: W * .84, h: 1 }, d.palette.accent, { a: .4, nom: 'Perforation' }));
+        o.push(tLogo(d, { x: W * .42, y: H * .13, w: W * .16, h: W * .16 }, 'logoClub'));
+        o = o.concat(tKicker(d, H * .245, 'BILLET · MATCH OFFICIEL', { align: 'center', filet: false }));
+        o.push(tTitreDouble(d, H * .285, 'BAOBABS', 'VS DUC', { size: .115, align: 'center', pad: W * .1 }));
+        o.push(tTexte(d, 'donnee', 'SAMEDI 00 · 19H00', { x: W * .1, y: H * .46, w: W * .8 }, {
+          bind: 'match.date', align: 'center', size: W * .034, nom: 'Date'
+        }));
+        o.push(tTexte(d, 'mention', 'LIEU', { x: W * .14, y: H * .61, w: W * .3 }, { col: d.palette.accent, nom: 'Libellé lieu' }));
+        o.push(tTexte(d, 'soustitre', 'Stadium Marius Ndiaye', { x: W * .14, y: H * .645, w: W * .36 }, { bind: 'match.lieu', size: W * .028, nom: 'Salle' }));
+        o.push(tTexte(d, 'mention', 'TARIF', { x: W * .56, y: H * .61, w: W * .3 }, { col: d.palette.accent, nom: 'Libellé tarif' }));
+        o.push(tTexte(d, 'soustitre', '2 000 FCFA', { x: W * .56, y: H * .645, w: W * .3 }, { size: W * .028, nom: 'Tarif' }));
+        o.push(tPied(d, { y: .88 }));
+        return o;
+      }
+    },
+
+    /* =============== RÉSULTAT (suite) =============== */
+    {
+      id: 'res-victoire', cat: 'Résultat', label: 'Victoire plein cadre', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, o = [];
+        o.push(tFondPhoto(d, 'photoMatch', { veil: .55, gray: 55 }));
+        o.push(tFiligrane(d, '00', 'resultat.score', { y: .3, size: .34, a: .18, hollow: true, align: 'center', x: 0 }));
+        o = o.concat(tKicker(d, H * .1, 'RÉSULTAT DU MATCH', { align: 'center', filet: false }));
+        o.push(tTexte(d, 'assommoir', 'VICTOIRE', { x: p, y: H * .14, w: W - p * 2 }, {
+          size: W * .175, align: 'center', bind: 'resultat.issue', ombre: true, nom: 'Victoire / défaite'
+        }));
+        o.push(tRect(d, { x: W * .18, y: H * .62, w: W * .64, h: H * .13 }, d.palette.accent, { radius: W * .03, nom: 'Bloc du score' }));
+        o.push(tTexte(d, 'score', '68 – 54', { x: W * .18, y: H * .625, w: W * .64 }, {
+          bind: 'resultat.score', align: 'center', size: W * .13, col: d.palette.bg, nom: 'Score'
+        }));
+        o.push(tTexte(d, 'donnee', 'BAOBABS — ADVERSAIRE', { x: p, y: H * .78, w: W - p * 2 }, {
+          bind: 'resultat.adversaire', align: 'center', size: W * .026, col: d.palette.fg2, nom: 'Équipes'
+        }));
+        o.push(tPied(d));
+        return o;
+      }
+    },
+    {
+      id: 'res-tableau', cat: 'Résultat', label: 'Tableau de bord', pal: 'ocean',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { grad: d.palette.accent, a2: .16, angle: 160, nom: 'Fond' }));
+        o = o.concat(tKicker(d, H * .09, 'JOURNÉE DE CHAMPIONNAT', { bind: 'match.competition' }));
+        o.push(tTexte(d, 'moderne', 'LE RÉSUMÉ', { x: p, y: H * .125, w: W - p * 2 }, { size: W * .105, nom: 'Titre' }));
+        var y = H * .3, gap = H * .11;
+        [['SCORE', '68 – 54', 'resultat.score'],
+         ['ADVERSAIRE', 'DUC DAKAR', 'resultat.adversaire'],
+         ['ISSUE', 'VICTOIRE', 'resultat.issue'],
+         ['LIEU', 'MARIUS NDIAYE', 'match.lieu']].forEach(function (r, i) {
+          o.push(tRect(d, { x: p, y: y + gap * i, w: W - p * 2, h: gap * .82 }, d.palette.fg, { a: .05, radius: W * .02, nom: r[0] }));
+          o.push(tTexte(d, 'mention', r[0], { x: p + W * .045, y: y + gap * i + gap * .16, w: W * .4 }, { col: d.palette.accent, nom: 'Libellé ' + r[0] }));
+          o.push(tTexte(d, 'donnee', r[1], { x: p, y: y + gap * i + gap * .14, w: W - p * 2 - W * .045 }, {
+            bind: r[2], align: 'right', size: W * .04, nom: r[0]
+          }));
+        });
+        o.push(tPied(d));
+        return o;
+      }
+    },
+
+    /* =============== BILLETTERIE (suite) =============== */
+    {
+      id: 'bil-tarifs', cat: 'Billetterie', label: 'Les tarifs', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .08, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tRect(d, { x: 0, y: 0, w: W * .035, h: H }, d.palette.accent, { nom: 'Barre latérale' }));
+        o = o.concat(tKicker(d, H * .09, 'BILLETTERIE OUVERTE', { pad: p }));
+        o.push(tTitreDouble(d, H * .125, 'PRENEZ', 'VOTRE PLACE', { size: .125, pad: p }));
+        var y = H * .42, gap = H * .1;
+        [['TRIBUNE', '1 000 F'], ['CENTRALE', '2 000 F'], ['VIP', '5 000 F']].forEach(function (r, i) {
+          o.push(tRect(d, { x: p, y: y + gap * i, w: W - p * 2, h: Math.max(1, W * .002) }, d.palette.fg, { a: .18, nom: 'Filet' }));
+          o.push(tTexte(d, 'soustitre', r[0], { x: p, y: y + gap * i + gap * .18, w: W * .5 }, { size: W * .042, upper: true, nom: r[0] }));
+          o.push(tTexte(d, 'donnee', r[1], { x: p, y: y + gap * i + gap * .18, w: W - p * 2 }, {
+            align: 'right', size: W * .042, col: d.palette.accent, nom: 'Tarif ' + r[0]
+          }));
+        });
+        o.push(tRect(d, { x: p, y: H * .78, w: W - p * 2, h: H * .07 }, d.palette.accent, { radius: H * .035, nom: 'Bouton' }));
+        o.push(tTexte(d, 'pastille', 'RÉSERVEZ EN LIGNE', { x: p, y: H * .797, w: W - p * 2 }, {
+          align: 'center', col: d.palette.bg, size: W * .028, nom: 'Appel à l’action'
+        }));
+        o.push(tPied(d));
+        return o;
+      }
+    },
+
+    /* =============== JOUEUSE (suite) =============== */
+    {
+      id: 'jou-recrue', cat: 'Joueuse', label: 'Nouvelle recrue', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tFiligrane(d, 'BIENVENUE', null, { y: .34, size: .16, a: .1, hollow: true, x: -W * .1 }));
+        o.push(makeFrame(d, { x: W * .12, y: H * .2, w: W * .76, h: H * .5, slot: 'photoJoueuse', mask: 'squircle' }));
+        o[o.length - 1].name = 'Photo de la joueuse';
+        o = o.concat(tKicker(d, H * .09, 'RENFORT', { pad: p }));
+        o.push(tTexte(d, 'assommoir', 'BIENVENUE', { x: p, y: H * .115, w: W - p * 2 }, { size: W * .105, nom: 'Bienvenue' }));
+        o.push(tRect(d, { x: p, y: H * .735, w: W - p * 2, h: H * .11 }, d.palette.accent, { radius: W * .025, nom: 'Carte du nom' }));
+        o.push(tTexte(d, 'stade', 'PRÉNOM NOM', { x: p, y: H * .75, w: W - p * 2 }, {
+          bind: 'joueuse.nom', align: 'center', size: W * .058, col: d.palette.bg, nom: 'Nom'
+        }));
+        o.push(tTexte(d, 'etiquette', 'MENEUSE · #7', { x: p, y: H * .865, w: W - p * 2 }, {
+          bind: 'joueuse.poste', align: 'center', col: d.palette.fg2, nom: 'Poste'
+        }));
+        o.push(tPied(d));
+        return o;
+      }
+    },
+    {
+      id: 'jou-chiffres', cat: 'Joueuse', label: 'Les chiffres', pal: 'brique',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, o = [];
+        o.push(tFondPhoto(d, 'photoJoueuse', { veil: .6, gray: 90, tint: d.palette.accent, tintAmt: .3 }));
+        o.push(tFiligrane(d, '00', 'joueuse.numero', { y: .02, size: .62, a: .2, align: 'center', x: 0 }));
+        o = o.concat(tKicker(d, H * .08, 'JOUEUSE DU MOIS', { align: 'center', filet: false }));
+        o.push(tTexte(d, 'assommoir', 'PRÉNOM NOM', { x: p, y: H * .115, w: W - p * 2 }, {
+          bind: 'joueuse.nom', align: 'center', size: W * .1, ombre: true, nom: 'Nom'
+        }));
+        var y = H * .62, cw = (W - p * 2) / 3;
+        [['PTS', '14,2'], ['REB', '7,8'], ['PD', '3,1']].forEach(function (r, i) {
+          o.push(tTexte(d, 'score', r[1], { x: p + cw * i, y: y, w: cw }, {
+            align: 'center', size: W * .095, col: d.palette.accent, nom: r[0]
+          }));
+          o.push(tTexte(d, 'mention', r[0], { x: p + cw * i, y: y + W * .1, w: cw }, {
+            align: 'center', col: d.palette.fg2, nom: 'Libellé ' + r[0]
+          }));
+        });
+        o.push(tPied(d));
+        return o;
+      }
+    },
+
+    /* =============== ÉQUIPE =============== */
+    {
+      id: 'eq-effectif', cat: 'Équipe', label: 'L’effectif', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { grad: d.palette.accent, a2: .14, angle: 200, nom: 'Fond' }));
+        o = o.concat(tKicker(d, H * .08, 'SAISON 2026', { pad: p }));
+        o.push(tTitreDouble(d, H * .115, 'NOTRE', 'EFFECTIF', { size: .13, pad: p }));
+        var gx = W * .06, cw = (W - gx * 2 - W * .04) / 3, ch = cw * 1.3;
+        for (var i = 0; i < 6; i++) {
+          var cx = gx + (cw + W * .02) * (i % 3), cy = H * .42 + (ch + W * .03) * Math.floor(i / 3);
+          o.push(makeFrame(d, { x: cx, y: cy, w: cw, h: ch, slot: i === 0 ? 'photoJoueuse' : 'libre', mask: 'squircle' }));
+          o[o.length - 1].name = 'Joueuse ' + (i + 1);
+        }
+        o.push(tPied(d));
+        return o;
+      }
+    },
+    {
+      id: 'eq-photo', cat: 'Équipe', label: 'Photo d’équipe', pal: 'craie',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .08, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#FFFFFF', { nom: 'Fond' }));
+        o.push(makeFrame(d, { x: p, y: H * .2, w: W - p * 2, h: H * .5 }));
+        o[o.length - 1].name = 'Photo d’équipe';
+        o[o.length - 1].radius = W * .02;
+        o.push(tRect(d, { x: p, y: H * .11, w: W * .1, h: Math.max(2, W * .008) }, '#111111', { nom: 'Filet' }));
+        o.push(tTexte(d, 'moderne', 'BAOBABS BASKET CLUB', { x: p, y: H * .13, w: W - p * 2 }, {
+          size: W * .062, col: '#111111', nom: 'Nom du club'
+        }));
+        o.push(tTexte(d, 'para', 'Championnat National de Division 2 · Dakar, Sénégal', { x: p, y: H * .74, w: W * .7 }, {
+          size: W * .024, col: '#4A4A4A', nom: 'Description'
+        }));
+        o.push(tLogo(d, { x: W - p - W * .14, y: H * .73, w: W * .14, h: W * .14 }, 'logoClub', { mask: 'rect' }));
+        o.push(tPied(d, { col: '#8A8A8A' }));
+        return o;
+      }
+    },
+
+    /* =============== CLUB (suite) =============== */
+    {
+      id: 'club-actu', cat: 'Club', label: 'Actualité', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(makeFrame(d, { x: 0, y: 0, w: W, h: H * .44 }));
+        o[o.length - 1].name = 'Photo de l’article';
+        o = o.concat(tKicker(d, H * .5, 'ACTUALITÉ DU CLUB', { pad: p }));
+        o.push(tTexte(d, 'editorial', 'Le titre de votre article', { x: p, y: H * .535, w: W - p * 2 }, {
+          size: W * .072, nom: 'Titre'
+        }));
+        o.push(tTexte(d, 'para', 'Écrivez ici les deux ou trois phrases qui donnent envie de lire la suite sur le site du club.', {
+          x: p, y: H * .72, w: W - p * 2
+        }, { size: W * .024, col: d.palette.fg2, nom: 'Chapô' }));
+        o.push(tRect(d, { x: p, y: H * .86, w: W - p * 2, h: Math.max(1, W * .002) }, d.palette.fg, { a: .18, nom: 'Filet' }));
+        o.push(tPied(d, { align: 'left' }));
+        return o;
+      }
+    },
+    {
+      id: 'club-partenaire', cat: 'Club', label: 'Merci partenaire', pal: 'or',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .09, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { grad: d.palette.accent, a2: .2, angle: 140, nom: 'Fond' }));
+        o = o.concat(tKicker(d, H * .16, 'PARTENARIAT', { align: 'center', filet: false }));
+        o.push(tTexte(d, 'solennel', 'Merci à nos partenaires', { x: p, y: H * .2, w: W - p * 2 }, {
+          size: W * .085, align: 'center', nom: 'Merci'
+        }));
+        o.push(tLogo(d, { x: W * .3, y: H * .42, w: W * .4, h: W * .4 }, 'logoClub', { mask: 'rect' }));
+        o.push(tRect(d, { x: W * .3, y: H * .68, w: W * .4, h: Math.max(1, W * .003) }, d.palette.accent, { nom: 'Filet' }));
+        o.push(tTexte(d, 'etiquette', 'LEUR SOUTIEN FAIT VIVRE LE CLUB', { x: p, y: H * .72, w: W - p * 2 }, {
+          align: 'center', col: d.palette.fg2, nom: 'Mention'
+        }));
+        o.push(tPied(d));
+        return o;
+      }
+    },
+    {
+      id: 'club-citation', cat: 'Club', label: 'Citation', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .09, o = [];
+        o.push(tFondPhoto(d, 'photoJoueuse', { veil: .62, gray: 100 }));
+        o.push(tTexte(d, 'solennel', '“', { x: p, y: H * .16, w: W * .3 }, {
+          size: W * .32, col: d.palette.accent, nom: 'Guillemet'
+        }));
+        o.push(tTexte(d, 'editorial', 'On ne joue pas pour gagner un match. On joue pour être un club.', {
+          x: p, y: H * .38, w: W - p * 2
+        }, { size: W * .068, lh: 1.16, nom: 'Citation' }));
+        o.push(tRect(d, { x: p, y: H * .72, w: W * .12, h: Math.max(2, W * .005) }, d.palette.accent, { nom: 'Filet' }));
+        o.push(tTexte(d, 'etiquette', 'PRÉNOM NOM · CAPITAINE', { x: p, y: H * .755, w: W - p * 2 }, {
+          bind: 'joueuse.nom', col: d.palette.fg2, nom: 'Auteur'
+        }));
+        o.push(tPied(d, { align: 'left' }));
+        return o;
+      }
+    },
+    {
+      id: 'club-horaires', cat: 'Club', label: 'Entraînements', pal: 'ocean',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .08, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H * .015 }, d.palette.accent, { nom: 'Filet haut' }));
+        o = o.concat(tKicker(d, H * .09, 'ÉCOLE DE BASKET', { pad: p }));
+        o.push(tTitreDouble(d, H * .125, 'LES', 'ENTRAÎNEMENTS', { size: .1, pad: p }));
+        var y = H * .38, gap = H * .095;
+        [['LUNDI', '17H00 — 19H00'], ['MERCREDI', '15H00 — 17H00'], ['VENDREDI', '17H00 — 19H00'], ['SAMEDI', '10H00 — 12H00']].forEach(function (r, i) {
+          o.push(tRect(d, { x: p, y: y + gap * i, w: W - p * 2, h: gap * .78 }, d.palette.fg, { a: .05, radius: W * .015, nom: r[0] }));
+          o.push(tTexte(d, 'soustitre', r[0], { x: p + W * .04, y: y + gap * i + gap * .2, w: W * .4 }, { size: W * .032, upper: true, nom: r[0] }));
+          o.push(tTexte(d, 'donnee', r[1], { x: p, y: y + gap * i + gap * .21, w: W - p * 2 - W * .04 }, {
+            align: 'right', size: W * .03, col: d.palette.accent, nom: 'Horaire ' + r[0]
+          }));
+        });
+        o.push(tTexte(d, 'etiquette', 'STADIUM MARIUS NDIAYE · DAKAR', { x: p, y: H * .82, w: W - p * 2 }, {
+          align: 'center', col: d.palette.fg2, nom: 'Lieu'
+        }));
+        o.push(tPied(d));
+        return o;
+      }
+    },
+
+    /* =============== MISE EN PAGE =============== */
+    {
+      id: 'grille-edito', cat: 'Mise en page', label: 'Grille éditoriale', pal: 'craie',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .08, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#FFFFFF', { nom: 'Fond' }));
+        o.push(tTexte(d, 'mention', 'RUBRIQUE', { x: p, y: H * .08, w: W - p * 2 }, { col: '#8A8A8A', nom: 'Rubrique' }));
+        o.push(tRect(d, { x: p, y: H * .105, w: W - p * 2, h: Math.max(1, W * .002) }, '#111111', { nom: 'Filet' }));
+        o.push(tTexte(d, 'editorial', 'Un titre qui respire', { x: p, y: H * .13, w: W * .8 }, { size: W * .085, col: '#111111', nom: 'Titre' }));
+        o.push(makeFrame(d, { x: p, y: H * .3, w: W - p * 2, h: H * .34 }));
+        o[o.length - 1].name = 'Image';
+        var cw = (W - p * 2 - W * .04) / 2;
+        o.push(tTexte(d, 'para', 'Première colonne de texte. Elle porte l’essentiel, et laisse de l’air autour.', { x: p, y: H * .68, w: cw }, { size: W * .021, col: '#3A3A3A', nom: 'Colonne 1' }));
+        o.push(tTexte(d, 'para', 'Seconde colonne. Deux colonnes courtes se lisent mieux qu’un bloc plein.', { x: p + cw + W * .04, y: H * .68, w: cw }, { size: W * .021, col: '#3A3A3A', nom: 'Colonne 2' }));
+        o.push(tPied(d, { col: '#8A8A8A', align: 'left' }));
+        return o;
+      }
+    },
+    {
+      id: 'vide-total', cat: 'Mise en page', label: 'Document vide', pal: 'nuit',
+      build: function () { return []; }
     }
   ];
 
@@ -4838,7 +5473,8 @@ window.BaobabsStudio = (function () {
     if (!els.panelBody) return;
     var f = {
       modeles: panelTemplates, images: panelImages, elements: panelElements,
-      texte: panelTexte, donnees: panelDonnees, styles: panelStyles, projets: panelProjets
+      texte: panelTexte, donnees: panelDonnees, styles: panelStyles,
+      projets: panelProjets, unsplash: panelUnsplash
     }[panelName] || panelTemplates;
     els.panelBody.innerHTML = f();
     wireFields(els.panelBody);
@@ -4932,6 +5568,112 @@ window.BaobabsStudio = (function () {
       '<div class="bs-note">Cliquer sur une image la place dans le <b>cadre sélectionné</b>. Sans sélection, elle est ajoutée comme nouveau calque.</div>';
   }
 
+  /* ---------- photos Unsplash ----------
+     Trois obligations de leur licence, toutes tenues ici : les images
+     sont appelées chez eux (jamais recopiées), le photographe est
+     crédité avec un lien, et l'endpoint de téléchargement est prévenu
+     quand une photo est réellement posée sur une affiche. */
+  var uns = { q: '', orient: 'portrait', page: 1, res: [], total: 0, etat: 'vide', msg: '' };
+
+  function unsplashKey() { return (api && api.unsplashKey) || ''; }
+
+  function panelUnsplash() {
+    var h = ph('Photos', uns.total ? uns.total + ' résultats' : 'Unsplash');
+    if (!unsplashKey()) {
+      return h + '<div class="bs-note" style="margin:0 12px 12px"><b>Recherche d’images non branchée.</b><br><br>' +
+        'Pour l’activer, il faut une clé Unsplash (gratuite) :<br>' +
+        '1. créer une application sur unsplash.com/oauth/applications ;<br>' +
+        '2. copier l’<b>Access Key</b> ;<br>' +
+        '3. la poser dans <b>studioApi()</b> de l’administration, champ <b>unsplashKey</b>.<br><br>' +
+        'En attendant, la médiathèque du club et le téléversement fonctionnent normalement.</div>' +
+        '<div class="bs-list"><button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" data-act="panelImages">Aller à la médiathèque</button></div>';
+    }
+
+    h += '<div class="bs-search">' +
+      '<svg width="14" height="14" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="M9.8 9.8L13 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>' +
+      '<input type="text" placeholder="basket, stade, ballon…" value="' + esc(uns.q) + '" data-act="unsQ"></div>';
+
+    h += '<div class="bs-chips">' +
+      [['portrait', 'Portrait'], ['landscape', 'Paysage'], ['squarish', 'Carré'], ['', 'Tous']].map(function (o) {
+        return '<button type="button" class="bs-chip' + (uns.orient === o[0] ? ' is-on' : '') +
+          '" data-act="unsOrient" data-v="' + o[0] + '">' + o[1] + '</button>';
+      }).join('') + '</div>';
+
+    if (uns.etat === 'charge') h += '<div class="bs-empty">Recherche en cours…</div>';
+    else if (uns.etat === 'err') h += '<div class="bs-note" style="background:rgba(255,92,77,.08);border-color:rgba(255,92,77,.28)">' + esc(uns.msg) + '</div>';
+    else if (uns.etat === 'vide') h += '<div class="bs-empty"><b>Cherchez une photo</b>Essayez « basketball », « stade », « équipe », « ballon ».</div>';
+    else if (!uns.res.length) h += '<div class="bs-empty"><b>Aucun résultat</b>Essayez un autre mot, en anglais de préférence.</div>';
+    else {
+      h += '<div class="bs-grid bs-grid-3">';
+      uns.res.forEach(function (p, i) {
+        h += '<button type="button" class="bs-card" data-act="unsUse" data-i="' + i + '" title="' + esc(p.alt || 'Photo') + ' — ' + esc(p.auteur) + '">' +
+          '<span class="bs-card-thumb bs-sq" style="background-color:' + esc(p.couleur || '#111') + '">' +
+          '<img src="' + esc(p.thumb) + '" alt="" loading="lazy"></span></button>';
+      });
+      h += '</div>';
+      h += '<div class="bs-list">' +
+        (uns.page > 1 ? '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" data-act="unsPage" data-v="-1">Page précédente</button>' : '') +
+        '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" data-act="unsPage" data-v="1">Charger la suite</button></div>';
+      h += '<div class="bs-note">Photos <b>Unsplash</b>, libres d’usage. Le crédit du photographe est ajouté au projet automatiquement — gardez-le dans la légende de votre publication.</div>';
+    }
+    return h;
+  }
+
+  function unsplashChercher(reset) {
+    var k = unsplashKey();
+    if (!k || !uns.q.trim()) return;
+    if (reset) uns.page = 1;
+    uns.etat = 'charge';
+    renderPanel();
+    var u = 'https://api.unsplash.com/search/photos?query=' + encodeURIComponent(uns.q) +
+      '&per_page=24&page=' + uns.page +
+      (uns.orient ? '&orientation=' + uns.orient : '') +
+      '&content_filter=high';
+    fetch(u, { headers: { 'Authorization': 'Client-ID ' + k, 'Accept-Version': 'v1' } })
+      .then(function (r) {
+        if (r.status === 401) throw new Error('Clé Unsplash refusée. Vérifiez l’Access Key.');
+        if (r.status === 403) throw new Error('Quota Unsplash atteint (50 requêtes par heure en mode démo).');
+        if (!r.ok) throw new Error('Unsplash a répondu ' + r.status + '.');
+        return r.json();
+      })
+      .then(function (j) {
+        uns.total = j.total || 0;
+        uns.res = (j.results || []).map(function (p) {
+          return {
+            thumb: p.urls && p.urls.small,
+            plein: p.urls && (p.urls.regular || p.urls.full),
+            couleur: p.color,
+            alt: p.alt_description || p.description || '',
+            auteur: (p.user && p.user.name) || 'Photographe',
+            lien: (p.user && p.user.links && p.user.links.html) || 'https://unsplash.com',
+            dl: p.links && p.links.download_location
+          };
+        });
+        uns.etat = 'ok';
+        renderPanel();
+      })
+      .catch(function (e) {
+        uns.etat = 'err';
+        uns.msg = e.message || 'Recherche impossible. Vérifiez que api.unsplash.com est autorisé par la CSP du site.';
+        renderPanel();
+      });
+  }
+
+  function unsplashUtiliser(i) {
+    var p = uns.res[i];
+    if (!p) return;
+    /* obligation de la licence : prévenir Unsplash qu'on utilise la photo */
+    if (p.dl && unsplashKey()) {
+      fetch(p.dl, { headers: { 'Authorization': 'Client-ID ' + unsplashKey() } }).catch(function () {});
+    }
+    if (!doc.credits) doc.credits = [];
+    var credit = 'Photo : ' + p.auteur + ' / Unsplash';
+    if (doc.credits.indexOf(credit) < 0) doc.credits.push(credit);
+    placeImage(p.plein);
+    medias.unshift({ url: p.plein, nom: p.auteur + ' · Unsplash' });
+    medias = dedupe(medias);
+  }
+
   /* ---------- éléments ---------- */
   function panelElements() {
     var h = ph('Éléments');
@@ -5019,15 +5761,39 @@ window.BaobabsStudio = (function () {
 
   /* ---------- données ---------- */
   function panelDonnees() {
-    var h = ph('Données du club', 'Objets dynamiques');
+    var h = ph('Données du club', dataQuand ? 'à jour ' + fmtWhen(dataQuand) : '');
     h += '<div class="bs-list"><button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" data-act="reloadData">Recharger depuis la base</button></div>';
-    var groups = {};
+
+    /* choisir le match : la base en contient plusieurs, l'affiche n'en
+       montre qu'un — et ce n'est pas toujours le prochain */
+    if (data.matchs && data.matchs.length > 1) {
+      h += '<div class="bs-sec-lab">Match affiché <span>' + data.matchs.length + '</span></div><div class="bs-list">';
+      data.matchs.slice(0, 8).forEach(function (m, i) {
+        h += '<button type="button" class="bs-item' + (data.matchIdx === i ? ' is-on' : '') + '" data-act="pickMatch" data-i="' + i + '">' +
+          '<span class="bs-item-txt"><b>' + esc(m.opponent || 'Adversaire') + '</b><small>' +
+          esc([m.date ? fmtDate(m.date) : '', m.venue || ''].filter(Boolean).join(' · ')) + '</small></span></button>';
+      });
+      h += '</div>';
+    }
+
+    if (data.joueuses && data.joueuses.length) {
+      h += '<div class="bs-sec-lab">Joueuse affichée <span>' + data.joueuses.length + '</span></div><div class="bs-list">';
+      data.joueuses.forEach(function (j, i) {
+        h += '<button type="button" class="bs-item' + (data.joueuseIdx === i ? ' is-on' : '') + '" data-act="pickJoueuse" data-i="' + i + '">' +
+          (j.photo ? '<span class="bs-lyr-ico" style="width:26px;height:26px"><img src="' + esc(j.photo) + '" alt=""></span>' : '<span class="bs-lyr-ico" style="width:26px;height:26px"></span>') +
+          '<span class="bs-item-txt"><b>' + esc(j.nom) + '</b><small>' + esc([j.numero != null ? '#' + j.numero : '', j.poste].filter(Boolean).join(' · ')) + '</small></span></button>';
+      });
+      h += '</div>';
+    }
+
+    var groups = {}, ordre = [];
     BINDINGS.forEach(function (b) {
       var g = b.id.split('.')[0];
-      (groups[g] = groups[g] || []).push(b);
+      if (!groups[g]) { groups[g] = []; ordre.push(g); }
+      groups[g].push(b);
     });
     var titles = { match: 'Prochain match', resultat: 'Dernier résultat', joueuse: 'Joueuse', club: 'Club' };
-    for (var g in groups) {
+    ordre.forEach(function (g) {
       h += '<div class="bs-sec-lab">' + esc(titles[g] || g) + '</div><div class="bs-list">';
       groups[g].forEach(function (b) {
         var v = resolveBinding(b.id);
@@ -5036,18 +5802,83 @@ window.BaobabsStudio = (function () {
           '<span class="bs-item-txt"><b>' + esc(b.label) + '</b><small>' + esc(v == null || v === '' ? '— non renseigné —' : String(v)) + '</small></span></button>';
       });
       h += '</div>';
-    }
-    if (data.joueuses && data.joueuses.length) {
-      h += '<div class="bs-sec-lab">Choisir la joueuse <span>' + data.joueuses.length + '</span></div><div class="bs-list">';
-      data.joueuses.forEach(function (j, i) {
-        h += '<button type="button" class="bs-item' + (data.joueuseIdx === i ? ' is-on' : '') + '" data-act="pickJoueuse" data-i="' + i + '">' +
-          (j.photo ? '<span class="bs-lyr-ico" style="width:26px;height:26px"><img src="' + esc(j.photo) + '" alt=""></span>' : '<span class="bs-lyr-ico" style="width:26px;height:26px"></span>') +
-          '<span class="bs-item-txt"><b>' + esc(j.nom) + '</b><small>' + esc([j.numero != null ? '#' + j.numero : '', j.poste].filter(Boolean).join(' · ')) + '</small></span></button>';
-      });
-      h += '</div>';
-    }
+    });
+
+    /* champs libres : ce que la base ne connaît pas encore — un slogan,
+       un tarif, un nom de partenaire. Ils vivent avec le projet et se
+       lient exactement comme les données du club. */
+    var champs = doc.champs || [];
+    h += '<div class="bs-sec-lab">Mes champs <span>' + champs.length + '</span></div><div class="bs-list">';
+    champs.forEach(function (c, i) {
+      h += '<div class="bs-item">' +
+        '<span class="bs-lyr-dyn" style="flex:none">' + ICONS.dyn + '</span>' +
+        '<button type="button" class="bs-item-txt" style="text-align:left;background:none" data-act="addBound" data-bind="champ.' + esc(c.cle) + '">' +
+        '<b>' + esc(c.label) + '</b><small>' + esc(c.valeur || '— vide —') + '</small></button>' +
+        '<span class="bs-item-acts">' +
+        '<button type="button" class="bs-ico bs-ico-xs" data-act="editChamp" data-i="' + i + '" title="Modifier">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m4 20 .8-4 11-11a2.1 2.1 0 0 1 3 3l-11 11Z"/></svg></button>' +
+        '<button type="button" class="bs-ico bs-ico-xs bs-ico-danger" data-act="delChamp" data-i="' + i + '" title="Supprimer">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5h16M9 6.5V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5v2M17.5 6.5V19a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2V6.5"/></svg></button>' +
+        '</span></div>';
+    });
+    h += '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" data-act="addChamp">+ Ajouter un champ</button></div>';
+
     h += '<div class="bs-note">Cliquer sur une donnée insère un texte <b>lié</b> : il se met à jour tout seul quand la base change. Modifier son contenu à la main rompt la liaison, et le Studio vous le signale.</div>';
     return h;
+  }
+
+  function ouvrirChamp(i) {
+    var c = (doc.champs || [])[i] || { label: '', valeur: '', cle: '' };
+    modal(i == null ? 'Nouveau champ' : 'Modifier le champ',
+      '<div class="bs-f"><label>Nom du champ</label><input type="text" class="bs-in" id="bs-ch-lab" value="' + esc(c.label) + '" placeholder="Tarif adulte"></div>' +
+      '<div class="bs-f"><label>Valeur</label><textarea class="bs-in" id="bs-ch-val" rows="3" placeholder="2 000 FCFA">' + esc(c.valeur) + '</textarea></div>' +
+      '<div class="bs-note" style="margin:10px 0 0">Ce champ apparaîtra dans la liste des données et pourra être posé sur l’affiche comme n’importe quelle autre. Il est enregistré avec le projet.</div>',
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Annuler</button>' +
+      '<button type="button" class="bs-btn bs-btn-accent" data-act="champOk" data-i="' + (i == null ? '' : i) + '">' +
+      (i == null ? 'Ajouter' : 'Enregistrer') + '</button>');
+    setTimeout(function () { var e = $('#bs-ch-lab', els.modalCard); if (e) e.focus(); }, 30);
+  }
+  function validerChamp(iStr) {
+    var lab = ($('#bs-ch-lab', els.modalCard).value || '').trim();
+    var val = ($('#bs-ch-val', els.modalCard).value || '').trim();
+    if (!lab) { toast('Donnez un nom au champ', true); return; }
+    closeModal();
+    change(function () {
+      if (!doc.champs) doc.champs = [];
+      var i = iStr === '' ? null : num(iStr, 0);
+      if (i == null) doc.champs.push({ cle: cleChamp(lab), label: lab, valeur: val });
+      else { doc.champs[i].label = lab; doc.champs[i].valeur = val; }
+      majChamps();
+      applyBindings(true);
+    });
+    renderPanel();
+  }
+  function cleChamp(lab) {
+    var base = slug(lab).replace(/-/g, '_') || 'champ';
+    var pris = {}, i;
+    (doc.champs || []).forEach(function (c) { pris[c.cle] = 1; });
+    if (!pris[base]) return base;
+    for (i = 2; i < 200; i++) if (!pris[base + i]) return base + i;
+    return base + Date.now();
+  }
+  /* Les champs libres rejoignent `data` pour que resolveBinding() les
+     trouve exactement comme les données du club. */
+  function majChamps() {
+    data.champ = {};
+    (doc.champs || []).forEach(function (c) { data.champ[c.cle] = c.valeur; });
+  }
+  function supprimerChamp(i) {
+    var c = (doc.champs || [])[i];
+    if (!c) return;
+    var utilise = 0;
+    walk(doc.layers, function (l) { if (l.bind === 'champ.' + c.cle) utilise++; });
+    change(function () {
+      doc.champs.splice(i, 1);
+      majChamps();
+      walk(doc.layers, function (l) { if (l.bind === 'champ.' + c.cle) { l.bind = null; l.bindBroken = false; } });
+    });
+    renderPanel();
+    toast(utilise ? 'Champ supprimé — ' + utilise + ' texte(s) détaché(s)' : 'Champ supprimé');
   }
 
   /* ---------- styles ---------- */
@@ -5069,6 +5900,26 @@ window.BaobabsStudio = (function () {
       '<button type="button" class="bs-item" data-act="bgPreset" data-k="degrade"><span class="bs-item-txt"><b>Dégradé diagonal</b><small>Fond vers accent</small></span></button>' +
       '<button type="button" class="bs-item" data-act="bgPreset" data-k="halo"><span class="bs-item-txt"><b>Halo central</b><small>Dégradé radial</small></span></button>' +
       '<button type="button" class="bs-item" data-act="bgPreset" data-k="photo"><span class="bs-item-txt"><b>Photo plein cadre</b><small>Cadre dynamique en fond</small></span></button>' +
+      '</div>';
+
+    /* Les couleurs déjà posées sur l'affiche. Reprendre une couleur
+       existante plutôt qu'en inventer une neuve est ce qui garde une
+       série cohérente — et c'est plus rapide qu'un sélecteur. */
+    var vues = couleursDuDoc();
+    if (vues.length) {
+      h += '<div class="bs-sec-lab">Couleurs de l’affiche <span>' + vues.length + '</span></div>' +
+        '<div class="bs-swatches" style="padding:0 12px 14px">';
+      vues.forEach(function (c) {
+        h += '<button type="button" data-act="useSwatch" data-hex="' + esc(c) + '" style="background:' + esc(c) + '" title="' + esc(c) + '"></button>';
+      });
+      h += '</div>';
+    }
+
+    h += '<div class="bs-sec-lab">Style de calque</div><div class="bs-list">' +
+      '<button type="button" class="bs-item" data-act="copyStyle"><span class="bs-item-txt"><b>Copier le style</b>' +
+      '<small>Police, couleurs, contour, ombre — Ctrl+Alt+C</small></span></button>' +
+      '<button type="button" class="bs-item" data-act="pasteStyle"><span class="bs-item-txt"><b>Coller le style</b>' +
+      '<small>' + (styleClip ? 'Style en mémoire · Ctrl+Alt+V' : 'Rien en mémoire pour l’instant') + '</small></span></button>' +
       '</div>';
 
     h += '<div class="bs-sec-lab">Effets sur la sélection</div><div class="bs-list">' +
@@ -5123,7 +5974,7 @@ window.BaobabsStudio = (function () {
     var f = formatById((p.doc && p.doc.format) || 'affiche');
     var n = (p.doc && p.doc.layers) ? countLayers(p.doc.layers) : 0;
     var dt = p.modifie_le ? new Date(p.modifie_le) : null;
-    return [f.label.split(' · ')[0], n + ' calques', dt ? dt.toLocaleDateString('fr-FR') : ''].filter(Boolean).join(' · ');
+    return [f.label, n + ' calques', dt ? fmtWhen(p.modifie_le) : ''].filter(Boolean).join(' · ');
   }
   function countLayers(arr) {
     var n = 0;
@@ -5139,13 +5990,18 @@ window.BaobabsStudio = (function () {
      à jour sans qu il faille retoucher un seul texte.
      =================================================================== */
 
+  var dataQuand = null;
+
   function loadData() {
     if (!api || !api.data) return Promise.resolve();
     var D = api.data;
     return Promise.all([
-      safe(D.nextMatch), safe(D.lastResult), safe(D.players), safe(D.media)
+      safe(D.nextMatch), safe(D.lastResult), safe(D.players), safe(D.media), safe(D.matches)
     ]).then(function (r) {
       var m = r[0] || {}, res = r[1] || {}, pl = r[2] || [], md = r[3] || [];
+      data.matchs = r[4] || (r[0] ? [r[0]] : []);
+      if (data.matchIdx == null) data.matchIdx = 0;
+      if (data.matchs.length && data.matchs[data.matchIdx]) m = data.matchs[data.matchIdx];
       data.match = {
         adversaire: m.opponent || '',
         competition: m.competition || '',
@@ -5181,6 +6037,8 @@ window.BaobabsStudio = (function () {
       if (data.match.logoAdv) medias.push({ url: data.match.logoAdv, nom: 'Logo ' + data.match.adversaire });
       if (data.club.logo) medias.unshift({ url: data.club.logo, nom: 'Logo Baobabs' });
       medias = dedupe(medias);
+      dataQuand = new Date().toISOString();
+      majChamps();
     }).catch(function () { /* le Studio garde ses valeurs de maquette */ });
   }
   function safe(fn) {
@@ -5307,6 +6165,21 @@ window.BaobabsStudio = (function () {
 
       /* --- images --- */
       case 'imgSearch': panelFilter.q = el.value; refocusSearch = true; renderPanel(); return;
+      case 'panelImages': openPanel('images'); return;
+
+      /* --- Unsplash --- */
+      case 'unsQ':
+        uns.q = el.value;
+        refocusSearch = true;
+        clearTimeout(unsT);
+        unsT = setTimeout(function () { unsplashChercher(true); }, 420);
+        return;
+      case 'unsOrient': uns.orient = el.getAttribute('data-v'); unsplashChercher(true); return;
+      case 'unsPage':
+        uns.page = Math.max(1, uns.page + num(el.getAttribute('data-v'), 1));
+        unsplashChercher(false);
+        return;
+      case 'unsUse': unsplashUtiliser(num(el.getAttribute('data-i'), 0)); return;
       case 'useImage': placeImage(el.getAttribute('data-url')); return;
       case 'uploadImage': pendingFrame = l && (l.type === 'image' || l.type === 'frame') ? l.id : null; els.file.click(); return;
       case 'pickImage': openPanel('images'); toast('Choisissez une image dans le panneau'); return;
@@ -5391,6 +6264,26 @@ window.BaobabsStudio = (function () {
         insertLayers([tb]);
         return;
       }
+      case 'pickMatch': {
+        data.matchIdx = num(el.getAttribute('data-i'), 0);
+        var mm = (data.matchs || [])[data.matchIdx];
+        if (mm) {
+          data.match = {
+            adversaire: mm.opponent || '', competition: mm.competition || '',
+            date: mm.date ? fmtDate(mm.date) : '', heure: mm.time ? String(mm.time).slice(0, 5).replace(':', 'H') : '',
+            lieu: mm.venue || '', lieuType: mm.isHome === false ? 'EXTÉRIEUR' : 'DOMICILE',
+            jours: mm.date ? 'J−' + Math.max(0, daysTo(mm.date)) : '',
+            affiche: 'BAOBABS ' + (mm.isHome === false ? '@' : 'VS') + ' ' + (mm.opponent || 'ADVERSAIRE'),
+            logoAdv: mm.opponentLogo || '', photo: mm.photo || ''
+          };
+        }
+        change(function () { applyBindings(true); });
+        renderPanel();
+        return;
+      }
+      case 'addChamp': ouvrirChamp(null); return;
+      case 'editChamp': ouvrirChamp(num(el.getAttribute('data-i'), 0)); return;
+      case 'delChamp': supprimerChamp(num(el.getAttribute('data-i'), 0)); return;
       case 'pickJoueuse':
         data.joueuseIdx = num(el.getAttribute('data-i'), 0);
         syncJoueuse();
@@ -5413,6 +6306,9 @@ window.BaobabsStudio = (function () {
 
       /* --- styles --- */
       case 'palette': applyPalette(el.getAttribute('data-id')); return;
+      case 'useSwatch': applyPickedColor(el.getAttribute('data-hex')); return;
+      case 'copyStyle': copierStyle(); return;
+      case 'pasteStyle': collerStyle(); return;
       case 'bgPreset': bgPreset(el.getAttribute('data-k')); return;
       case 'fxPreset': fxPreset(el.getAttribute('data-k')); return;
 
@@ -5474,6 +6370,7 @@ window.BaobabsStudio = (function () {
     imagesReady().then(requestDraw);
   }
 
+  var unsT = null;
   var pendingFrame = null;
   function placeImage(url) {
     if (!url) return;
@@ -5495,6 +6392,69 @@ window.BaobabsStudio = (function () {
       insertLayers([f]);
       toast('Image ajoutée');
     });
+  }
+
+  /* Inventaire des couleurs réellement posées, les plus employées
+     d'abord. */
+  function couleursDuDoc() {
+    var n = {};
+    function add(c) { if (c && c.hex && (c.a == null || c.a > .05)) n[c.hex.toUpperCase()] = (n[c.hex.toUpperCase()] || 0) + 1; }
+    if (doc.bg) { add(doc.bg.color); add(doc.bg.from); add(doc.bg.to); }
+    walk(doc.layers, function (l) {
+      if (l.type === 'text') {
+        add(l.ts.color); add(l.ts.strokeColor);
+        (l.runs || []).forEach(function (r) { if (r.s) { add(r.s.color); add(r.s.strokeColor); } });
+      }
+      if (l.fill) { add(l.fill.color); add(l.fill.from); add(l.fill.to); }
+      if (l.stroke) add(l.stroke.color);
+      if (l.fx && l.fx.tintAmt > 0) add(l.fx.tint);
+    });
+    return Object.keys(n).sort(function (a, b) { return n[b] - n[a]; }).slice(0, 18);
+  }
+
+  /* Copier / coller un style entre calques : le geste qui évite de
+     refaire dix réglages à la main sur l'affiche suivante. */
+  var styleClip = null;
+  function copierStyle() {
+    var l = selOne();
+    if (!l) { toast('Sélectionnez un calque', true); return; }
+    styleClip = {
+      type: l.type,
+      ts: l.type === 'text' ? clone(l.ts) : null,
+      fill: l.fill ? clone(l.fill) : null,
+      stroke: l.stroke ? clone(l.stroke) : null,
+      shadow: l.shadow ? clone(l.shadow) : null,
+      fx: l.fx ? clone(l.fx) : null,
+      opacity: l.opacity, blend: l.blend, blur: l.blur, radius: l.radius, mask: l.mask
+    };
+    toast('Style copié');
+    if (panelName === 'styles') renderPanel();
+  }
+  function collerStyle() {
+    if (!styleClip) { toast('Aucun style en mémoire', true); return; }
+    var ls = selectedLayers();
+    if (!ls.length) { toast('Sélectionnez un calque', true); return; }
+    change(function () {
+      ls.forEach(function (l) {
+        if (styleClip.ts && l.type === 'text') {
+          var taille = l.ts.size;                 /* on garde la taille : c'est de la mise en page, pas du style */
+          l.ts = clone(styleClip.ts);
+          l.ts.size = taille;
+          (l.runs || []).forEach(function (r) { r.s = {}; });
+          l.runs = normalizeRuns(l.runs);
+          syncTextBox(l);
+        }
+        if (styleClip.fill && l.fill) l.fill = clone(styleClip.fill);
+        if (styleClip.stroke && l.stroke) l.stroke = clone(styleClip.stroke);
+        l.shadow = styleClip.shadow ? clone(styleClip.shadow) : null;
+        if (styleClip.fx && l.fx) l.fx = clone(styleClip.fx);
+        if (styleClip.opacity != null) l.opacity = styleClip.opacity;
+        if (styleClip.blend) l.blend = styleClip.blend;
+        if (styleClip.blur != null) l.blur = styleClip.blur;
+        if (styleClip.radius != null && l.radius != null) l.radius = styleClip.radius;
+      });
+    });
+    toast('Style appliqué à ' + ls.length + ' calque(s)');
   }
 
   function applyPalette(id) {
@@ -5626,7 +6586,7 @@ window.BaobabsStudio = (function () {
     if (doc.w === f.w && doc.h === f.h) { change(function () { doc.format = f.id; }); return; }
     change(function () { scaleDocToFormat(id); });
     fitView();
-    toast('Format ' + f.label);
+    toast('Format ' + formatLabel(f));
   }
 
   /* Mise à l'échelle de toute la composition. Sans elle, passer d'une
@@ -5647,9 +6607,21 @@ window.BaobabsStudio = (function () {
 
   function syncFormatSelect() {
     if (!els.format) return;
-    els.format.innerHTML = FORMATS.map(function (f) {
-      return '<option value="' + f.id + '"' + (f.id === doc.format ? ' selected' : '') + '>' + esc(f.label) + '</option>';
+    var cats = [], byCat = {};
+    FORMATS.forEach(function (f) {
+      if (!byCat[f.cat]) { byCat[f.cat] = []; cats.push(f.cat); }
+      byCat[f.cat].push(f);
+    });
+    els.format.innerHTML = cats.map(function (c) {
+      return '<optgroup label="' + esc(c) + '">' + byCat[c].map(function (f) {
+        return '<option value="' + f.id + '"' + (f.id === doc.format ? ' selected' : '') + '>' + esc(formatLabel(f)) + '</option>';
+      }).join('') + '</optgroup>';
     }).join('');
+    /* une taille sur mesure n'est dans aucune catégorie : on l'ajoute */
+    if (!formatById(doc.format) || formatById(doc.format).id !== doc.format) {
+      els.format.insertAdjacentHTML('afterbegin',
+        '<option value="' + esc(doc.format) + '" selected>Sur mesure · ' + doc.w + ' × ' + doc.h + '</option>');
+    }
   }
 
   /* ===================================================================
@@ -5661,14 +6633,62 @@ window.BaobabsStudio = (function () {
      fichier.
      =================================================================== */
 
-  function renderToCanvas(scale) {
+  function renderToCanvas(scale, d, sansFond) {
+    d = d || doc;
     var cv = document.createElement('canvas');
-    cv.width = Math.round(doc.w * scale);
-    cv.height = Math.round(doc.h * scale);
+    cv.width = Math.round(d.w * scale);
+    cv.height = Math.round(d.h * scale);
     var ctx = cv.getContext('2d');
     ctx.scale(scale, scale);
-    renderDoc(ctx, doc, { forExport: true });
+    renderDoc(ctx, d, { forExport: true, noBg: !!sansFond });
     return cv;
+  }
+
+  /* Met un document quelconque à l'échelle d'un format — sans toucher
+     au document ouvert. Sert à la série. */
+  function scaleDocTo(d, f) {
+    if (d.w === f.w && d.h === f.h) { d.format = f.id; return d; }
+    var s = Math.min(f.w / d.w, f.h / d.h);
+    var offX = (f.w - d.w * s) / 2, offY = (f.h - d.h * s) / 2;
+    for (var i = 0; i < d.layers.length; i++) {
+      scaleLayer(d.layers[i], s, s, 0, 0);
+      shiftLayer(d.layers[i], offX, offY);
+    }
+    walk(d.layers, function (l) { if (l.type === 'group') reflowGroup(l); });
+    d.w = f.w; d.h = f.h; d.format = f.id;
+    return d;
+  }
+
+  /* La même affiche en story, post et carré, d'un seul geste. Un club
+     publie sur trois surfaces ; refaire trois fois la mise en page est
+     exactement le travail qu'un outil doit éviter. */
+  function exportSerie() {
+    closeModal();
+    var cibles = ['story', 'post', 'carre'];
+    var base = serialize(doc);
+    toast('Préparation de la série…');
+    imagesReady().then(function () {
+      var faits = 0;
+      function suivant(i) {
+        if (i >= cibles.length) {
+          toast(faits + ' affiches exportées', false, true);
+          return;
+        }
+        var f = formatById(cibles[i]);
+        var d = scaleDocTo(JSON.parse(base), f);
+        var cv;
+        try { cv = renderToCanvas(2, d); } catch (e) { suivant(i + 1); return; }
+        cv.toBlob(function (blob) {
+          if (blob) {
+            faits++;
+            var nom = slug(doc.name || 'affiche') + '-' + f.id + '-' + today() + '.png';
+            if (api && api.download) api.download(blob, nom); else downloadBlob(blob, nom);
+          }
+          setTimeout(function () { suivant(i + 1); }, 350);
+        }, 'image/png');
+      }
+      suivant(0);
+    }).catch(function () { toast('Série impossible', true); });
   }
 
   function anyTainted() {
@@ -5687,24 +6707,94 @@ window.BaobabsStudio = (function () {
     });
   }
 
+  /* Rien n'est pixellisé : à ×4 le document est redessiné à 4 320 px de
+     large, textes et formes compris. La seule limite reste la
+     définition des photos importées — d'où le repère « impression ». */
+  var expOpts = { scale: 2, type: 'image/png', q: 92, alpha: false };
+
+  function ligneExport(s, titre, sous) {
+    var w = Math.round(doc.w * s), h = Math.round(doc.h * s);
+    return '<button type="button" class="bs-item' + (expOpts.scale === s ? ' is-on' : '') + '" data-act="expScale" data-s="' + s + '">' +
+      '<span class="bs-item-txt"><b>' + esc(titre) + '</b><small>' + w + ' × ' + h + ' px' +
+      (sous ? ' · ' + esc(sous) : '') + '</small></span></button>';
+  }
+
   function openExport() {
-    var f = formatById(doc.format);
-    var rows = [1, 2, 3].map(function (s) {
-      return '<button type="button" class="bs-item" data-act="doExport" data-s="' + s + '">' +
-        '<span class="bs-item-txt"><b>' + (s === 1 ? 'Taille réelle' : (s === 2 ? 'Haute définition ×2' : 'Très haute définition ×3')) + '</b>' +
-        '<small>' + (doc.w * s) + ' × ' + (doc.h * s) + ' px · PNG</small></span></button>';
-    }).join('');
-    modal('Exporter l affiche',
-      '<div class="bs-list" style="padding:0">' + rows +
-      '<button type="button" class="bs-item" data-act="doExportJpg" data-s="2">' +
-      '<span class="bs-item-txt"><b>JPEG allégé ×2</b><small>' + (doc.w * 2) + ' × ' + (doc.h * 2) + ' px · fichier plus léger</small></span></button>' +
-      '<button type="button" class="bs-item" data-act="doExportJson">' +
-      '<span class="bs-item-txt"><b>Fichier de projet (.json)</b><small>Pour ré-ouvrir l affiche plus tard, calques compris</small></span></button>' +
+    var cmA = (doc.w * expOpts.scale / 300 * 2.54), cmB = (doc.h * expOpts.scale / 300 * 2.54);
+    var h = '<div class="bs-sec-lab" style="padding:0 0 8px">Définition</div><div class="bs-list" style="padding:0">' +
+      ligneExport(1, 'Écran', 'réseaux sociaux, site') +
+      ligneExport(2, 'Haute définition ×2', 'le bon choix par défaut') +
+      ligneExport(3, 'Très haute définition ×3', 'impression A4') +
+      ligneExport(4, 'Maximale ×4', 'grand format, bâche') +
       '</div>' +
+
+      '<div class="bs-frow" style="margin-top:14px">' +
+      '<div class="bs-f"><label>Largeur sur mesure</label><div class="bs-step">' +
+      '<input type="number" class="bs-in-num" id="bs-exp-w" value="' + Math.round(doc.w * expOpts.scale) + '" min="64" max="16000"><span class="bs-step-u">px</span></div></div>' +
+      '<div class="bs-f"><label>Format de fichier</label><select class="bs-sel" id="bs-exp-type">' +
+      '<option value="image/png"' + (expOpts.type === 'image/png' ? ' selected' : '') + '>PNG — sans perte</option>' +
+      '<option value="image/jpeg"' + (expOpts.type === 'image/jpeg' ? ' selected' : '') + '>JPEG — plus léger</option>' +
+      '<option value="image/webp"' + (expOpts.type === 'image/webp' ? ' selected' : '') + '>WebP — web</option>' +
+      '</select></div></div>' +
+
+      (expOpts.type === 'image/png'
+        ? '<div class="bs-f"><div class="bs-tgl-row"><span>Fond transparent</span>' +
+          '<button type="button" class="bs-tgl' + (expOpts.alpha ? ' is-on' : '') + '" id="bs-exp-alpha"><i></i></button></div></div>'
+        : '<div class="bs-f"><label>Qualité <b style="font-family:var(--bs-num);color:var(--bs-fg-2);font-weight:500">' + expOpts.q + ' %</b></label>' +
+          '<input type="range" class="bs-range" id="bs-exp-q" min="55" max="100" step="1" value="' + expOpts.q + '"></div>') +
+
+      '<div class="bs-note" style="margin:12px 0 0">' +
+      '<b>' + Math.round(doc.w * expOpts.scale) + ' × ' + Math.round(doc.h * expOpts.scale) + ' px</b> — ' +
+      'soit ' + fmtNum(cmA, 1) + ' × ' + fmtNum(cmB, 1) + ' cm à 300 points par pouce.<br>' +
+      'Agrandir ne dégrade ni les textes ni les formes : tout est redessiné à la taille demandée.</div>' +
+
       (anyTainted()
-        ? '<div class="bs-note" style="margin:12px 0 0;background:rgba(255,184,77,.08);border-color:rgba(255,184,77,.28)"><b>Attention.</b> Une image ne s est pas chargée avec les autorisations nécessaires : l export risque d échouer. Téléversez-la dans la médiathèque pour régler le problème.</div>'
-        : ''),
-      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Fermer</button>');
+        ? '<div class="bs-note" style="margin:10px 0 0;background:rgba(255,184,77,.08);border-color:rgba(255,184,77,.28)"><b>Attention.</b> Une image vient d’un autre domaine sans autorisation : l’export risque d’échouer. Téléversez-la dans la médiathèque.</div>'
+        : '') +
+
+      '<div class="bs-sec-lab" style="padding:16px 0 8px">Autres sorties</div><div class="bs-list" style="padding:0">' +
+      '<button type="button" class="bs-item" data-act="expSerie"><span class="bs-item-txt"><b>La série — 3 formats</b>' +
+      '<small>La même affiche en story, post portrait et carré</small></span></button>' +
+      '<button type="button" class="bs-item" data-act="doExportJson"><span class="bs-item-txt"><b>Fichier de projet (.json)</b>' +
+      '<small>Pour rouvrir l’affiche plus tard, calques compris</small></span></button>' +
+      '</div>';
+
+    modal('Exporter l’affiche', h,
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Fermer</button>' +
+      '<button type="button" class="bs-btn bs-btn-accent" data-act="expGo">Exporter</button>');
+
+    var wi = $('#bs-exp-w', els.modalCard);
+    if (wi) wi.addEventListener('input', function () {
+      var v = clamp(num(wi.value, doc.w * 2), 64, 16000);
+      expOpts.scale = v / doc.w;
+    });
+    var ty = $('#bs-exp-type', els.modalCard);
+    if (ty) ty.addEventListener('change', function () { expOpts.type = ty.value; openExport(); });
+    var al = $('#bs-exp-alpha', els.modalCard);
+    if (al) al.addEventListener('click', function () { expOpts.alpha = !expOpts.alpha; al.classList.toggle('is-on', expOpts.alpha); });
+    var qq = $('#bs-exp-q', els.modalCard);
+    if (qq) qq.addEventListener('input', function () { expOpts.q = num(qq.value, 92); });
+  }
+
+  function lancerExport() {
+    var s = expOpts.scale;
+    closeModal();
+    toast('Préparation de l’image…');
+    var ext = expOpts.type === 'image/jpeg' ? 'jpg' : (expOpts.type === 'image/webp' ? 'webp' : 'png');
+    imagesReady().then(function () {
+      var cv = renderToCanvas(s, doc, expOpts.alpha && expOpts.type === 'image/png');
+      return new Promise(function (res, rej) {
+        cv.toBlob(function (b) { b ? res(b) : rej(new Error('blob')); }, expOpts.type,
+          expOpts.type === 'image/png' ? undefined : expOpts.q / 100);
+      });
+    }).then(function (blob) {
+      var nom = slug(doc.name || 'affiche') + '-' + Math.round(doc.w * s) + 'px-' + today() + '.' + ext;
+      if (api && api.download) api.download(blob, nom); else downloadBlob(blob, nom);
+      toast('Exporté en ' + Math.round(doc.w * s) + ' × ' + Math.round(doc.h * s) +
+        ' · ' + Math.round(blob.size / 1024) + ' Ko', false, true);
+    }).catch(function () {
+      toast('Export impossible — une image distante bloque la copie du canevas', true);
+    });
   }
 
   function doExport(scale, type) {
@@ -5828,6 +6918,7 @@ window.BaobabsStudio = (function () {
       markDirty(false);
       els.saveInfo.textContent = p.est_modele ? 'Copie d un modèle' : 'Ouvert';
       renderPanel();
+      enterWorkspace();
       toast('« ' + (p.nom || 'Projet') + ' » ouvert');
     });
   }
@@ -5867,6 +6958,9 @@ window.BaobabsStudio = (function () {
   }
 
   function newProject() {
+    quitterVers(function () { homeScreen = 'nouveau'; showHome(); });
+  }
+  function newProjectDirect() {
     confirmIfDirty(function () {
       doc = newDoc('affiche', 'nuit');
       applyTemplateInto(doc, 'md-duel-maquette');
@@ -6028,10 +7122,54 @@ window.BaobabsStudio = (function () {
      38. OUTILS
      =================================================================== */
 
+  /* Réglages de l'outil courant. Ils n'apparaissent que quand ils
+     servent : une barre d'options permanente à moitié grisée n'aide
+     personne. */
+  function renderToolOpts() {
+    if (!els.toolOpts) return;
+    var h = '';
+    if (tool === 'wand') {
+      h = '<label>Tolérance <input type="range" class="bs-range" id="bs-wand-tol" min="4" max="120" step="1" value="' + wandOpts.tol + '">' +
+          '<b id="bs-wand-tolv" style="font-family:var(--bs-num);color:var(--bs-fg-2);width:22px;font-weight:500">' + wandOpts.tol + '</b></label>' +
+          '<button type="button" class="bs-chipbtn' + (wandOpts.global ? ' is-on' : '') + '" id="bs-wand-global"' +
+          ' title="Retirer cette couleur partout dans l’image, pas seulement la zone cliquée">Toute l’image</button>' +
+          '<label>Adoucir <input type="range" class="bs-range" id="bs-wand-feather" min="0" max="6" step="0.2" value="' + wandOpts.feather + '"></label>';
+    } else if (tool === 'erase' || tool === 'restore') {
+      h = '<label>Taille <div class="bs-step"><input type="number" class="bs-in-num" id="bs-brush-size" min="2" max="900" value="' + Math.round(brushOpts.size) + '"><span class="bs-step-u">px</span></div></label>' +
+          '<label>Bord <input type="range" class="bs-range" id="bs-brush-soft" min="0" max="0.95" step="0.05" value="' + brushOpts.soft + '"></label>' +
+          '<span style="font-size:11px;color:var(--bs-fg-3)">' +
+          (tool === 'erase' ? 'Efface le calque' : 'Restaure le calque') + ' — Alt inverse</span>';
+    } else if (tool === 'crop') {
+      h = '<span style="font-size:11px;color:var(--bs-fg-3)">Tracez la zone à garder, puis relâchez. Échap pour renoncer.</span>';
+    } else if (tool === 'pen') {
+      h = '<span style="font-size:11px;color:var(--bs-fg-3)">Cliquez pour un angle, glissez pour une courbe. Entrée ferme le tracé.</span>';
+    }
+    els.toolOpts.innerHTML = h;
+    els.toolOpts.classList.toggle('is-on', !!h);
+
+    var t1 = $('#bs-wand-tol', els.toolOpts);
+    if (t1) t1.addEventListener('input', function () {
+      wandOpts.tol = num(t1.value, 34);
+      $('#bs-wand-tolv', els.toolOpts).textContent = wandOpts.tol;
+    });
+    var t2 = $('#bs-wand-global', els.toolOpts);
+    if (t2) t2.addEventListener('click', function () {
+      wandOpts.global = !wandOpts.global;
+      t2.classList.toggle('is-on', wandOpts.global);
+    });
+    var t3 = $('#bs-wand-feather', els.toolOpts);
+    if (t3) t3.addEventListener('input', function () { wandOpts.feather = num(t3.value, 1.4); });
+    var b1 = $('#bs-brush-size', els.toolOpts);
+    if (b1) b1.addEventListener('input', function () { brushOpts.size = clamp(num(b1.value, 60), 2, 900); requestDraw(); });
+    var b2 = $('#bs-brush-soft', els.toolOpts);
+    if (b2) b2.addEventListener('input', function () { brushOpts.soft = clamp(num(b2.value, .5), 0, .95); });
+  }
+
   function setTool(t) {
     if (pathDraft && t !== 'pen') commitPath(false);
     tool = t;
     $$('.bs-tool', root).forEach(function (b) { b.classList.toggle('is-on', b.getAttribute('data-tool') === t); });
+    renderToolOpts();
     if (t !== 'select' && t !== 'node' && edit) exitTextEdit();
     if (t !== 'select') contentEdit = null;
     setCursor(t === 'hand' ? 'hand' : (t === 'text' ? 'text' : (t === 'zoom' ? 'zoom-in' : (t === 'select' || t === 'node' ? 'select' : 'cross'))));
@@ -6044,6 +7182,12 @@ window.BaobabsStudio = (function () {
 
   function onKeyDown(e) {
     if (!opened) return;
+    if (atHome) {
+      if (e.key === 'Escape' && !els.modal.classList.contains('is-on')) { e.preventDefault(); close(); }
+      if (els.modal.classList.contains('is-on') && e.key === 'Escape') { e.preventDefault(); closeModal(); }
+      return;
+    }
+    if (menuOuvert && e.key === 'Escape') { e.preventDefault(); closeMenu(); return; }
     var t = e.target;
     var typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) && t !== els.ime;
     var mod = e.ctrlKey || e.metaKey;
@@ -6105,9 +7249,9 @@ window.BaobabsStudio = (function () {
       if (k === 'g') { e.preventDefault(); groupSelected(); return; }
       if (k === 'a') { e.preventDefault(); selectAll(); return; }
       if (k === 's') { e.preventDefault(); saveProject(false); return; }
-      if (k === 'c') { e.preventDefault(); copyLayers(false); return; }
+      if (k === 'c') { e.preventDefault(); e.altKey ? copierStyle() : copyLayers(false); return; }
       if (k === 'x') { e.preventDefault(); copyLayers(true); return; }
-      if (k === 'v') { e.preventDefault(); pasteLayers(); return; }
+      if (k === 'v') { e.preventDefault(); e.altKey ? collerStyle() : pasteLayers(); return; }
       if (k === 'e') { e.preventDefault(); openExport(); return; }
       if (e.key === ']') { e.preventDefault(); var a = selOne(); if (a) e.shiftKey ? sendTo(a.id, 'front') : moveLayerOrder(a.id, 1); return; }
       if (e.key === '[') { e.preventDefault(); var b = selOne(); if (b) e.shiftKey ? sendTo(b.id, 'back') : moveLayerOrder(b.id, -1); return; }
@@ -6132,7 +7276,9 @@ window.BaobabsStudio = (function () {
     if (e.key === 'P') { e.preventDefault(); togglePreview(); return; }
 
     /* --- outils --- */
-    var tools = { v: 'select', a: 'node', h: 'hand', z: 'zoom', t: 'text', p: 'pen', r: 'rect', o: 'ellipse', l: 'line', f: 'frame', i: 'eyedrop' };
+    var tools = { v: 'select', a: 'node', h: 'hand', z: 'zoom', t: 'text', p: 'pen', r: 'rect',
+                  o: 'ellipse', l: 'line', f: 'frame', i: 'eyedrop',
+                  w: 'wand', e: 'erase', b: 'restore', c: 'crop' };
     if (tools[e.key.toLowerCase()] && !e.altKey && !e.shiftKey) { e.preventDefault(); setTool(tools[e.key.toLowerCase()]); return; }
 
     if (e.key === 'Escape') {
@@ -6265,6 +7411,13 @@ window.BaobabsStudio = (function () {
       case 'discardGo': { var f = pendingNav; closeModal(); markDirty(false); if (f) f(); return true; }
       case 'saveThenGo': { var g = pendingNav; closeModal(); saveProject(false).then(function () { if (g) g(); }); return true; }
       case 'zoomFit': fitView(); return true;
+      case 'expScale': expOpts.scale = num(el.getAttribute('data-s'), 2); openExport(); return true;
+      case 'expGo': lancerExport(); return true;
+      case 'expSerie': exportSerie(); return true;
+      case 'champOk': validerChamp(el.getAttribute('data-i')); return true;
+      case 'dsOk': appliquerTailleDoc(); return true;
+      case 'histGo': histGo(num(el.getAttribute('data-i'), 0)); return true;
+      case 'gotoLayer': closeModal(); select([el.getAttribute('data-id')]); zoomToSelection(); return true;
       case 'help': showHelp(); return true;
     }
     return false;
@@ -6494,7 +7647,17 @@ window.BaobabsStudio = (function () {
       tglSafe: $('#bs-tgl-safe'),
       tglPreview: $('#bs-tgl-preview'),
       float: $('#bs-float'),
-      lyrGroup: $('#bs-lyr-group')
+      lyrGroup: $('#bs-lyr-group'),
+      home: $('#bs-home'),
+      homeMain: $('#bs-home-main'),
+      homeVer: $('#bs-home-ver'),
+      homeTip: $('#bs-home-tip'),
+      logoMark: $('#bs-logo-mark'),
+      logoMark2: $('#bs-logo-mark2'),
+      menubar: $('#bs-menubar'),
+      menuPop: $('#bs-menu-pop'),
+      fileJson: $('#bs-file-json'),
+      toolOpts: $('#bs-tool-opts')
     };
   }
 
@@ -6540,6 +7703,52 @@ window.BaobabsStudio = (function () {
     on('#bs-lyr-up', 'click', function () { var l = selOne(); if (l) moveLayerOrder(l.id, 1); });
     on('#bs-lyr-down', 'click', function () { var l = selOne(); if (l) moveLayerOrder(l.id, -1); });
     on('#bs-lyr-del', 'click', removeSelected);
+
+    /* accueil */
+    $$('.bs-home-navi', root).forEach(function (b) {
+      b.addEventListener('click', function () { homeScreen = b.getAttribute('data-hscreen'); renderHome(); });
+    });
+    $$('[data-home]', root).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var a = b.getAttribute('data-home');
+        if (a === 'nouveau-vite') { homeScreen = 'nouveau'; renderHome(); }
+        else if (a === 'ouvrir-fichier') els.fileJson.click();
+      });
+    });
+    on('#bs-home-close', 'click', function () { close(); });
+    on('#bs-logo-home', 'click', function () { quitterVers(showHome); });
+
+    /* menus */
+    renderMenubar();
+    document.addEventListener('pointerdown', function (e) {
+      if (menuOuvert && !els.menuPop.contains(e.target) && !els.menubar.contains(e.target)) closeMenu();
+    }, true);
+
+    els.fileJson.addEventListener('change', function () {
+      var f = els.fileJson.files && els.fileJson.files[0];
+      els.fileJson.value = '';
+      if (!f) return;
+      var r = new FileReader();
+      r.onload = function () {
+        var d;
+        try { d = JSON.parse(r.result); } catch (e) { toast('Fichier illisible', true); return; }
+        if (!d || !d.layers) { toast('Ce fichier n’est pas un projet du Studio', true); return; }
+        quitterVers(function () {
+          doc = d;
+          project.id = null; project.isTemplate = false;
+          sel = []; hist.undo.length = 0; hist.redo.length = 0; hist.pre = null;
+          els.projName.value = doc.name || f.name.replace(/\.[^.]+$/, '');
+          syncFormatSelect(); syncHistButtons();
+          prewarmImages(); applyBindings();
+          markDirty(false);
+          els.saveInfo.textContent = 'Importé';
+          renderPanel();
+          enterWorkspace();
+          toast('Projet importé');
+        });
+      };
+      r.readAsText(f);
+    });
 
     els.rulerH.addEventListener('pointerdown', function (e) { startRuleDrag(e, 'y'); });
     els.rulerV.addEventListener('pointerdown', function (e) { startRuleDrag(e, 'x'); });
@@ -6615,6 +7824,1220 @@ window.BaobabsStudio = (function () {
   }
 
   /* ===================================================================
+     44. ÉCRAN D'ACCUEIL
+     ---------------------------------------------------------------
+     On n'ouvre pas un atelier sur un document dont personne n'a voulu.
+     L'accueil demande d'abord ce qu'on vient faire : reprendre un
+     travail, partir d'un modèle, ou poser des dimensions.
+     =================================================================== */
+
+  var atHome = true;
+  var homeScreen = 'accueil';
+
+  var LOGO_REPLI = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26">' +
+    '<path d="M13 2C13 2 8 6 8 11c0 2.2 1.2 4 3 5v6c0 .5.5 1 1 1h2c.5 0 1-.5 1-1v-6c1.8-1 3-2.8 3-5 0-5-5-9-5-9Z" fill="#7DFF4F"/></svg>');
+
+  function setLogo() {
+    var url = (api && api.clubLogo) || LOGO_REPLI;
+    ['logoMark', 'logoMark2'].forEach(function (k) {
+      if (els[k]) els[k].style.backgroundImage = 'url("' + url.replace(/"/g, '\\"') + '")';
+    });
+  }
+
+  function showHome() {
+    atHome = true;
+    homeScreen = homeScreen || 'accueil';
+    root.classList.add('is-home');
+    closeMenu();
+    renderHome();
+  }
+
+  function enterWorkspace() {
+    atHome = false;
+    root.classList.remove('is-home');
+    requestAnimationFrame(function () {
+      sizeCanvases();
+      fitView();
+      refreshAll();
+    });
+  }
+
+  /* « aujourd'hui à 14:32 », « hier à 09:10 », « 12 août à 16:04 » */
+  function fmtWhen(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    var h = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    var j = new Date(); j.setHours(0, 0, 0, 0);
+    var dj = new Date(d); dj.setHours(0, 0, 0, 0);
+    var ecart = Math.round((j - dj) / 86400000);
+    if (ecart === 0) return 'aujourd’hui à ' + h;
+    if (ecart === 1) return 'hier à ' + h;
+    if (ecart < 7) return d.toLocaleDateString('fr-FR', { weekday: 'long' }) + ' à ' + h;
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) + ' à ' + h;
+  }
+
+  /* Vignette d'un document enregistré : on le redessine en petit. Elle
+     est donc toujours fidèle, il n'y a pas d'image de catalogue à tenir
+     à jour. */
+  function docThumb(d, cvs) {
+    if (!d || !d.layers) return;
+    var W = cvs.width, H = cvs.height;
+    var ctx = cvs.getContext('2d');
+    var s = Math.min(W / d.w, H / d.h);
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.translate((W - d.w * s) / 2, (H - d.h * s) / 2);
+    ctx.scale(s, s);
+    ctx.beginPath(); ctx.rect(0, 0, d.w, d.h); ctx.clip();
+    try { renderDoc(ctx, d, { forExport: true }); } catch (e) {}
+    ctx.restore();
+  }
+
+  function renderHome() {
+    if (!els.homeMain) return;
+    $$('.bs-home-navi', root).forEach(function (b) {
+      b.classList.toggle('is-on', b.getAttribute('data-hscreen') === homeScreen);
+    });
+    var f = { accueil: homeAccueil, nouveau: homeNouveau, modeles: homeModeles, recents: homeRecents }[homeScreen] || homeAccueil;
+    els.homeMain.innerHTML = f();
+    wireHome();
+    peindreVignettes();
+    if (els.homeVer) els.homeVer.textContent = 'version ' + VERSION;
+    if (els.homeTip) els.homeTip.innerHTML = astuce();
+  }
+
+  var ASTUCES = [
+    ['Colorer une lettre', 'Double-cliquez un texte, sélectionnez une lettre à la souris, changez sa couleur. Elle seule change.'],
+    ['Détourer une photo', 'Baguette magique (W), cliquez le fond : il disparaît. La gomme (E) rattrape le reste.'],
+    ['Objets dynamiques', 'Un calque marqué d’un éclair se remplit tout seul avec les données du club.'],
+    ['Poser un repère', 'Tirez depuis la règle du haut ou de gauche. Ramenez-le sur la règle pour l’enlever.'],
+    ['Trois formats d’un coup', 'Fichier → Exporter → Série : la même affiche en story, post et carré.'],
+    ['Masque d’écrêtage', 'Ctrl+Alt+G met une photo à l’intérieur de la forme ou du texte du dessous.']
+  ];
+  var astuceIdx = 0;
+  function astuce() {
+    var a = ASTUCES[astuceIdx % ASTUCES.length];
+    astuceIdx++;
+    return '<b>' + esc(a[0]) + '</b>' + esc(a[1]);
+  }
+
+  function hcard(opts) {
+    return '<button type="button" class="bs-hcard" ' + (opts.attrs || '') + '>' +
+      '<span class="bs-hcard-thumb">' + (opts.thumb || '') + '</span>' +
+      '<span class="bs-hcard-body"><b>' + esc(opts.titre) + '</b>' +
+      (opts.sous ? '<small>' + esc(opts.sous) + '</small>' : '') + '</span></button>';
+  }
+
+  function homeAccueil() {
+    var h = '<div class="bs-home-h"><h2>Bonjour</h2><p>Que composez-vous aujourd’hui ?</p></div>';
+
+    var recents = projectList.filter(function (p) { return !p.est_modele; }).slice(0, 4);
+    if (recents.length) {
+      h += '<section class="bs-home-sec"><h3>Reprendre</h3><div class="bs-hgrid bs-hgrid-wide">';
+      recents.forEach(function (p) {
+        h += hcard({
+          attrs: 'data-hact="ouvrir" data-id="' + esc(p.id) + '"',
+          thumb: '<canvas width="260" height="195" data-dthumb="' + esc(p.id) + '"></canvas>',
+          titre: p.nom || 'Sans titre',
+          sous: fmtWhen(p.modifie_le)
+        });
+      });
+      h += '</div></section>';
+    }
+
+    var rapides = ['affiche', 'story', 'carre', 'post', 'paysage', 'a4'];
+    h += '<section class="bs-home-sec"><h3>Commencer</h3><div class="bs-hgrid">';
+    rapides.forEach(function (id) {
+      var f = formatById(id);
+      h += '<button type="button" class="bs-hcard" data-hact="format" data-id="' + f.id + '">' +
+        '<span class="bs-hcard-thumb">' + figureFormat(f) + '</span>' +
+        '<span class="bs-hcard-body"><b>' + esc(f.label) + '</b><small>' + f.w + ' × ' + f.h + '</small></span></button>';
+    });
+    h += '</div></section>';
+
+    h += '<section class="bs-home-sec"><h3>Modèles en vedette</h3><div class="bs-hgrid">';
+    TEMPLATES.slice(0, 8).forEach(function (t) {
+      h += hcard({
+        attrs: 'data-hact="modele" data-id="' + t.id + '"',
+        thumb: '<canvas width="200" height="150" data-tthumb="' + t.id + '"></canvas>',
+        titre: t.label, sous: t.cat
+      });
+    });
+    h += '</div></section>';
+    return h;
+  }
+
+  function figureFormat(f) {
+    var r = f.w / f.h, W = 46, H = 46, w, hh;
+    if (r >= 1) { w = W; hh = Math.max(8, Math.round(W / r)); }
+    else { hh = H; w = Math.max(8, Math.round(H * r)); }
+    return '<span class="bs-hpre-fig"><i style="width:' + w + 'px;height:' + hh + 'px"></i></span>';
+  }
+
+  function homeNouveau() {
+    var h = '<div class="bs-home-h"><h2>Nouveau document</h2><p>Un préréglage, ou vos propres dimensions.</p></div>';
+    var cats = [], byCat = {};
+    FORMATS.forEach(function (f) {
+      if (!byCat[f.cat]) { byCat[f.cat] = []; cats.push(f.cat); }
+      byCat[f.cat].push(f);
+    });
+    cats.forEach(function (c) {
+      h += '<section class="bs-home-sec"><h3>' + esc(c) + '</h3><div class="bs-hgrid bs-hgrid-wide">';
+      byCat[c].forEach(function (f) {
+        h += '<button type="button" class="bs-hpre" data-hact="format" data-id="' + f.id + '">' +
+          figureFormat(f) +
+          '<span class="bs-hpre-txt"><b>' + esc(f.label) + '</b><small>' + f.w + ' × ' + f.h + ' px</small></span></button>';
+      });
+      h += '</div></section>';
+    });
+
+    h += '<section class="bs-home-sec"><h3>Sur mesure</h3>' +
+      '<div style="max-width:460px">' +
+      '<div class="bs-frow">' +
+      '<div class="bs-f"><label>Largeur</label><div class="bs-step"><input type="number" class="bs-in-num" id="bs-new-w" value="1080" min="16" max="12000"><span class="bs-step-u">px</span></div></div>' +
+      '<div class="bs-f"><label>Hauteur</label><div class="bs-step"><input type="number" class="bs-in-num" id="bs-new-h" value="1440" min="16" max="12000"><span class="bs-step-u">px</span></div></div>' +
+      '</div>' +
+      '<div class="bs-frow">' +
+      '<div class="bs-f"><label>Orientation</label><div class="bs-seg" id="bs-new-orient">' +
+      '<button type="button" data-v="portrait" class="is-on">Portrait</button>' +
+      '<button type="button" data-v="paysage">Paysage</button></div></div>' +
+      '<div class="bs-f"><label>Ambiance</label><select class="bs-sel" id="bs-new-pal">' +
+      PALETTES.map(function (p) { return '<option value="' + p.id + '">' + esc(p.label) + '</option>'; }).join('') +
+      '</select></div>' +
+      '</div>' +
+      '<button type="button" class="bs-btn bs-btn-accent bs-btn-block" style="margin-top:6px" data-hact="surmesure">Créer le document</button>' +
+      '<div class="bs-note" style="margin:12px 0 0">Les dimensions se changent à tout moment (<b>Image → Taille du document</b>) : la composition suit à l’échelle, rien n’est perdu.</div>' +
+      '</div></section>';
+    return h;
+  }
+
+  function homeModeles() {
+    var cats = ['Tous'];
+    TEMPLATES.forEach(function (t) { if (cats.indexOf(t.cat) < 0) cats.push(t.cat); });
+    var h = '<div class="bs-home-h"><h2>Modèles</h2><p>' + TEMPLATES.length + ' compositions prêtes, toutes modifiables.</p></div>';
+    h += '<div class="bs-chips" style="padding:0 0 16px">';
+    cats.forEach(function (c) {
+      h += '<button type="button" class="bs-chip' + (homeTplCat === c ? ' is-on' : '') + '" data-hact="tplcat" data-id="' + esc(c) + '">' + esc(c) + '</button>';
+    });
+    h += '</div><div class="bs-hgrid">';
+    TEMPLATES.filter(function (t) { return homeTplCat === 'Tous' || t.cat === homeTplCat; })
+      .forEach(function (t) {
+        h += hcard({
+          attrs: 'data-hact="modele" data-id="' + t.id + '"',
+          thumb: '<canvas width="200" height="150" data-tthumb="' + t.id + '"></canvas>',
+          titre: t.label, sous: t.cat
+        });
+      });
+    h += '</div>';
+
+    var mesModeles = projectList.filter(function (p) { return p.est_modele; });
+    if (mesModeles.length) {
+      h += '<section class="bs-home-sec" style="margin-top:30px"><h3>Mes modèles</h3><div class="bs-hgrid bs-hgrid-wide">';
+      mesModeles.forEach(function (p) {
+        h += hcard({
+          attrs: 'data-hact="ouvrir" data-id="' + esc(p.id) + '"',
+          thumb: '<canvas width="260" height="195" data-dthumb="' + esc(p.id) + '"></canvas>',
+          titre: p.nom || 'Modèle', sous: fmtWhen(p.modifie_le)
+        });
+      });
+      h += '</div></section>';
+    }
+    return h;
+  }
+  var homeTplCat = 'Tous';
+
+  function homeRecents() {
+    var list = projectList.filter(function (p) { return !p.est_modele; });
+    var h = '<div class="bs-home-h"><h2>Travaux récents</h2><p>' +
+      (list.length ? list.length + ' projet' + (list.length > 1 ? 's' : '') : 'Rien encore') + '</p></div>';
+    if (!list.length) {
+      h += '<div class="bs-empty" style="text-align:left;padding:0"><b>Aucun projet enregistré</b>' +
+        'Composez une affiche, puis <b>Ctrl+S</b>. Elle réapparaîtra ici avec tous ses calques.' +
+        (hasStore ? '' : '<br><br>Le stockage des projets n’est pas branché : rien ne survivra au rechargement de la page.') +
+        '</div>';
+      return h;
+    }
+    h += '<div class="bs-hgrid bs-hgrid-wide">';
+    list.forEach(function (p) {
+      h += '<div class="bs-hcard">' +
+        '<button type="button" data-hact="ouvrir" data-id="' + esc(p.id) + '" style="display:block;width:100%;text-align:left">' +
+        '<span class="bs-hcard-thumb"><canvas width="260" height="195" data-dthumb="' + esc(p.id) + '"></canvas></span>' +
+        '<span class="bs-hcard-body"><b>' + esc(p.nom || 'Sans titre') + '</b>' +
+        '<small>' + esc(projSub(p)) + '</small></span></button>' +
+        '<span class="bs-hcard-acts">' +
+        '<button type="button" data-hact="dupliquer" data-id="' + esc(p.id) + '" title="Dupliquer">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="12" height="12" rx="2"/><path d="M8 20.5h10a2.5 2.5 0 0 0 2.5-2.5V8"/></svg></button>' +
+        '<button type="button" class="bs-h-danger" data-hact="supprimer" data-id="' + esc(p.id) + '" title="Supprimer">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5h16M9 6.5V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5v2M17.5 6.5V19a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2V6.5"/></svg></button>' +
+        '</span></div>';
+    });
+    h += '</div>';
+    return h;
+  }
+
+  function peindreVignettes() {
+    $$('[data-tthumb]', els.homeMain).forEach(function (cv) {
+      var t = templateById(cv.getAttribute('data-tthumb'));
+      if (t) { try { templateThumb(t, cv); } catch (e) {} }
+    });
+    $$('[data-dthumb]', els.homeMain).forEach(function (cv) {
+      var id = cv.getAttribute('data-dthumb'), p = null;
+      for (var i = 0; i < projectList.length; i++) if (String(projectList[i].id) === String(id)) p = projectList[i];
+      if (p && p.doc) {
+        walk(p.doc.layers, function (l) { if ((l.type === 'image' || l.type === 'frame') && l.src) getImage(l.src); });
+        try { docThumb(p.doc, cv); } catch (e) {}
+        imagesReady().then(function () { try { docThumb(p.doc, cv); } catch (e) {} });
+      }
+    });
+  }
+
+  function wireHome() {
+    $$('[data-hact]', els.homeMain).forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        homeAction(b.getAttribute('data-hact'), b.getAttribute('data-id'), b);
+      });
+    });
+    $$('#bs-new-orient button', els.homeMain).forEach(function (b) {
+      b.addEventListener('click', function () {
+        $$('#bs-new-orient button', els.homeMain).forEach(function (x) { x.classList.remove('is-on'); });
+        b.classList.add('is-on');
+        var w = $('#bs-new-w', els.homeMain), h = $('#bs-new-h', els.homeMain);
+        var a = num(w.value, 1080), c = num(h.value, 1440);
+        var portrait = b.getAttribute('data-v') === 'portrait';
+        w.value = portrait ? Math.min(a, c) : Math.max(a, c);
+        h.value = portrait ? Math.max(a, c) : Math.min(a, c);
+      });
+    });
+  }
+
+  function homeAction(act, id, el) {
+    if (act === 'tplcat') { homeTplCat = id; renderHome(); return; }
+    if (act === 'format') { nouveauDoc(formatById(id), null); return; }
+    if (act === 'modele') { nouveauDoc(null, id); return; }
+    if (act === 'surmesure') {
+      var w = clamp(Math.round(num($('#bs-new-w', els.homeMain).value, 1080)), 16, 12000);
+      var h = clamp(Math.round(num($('#bs-new-h', els.homeMain).value, 1440)), 16, 12000);
+      var pal = $('#bs-new-pal', els.homeMain).value;
+      nouveauDoc({ id: 'surmesure', label: 'Sur mesure', w: w, h: h }, null, pal);
+      return;
+    }
+    if (act === 'ouvrir') { openProject(id); return; }
+    if (act === 'dupliquer') { dupProject(id); setTimeout(renderHome, 500); return; }
+    if (act === 'supprimer') { delProject(id); return; }
+  }
+
+  /* Crée un document et entre dans l'atelier. Un seul chemin, quel que
+     soit le point de départ : préréglage, modèle ou taille libre. */
+  function nouveauDoc(fmt, tplId, palId) {
+    var t = tplId ? templateById(tplId) : null;
+    var f = fmt || formatById(t ? 'affiche' : doc && doc.format || 'affiche');
+    doc = newDoc(f.id, palId || (t ? t.pal : 'nuit'));
+    doc.w = f.w; doc.h = f.h; doc.format = f.id;
+    doc.name = t ? t.label : (f.label === 'Sur mesure' ? 'Sans titre' : f.label);
+    if (t) doc.layers = t.build(doc) || [];
+    lastTpl = tplId || null;
+    project.id = null; project.isTemplate = false;
+    sel = []; hist.undo.length = 0; hist.redo.length = 0; hist.pre = null;
+    els.projName.value = doc.name;
+    syncFormatSelect();
+    syncHistButtons();
+    applyBindings(true);
+    prewarmImages();
+    markDirty(false);
+    els.saveInfo.textContent = 'Jamais enregistré';
+    renderPanel();
+    enterWorkspace();
+    toast(t ? 'Modèle « ' + t.label + ' »' : 'Document ' + f.w + ' × ' + f.h);
+  }
+
+  /* ===================================================================
+     45. BARRE DE MENUS
+     ---------------------------------------------------------------
+     Chaque entrée porte une action, et chaque action existe. Les menus
+     sont reconstruits à l'ouverture : les cases à cocher et les entrées
+     grisées reflètent l'état réel du document.
+     =================================================================== */
+
+  function M(label, act, kbd, opts) {
+    opts = opts || {};
+    return { label: label, act: act, kbd: kbd, on: opts.on, off: opts.off, danger: opts.danger, arg: opts.arg };
+  }
+  var SEP = { sep: true };
+  function LAB(t) { return { lab: t }; }
+
+  function menuDefs() {
+    var l = selOne(), n = sel.length, ls = selectedLayers();
+    return [
+      { id: 'fichier', label: 'Fichier', items: [
+        M('Nouveau…', 'm.new', 'Ctrl N'),
+        M('Ouvrir un projet…', 'm.open'),
+        M('Importer un fichier .json…', 'm.import', 'Ctrl O'),
+        SEP,
+        M('Enregistrer', 'm.save', 'Ctrl S'),
+        M('Enregistrer une copie', 'm.saveas'),
+        M('Enregistrer comme modèle', 'm.savetpl'),
+        SEP,
+        M('Importer une image…', 'm.addimg', 'Ctrl ⇧ I'),
+        SEP,
+        M('Exporter…', 'm.export', 'Ctrl E'),
+        M('Export rapide PNG ×2', 'm.quickpng'),
+        M('Exporter la série (3 formats)', 'm.serie'),
+        M('Exporter le projet (.json)', 'm.json'),
+        SEP,
+        M('Publier dans la médiathèque', 'm.publish'),
+        M('Copier le texte de publication', 'm.share'),
+        SEP,
+        M('Retour à l’accueil', 'm.home'),
+        M('Fermer le Studio', 'm.close', 'Échap')
+      ] },
+
+      { id: 'edition', label: 'Édition', items: [
+        M('Annuler', 'm.undo', 'Ctrl Z', { off: !hist.undo.length }),
+        M('Rétablir', 'm.redo', 'Ctrl ⇧ Z', { off: !hist.redo.length }),
+        SEP,
+        M('Couper', 'm.cut', 'Ctrl X', { off: !n }),
+        M('Copier', 'm.copy', 'Ctrl C', { off: !n }),
+        M('Coller', 'm.paste', 'Ctrl V', { off: !clipboard }),
+        M('Dupliquer', 'm.dup', 'Ctrl D', { off: !n }),
+        M('Supprimer', 'm.del', 'Suppr', { off: !n, danger: true }),
+        SEP,
+        M('Copier le style', 'm.copystyle', 'Ctrl Alt C', { off: !n }),
+        M('Coller le style', 'm.pastestyle', 'Ctrl Alt V', { off: !styleClip || !n }),
+        SEP,
+        M('Tout sélectionner', 'm.selall', 'Ctrl A'),
+        M('Désélectionner', 'm.selnone', 'Échap', { off: !n }),
+        M('Inverser la sélection', 'm.selinv'),
+        SEP,
+        LAB('Sélectionner par type'),
+        M('Tous les textes', 'm.seltype', null, { arg: 'text' }),
+        M('Toutes les images', 'm.seltype', null, { arg: 'image' }),
+        M('Toutes les formes', 'm.seltype', null, { arg: 'shape' }),
+        M('Tous les calques dynamiques', 'm.seldyn')
+      ] },
+
+      { id: 'image', label: 'Image', items: [
+        M('Taille du document…', 'm.docsize'),
+        M('Rotation 90° à droite', 'm.rot90'),
+        M('Rotation 90° à gauche', 'm.rot270'),
+        M('Rotation 180°', 'm.rot180'),
+        SEP,
+        LAB('Ambiance'),
+        M('Nuit verte', 'm.pal', null, { arg: 'nuit' }),
+        M('Sable', 'm.pal', null, { arg: 'sable' }),
+        M('Brique', 'm.pal', null, { arg: 'brique' }),
+        M('Océan', 'm.pal', null, { arg: 'ocean' }),
+        M('Or sur noir', 'm.pal', null, { arg: 'or' }),
+        M('Craie', 'm.pal', null, { arg: 'craie' }),
+        SEP,
+        LAB('Fond'),
+        M('Aplat uni', 'm.bg', null, { arg: 'uni' }),
+        M('Dégradé diagonal', 'm.bg', null, { arg: 'degrade' }),
+        M('Halo central', 'm.bg', null, { arg: 'halo' }),
+        M('Photo plein cadre', 'm.bg', null, { arg: 'photo' }),
+        SEP,
+        M('Vérifier avant publication', 'm.check')
+      ] },
+
+      { id: 'calque', label: 'Calque', items: [
+        LAB('Nouveau'),
+        M('Texte', 'm.newtext'),
+        M('Cadre photo', 'm.newframe'),
+        M('Rectangle', 'm.newrect'),
+        M('Ellipse', 'm.newellipse'),
+        SEP,
+        M('Dupliquer le calque', 'm.dup', 'Ctrl D', { off: !n }),
+        M('Supprimer le calque', 'm.del', 'Suppr', { off: !n, danger: true }),
+        SEP,
+        M(l && l.type === 'group' ? 'Dissocier' : 'Grouper', 'm.group', 'Ctrl G', { off: n < 2 && !(l && l.type === 'group') }),
+        M('Masque d’écrêtage', 'm.clip', 'Ctrl Alt G', { off: !n, on: !!(l && l.clip) }),
+        SEP,
+        LAB('Masque de fusion'),
+        M('Ajouter un masque', 'm.maskadd', null, { off: !n || !!(l && l.mask2) }),
+        M('Inverser le masque', 'm.maskinv', null, { off: !(l && l.mask2) }),
+        M('Effacer le masque', 'm.maskdel', null, { off: !(l && l.mask2) }),
+        SEP,
+        LAB('Disposition'),
+        M('Premier plan', 'm.front', 'Ctrl ⇧ ]', { off: !l }),
+        M('Avancer', 'm.up', 'Ctrl ]', { off: !l }),
+        M('Reculer', 'm.down', 'Ctrl [', { off: !l }),
+        M('Arrière-plan', 'm.back', 'Ctrl ⇧ [', { off: !l }),
+        SEP,
+        M(l && l.locked ? 'Déverrouiller' : 'Verrouiller', 'm.lock', null, { off: !l }),
+        M(l && !l.visible ? 'Afficher' : 'Masquer', 'm.vis', null, { off: !l }),
+        M('Aplatir en image', 'm.flatten', null, { off: !n })
+      ] },
+
+      { id: 'texte', label: 'Texte', items: (function () {
+        var out = [LAB('Rôle typographique')];
+        ROLES.forEach(function (r) { out.push(M(r.label, 'm.role', null, { arg: r.id, off: !(l && l.type === 'text') })); });
+        out.push(SEP, LAB('Casse'));
+        out.push(M('Normale', 'm.case', null, { arg: 'none', off: !(l && l.type === 'text') }));
+        out.push(M('MAJUSCULES', 'm.case', null, { arg: 'upper', off: !(l && l.type === 'text') }));
+        out.push(M('minuscules', 'm.case', null, { arg: 'lower', off: !(l && l.type === 'text') }));
+        out.push(M('Initiales Capitales', 'm.case', null, { arg: 'title', off: !(l && l.type === 'text') }));
+        out.push(SEP);
+        out.push(M('Modifier le texte', 'm.edit', 'Entrée', { off: !(l && l.type === 'text') }));
+        out.push(M('Texte en contour', 'm.hollow', null, { off: !(l && l.type === 'text'), on: !!(l && l.type === 'text' && l.ts.hollow) }));
+        return out;
+      })() },
+
+      { id: 'affichage', label: 'Affichage', items: [
+        M('Zoom avant', 'm.zin', 'Ctrl +'),
+        M('Zoom arrière', 'm.zout', 'Ctrl −'),
+        M('Taille réelle', 'm.z100', 'Ctrl 1'),
+        M('Ajuster à l’écran', 'm.zfit', 'Ctrl 0'),
+        M('Cadrer la sélection', 'm.zsel', 'Ctrl 2', { off: !n }),
+        SEP,
+        M('Grille', 'm.grid', 'Ctrl ’', { on: flags.grid }),
+        M('Magnétisme', 'm.snap', null, { on: flags.snap }),
+        M('Marges et repères', 'm.safe', null, { on: flags.safe }),
+        M('Effacer les repères', 'm.clearrules', null, { off: !(doc.rules && doc.rules.length) }),
+        SEP,
+        M('Aperçu propre', 'm.preview', '⇧ P', { on: preview })
+      ] },
+
+      { id: 'fenetre', label: 'Fenêtre', items: [
+        M('Modèles', 'm.panel', null, { arg: 'modeles', on: panelName === 'modeles' && !panelHidden }),
+        M('Images', 'm.panel', null, { arg: 'images', on: panelName === 'images' && !panelHidden }),
+        M('Unsplash', 'm.panel', null, { arg: 'unsplash', on: panelName === 'unsplash' && !panelHidden }),
+        M('Éléments', 'm.panel', null, { arg: 'elements', on: panelName === 'elements' && !panelHidden }),
+        M('Texte', 'm.panel', null, { arg: 'texte', on: panelName === 'texte' && !panelHidden }),
+        M('Données du club', 'm.panel', null, { arg: 'donnees', on: panelName === 'donnees' && !panelHidden }),
+        M('Styles', 'm.panel', null, { arg: 'styles', on: panelName === 'styles' && !panelHidden }),
+        M('Projets', 'm.panel', null, { arg: 'projets', on: panelName === 'projets' && !panelHidden }),
+        SEP,
+        M('Masquer le panneau de gauche', 'm.hidepanel', null, { on: panelHidden }),
+        M('Historique', 'm.history')
+      ] },
+
+      { id: 'aide', label: 'Aide', items: [
+        M('Raccourcis clavier', 'm.help', '?'),
+        M('Recharger les données du club', 'm.reload'),
+        M('À propos de Baobabs Studio', 'm.about')
+      ] }
+    ];
+  }
+
+  var panelHidden = false;
+  var menuOuvert = null;
+
+  function renderMenubar() {
+    if (!els.menubar) return;
+    els.menubar.innerHTML = menuDefs().map(function (m) {
+      return '<button type="button" class="bs-menu-b" data-menu="' + m.id + '">' + esc(m.label) + '</button>';
+    }).join('');
+    $$('[data-menu]', els.menubar).forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var id = b.getAttribute('data-menu');
+        if (menuOuvert === id) closeMenu(); else openMenu(id, b);
+      });
+      b.addEventListener('mouseenter', function () {
+        if (menuOuvert && menuOuvert !== b.getAttribute('data-menu')) openMenu(b.getAttribute('data-menu'), b);
+      });
+    });
+  }
+
+  function openMenu(id, btn) {
+    var def = null, defs = menuDefs();
+    for (var i = 0; i < defs.length; i++) if (defs[i].id === id) def = defs[i];
+    if (!def) return;
+    var h = '';
+    def.items.forEach(function (it) {
+      if (it.sep) { h += '<div class="bs-menu-sep"></div>'; return; }
+      if (it.lab) { h += '<div class="bs-menu-lab">' + esc(it.lab) + '</div>'; return; }
+      h += '<button type="button" class="bs-menu-i' + (it.danger ? ' bs-menu-danger' : '') + '"' +
+        ' data-act2="' + it.act + '"' + (it.arg ? ' data-arg="' + esc(it.arg) + '"' : '') +
+        (it.off ? ' disabled' : '') + '>' +
+        '<span class="bs-menu-check">' + (it.on ? '✓' : '') + '</span>' +
+        esc(it.label) + (it.kbd ? '<kbd>' + esc(it.kbd) + '</kbd>' : '') + '</button>';
+    });
+    els.menuPop.innerHTML = h;
+    els.menuPop.classList.add('is-on');
+    var r = btn.getBoundingClientRect();
+    els.menuPop.style.left = Math.max(6, Math.min(r.left, window.innerWidth - els.menuPop.offsetWidth - 8)) + 'px';
+    els.menuPop.style.top = (r.bottom + 4) + 'px';
+    menuOuvert = id;
+    $$('[data-menu]', els.menubar).forEach(function (b) { b.classList.toggle('is-on', b.getAttribute('data-menu') === id); });
+    $$('button', els.menuPop).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var a = b.getAttribute('data-act2'), arg = b.getAttribute('data-arg');
+        closeMenu();
+        menuAction(a, arg);
+      });
+    });
+  }
+  function closeMenu() {
+    if (!els.menuPop) return;
+    els.menuPop.classList.remove('is-on');
+    menuOuvert = null;
+    if (els.menubar) $$('[data-menu]', els.menubar).forEach(function (b) { b.classList.remove('is-on'); });
+  }
+
+  /* ===================================================================
+     49. DÉTOURAGE — MASQUES DE FUSION
+     ---------------------------------------------------------------
+     Un masque est une image en niveaux d'alpha, rangée avec le calque.
+     Blanc opaque = on garde, transparent = on cache. Rien n'est jamais
+     retiré de la photo : effacer, c'est peindre du transparent dans le
+     pochoir. On peut donc toujours revenir en arrière — c'est la
+     différence entre un détourage et un découpage.
+     =================================================================== */
+
+  var maskCache = {};
+  var MASK_MAX = 1100;          /* côté le plus long du pochoir */
+
+  function maskDims(l) {
+    var r = l.w / Math.max(1, l.h);
+    var w = r >= 1 ? MASK_MAX : Math.round(MASK_MAX * r);
+    var h = r >= 1 ? Math.round(MASK_MAX / r) : MASK_MAX;
+    return { w: clamp(w, 8, MASK_MAX), h: clamp(h, 8, MASK_MAX) };
+  }
+
+  function maskCanvas(l, creer) {
+    var e = maskCache[l.id];
+    if (e && l.mask2 && e.key === l.mask2.data) return e;
+
+    if (!l.mask2) {
+      if (!creer) return null;
+      var d = maskDims(l);
+      var cv = document.createElement('canvas');
+      cv.width = d.w; cv.height = d.h;
+      var ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, d.w, d.h);
+      l.mask2 = { w: d.w, h: d.h, data: cv.toDataURL('image/png') };
+      e = maskCache[l.id] = { cv: cv, ctx: ctx, key: l.mask2.data, ready: true };
+      return e;
+    }
+
+    var cv2 = document.createElement('canvas');
+    cv2.width = l.mask2.w; cv2.height = l.mask2.h;
+    var c2 = cv2.getContext('2d', { willReadFrequently: true });
+    e = maskCache[l.id] = { cv: cv2, ctx: c2, key: l.mask2.data, ready: false };
+    var im = new Image();
+    im.onload = function () { c2.drawImage(im, 0, 0); e.ready = true; requestDraw(); };
+    im.onerror = function () { e.ready = true; };
+    im.src = l.mask2.data;
+    return e;
+  }
+
+  /* À écrire après chaque coup de pinceau : le pochoir vit dans le
+     document, donc il suit l'annulation et l'enregistrement. */
+  function maskCommit(l) {
+    var e = maskCache[l.id];
+    if (!e) return;
+    l.mask2.data = e.cv.toDataURL('image/png');
+    e.key = l.mask2.data;
+  }
+
+  function drawWithMask(ctx, l, d, opts, alpha) {
+    var m = maskCanvas(l, false);
+    var o2 = {}; for (var k in opts) o2[k] = opts[k];
+    o2.noMask = true;
+    if (!m || !m.ready) { drawLayer(ctx, l, d, o2, alpha); return; }
+
+    var bb = bboxOf([l]);
+    if (bb.w < 1 || bb.h < 1) return;
+    var s = 1;
+    if (ctx.getTransform) { var t = ctx.getTransform(); s = Math.hypot(t.a, t.b) || 1; }
+    s = clamp(s, 0.05, 4);
+    var cw = Math.ceil(bb.w * s), ch = Math.ceil(bb.h * s);
+    if (cw < 1 || ch < 1 || cw * ch > 36e6) { drawLayer(ctx, l, d, o2, alpha); return; }
+
+    var oc = document.createElement('canvas'); oc.width = cw; oc.height = ch;
+    var oct = oc.getContext('2d');
+    oct.setTransform(s, 0, 0, s, -bb.x * s, -bb.y * s);
+    drawLayer(oct, l, d, o2, 1);
+
+    /* le pochoir est en repère local : on le pose avec la même
+       transformation que le calque, rotation et miroirs compris */
+    oct.globalCompositeOperation = 'destination-in';
+    oct.save();
+    oct.translate(l.x + l.w / 2, l.y + l.h / 2);
+    if (l.rot) oct.rotate(deg2rad(l.rot));
+    oct.scale(l.flipH ? -1 : 1, l.flipV ? -1 : 1);
+    oct.translate(-l.w / 2, -l.h / 2);
+    oct.drawImage(m.cv, 0, 0, l.w, l.h);
+    oct.restore();
+
+    ctx.save();
+    ctx.globalAlpha = clamp((l.opacity == null ? 1 : l.opacity) * (alpha == null ? 1 : alpha), 0, 1);
+    ctx.globalCompositeOperation = l.blend || 'source-over';
+    ctx.drawImage(oc, bb.x, bb.y, bb.w, bb.h);
+    ctx.restore();
+  }
+
+  function ajouterMasque() {
+    var ls = selectedLayers().filter(function (l) { return l.type !== 'group'; });
+    if (!ls.length) { toast('Sélectionnez un calque', true); return; }
+    change(function () { ls.forEach(function (l) { if (!l.mask2) maskCanvas(l, true); }); });
+    toast('Masque ajouté — gomme (E) pour effacer, pinceau (B) pour restaurer');
+  }
+  function effacerMasque() {
+    var ls = selectedLayers();
+    if (!ls.length) return;
+    change(function () {
+      ls.forEach(function (l) { delete l.mask2; delete maskCache[l.id]; });
+    });
+    toast('Masque retiré — l’image est entière à nouveau');
+  }
+  function inverserMasque() {
+    var l = selOne();
+    if (!l || !l.mask2) return;
+    var m = maskCanvas(l, true);
+    if (!m.ready) { toast('Masque en cours de chargement'); return; }
+    beginChange();
+    var d = m.ctx.getImageData(0, 0, m.cv.width, m.cv.height);
+    for (var i = 3; i < d.data.length; i += 4) d.data[i] = 255 - d.data[i];
+    m.ctx.putImageData(d, 0, 0);
+    maskCommit(l);
+    endChange();
+    requestDraw();
+    toast('Masque inversé');
+  }
+
+  /* ---------- baguette magique ---------- */
+  var wandOpts = { tol: 34, global: false, feather: 1.4 };
+
+  /* Le calque est rendu seul, à la taille du pochoir : on compare donc
+     ce que l'œil voit, pas les pixels d'origine de la photo. Un fond
+     assombri par un voile se détoure comme il s'affiche. */
+  function layerToMaskSpace(l) {
+    var m = maskCanvas(l, true);
+    var tw = m.cv.width, th = m.cv.height;
+    var tc = document.createElement('canvas');
+    tc.width = tw; tc.height = th;
+    var tx = tc.getContext('2d', { willReadFrequently: true });
+    tx.setTransform(tw / Math.max(1, l.w), 0, 0, th / Math.max(1, l.h), 0, 0);
+    try { drawContent(tx, l, doc, { forExport: true, noMask: true }); } catch (e) {}
+    return { m: m, tx: tx, w: tw, h: th };
+  }
+
+  function baguette(l, lx, ly) {
+    var env;
+    try { env = layerToMaskSpace(l); }
+    catch (e) { toast('Détourage impossible sur ce calque', true); return; }
+    var m = env.m, tw = env.w, th = env.h;
+    var src;
+    try { src = env.tx.getImageData(0, 0, tw, th); }
+    catch (e) { toast('Détourage bloqué : l’image vient d’un autre domaine sans autorisation', true); return; }
+
+    var px = clamp(Math.round(lx / Math.max(1, l.w) * tw), 0, tw - 1);
+    var py = clamp(Math.round(ly / Math.max(1, l.h) * th), 0, th - 1);
+    var sd = src.data, i0 = (py * tw + px) * 4;
+    var r0 = sd[i0], g0 = sd[i0 + 1], b0 = sd[i0 + 2], a0 = sd[i0 + 3];
+    var tol = wandOpts.tol, tol2 = tol * tol * 3;
+
+    function proche(i) {
+      var da = sd[i + 3] - a0;
+      if (Math.abs(da) > tol + 40) return false;
+      var dr = sd[i] - r0, dg = sd[i + 1] - g0, db = sd[i + 2] - b0;
+      return (dr * dr + dg * dg + db * db) <= tol2;
+    }
+
+    var hit = new Uint8Array(tw * th);
+    var n = 0, i, j;
+    if (wandOpts.global) {
+      for (i = 0; i < tw * th; i++) if (proche(i * 4)) { hit[i] = 1; n++; }
+    } else {
+      var pile = [py * tw + px];
+      hit[pile[0]] = 1;
+      while (pile.length) {
+        var p = pile.pop(); n++;
+        var x = p % tw, y = (p - x) / tw;
+        if (x > 0 && !hit[p - 1] && proche((p - 1) * 4)) { hit[p - 1] = 1; pile.push(p - 1); }
+        if (x < tw - 1 && !hit[p + 1] && proche((p + 1) * 4)) { hit[p + 1] = 1; pile.push(p + 1); }
+        if (y > 0 && !hit[p - tw] && proche((p - tw) * 4)) { hit[p - tw] = 1; pile.push(p - tw); }
+        if (y < th - 1 && !hit[p + tw] && proche((p + tw) * 4)) { hit[p + tw] = 1; pile.push(p + tw); }
+      }
+    }
+    if (n < 4) { toast('Rien de comparable ici — augmentez la tolérance'); return; }
+
+    beginChange();
+    var md = m.ctx.getImageData(0, 0, tw, th);
+    for (i = 0; i < hit.length; i++) if (hit[i]) md.data[i * 4 + 3] = 0;
+    m.ctx.putImageData(md, 0, 0);
+    if (wandOpts.feather > 0) adoucirMasque(m, wandOpts.feather);
+    maskCommit(l);
+    endChange();
+    requestDraw();
+    renderProps();
+    toast(Math.round(n / (tw * th) * 100) + ' % de l’image retirée — gomme (E) pour affiner');
+  }
+
+  /* Un bord net découpé au pixel se voit tout de suite. Un léger flou
+     sur le pochoir suffit à le rendre crédible. */
+  function adoucirMasque(m, px) {
+    if (!HAS_FILTER || !px) return;
+    var tmp = document.createElement('canvas');
+    tmp.width = m.cv.width; tmp.height = m.cv.height;
+    var t = tmp.getContext('2d');
+    t.filter = 'blur(' + px + 'px)';
+    t.drawImage(m.cv, 0, 0);
+    m.ctx.clearRect(0, 0, m.cv.width, m.cv.height);
+    m.ctx.drawImage(tmp, 0, 0);
+  }
+
+  /* ---------- recadrage de l'affiche ---------- */
+  function appliquerRecadrage(dg) {
+    var x = Math.round(Math.max(0, Math.min(dg.x0, dg.x1)));
+    var y = Math.round(Math.max(0, Math.min(dg.y0, dg.y1)));
+    var w = Math.round(Math.min(doc.w, Math.max(dg.x0, dg.x1)) - x);
+    var h = Math.round(Math.min(doc.h, Math.max(dg.y0, dg.y1)) - y);
+    if (w < 16 || h < 16) { toast('Zone trop petite', true); return; }
+    change(function () {
+      for (var i = 0; i < doc.layers.length; i++) shiftLayer(doc.layers[i], -x, -y);
+      walk(doc.layers, function (l) { if (l.type === 'group') reflowGroup(l); });
+      if (doc.rules) doc.rules = doc.rules.map(function (r) { return { axis: r.axis, v: r.v - (r.axis === 'x' ? x : y) }; });
+      doc.w = w; doc.h = h;
+      doc.format = formatIdPour(w, h);
+    });
+    syncFormatSelect();
+    fitView();
+    toast('Affiche recadrée en ' + w + ' × ' + h);
+  }
+
+  /* ---------- pinceau et gomme de masque ---------- */
+  var brushOpts = { size: 60, soft: 0.5 };
+
+  function coupDePinceau(l, lx, ly, effacer) {
+    var m = maskCanvas(l, true);
+    if (!m.ready) return;
+    var tw = m.cv.width, th = m.cv.height;
+    var sx = tw / Math.max(1, l.w), sy = th / Math.max(1, l.h);
+    var x = lx * sx, y = ly * sy;
+    var r = Math.max(1, brushOpts.size / 2 * ((sx + sy) / 2));
+    var c = m.ctx;
+    c.save();
+    c.globalCompositeOperation = effacer ? 'destination-out' : 'source-over';
+    var soft = clamp(brushOpts.soft, 0, 0.95);
+    if (soft > 0.02) {
+      var g = c.createRadialGradient(x, y, r * (1 - soft), x, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      c.fillStyle = g;
+    } else c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(x, y, r, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  }
+
+  /* ===================================================================
+     46. ACTIONS DES MENUS
+     =================================================================== */
+
+  function menuAction(a, arg) {
+    var l = selOne(), ls = selectedLayers();
+    switch (a) {
+      /* --- fichier --- */
+      case 'm.new':      quitterVers(function () { homeScreen = 'nouveau'; showHome(); }); return;
+      case 'm.open':     quitterVers(function () { homeScreen = 'recents'; showHome(); }); return;
+      case 'm.import':   els.fileJson.click(); return;
+      case 'm.save':     saveProject(false); return;
+      case 'm.saveas':   saveProject(true); return;
+      case 'm.savetpl':  enregistrerModele(); return;
+      case 'm.addimg':   pendingFrame = (l && (l.type === 'image' || l.type === 'frame')) ? l.id : null; els.file.click(); return;
+      case 'm.export':   openExport(); return;
+      case 'm.quickpng': doExport(2, 'image/png'); return;
+      case 'm.serie':    exportSerie(); return;
+      case 'm.json':     exportJson(); return;
+      case 'm.publish':  publish(); return;
+      case 'm.share':    sharePublication(); return;
+      case 'm.home':     quitterVers(showHome); return;
+      case 'm.close':    close(); return;
+
+      /* --- édition --- */
+      case 'm.undo':   undo(); return;
+      case 'm.redo':   redo(); return;
+      case 'm.cut':    copyLayers(true); return;
+      case 'm.copy':   copyLayers(false); return;
+      case 'm.paste':  pasteLayers(); return;
+      case 'm.dup':    duplicateSelected(); return;
+      case 'm.del':    removeSelected(); return;
+      case 'm.copystyle': copierStyle(); return;
+      case 'm.pastestyle': collerStyle(); return;
+      case 'm.selall': selectAll(); return;
+      case 'm.selnone': select([]); return;
+      case 'm.selinv': {
+        var garde = sel.slice();
+        select(doc.layers.filter(function (x) { return x.visible && !x.locked && garde.indexOf(x.id) < 0; })
+          .map(function (x) { return x.id; }));
+        return;
+      }
+      case 'm.seltype': {
+        var t = arg === 'image' ? ['image', 'frame'] : [arg];
+        var ids = [];
+        walk(doc.layers, function (x) { if (t.indexOf(x.type) >= 0 && x.visible && !x.locked) ids.push(x.id); });
+        select(ids);
+        toast(ids.length + ' calque(s) sélectionné(s)');
+        return;
+      }
+      case 'm.seldyn': {
+        var d2 = [];
+        walk(doc.layers, function (x) { if ((x.bind || (x.slot && x.slot !== 'libre')) && !x.locked) d2.push(x.id); });
+        select(d2);
+        toast(d2.length + ' calque(s) dynamique(s)');
+        return;
+      }
+
+      /* --- image / document --- */
+      case 'm.docsize': ouvrirTailleDoc(); return;
+      case 'm.rot90':   rotateDoc(90); return;
+      case 'm.rot270':  rotateDoc(270); return;
+      case 'm.rot180':  rotateDoc(180); return;
+      case 'm.pal':     applyPalette(arg); return;
+      case 'm.bg':      bgPreset(arg); return;
+      case 'm.check':   verifierAffiche(); return;
+
+      /* --- calque --- */
+      case 'm.newtext':   { var t2 = makeText(doc, 'titre', 'Votre texte', centeredBox(0.8, null)); syncTextBox(t2); t2.y = Math.round(doc.h / 2 - t2.h / 2); insertLayers([t2]); return; }
+      case 'm.newframe':  insertLayers([makeFrame(doc, centeredBox(0.6, 0.6))]); return;
+      case 'm.newrect':   insertLayers([makeShape(doc, 'rect', centeredBox(0.5, 0.3))]); return;
+      case 'm.newellipse':insertLayers([makeShape(doc, 'ellipse', centeredBox(0.4, 0.4))]); return;
+      case 'm.group':     groupSelected(); return;
+      case 'm.clip':      if (ls.length) { var on = !ls[0].clip; change(function () { ls.forEach(function (x) { x.clip = on; }); }); } return;
+      case 'm.maskadd':   ajouterMasque(); return;
+      case 'm.maskinv':   inverserMasque(); return;
+      case 'm.maskdel':   effacerMasque(); return;
+      case 'm.front':     if (l) sendTo(l.id, 'front'); return;
+      case 'm.back':      if (l) sendTo(l.id, 'back'); return;
+      case 'm.up':        if (l) moveLayerOrder(l.id, 1); return;
+      case 'm.down':      if (l) moveLayerOrder(l.id, -1); return;
+      case 'm.lock':      if (l) change(function () { l.locked = !l.locked; }); return;
+      case 'm.vis':       if (l) change(function () { l.visible = !l.visible; }); return;
+      case 'm.flatten':   aplatirSelection(); return;
+
+      /* --- texte --- */
+      case 'm.role':   if (l && l.type === 'text') change(function () { applyRole(arg); }); return;
+      case 'm.case':   if (l && l.type === 'text') change(function () { applyTextProp('transform', arg); }); return;
+      case 'm.edit':   if (l && l.type === 'text') enterTextEdit(l, 0, textLen(l)); return;
+      case 'm.hollow': if (l && l.type === 'text') change(function () { applyTextProp('hollow', !l.ts.hollow); }); return;
+
+      /* --- affichage --- */
+      case 'm.zin':   zoomStep(1); return;
+      case 'm.zout':  zoomStep(-1); return;
+      case 'm.z100':  setZoom(1); return;
+      case 'm.zfit':  fitView(); return;
+      case 'm.zsel':  zoomToSelection(); return;
+      case 'm.grid':  toggleFlag('grid'); return;
+      case 'm.snap':  toggleFlag('snap'); return;
+      case 'm.safe':  toggleFlag('safe'); return;
+      case 'm.clearrules': runAction('clearRules', { getAttribute: function () { return null; } }); return;
+      case 'm.preview': togglePreview(); return;
+
+      /* --- fenêtre --- */
+      case 'm.panel': panelHidden = false; els.panel.classList.remove('is-hidden'); openPanel(arg); return;
+      case 'm.hidepanel':
+        panelHidden = !panelHidden;
+        els.panel.classList.toggle('is-hidden', panelHidden);
+        onResize();
+        return;
+      case 'm.history': ouvrirHistorique(); return;
+
+      /* --- aide --- */
+      case 'm.help':   showHelp(); return;
+      case 'm.reload': runAction('reloadData', { getAttribute: function () { return null; } }); return;
+      case 'm.about':  aPropos(); return;
+    }
+    toast('Entrée de menu « ' + a + ' » sans action', true);
+  }
+
+  /* Le garde-fou de Photoshop : Enregistrer / Ne pas enregistrer /
+     Annuler. « Annuler » doit vraiment annuler — on ne quitte pas. */
+  function quitterVers(suite) {
+    if (!dirty) { suite(); return; }
+    pendingNav = suite;
+    modal('Enregistrer les modifications ?',
+      '<p style="font-size:13px;color:var(--bs-fg-2);line-height:1.6">' +
+      '« <b>' + esc(doc.name || 'Sans titre') + '</b> » a changé depuis le dernier enregistrement.<br>' +
+      'Si vous ne l’enregistrez pas, ces modifications seront perdues.</p>',
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Annuler</button>' +
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="discardGo">Ne pas enregistrer</button>' +
+      '<button type="button" class="bs-btn bs-btn-accent" data-act="saveThenGo">Enregistrer</button>');
+  }
+
+  function enregistrerModele() {
+    project.isTemplate = true;
+    project.id = null;
+    saveProject(true).then(function () {
+      project.isTemplate = false;
+      toast('Enregistré dans vos modèles', false, true);
+    });
+  }
+
+  /* ---------- taille du document ---------- */
+  function ouvrirTailleDoc() {
+    modal('Taille du document',
+      '<div class="bs-frow">' +
+      '<div class="bs-f"><label>Largeur</label><div class="bs-step"><input type="number" class="bs-in-num" id="bs-ds-w" value="' + doc.w + '" min="16" max="12000"><span class="bs-step-u">px</span></div></div>' +
+      '<div class="bs-f"><label>Hauteur</label><div class="bs-step"><input type="number" class="bs-in-num" id="bs-ds-h" value="' + doc.h + '" min="16" max="12000"><span class="bs-step-u">px</span></div></div>' +
+      '</div>' +
+      '<div class="bs-f"><div class="bs-tgl-row"><span>Conserver les proportions</span>' +
+      '<button type="button" class="bs-tgl is-on" id="bs-ds-ratio"><i></i></button></div></div>' +
+      '<div class="bs-f"><div class="bs-tgl-row"><span>Mettre la composition à l’échelle</span>' +
+      '<button type="button" class="bs-tgl is-on" id="bs-ds-scale"><i></i></button></div></div>' +
+      '<div class="bs-note" style="margin:10px 0 0">Agrandir ne dégrade rien : tout est redessiné à la nouvelle taille, les textes et les formes restent nets. Seules les photos importées dépendent de leur résolution d’origine.</div>',
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Annuler</button>' +
+      '<button type="button" class="bs-btn bs-btn-accent" data-act="dsOk">Appliquer</button>');
+
+    var w = $('#bs-ds-w', els.modalCard), h = $('#bs-ds-h', els.modalCard);
+    var ratio = doc.w / doc.h;
+    function lie(src, dst, inv) {
+      src.addEventListener('input', function () {
+        if (!$('#bs-ds-ratio', els.modalCard).classList.contains('is-on')) return;
+        dst.value = Math.round(inv ? num(src.value, 1) * ratio : num(src.value, 1) / ratio);
+      });
+    }
+    lie(w, h, false); lie(h, w, true);
+    $$('.bs-tgl', els.modalCard).forEach(function (t) {
+      t.addEventListener('click', function () { t.classList.toggle('is-on'); });
+    });
+  }
+  function appliquerTailleDoc() {
+    var nw = clamp(Math.round(num($('#bs-ds-w', els.modalCard).value, doc.w)), 16, 12000);
+    var nh = clamp(Math.round(num($('#bs-ds-h', els.modalCard).value, doc.h)), 16, 12000);
+    var scale = $('#bs-ds-scale', els.modalCard).classList.contains('is-on');
+    closeModal();
+    if (nw === doc.w && nh === doc.h) return;
+    change(function () {
+      if (scale) {
+        var s = Math.min(nw / doc.w, nh / doc.h);
+        var offX = (nw - doc.w * s) / 2, offY = (nh - doc.h * s) / 2;
+        for (var i = 0; i < doc.layers.length; i++) {
+          scaleLayer(doc.layers[i], s, s, 0, 0);
+          shiftLayer(doc.layers[i], offX, offY);
+        }
+        walk(doc.layers, function (x) { if (x.type === 'group') reflowGroup(x); });
+      }
+      doc.w = nw; doc.h = nh;
+      doc.format = formatIdPour(nw, nh);
+    });
+    syncFormatSelect();
+    fitView();
+    toast('Document en ' + nw + ' × ' + nh);
+  }
+  function formatIdPour(w, h) {
+    for (var i = 0; i < FORMATS.length; i++) if (FORMATS[i].w === w && FORMATS[i].h === h) return FORMATS[i].id;
+    return 'surmesure';
+  }
+
+  /* ---------- rotation du document ---------- */
+  function rotateDoc(deg) {
+    change(function () {
+      var W = doc.w, H = doc.h;
+      walk(doc.layers, function (l) {
+        if (l.type === 'group') return;            /* la boîte du groupe se recalcule */
+        var c = layerCenter(l), nc;
+        if (deg === 90) nc = { x: H - c.y, y: c.x };
+        else if (deg === 270) nc = { x: c.y, y: W - c.x };
+        else nc = { x: W - c.x, y: H - c.y };
+        l.rot = (((l.rot || 0) + deg) % 360 + 360) % 360;
+        if (l.rot > 180) l.rot -= 360;
+        l.x = nc.x - l.w / 2;
+        l.y = nc.y - l.h / 2;
+      });
+      if (deg !== 180) { doc.w = H; doc.h = W; }
+      doc.format = formatIdPour(doc.w, doc.h);
+      walk(doc.layers, function (x) { if (x.type === 'group') reflowGroup(x); });
+      if (doc.rules) doc.rules = doc.rules.map(function (r) {
+        if (deg === 180) return { axis: r.axis, v: (r.axis === 'x' ? W : H) - r.v };
+        return r.axis === 'x' ? { axis: 'y', v: r.v } : { axis: 'x', v: (deg === 90 ? H - r.v : r.v) };
+      });
+    });
+    syncFormatSelect();
+    fitView();
+    toast('Document tourné de ' + deg + '°');
+  }
+
+  /* ---------- aplatir en image ---------- */
+  function aplatirSelection() {
+    var ls = selectedLayers();
+    if (!ls.length) return;
+    var b = bboxOf(ls);
+    if (b.w < 1 || b.h < 1) return;
+    var s = clamp(2000 / Math.max(b.w, b.h), 0.5, 3);
+    var cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(b.w * s));
+    cv.height = Math.max(1, Math.round(b.h * s));
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(s, 0, 0, s, -b.x * s, -b.y * s);
+    ls.forEach(function (x) { drawLayer(ctx, x, doc, { forExport: true }, 1); });
+    var url;
+    try { url = cv.toDataURL('image/png'); }
+    catch (e) { toast('Aplatissement impossible — une image distante bloque la copie', true); return; }
+    getImage(url);
+    change(function () {
+      var idx = 0;
+      ls.forEach(function (x) {
+        var loc = locate(doc.layers, x.id);
+        if (loc) { idx = Math.max(idx, loc.idx); loc.arr.splice(loc.idx, 1); }
+      });
+      var f = makeFrame(doc, { src: url, x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h) });
+      f.name = 'Image aplatie';
+      f.fit = 'fill';
+      doc.layers.splice(Math.min(idx, doc.layers.length), 0, f);
+      sel = [f.id];
+    });
+    imagesReady().then(requestDraw);
+    toast(ls.length + ' calque(s) aplati(s) en image');
+  }
+
+  /* ===================================================================
+     47. VÉRIFICATION AVANT PUBLICATION
+     ---------------------------------------------------------------
+     Ce qu'un œil de graphiste attrape en trois secondes et qu'un œil
+     non entraîné ne voit qu'une fois l'affiche publiée.
+     =================================================================== */
+
+  function verifierAffiche() {
+    var pbs = [], m = doc.safe * doc.w;
+    var bgLum = lum((doc.bg && doc.bg.color && doc.bg.color.hex) || doc.palette.bg);
+
+    walk(doc.layers, function (l) {
+      if (!l.visible || l.type === 'group') return;
+      var b = bboxOf([l]);
+
+      if (b.x < m - 1 || b.y < m - 1 || b.x + b.w > doc.w - m + 1 || b.y + b.h > doc.h - m + 1) {
+        var dehors = b.x + b.w < 0 || b.y + b.h < 0 || b.x > doc.w || b.y > doc.h;
+        pbs.push({
+          grave: dehors, id: l.id,
+          t: dehors ? 'Hors de l’affiche' : 'Déborde des marges',
+          d: '« ' + (l.name || defaultName(l)) + ' » ' + (dehors ? 'est entièrement hors du cadre.' : 'sort de la zone de sécurité : risque de coupe à l’impression ou de recadrage sur mobile.')
+        });
+      }
+
+      if (l.type === 'text') {
+        var st = l.ts;
+        var tl = lum(st.color && st.color.hex ? st.color.hex : '#ffffff');
+        if (Math.abs(tl - bgLum) < 0.22 && !dessousQuelqueChose(l)) {
+          pbs.push({ grave: false, id: l.id, t: 'Contraste faible',
+            d: '« ' + (l.name || defaultName(l)) + ' » est presque de la même clarté que le fond. Le texte se lira mal.' });
+        }
+        if (st.size < doc.w * 0.012) {
+          pbs.push({ grave: false, id: l.id, t: 'Texte très petit',
+            d: '« ' + (l.name || defaultName(l)) + ' » fait ' + Math.round(st.size) + ' px sur ' + doc.w + ' : illisible une fois publié.' });
+        }
+        if (l.bind && l.bindBroken) {
+          pbs.push({ grave: false, id: l.id, t: 'Liaison rompue',
+            d: '« ' + (l.name || defaultName(l)) + ' » était lié à ' + bindLabel(l.bind) + ' mais son texte a été modifié à la main.' });
+        }
+      }
+
+      if (l.type === 'image' || l.type === 'frame') {
+        if (!l.src) {
+          pbs.push({ grave: true, id: l.id, t: 'Emplacement vide',
+            d: '« ' + (l.name || defaultName(l)) + ' » n’a pas d’image. Le cadre pointillé n’apparaît pas à l’export : il y aura un trou.' });
+        } else {
+          var e = getImage(l.src);
+          if (e && e.ok) {
+            var need = Math.max(l.w, l.h);
+            var have = Math.max(e.img.naturalWidth, e.img.naturalHeight);
+            if (have < need * 0.7) {
+              pbs.push({ grave: false, id: l.id, t: 'Image peu définie',
+                d: '« ' + (l.name || defaultName(l)) + ' » : ' + have + ' px d’origine pour ' + Math.round(need) + ' px affichés. Elle sera floue.' });
+            }
+          }
+          if (e && e.tainted) {
+            pbs.push({ grave: true, id: l.id, t: 'Image non exportable',
+              d: '« ' + (l.name || defaultName(l)) + ' » vient d’un autre domaine sans autorisation : l’export échouera. Téléversez-la dans la médiathèque.' });
+          }
+        }
+      }
+    });
+
+    var nb = 0;
+    walk(doc.layers, function (l) { if (l.type !== 'group') nb++; });
+    if (!nb) pbs.push({ grave: true, t: 'Affiche vide', d: 'Aucun calque visible.' });
+
+    var graves = pbs.filter(function (p) { return p.grave; }).length;
+    var h;
+    if (!pbs.length) {
+      h = '<div style="text-align:center;padding:14px 0">' +
+        '<div style="font-size:34px;line-height:1">✓</div>' +
+        '<p style="margin-top:10px;font-size:13.5px;font-weight:650">Rien à signaler.</p>' +
+        '<p style="font-size:12.5px;color:var(--bs-fg-3);margin-top:5px">Marges respectées, textes lisibles, images définies.</p></div>';
+    } else {
+      h = '<p style="font-size:12.5px;color:var(--bs-fg-2);margin-bottom:12px">' +
+        pbs.length + ' point' + (pbs.length > 1 ? 's' : '') + ' à regarder' +
+        (graves ? ', dont <b style="color:var(--bs-danger)">' + graves + ' bloquant' + (graves > 1 ? 's' : '') + '</b>' : '') + '.</p>';
+      h += '<div class="bs-list" style="padding:0">';
+      pbs.forEach(function (p) {
+        h += '<button type="button" class="bs-item" ' + (p.id ? 'data-act="gotoLayer" data-id="' + esc(p.id) + '"' : '') + '>' +
+          '<span style="flex:none;width:7px;height:7px;border-radius:50%;background:' + (p.grave ? 'var(--bs-danger)' : 'var(--bs-warn)') + '"></span>' +
+          '<span class="bs-item-txt"><b>' + esc(p.t) + '</b><small style="white-space:normal;line-height:1.45">' + esc(p.d) + '</small></span></button>';
+      });
+      h += '</div>';
+    }
+    modal('Vérification avant publication', h,
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Fermer</button>');
+  }
+  /* Un texte posé sur une forme ou une photo n'est pas jugé sur le fond
+     du document : on ne crie pas au faible contraste à tort. */
+  function dessousQuelqueChose(l) {
+    var b = bboxOf([l]), trouve = false;
+    var loc = locate(doc.layers, l.id);
+    if (!loc) return false;
+    for (var i = 0; i < loc.idx; i++) {
+      var o = loc.arr[i];
+      if (!o.visible || o.type === 'text') continue;
+      var ob = bboxOf([o]);
+      if (ob.x < b.x + b.w && ob.x + ob.w > b.x && ob.y < b.y + b.h && ob.y + ob.h > b.y) trouve = true;
+    }
+    return trouve;
+  }
+
+  /* ===================================================================
+     48. HISTORIQUE ET « À PROPOS »
+     =================================================================== */
+
+  function ouvrirHistorique() {
+    var n = hist.undo.length;
+    var h = '<p style="font-size:12.5px;color:var(--bs-fg-2);margin-bottom:12px">' +
+      (n ? n + ' état' + (n > 1 ? 's' : '') + ' en arrière, ' + hist.redo.length + ' en avant.' : 'Aucune modification depuis l’ouverture.') + '</p>';
+    if (n) {
+      h += '<div class="bs-list" style="padding:0;max-height:300px;overflow-y:auto">';
+      for (var i = n - 1; i >= Math.max(0, n - 24); i--) {
+        h += '<button type="button" class="bs-item" data-act="histGo" data-i="' + i + '">' +
+          '<span class="bs-item-txt"><b>Revenir ' + (n - i) + ' étape' + ((n - i) > 1 ? 's' : '') + ' en arrière</b></span></button>';
+      }
+      h += '</div>';
+    }
+    modal('Historique', h, '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Fermer</button>');
+  }
+  function histGo(i) {
+    closeModal();
+    var n = hist.undo.length - i;
+    for (var k = 0; k < n; k++) {
+      if (!hist.undo.length) break;
+      hist.redo.push(serialize(doc));
+      restore(hist.undo.pop());
+    }
+    syncHistButtons();
+    markDirty(true);
+    toast('Revenu ' + n + ' étape(s) en arrière');
+  }
+
+  function aPropos() {
+    modal('Baobabs Studio',
+      '<div style="display:flex;gap:14px;align-items:flex-start">' +
+      '<span class="bs-logo-mark" style="width:52px;height:52px;background-image:url(&quot;' +
+      esc((api && api.clubLogo) || LOGO_REPLI) + '&quot;)"></span>' +
+      '<div style="font-size:12.5px;color:var(--bs-fg-2);line-height:1.65">' +
+      '<b style="color:var(--bs-fg);font-size:14px">Baobabs Studio ' + VERSION + '</b><br>' +
+      'Atelier d’affiches du Baobabs Basket Club.<br><br>' +
+      'Rendu en canvas 2D : l’aperçu et le fichier exporté sont le même dessin, à n’importe quelle résolution.<br><br>' +
+      '<span style="color:var(--bs-fg-3)">' + TEMPLATES.length + ' modèles · ' + FONTS.length + ' polices · ' +
+      FORMATS.length + ' formats · ' + ICONS_LIB.length + ' icônes</span>' +
+      '</div></div>',
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Fermer</button>');
+  }
+
+  /* ===================================================================
      43. API PUBLIQUE
      =================================================================== */
 
@@ -6631,11 +9054,13 @@ window.BaobabsStudio = (function () {
     els.projName.value = doc.name;
     syncFormatSelect();
     syncHistButtons();
+    setLogo();
     wireChrome();
     setTool('select');            /* l'état JS et le DOM doivent partir d'accord */
     openPanel('modeles');
     renderProps();
     renderLayers();
+    showHome();
 
     Promise.all([waitFonts(), loadData(), loadProjects()]).then(function () {
       /* les boîtes de texte ont été calculées avec les polices de repli :
@@ -6644,6 +9069,8 @@ window.BaobabsStudio = (function () {
       applyBindings(true);
       prewarmImages();
       renderPanel();
+      setLogo();
+      if (atHome) renderHome();
       fitView();
       if (!hasStore) {
         console.info('[Baobabs Studio] aucun stockage de projets fourni par l hôte : les projets ne survivront pas au rechargement de la page.');
@@ -6659,6 +9086,15 @@ window.BaobabsStudio = (function () {
     root.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     startAutosave();
+    if (atHome) {
+      /* Le club vit : une joueuse arrive, un match se joue. On relit la
+         base à chaque ouverture, pas une seule fois au chargement. */
+      Promise.all([loadProjects(), loadData()]).then(function () {
+        applyBindings(true);
+        renderHome();
+      });
+      return;
+    }
     /* La scène n'avait aucune taille tant que le Studio était masqué :
        tout calcul de vue fait avant ce moment est faux. */
     requestAnimationFrame(function () {
@@ -6668,14 +9104,20 @@ window.BaobabsStudio = (function () {
     });
   }
 
+  /* Quitter sans enregistrer se demande, comme partout ailleurs :
+     Enregistrer / Ne pas enregistrer / Annuler. */
   function close() {
     if (!opened) return;
     if (pathDraft) commitPath(false);
     if (edit) exitTextEdit();
-    if (dirty && project.id) saveProject(false);
+    if (!atHome && dirty) { quitterVers(fermerVraiment); return; }
+    fermerVraiment();
+  }
+  function fermerVraiment() {
     opened = false;
     stopAutosave();
     closeCtx();
+    closeMenu();
     closeModal();
     root.classList.remove('is-open');
     root.setAttribute('aria-hidden', 'true');
@@ -6692,6 +9134,7 @@ window.BaobabsStudio = (function () {
     /* points d entrée annexes, utiles à l hôte */
     loadDocument: function (d) { if (d && d.layers) { doc = clone(d); sel = []; syncFormatSelect(); prewarmImages(); fitView(); refreshAll(); } },
     exportBlob: function (scale) { return exportBlob(scale || 2, 'image/png'); },
-    version: '2.0'
+    home: function () { if (mounted) showHome(); },
+    version: VERSION
   };
 })();
