@@ -24,7 +24,7 @@ window.BaobabsStudio = (function () {
   /* 3:4 est le rapport de la maquette d'origine : c'est le format par
      défaut, celui dans lequel les modèles ont été dessinés. `cat` sert
      à regrouper les préréglages sur l'écran d'accueil. */
-  var VERSION = '3.0';
+  var VERSION = '3.1';
 
   var FORMATS = [
     { id: 'affiche', cat: 'Affiche du club', label: 'Affiche 3:4', w: 1080, h: 1440 },
@@ -71,6 +71,8 @@ window.BaobabsStudio = (function () {
     /* — serif, pour l'editorial et le solennel — */
     { id: 'Playfair Display', label: 'Playfair Display', cat: 'Serif', weights: [400, 500, 600, 700, 800, 900], stack: "'Playfair Display', Georgia, serif" },
     { id: 'DM Serif Display', label: 'DM Serif Display', cat: 'Serif', weights: [400], stack: "'DM Serif Display', Georgia, serif" },
+    { id: 'Instrument Serif', label: 'Instrument Serif', cat: 'Serif', weights: [400], stack: "'Instrument Serif', Georgia, serif" },
+    { id: 'Caveat',       label: 'Caveat — manuscrit', cat: 'Serif', weights: [400, 500, 600, 700], stack: "'Caveat', cursive" },
     /* — texte courant — */
     { id: 'Inter',        label: 'Inter',        cat: 'Texte', weights: [400, 500, 600, 700, 800, 900], stack: "'Inter', system-ui, sans-serif" },
     { id: 'Outfit',       label: 'Outfit',       cat: 'Texte', weights: [100, 200, 300, 400, 500, 600, 700, 800, 900], stack: "'Outfit', system-ui, sans-serif" },
@@ -90,6 +92,8 @@ window.BaobabsStudio = (function () {
     { id: 'moderne',   label: 'Moderne',        font: 'Syne',    weight: 800, size: .058, tracking: -.015, lh: 1.04, upper: true },
     { id: 'editorial', label: 'Editorial',      font: 'Playfair Display', weight: 700, size: .07, tracking: -.01, lh: 1.05, upper: false, italic: true },
     { id: 'solennel',  label: 'Solennel',       font: 'DM Serif Display', weight: 400, size: .075, tracking: -.005, lh: 1.06, upper: false },
+    { id: 'contrepoint', label: 'Contrepoint',  font: 'Instrument Serif', weight: 400, size: .088, tracking: -.01, lh: 1.0, upper: false, italic: true },
+    { id: 'manuscrit', label: 'Manuscrit',      font: 'Caveat', weight: 600, size: .07, tracking: 0, lh: 1.0, upper: false },
     { id: 'soustitre', label: 'Sous-titre',     font: 'Archivo', weight: 600, size: .036, tracking: -.005, lh: 1.2, upper: false },
     { id: 'surtitre',  label: 'Sur-titre',      font: 'Space Grotesk', weight: 700, size: .019, tracking: .16, lh: 1.3, upper: true },
     { id: 'para',      label: 'Paragraphe',     font: 'Inter',   weight: 400, size: .021, tracking: 0, lh: 1.5, upper: false },
@@ -167,7 +171,8 @@ window.BaobabsStudio = (function () {
     { id: 'polygon',  label: 'Polygone' },
     { id: 'star',     label: 'Étoile' },
     { id: 'arrow',    label: 'Flèche' },
-    { id: 'chevron',  label: 'Chevron' }
+    { id: 'chevron',  label: 'Chevron' },
+    { id: 'stripes',  label: 'Rayures' }
   ];
 
   /* Icônes : des tracés SVG rendus par Path2D. Elles deviennent de
@@ -743,6 +748,9 @@ window.BaobabsStudio = (function () {
   /* Boîte réelle du calque texte : la hauteur suit toujours le contenu,
      la largeur suit le contenu quand le retour à la ligne est coupé. */
   function syncTextBox(l) {
+    /* Un texte posé sur une courbe emprunte la boîte du tracé : la
+       recalculer d'après les lignes la ferait s'effondrer. */
+    if (l.path) return null;
     var lay = layoutText(l, false);
     l.h = Math.max(1, Math.round(lay.h));
     if (l.wrap === false) l.w = Math.max(1, Math.round(lay.w));
@@ -893,6 +901,28 @@ window.BaobabsStudio = (function () {
         ctx.lineTo(cw, h); ctx.lineTo(0, h); ctx.lineTo(w - cw, h / 2);
         ctx.closePath();
         break;
+      /* Rayures diagonales en un seul calque : un groupe de quinze
+         rectangles tournés serait ingérable dans la pile. */
+      case 'stripes': {
+        var n = Math.max(2, l.count || 12), ratio = l.ratio == null ? .5 : l.ratio;
+        var a = deg2rad(l.slant == null ? 45 : l.slant);
+        var diag = Math.abs(w * Math.cos(a)) + Math.abs(h * Math.sin(a));
+        var pas = (Math.abs(w * Math.sin(a)) + Math.abs(h * Math.cos(a))) / n;
+        ctx.beginPath();
+        for (var si = -n; si < n * 2; si++) {
+          var off = si * pas, ep = pas * ratio;
+          var ux = Math.sin(a), uy = -Math.cos(a);   /* normale aux rayures */
+          var vx = Math.cos(a), vy = Math.sin(a);    /* direction des rayures */
+          var bx = w / 2 + ux * (off - (Math.abs(w * Math.sin(a)) + Math.abs(h * Math.cos(a))) / 2);
+          var by = h / 2 + uy * (off - (Math.abs(w * Math.sin(a)) + Math.abs(h * Math.cos(a))) / 2);
+          ctx.moveTo(bx - vx * diag, by - vy * diag);
+          ctx.lineTo(bx + vx * diag, by + vy * diag);
+          ctx.lineTo(bx + vx * diag + ux * ep, by + vy * diag + uy * ep);
+          ctx.lineTo(bx - vx * diag + ux * ep, by - vy * diag + uy * ep);
+          ctx.closePath();
+        }
+        break;
+      }
       default:
         roundRectPath(ctx, 0, 0, w, h, l.radius || 0);
     }
@@ -900,24 +930,46 @@ window.BaobabsStudio = (function () {
 
   /* Tracé de la plume : les nœuds sont normalisés 0..1 dans la boîte,
      ce qui rend le redimensionnement gratuit. */
-  function pathPath(ctx, l) {
-    var n = l.nodes || [], w = l.w, h = l.h;
-    if (!n.length) { ctx.beginPath(); return; }
+  /* Les sous-tracés d'un calque. Un tracé simple en a un seul ; une
+     forme combinee en a plusieurs, et c'est la regle de remplissage qui
+     decide si le second creuse un trou ou s'ajoute. */
+  function pathSubs(l) {
+    if (l.subs && l.subs.length) return l.subs;
+    return [{ nodes: l.nodes || [], closed: !!l.closed }];
+  }
+
+  function unSubPath(ctx, sub, w, h) {
+    var n = sub.nodes || [];
+    if (!n.length) return;
     function P(i) { return { x: n[i].x * w, y: n[i].y * h }; }
     function H2(i) { return { x: (n[i].h2x != null ? n[i].h2x : n[i].x) * w, y: (n[i].h2y != null ? n[i].h2y : n[i].y) * h }; }
     function H1(i) { return { x: (n[i].h1x != null ? n[i].h1x : n[i].x) * w, y: (n[i].h1y != null ? n[i].h1y : n[i].y) * h }; }
-    ctx.beginPath();
     var p0 = P(0);
     ctx.moveTo(p0.x, p0.y);
     for (var i = 1; i < n.length; i++) {
       var a = H2(i - 1), b = H1(i), p = P(i);
       ctx.bezierCurveTo(a.x, a.y, b.x, b.y, p.x, p.y);
     }
-    if (l.closed && n.length > 1) {
+    if (sub.closed && n.length > 1) {
       var a2 = H2(n.length - 1), b2 = H1(0);
       ctx.bezierCurveTo(a2.x, a2.y, b2.x, b2.y, p0.x, p0.y);
       ctx.closePath();
     }
+  }
+
+  function pathPath(ctx, l) {
+    ctx.beginPath();
+    var subs = pathSubs(l);
+    for (var k = 0; k < subs.length; k++) unSubPath(ctx, subs[k], l.w, l.h);
+  }
+
+  /* Chemin d'intersection : les sous-tracés servent de pochoir. */
+  function clipPath(ctx, l) {
+    if (!l.clipSubs || !l.clipSubs.length) return false;
+    ctx.beginPath();
+    for (var k = 0; k < l.clipSubs.length; k++) unSubPath(ctx, l.clipSubs[k], l.w, l.h);
+    ctx.clip(l.clipRule || 'nonzero');
+    return true;
   }
 
   function paintStyle(ctx, paint, w, h) {
@@ -1117,6 +1169,7 @@ window.BaobabsStudio = (function () {
 
   /* ---------- texte ---------- */
   function drawText(ctx, l, opts) {
+    if (l.path && l.path.nodes && l.path.nodes.length > 1) { drawTextSurTrace(ctx, l); return; }
     var lay = layoutText(l, false);
     var oy = 0;
     if (l.ts.valign === 'middle') oy = (l.h - lay.h) / 2;
@@ -1309,10 +1362,15 @@ window.BaobabsStudio = (function () {
 
   /* ---------- tracé plume ---------- */
   function drawPathLayer(ctx, l) {
-    if (!l.nodes || l.nodes.length < 2) return;
+    var subs = pathSubs(l);
+    if (!subs.length || !subs[0].nodes || subs[0].nodes.length < 2) return;
+    var ferme = l.subs ? subs.some(function (x) { return x.closed; }) : l.closed;
+
+    ctx.save();
+    var coupe = clipPath(ctx, l);
     pathPath(ctx, l);
     var fs = paintStyle(ctx, l.fill, l.w, l.h);
-    if (fs && l.closed) { ctx.fillStyle = fs; ctx.fill(); }
+    if (fs && ferme) { ctx.fillStyle = fs; ctx.fill(l.fillRule || 'nonzero'); }
     if (l.stroke && l.stroke.w > 0) {
       ctx.strokeStyle = css(l.stroke.color);
       ctx.lineWidth = l.stroke.w;
@@ -1322,6 +1380,8 @@ window.BaobabsStudio = (function () {
       ctx.stroke();
       ctx.setLineDash([]);
     }
+    ctx.restore();
+    if (coupe) { /* le pochoir est local au calque, il ne fuit pas */ }
   }
 
   /* ===================================================================
@@ -3385,6 +3445,13 @@ window.BaobabsStudio = (function () {
 
   function enterTextEdit(l, a, b) {
     if (!l || l.type !== 'text' || l.locked) return;
+    if (l.path) {
+      /* le curseur n'a pas de place le long d'une courbe : on renvoie
+         vers le champ du panneau plutôt que de faire semblant */
+      select([l.id]);
+      toast('Texte sur tracé : modifiez-le dans le champ « Contenu », à droite');
+      return;
+    }
     edit = { id: l.id, a: a == null ? 0 : a, b: b == null ? (a == null ? textLen(l) : a) : b };
     sel = [l.id];
     beginChange();
@@ -4139,7 +4206,7 @@ window.BaobabsStudio = (function () {
 
     var h = fGroup('Texte',
       scopeNote +
-      (!edit ? '<div class="bs-f"><label>Contenu</label><textarea class="bs-in" data-act="setText" rows="3">' + esc(plainText(l)) + '</textarea></div>' : '') +
+      (!edit || l.path ? '<div class="bs-f"><label>Contenu</label><textarea class="bs-in" data-act="setText" rows="3">' + esc(plainText(l)) + '</textarea></div>' : '') +
       fSelect('Rôle typographique', 'role', st.role || '', roles.concat([{ id: '', label: '— personnalisé —' }])) +
       fSelect('Police', 'ts.font', st.font, FONTS.map(function (x) { return { id: x.id, label: x.label }; }), { text: true }) +
       '<div class="bs-frow">' +
@@ -4173,6 +4240,16 @@ window.BaobabsStudio = (function () {
           (!st.hollow ? fColor('Couleur du trait', 'ts.strokeColor', st.strokeColor || color('#000000', 1), { text: true }) : '')
         : '') +
       fToggle('Souligné', 'ts.underline', !!st.underline, { text: true }));
+
+    if (l.path) {
+      h += fGroup('Sur le tracé',
+        fRange('Départ', 'path.offset', l.path.offset || 0, -0.5, 1, 0.005) +
+        fRange('Écart au tracé', 'path.dist', l.path.dist || 0, -200, 200, 1, { unit: 'px' }) +
+        fSeg('Côté', 'path.side', l.path.side || 'dessus', [
+          { id: 'dessus', label: 'Au-dessus' }, { id: 'dessous', label: 'En dessous' }
+        ]) +
+        '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" style="margin-top:8px" data-act="offPath">Remettre le texte à plat</button>');
+    }
 
     /* liaison de données — l'objet dynamique côté texte */
     var bnd = l.bind
@@ -4281,6 +4358,11 @@ window.BaobabsStudio = (function () {
       fSelect('Type', 'shape', l.shape, SHAPE_KINDS) +
       (l.shape === 'rect' ? fStep('Coins arrondis', 'radius', l.radius || 0, { unit: 'px', dec: 0, min: 0 }) : '') +
       (l.shape === 'polygon' ? fStep('Côtés', 'sides', l.sides || 6, { dec: 0, min: 3, max: 24 }) : '') +
+      (l.shape === 'stripes'
+        ? fStep('Nombre de rayures', 'count', l.count || 14, { dec: 0, min: 2, max: 60 }) +
+          fRange('Épaisseur', 'ratio', l.ratio == null ? .5 : l.ratio, 0.05, 0.95, 0.01) +
+          fStep('Inclinaison', 'slant', l.slant == null ? 45 : l.slant, { unit: '°', dec: 0 })
+        : '') +
       (l.shape === 'star'
         ? fStep('Branches', 'points', l.points || 5, { dec: 0, min: 3, max: 20 }) +
           fRange('Creux', 'inner', l.inner || .46, 0.1, 0.9, 0.01)
@@ -4659,6 +4741,189 @@ window.BaobabsStudio = (function () {
     f.fit = 'contain';
     f.name = opts.nom || (slot === 'logoAdv' ? 'Logo adversaire' : 'Logo du club');
     return f;
+  }
+
+  /* ---------------------------------------------------------------
+     Briques tirées des références : ce sont elles qui font qu'une
+     affiche « a l'air faite », par opposition à un gabarit rempli.
+     --------------------------------------------------------------- */
+
+  /* Grain de papier. Fabriqué une fois, réutilisé partout. Posé en
+     mode « incrustation » à faible opacité — le canvas gère ce mode de
+     fusion nativement, donc il survit à l'export, contrairement à un
+     mix-blend-mode CSS. */
+  var _bruitURL = null;
+  function bruitDataURL() {
+    if (_bruitURL) return _bruitURL;
+    var n = 900, cv = document.createElement('canvas');
+    cv.width = cv.height = n;
+    var c = cv.getContext('2d');
+    var im = c.createImageData(n, n), d = im.data;
+    for (var i = 0; i < d.length; i += 4) {
+      var v = 110 + Math.random() * 90;
+      d[i] = d[i + 1] = d[i + 2] = v;
+      d[i + 3] = 255;
+    }
+    c.putImageData(im, 0, 0);
+    _bruitURL = cv.toDataURL('image/png');
+    return _bruitURL;
+  }
+  function tGrain(d, opts) {
+    opts = opts || {};
+    var f = makeFrame(d, { x: 0, y: 0, w: d.w, h: d.h });
+    f.src = bruitDataURL();
+    f.fit = 'cover';
+    f.blend = 'overlay';
+    f.opacity = opts.a == null ? .28 : opts.a;
+    f.name = 'Grain';
+    f.locked = opts.lock !== false;
+    getImage(f.src);
+    return f;
+  }
+
+  /* Halo : le projecteur derrière le sujet. Deux références sur onze
+     l'utilisent, et c'est ce qui détache un portrait d'un fond plat. */
+  function tHalo(d, hex, opts) {
+    opts = opts || {};
+    var w = (opts.w || .9) * d.w, h = (opts.h || .62) * d.h;
+    var e = makeShape(d, 'ellipse', {
+      x: (opts.cx == null ? .5 : opts.cx) * d.w - w / 2,
+      y: (opts.cy == null ? .38 : opts.cy) * d.h - h / 2,
+      w: w, h: h
+    });
+    e.fill = { type: 'radial', from: color(hex, opts.a == null ? .55 : opts.a), to: color(hex, 0), angle: 90 };
+    e.stroke = { color: color(hex, 0), w: 0, dash: 0 };
+    e.name = opts.nom || 'Halo';
+    return e;
+  }
+
+  /* Rayures diagonales de fond. */
+  function tRayures(d, hex, opts) {
+    opts = opts || {};
+    var r = makeShape(d, 'stripes', { x: 0, y: 0, w: d.w, h: d.h });
+    r.count = opts.count || 14;
+    r.ratio = opts.ratio == null ? .5 : opts.ratio;
+    r.slant = opts.slant == null ? 45 : opts.slant;
+    r.fill = { type: 'solid', color: color(hex, opts.a == null ? 1 : opts.a) };
+    r.stroke = { color: color(hex, 0), w: 0, dash: 0 };
+    r.name = opts.nom || 'Rayures';
+    return r;
+  }
+
+  /* Bandeau défilant sur les quatre bords — le cadre typographique des
+     affiches de club. Un groupe, donc il se déplace d'un bloc. */
+  function tMarquee(d, txt, opts) {
+    opts = opts || {};
+    var hex = opts.col || d.palette.accent;
+    var ep = (opts.h || .035) * d.w;
+    var taille = ep * .62;
+    var motif = (txt + '   ').repeat(Math.ceil(d.w / (taille * (txt.length + 3) * .55)) + 4);
+    var kids = [];
+    [['haut', 0, 0, d.w, ep, 0],
+     ['bas', 0, d.h - ep, d.w, ep, 0],
+     ['gauche', 0, 0, d.h, ep, 90],
+     ['droite', d.w - ep, 0, d.h, ep, -90]].forEach(function (b, i) {
+      var bande = makeShape(d, 'rect', { x: b[1], y: b[2], w: b[3], h: b[4] });
+      if (i >= 2) {
+        /* les bandes latérales sont des rectangles horizontaux tournés :
+           une boîte tournée reste une boîte, tout continue de marcher */
+        bande.w = d.h; bande.h = ep;
+        bande.x = (i === 2 ? 0 : d.w - ep) + ep / 2 - d.h / 2;
+        bande.y = d.h / 2 - ep / 2;
+        bande.rot = b[5];
+      }
+      bande.fill = { type: 'solid', color: color(hex, 1) };
+      bande.stroke = { color: color(hex, 0), w: 0, dash: 0 };
+      bande.name = 'Bande ' + b[0];
+      var t = makeText(d, 'etiquette', motif, {
+        x: bande.x, y: bande.y + ep * .26, w: bande.w, colHex: opts.fg || d.palette.bg, wrap: false
+      });
+      t.ts.size = taille;
+      t.ts.align = 'center';
+      t.ts.tracking = .08;
+      t.wrap = false;
+      t.rot = bande.rot || 0;
+      t.name = 'Texte ' + b[0];
+      syncTextBox(t);
+      t.x = bande.x + (bande.w - t.w) / 2;
+      kids.push(bande, t);
+    });
+    var g = newLayer('group', { children: kids, name: opts.nom || 'Bandeau défilant' });
+    reflowGroup(g);
+    return g;
+  }
+
+  /* Pastille de couleur derrière un mot — le geste Spurs / Inter. */
+  function tSurligne(d, txt, box, opts) {
+    opts = opts || {};
+    var t = tTexte(d, opts.role || 'stade', txt, box, {
+      size: opts.size, col: opts.fg || d.palette.bg, align: 'center',
+      nom: (opts.nom || 'Mot') + ' — texte', bind: opts.bind
+    });
+    var pad = (opts.pad == null ? .35 : opts.pad) * t.ts.size;
+    var r = makeShape(d, 'rect', {
+      x: box.x - pad, y: box.y - pad * .45,
+      w: box.w + pad * 2, h: t.h + pad * .9,
+      radius: opts.radius == null ? t.ts.size * .12 : opts.radius
+    });
+    r.fill = { type: 'solid', color: color(opts.bg || d.palette.accent, 1) };
+    r.stroke = { color: color(d.palette.fg, 0), w: 0, dash: 0 };
+    r.name = (opts.nom || 'Mot') + ' — pastille';
+    if (opts.rot) { r.rot = opts.rot; t.rot = opts.rot; }
+    return [r, t];
+  }
+
+  /* Croix de repérage aux coins — le clin d'œil « planche d'imprimeur »
+     du visuel Nets. */
+  function tCroix(d, opts) {
+    opts = opts || {};
+    var m = (opts.m || .045) * d.w, s = (opts.s || .016) * d.w;
+    var ep = Math.max(1, d.w * .0018), kids = [];
+    [[m, m], [d.w - m, m], [m, d.h - m], [d.w - m, d.h - m]].forEach(function (p, i) {
+      var a = makeShape(d, 'rect', { x: p[0] - s / 2, y: p[1] - ep / 2, w: s, h: ep });
+      var b = makeShape(d, 'rect', { x: p[0] - ep / 2, y: p[1] - s / 2, w: ep, h: s });
+      [a, b].forEach(function (r) {
+        r.fill = { type: 'solid', color: color(opts.col || d.palette.fg2, .9) };
+        r.stroke = { color: color(d.palette.fg, 0), w: 0, dash: 0 };
+        r.name = 'Croix ' + (i + 1);
+      });
+      kids.push(a, b);
+    });
+    var g = newLayer('group', { children: kids, name: 'Repères de coin' });
+    reflowGroup(g);
+    return g;
+  }
+
+  /* Le sujet détouré : un cadre sans voile ni masque, calé pour
+     déborder. Le club y met une photo déjà détourée, ou la détoure sur
+     place à la baguette magique. */
+  function tDecoupe(d, slot, box, opts) {
+    opts = opts || {};
+    var f = makeFrame(d, {
+      x: box.x * d.w, y: box.y * d.h, w: box.w * d.w, h: box.h * d.h, slot: slot || 'photoJoueuse'
+    });
+    f.fit = opts.fit || 'cover';
+    f.name = opts.nom || 'Sujet détouré';
+    if (opts.gray) f.fx.gray = opts.gray;
+    if (opts.tint) { f.fx.tint = color(opts.tint, 1); f.fx.tintAmt = opts.tintAmt == null ? .35 : opts.tintAmt; }
+    if (opts.contrast) f.fx.contrast = opts.contrast;
+    if (opts.ombre) f.shadow = { on: true, x: 0, y: d.w * .012, blur: d.w * .05, color: color('#000000', .55) };
+    return f;
+  }
+
+  /* Bloc d'informations en petites capitales espacées — présent sur
+     dix références sur onze, toujours au même endroit. */
+  function tInfos(d, lignes, y, opts) {
+    opts = opts || {};
+    var pad = opts.pad == null ? d.w * .07 : opts.pad;
+    var out = [], lh = (opts.size || .026) * d.w * 1.5;
+    lignes.forEach(function (ln, i) {
+      out.push(tTexte(d, 'donnee', ln[0], { x: pad, y: y + lh * i, w: d.w - pad * 2 }, {
+        size: (opts.size || .026) * d.w, col: opts.col || d.palette.fg,
+        align: opts.align || 'left', bind: ln[1], nom: ln[2] || ('Info ' + (i + 1))
+      }));
+    });
+    return out;
   }
 
   /* Titre empilé : la ligne d'accent porte sa propre couleur par run,
@@ -5408,6 +5673,337 @@ window.BaobabsStudio = (function () {
     {
       id: 'vide-total', cat: 'Mise en page', label: 'Document vide', pal: 'nuit',
       build: function () { return []; }
+    },
+
+    /* ================================================================
+       Dix compositions reprises des affiches de référence. Elles
+       partagent le même vocabulaire : sujet détouré qui déborde,
+       filigrane géant derrière, condensé lourd sur deux lignes
+       décalées, pastille sous un mot, bloc d'infos en capitales
+       espacées, et un serif ou un manuscrit en contrepoint.
+       ================================================================ */
+    {
+      id: 'ref-next-match', cat: 'Match Day', label: 'Next Match', pal: 'brique',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, {
+          grad: A, a: 1, a2: .55, angle: 25, nom: 'Fond dégradé'
+        }));
+        /* blason en filigrane, très grand, derrière tout */
+        var bl = tLogo(d, { x: W * .12, y: H * .18, w: W * .76, h: W * .76 }, 'logoClub', { mask: 'rect', nom: 'Blason en filigrane' });
+        bl.opacity = .09; o.push(bl);
+        o.push(tRayures(d, d.palette.fg, { count: 26, ratio: .18, slant: 90, a: .05, nom: 'Cannelures' }));
+        /* le sujet déborde à droite et par le haut */
+        o.push(tDecoupe(d, 'photoJoueuse', { x: .34, y: -.03, w: .74, h: .82 }, {
+          tint: A, tintAmt: .5, gray: 55, contrast: 14, ombre: true, nom: 'Joueuse détourée'
+        }));
+        o = o.concat(tKicker(d, H * .055, 'CHAMPIONNAT NATIONAL D2', { bind: 'match.competition', filet: false }));
+        o.push(tTexte(d, 'affiche', 'NEXT', { x: p, y: H * .30, w: W * .7 }, {
+          size: W * .215, ombre: true, nom: 'NEXT'
+        }));
+        o.push(tTexte(d, 'affiche', 'MATCH', { x: p + W * .085, y: H * .425, w: W * .8 }, {
+          size: W * .145, ombre: true, nom: 'MATCH'
+        }));
+        o.push(tLogo(d, { x: p, y: H * .525, w: W * .105, h: W * .105 }, 'logoClub'));
+        o.push(tLogo(d, { x: p + W * .125, y: H * .525, w: W * .105, h: W * .105 }, 'logoAdv'));
+        o = o.concat(tInfos(d, [
+          ['BAOBABS BC  V  DUC DAKAR', 'match.affiche', 'Affiche'],
+          ['STADIUM MARIUS NDIAYE — 19H00', 'match.lieu', 'Salle'],
+          ['SAMEDI 00 SEPTEMBRE', 'match.date', 'Date']
+        ], H * .645, { size: .025 }));
+        o.push(tGrain(d, { a: .2 }));
+        return o;
+      }
+    },
+    {
+      id: 'ref-gameday', cat: 'Match Day', label: 'Gameday — serif', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#050505', { nom: 'Fond' }));
+        o.push(tHalo(d, A, { cx: .5, cy: .34, w: .95, h: .58, a: .8, nom: 'Projecteur' }));
+        o.push(tDecoupe(d, 'photoJoueuse', { x: .1, y: .05, w: .8, h: .78 }, {
+          contrast: 10, ombre: true, nom: 'Joueuse détourée'
+        }));
+        /* le serif en bas à gauche : c'est lui qui change tout */
+        o.push(tTexte(d, 'contrepoint', 'Gameday', { x: p, y: H * .755, w: W * .7 }, {
+          size: W * .135, nom: 'Gameday'
+        }));
+        o.push(tLogo(d, { x: p, y: H * .885, w: W * .062, h: W * .062 }, 'logoClub'));
+        o.push(tLogo(d, { x: p + W * .075, y: H * .885, w: W * .062, h: W * .062 }, 'logoAdv'));
+        o = o.concat(tInfos(d, [
+          ['SAMEDI 00 · 19H00', 'match.date', 'Date'],
+          ['STADIUM MARIUS NDIAYE', 'match.lieu', 'Salle']
+        ], H * .888, { size: .021, pad: W * .21, col: d.palette.fg2 }));
+        o.push(tTexte(d, 'manuscrit', 'présenté par nos partenaires', { x: p, y: H * .955, w: W - p * 2 }, {
+          size: W * .036, col: d.palette.fg2, nom: 'Présenté par'
+        }));
+        o.push(tGrain(d, { a: .16 }));
+        return o;
+      }
+    },
+    {
+      id: 'ref-duel-logos', cat: 'Match Day', label: 'Duel — logos ronds', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, A, { nom: 'Aplat de couleur' }));
+        /* photo très rapprochée, coupée à la moitié basse */
+        o.push(tFondPhoto(d, 'photoMatch', { h: H * .62, veil: .12, contrast: 8, nom: 'Photo rapprochée' }));
+        o.push(tLogo(d, { x: W * .1, y: H * .60, w: W * .27, h: W * .27 }, 'logoClub', { nom: 'Logo Baobabs' }));
+        o.push(tLogo(d, { x: W * .63, y: H * .60, w: W * .27, h: W * .27 }, 'logoAdv', { nom: 'Logo adversaire' }));
+        var vs = makeShape(d, 'ellipse', { x: W * .425, y: H * .60 + W * .045, w: W * .15, h: W * .15 });
+        vs.fill = { type: 'none' };
+        vs.stroke = { color: color(d.palette.fg, 1), w: Math.max(2, W * .004), dash: 0 };
+        vs.name = 'Cercle VS'; o.push(vs);
+        o.push(tTexte(d, 'stade', 'VS', { x: W * .425, y: H * .60 + W * .085, w: W * .15 }, {
+          size: W * .052, align: 'center', nom: 'VS'
+        }));
+        o = o.concat(tSurligne(d, '19H00', { x: W * .33, y: H * .795, w: W * .34 }, {
+          role: 'donnee', size: W * .042, bg: d.palette.fg, fg: d.palette.bg,
+          radius: W * .04, bind: 'match.heure', nom: 'Heure'
+        }));
+        o = o.concat(tInfos(d, [
+          ['STADIUM MARIUS NDIAYE — DAKAR', 'match.lieu', 'Salle'],
+          ['CHAMPIONNAT NATIONAL D2', 'match.competition', 'Compétition'],
+          ['SAMEDI 00 SEPTEMBRE', 'match.date', 'Date']
+        ], H * .858, { size: .0215, align: 'center', col: d.palette.fg }));
+        o.push(tTexte(d, 'manuscrit', 'Baobabs Basket Club', { x: 0, y: H * .955, w: W }, {
+          size: W * .04, align: 'center', nom: 'Signature'
+        }));
+        return o;
+      }
+    },
+    {
+      id: 'ref-marquee', cat: 'Joueuse', label: 'Joueuse du match', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .1, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#0A0710', { nom: 'Fond' }));
+        o.push(tHalo(d, A, { cx: .55, cy: .42, w: .9, h: .7, a: .42, nom: 'Halo' }));
+        o.push(tDecoupe(d, 'photoJoueuse', { x: .2, y: .06, w: .74, h: .72 }, {
+          contrast: 12, ombre: true, nom: 'Joueuse détourée'
+        }));
+        o.push(tTexte(d, 'affiche', 'JOUEUSE', { x: p, y: H * .555, w: W - p * 2 }, {
+          size: W * .155, ombre: true, nom: 'JOUEUSE'
+        }));
+        o = o.concat(tSurligne(d, 'DU', { x: p, y: H * .675, w: W * .21 }, {
+          role: 'affiche', size: W * .085, bg: A, fg: d.palette.bg, radius: W * .012, nom: 'DU'
+        }));
+        o.push(tTexte(d, 'affiche', 'MATCH', { x: p + W * .245, y: H * .672, w: W * .6 }, {
+          size: W * .118, ombre: true, nom: 'MATCH'
+        }));
+        o.push(tTexte(d, 'stade', 'PRÉNOM NOM', { x: p, y: H * .795, w: W - p * 2 }, {
+          size: W * .055, col: A, bind: 'joueuse.nom', nom: 'Nom'
+        }));
+        o.push(tMarquee(d, 'BAOBABS', { col: A, fg: d.palette.bg, h: .038 }));
+        o.push(tGrain(d, { a: .18 }));
+        return o;
+      }
+    },
+    {
+      id: 'ref-panneaux', cat: 'Joueuse', label: 'Trois panneaux', pal: 'craie',
+      build: function (d) {
+        var W = d.w, H = d.h, A = '#2A35D6', o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#EFEFF2', { nom: 'Fond' }));
+        var pw = W * .28, gap = W * .025, x0 = (W - (pw * 3 + gap * 2)) / 2;
+        for (var i = 0; i < 3; i++) {
+          var f = makeFrame(d, {
+            x: x0 + (pw + gap) * i, y: H * .07,
+            w: pw, h: H * (i === 1 ? .46 : .40), slot: i === 1 ? 'photoJoueuse' : 'libre'
+          });
+          f.mask = 'squircle';
+          f.fx.gray = 100; f.fx.tint = color(A, 1); f.fx.tintAmt = .5; f.fx.contrast = 16;
+          f.name = 'Panneau ' + (i + 1);
+          if (i !== 1) f.y = H * .1;
+          o.push(f);
+        }
+        o.push(tTexte(d, 'etiquette', 'PRÉNOM NOM', { x: 0, y: H * .60, w: W }, {
+          align: 'center', col: '#111111', bind: 'joueuse.nom', size: W * .026, nom: 'Nom'
+        }));
+        o.push(tTexte(d, 'affiche', 'JOUEUSE', { x: 0, y: H * .64, w: W }, {
+          size: W * .155, align: 'center', col: A, nom: 'JOUEUSE'
+        }));
+        o = o.concat(tSurligne(d, 'du', { x: W * .40, y: H * .755, w: W * .2 }, {
+          role: 'contrepoint', size: W * .058, bg: '#FFFFFF', fg: A, radius: W * .03, nom: 'du'
+        }));
+        o.push(tTexte(d, 'affiche', 'MATCH', { x: 0, y: H * .815, w: W }, {
+          size: W * .155, align: 'center', col: A, nom: 'MATCH'
+        }));
+        o.push(tRect(d, { x: W * .2, y: H * .945, w: W * .6, h: Math.max(1, W * .0015) }, '#111111', { a: .25, nom: 'Filet' }));
+        o.push(tTexte(d, 'mention', 'BAOBABS VS DUC DAKAR', { x: 0, y: H * .955, w: W }, {
+          align: 'center', col: '#6A6A6A', bind: 'match.affiche', nom: 'Affiche'
+        }));
+        o.push(tGrain(d, { a: .3 }));
+        return o;
+      }
+    },
+    {
+      id: 'ref-calendrier', cat: 'Club', label: 'Calendrier du mois', pal: 'craie',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .09, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#E9E9E7', { nom: 'Fond' }));
+        o.push(tCroix(d, { col: '#9A9A98' }));
+        o = o.concat(tSurligne(d, 'BAOBABS', { x: W * .30, y: H * .062, w: W * .18 }, {
+          role: 'etiquette', size: W * .019, bg: '#111111', fg: '#FFFFFF', radius: W * .02, nom: 'Étiquette club'
+        }));
+        o = o.concat(tSurligne(d, '2026', { x: W * .52, y: H * .062, w: W * .13 }, {
+          role: 'etiquette', size: W * .019, bg: '#FFFFFF', fg: '#111111', radius: W * .02, nom: 'Étiquette saison'
+        }));
+        o.push(tTexte(d, 'titre', 'CALENDRIER\nDU MOIS', { x: p, y: H * .105, w: W - p * 2 }, {
+          size: W * .125, align: 'center', col: '#111111', lh: .92, font: 'Archivo', weight: 900, nom: 'Titre'
+        }));
+        o.push(tRect(d, { x: W * .38, y: H * .285, w: W * .24, h: Math.max(1, W * .0016) }, '#111111', { nom: 'Filet' }));
+        /* quatre lignes de match — le générateur de série les remplit */
+        var y = H * .34, gap = H * .135;
+        for (var i = 0; i < 4; i++) {
+          var yy = y + gap * i;
+          var pastille = tSurligne(d, i % 2 ? 'VS' : 'À', { x: p, y: yy + gap * .28, w: W * .07 }, {
+            role: 'etiquette', size: W * .017, bg: '#FFFFFF', fg: '#111111', radius: W * .015, nom: 'Lieu ' + (i + 1)
+          });
+          pastille[1].serie = { i: i, champ: 'domicile' };
+          o = o.concat(pastille);
+          var lg = tLogo(d, { x: p + W * .10, y: yy + gap * .12, w: W * .11, h: W * .11 }, 'logoAdv', { mask: 'rect', nom: 'Logo ' + (i + 1) });
+          lg.slot = 'libre'; lg.serie = { i: i, champ: 'logo' }; o.push(lg);
+          var adv = tTexte(d, 'mention', 'ADVERSAIRE', { x: p + W * .24, y: yy + gap * .1, w: W * .5 }, {
+            col: '#6A6A68', size: W * .0165, nom: 'Adversaire ' + (i + 1)
+          });
+          adv.serie = { i: i, champ: 'adversaire' }; o.push(adv);
+          var dt = tTexte(d, 'titre', 'SAMEDI 00', { x: p + W * .24, y: yy + gap * .24, w: W * .55 }, {
+            size: W * .062, col: '#111111', font: 'Archivo', weight: 900, upper: true, nom: 'Date ' + (i + 1)
+          });
+          dt.serie = { i: i, champ: 'date' }; o.push(dt);
+          var hl = tTexte(d, 'donnee', '19H00  |  MARIUS NDIAYE', { x: p + W * .24, y: yy + gap * .52, w: W * .6 }, {
+            size: W * .0215, col: '#3A3A38', nom: 'Heure et lieu ' + (i + 1)
+          });
+          hl.serie = { i: i, champ: 'lieu' }; o.push(hl);
+        }
+        o.push(tRayures(d, '#111111', { count: 34, ratio: .5, slant: 45, a: .9, nom: 'Rayures du bas' }));
+        o[o.length - 1].y = H * .955; o[o.length - 1].h = H * .045;
+        o.push(tTexte(d, 'manuscrit', 'Baobabs Basket Club', { x: p, y: H * .9, w: W * .5 }, {
+          size: W * .042, col: '#111111', nom: 'Signature'
+        }));
+        o.push(tGrain(d, { a: .34 }));
+        return o;
+      }
+    },
+    {
+      id: 'ref-carte-portrait', cat: 'Joueuse', label: 'Carte portrait', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, A = '#1B2A6B', CR = '#F6EFDC', o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, CR, { nom: 'Fond' }));
+        o.push(tRayures(d, A, { count: 16, ratio: .55, slant: 38, a: 1, nom: 'Rayures' }));
+        o.push(tRect(d, { x: W * .085, y: H * .075, w: W * .83, h: H * .80 }, CR, {
+          radius: W * .07, nom: 'Carte'
+        }));
+        o.push(tTexte(d, 'etiquette', 'BAOBABS BASKET CLUB', { x: 0, y: H * .035, w: W }, {
+          align: 'center', col: CR, size: W * .019, track: .3, nom: 'Bandeau du haut'
+        }));
+        o.push(tDecoupe(d, 'photoJoueuse', { x: .19, y: .13, w: .62, h: .52 }, {
+          fit: 'contain', ombre: true, nom: 'Joueuse détourée'
+        }));
+        o.push(tTexte(d, 'etiquette', 'P R É N O M', { x: 0, y: H * .655, w: W }, {
+          align: 'center', col: '#4A4A48', size: W * .028, track: .22, nom: 'Prénom'
+        }));
+        o.push(tTexte(d, 'affiche', 'NOM', { x: 0, y: H * .69, w: W }, {
+          size: W * .155, align: 'center', col: A, bind: 'joueuse.nom', nom: 'Nom'
+        }));
+        o.push(tTexte(d, 'etiquette', 'M E N E U S E', { x: 0, y: H * .805, w: W }, {
+          align: 'center', col: '#4A4A48', size: W * .022, track: .3, bind: 'joueuse.poste', nom: 'Poste'
+        }));
+        o.push(tRect(d, { x: W * .40, y: H * .862, w: W * .2, h: H * .075 }, A, { radius: W * .02, nom: 'Onglet' }));
+        o.push(tTexte(d, 'affiche', 'B', { x: W * .40, y: H * .872, w: W * .2 }, {
+          size: W * .06, align: 'center', col: CR, nom: 'Monogramme'
+        }));
+        o.push(tGrain(d, { a: .22 }));
+        return o;
+      }
+    },
+    {
+      id: 'ref-numero-geant', cat: 'Match Day', label: 'Numéro géant', pal: 'brique',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#1A0A05', { grad: A, a2: .8, angle: 200, nom: 'Fond' }));
+        o.push(tFiligrane(d, '26', 'joueuse.numero', {
+          y: .18, size: .82, a: .9, align: 'center', x: 0, col: '#FFC400', nom: 'Numéro géant'
+        }));
+        o.push(tDecoupe(d, 'photoJoueuse', { x: .12, y: .26, w: .78, h: .66 }, {
+          contrast: 16, ombre: true, nom: 'Joueuse détourée'
+        }));
+        o.push(tTexte(d, 'affiche', 'MATCH', { x: p, y: H * .055, w: W - p * 2 }, {
+          size: W * .135, align: 'right', col: '#B3170F', ombre: true, nom: 'MATCH'
+        }));
+        o.push(tTexte(d, 'affiche', 'DAY', { x: p, y: H * .145, w: W - p * 2 }, {
+          size: W * .135, align: 'right', col: '#B3170F', ombre: true, nom: 'DAY'
+        }));
+        o.push(tTexte(d, 'donnee', 'STADIUM MARIUS NDIAYE — 19H00', { x: p, y: H * .245, w: W - p * 2 }, {
+          size: W * .019, align: 'right', col: '#7A0F09', bind: 'match.lieu', nom: 'Salle'
+        }));
+        o = o.concat(tSurligne(d, 'BAOBABS  VS  DUC', { x: W * .18, y: H * .84, w: W * .64 }, {
+          role: 'etiquette', size: W * .026, bg: '#FFC400', fg: '#1A0A05',
+          radius: W * .02, bind: 'match.affiche', nom: 'Affiche'
+        }));
+        o.push(tTexte(d, 'mention', 'SAMEDI 00 SEPTEMBRE', { x: 0, y: H * .915, w: W }, {
+          align: 'center', col: '#FFC400', bind: 'match.date', nom: 'Date'
+        }));
+        o.push(tGrain(d, { a: .3 }));
+        return o;
+      }
+    },
+    {
+      id: 'ref-nom-fantome', cat: 'Joueuse', label: 'Nom fantôme', pal: 'craie',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .075, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#F4F2ED', { nom: 'Fond' }));
+        var c = makeShape(d, 'ellipse', { x: W * .1, y: H * .13, w: W * .8, h: W * .8 });
+        c.fill = { type: 'radial', from: color('#D9CFA8', .85), to: color('#F4F2ED', 0), angle: 90 };
+        c.stroke = { color: color('#000', 0), w: 0, dash: 0 };
+        c.name = 'Cercle de fond'; o.push(c);
+        /* le nom en creux, derrière le sujet — le geste Endrick */
+        o.push(tTexte(d, 'affiche', 'PRÉNOM', { x: -W * .02, y: H * .40, w: W * 1.04 }, {
+          size: W * .215, align: 'center', col: '#FFFFFF', bind: 'joueuse.nom', nom: 'Nom en creux'
+        }));
+        o.push(tDecoupe(d, 'photoJoueuse', { x: .13, y: .1, w: .74, h: .78 }, {
+          contrast: 8, ombre: true, nom: 'Joueuse détourée'
+        }));
+        o.push(tTexte(d, 'manuscrit', 'allez les Baobabs', { x: W * .2, y: H * .47, w: W * .6 }, {
+          size: W * .075, align: 'center', col: '#1A1A1A', nom: 'Signature'
+        }));
+        o.push(tTexte(d, 'etiquette', 'PRÉNOM NOM', { x: p, y: H * .07, w: W * .4 }, {
+          col: '#1A1A1A', bind: 'joueuse.nom', size: W * .022, nom: 'Nom en haut'
+        }));
+        o.push(tTexte(d, 'etiquette', 'SAISON 2026', { x: W * .55, y: H * .07, w: W * .375 }, {
+          col: '#1A1A1A', align: 'right', size: W * .022, nom: 'Saison'
+        }));
+        o.push(tTexte(d, 'etiquette', 'CHAMPIONNAT D2', { x: p, y: H * .93, w: W * .45 }, {
+          col: '#1A1A1A', bind: 'match.competition', size: W * .021, nom: 'Compétition'
+        }));
+        o.push(tLogo(d, { x: W - p - W * .1, y: H * .89, w: W * .1, h: W * .1 }, 'logoClub', { mask: 'rect' }));
+        o.push(tGrain(d, { a: .26 }));
+        return o;
+      }
+    },
+    {
+      id: 'ref-mot-eclate', cat: 'Club', label: 'Trois mots', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#0A0A0A', { nom: 'Fond' }));
+        o.push(tFondPhoto(d, 'photoJoueuse', { veil: .3, gray: 100, contrast: 25, nom: 'Photo' }));
+        /* trois mots sur une seule ligne, très écartés */
+        var mots = ['LE', 'TRAVAIL', 'PAIE'], xs = [.07, .40, .74];
+        mots.forEach(function (m, i) {
+          o.push(tTexte(d, 'etiquette', m, { x: xs[i] * W, y: H * .47, w: W * .25 }, {
+            size: W * .04, col: '#E5231B', track: .02, nom: 'Mot ' + (i + 1)
+          }));
+        });
+        o.push(tTexte(d, 'para',
+          'Le travail paie, mais pas comme on le croit. Il ne fabrique pas les résultats : il fabrique une équipe capable de les obtenir.',
+          { x: W * .17, y: H * .875, w: W * .66 }, {
+            size: W * .0175, align: 'center', col: '#B8B8B8', lh: 1.6, nom: 'Texte du bas'
+          }));
+        o.push(tTexte(d, 'mention', '© 2026 BAOBABS BASKET CLUB', { x: 0, y: H * .945, w: W }, {
+          align: 'center', col: '#6A6A6A', size: W * .013, nom: 'Mention légale'
+        }));
+        o.push(tGrain(d, { a: .2 }));
+        return o;
+      }
     }
   ];
 
@@ -6070,21 +6666,45 @@ window.BaobabsStudio = (function () {
       : { nom: '', numero: '', poste: '', photo: '' };
   }
 
-  function resolveBinding(id) {
-    var v = getPath(data, id);
+  function resolveBinding(id, dat) {
+    var v = getPath(dat || data, id);
     return v == null ? '' : v;
   }
-  function slotSource(slot) {
-    if (slot === 'logoClub') return (data.club && data.club.logo) || '';
-    if (slot === 'logoAdv') return (data.match && data.match.logoAdv) || '';
-    if (slot === 'photoJoueuse') return (data.joueuse && data.joueuse.photo) || '';
-    if (slot === 'photoMatch') return (data.match && data.match.photo) || (medias[1] && medias[1].url) || '';
+  function slotSource(slot, dat) {
+    dat = dat || data;
+    if (slot === 'logoClub') return (dat.club && dat.club.logo) || '';
+    if (slot === 'logoAdv') return (dat.match && dat.match.logoAdv) || '';
+    if (slot === 'photoJoueuse') return (dat.joueuse && dat.joueuse.photo) || '';
+    if (slot === 'photoMatch') return (dat.match && dat.match.photo) || (medias[1] && medias[1].url) || '';
     return '';
   }
 
   /* Remplit tous les calques liés. Un texte dont la valeur est vide
      garde son texte de maquette : une affiche ne doit jamais afficher
      un blanc parce qu un champ manque en base. */
+  /* Le remplissage des calques liés, applicable à n'importe quel
+     document et n'importe quel jeu de données — c'est ce qui permet de
+     produire une affiche par match sans toucher au document ouvert. */
+  function applyBindingsTo(d, dat, force) {
+    var touched = 0;
+    walk(d.layers, function (l) {
+      if (l.type === 'text' && l.bind) {
+        var v = resolveBinding(l.bind, dat);
+        if (v !== '' && v != null) {
+          setPlainText(l, String(v));
+          l.bindBroken = false;
+          syncTextBox(l);
+          touched++;
+        }
+      }
+      if ((l.type === 'image' || l.type === 'frame') && l.slot && l.slot !== 'libre') {
+        var src = slotSource(l.slot, dat);
+        if (src && (force || !l.src || l._fromSlot)) { l.src = src; l._fromSlot = true; getImage(src); touched++; }
+      }
+    });
+    return touched;
+  }
+
   function applyBindings(force) {
     var touched = 0;
     walk(doc.layers, function (l) {
@@ -6225,6 +6845,7 @@ window.BaobabsStudio = (function () {
       case 'addBlock': insertLayers(buildBlock(el.getAttribute('data-block'))); return;
       case 'tool': setTool(el.getAttribute('data-tool')); return;
       case 'nodeTool': setTool('node'); return;
+      case 'offPath': retirerDuTrace(); return;
 
       /* --- texte --- */
       case 'addText': {
@@ -7411,6 +8032,10 @@ window.BaobabsStudio = (function () {
       case 'discardGo': { var f = pendingNav; closeModal(); markDirty(false); if (f) f(); return true; }
       case 'saveThenGo': { var g = pendingNav; closeModal(); saveProject(false).then(function () { if (g) g(); }); return true; }
       case 'zoomFit': fitView(); return true;
+      case 'palImg': appliquerPaletteImage(el.getAttribute('data-bg'), el.getAttribute('data-ac'), el.getAttribute('data-fg')); return true;
+      case 'serieTgl': { var i = num(el.getAttribute('data-i'), 0); serieSel[i] = !serieSel[i]; ouvrirSerie(); return true; }
+      case 'serieGo': genererSerie(); return true;
+      case 'serieCal': remplirCalendrier(); return true;
       case 'expScale': expOpts.scale = num(el.getAttribute('data-s'), 2); openExport(); return true;
       case 'expGo': lancerExport(); return true;
       case 'expSerie': exportSerie(); return true;
@@ -8185,6 +8810,7 @@ window.BaobabsStudio = (function () {
         M('Exporter…', 'm.export', 'Ctrl E'),
         M('Export rapide PNG ×2', 'm.quickpng'),
         M('Exporter la série (3 formats)', 'm.serie'),
+        M('Les affiches du mois…', 'm.mois'),
         M('Exporter le projet (.json)', 'm.json'),
         SEP,
         M('Publier dans la médiathèque', 'm.publish'),
@@ -8237,6 +8863,7 @@ window.BaobabsStudio = (function () {
         M('Dégradé diagonal', 'm.bg', null, { arg: 'degrade' }),
         M('Halo central', 'm.bg', null, { arg: 'halo' }),
         M('Photo plein cadre', 'm.bg', null, { arg: 'photo' }),
+        M('Palette tirée de la photo…', 'm.palimg', null, { off: !(l && (l.type === 'image' || l.type === 'frame') && l.src) }),
         SEP,
         M('Vérifier avant publication', 'm.check')
       ] },
@@ -8253,6 +8880,13 @@ window.BaobabsStudio = (function () {
         SEP,
         M(l && l.type === 'group' ? 'Dissocier' : 'Grouper', 'm.group', 'Ctrl G', { off: n < 2 && !(l && l.type === 'group') }),
         M('Masque d’écrêtage', 'm.clip', 'Ctrl Alt G', { off: !n, on: !!(l && l.clip) }),
+        SEP,
+        LAB('Combiner les formes'),
+        M('Union', 'm.bool', null, { arg: 'union', off: n < 2 }),
+        M('Soustraction', 'm.bool', null, { arg: 'soustraction', off: n < 2 }),
+        M('Intersection', 'm.bool', null, { arg: 'intersection', off: n < 2 }),
+        M('Exclusion', 'm.bool', null, { arg: 'exclusion', off: n < 2 }),
+        M('Séparer', 'm.unbool', null, { off: !(l && l.type === 'path' && l.subs && l.subs.length > 1) }),
         SEP,
         LAB('Masque de fusion'),
         M('Ajouter un masque', 'm.maskadd', null, { off: !n || !!(l && l.mask2) }),
@@ -8280,6 +8914,14 @@ window.BaobabsStudio = (function () {
         out.push(M('Initiales Capitales', 'm.case', null, { arg: 'title', off: !(l && l.type === 'text') }));
         out.push(SEP);
         out.push(M('Modifier le texte', 'm.edit', 'Entrée', { off: !(l && l.type === 'text') }));
+        out.push(SEP);
+        out.push(M('Placer sur le tracé', 'm.onpath', null, {
+          off: !(ls.length > 1 &&
+                 ls.some(function (x) { return x.type === 'text'; }) &&
+                 ls.some(function (x) { return x.type === 'path'; }))
+        }));
+        out.push(M('Remettre le texte à plat', 'm.offpath', null, { off: !(l && l.path) }));
+        out.push(SEP);
         out.push(M('Texte en contour', 'm.hollow', null, { off: !(l && l.type === 'text'), on: !!(l && l.type === 'text' && l.ts.hollow) }));
         return out;
       })() },
@@ -8628,6 +9270,614 @@ window.BaobabsStudio = (function () {
   }
 
   /* ===================================================================
+     50. PALETTE TIRÉE D'UNE PHOTO
+     ---------------------------------------------------------------
+     Les affiches qui tiennent debout n'ont pas une couleur choisie au
+     hasard : elles ont celle de leur photo. On échantillonne le calque
+     tel qu'il s'affiche, on regroupe par proximité, on garde les cinq
+     familles les plus présentes.
+     =================================================================== */
+
+  function couleursDeLimage(l, n) {
+    n = n || 5;
+    var T = 140;
+    var cv = document.createElement('canvas');
+    cv.width = T; cv.height = Math.max(1, Math.round(T * l.h / Math.max(1, l.w)));
+    var c = cv.getContext('2d', { willReadFrequently: true });
+    c.setTransform(T / Math.max(1, l.w), 0, 0, T / Math.max(1, l.w), 0, 0);
+    try { drawContent(c, l, doc, { forExport: true, noMask: true }); }
+    catch (e) { return null; }
+    var d;
+    try { d = c.getImageData(0, 0, cv.width, cv.height).data; }
+    catch (e) { return null; }
+
+    /* regroupement en 6×6×6 : assez fin pour distinguer deux verts,
+       assez grossier pour ne pas rendre trente nuances du même */
+    var bacs = {}, i, tot = 0;
+    for (i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 128) continue;
+      var r = d[i], g = d[i + 1], b = d[i + 2];
+      var k = (r / 43 | 0) + ',' + (g / 43 | 0) + ',' + (b / 43 | 0);
+      var e = bacs[k] || (bacs[k] = { n: 0, r: 0, g: 0, b: 0 });
+      e.n++; e.r += r; e.g += g; e.b += b; tot++;
+    }
+    if (!tot) return null;
+    var liste = Object.keys(bacs).map(function (k) {
+      var e = bacs[k];
+      return { n: e.n, hex: rgbToHex(e.r / e.n, e.g / e.n, e.b / e.n), l: lum(rgbToHex(e.r / e.n, e.g / e.n, e.b / e.n)) };
+    }).sort(function (a, b) { return b.n - a.n; });
+
+    /* on écarte les teintes trop proches les unes des autres */
+    var out = [];
+    for (i = 0; i < liste.length && out.length < n; i++) {
+      var cand = hexToRgb(liste[i].hex), ok = true;
+      for (var j = 0; j < out.length; j++) {
+        var o = hexToRgb(out[j]);
+        if (Math.abs(cand.r - o.r) + Math.abs(cand.g - o.g) + Math.abs(cand.b - o.b) < 90) { ok = false; break; }
+      }
+      if (ok) out.push(liste[i].hex);
+    }
+    return out;
+  }
+
+  function ouvrirPaletteImage() {
+    var l = selOne();
+    if (!l || (l.type !== 'image' && l.type !== 'frame') || !l.src) {
+      toast('Sélectionnez d’abord une image', true); return;
+    }
+    var cs = couleursDeLimage(l, 6);
+    if (!cs || !cs.length) { toast('Impossible de lire cette image', true); return; }
+
+    /* fond = la plus sombre, texte = la plus claire, accent = la plus
+       saturée : c'est ce qui donne une ambiance utilisable, pas juste
+       six carrés de couleur */
+    var tri = cs.slice().sort(function (a, b) { return lum(a) - lum(b); });
+    var bg = tri[0], fg = tri[tri.length - 1];
+    var accent = cs.slice().sort(function (a, b) { return sature(b) - sature(a); })[0];
+    if (accent === bg || accent === fg) accent = cs[Math.min(1, cs.length - 1)];
+
+    var h = '<p style="font-size:12.5px;color:var(--bs-fg-2);margin-bottom:12px">' +
+      'Six couleurs relevées sur « ' + esc(l.name || 'l’image') + ' ».</p>' +
+      '<div class="bs-swatches" style="margin-bottom:16px">' +
+      cs.map(function (c) {
+        return '<button type="button" data-act="useSwatch" data-hex="' + c + '" style="background:' + c +
+          ';width:38px;height:38px" title="' + c + '"></button>';
+      }).join('') + '</div>' +
+      '<div class="bs-note" style="margin:0 0 14px">Cliquer une pastille l’applique au calque sélectionné. ' +
+      'Le bouton ci-dessous en fait l’<b>ambiance de l’affiche</b> : fond, accent et texte d’un coup.</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">' +
+      ['Fond ' + bg, 'Accent ' + accent, 'Texte ' + fg].map(function (t, i) {
+        var c = [bg, accent, fg][i];
+        return '<span style="flex:1;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--bs-fg-3)">' +
+          '<i style="width:18px;height:18px;border-radius:4px;background:' + c + ';border:1px solid var(--bs-line-2)"></i>' +
+          esc(t.split(' ')[0]) + '</span>';
+      }).join('') + '</div>';
+
+    modal('Palette de l’image', h,
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Fermer</button>' +
+      '<button type="button" class="bs-btn bs-btn-accent" data-act="palImg" ' +
+      'data-bg="' + bg + '" data-ac="' + accent + '" data-fg="' + fg + '">En faire l’ambiance</button>');
+  }
+  function sature(hex) {
+    var c = hexToRgb(hex), mx = Math.max(c.r, c.g, c.b), mn = Math.min(c.r, c.g, c.b);
+    return mx ? (mx - mn) / mx : 0;
+  }
+  function appliquerPaletteImage(bg, ac, fg) {
+    closeModal();
+    var old = clone(doc.palette);
+    change(function () {
+      doc.palette = { id: 'photo', bg: bg, accent: ac, fg: fg, fg2: melange(fg, bg, .45) };
+      if (doc.bg.type === 'solid') doc.bg.color = color(bg, doc.bg.color.a);
+      if (doc.bg.type === 'linear' || doc.bg.type === 'radial') {
+        doc.bg.from = color(bg, 1); doc.bg.to = color(ac, .3);
+      }
+      var map = {};
+      map[old.bg.toLowerCase()] = bg;
+      map[old.accent.toLowerCase()] = ac;
+      map[old.fg.toLowerCase()] = fg;
+      map[old.fg2.toLowerCase()] = doc.palette.fg2;
+      walk(doc.layers, function (l) { repaint(l, map); });
+    });
+    toast('Ambiance tirée de l’image');
+  }
+  function melange(a, b, t) {
+    var x = hexToRgb(a), y = hexToRgb(b);
+    return rgbToHex(x.r + (y.r - x.r) * t, x.g + (y.g - x.g) * t, x.b + (y.b - x.b) * t);
+  }
+
+  /* ===================================================================
+     51. SÉRIE DU MOIS
+     ---------------------------------------------------------------
+     Le club joue quatre fois dans le mois et publie quatre affiches
+     identiques à un nom et une date près. C'est exactement le travail
+     qu'un outil doit faire à sa place.
+     =================================================================== */
+
+  function moisDe(iso) {
+    if (!iso) return '';
+    return String(iso).slice(0, 7);
+  }
+  function nomDuMois(ym) {
+    if (!ym) return '';
+    var d = new Date(ym + '-01T00:00:00');
+    if (isNaN(d)) return ym;
+    var s = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  var serieSel = {};
+  function ouvrirSerie() {
+    var ms = data.matchs || [];
+    if (!ms.length) { toast('Aucun match en base', true); return; }
+
+    var mois = [], vus = {};
+    ms.forEach(function (m) { var k = moisDe(m.date); if (k && !vus[k]) { vus[k] = 1; mois.push(k); } });
+    if (!serieMois || mois.indexOf(serieMois) < 0) serieMois = mois[0];
+
+    var duMois = ms.map(function (m, i) { return { m: m, i: i }; })
+      .filter(function (x) { return moisDe(x.m.date) === serieMois; });
+    duMois.forEach(function (x) { if (serieSel[x.i] === undefined) serieSel[x.i] = true; });
+
+    var tpls = TEMPLATES.filter(function (t) { return t.cat === 'Match Day'; });
+    if (!serieTpl || !templateById(serieTpl)) serieTpl = tpls[0].id;
+
+    var h = '<div class="bs-frow">' +
+      '<div class="bs-f"><label>Mois</label><select class="bs-sel" id="bs-serie-mois">' +
+      mois.map(function (k) { return '<option value="' + k + '"' + (k === serieMois ? ' selected' : '') + '>' + esc(nomDuMois(k)) + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div class="bs-f"><label>Modèle</label><select class="bs-sel" id="bs-serie-tpl">' +
+      tpls.map(function (t) { return '<option value="' + t.id + '"' + (t.id === serieTpl ? ' selected' : '') + '>' + esc(t.label) + '</option>'; }).join('') +
+      '</select></div></div>';
+
+    h += '<div class="bs-sec-lab" style="padding:8px 0 6px">Matchs de ' + esc(nomDuMois(serieMois)) +
+      ' <span>' + duMois.length + '</span></div><div class="bs-list" style="padding:0">';
+    if (!duMois.length) h += '<div class="bs-empty">Aucun match ce mois-là.</div>';
+    duMois.forEach(function (x) {
+      h += '<button type="button" class="bs-item' + (serieSel[x.i] ? ' is-on' : '') + '" data-act="serieTgl" data-i="' + x.i + '">' +
+        '<span style="flex:none;width:16px;height:16px;border-radius:4px;border:1.5px solid ' +
+        (serieSel[x.i] ? 'var(--bs-accent);background:var(--bs-accent)' : 'var(--bs-line-2)') +
+        ';display:flex;align-items:center;justify-content:center;color:#08130A;font-size:11px;font-weight:800">' +
+        (serieSel[x.i] ? '✓' : '') + '</span>' +
+        '<span class="bs-item-txt"><b>' + esc(x.m.opponent || 'Adversaire') + '</b><small>' +
+        esc([x.m.date ? fmtDate(x.m.date) : '', x.m.venue || ''].filter(Boolean).join(' · ')) + '</small></span></button>';
+    });
+    h += '</div>';
+    h += '<div class="bs-note" style="margin:14px 0 0">Chaque affiche est produite en ×2, avec les données du match ' +
+      'correspondant. Le document ouvert n’est pas touché.</div>';
+
+    modal('Les affiches du mois', h,
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Fermer</button>' +
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="serieCal">Remplir un calendrier</button>' +
+      '<button type="button" class="bs-btn bs-btn-accent" data-act="serieGo">Générer</button>');
+
+    var sm = $('#bs-serie-mois', els.modalCard);
+    if (sm) sm.addEventListener('change', function () { serieMois = sm.value; serieSel = {}; ouvrirSerie(); });
+    var st = $('#bs-serie-tpl', els.modalCard);
+    if (st) st.addEventListener('change', function () { serieTpl = st.value; });
+  }
+  var serieMois = null, serieTpl = null;
+
+  /* Données d'un match donné, dans la forme que les liaisons attendent. */
+  function donneesDuMatch(m) {
+    var dat = {};
+    for (var k in data) dat[k] = data[k];
+    dat.match = {
+      adversaire: m.opponent || '', competition: m.competition || '',
+      date: m.date ? fmtDate(m.date) : '',
+      heure: m.time ? String(m.time).slice(0, 5).replace(':', 'H') : '',
+      lieu: m.venue || '', lieuType: m.isHome === false ? 'EXTÉRIEUR' : 'DOMICILE',
+      jours: m.date ? 'J−' + Math.max(0, daysTo(m.date)) : '',
+      affiche: 'BAOBABS ' + (m.isHome === false ? '@' : 'VS') + ' ' + (m.opponent || 'ADVERSAIRE'),
+      logoAdv: m.opponentLogo || '', photo: m.photo || ''
+    };
+    return dat;
+  }
+
+  function genererSerie() {
+    var choisis = Object.keys(serieSel).filter(function (k) { return serieSel[k]; })
+      .map(function (k) { return (data.matchs || [])[+k]; })
+      .filter(function (m) { return m && moisDe(m.date) === serieMois; });
+    if (!choisis.length) { toast('Cochez au moins un match', true); return; }
+    var t = templateById(serieTpl);
+    if (!t) { toast('Modèle introuvable', true); return; }
+    closeModal();
+    toast('Préparation de ' + choisis.length + ' affiche(s)…');
+
+    var faits = 0;
+    function suivant(i) {
+      if (i >= choisis.length) { toast(faits + ' affiche(s) exportée(s)', false, true); return; }
+      var m = choisis[i];
+      var d = newDoc(doc.format, t.pal);
+      d.w = doc.w; d.h = doc.h;
+      d.layers = t.build(d) || [];
+      applyBindingsTo(d, donneesDuMatch(m), true);
+      imagesReady().then(function () {
+        var cv;
+        try { cv = renderToCanvas(2, d); } catch (e) { suivant(i + 1); return; }
+        cv.toBlob(function (b) {
+          if (b) {
+            faits++;
+            var nom = slug((m.opponent || 'match') + '-' + (m.date || '')) + '.png';
+            if (api && api.download) api.download(b, nom); else downloadBlob(b, nom);
+          }
+          setTimeout(function () { suivant(i + 1); }, 400);
+        }, 'image/png');
+      });
+    }
+    suivant(0);
+  }
+
+  /* Le calendrier : un seul visuel, une ligne par match. Les calques
+     du modèle portent un repère `serie` — on les remplit par ce repère,
+     pas par leur nom, pour que renommer un calque ne casse rien. */
+  function remplirCalendrier() {
+    var choisis = Object.keys(serieSel).filter(function (k) { return serieSel[k]; })
+      .map(function (k) { return (data.matchs || [])[+k]; })
+      .filter(function (m) { return m && moisDe(m.date) === serieMois; });
+    if (!choisis.length) { toast('Cochez au moins un match', true); return; }
+    closeModal();
+    quitterVers(function () {
+      var t = templateById('ref-calendrier');
+      doc = newDoc(doc.format || 'affiche', t.pal);
+      doc.name = 'Calendrier ' + nomDuMois(serieMois);
+      doc.layers = t.build(doc) || [];
+      project.id = null;
+      sel = []; hist.undo.length = 0; hist.redo.length = 0; hist.pre = null;
+      els.projName.value = doc.name;
+
+      var titres = [];
+      walk(doc.layers, function (l) { if (l.serie) titres.push(l); });
+      titres.forEach(function (l) {
+        var m = choisis[l.serie.i];
+        if (!m) { l.visible = false; return; }
+        if (l.serie.champ === 'date') setPlainText(l, (fmtDate(m.date) || '').replace(/^\w/, function (c) { return c.toUpperCase(); }).toUpperCase());
+        else if (l.serie.champ === 'adversaire') setPlainText(l, (m.opponent || '').toUpperCase());
+        else if (l.serie.champ === 'lieu') setPlainText(l, [(m.time ? String(m.time).slice(0, 5).replace(':', 'H') : ''), m.venue || ''].filter(Boolean).join('  |  ').toUpperCase());
+        else if (l.serie.champ === 'domicile') setPlainText(l, m.isHome === false ? 'À' : 'VS');
+        else if (l.serie.champ === 'logo') { if (m.opponentLogo) { l.src = m.opponentLogo; getImage(m.opponentLogo); } }
+        if (l.type === 'text') syncTextBox(l);
+      });
+      /* le titre du mois */
+      walk(doc.layers, function (l) {
+        if (l.type === 'text' && /CALENDRIER/i.test(plainText(l))) {
+          setPlainText(l, 'CALENDRIER\n' + nomDuMois(serieMois).toUpperCase());
+          syncTextBox(l);
+        }
+      });
+      applyBindings(true);
+      prewarmImages();
+      syncFormatSelect(); syncHistButtons();
+      markDirty(true);
+      els.saveInfo.textContent = 'Jamais enregistré';
+      renderPanel();
+      enterWorkspace();
+      toast('Calendrier rempli avec ' + choisis.length + ' match(s)');
+    });
+  }
+
+  /* ===================================================================
+     52. TEXTE SUR UN TRACÉ
+     ---------------------------------------------------------------
+     Le texte n'est plus posé sur des lignes : chaque caractère est
+     placé le long d'une courbe, tourné selon sa tangente. Le tracé est
+     rangé DANS le calque texte — le déplacer, le tourner ou le
+     redimensionner emporte le texte avec lui.
+     =================================================================== */
+
+  /* Découpe la courbe en segments réguliers avec leur longueur cumulée. */
+  function aplatirTrace(nodes, closed, w, h, pas) {
+    pas = pas || 220;
+    var pts = [], i, k;
+    if (!nodes || nodes.length < 2) return pts;
+    var n = nodes.length, segs = n - 1 + (closed ? 1 : 0);
+    var total = 0, prev = null;
+    for (i = 0; i < segs; i++) {
+      var a = nodes[i], b = nodes[(i + 1) % n];
+      for (k = 0; k <= pas; k++) {
+        var t = k / pas;
+        var q = bez(
+          { x: a.x * w, y: a.y * h },
+          { x: (a.h2x == null ? a.x : a.h2x) * w, y: (a.h2y == null ? a.y : a.h2y) * h },
+          { x: (b.h1x == null ? b.x : b.h1x) * w, y: (b.h1y == null ? b.y : b.h1y) * h },
+          { x: b.x * w, y: b.y * h }, t);
+        if (prev) total += Math.hypot(q.x - prev.x, q.y - prev.y);
+        if (!(i > 0 && k === 0)) pts.push({ x: q.x, y: q.y, s: total });
+        prev = q;
+      }
+    }
+    return pts;
+  }
+  function pointALaLongueur(pts, s) {
+    if (!pts.length) return null;
+    if (s <= 0) return { x: pts[0].x, y: pts[0].y, a: angleEntre(pts[0], pts[1] || pts[0]) };
+    var last = pts[pts.length - 1];
+    if (s >= last.s) return { x: last.x, y: last.y, a: angleEntre(pts[pts.length - 2] || last, last) };
+    var lo = 0, hi = pts.length - 1;
+    while (lo < hi - 1) { var mid = (lo + hi) >> 1; if (pts[mid].s < s) lo = mid; else hi = mid; }
+    var a = pts[lo], b = pts[hi];
+    var t = (s - a.s) / Math.max(1e-6, b.s - a.s);
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, a: angleEntre(a, b) };
+  }
+  function angleEntre(a, b) { return Math.atan2(b.y - a.y, b.x - a.x); }
+
+  function drawTextSurTrace(ctx, l) {
+    var pts = aplatirTrace(l.path.nodes, l.path.closed, l.w, l.h);
+    if (!pts.length) return;
+    var lg = pts[pts.length - 1].s;
+    var st0 = l.ts, txt = transformed(plainText(l), st0.transform);
+    if (!txt) return;
+
+    /* largeur totale, pour pouvoir centrer ou aligner à droite */
+    var largeurs = [], tot = 0, runs = l.runs || [], pos = 0, i;
+    var styles = [];
+    for (i = 0; i < runs.length; i++) {
+      var st = styleAt(l, runs[i]);
+      var brut = transformed(runs[i].t, st.transform);
+      for (var k = 0; k < brut.length; k++) styles.push(st);
+    }
+    for (i = 0; i < txt.length; i++) {
+      var s = styles[i] || st0;
+      var m = measureRun(txt[i], s, false).w;
+      largeurs.push(m);
+      tot += m;
+    }
+    var debut = (l.path.offset || 0) * lg;
+    if (st0.align === 'center') debut += (lg - tot) / 2;
+    else if (st0.align === 'right') debut += lg - tot;
+
+    var cote = l.path.side === 'dessous' ? 1 : -1;
+    var d = debut;
+    for (i = 0; i < txt.length; i++) {
+      var stc = styles[i] || st0;
+      var p = pointALaLongueur(pts, d + largeurs[i] / 2);
+      if (p) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.a);
+        ctx.font = fontCss(stc);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        var dy = cote * (l.path.dist == null ? 0 : l.path.dist) + (cote < 0 ? 0 : fontMetrics(stc).asc);
+        if (stc.hollow) {
+          ctx.strokeStyle = css(stc.color);
+          ctx.lineWidth = Math.max(.5, stc.strokeW || 1);
+          ctx.strokeText(txt[i], 0, dy);
+        } else {
+          ctx.fillStyle = css(stc.color);
+          ctx.fillText(txt[i], 0, dy);
+        }
+        ctx.restore();
+      }
+      d += largeurs[i] + trackPx(stc);
+    }
+  }
+
+  function poserSurTrace() {
+    var ls = selectedLayers();
+    var t = ls.filter(function (l) { return l.type === 'text'; })[0];
+    var pth = ls.filter(function (l) { return l.type === 'path'; })[0];
+    if (!t || !pth) { toast('Sélectionnez un texte et un tracé', true); return; }
+    change(function () {
+      /* on transpose les nœuds dans le repère du texte, qui prend la
+         boîte du tracé — ainsi déplacer le texte emporte la courbe */
+      t.path = { nodes: clone(pth.nodes), closed: !!pth.closed, offset: 0, dist: 0, side: 'dessus' };
+      t.x = pth.x; t.y = pth.y; t.w = pth.w; t.h = pth.h; t.rot = pth.rot || 0;
+      t.wrap = false;
+      var loc = locate(doc.layers, pth.id);
+      if (loc) loc.arr.splice(loc.idx, 1);
+      sel = [t.id];
+    });
+    toast('Texte placé sur le tracé — réglez le décalage dans le panneau');
+  }
+  function retirerDuTrace() {
+    var l = selOne();
+    if (!l || !l.path) return;
+    change(function () {
+      delete l.path;
+      l.wrap = true;
+      syncTextBox(l);
+    });
+    toast('Texte remis à plat');
+  }
+
+  /* ===================================================================
+     53. COMBINER LES FORMES
+     ---------------------------------------------------------------
+     Union et soustraction se font par règle de remplissage sur un
+     tracé composé : c'est exact, c'est vectoriel, et les points
+     restent modifiables. L'intersection se fait par pochoir — le
+     canvas la calcule au pixel près, à l'écran comme à l'export.
+     =================================================================== */
+
+  var KAPPA = 0.5522847498;
+
+  /* Une forme quelconque en nœuds de Bézier, en coordonnées du
+     document (rotation et miroirs appliqués). */
+  function formeEnNoeuds(l) {
+    var w = l.w, h = l.h, pts = [], i, a;
+    function P(x, y) { var q = toDoc(l, x, y); return { x: q.x, y: q.y }; }
+    function angle(cx, cy, rx, ry, t) { return P(cx + Math.cos(t) * rx, cy + Math.sin(t) * ry); }
+
+    if (l.type === 'path') {
+      return pathSubs(l).map(function (sub) {
+        return {
+          closed: sub.closed,
+          nodes: (sub.nodes || []).map(function (n) {
+            var p = P(n.x * w, n.y * h), h1 = P(n.h1x * w, n.h1y * h), h2 = P(n.h2x * w, n.h2y * h);
+            return { x: p.x, y: p.y, h1x: h1.x, h1y: h1.y, h2x: h2.x, h2y: h2.y };
+          })
+        };
+      });
+    }
+
+    if (l.type === 'shape' && l.shape === 'ellipse') {
+      var rx = w / 2, ry = h / 2, cx = w / 2, cy = h / 2, ns = [];
+      for (i = 0; i < 4; i++) {
+        var t0 = i * Math.PI / 2;
+        var p = angle(cx, cy, rx, ry, t0);
+        var av = angle(cx, cy, rx, ry, t0 - 0.0001), ap = angle(cx, cy, rx, ry, t0 + 0.0001);
+        var tx = (ap.x - av.x), ty = (ap.y - av.y);
+        var n2 = Math.hypot(tx, ty) || 1;
+        var d = KAPPA * Math.PI / 2 * Math.hypot(rx, ry) / Math.SQRT2;
+        ns.push({
+          x: p.x, y: p.y,
+          h1x: p.x - tx / n2 * d, h1y: p.y - ty / n2 * d,
+          h2x: p.x + tx / n2 * d, h2y: p.y + ty / n2 * d
+        });
+      }
+      return [{ nodes: ns, closed: true }];
+    }
+
+    /* toutes les autres formes sont polygonales : on relit leur chemin
+       en repassant par le même code que le rendu, donc jamais de
+       divergence entre ce qu'on voit et ce qu'on combine */
+    var ctx = hitCtx();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    var coins = [];
+    if (l.type === 'shape') {
+      switch (l.shape) {
+        case 'rect': {
+          var r = Math.min(l.radius || 0, w / 2, h / 2);
+          if (!r) coins = [[0, 0], [w, 0], [w, h], [0, h]];
+          else {
+            var K = r * (1 - KAPPA), ns2 = [];
+            [[r, 0, w - r, 0], [w, r, w, h - r], [w - r, h, r, h], [0, h - r, 0, r]].forEach(function () {});
+            coins = [];
+            var seq = [[r, 0], [w - r, 0], [w, r], [w, h - r], [w - r, h], [r, h], [0, h - r], [0, r]];
+            seq.forEach(function (s) { coins.push(s); });
+          }
+          break;
+        }
+        case 'triangle': coins = [[w / 2, 0], [w, h], [0, h]]; break;
+        case 'polygon':
+          for (i = 0; i < (l.sides || 6); i++) {
+            a = Math.PI * 2 * i / (l.sides || 6) - Math.PI / 2;
+            coins.push([w / 2 + Math.cos(a) * w / 2, h / 2 + Math.sin(a) * h / 2]);
+          }
+          break;
+        case 'star': {
+          var np = (l.points || 5) * 2;
+          for (i = 0; i < np; i++) {
+            var rr = i % 2 ? (l.inner || .46) : 1;
+            a = Math.PI * i / (l.points || 5) - Math.PI / 2;
+            coins.push([w / 2 + Math.cos(a) * w / 2 * rr, h / 2 + Math.sin(a) * h / 2 * rr]);
+          }
+          break;
+        }
+        case 'chevron': {
+          var cw = w * .34;
+          coins = [[0, 0], [cw, 0], [w, h / 2], [cw, h], [0, h], [w - cw, h / 2]];
+          break;
+        }
+        case 'arrow': {
+          var sh = h * .34, hd = Math.min(w * .42, h * .5);
+          coins = [[0, h / 2 - sh / 2], [w - hd, h / 2 - sh / 2], [w - hd, 0], [w, h / 2],
+                   [w - hd, h], [w - hd, h / 2 + sh / 2], [0, h / 2 + sh / 2]];
+          break;
+        }
+        default: coins = [[0, 0], [w, 0], [w, h], [0, h]];
+      }
+    } else coins = [[0, 0], [w, 0], [w, h], [0, h]];
+
+    var nodes = coins.map(function (c) {
+      var p = P(c[0], c[1]);
+      return { x: p.x, y: p.y, h1x: p.x, h1y: p.y, h2x: p.x, h2y: p.y };
+    });
+    return [{ nodes: nodes, closed: true }];
+  }
+
+  function combinerFormes(op) {
+    var ls = selectedLayers().filter(function (l) {
+      return l.type === 'shape' || l.type === 'path';
+    });
+    if (ls.length < 2) { toast('Sélectionnez au moins deux formes', true); return; }
+
+    /* du bas vers le haut : la première est la base, les suivantes
+       creusent ou coupent — comme partout ailleurs */
+    var ordre = [];
+    walk(doc.layers, function (l) { if (ls.indexOf(l) >= 0) ordre.push(l); });
+
+    var subsDoc = [];
+    ordre.forEach(function (l) { subsDoc = subsDoc.concat(formeEnNoeuds(l)); });
+    if (!subsDoc.length) { toast('Ces calques ne se combinent pas', true); return; }
+
+    /* boîte englobante de tous les points */
+    var xs = [], ys = [];
+    subsDoc.forEach(function (s) {
+      s.nodes.forEach(function (n) {
+        xs.push(n.x, n.h1x, n.h2x); ys.push(n.y, n.h1y, n.h2y);
+      });
+    });
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    var W = Math.max(1, x1 - x0), H = Math.max(1, y1 - y0);
+    function norm(s) {
+      return {
+        closed: s.closed,
+        nodes: s.nodes.map(function (n) {
+          return {
+            x: (n.x - x0) / W, y: (n.y - y0) / H,
+            h1x: (n.h1x - x0) / W, h1y: (n.h1y - y0) / H,
+            h2x: (n.h2x - x0) / W, h2y: (n.h2y - y0) / H
+          };
+        })
+      };
+    }
+
+    var base = ordre[0];
+    var res = makePath(doc, [], { closed: true, x: x0, y: y0, w: W, h: H });
+    res.fill = clone(base.fill && base.fill.type !== 'none' ? base.fill
+      : { type: 'solid', color: color(doc.palette.accent, 1), from: color(doc.palette.accent, 1), to: color(doc.palette.bg, 1), angle: 90 });
+    res.stroke = clone(base.stroke || { color: color(doc.palette.fg, 1), w: 0, dash: 0 });
+
+    var nb = formeEnNoeuds(ordre[0]).length;
+    if (op === 'intersection') {
+      res.subs = subsDoc.slice(0, nb).map(norm);
+      res.clipSubs = subsDoc.slice(nb).map(norm);
+      res.clipRule = 'nonzero';
+      res.name = 'Intersection';
+    } else {
+      res.subs = subsDoc.map(norm);
+      res.fillRule = (op === 'soustraction' || op === 'exclusion') ? 'evenodd' : 'nonzero';
+      res.name = op === 'soustraction' ? 'Soustraction' : (op === 'exclusion' ? 'Exclusion' : 'Union');
+    }
+
+    change(function () {
+      var idx = 0;
+      ordre.forEach(function (l) {
+        var loc = locate(doc.layers, l.id);
+        if (loc) { idx = Math.max(idx, loc.idx); loc.arr.splice(loc.idx, 1); }
+      });
+      doc.layers.splice(Math.min(idx, doc.layers.length), 0, res);
+      sel = [res.id];
+    });
+    toast(res.name + ' — ' + ordre.length + ' formes combinées');
+  }
+
+  function separerFormes() {
+    var l = selOne();
+    if (!l || l.type !== 'path' || !l.subs || l.subs.length < 2) {
+      toast('Ce calque n’est pas une forme combinée', true); return;
+    }
+    var ids = [];
+    change(function () {
+      var loc = locate(doc.layers, l.id);
+      if (!loc) return;
+      var neufs = l.subs.map(function (sub, i) {
+        var p = makePath(doc, clone(sub.nodes), { closed: sub.closed, x: l.x, y: l.y, w: l.w, h: l.h });
+        p.fill = clone(l.fill); p.stroke = clone(l.stroke);
+        p.name = (l.name || 'Forme') + ' ' + (i + 1);
+        normalizePathBox(p);
+        ids.push(p.id);
+        return p;
+      });
+      loc.arr.splice.apply(loc.arr, [loc.idx, 1].concat(neufs));
+      sel = ids;
+    });
+    toast(ids.length + ' formes séparées');
+  }
+
+  /* ===================================================================
      46. ACTIONS DES MENUS
      =================================================================== */
 
@@ -8645,6 +9895,7 @@ window.BaobabsStudio = (function () {
       case 'm.export':   openExport(); return;
       case 'm.quickpng': doExport(2, 'image/png'); return;
       case 'm.serie':    exportSerie(); return;
+      case 'm.mois':     ouvrirSerie(); return;
       case 'm.json':     exportJson(); return;
       case 'm.publish':  publish(); return;
       case 'm.share':    sharePublication(); return;
@@ -8692,6 +9943,7 @@ window.BaobabsStudio = (function () {
       case 'm.rot180':  rotateDoc(180); return;
       case 'm.pal':     applyPalette(arg); return;
       case 'm.bg':      bgPreset(arg); return;
+      case 'm.palimg':  ouvrirPaletteImage(); return;
       case 'm.check':   verifierAffiche(); return;
 
       /* --- calque --- */
@@ -8701,6 +9953,8 @@ window.BaobabsStudio = (function () {
       case 'm.newellipse':insertLayers([makeShape(doc, 'ellipse', centeredBox(0.4, 0.4))]); return;
       case 'm.group':     groupSelected(); return;
       case 'm.clip':      if (ls.length) { var on = !ls[0].clip; change(function () { ls.forEach(function (x) { x.clip = on; }); }); } return;
+      case 'm.bool':      combinerFormes(arg); return;
+      case 'm.unbool':    separerFormes(); return;
       case 'm.maskadd':   ajouterMasque(); return;
       case 'm.maskinv':   inverserMasque(); return;
       case 'm.maskdel':   effacerMasque(); return;
@@ -8716,6 +9970,8 @@ window.BaobabsStudio = (function () {
       case 'm.role':   if (l && l.type === 'text') change(function () { applyRole(arg); }); return;
       case 'm.case':   if (l && l.type === 'text') change(function () { applyTextProp('transform', arg); }); return;
       case 'm.edit':   if (l && l.type === 'text') enterTextEdit(l, 0, textLen(l)); return;
+      case 'm.onpath': poserSurTrace(); return;
+      case 'm.offpath': retirerDuTrace(); return;
       case 'm.hollow': if (l && l.type === 'text') change(function () { applyTextProp('hollow', !l.ts.hollow); }); return;
 
       /* --- affichage --- */

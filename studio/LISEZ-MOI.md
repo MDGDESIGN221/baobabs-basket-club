@@ -216,6 +216,70 @@ sans qu'il faille recharger l'administration.
 
 ---
 
+## 4ter. Ce que la version 3.1 ajoute
+
+Onze affiches de référence ont servi de cahier des charges. Elles
+partagent un vocabulaire qui est maintenant celui du Studio : sujet
+détouré qui déborde du cadre, filigrane géant derrière, condensé lourd
+sur deux lignes décalées, pastille de couleur sous un mot, deux logos
+ronds avec VS, bloc d'infos en capitales espacées, et un serif ou un
+manuscrit en contrepoint — c'est lui qui empêche l'affiche de faire
+« gabarit rempli ».
+
+### Nouvelles briques
+
+`tGrain` (texture papier en mode incrustation, générée en data-URI donc
+sans requête), `tHalo` (projecteur radial), `tRayures` (forme `stripes`,
+un seul calque au lieu de quinze rectangles tournés), `tMarquee`
+(bandeau défilant sur les quatre bords), `tSurligne` (pastille derrière
+un mot), `tCroix` (repères d'imprimeur), `tDecoupe` (sujet détouré
+calé pour déborder), `tInfos` (bloc d'informations).
+
+**37 modèles**, dont dix repris des références. **15 polices** : Instrument
+Serif et Caveat rejoignent la liste pour le contrepoint.
+
+### Palette tirée d'une photo
+
+*Image → Palette tirée de la photo*. Le calque est échantillonné **tel
+qu'il s'affiche** — voile et teinte compris — puis regroupé en 6×6×6.
+Le bouton « en faire l'ambiance » range la plus sombre en fond, la plus
+saturée en accent, la plus claire en texte, et repeint les calques qui
+portaient les anciennes couleurs.
+
+### Les affiches du mois
+
+*Fichier → Les affiches du mois*. Choisir un mois, un modèle, cocher les
+matchs : une affiche par match, chacune remplie avec ses propres
+données. Le document ouvert n'est pas touché.
+
+« Remplir un calendrier » produit un seul visuel listant les matchs. Les
+calques du modèle portent un repère `serie: {i, champ}` — c'est par lui
+qu'ils sont remplis, pas par leur nom : renommer un calque ne casse rien.
+
+### Texte sur un tracé
+
+*Texte → Placer sur le tracé*, avec un texte et un tracé sélectionnés.
+Le tracé entre **dans** le calque texte : le déplacer, le tourner ou le
+redimensionner emporte le texte. Réglages : départ le long de la courbe,
+écart au tracé, côté.
+
+L'édition en ligne est volontairement refusée sur un texte courbe — un
+curseur n'a pas de place le long d'une courbe. Le Studio renvoie vers le
+champ « Contenu » du panneau de droite au lieu de faire semblant.
+
+### Combiner les formes
+
+*Calque → Combiner les formes*. Union et soustraction se font par règle
+de remplissage sur un **tracé composé** : exact, vectoriel, et les points
+restent modifiables. L'intersection se fait par pochoir — le canvas la
+calcule au pixel près, à l'écran comme à l'export. *Séparer* défait
+l'opération.
+
+Les ellipses sont converties en quatre arcs de Bézier ; les autres formes
+en polygones. Une forme combinée reste un calque `path` ordinaire.
+
+---
+
 ## 5. Raccourcis
 
 | | |
