@@ -10,7 +10,8 @@
 <!-- Anton et Space Grotesk ne servent pas à l'administration : ce sont les
      polices du SITE. Le Studio les charge pour que les affiches qu'il
      compose portent la typographie de la marque, et pas celle de l'outil. -->
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/studio/studio.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
@@ -1759,64 +1760,10 @@
   </header>
 
   <!-- ===== BAOBABS STUDIO =====
-       Volontairement hors de <main> et hors de la barre latérale : ce
-       n'est pas un écran de gestion, c'est un atelier. On y entre par le
-       bouton de la barre du haut, on en ressort par Échap. -->
-  <div class="st-wrap" id="studio" role="dialog" aria-modal="true" aria-label="Baobabs Studio">
-    <div class="st-head">
-      <span class="st-logo">BAOBABS <i>STUDIO</i></span>
-      <span class="st-sep"></span>
-      <div class="st-outils">
-        <button type="button" data-ajout="titre" title="Ajouter un titre">Titre</button>
-        <button type="button" data-ajout="texte" title="Ajouter un texte">Texte</button>
-        <button type="button" data-ajout="forme" title="Ajouter une forme">Forme</button>
-      </div>
-      <div class="st-bascule" id="st-zoomctl">
-        <button type="button" data-zoom="-1" title="Dézoomer (−)">−</button>
-        <button type="button" data-zoom="0" id="st-zoom-val" title="Ajuster à l'écran (0)">—</button>
-        <button type="button" data-zoom="1" title="Zoomer (+)">+</button>
-      </div>
-      <span class="st-sep"></span>
-      <div class="st-bascule" id="st-vue">
-        <button type="button" data-vue="desk" class="on">Ordinateur</button>
-        <button type="button" data-vue="mob">Téléphone</button>
-      </div>
-      <select id="st-qualite" class="st-select" title="Qualité d'export"></select>
-      <button type="button" class="btn btn-ghost" id="st-media" style="padding:9px 14px;font-size:12.5px">Médiathèque</button>
-      <button type="button" class="btn btn-primary" id="st-png" style="padding:9px 16px;font-size:12.5px">Télécharger</button>
-      <button type="button" class="link-btn" id="st-close" title="Fermer (Échap)" aria-label="Fermer le Studio">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div class="st-body">
-      <div class="st-col left">
-        <p class="st-titre">Modèle</p>
-        <div class="st-choix" id="st-modeles"></div>
-        <p class="st-titre">Mise en page</p>
-        <div class="st-choix" id="st-layouts"></div>
-        <p class="st-titre">Format</p>
-        <div class="st-choix" id="st-formats"></div>
-      </div>
-      <div class="st-scene" id="st-scene">
-        <div class="st-canvas-hote" id="st-hote">
-          <canvas id="st-canvas"></canvas>
-          <!-- Le canvas ne sait rien recevoir : on superpose un cadre HTML
-               par bloc, à l'échelle de l'aperçu, pour attraper les clics.
-               Cette couche n'est jamais exportée. -->
-          <div class="st-poignees" id="st-poignees"></div>
-        </div>
-      </div>
-      <div class="st-col right">
-        <p class="st-titre">Élément sélectionné</p>
-        <div id="st-champs"></div>
-        <p class="st-titre">Ambiance</p>
-        <div class="st-couleurs" id="st-couleurs"></div>
-        <p class="st-titre">Image de fond</p>
-        <div id="st-fond"></div>
-        <p class="st-note" id="st-note"></p>
-      </div>
-    </div>
-  </div>
+       L'atelier n'est plus écrit ici : son fragment est chargé à la
+       première ouverture depuis /studio/studio.html, puis déposé dans
+       ce conteneur. Voir studioOuvrir(). -->
+  <div id="studio-host"></div>
 
   <div class="sidebar-scrim" id="sidebar-scrim"></div>
 
@@ -3980,796 +3927,216 @@
 
   // ===================== BAOBABS STUDIO =====================
   //
-  // Un atelier d'affiches dans l'administration. Pas un Figma : devant
-  // une page blanche, personne ne sait quoi faire. Ici on part d'un
-  // modèle déjà rempli avec les vraies données du club — l'adversaire,
-  // la date, la salle, les tarifs — et on ajuste.
+  // Le Studio ne vit plus dans ce fichier. Il est en trois fichiers
+  // autonomes — /studio/studio.html, studio.css, studio.js — et
+  // n'expose qu'un seul global : window.BaobabsStudio.
   //
-  // Rendu en CANVAS et non en SVG : le canvas se sert des polices déjà
-  // chargées par la page, donc l'aperçu à l'écran et le PNG exporté sont
-  // le même dessin. Avec du SVG converti en image, les polices ne
-  // suivent pas et l'export ne ressemble plus à l'aperçu.
-  // ---------------------------------------------------------------------
-  var STUDIO_FORMATS = [
-    { id:'story',    nom:'Story',        w:1080, h:1920, note:'Instagram, WhatsApp' },
-    { id:'post',     nom:'Post',         w:1080, h:1350, note:'Instagram, Facebook' },
-    { id:'carre',    nom:'Carré',        w:1080, h:1080, note:'Post carré' },
-    { id:'banniere', nom:'Bannière',     w:1600, h:900,  note:'Slider du site' },
-    { id:'og',       nom:'Aperçu de lien',w:1200, h:630, note:'Partage WhatsApp' }
-  ];
-  var STUDIO_AMBIANCES = [
-    { id:'nuit',   nom:'Nuit',    fond1:'#0B1810', fond2:'#050A07', halo:'#133A26', accent:'#C6A257', texte:'#F3EFE6' },
-    { id:'terrain',nom:'Terrain', fond1:'#0F4030', fond2:'#071A13', halo:'#1B6B4A', accent:'#A8D93B', texte:'#F3EFE6' },
-    { id:'encre',  nom:'Encre',   fond1:'#0A0A0B', fond2:'#000000', halo:'#2A2A30', accent:'#FFFFFF', texte:'#FFFFFF' },
-    { id:'electr', nom:'Électrique', fond1:'#100A2E', fond2:'#05030F', halo:'#3B21A8', accent:'#6C4BF6', texte:'#F4F2FF' },
-    { id:'brique', nom:'Brique',  fond1:'#2A0F0B', fond2:'#0A0403', halo:'#7A2A1C', accent:'#FF5A3C', texte:'#F8EFEC' }
-  ];
-
-  // ---------------------------------------------------------------------
-  // LES STYLES DE TEXTE
+  // Trois raisons de l'avoir sorti d'ici :
+  //   1. ce fichier fait déjà 15 000 lignes dans une seule IIFE ; deux
+  //      fonctions de même nom s'y écrasent en silence, et c'est
+  //      exactement ce qui avait tué l'écran Annonces ;
+  //   2. l'administration n'a plus à charger l'atelier sur ses 43
+  //      écrans — il n'arrive qu'au premier clic ;
+  //   3. le Studio se teste seul, sans l'admin : studio/banc-essai.html.
   //
-  // C'est ici que se joue le caractère. Un texte n'a pas une police et une
-  // taille choisies au hasard : il a un RÔLE — assommoir, titre, sur-titre,
-  // pastille — et chaque rôle porte sa police, sa graisse, son interlettrage
-  // et sa casse. On applique un rôle, pas dix réglages.
-  //
-  // Les tailles sont des fractions de la largeur : une affiche reste
-  // composée pareil en story et en bannière.
+  // Rien de ce qui suit ne s'exécute au chargement de la page.
   // ---------------------------------------------------------------------
-  var ST_TYPO = {
-    massif:   { nom:'Assommoir',      police:"'Anton',sans-serif",         poids:400, taille:0.150, casse:'maj', lh:0.88, suivi:-0.005 },
-    massifV:  { nom:'Assommoir vide', police:"'Anton',sans-serif",         poids:400, taille:0.150, casse:'maj', lh:0.88, suivi:-0.005, contour:true },
-    titre:    { nom:'Titre',          police:"'Space Grotesk',sans-serif", poids:700, taille:0.068, casse:'maj', lh:1.02, suivi:-0.012 },
-    sousTitre:{ nom:'Sous-titre',     police:"'Space Grotesk',sans-serif", poids:500, taille:0.034, lh:1.28 },
-    kicker:   { nom:'Sur-titre',      police:"'Inter',sans-serif",         poids:800, taille:0.021, casse:'maj', lh:1.35, suivi:0.19 },
-    corps:    { nom:'Paragraphe',     police:"'Inter',sans-serif",         poids:500, taille:0.024, lh:1.5 },
-    pastille: { nom:'Pastille',       police:"'Inter',sans-serif",         poids:800, taille:0.021, casse:'maj', lh:1.2, suivi:0.13, pastille:true },
-    carte:    { nom:'Carte',          police:"'Space Grotesk',sans-serif", poids:700, taille:0.030, lh:1.3, carte:true },
-    chiffre:  { nom:'Chiffre géant',  police:"'Anton',sans-serif",         poids:400, taille:0.300, lh:0.86 },
-    filet:    { nom:'Mention',        police:"'Inter',sans-serif",         poids:600, taille:0.019, casse:'maj', lh:1.3, suivi:0.14, opacite:0.55 }
-  };
-  var ST_TYPO_ORDRE = ['massif','massifV','titre','sousTitre','kicker','corps','pastille','carte','chiffre','filet'];
+  var studioPret = false, studioEnCours = false;
 
-  var ST = { format:'story', modele:'match', ambiance:'nuit', blocs:[], sel:null, images:{},
-             fond:{ url:'', fx:50, fy:50, zoom:100, voile:55 }, fondImg:null, mediaListe:null, boites:[] };
-
-  // ---- outils de dessin ----
-  function stCouvrir(ctx, img, W, H, fx, fy, zoom){
-    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-    if (!iw || !ih) return;
-    var k = Math.max(W / iw, H / ih) * ((zoom == null ? 100 : zoom) / 100);
-    var w = iw * k, h = ih * k;
-    ctx.drawImage(img, (W - w) * ((fx == null ? 50 : fx) / 100),
-                       (H - h) * ((fy == null ? 50 : fy) / 100), w, h);
-  }
-  function stVoile(ctx, W, H, force){
-    var f = (force == null ? 55 : force) / 100;
-    ctx.save();
-    ctx.fillStyle = 'rgba(5,10,7,' + (0.16 + f * 0.58).toFixed(3) + ')';
-    ctx.fillRect(0, 0, W, H);
-    var g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0,    'rgba(5,10,7,' + (0.20 + f * 0.45).toFixed(3) + ')');
-    g.addColorStop(0.42, 'rgba(5,10,7,0)');
-    g.addColorStop(1,    'rgba(5,10,7,' + (0.28 + f * 0.60).toFixed(3) + ')');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    ctx.restore();
-  }
-  function stFond(ctx, W, H, a){
-    if (ST.fondImg){
-      stCouvrir(ctx, ST.fondImg, W, H, ST.fond.fx, ST.fond.fy, ST.fond.zoom);
-      stVoile(ctx, W, H, ST.fond.voile);
-      return;
-    }
-    var g = ctx.createLinearGradient(0, 0, W * 0.4, H);
-    g.addColorStop(0, a.fond1); g.addColorStop(1, a.fond2);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    var r = ctx.createRadialGradient(W * 0.75, H * 0.08, 0, W * 0.75, H * 0.08, W * 0.9);
-    r.addColorStop(0, a.halo); r.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.globalAlpha = .55; ctx.fillStyle = r; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
-  }
-  function stImage(url){
-    return new Promise(function(res){
-      if (!url) return res(null);
-      if (ST.images[url] !== undefined) return res(ST.images[url]);
-      var im = new Image();
-      im.crossOrigin = 'anonymous';
-      im.onload  = function(){ ST.images[url] = im; res(im); };
-      im.onerror = function(){ ST.images[url] = null; res(null); };
-      im.src = url;
-    });
-  }
-  function stCouleur(bloc, a){
-    if (bloc.c === 'accent') return a.accent;
-    if (bloc.c === 'sombre') return '#07130D';
-    return a.texte;
-  }
-
-  // ---------------------------------------------------------------------
-  // DESSIN D'UN BLOC
-  // Renvoie sa boîte {x,y,w,h} en pixels canvas : c'est elle qui sert de
-  // cible au clic et au glisser. Sans boîte, pas de sélection possible.
-  // ---------------------------------------------------------------------
-  function stBlocBoite(ctx, b, W, H, a){
-    var t = ST_TYPO[b.p] || ST_TYPO.corps;
-    var taille = t.taille * W * (b.echelle || 1);
-    var lh = taille * (t.lh || 1.1);
-    var texte = String(b.t == null ? '' : b.t);
-    if (t.casse === 'maj') texte = texte.toUpperCase();
-    var maxW = (b.w || 0.84) * W;
-
-    ctx.save();
-    ctx.font = t.poids + ' ' + taille + 'px ' + t.police;
-    if (ctx.letterSpacing !== undefined) ctx.letterSpacing = ((t.suivi || 0) * taille) + 'px';
-
-    var lignes = [];
-    texte.split('\n').forEach(function(par){
-      var mots = par.split(/\s+/), cur = '';
-      mots.forEach(function(m){
-        var essai = cur ? cur + ' ' + m : m;
-        if (ctx.measureText(essai).width > maxW && cur){ lignes.push(cur); cur = m; }
-        else cur = essai;
-      });
-      lignes.push(cur);
-    });
-    var largeur = 0;
-    lignes.forEach(function(l){ largeur = Math.max(largeur, ctx.measureText(l).width); });
-    ctx.restore();
-
-    var padX = (t.pastille || t.carte) ? taille * 0.85 : 0;
-    var padY = (t.pastille || t.carte) ? taille * 0.55 : 0;
-    var bw = largeur + padX * 2, bh = lignes.length * lh + padY * 2;
-    var x = b.x * W, y = b.y * H;
-    if (b.align === 'centre') x -= bw / 2;
-    else if (b.align === 'droite') x -= bw;
-    return { x:x, y:y, w:bw, h:bh, lignes:lignes, taille:taille, lh:lh, t:t, padX:padX, padY:padY };
-  }
-  function stDessinerBloc(ctx, b, W, H, a){
-    var m = stBlocBoite(ctx, b, W, H, a);
-    var t = m.t, coul = stCouleur(b, a);
-    ctx.save();
-    ctx.globalAlpha = t.opacite || 1;
-    if (t.pastille || t.carte){
-      ctx.fillStyle = b.c === 'accent' ? a.accent : (t.carte ? 'rgba(243,239,230,.08)' : '#FFFFFF');
-      var r = t.carte ? m.taille * 0.55 : m.h / 2;
-      if (ctx.roundRect){ ctx.beginPath(); ctx.roundRect(m.x, m.y, m.w, m.h, r); ctx.fill(); }
-      else ctx.fillRect(m.x, m.y, m.w, m.h);
-      coul = t.carte ? a.texte : '#07130D';
-    }
-    ctx.font = t.poids + ' ' + m.taille + 'px ' + t.police;
-    if (ctx.letterSpacing !== undefined) ctx.letterSpacing = ((t.suivi || 0) * m.taille) + 'px';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    if (t.contour){
-      ctx.strokeStyle = coul; ctx.lineWidth = Math.max(2, m.taille * 0.028); ctx.lineJoin = 'round';
-    } else ctx.fillStyle = coul;
-    m.lignes.forEach(function(l, i){
-      var lx = m.x + m.padX, ly = m.y + m.padY + i * m.lh;
-      if (t.contour) ctx.strokeText(l, lx, ly); else ctx.fillText(l, lx, ly);
-    });
-    ctx.restore();
-    return m;
-  }
-
-  // ---------------------------------------------------------------------
-  // LES MODÈLES : ils ne dessinent plus, ils PROPOSENT des blocs.
-  // C'est ce changement qui rend tout déplaçable et restylable — un modèle
-  // n'est plus un dessin figé, c'est un point de départ.
-  // ---------------------------------------------------------------------
-  function stB(id, t, p, x, y, o){
-    var b = { id:id, t:t, p:p, x:x, y:y, w:0.84, align:'gauche', c:'texte', echelle:1 };
-    if (o) for (var k in o) b[k] = o[k];
-    return b;
-  }
-  var STUDIO_MODELES = [
-    {
-      id:'match', nom:'Affiche de match', sous:'Prochaine rencontre',
-      layouts:['Aligné à gauche','Centré','Bas de page'],
-      blocs:function(d, layout){
-        if (layout === 1) return [
-          stB('kicker', d.kicker, 'kicker', 0.5, 0.07, {align:'centre', c:'accent', w:0.8}),
-          stB('vs',     'BAOBABS\n' + d.adv, 'massif', 0.5, 0.30, {align:'centre', w:0.88}),
-          stB('date',   d.date, 'titre', 0.5, 0.70, {align:'centre', c:'accent', w:0.8}),
-          stB('lieu',   d.heure + ' · ' + d.lieu, 'sousTitre', 0.5, 0.78, {align:'centre', w:0.8}),
-          stB('mention',d.mention, 'filet', 0.5, 0.93, {align:'centre', w:0.8})
-        ];
-        if (layout === 2) return [
-          stB('kicker', d.kicker, 'kicker', 0.08, 0.06, {c:'accent'}),
-          stB('vs',     'BAOBABS\n' + d.adv, 'massif', 0.08, 0.52, {w:0.86}),
-          stB('date',   d.date, 'pastille', 0.08, 0.80, {c:'accent', w:0.7}),
-          stB('lieu',   d.heure + ' · ' + d.lieu, 'sousTitre', 0.08, 0.87, {w:0.8}),
-          stB('mention',d.mention, 'filet', 0.08, 0.94, {w:0.8})
-        ];
-        return [
-          stB('kicker', d.kicker, 'kicker', 0.08, 0.07, {c:'accent'}),
-          stB('vs',     'BAOBABS\n' + d.adv, 'massif', 0.08, 0.26, {w:0.86}),
-          stB('date',   d.date, 'titre', 0.08, 0.66, {c:'accent'}),
-          stB('lieu',   d.heure + ' · ' + d.lieu, 'sousTitre', 0.08, 0.75, {}),
-          stB('mention',d.mention, 'filet', 0.08, 0.93, {})
-        ];
-      },
-      prefill:function(){
-        return sbGet('matches?select=*&order=match_date.asc&limit=40').then(function(rows){
-          var auj = todayISO();
-          var m = (rows||[]).filter(function(x){ return x.match_date >= auj; })[0] || (rows||[])[0] || {};
-          return { kicker:m.competition||'Championnat National D2', adv:m.opponent_name||'Adversaire',
-                   date:m.match_date?formatDateLong(m.match_date):'', heure:m.match_time?String(m.match_time).slice(0,5):'19:00',
-                   lieu:m.venue||'Stadium Marius Ndiaye', mention:'baobabsbasketclub.com' };
-        }).catch(function(){ return { kicker:'Championnat National D2', adv:'Adversaire', date:'', heure:'19:00', lieu:'Stadium Marius Ndiaye', mention:'baobabsbasketclub.com' }; });
-      }
-    },
-    {
-      id:'resultat', nom:'Résultat', sous:'Score final',
-      layouts:['Score en grand','Centré'],
-      blocs:function(d, layout){
-        var gagne = (parseInt(d.sb,10)||0) > (parseInt(d.so,10)||0);
-        if (layout === 1) return [
-          stB('kicker', d.kicker, 'kicker', 0.5, 0.08, {align:'centre', c:'accent', w:0.8}),
-          stB('issue',  gagne?'Victoire':'Défaite', 'pastille', 0.5, 0.16, {align:'centre', c:'accent', w:0.6}),
-          stB('score',  d.sb + ' – ' + d.so, 'chiffre', 0.5, 0.32, {align:'centre', w:0.9}),
-          stB('adv',    'BAOBABS vs ' + d.adv, 'titre', 0.5, 0.68, {align:'centre', w:0.86}),
-          stB('note',   d.note, 'corps', 0.5, 0.82, {align:'centre', w:0.8})
-        ];
-        return [
-          stB('kicker', d.kicker, 'kicker', 0.08, 0.07, {c:'accent'}),
-          stB('issue',  gagne?'Victoire':'Défaite', 'pastille', 0.08, 0.14, {c:'accent', w:0.6}),
-          stB('score',  d.sb + ' – ' + d.so, 'chiffre', 0.08, 0.30, {w:0.9}),
-          stB('adv',    'BAOBABS vs ' + d.adv, 'titre', 0.08, 0.66, {w:0.86}),
-          stB('note',   d.note, 'corps', 0.08, 0.80, {w:0.8})
-        ];
-      },
-      prefill:function(){
-        return sbGet('matches?select=*&order=match_date.desc&limit=40').then(function(rows){
-          var m = (rows||[]).filter(function(x){ return x.score_baobabs != null; })[0] || {};
-          return { kicker:m.competition||'Championnat National D2', adv:m.opponent_name||'Adversaire',
-                   sb:String(m.score_baobabs==null?'0':m.score_baobabs), so:String(m.score_opponent==null?'0':m.score_opponent), note:'' };
-        }).catch(function(){ return { kicker:'', adv:'Adversaire', sb:'0', so:'0', note:'' }; });
-      }
-    },
-    {
-      id:'billetterie', nom:'Billetterie ouverte', sous:'Tarifs du match',
-      layouts:['Cartes empilées','Centré'],
-      blocs:function(d, layout){
-        var out = [], centre = layout === 1;
-        var x = centre ? 0.5 : 0.08, al = centre ? 'centre' : 'gauche';
-        out.push(stB('kicker', d.kicker, 'kicker', x, 0.07, {align:al, c:'accent', w:0.84}));
-        out.push(stB('adv', 'BAOBABS\n' + d.adv, 'massif', x, 0.14, {align:al, w:0.86, echelle:0.72}));
-        out.push(stB('date', d.date, 'sousTitre', x, 0.36, {align:al, c:'accent', w:0.84}));
-        String(d.tarifs||'').split('\n').filter(function(s){ return s.trim(); }).slice(0,5).forEach(function(l, i){
-          out.push(stB('tarif'+i, l.trim(), 'carte', x, 0.45 + i*0.085, {align:al, w:0.84}));
+  function studioCharger(){
+    if (window.BaobabsStudio) return Promise.resolve();
+    return fetch('/studio/studio.html', { cache: 'no-cache' })
+      .then(function(r){ if (!r.ok) throw new Error('fragment ' + r.status); return r.text(); })
+      .then(function(html){
+        var host = document.getElementById('studio-host');
+        host.innerHTML = html;
+        // Le Studio est une surcouche plein écran : il lui faut être un
+        // enfant direct de <body>. #studio-host vit dans #app, et #app
+        // passe en display:none sur l'écran de connexion — un ancêtre
+        // masqué annule le position:fixed, et l'atelier s'ouvrait à
+        // 0 × 0 sans la moindre erreur en console.
+        var el = host.querySelector('#bstudio');
+        if (el) document.body.appendChild(el);
+        return new Promise(function(res, rej){
+          var s = document.createElement('script');
+          s.src = '/studio/studio.js';
+          s.onload = function(){ window.BaobabsStudio ? res() : rej(new Error('global absent')); };
+          s.onerror = function(){ rej(new Error('script')); };
+          document.head.appendChild(s);
         });
-        out.push(stB('mention', d.mention, 'filet', x, 0.94, {align:al, w:0.84}));
-        return out;
-      },
-      prefill:function(){
-        return Promise.all([
-          sbGet('matches?select=*&order=match_date.asc&limit=40'),
-          sbGet('ticket_offers?select=category,price_fcfa,is_open&order=price_fcfa.asc,sort_order.asc')
-        ]).then(function(r){
-          var auj = todayISO();
-          var m = (r[0]||[]).filter(function(x){ return x.match_date >= auj; })[0] || {};
-          var t = (r[1]||[]).filter(function(o){ return o.is_open; })
-                  .map(function(o){ return o.category + ' — ' + tkFcfa(o.price_fcfa); }).join('\n');
-          return { kicker:'Billetterie ouverte', adv:m.opponent_name||'Adversaire',
-                   date:m.match_date?formatDateLong(m.match_date):'', tarifs:t||'Tribune — 5 000 FCFA',
-                   mention:'Paiement sur place · baobabsbasketclub.com' };
-        }).catch(function(){ return { kicker:'Billetterie ouverte', adv:'Adversaire', date:'', tarifs:'', mention:'' }; });
-      }
-    },
-    {
-      id:'joueuse', nom:'Fiche joueuse', sous:'Portrait, numéro, poste',
-      layouts:['Nom en bas','Numéro géant'],
-      blocs:function(d, layout){
-        if (layout === 1) return [
-          stB('kicker', d.kicker, 'kicker', 0.08, 0.07, {c:'accent'}),
-          stB('num',    d.numero, 'chiffre', 0.92, 0.16, {align:'droite', w:0.5}),
-          stB('nom',    d.nom, 'massif', 0.08, 0.62, {w:0.8, echelle:0.8}),
-          stB('poste',  d.poste, 'pastille', 0.08, 0.84, {c:'accent', w:0.6}),
-          stB('phrase', d.phrase, 'corps', 0.08, 0.91, {w:0.8})
-        ];
-        return [
-          stB('kicker', d.kicker, 'kicker', 0.08, 0.07, {c:'accent'}),
-          stB('nom',    d.nom, 'massif', 0.08, 0.68, {w:0.8, echelle:0.8}),
-          stB('poste',  d.poste, 'sousTitre', 0.08, 0.85, {c:'accent'}),
-          stB('num',    d.numero, 'titre', 0.08, 0.60, {}),
-          stB('phrase', d.phrase, 'corps', 0.08, 0.91, {w:0.8})
-        ];
-      },
-      prefill:function(){
-        return sbGet('players?select=*&order=sort.asc,jersey_number.asc&limit=60').then(function(rows){
-          var p = (rows||[])[0] || {};
-          if (p.photo_url){ ST.fond.url = p.photo_url; ST.fond.fy = 30; ST.fond.voile = 48;
-                            stImage(p.photo_url).then(function(im){ ST.fondImg = im; stFondPanneau(); stRendre(); }); }
-          return { kicker:'L\'effectif', nom:p.name||'Joueuse', numero:p.jersey_number==null?'':String(p.jersey_number),
-                   poste:p.position||'', phrase:'' };
-        }).catch(function(){ return { kicker:'L\'effectif', nom:'Joueuse', numero:'', poste:'', phrase:'' }; });
-      }
-    }
-  ];
-  function stModele(){ return STUDIO_MODELES.filter(function(m){ return m.id === ST.modele; })[0]; }
-  function stFormat(){ return STUDIO_FORMATS.filter(function(f){ return f.id === ST.format; })[0]; }
-  function stAmbiance(){ return STUDIO_AMBIANCES.filter(function(x){ return x.id === ST.ambiance; })[0]; }
-
-  // Le rendu vit plus bas, avec stRendreSur : une seule fonction dessine,
-  // que ce soit pour l'aperçu ou pour un export en ×3.
-  var _stEssais = 0;
-  function stAjuster(){
-    var f = stFormat(), scene = document.getElementById('st-scene'), hote = document.getElementById('st-hote');
-    if (!f || !scene || !hote) return;
-    var mob = document.getElementById('studio').classList.contains('st-mob');
-    var dispoW = scene.clientWidth - 52, dispoH = scene.clientHeight - 52;
-    if (dispoW <= 0 || dispoH <= 0){
-      if (_stEssais++ < 20){ setTimeout(stAjuster, 120); return; }
-      dispoW = 760; dispoH = 620;
-    }
-    _stEssais = 0;
-    if (mob) dispoW = Math.min(dispoW, 360);
-    var k = Math.max(Math.min(dispoW / f.w, dispoH / f.h), 0.02);
-    hote.style.width  = Math.round(f.w * k) + 'px';
-    hote.style.height = Math.round(f.h * k) + 'px';
-    ST.echelle = k;
-    stPoignees();
-    stZoomAff();
-  }
-
-  // ---------------------------------------------------------------------
-  // LES POIGNÉES
-  // Le dessin est sur canvas, donc rien n'y est cliquable. On superpose
-  // donc un cadre HTML par bloc, à l'échelle de l'aperçu : c'est lui qu'on
-  // attrape. Le canvas reste la seule source du rendu — les poignées ne
-  // sont jamais exportées.
-  // ---------------------------------------------------------------------
-  function stPoignees(){
-    var couche = document.getElementById('st-poignees'); if (!couche) return;
-    var k = ST.echelle || 0.3;
-    couche.innerHTML = ST.boites.map(function(b){
-      return '<div class="st-poignee'+(ST.sel===b.id?' on':'')+'" data-bloc="'+esc(b.id)+'" style="left:'+
-             (b.x*k)+'px;top:'+(b.y*k)+'px;width:'+(b.w*k)+'px;height:'+(b.h*k)+'px"></div>';
-    }).join('');
-    couche.querySelectorAll('[data-bloc]').forEach(function(el){
-      el.addEventListener('pointerdown', stPrise);
-    });
-  }
-  function stBloc(id){ return ST.blocs.filter(function(b){ return b.id === id; })[0]; }
-  function stPrise(ev){
-    ev.preventDefault();
-    var id = this.getAttribute('data-bloc'), b = stBloc(id); if (!b) return;
-    ST.sel = id; stInspecteur(); stPoignees();
-    var f = stFormat(), k = ST.echelle || 0.3;
-    var x0 = ev.clientX, y0 = ev.clientY, bx = b.x, by = b.y;
-    var bouge = function(e){
-      b.x = Math.min(Math.max(bx + (e.clientX - x0) / (k * f.w), -0.1), 1.1);
-      b.y = Math.min(Math.max(by + (e.clientY - y0) / (k * f.h), -0.05), 1.05);
-      stRendre();
-    };
-    var fin = function(){
-      window.removeEventListener('pointermove', bouge);
-      window.removeEventListener('pointerup', fin);
-    };
-    window.addEventListener('pointermove', bouge);
-    window.addEventListener('pointerup', fin);
-  }
-
-  // ---------------------------------------------------------------------
-  // LES FORMES
-  // Un aplat, un cercle, un filet. Peu de choses, mais c'est ce qui donne
-  // de la structure à une affiche : un bandeau derrière un titre, une
-  // pastille derrière un chiffre, un trait qui sépare.
-  // ---------------------------------------------------------------------
-  var ST_FORMES = { rect:'Rectangle', cercle:'Cercle', ligne:'Filet' };
-  function stDessinerForme(ctx, b, W, H, a){
-    var x = b.x * W, y = b.y * H, w = (b.w || 0.4) * W, h = (b.h || 0.12) * H;
-    if (b.align === 'centre') x -= w / 2; else if (b.align === 'droite') x -= w;
-    ctx.save();
-    ctx.globalAlpha = b.opacite == null ? 1 : b.opacite;
-    var peinture;
-    if (b.remplissage === 'degrade'){
-      var g = ctx.createLinearGradient(x, y, x + w, y + h);
-      g.addColorStop(0, b.c === 'accent' ? a.accent : a.texte);
-      g.addColorStop(1, a.halo);
-      peinture = g;
-    } else peinture = b.c === 'accent' ? a.accent : (b.c === 'sombre' ? '#07130D' : a.texte);
-
-    ctx.beginPath();
-    if (b.forme === 'cercle') ctx.arc(x + w / 2, y + h / 2, Math.min(w, h) / 2, 0, Math.PI * 2);
-    else if (b.forme === 'ligne') ctx.rect(x, y, w, Math.max(2, H * 0.004));
-    else if (ctx.roundRect) ctx.roundRect(x, y, w, h, (b.rayon == null ? 0.03 : b.rayon) * W);
-    else ctx.rect(x, y, w, h);
-
-    if (b.remplissage === 'contour'){
-      ctx.strokeStyle = peinture; ctx.lineWidth = Math.max(2, W * 0.004); ctx.stroke();
-    } else { ctx.fillStyle = peinture; ctx.fill(); }
-    ctx.restore();
-    return { x:x, y:y, w:w, h:(b.forme === 'ligne' ? Math.max(2, H * 0.004) : h) };
-  }
-
-  // Le rendu est séparé du canvas d'aperçu : c'est ce qui permet d'exporter
-  // en HD sans redessiner autrement. Toutes les tailles étant des fractions
-  // de la largeur, la même composition sort identique à n'importe quelle
-  // résolution.
-  function stRendreSur(ctx, W, H, avecBoites){
-    var a = stAmbiance();
-    stFond(ctx, W, H, a);
-    var boites = [];
-    ST.blocs.forEach(function(b){
-      var m;
-      if (b.type === 'forme') m = stDessinerForme(ctx, b, W, H, a);
-      else {
-        if (!String(b.t || '').trim()) return;
-        m = stDessinerBloc(ctx, b, W, H, a);
-      }
-      if (avecBoites) boites.push({ id:b.id, x:m.x, y:m.y, w:m.w, h:m.h });
-    });
-    return boites;
-  }
-  function stRendre(){
-    var f = stFormat();
-    var cv = document.getElementById('st-canvas'); if (!cv || !f) return;
-    cv.width = f.w; cv.height = f.h;
-    ST.boites = stRendreSur(cv.getContext('2d'), f.w, f.h, true);
-    stAjuster();
-    stPoignees();
-  }
-
-  // ---- zoom ----
-  var ST_ZOOMS = [0.25, 0.5, 0.75, 1, 1.5, 2];
-  function stZoom(delta){
-    if (ST.ajuste === undefined) ST.ajuste = true;
-    if (delta === 0){ ST.ajuste = true; stAjuster(); stZoomAff(); return; }
-    ST.ajuste = false;
-    var k = ST.echelle || 0.3;
-    ST.echelle = Math.min(Math.max(k * (delta > 0 ? 1.25 : 0.8), 0.05), 3);
-    stAppliquerEchelle(); stZoomAff();
-  }
-  function stAppliquerEchelle(){
-    var f = stFormat(), hote = document.getElementById('st-hote');
-    if (!f || !hote) return;
-    hote.style.width  = Math.round(f.w * ST.echelle) + 'px';
-    hote.style.height = Math.round(f.h * ST.echelle) + 'px';
-    stPoignees();
-  }
-  function stZoomAff(){
-    var el = document.getElementById('st-zoom-val');
-    if (el) el.textContent = Math.round((ST.echelle || 0) * 100) + '%';
-  }
-
-  // ---- inspecteur ----
-  function stInspecteur(){
-    var z = document.getElementById('st-champs'); if (!z) return;
-    var b = stBloc(ST.sel);
-    if (!b){
-      z.innerHTML = '<p class="st-note">Cliquez un élément de l\'affiche pour le modifier, ou ajoutez-en un ci-dessus.</p>';
-      return;
-    }
-    var estForme = b.type === 'forme';
-    var h = '';
-    if (!estForme){
-      h += '<div class="st-champ"><label for="sti-t">Texte</label><textarea id="sti-t" rows="3" data-sti="t">'+esc(b.t||'')+'</textarea></div>';
-      h += '<div class="st-champ"><label>Style</label><div class="st-styles">' +
-           ST_TYPO_ORDRE.map(function(k){
-             return '<button type="button" data-sti-p="'+k+'" class="'+(b.p===k?'on':'')+'">'+esc(ST_TYPO[k].nom)+'</button>';
-           }).join('') + '</div></div>';
-    } else {
-      h += '<div class="st-champ"><label>Forme</label><div class="st-styles">' +
-           Object.keys(ST_FORMES).map(function(k){
-             return '<button type="button" data-sti-f="'+k+'" class="'+(b.forme===k?'on':'')+'">'+esc(ST_FORMES[k])+'</button>';
-           }).join('') + '</div></div>';
-      h += '<div class="st-champ"><label>Remplissage</label><div class="st-styles">' +
-           [['plein','Plein'],['degrade','Dégradé'],['contour','Contour']].map(function(p){
-             return '<button type="button" data-sti-r="'+p[0]+'" class="'+((b.remplissage||'plein')===p[0]?'on':'')+'">'+p[1]+'</button>';
-           }).join('') + '</div></div>';
-    }
-    h += '<div class="st-champ"><label>Couleur</label><div class="st-styles">' +
-         [['texte','Claire'],['accent','Accent'],['sombre','Sombre']].map(function(p){
-           return '<button type="button" data-sti-c="'+p[0]+'" class="'+((b.c||'texte')===p[0]?'on':'')+'">'+p[1]+'</button>';
-         }).join('') + '</div></div>';
-    h += '<div class="st-champ"><label>Alignement</label><div class="st-styles">' +
-         [['gauche','Gauche'],['centre','Centre'],['droite','Droite']].map(function(p){
-           return '<button type="button" data-sti-a="'+p[0]+'" class="'+((b.align||'gauche')===p[0]?'on':'')+'">'+p[1]+'</button>';
-         }).join('') + '</div></div>';
-    h += '<div class="st-curseur"><label for="sti-w">Largeur</label><input id="sti-w" type="range" min="10" max="100" value="'+Math.round((b.w||0.84)*100)+'" data-sti-n="w"><output>'+Math.round((b.w||0.84)*100)+'%</output></div>';
-    if (!estForme)
-      h += '<div class="st-curseur"><label for="sti-e">Taille</label><input id="sti-e" type="range" min="30" max="220" value="'+Math.round((b.echelle||1)*100)+'" data-sti-n="echelle"><output>'+Math.round((b.echelle||1)*100)+'%</output></div>';
-    else
-      h += '<div class="st-curseur"><label for="sti-h">Hauteur</label><input id="sti-h" type="range" min="2" max="90" value="'+Math.round((b.h||0.12)*100)+'" data-sti-n="h"><output>'+Math.round((b.h||0.12)*100)+'%</output></div>';
-    h += '<div class="st-actions"><button type="button" class="btn btn-ghost" id="sti-dup">Dupliquer</button>'+
-         '<button type="button" class="btn btn-ghost" id="sti-del">Supprimer</button></div>';
-    z.innerHTML = h;
-
-    z.querySelectorAll('[data-sti]').forEach(function(el){
-      el.addEventListener('input', function(){ b[el.getAttribute('data-sti')] = el.value; stRendre(); });
-    });
-    var maj = function(attr, cle){
-      z.querySelectorAll('['+attr+']').forEach(function(el){
-        el.addEventListener('click', function(){ b[cle] = el.getAttribute(attr); stInspecteur(); stRendre(); });
       });
-    };
-    maj('data-sti-p','p'); maj('data-sti-c','c'); maj('data-sti-a','align');
-    maj('data-sti-f','forme'); maj('data-sti-r','remplissage');
-    z.querySelectorAll('[data-sti-n]').forEach(function(el){
-      el.addEventListener('input', function(){
-        var cle = el.getAttribute('data-sti-n');
-        b[cle] = parseInt(el.value,10) / 100;
-        var o = el.parentNode.querySelector('output'); if (o) o.textContent = el.value + '%';
-        stRendre();
-      });
-    });
-    document.getElementById('sti-dup').addEventListener('click', function(){ stDupliquer(); });
-    document.getElementById('sti-del').addEventListener('click', function(){ stSupprimer(); });
-  }
-  function stDupliquer(){
-    var b = stBloc(ST.sel); if (!b) return;
-    var n = JSON.parse(JSON.stringify(b));
-    n.id = 'b' + Date.now(); n.y = Math.min(n.y + 0.05, 1);
-    ST.blocs.push(n); ST.sel = n.id; stInspecteur(); stRendre();
-  }
-  function stSupprimer(){
-    ST.blocs = ST.blocs.filter(function(b){ return b.id !== ST.sel; });
-    ST.sel = null; stInspecteur(); stRendre();
-  }
-  function stAjouter(quoi){
-    var id = 'b' + Date.now();
-    if (quoi === 'forme')
-      ST.blocs.push({ id:id, type:'forme', forme:'rect', remplissage:'plein', x:0.1, y:0.4, w:0.5, h:0.12, c:'accent', align:'gauche', rayon:0.03, opacite:1 });
-    else
-      ST.blocs.push(stB(id, quoi === 'titre' ? 'Votre titre' : 'Votre texte', quoi === 'titre' ? 'massif' : 'corps', 0.1, 0.45, { w:0.8 }));
-    ST.sel = id; stInspecteur(); stRendre();
   }
 
-  // ---- panneaux gauche ----
-  function stPanneaux(){
-    var lm = document.getElementById('st-modeles'), lf = document.getElementById('st-formats');
-    lm.innerHTML = STUDIO_MODELES.map(function(m){
-      return '<button type="button" data-mod="'+m.id+'" class="'+(m.id===ST.modele?'on':'')+'">'+
-             '<span>'+esc(m.nom)+'<span class="st-dim">'+esc(m.sous)+'</span></span></button>';
-    }).join('');
-    lf.innerHTML = STUDIO_FORMATS.map(function(f){
-      return '<button type="button" data-fmt="'+f.id+'" class="'+(f.id===ST.format?'on':'')+'">'+
-             '<span>'+esc(f.nom)+'<span class="st-dim">'+f.w+' × '+f.h+'</span></span></button>';
-    }).join('');
-    lm.querySelectorAll('[data-mod]').forEach(function(b){
-      b.addEventListener('click', function(){ ST.modele = b.getAttribute('data-mod'); ST.layout = 0; stCharger(); });
-    });
-    lf.querySelectorAll('[data-fmt]').forEach(function(b){
-      b.addEventListener('click', function(){ ST.format = b.getAttribute('data-fmt'); stPanneaux(); stRendre(); });
-    });
-    var ll = document.getElementById('st-layouts'), m = stModele();
-    ll.innerHTML = (m.layouts||['Par défaut']).map(function(n, i){
-      return '<button type="button" data-lay="'+i+'" class="'+((ST.layout||0)===i?'on':'')+'"><span>'+esc(n)+'</span></button>';
-    }).join('');
-    ll.querySelectorAll('[data-lay]').forEach(function(b){
-      b.addEventListener('click', function(){
-        ST.layout = parseInt(b.getAttribute('data-lay'),10);
-        ST.blocs = stModele().blocs(ST.donnees || {}, ST.layout);
-        ST.sel = null; stPanneaux(); stInspecteur(); stRendre();
-      });
-    });
-    var lc = document.getElementById('st-couleurs');
-    lc.innerHTML = STUDIO_AMBIANCES.map(function(x){
-      return '<button type="button" data-amb="'+x.id+'" title="'+esc(x.nom)+'" aria-label="'+esc(x.nom)+'" class="'+(x.id===ST.ambiance?'on':'')+
-             '" style="background:linear-gradient(135deg,'+x.fond1+' 40%,'+x.accent+')"></button>';
-    }).join('');
-    lc.querySelectorAll('[data-amb]').forEach(function(b){
-      b.addEventListener('click', function(){ ST.ambiance = b.getAttribute('data-amb'); stPanneaux(); stRendre(); });
-    });
-    stFondPanneau();
-  }
-  function stCharger(){
-    var m = stModele();
-    ST.fond = { url:'', fx:50, fy:50, zoom:100, voile:55 };
-    ST.fondImg = null; ST.sel = null; ST.layout = ST.layout || 0;
-    document.getElementById('st-champs').innerHTML = '<p class="st-note">Chargement…</p>';
-    m.prefill().then(function(d){
-      ST.donnees = d || {};
-      ST.blocs = m.blocs(ST.donnees, ST.layout);
-      stPanneaux(); stInspecteur(); stRendre();
-    });
-  }
-
-  // ---- image de fond ----
-  // Le bucket Supabase ne contient que ce qui a été téléversé depuis
-  // l'admin. L'essentiel des photos du club vit dans /media/ et n'est connu
-  // que par les adresses enregistrées dans les fiches. Un sélecteur qui
-  // ignorerait les fiches paraîtrait vide alors que le club a des dizaines
-  // d'images.
-  function stMedias(){
-    if (ST.mediaListe) return Promise.resolve(ST.mediaListe);
-    var img = function(v){ return typeof v === 'string' && /\.(jpe?g|png|webp|avif)(\?|$)/i.test(v) ? v : null; };
-    var bucket = fetch(SUPABASE_URL + '/storage/v1/object/list/' + MEDIA_BUCKET, {
-      method:'POST', headers: sbHeaders({ 'Content-Type':'application/json' }),
-      body: JSON.stringify({ prefix:'', limit:60, offset:0, sortBy:{ column:'created_at', order:'desc' } })
-    }).then(function(r){ return r.ok ? r.json() : []; })
-      .then(function(rows){
-        return (rows||[]).filter(function(o){ return o && o.id && o.name && img(o.name); })
-          .map(function(o){ return SUPABASE_URL + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + o.name; });
-      }).catch(function(){ return []; });
-    var fiches = Promise.all([
-      sbGet('players?select=photo_url&order=sort.asc&limit=40').catch(function(){ return []; }),
-      sbGet('matches?select=photo_url&order=match_date.desc&limit=20').catch(function(){ return []; }),
-      sbGet('news?select=image_url&order=published_at.desc&limit=20').catch(function(){ return []; })
-    ]).then(function(r){
-      var out = [];
-      (r[0]||[]).forEach(function(x){ if (img(x.photo_url)) out.push(x.photo_url); });
-      (r[1]||[]).forEach(function(x){ if (img(x.photo_url)) out.push(x.photo_url); });
-      (r[2]||[]).forEach(function(x){ if (img(x.image_url)) out.push(x.image_url); });
-      return out;
-    }).catch(function(){ return []; });
-    return Promise.all([bucket, fiches]).then(function(r){
-      var vus = {};
-      ST.mediaListe = r[0].concat(r[1]).filter(function(u){ if (vus[u]) return false; vus[u] = 1; return true; });
-      return ST.mediaListe;
-    });
-  }
-  function stFondAppliquer(url){
-    ST.fond.url = url || '';
-    if (!url){ ST.fondImg = null; stFondPanneau(); stRendre(); return; }
-    stImage(url).then(function(im){
-      if (!im) qgToast('Cette image n\'a pas pu être chargée — elle ne pourra pas être exportée.', true);
-      ST.fondImg = im; stFondPanneau(); stRendre();
-    });
-  }
-  function stFondPanneau(){
-    var z = document.getElementById('st-fond'); if (!z) return;
-    var f = ST.fond;
-    var curseur = function(cle, lib, min, max){
-      return '<div class="st-curseur"><label for="stb-'+cle+'">'+lib+'</label>'+
-        '<input id="stb-'+cle+'" type="range" min="'+min+'" max="'+max+'" value="'+f[cle]+'" data-stb="'+cle+'">'+
-        '<output>'+f[cle]+'%</output></div>';
-    };
-    z.innerHTML =
-      '<div class="st-vign" id="st-vign">'+
-        '<button type="button" class="st-aucune'+(f.url?'':' on')+'" data-sturl="">Aucune<br>image</button>'+
-      '</div>'+
-      '<div class="st-champ"><label for="stb-url">Adresse de l\'image</label>'+
-        '<input id="stb-url" type="text" value="'+esc(f.url)+'" placeholder="https://… ou /media/img/…"></div>'+
-      '<div class="st-champ"><label for="stb-file">Téléverser</label><input id="stb-file" type="file" accept="image/*" style="font-size:11.5px;color:var(--muted)"></div>'+
-      (f.url ? curseur('fx','Cadrage ←→',0,100) + curseur('fy','Cadrage ↑↓',0,100) +
-               curseur('zoom','Zoom',100,220)  + curseur('voile','Voile',0,100) : '');
-
-    stMedias().then(function(urls){
-      var g = document.getElementById('st-vign'); if (!g) return;
-      g.innerHTML = '<button type="button" class="st-aucune'+(f.url?'':' on')+'" data-sturl="">Aucune<br>image</button>' +
-        urls.slice(0,11).map(function(u){
-          return '<button type="button" data-sturl="'+esc(u)+'" class="'+(u===f.url?'on':'')+'">'+
-                 '<img src="'+esc(u)+'" alt="" loading="lazy"></button>';
-        }).join('');
-      g.querySelectorAll('[data-sturl]').forEach(function(b){
-        b.addEventListener('click', function(){ stFondAppliquer(b.getAttribute('data-sturl')); });
-      });
-    });
-    var u = document.getElementById('stb-url');
-    u.addEventListener('change', function(){ stFondAppliquer(u.value.trim()); });
-    document.getElementById('stb-file').addEventListener('change', function(){
-      var fi = this.files && this.files[0]; if (!fi) return;
-      qgToast('Envoi de l\'image…', false);
-      uploadFile(MEDIA_BUCKET, fi).then(function(url){ ST.mediaListe = null; stFondAppliquer(url); })
-        .catch(function(){ qgToast('Téléversement impossible.', true); });
-    });
-    z.querySelectorAll('[data-stb]').forEach(function(el){
-      el.addEventListener('input', function(){
-        ST.fond[el.getAttribute('data-stb')] = parseInt(el.value, 10);
-        var o = el.parentNode.querySelector('output'); if (o) o.textContent = el.value + '%';
-        stRendre();
-      });
-    });
-  }
-
-  // ---- export ----
-  // L'aperçu travaille à la taille nominale ; l'export peut monter à ×3.
-  // Comme toutes les tailles sont des fractions de la largeur, la même
-  // composition sort identique à n'importe quelle résolution — c'est le
-  // bénéfice du modèle en blocs, pas un réglage en plus.
-  var ST_QUALITES = [ {id:1,nom:'×1'}, {id:2,nom:'×2 HD'}, {id:3,nom:'×3 Ultra'} ];
-  function stNomFichier(ext, mult){
-    return 'baobabs-' + ST.modele + '-' + ST.format + (mult > 1 ? '-x' + mult : '') + '-' + todayISO() + '.' + ext;
-  }
-  function stBlob(mult){
-    mult = mult || ST.qualite || 1;
-    var f = stFormat();
-    var off = document.createElement('canvas');
-    off.width = f.w * mult; off.height = f.h * mult;
-    stRendreSur(off.getContext('2d'), off.width, off.height, false);
-    return new Promise(function(res, rej){
-      if (!off.toBlob) return rej(new Error('canvas'));
-      off.toBlob(function(b){ b ? res(b) : rej(new Error('blob')); }, 'image/png');
-    });
-  }
-
-  // ---- raccourcis ----
-  // Un outil de composition sans clavier reste un jouet. Les flèches
-  // poussent le bloc sélectionné ; Maj pousse dix fois plus.
-  function stRaccourcis(e){
-    var w = document.getElementById('studio');
-    if (!w || !w.classList.contains('on')) return;
-    var t = e.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-    var b = stBloc(ST.sel), pas = (e.shiftKey ? 0.02 : 0.002);
-    if (b && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].indexOf(e.key) >= 0){
-      e.preventDefault();
-      if (e.key === 'ArrowLeft')  b.x -= pas;
-      if (e.key === 'ArrowRight') b.x += pas;
-      if (e.key === 'ArrowUp')    b.y -= pas;
-      if (e.key === 'ArrowDown')  b.y += pas;
-      stRendre(); return;
-    }
-    if (b && (e.key === 'Delete' || e.key === 'Backspace')){ e.preventDefault(); stSupprimer(); return; }
-    if (b && (e.ctrlKey || e.metaKey) && e.key === 'd'){ e.preventDefault(); stDupliquer(); return; }
-    if (e.key === '+' || e.key === '='){ e.preventDefault(); stZoom(1); return; }
-    if (e.key === '-'){ e.preventDefault(); stZoom(-1); return; }
-    if (e.key === '0'){ e.preventDefault(); stZoom(0); return; }
-    if (e.key === 'Escape' && ST.sel){ e.preventDefault(); ST.sel = null; stInspecteur(); stPoignees(); return; }
-  }
-
-
-  var studioPret = false;
   function studioOuvrir(){
-    var w = document.getElementById('studio');
-    w.classList.add('on');
-    if (!studioPret){
+    if (studioEnCours) return;
+    if (studioPret){ window.BaobabsStudio.open(); return; }
+    studioEnCours = true;
+    qgToast('Ouverture du Studio…');
+    studioCharger().then(function(){
+      window.BaobabsStudio.mount(document.getElementById('bstudio'), studioApi());
       studioPret = true;
-      // Les polices doivent être prêtes AVANT le premier dessin : sinon
-      // le canvas écrit en police de repli et l'affiche est méconnaissable.
-      var attente = document.fonts && document.fonts.load
-        ? Promise.all([ document.fonts.load("400 100px 'Anton'"), document.fonts.load("700 40px 'Space Grotesk'"),
-                        document.fonts.load("700 40px 'Inter'"), document.fonts.load("800 40px 'Inter'") ]).catch(function(){})
-        : Promise.resolve();
-      attente.then(stCharger);
-      window.addEventListener('resize', function(){ if (ST.ajuste !== false) stAjuster(); });
-      document.addEventListener('keydown', stRaccourcis);
-      document.getElementById('st-close').addEventListener('click', studioFermer);
-
-      // Outils d'ajout, zoom et qualité d'export.
-      document.querySelectorAll('#st-outils button, .st-outils button').forEach(function(b){
-        if (!b.getAttribute('data-ajout')) return;
-        b.addEventListener('click', function(){ stAjouter(b.getAttribute('data-ajout')); });
-      });
-      document.querySelectorAll('#st-zoomctl button').forEach(function(b){
-        b.addEventListener('click', function(){ stZoom(parseInt(b.getAttribute('data-zoom'), 10)); });
-      });
-      var q = document.getElementById('st-qualite');
-      q.innerHTML = ST_QUALITES.map(function(x){ return '<option value="'+x.id+'">'+x.nom+'</option>'; }).join('');
-      q.value = '1'; ST.qualite = 1;
-      q.addEventListener('change', function(){ ST.qualite = parseInt(q.value, 10) || 1; });
-
-      // Cliquer le fond désélectionne : sans ça, impossible de revenir au
-      // panneau général une fois qu'on a touché un bloc.
-      document.getElementById('st-scene').addEventListener('pointerdown', function(e){
-        if (e.target.closest('.st-poignee')) return;
-        if (ST.sel){ ST.sel = null; stInspecteur(); stPoignees(); }
-      });
-      document.querySelectorAll('#st-vue button').forEach(function(b){
-        b.addEventListener('click', function(){
-          document.querySelectorAll('#st-vue button').forEach(function(x){ x.classList.toggle('on', x === b); });
-          w.classList.toggle('st-mob', b.getAttribute('data-vue') === 'mob');
-          stAjuster();
-        });
-      });
-      document.getElementById('st-png').addEventListener('click', function(){
-        stBlob().then(function(b){
-          var u = URL.createObjectURL(b), a = document.createElement('a');
-          a.href = u; a.download = stNomFichier('png');
-          document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
-          qgToast('Affiche téléchargée.', false);
-        }).catch(function(){ qgToast('Export impossible — une image du visuel bloque la copie.', true); });
-      });
-      document.getElementById('st-media').addEventListener('click', function(){
-        var btn = this; btn.disabled = true;
-        stBlob().then(function(b){
-          var f = new File([b], stNomFichier('png'), { type:'image/png' });
-          return uploadFile(MEDIA_BUCKET, f);
-        }).then(function(url){
-          qgToast('Envoyée dans la médiathèque.', false);
-          console.info('[Studio] adresse de l\'affiche : ' + url);
-        }).catch(function(){ qgToast('Envoi impossible dans la médiathèque.', true); })
-          .finally(function(){ btn.disabled = false; });
-      });
-    } else { stAjuster(); }
+      window.BaobabsStudio.open();
+    }).catch(function(e){
+      console.error('[Studio]', e);
+      qgToast('Le Studio n\'a pas pu se charger', true);
+    }).then(function(){ studioEnCours = false; });
   }
-  function studioFermer(){ document.getElementById('studio').classList.remove('on'); }
   document.getElementById('studio-open').addEventListener('click', studioOuvrir);
-  document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape' && document.getElementById('studio').classList.contains('on')) studioFermer();
-  });
 
+  // ------------------------------------------------------------------
+  // Le contrat passé au Studio. Il ne connaît ni Supabase, ni les noms
+  // de nos tables : tout passe par ici. En cas d'échec on renvoie null
+  // ou un tableau vide — le Studio doit retomber sur ses valeurs de
+  // maquette, jamais planter sur une donnée absente.
+  // ------------------------------------------------------------------
+  var studioMedias = null;
+
+  function studioEstImage(v){
+    return typeof v === 'string' && /\.(jpe?g|png|webp|avif|svg)(\?|$)/i.test(v) ? v : null;
+  }
+
+  function studioApi(){
+    return {
+      data: {
+        nextMatch: function(){
+          return sbGet('matches?select=*&order=match_date.asc&limit=80').then(function(rows){
+            var auj = todayISO();
+            var m = (rows || []).filter(function(x){ return x.match_date >= auj; })[0]
+                 || (rows || [])[(rows || []).length - 1];
+            if (!m) return null;
+            return {
+              opponent: m.opponent_name || '',
+              competition: m.competition || '',
+              date: m.match_date || '',
+              time: m.match_time || '',
+              venue: m.venue || '',
+              isHome: m.is_home !== false,
+              opponentLogo: m.opponent_logo_url || '',
+              photo: m.photo_url || ''
+            };
+          }, function(){ return null; });
+        },
+
+        lastResult: function(){
+          return sbGet('matches?select=*&order=match_date.desc&limit=80').then(function(rows){
+            var m = (rows || []).filter(function(x){ return x.score_baobabs != null; })[0];
+            if (!m) return null;
+            return {
+              opponent: m.opponent_name || '',
+              scoreUs: m.score_baobabs,
+              scoreThem: m.score_opponent,
+              date: m.match_date || ''
+            };
+          }, function(){ return null; });
+        },
+
+        players: function(){
+          return sbGet('players?select=name,jersey_number,position,photo_url&order=sort.asc&limit=60')
+            .then(function(rows){
+              return (rows || []).map(function(p){
+                return { name: p.name || '', number: p.jersey_number, position: p.position || '', photo: p.photo_url || '' };
+              });
+            }, function(){ return []; });
+        },
+
+        // Médiathèque : le bucket, plus les adresses déjà enregistrées
+        // dans les fiches joueuses, matchs et articles.
+        media: function(){
+          if (studioMedias) return Promise.resolve(studioMedias);
+          var bucket = fetch(SUPABASE_URL + '/storage/v1/object/list/' + MEDIA_BUCKET, {
+            method: 'POST',
+            headers: sbHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ prefix: '', limit: 80, offset: 0, sortBy: { column: 'created_at', order: 'desc' } })
+          }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){
+            return (rows || []).filter(function(o){ return o && o.id && studioEstImage(o.name); })
+              .map(function(o){
+                return { url: SUPABASE_URL + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + o.name, name: o.name };
+              });
+          }).catch(function(){ return []; });
+
+          var fiches = Promise.all([
+            sbGet('players?select=name,photo_url&order=sort.asc&limit=60').catch(function(){ return []; }),
+            sbGet('matches?select=opponent_name,photo_url,opponent_logo_url&order=match_date.desc&limit=30').catch(function(){ return []; }),
+            sbGet('news?select=title,image_url&order=published_at.desc&limit=30').catch(function(){ return []; })
+          ]).then(function(r){
+            var out = [];
+            (r[0] || []).forEach(function(x){ if (studioEstImage(x.photo_url)) out.push({ url: x.photo_url, name: x.name || 'Joueuse' }); });
+            (r[1] || []).forEach(function(x){
+              if (studioEstImage(x.photo_url)) out.push({ url: x.photo_url, name: 'Match ' + (x.opponent_name || '') });
+              if (studioEstImage(x.opponent_logo_url)) out.push({ url: x.opponent_logo_url, name: 'Logo ' + (x.opponent_name || '') });
+            });
+            (r[2] || []).forEach(function(x){ if (studioEstImage(x.image_url)) out.push({ url: x.image_url, name: x.title || 'Article' }); });
+            return out;
+          }).catch(function(){ return []; });
+
+          return Promise.all([bucket, fiches]).then(function(r){
+            var vus = {};
+            studioMedias = r[0].concat(r[1]).filter(function(m){
+              if (!m.url || vus[m.url]) return false;
+              vus[m.url] = 1; return true;
+            });
+            return studioMedias;
+          });
+        }
+      },
+
+      // --- projets enregistrés (table studio_projets) ---
+      // Si la table n'existe pas encore, list() renvoie un tableau vide
+      // et le Studio le dit clairement plutôt que de faire semblant.
+      projects: {
+        list: function(){
+          return sbGet('studio_projets?select=id,nom,format,est_modele,doc,modifie_le&order=modifie_le.desc&limit=120')
+            .then(function(rows){ return rows || []; }, function(){ return []; });
+        },
+        save: function(rec){
+          var body = {
+            nom: rec.nom, format: rec.format,
+            est_modele: !!rec.est_modele, doc: rec.doc,
+            modifie_le: new Date().toISOString()
+          };
+          var url = SUPABASE_URL + '/rest/v1/studio_projets';
+          var opts = {
+            headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=representation' }),
+            body: JSON.stringify(body)
+          };
+          if (rec.id){
+            opts.method = 'PATCH';
+            url += '?id=eq.' + encodeURIComponent(rec.id);
+          } else {
+            opts.method = 'POST';
+          }
+          return fetch(url, opts).then(function(r){
+            if (!r.ok) throw new Error('studio_projets ' + r.status);
+            return r.json();
+          }).then(function(rows){ return (rows && rows[0]) || rec; });
+        },
+        remove: function(id){
+          return fetch(SUPABASE_URL + '/rest/v1/studio_projets?id=eq.' + encodeURIComponent(id), {
+            method: 'DELETE', headers: sbHeaders({})
+          }).then(function(r){ if (!r.ok) throw new Error('suppression ' + r.status); });
+        }
+      },
+
+      uploadImage: function(file){
+        return uploadFile(MEDIA_BUCKET, file).then(function(url){
+          studioMedias = null;                 // la médiathèque a changé
+          return url;
+        });
+      },
+
+      download: function(blob, nom){
+        var u = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = u; a.download = nom;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(u); }, 5000);
+      },
+
+      toast: function(m, err){ qgToast(m, !!err); },
+      clubLogo: '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp',
+      formatDate: function(iso){ return formatDateLong(iso); },
+      today: function(){ return todayISO(); }
+    };
+  }
   // ===================== ANNULER =====================
   //
   // « J'ai peur de remplacer un logo partenaire ou une joueuse, parce
@@ -15771,109 +15138,9 @@
   .qg-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .qg-toast.err{border-color:rgba(229,86,74,.5)}
 
-  /* ===================== BAOBABS STUDIO =====================
-     Un plein écran, pas un écran de plus dans la liste. Le Studio ne
-     gère rien : il compose. Le fond descend plus bas que celui de
-     l'admin pour que l'affiche soit la seule chose lumineuse. */
-  .studio-open{border-color:rgba(198,162,87,.4)!important;color:var(--gold)!important}
-  .studio-open:hover{border-color:var(--gold)!important;background:rgba(198,162,87,.1)!important}
-
-  .st-wrap{position:fixed;inset:0;z-index:200;background:#050806;display:none;flex-direction:column}
-  .st-wrap.on{display:flex}
-  .st-head{flex:none;display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid rgba(243,239,230,.09);background:#080D09}
-  .st-logo{font-family:var(--font-ui);font-weight:800;font-stretch:70%;font-size:15px;letter-spacing:.02em;color:var(--text)}
-  .st-logo i{color:var(--gold);font-style:normal}
-  .st-head .st-sep{flex:1}
-  .st-body{flex:1;display:grid;grid-template-columns:212px minmax(0,1fr) 300px;min-height:0}
-  .st-col{overflow-y:auto;padding:16px;min-height:0}
-  .st-col.left{border-right:1px solid rgba(243,239,230,.08)}
-  .st-col.right{border-left:1px solid rgba(243,239,230,.08);background:#070C08}
-  .st-titre{font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 10px}
-  .st-titre + .st-titre{margin-top:22px}
-
-  .st-choix{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
-  .st-choix button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);
-    border:1px solid var(--line);border-radius:9px;padding:9px 11px;color:var(--muted);font:600 12.5px var(--font-text);
-    cursor:pointer;transition:border-color .14s,color .14s,background .14s}
-  .st-choix button:hover{border-color:var(--gold);color:var(--text)}
-  .st-choix button.on{border-color:var(--gold);background:rgba(198,162,87,.1);color:var(--gold)}
-  .st-choix .st-dim{display:block;font-size:10px;color:var(--faint);font-weight:500;margin-top:1px}
-  .st-choix button.on .st-dim{color:rgba(198,162,87,.75)}
-
-  /* La scène : l'affiche flotte, centrée, à l'échelle qui tient. */
-  .st-scene{display:flex;align-items:center;justify-content:center;padding:26px;overflow:auto;background:
-    radial-gradient(ellipse 60% 50% at 50% 0%,rgba(198,162,87,.06),transparent 70%)}
-  .st-canvas-hote{position:relative;box-shadow:0 30px 90px rgba(0,0,0,.7);border-radius:2px;overflow:hidden;
-    background:#000;transition:width .18s,height .18s}
-  .st-canvas-hote canvas{display:block;width:100%;height:100%}
-  .st-mob .st-canvas-hote{outline:8px solid #1A1C19;outline-offset:0;border-radius:22px}
-
-  .st-champ{margin-bottom:13px}
-  .st-champ label{display:block;font-family:var(--font-ui);font-weight:600;font-size:10px;letter-spacing:.1em;
-    text-transform:uppercase;color:var(--faint);margin-bottom:5px}
-  .st-champ input[type=text],.st-champ textarea,.st-champ select{width:100%;background:var(--surface);
-    border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;color:var(--text);font:inherit;font-size:12.5px}
-  .st-champ textarea{resize:vertical;min-height:56px;line-height:1.45}
-  .st-couleurs{display:flex;gap:7px;flex-wrap:wrap}
-  .st-couleurs button{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
-  .st-couleurs button.on{border-color:var(--text)}
-  .st-note{font-size:11px;line-height:1.5;color:var(--faint);margin:10px 0 0}
-
-  .st-bascule{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
-  .st-bascule button{background:none;border:none;border-radius:7px;padding:6px 12px;color:var(--faint);
-    font:700 11.5px var(--font-ui);cursor:pointer}
-  .st-bascule button.on{background:var(--surface-3);color:var(--text)}
-
-  /* Vignettes de la médiathèque : assez grandes pour reconnaître une
-     photo, assez petites pour en voir douze sans faire défiler. */
-  .st-vign{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
-  .st-vign button{position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;border:2px solid transparent;
-    background:var(--surface-2);cursor:pointer;padding:0}
-  .st-vign button img{width:100%;height:100%;object-fit:cover;display:block}
-  .st-vign button.on{border-color:var(--gold)}
-  .st-vign button.st-aucune{display:flex;align-items:center;justify-content:center;color:var(--faint);font:700 9px var(--font-ui);
-    text-align:center;line-height:1.2;padding:4px}
-  .st-curseur{display:flex;align-items:center;gap:9px;margin-bottom:8px}
-  .st-curseur label{flex:none;width:74px;margin:0;font-family:var(--font-ui);font-weight:600;font-size:9.5px;
-    letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
-  .st-curseur input[type=range]{flex:1;accent-color:var(--gold);background:transparent}
-  .st-curseur output{flex:none;width:34px;text-align:right;font:600 11px var(--font-ui);color:var(--muted)}
-
-  /* Les poignées : un cadre par bloc, superposé au canvas. Discrètes tant
-     qu'on ne les survole pas — c'est l'affiche qu'on doit regarder, pas
-     l'échafaudage. */
-  .st-poignees{position:absolute;inset:0;pointer-events:none}
-  .st-poignee{position:absolute;pointer-events:auto;cursor:grab;border:1px solid transparent;border-radius:3px;
-    transition:border-color .1s,background .1s}
-  .st-poignee:hover{border-color:rgba(198,162,87,.55);background:rgba(198,162,87,.08)}
-  .st-poignee.on{border-color:var(--gold);background:rgba(198,162,87,.12);
-    box-shadow:0 0 0 1px rgba(198,162,87,.35)}
-  .st-poignee:active{cursor:grabbing}
-
-  .st-outils{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:3px}
-  .st-outils button{background:none;border:none;border-radius:7px;padding:6px 11px;color:var(--muted);
-    font:700 11.5px var(--font-ui);cursor:pointer;transition:background .14s,color .14s}
-  .st-outils button:hover{background:var(--surface-3);color:var(--gold)}
-  .st-select{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 10px;
-    color:var(--muted);font:700 11.5px var(--font-ui);cursor:pointer}
-
-  /* Les presets typographiques : des pastilles, pas une liste déroulante.
-     On compare des styles à l'œil, on ne les cherche pas par leur nom. */
-  .st-styles{display:flex;flex-wrap:wrap;gap:5px}
-  .st-styles button{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:6px 10px;
-    color:var(--muted);font:600 11px var(--font-text);cursor:pointer;transition:border-color .14s,color .14s,background .14s}
-  .st-styles button:hover{border-color:var(--gold);color:var(--text)}
-  .st-styles button.on{border-color:var(--gold);background:rgba(198,162,87,.12);color:var(--gold);font-weight:800}
-  .st-actions{display:flex;gap:7px;margin-top:14px}
-  .st-actions .btn{flex:1;padding:8px 10px;font-size:12px}
-
-  @media(max-width:1080px){
-    .st-body{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto}
-    .st-col.left{border-right:none;border-bottom:1px solid rgba(243,239,230,.08)}
-    .st-col.right{border-left:none;border-top:1px solid rgba(243,239,230,.08);max-height:38vh}
-    .st-choix{flex-direction:row;flex-wrap:wrap}
-    .st-choix button{width:auto}
-  }
+  /* Le Studio a sa propre feuille : /studio/studio.css, chargée
+     par le <link> de l'en-tête. Elle est entièrement scopée sous
+     #bstudio : elle ne peut rien repeindre ici. */
 
   /* ===================== ANNULER =====================
      La barre s'affiche au-dessus du bandeau de message, et reste plus

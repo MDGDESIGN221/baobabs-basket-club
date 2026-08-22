@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baobabs Studio — banc d'essai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="studio.css">
+<style>
+  /* Ce fichier n'est PAS livré : il sert uniquement à ouvrir le Studio
+     hors de l'administration pour le tester. On y reproduit un fond de
+     page quelconque, avec des classes qui existent dans l'admin
+     (.btn, .card, .chip, .field) : si le Studio les repeint, on le voit
+     tout de suite. */
+  body { margin:0; font-family:'Inter',system-ui,sans-serif; background:#F5F2EA; color:#1A1A1A; }
+  header { padding:28px 32px; border-bottom:1px solid #DDD6C6; }
+  h1 { font:800 26px 'Archivo',sans-serif; margin:0 0 6px; letter-spacing:-.02em; }
+  p  { margin:0; color:#6B6558; font-size:14px; }
+  main { padding:28px 32px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+  .btn { background:#C6A257; color:#fff; border:1px solid #A9873F; border-radius:8px;
+         padding:11px 20px; font:700 14px 'Archivo',sans-serif; cursor:pointer; }
+  .card { background:#fff; border:1px solid #E3DCCB; border-radius:12px; padding:16px 18px; width:230px; }
+  .card b { display:block; font:700 14px 'Archivo',sans-serif; margin-bottom:5px; }
+  .card span { font-size:12.5px; color:#6B6558; }
+  .chip { display:inline-block; background:#EFEADD; border-radius:99px; padding:5px 12px; font-size:12px; }
+  .field label { display:block; font-size:12px; color:#6B6558; margin-bottom:4px; }
+  .field input { padding:9px 11px; border:1px solid #DDD6C6; border-radius:8px; font-size:14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Banc d'essai — Baobabs Studio</h1>
+  <p>Page témoin. Ses styles doivent rester intacts après l'ouverture du Studio.</p>
+</header>
+
+<main>
+  <button class="btn" id="ouvrir">Ouvrir le Studio</button>
+  <div class="card"><b>Carte témoin</b><span>Fond blanc, bord beige, coins à 12 px.</span></div>
+  <span class="chip">Pastille témoin</span>
+  <div class="field"><label>Champ témoin</label><input value="Texte"></div>
+</main>
+
+<div id="studio-slot"></div>
+
+<script>
+/* ---------- fausses données du club ---------- */
+var FAUX = {
+  nextMatch: { opponent:'DUC DAKAR', competition:'CHAMPIONNAT NATIONAL D2',
+               date:'2026-09-19', time:'19:00', venue:'STADIUM MARIUS NDIAYE',
+               isHome:true, opponentLogo:'', photo:'' },
+  lastResult:{ opponent:'ASC VILLE DE DAKAR', scoreUs:68, scoreThem:54, date:'2026-08-15' },
+  players:[
+    { name:'Awa Diop',    number:7,  position:'Meneuse', photo:'' },
+    { name:'Fatou Sarr',  number:12, position:'Ailière', photo:'' },
+    { name:'Mariama Ba',  number:4,  position:'Pivot',   photo:'' }
+  ],
+  media:[]
+};
+
+/* quelques images de test en data-URI : aucune requête réseau, donc
+   aucun problème de CORS ni de contenu manquant */
+function damier(c1, c2, w, h, label){
+  var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  var x=cv.getContext('2d');
+  var g=x.createLinearGradient(0,0,w,h); g.addColorStop(0,c1); g.addColorStop(1,c2);
+  x.fillStyle=g; x.fillRect(0,0,w,h);
+  x.fillStyle='rgba(255,255,255,.18)';
+  for(var i=0;i<w;i+=40) for(var j=0;j<h;j+=40) if(((i/40)+(j/40))%2===0) x.fillRect(i,j,40,40);
+  x.fillStyle='#fff'; x.font='700 '+Math.round(w/12)+'px Archivo, sans-serif';
+  x.textAlign='center'; x.textBaseline='middle'; x.fillText(label, w/2, h/2);
+  return cv.toDataURL('image/png');
+}
+FAUX.media = [
+  { url: damier('#123','#7DFF4F', 800, 1000, 'MATCH'),   name:'photo-match.png' },
+  { url: damier('#301','#FF5C3D', 800, 1000, 'JOUEUSE'), name:'photo-joueuse.png' },
+  { url: damier('#013','#3DD6FF', 800,  800, 'ÉQUIPE'),  name:'photo-equipe.png' }
+];
+FAUX.players[0].photo = FAUX.media[1].url;
+FAUX.nextMatch.photo  = FAUX.media[0].url;
+FAUX.nextMatch.opponentLogo = damier('#222','#888', 400, 400, 'DUC');
+
+/* ---------- projets en mémoire ---------- */
+var projets = [];
+var api = {
+  data: {
+    nextMatch:  function(){ return Promise.resolve(FAUX.nextMatch); },
+    lastResult: function(){ return Promise.resolve(FAUX.lastResult); },
+    players:    function(){ return Promise.resolve(FAUX.players); },
+    media:      function(){ return Promise.resolve(FAUX.media); }
+  },
+  projects: {
+    list:   function(){ return Promise.resolve(projets.slice()); },
+    save:   function(rec){
+      if(!rec.id) rec.id = 'p'+(projets.length+1)+'-'+Date.now();
+      var i = projets.findIndex(function(p){ return p.id===rec.id; });
+      if(i>=0) projets[i]=rec; else projets.unshift(rec);
+      return Promise.resolve(rec);
+    },
+    remove: function(id){ projets = projets.filter(function(p){ return p.id!==id; }); return Promise.resolve(); }
+  },
+  uploadImage: function(file){
+    return new Promise(function(res){
+      var r = new FileReader();
+      r.onload = function(){ res(r.result); };
+      r.readAsDataURL(file);
+    });
+  },
+  download: function(blob, name){
+    var u=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
+  },
+  toast: function(m, err){ console[err?'error':'log']('[hôte]', m); },
+  clubLogo: damier('#0E0E10','#7DFF4F', 400, 400, 'BBC'),
+  formatDate: function(iso){
+    return new Date(iso+'T00:00:00').toLocaleDateString('fr-FR',
+      { weekday:'long', day:'numeric', month:'long' }).toUpperCase();
+  },
+  today: function(){ return new Date().toISOString().slice(0,10); }
+};
+
+/* ---------- montage ---------- */
+fetch('studio.html')
+  .then(function(r){ return r.text(); })
+  .then(function(html){
+    document.getElementById('studio-slot').innerHTML = html;
+    var s = document.createElement('script');
+    s.src = 'studio.js';
+    s.onload = function(){
+      window.BaobabsStudio.mount(document.getElementById('bstudio'), api);
+      document.getElementById('ouvrir').addEventListener('click', function(){
+        window.BaobabsStudio.open();
+      });
+      window.BaobabsStudio.open();
+      console.log('[banc] Studio monté, version', window.BaobabsStudio.version);
+    };
+    document.body.appendChild(s);
+  })
+  .catch(function(e){ console.error('[banc] montage impossible', e); });
+</script>
+</body>
+</html>
