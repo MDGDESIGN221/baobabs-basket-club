@@ -280,6 +280,71 @@ en polygones. Une forme combinée reste un calque `path` ordinaire.
 
 ---
 
+## 4quater. Version 3.2 — la logique
+
+### Un geste en cours possède le clavier
+
+C'était le défaut le plus déroutant : on posait trois points à la plume,
+on faisait `Ctrl+Z` pour en retirer un, et c'est une modification
+antérieure du document qui sautait — parce que le tracé en cours ne vit
+pas dans le document, donc l'historique ne le voyait pas.
+
+`gesteEnCours()` recense les états modaux (plume, recadrage, recadrage
+de contenu, édition de texte). Tant qu'un geste est en cours, `Ctrl+Z`,
+`Retour arrière` et `Échap` lui appartiennent : `penUndo()` retire le
+dernier point, `penCancel()` abandonne le tracé **sans toucher au
+document**.
+
+### Échap défait une couche à la fois
+
+Menu → outil en cours → outil courant → sélection → fermeture. Fermer le
+Studio est la toute dernière marche : on ne perd plus son travail parce
+qu'on a appuyé deux fois de suite.
+
+### L'historique est intitulé
+
+Chaque état porte son nom : « Annulé — déplacement », « Annulé — corps du
+texte », « Annulé — détourage ». `beginChange(label)` / `endChange(label)`,
+et `nomReglage(path)` déduit l'intitulé du chemin du réglage pour les
+champs du panneau. Le panneau *Historique* liste ces intitulés.
+
+### Le clic droit change selon ce qu'on a sous le pointeur
+
+Un menu identique partout oblige à lire dix entrées dont huit ne
+s'appliquent pas. Le menu contextuel a maintenant cinq visages : rien de
+sélectionné (le document), plusieurs calques (aligner, combiner), texte,
+image, forme, tracé, groupe. Les entrées grisées portent un `title` qui
+dit **pourquoi** elles le sont.
+
+### Conventions de la pile de calques
+
+- **Maj+clic** sélectionne une **plage** (c'était une bascule, ce qui
+  donnait l'impression que Maj ne marchait pas) ; **Ctrl+clic** bascule.
+- **Alt+clic sur l'œil** isole le calque ; un second Alt+clic rétablit
+  tout.
+- Un calque **verrouillé** cliqué sur l'affiche le dit au lieu de ne
+  rien faire.
+- Un calque masqué affiche une pastille de **masque de détourage**,
+  cliquable pour le désactiver sans le perdre.
+
+### Panneaux réductibles et détachables
+
+Trois panneaux — *Outils*, *Propriétés*, *Calques* — portent une barre de
+titre : caret pour replier, bouton pour détacher. Détaché, le panneau
+flotte, se déplace par sa barre et se redimensionne. Il **retient sa
+place d'origine** (parent + rang) : le bouton d'ancrage le remet
+exactement d'où il vient. *Fenêtre → Tout réancrer* remet tout en place.
+
+Le conteneur `#bs-props` a désormais un corps interne `#bs-props-body` :
+sans lui, `renderProps()` emportait la barre de titre à chaque rendu.
+
+### Six modèles de plus
+
+Le cinq de départ, La journée (trois résultats), Classement,
+Anniversaire, Stage de vacances, C'est demain. **43 modèles au total.**
+
+---
+
 ## 5. Raccourcis
 
 | | |

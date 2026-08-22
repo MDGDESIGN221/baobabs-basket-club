@@ -132,12 +132,15 @@ var api = {
 };
 
 /* ---------- montage ---------- */
-fetch('studio.html')
+// horodatage : en développement le navigateur garde volontiers une
+// vieille copie du fragment, et on teste alors le code d'hier
+var V = '?v=' + Date.now();
+fetch('studio.html' + V)
   .then(function(r){ return r.text(); })
   .then(function(html){
     document.getElementById('studio-slot').innerHTML = html;
     var s = document.createElement('script');
-    s.src = 'studio.js';
+    s.src = 'studio.js' + V;
     s.onload = function(){
       window.BaobabsStudio.mount(document.getElementById('bstudio'), api);
       document.getElementById('ouvrir').addEventListener('click', function(){

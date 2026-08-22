@@ -24,7 +24,7 @@ window.BaobabsStudio = (function () {
   /* 3:4 est le rapport de la maquette d'origine : c'est le format par
      défaut, celui dans lequel les modèles ont été dessinés. `cat` sert
      à regrouper les préréglages sur l'écran d'accueil. */
-  var VERSION = '3.1';
+  var VERSION = '3.2';
 
   var FORMATS = [
     { id: 'affiche', cat: 'Affiche du club', label: 'Affiche 3:4', w: 1080, h: 1440 },
@@ -1099,7 +1099,7 @@ window.BaobabsStudio = (function () {
 
     /* masque de fusion : le calque se dessine à part, puis on lui
        applique son pochoir. C'est ce qui permet le détourage. */
-    if (l.mask2 && !opts.noMask) { drawWithMask(ctx, l, d, opts, alpha); return; }
+    if (l.mask2 && !l.maskOff && !opts.noMask) { drawWithMask(ctx, l, d, opts, alpha); return; }
 
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -2226,6 +2226,21 @@ window.BaobabsStudio = (function () {
 
   /* Calque le plus haut sous le point. Les groupes répondent comme un
      bloc ; un double-clic descend dedans (voir onDblClick). */
+  /* Le calque verrouillé le plus haut sous un point : sert uniquement
+     à expliquer pourquoi un clic ne fait rien. */
+  function calqueVerrouilleSous(px, py) {
+    for (var i = doc.layers.length - 1; i >= 0; i--) {
+      var l = doc.layers[i];
+      if (!l.visible || !l.locked) continue;
+      var sauve = l.locked;
+      l.locked = false;
+      var touche = hitLayer(l, px, py, 0);
+      l.locked = sauve;
+      if (touche) return l;
+    }
+    return null;
+  }
+
   function topLayerAt(px, py, tol) {
     for (var i = doc.layers.length - 1; i >= 0; i--) {
       var l = doc.layers[i];
@@ -2252,25 +2267,32 @@ window.BaobabsStudio = (function () {
      caches de rendu, ils ne sont jamais enregistrés.
      =================================================================== */
 
-  var hist = { undo: [], redo: [], pre: null };
+  /* Chaque état porte son intitulé. « Annulé » tout court oblige à
+     deviner ce qu'on vient de défaire ; « Annulé — déplacement » se
+     lit. C'est la même donnée qui alimente le panneau Historique. */
+  var hist = { undo: [], redo: [], pre: null, label: null };
 
   function serialize(d) {
     return JSON.stringify(d, function (k, v) { return k.charAt(0) === '_' ? undefined : v; });
   }
-  function beginChange() { if (hist.pre === null) hist.pre = serialize(doc); }
-  function endChange() {
+  function beginChange(label) {
+    if (hist.pre === null) { hist.pre = serialize(doc); hist.label = label || null; }
+    else if (label && !hist.label) hist.label = label;
+  }
+  function endChange(label) {
     if (hist.pre === null) return;
     var now = serialize(doc);
     if (now !== hist.pre) {
-      hist.undo.push(hist.pre);
+      hist.undo.push({ j: hist.pre, t: label || hist.label || 'Modification' });
       if (hist.undo.length > 80) hist.undo.shift();
       hist.redo.length = 0;
       markDirty(true);
     }
     hist.pre = null;
+    hist.label = null;
     syncHistButtons();
   }
-  function change(fn) { beginChange(); fn(); endChange(); refreshAll(); }
+  function change(fn, label) { beginChange(label); fn(); endChange(label); refreshAll(); }
 
   function restore(json) {
     var keep = sel.slice();
@@ -2278,25 +2300,28 @@ window.BaobabsStudio = (function () {
     sel = keep.filter(function (id) { return !!findLayer(doc.layers, id); });
     exitTextEdit(true);
     contentEdit = null;
+    maskCache = {};                 /* les pochoirs suivent le document */
     syncFormatSelect();
     if (els.projName) els.projName.value = doc.name || 'Sans titre';
     refreshAll();
   }
   function undo() {
     if (!hist.undo.length) { toast('Rien à annuler'); return; }
-    hist.redo.push(serialize(doc));
-    restore(hist.undo.pop());
+    var e = hist.undo.pop();
+    hist.redo.push({ j: serialize(doc), t: e.t });
+    restore(e.j);
     markDirty(true);
     syncHistButtons();
-    toast('Annulé');
+    toast('Annulé — ' + e.t.toLowerCase());
   }
   function redo() {
     if (!hist.redo.length) { toast('Rien à rétablir'); return; }
-    hist.undo.push(serialize(doc));
-    restore(hist.redo.pop());
+    var e = hist.redo.pop();
+    hist.undo.push({ j: serialize(doc), t: e.t });
+    restore(e.j);
     markDirty(true);
     syncHistButtons();
-    toast('Rétabli');
+    toast('Rétabli — ' + e.t.toLowerCase());
   }
   function syncHistButtons() {
     if (els.undo) els.undo.disabled = !hist.undo.length;
@@ -2400,7 +2425,7 @@ window.BaobabsStudio = (function () {
       }
       sel = [];
       pruneGroups();
-    });
+    }, n > 1 ? 'Suppression de ' + n + ' calques' : 'Suppression du calque');
     toast(n > 1 ? n + ' calques supprimés' : 'Calque supprimé');
   }
 
@@ -2434,7 +2459,7 @@ window.BaobabsStudio = (function () {
         copies.push(c.id);
       }
       sel = copies;
-    });
+    }, 'Duplication');
     toast(copies.length > 1 ? copies.length + ' calques dupliqués' : 'Calque dupliqué');
   }
   function reid(l) {
@@ -2485,7 +2510,7 @@ window.BaobabsStudio = (function () {
       reflowGroup(g);
       doc.layers.splice(Math.min(lastIdx - ordered.length + 1, doc.layers.length), 0, g);
       sel = [g.id];
-    });
+    }, 'Groupement');
     toast('Calques groupés');
   }
   function ungroup(g) {
@@ -2495,7 +2520,7 @@ window.BaobabsStudio = (function () {
       var kids = g.children.slice();
       loc.arr.splice.apply(loc.arr, [loc.idx, 1].concat(kids));
       sel = kids.map(function (k) { return k.id; });
-    });
+    }, 'Dissociation');
     toast('Groupe dissous');
   }
 
@@ -2507,7 +2532,7 @@ window.BaobabsStudio = (function () {
       if (ni < 0 || ni >= loc.arr.length) return;
       var it = loc.arr.splice(loc.idx, 1)[0];
       loc.arr.splice(ni, 0, it);
-    });
+    }, dir > 0 ? 'Calque monté' : 'Calque descendu');
   }
   function sendTo(id, where) {
     change(function () {
@@ -2515,7 +2540,7 @@ window.BaobabsStudio = (function () {
       if (!loc) return;
       var it = loc.arr.splice(loc.idx, 1)[0];
       if (where === 'front') loc.arr.push(it); else loc.arr.unshift(it);
-    });
+    }, where === 'front' ? 'Premier plan' : 'Arrière-plan');
   }
 
   /* ===================================================================
@@ -2683,7 +2708,7 @@ window.BaobabsStudio = (function () {
       if (sel.indexOf(cible.id) < 0) select([cible.id]);
       var lp = toLocal(cible, p.x, p.y);
       if (tool === 'wand') { baguette(cible, lp.x, lp.y); return; }
-      beginChange();
+      beginChange('Détourage');
       maskCanvas(cible, true);
       var eff = (tool === 'erase') !== !!e.altKey;
       coupDePinceau(cible, lp.x, lp.y, eff);
@@ -2763,7 +2788,15 @@ window.BaobabsStudio = (function () {
       if (mh) { startMultiResize(cur, mb, mh, pt); capture(e); return; }
     }
 
+    /* Un calque verrouillé ne répond pas aux clics — mais il faut le
+       dire, sinon on croit que l'outil est cassé. */
+    var verrouille = calqueVerrouilleSous(p.x, p.y);
     var hitL = topLayerAt(p.x, p.y, 3 / view.zoom);
+    if (!hitL && verrouille) {
+      toast('« ' + (verrouille.name || defaultName(verrouille)) + ' » est verrouillé — cliquez le cadenas dans la pile');
+      if (!additive) select([]);
+      return;
+    }
     if (hitL) {
       if (additive) select([hitL.id], true);
       else if (sel.indexOf(hitL.id) < 0) select([hitL.id]);
@@ -2943,7 +2976,11 @@ window.BaobabsStudio = (function () {
     }
     if (kind === 'move' || kind === 'resize' || kind === 'multiresize' || kind === 'rotate' ||
         kind === 'content' || kind === 'node' || kind === 'create' || kind === 'brush') {
-      endChange();
+      endChange(({
+        move: 'Déplacement', resize: 'Redimensionnement', multiresize: 'Redimensionnement',
+        rotate: 'Rotation', content: 'Recadrage du contenu', node: 'Point de tracé',
+        create: 'Création', brush: 'Détourage'
+      })[kind] || 'Modification');
     }
     guides = [];
     drag = null;
@@ -3287,6 +3324,44 @@ window.BaobabsStudio = (function () {
     requestDraw();
   }
 
+  /* ---------------------------------------------------------------
+     Un outil en cours de geste possède le clavier.
+
+     C'était le défaut le plus déroutant du Studio : on posait trois
+     points à la plume, on faisait Ctrl+Z pour en retirer un, et c'est
+     une modification précédente du document qui sautait — parce que le
+     tracé en cours ne vit pas dans le document, donc l'historique ne
+     le voit pas. Tant qu'un geste est en cours, Ctrl+Z, Échap et
+     Retour arrière lui appartiennent.
+     --------------------------------------------------------------- */
+
+  /* Vrai dès qu'un outil est au milieu de quelque chose. */
+  function gesteEnCours() {
+    if (pathDraft) return 'plume';
+    if (drag && drag.kind === 'crop') return 'recadrage';
+    if (contentEdit) return 'recadrage du contenu';
+    return null;
+  }
+
+  function penUndo() {
+    if (!pathDraft) return;
+    pathDraft.nodes.pop();
+    if (!pathDraft.nodes.length) { penCancel(); return; }
+    pathDraft.cursor = null;
+    requestDraw();
+    toast(pathDraft.nodes.length + ' point' + (pathDraft.nodes.length > 1 ? 's' : '') + ' restant' + (pathDraft.nodes.length > 1 ? 's' : ''));
+  }
+
+  function penCancel() {
+    if (!pathDraft) return;
+    pathDraft = null;
+    drag = null;
+    hist.pre = null;          /* le document n'a jamais été touché */
+    hist.label = null;
+    requestDraw();
+    toast('Tracé abandonné');
+  }
+
   function commitPath(closed) {
     if (!pathDraft || pathDraft.nodes.length < 2) { pathDraft = null; hist.pre = null; requestDraw(); return; }
     var n = pathDraft.nodes;
@@ -3501,7 +3576,7 @@ window.BaobabsStudio = (function () {
   function insertText(str) {
     var l = editLayer();
     if (!l) return;
-    beginChange();
+    beginChange('Saisie de texte');
     var r = selRange();
     var pos = spliceText(l, r.a, r.b, str);
     edit.a = edit.b = pos;
@@ -3513,7 +3588,7 @@ window.BaobabsStudio = (function () {
   function deleteRange(dir) {
     var l = editLayer();
     if (!l) return;
-    beginChange();
+    beginChange('Saisie de texte');
     var r = selRange();
     if (r.a !== r.b) { spliceText(l, r.a, r.b, ''); edit.a = edit.b = r.a; }
     else if (dir < 0 && r.a > 0) { spliceText(l, r.a - 1, r.a, ''); edit.a = edit.b = r.a - 1; }
@@ -3651,6 +3726,26 @@ window.BaobabsStudio = (function () {
      remet la composition à l'échelle, changer de rôle typographique
      réécrit six propriétés d'un coup, et les réglages d'affichage
      doivent rafraîchir leur bouton dans la barre d'état. */
+  /* Intitulé lisible pour l'historique, déduit du chemin du réglage. */
+  var NOMS_REGLAGE = {
+    x: 'Position', y: 'Position', w: 'Taille', h: 'Taille', rot: 'Rotation',
+    opacity: 'Opacité', blend: 'Fusion', radius: 'Coins', format: 'Format',
+    'ts.size': 'Corps du texte', 'ts.font': 'Police', 'ts.weight': 'Graisse',
+    'ts.color': 'Couleur du texte', 'ts.tracking': 'Interlettrage', 'ts.lh': 'Interligne',
+    'ts.align': 'Alignement', 'ts.transform': 'Casse', 'ts.hollow': 'Texte en contour',
+    'fill.color': 'Remplissage', 'fill.type': 'Remplissage', 'stroke.w': 'Contour',
+    'stroke.color': 'Contour', 'shadow.on': 'Ombre portée', role: 'Rôle typographique',
+    bind: 'Liaison de données', slot: 'Emplacement dynamique', mask: 'Masque',
+    fit: 'Cadrage', zoom: 'Zoom du contenu', shape: 'Type de forme'
+  };
+  function nomReglage(path) {
+    if (NOMS_REGLAGE[path]) return NOMS_REGLAGE[path];
+    if (/^fx\./.test(path)) return 'Retouche de l’image';
+    if (/^path\./.test(path)) return 'Texte sur tracé';
+    if (/^bg\./.test(path)) return 'Fond de l’affiche';
+    return 'Réglage';
+  }
+
   function applyProp(path, value, scope) {
     if (scope === 'doc' && path === 'format') { scaleDocToFormat(value); return; }
     if (scope === 'flags') {
@@ -3728,17 +3823,17 @@ window.BaobabsStudio = (function () {
     $$('[data-p][type=number], [data-p].bs-in-num', ctx).forEach(function (el) {
       var path = el.getAttribute('data-p'), scope = el.getAttribute('data-scope') || 'layer';
       var live = el.getAttribute('data-live') !== 'no';
-      el.addEventListener('focus', beginChange);
+      el.addEventListener('focus', function () { beginChange(nomReglage(path)); });
       el.addEventListener('input', function () {
         if (!live) return;
-        beginChange();
+        beginChange(nomReglage(path));
         applyProp(path, num(el.value, 0) * (parseFloat(el.getAttribute('data-mul')) || 1), scope);
         requestDraw(); renderLayers();
       });
       el.addEventListener('change', function () {
-        beginChange();
+        beginChange(nomReglage(path));
         applyProp(path, num(el.value, 0) * (parseFloat(el.getAttribute('data-mul')) || 1), scope);
-        endChange(); refreshAll();
+        endChange(nomReglage(path)); refreshAll();
       });
       /* glisser horizontalement sur le libellé du champ modifie la valeur */
       var box = el.closest('.bs-step');
@@ -3749,7 +3844,7 @@ window.BaobabsStudio = (function () {
           unit.addEventListener('pointerdown', function (ev) {
             ev.preventDefault();
             var x0 = ev.clientX, v0 = num(el.value, 0), step = parseFloat(el.step) || 1;
-            beginChange();
+            beginChange(nomReglage(path));
             unit.setPointerCapture(ev.pointerId);
             function mv(e2) {
               var v = v0 + Math.round((e2.clientX - x0) / 3) * step;
@@ -3760,7 +3855,7 @@ window.BaobabsStudio = (function () {
             function up(e2) {
               unit.removeEventListener('pointermove', mv);
               unit.removeEventListener('pointerup', up);
-              endChange(); refreshAll();
+              endChange(nomReglage(path)); refreshAll();
             }
             unit.addEventListener('pointermove', mv);
             unit.addEventListener('pointerup', up);
@@ -3773,15 +3868,15 @@ window.BaobabsStudio = (function () {
     $$('[data-p][type=range]', ctx).forEach(function (el) {
       var path = el.getAttribute('data-p'), scope = el.getAttribute('data-scope') || 'layer';
       var mul = parseFloat(el.getAttribute('data-mul')) || 1;
-      el.addEventListener('pointerdown', beginChange);
+      el.addEventListener('pointerdown', function () { beginChange(nomReglage(path)); });
       el.addEventListener('input', function () {
-        beginChange();
+        beginChange(nomReglage(path));
         applyProp(path, num(el.value, 0) * mul, scope);
         var out = el.parentNode.querySelector('.bs-step input');
         if (out) out.value = fmtNum(num(el.value, 0), 2);
         requestDraw();
       });
-      el.addEventListener('change', function () { endChange(); refreshAll(); });
+      el.addEventListener('change', function () { endChange(nomReglage(path)); refreshAll(); });
     });
 
     /* --- listes déroulantes --- */
@@ -3794,7 +3889,7 @@ window.BaobabsStudio = (function () {
         change(function () {
           if (el.getAttribute('data-text') === 'yes') applyTextProp(path.replace(/^ts\./, ''), v);
           else applyProp(path, v, scope);
-        });
+        }, nomReglage(path));
       });
     });
 
@@ -3806,7 +3901,7 @@ window.BaobabsStudio = (function () {
         change(function () {
           if (el.getAttribute('data-text') === 'yes') applyTextProp(path.replace(/^ts\./, ''), on);
           else applyProp(path, on, scope);
-        });
+        }, nomReglage(path));
       });
     });
 
@@ -3820,7 +3915,7 @@ window.BaobabsStudio = (function () {
         change(function () {
           if (wrap.getAttribute('data-text') === 'yes') applyTextProp(path.replace(/^ts\./, ''), v);
           else applyProp(path, v, scope);
-        });
+        }, nomReglage(path));
       });
     });
 
@@ -3835,7 +3930,7 @@ window.BaobabsStudio = (function () {
 
       function push(hex, a, live) {
         var v = color(hex, a);
-        if (!live) beginChange();
+        if (!live) beginChange(nomReglage(path));
         if (isText) applyTextProp(path.replace(/^ts\./, ''), v);
         else applyProp(path, v, scope);
         sw.querySelector('i').style.background = css(v);
@@ -3844,10 +3939,10 @@ window.BaobabsStudio = (function () {
       if (sw && picker) {
         sw.addEventListener('click', function () { picker.click(); });
         picker.addEventListener('input', function () {
-          beginChange();
+          beginChange(nomReglage(path));
           push(picker.value, alphaIn ? num(alphaIn.value, 100) / 100 : 1, true);
         });
-        picker.addEventListener('change', function () { endChange(); refreshAll(); });
+        picker.addEventListener('change', function () { endChange(nomReglage(path)); refreshAll(); });
       }
       if (hexIn) hexIn.addEventListener('change', function () {
         var v = hexIn.value.trim();
@@ -3857,10 +3952,10 @@ window.BaobabsStudio = (function () {
       });
       if (alphaIn) {
         alphaIn.addEventListener('input', function () {
-          beginChange();
+          beginChange(nomReglage(path));
           push(hexIn ? (hexIn.value.charAt(0) === '#' ? hexIn.value : '#' + hexIn.value) : '#ffffff', clamp(num(alphaIn.value, 100), 0, 100) / 100, true);
         });
-        alphaIn.addEventListener('change', function () { endChange(); refreshAll(); });
+        alphaIn.addEventListener('change', function () { endChange(nomReglage(path)); refreshAll(); });
       }
     });
 
@@ -3876,7 +3971,7 @@ window.BaobabsStudio = (function () {
           var v = color(hex, 1);
           if (isText) applyTextProp(path.replace(/^ts\./, ''), v);
           else applyProp(path, v, scope);
-        });
+        }, nomReglage(path));
       });
     });
 
@@ -4003,6 +4098,7 @@ window.BaobabsStudio = (function () {
     eye: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/></svg>',
     eyeOff: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16"/><path d="M9.5 6.1A9.6 9.6 0 0 1 12 5.8c6 0 9.5 6.2 9.5 6.2a17 17 0 0 1-3.2 3.9M6.4 8.1A17 17 0 0 0 2.5 12S6 18.2 12 18.2a9.4 9.4 0 0 0 3.3-.6"/></svg>',
     dyn: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z"/></svg>',
+    mask: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z" fill="currentColor" stroke="none"/></svg>',
     caret: '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>'
   };
 
@@ -4017,14 +4113,14 @@ window.BaobabsStudio = (function () {
      =================================================================== */
 
   function renderProps() {
-    if (!els.props || !doc) return;
+    if (!els.propsBody || !doc) return;
     var ls = selectedLayers();
     var html;
     if (!ls.length) html = propsDoc();
     else if (ls.length > 1) html = propsMulti(ls);
     else html = propsLayer(ls[0]);
-    els.props.innerHTML = html;
-    wireFields(els.props);
+    els.propsBody.innerHTML = html;
+    wireFields(els.propsBody);
     updateStatusDims();
     /* la barre flottante suit la sélection sans attendre le prochain
        rendu : sélectionner et la voir apparaître doivent être le même
@@ -4474,6 +4570,8 @@ window.BaobabsStudio = (function () {
       '<span class="bs-lyr-ico">' + thumb + '</span>' +
       '<span class="bs-lyr-name" data-name="' + l.id + '">' + esc(l.name || defaultName(l)) + '</span>' +
       (dyn ? '<span class="bs-lyr-dyn" title="Objet dynamique">' + ICONS.dyn + '</span>' : '') +
+      (l.mask2 ? '<button type="button" class="bs-lyr-mask' + (l.maskOff ? ' is-off' : '') + '" data-mask="' + l.id +
+        '" title="Masque de détourage — cliquez pour le désactiver sans le perdre">' + ICONS.mask + '</button>' : '') +
       '<button type="button" class="bs-lyr-btn' + (l.locked ? ' is-on' : '') + '" data-lock="' + l.id + '" title="' + (l.locked ? 'Déverrouiller' : 'Verrouiller') + '">' + (l.locked ? ICONS.lock : ICONS.unlock) + '</button>' +
       '<button type="button" class="bs-lyr-btn' + (l.visible ? '' : ' is-on') + '" data-vis="' + l.id + '" title="' + (l.visible ? 'Masquer' : 'Afficher') + '">' + (l.visible ? ICONS.eye : ICONS.eyeOff) + '</button>' +
       '</div>';
@@ -4486,7 +4584,19 @@ window.BaobabsStudio = (function () {
 
       row.addEventListener('click', function (e) {
         if (e.target.closest('[data-vis]') || e.target.closest('[data-lock]') || e.target.closest('[data-tw]')) return;
-        select([id], e.shiftKey || e.metaKey || e.ctrlKey);
+        /* Maj sélectionne une PLAGE, Ctrl bascule un calque. C'est la
+           convention de tous les gestionnaires de listes ; l'inverse
+           donne l'impression que Maj ne marche pas. */
+        if (e.shiftKey && sel.length) {
+          var ordre = $$('.bs-lyr', els.layerList).map(function (r) { return r.getAttribute('data-id'); });
+          var a = ordre.indexOf(sel[sel.length - 1]), b = ordre.indexOf(id);
+          if (a >= 0 && b >= 0) {
+            var lo = Math.min(a, b), hi = Math.max(a, b);
+            select(ordre.slice(lo, hi + 1));
+            return;
+          }
+        }
+        select([id], e.metaKey || e.ctrlKey);
       });
       row.addEventListener('dblclick', function (e) {
         if (e.target.closest('[data-vis]') || e.target.closest('[data-lock]')) return;
@@ -4494,6 +4604,15 @@ window.BaobabsStudio = (function () {
       });
       row.addEventListener('keydown', function (e) {
         if (e.key === 'F2' || e.key === 'Enter') { e.preventDefault(); startRename(row, id); }
+      });
+
+      var mk = row.querySelector('[data-mask]');
+      if (mk) mk.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var l = findLayer(doc.layers, id);
+        if (!l) return;
+        change(function () { l.maskOff = !l.maskOff; }, 'Masque activé/désactivé');
+        toast(l.maskOff ? 'Masque désactivé — l’image redevient entière' : 'Masque réactivé');
       });
 
       var tw = row.querySelector('[data-tw]');
@@ -4506,17 +4625,32 @@ window.BaobabsStudio = (function () {
       var vb = row.querySelector('[data-vis]');
       if (vb) vb.addEventListener('click', function (e) {
         e.stopPropagation();
-        change(function () { var l = findLayer(doc.layers, id); if (l) l.visible = !l.visible; });
+        /* Alt+clic isole : tout le reste s'éteint. Deuxième Alt+clic,
+           tout revient. Le réflexe vient de Photoshop et il sert
+           beaucoup dès qu'une affiche dépasse dix calques. */
+        if (e.altKey) {
+          var seuls = [];
+          walk(doc.layers, function (x) { if (x.id !== id && x.visible) seuls.push(x); });
+          change(function () {
+            if (seuls.length) walk(doc.layers, function (x) { x.visible = (x.id === id); });
+            else walk(doc.layers, function (x) { x.visible = true; });
+          }, 'Isoler le calque');
+          toast(seuls.length ? 'Calque isolé — Alt+clic à nouveau pour tout revoir' : 'Tous les calques réaffichés');
+          return;
+        }
+        change(function () { var l = findLayer(doc.layers, id); if (l) l.visible = !l.visible; }, 'Visibilité');
       });
       var lb = row.querySelector('[data-lock]');
       if (lb) lb.addEventListener('click', function (e) {
         e.stopPropagation();
+        var etait = (findLayer(doc.layers, id) || {}).locked;
         change(function () {
           var l = findLayer(doc.layers, id);
           if (!l) return;
           l.locked = !l.locked;
           if (l.locked) { var k = sel.indexOf(id); if (k >= 0) sel.splice(k, 1); }
-        });
+        }, etait ? 'Déverrouillage' : 'Verrouillage');
+        toast(etait ? 'Calque déverrouillé' : 'Calque verrouillé — il ne répondra plus aux clics sur l’affiche');
       });
 
       /* glisser-déposer pour réordonner */
@@ -5980,6 +6114,176 @@ window.BaobabsStudio = (function () {
         return o;
       }
     },
+    /* ================================================================
+       Six situations que le club rencontre vraiment et qu'aucun modèle
+       ne couvrait : la compo de départ, la journée de championnat, le
+       classement, l'anniversaire, le stage, et le rappel de la veille.
+       ================================================================ */
+    {
+      id: 'club-cinq', cat: 'Équipe', label: 'Le cinq de départ', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .06, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tRayures(d, A, { count: 22, ratio: .3, slant: 70, a: .07, nom: 'Cannelures' }));
+        o = o.concat(tKicker(d, H * .075, 'COMPOSITION DE DÉPART', { pad: p }));
+        o.push(tTitreDouble(d, H * .11, 'LE CINQ', 'MAJEUR', { size: .125, pad: p }));
+
+        /* une colonne haute au centre, deux paires de part et d'autre :
+           la hiérarchie se lit sans qu'on ait à numéroter */
+        var cw = (W - p * 2 - W * .03 * 2) / 3, ch = cw * 1.22;
+        var places = [
+          [p, H * .40, cw, ch], [p + (cw + W * .03), H * .355, cw, ch * 1.1], [p + (cw + W * .03) * 2, H * .40, cw, ch],
+          [p + cw * .5 + W * .015, H * .40 + ch + W * .03, cw, ch], [p + cw * 1.5 + W * .045, H * .40 + ch + W * .03, cw, ch]
+        ];
+        places.forEach(function (b, i) {
+          var f = makeFrame(d, { x: b[0], y: b[1], w: b[2], h: b[3], slot: i === 1 ? 'photoJoueuse' : 'libre' });
+          f.mask = 'squircle';
+          f.fx.gray = 60;
+          f.stroke = { color: color(A, i === 1 ? .9 : .3), w: Math.max(1, W * .0022) };
+          f.name = 'Joueuse ' + (i + 1);
+          o.push(f);
+          o.push(tTexte(d, 'etiquette', 'NOM ' + (i + 1), { x: b[0], y: b[1] + b[3] + W * .012, w: b[2] }, {
+            align: 'center', size: W * .017, col: d.palette.fg2, nom: 'Nom ' + (i + 1)
+          }));
+        });
+        o = o.concat(tInfos(d, [['BAOBABS VS DUC — SAMEDI 00', 'match.affiche', 'Affiche']], H * .925,
+          { size: .022, align: 'center', col: A, pad: p }));
+        o.push(tGrain(d, { a: .18 }));
+        return o;
+      }
+    },
+    {
+      id: 'res-journee', cat: 'Résultat', label: 'La journée', pal: 'craie',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .08, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#EDEDEA', { nom: 'Fond' }));
+        o.push(tCroix(d, { col: '#9A9A98' }));
+        o = o.concat(tSurligne(d, 'RÉSULTATS', { x: W * .35, y: H * .07, w: W * .3 }, {
+          role: 'etiquette', size: W * .019, bg: '#111111', fg: '#FFFFFF', radius: W * .02, nom: 'Étiquette'
+        }));
+        o.push(tTexte(d, 'titre', 'LA JOURNÉE', { x: p, y: H * .115, w: W - p * 2 }, {
+          size: W * .115, align: 'center', col: '#111111', font: 'Archivo', weight: 900, upper: true, nom: 'Titre'
+        }));
+        var y = H * .30, gap = H * .17;
+        ['SENIORS F', 'U18 F', 'U15 F'].forEach(function (cat, i) {
+          var yy = y + gap * i;
+          o.push(tRect(d, { x: p, y: yy, w: W - p * 2, h: gap * .8 }, '#FFFFFF', { radius: W * .025, nom: cat }));
+          o.push(tTexte(d, 'mention', cat, { x: p + W * .05, y: yy + gap * .11, w: W * .5 }, {
+            col: '#8A8A88', size: W * .0165, nom: 'Catégorie ' + (i + 1)
+          }));
+          o.push(tTexte(d, 'soustitre', 'BAOBABS', { x: p + W * .05, y: yy + gap * .27, w: W * .34 }, {
+            size: W * .034, col: '#111111', upper: true, nom: 'Nous ' + (i + 1)
+          }));
+          o.push(tTexte(d, 'soustitre', 'ADVERSAIRE', { x: p + W * .05, y: yy + gap * .47, w: W * .34 }, {
+            size: W * .034, col: '#6A6A68', upper: true, nom: 'Eux ' + (i + 1)
+          }));
+          o.push(tTexte(d, 'score', '68', { x: W * .58, y: yy + gap * .16, w: W * .3 }, {
+            size: W * .055, align: 'right', col: '#111111', nom: 'Score nous ' + (i + 1)
+          }));
+          o.push(tTexte(d, 'score', '54', { x: W * .58, y: yy + gap * .40, w: W * .3 }, {
+            size: W * .055, align: 'right', col: '#6A6A68', nom: 'Score eux ' + (i + 1)
+          }));
+        });
+        o.push(tGrain(d, { a: .3 }));
+        return o;
+      }
+    },
+    {
+      id: 'club-classement', cat: 'Club', label: 'Classement', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { grad: A, a2: .12, angle: 200, nom: 'Fond' }));
+        o = o.concat(tKicker(d, H * .075, 'CHAMPIONNAT NATIONAL D2', { bind: 'match.competition', pad: p }));
+        o.push(tTitreDouble(d, H * .11, 'LE', 'CLASSEMENT', { size: .115, pad: p }));
+        var y = H * .34, gap = H * .078;
+        for (var i = 0; i < 6; i++) {
+          var yy = y + gap * i, nous = i === 1;
+          if (nous) o.push(tRect(d, { x: p * .6, y: yy - gap * .12, w: W - p * 1.2, h: gap * .88 }, A, {
+            a: .16, radius: W * .015, nom: 'Ligne Baobabs'
+          }));
+          o.push(tTexte(d, 'donnee', String(i + 1), { x: p, y: yy, w: W * .08 }, {
+            size: W * .028, col: nous ? A : d.palette.fg2, nom: 'Rang ' + (i + 1)
+          }));
+          o.push(tTexte(d, 'soustitre', nous ? 'BAOBABS BC' : 'ÉQUIPE ' + (i + 1), { x: p + W * .1, y: yy - gap * .03, w: W * .5 }, {
+            size: W * .03, col: nous ? d.palette.fg : d.palette.fg2, upper: true, nom: 'Équipe ' + (i + 1)
+          }));
+          o.push(tTexte(d, 'donnee', (18 - i * 2) + ' PTS', { x: p, y: yy, w: W - p * 2 }, {
+            size: W * .026, align: 'right', col: nous ? A : d.palette.fg2, nom: 'Points ' + (i + 1)
+          }));
+          o.push(tRect(d, { x: p, y: yy + gap * .68, w: W - p * 2, h: Math.max(1, W * .0012) }, d.palette.fg, { a: .1, nom: 'Filet ' + (i + 1) }));
+        }
+        o.push(tPied(d));
+        o.push(tGrain(d, { a: .16 }));
+        return o;
+      }
+    },
+    {
+      id: 'club-anniv', cat: 'Joueuse', label: 'Anniversaire', pal: 'or',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .08, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tHalo(d, A, { cx: .5, cy: .42, w: .95, h: .6, a: .35, nom: 'Halo' }));
+        o.push(tFiligrane(d, 'JOYEUX', null, { y: .3, size: .17, a: .12, hollow: true, align: 'center', x: 0 }));
+        o.push(tDecoupe(d, 'photoJoueuse', { x: .18, y: .12, w: .64, h: .6 }, { ombre: true, nom: 'Joueuse détourée' }));
+        o.push(tTexte(d, 'manuscrit', 'joyeux anniversaire', { x: p, y: H * .69, w: W - p * 2 }, {
+          size: W * .095, align: 'center', col: A, nom: 'Joyeux anniversaire'
+        }));
+        o.push(tTexte(d, 'affiche', 'PRÉNOM NOM', { x: p, y: H * .785, w: W - p * 2 }, {
+          size: W * .105, align: 'center', bind: 'joueuse.nom', nom: 'Nom'
+        }));
+        o = o.concat(tSurligne(d, 'TOUTE L ÉQUIPE TE SOUHAITE LE MEILLEUR', { x: W * .12, y: H * .885, w: W * .76 }, {
+          role: 'etiquette', size: W * .019, bg: A, fg: d.palette.bg, radius: W * .03, nom: 'Message'
+        }));
+        o.push(tGrain(d, { a: .2 }));
+        return o;
+      }
+    },
+    {
+      id: 'club-stage', cat: 'Club', label: 'Stage de vacances', pal: 'ocean',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .07, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tRayures(d, A, { count: 12, ratio: .5, slant: 42, a: .1, nom: 'Rayures' }));
+        o.push(makeFrame(d, { x: p, y: H * .30, w: W - p * 2, h: H * .3 }));
+        o[o.length - 1].name = 'Photo du stage';
+        o[o.length - 1].radius = W * .03;
+        o = o.concat(tKicker(d, H * .075, 'ÉCOLE DE BASKET · 6-14 ANS', { pad: p }));
+        o.push(tTitreDouble(d, H * .11, 'STAGE DE', 'VACANCES', { size: .115, pad: p }));
+        var y = H * .655, gap = H * .075;
+        [['DATES', 'DU 00 AU 00 DÉCEMBRE'], ['HORAIRES', '9H00 — 16H00'], ['LIEU', 'STADIUM MARIUS NDIAYE'], ['TARIF', '10 000 FCFA LA SEMAINE']].forEach(function (r, i) {
+          o.push(tTexte(d, 'mention', r[0], { x: p, y: y + gap * i, w: W * .28 }, {
+            col: A, size: W * .017, nom: 'Libellé ' + r[0]
+          }));
+          o.push(tTexte(d, 'donnee', r[1], { x: p + W * .3, y: y + gap * i - W * .004, w: W - p * 2 - W * .3 }, {
+            size: W * .024, nom: r[0]
+          }));
+        });
+        o = o.concat(tSurligne(d, 'INSCRIPTIONS SUR BAOBABSBASKETCLUB.COM', { x: W * .1, y: H * .925, w: W * .8 }, {
+          role: 'etiquette', size: W * .019, bg: A, fg: d.palette.bg, radius: W * .03, nom: 'Inscriptions'
+        }));
+        return o;
+      }
+    },
+    {
+      id: 'md-demain', cat: 'Match Day', label: 'C’est demain', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .08, A = d.palette.accent, o = [];
+        o.push(tFondPhoto(d, 'photoJoueuse', { veil: .58, gray: 100, contrast: 14, nom: 'Photo plein cadre' }));
+        o.push(tRect(d, { x: 0, y: H * .5, w: W, h: H * .5 }, '#000000', { grad: '#000000', a: 0, a2: .85, angle: 90, nom: 'Fondu bas' }));
+        o.push(tTexte(d, 'affiche', 'C’EST', { x: p, y: H * .55, w: W - p * 2 }, { size: W * .13, nom: 'C EST' }));
+        o.push(tTexte(d, 'affiche', 'DEMAIN', { x: p, y: H * .645, w: W - p * 2 }, {
+          size: W * .17, col: A, ombre: true, nom: 'DEMAIN'
+        }));
+        o.push(tRect(d, { x: p, y: H * .785, w: W * .16, h: Math.max(2, W * .006) }, A, { nom: 'Filet' }));
+        o = o.concat(tInfos(d, [
+          ['BAOBABS VS DUC DAKAR', 'match.affiche', 'Affiche'],
+          ['STADIUM MARIUS NDIAYE — 19H00', 'match.lieu', 'Salle']
+        ], H * .815, { size: .024, pad: p, col: d.palette.fg }));
+        o.push(tPied(d, { align: 'left' }));
+        o.push(tGrain(d, { a: .18 }));
+        return o;
+      }
+    },
     {
       id: 'ref-mot-eclate', cat: 'Club', label: 'Trois mots', pal: 'nuit',
       build: function (d) {
@@ -6987,7 +7291,7 @@ window.BaobabsStudio = (function () {
     change(function () {
       for (var i = 0; i < list.length; i++) doc.layers.push(list[i]);
       sel = list.map(function (x) { return x.id; });
-    });
+    }, list.length > 1 ? 'Ajout de ' + list.length + ' calques' : 'Ajout d’un calque');
     imagesReady().then(requestDraw);
   }
 
@@ -7097,7 +7401,7 @@ window.BaobabsStudio = (function () {
       map[old.fg.toLowerCase()] = p.fg;
       map[old.fg2.toLowerCase()] = p.fg2;
       walk(doc.layers, function (l) { repaint(l, map); });
-    });
+    }, 'Ambiance ' + p.label);
     toast('Ambiance « ' + p.label + ' »');
   }
   function repaint(l, map) {
@@ -7652,50 +7956,130 @@ window.BaobabsStudio = (function () {
     toastT = setTimeout(function () { els.toast.classList.remove('is-on'); }, isErr ? 4200 : 2200);
   }
 
+  /* Le clic droit ne propose pas la même chose sur un texte, sur une
+     photo et sur un groupe. Un menu identique partout oblige à lire
+     dix entrées dont huit ne s'appliquent pas — et donne l'impression
+     que l'outil ne sait pas sur quoi on a cliqué. */
   function contextMenu(x, y) {
-    var l = selOne(), n = sel.length;
-    var it = function (act, label, kbd, danger) {
-      return '<button type="button" data-act="' + act + '"' + (danger ? ' class="bs-ctx-danger"' : '') + '>' +
-        esc(label) + (kbd ? '<kbd>' + esc(kbd) + '</kbd>' : '') + '</button>';
+    var l = selOne(), n = sel.length, ls = selectedLayers();
+    var it = function (act, label, kbd, opts) {
+      opts = opts || {};
+      return '<button type="button" data-act="' + act + '"' +
+        (opts.arg ? ' data-arg="' + esc(opts.arg) + '"' : '') +
+        (opts.danger ? ' class="bs-ctx-danger"' : '') +
+        (opts.off ? ' disabled title="' + esc(opts.why || '') + '"' : (opts.why ? ' title="' + esc(opts.why) + '"' : '')) +
+        '>' + esc(label) + (kbd ? '<kbd>' + esc(kbd) + '</kbd>' : '') + '</button>';
     };
+    var lab = function (t) { return '<div class="bs-menu-lab">' + esc(t) + '</div>'; };
     var h = '';
-    if (n) {
-      h += it('dup', 'Dupliquer', 'Ctrl D');
-      h += it('ctxFront', 'Mettre au premier plan', 'Ctrl ⇧ ]');
-      h += it('ctxUp', 'Monter', 'Ctrl ]');
-      h += it('ctxDown', 'Descendre', 'Ctrl [');
-      h += it('ctxBack', 'Mettre à l arrière-plan', 'Ctrl ⇧ [');
-      h += '<hr>';
-      if (l && l.type === 'text') h += it('ctxEdit', 'Modifier le texte', 'Entrée');
-      if (l && (l.type === 'image' || l.type === 'frame') && l.src) h += it('cropImage', 'Recadrer l image');
-      if (l && l.type === 'path') h += it('nodeTool', 'Modifier les points', 'A');
-      h += it('group', (l && l.type === 'group') ? 'Dissoudre le groupe' : 'Grouper', 'Ctrl G');
-      h += it('toggleLock', (l && l.locked) ? 'Déverrouiller' : 'Verrouiller');
-      h += it('toggleVis', (l && !l.visible) ? 'Afficher' : 'Masquer');
-      h += '<hr>';
-      h += it('del', 'Supprimer', 'Suppr', true);
-    } else {
-      h += it('ctxPaste', 'Coller', 'Ctrl V');
+
+    if (!n) {
+      /* rien sous le pointeur : on parle du document */
+      h += lab('Affiche');
+      h += it('ctxPaste', 'Coller', 'Ctrl V', { off: !clipboard, why: 'Rien dans le presse-papiers' });
       h += it('ctxSelAll', 'Tout sélectionner', 'Ctrl A');
       h += '<hr>';
+      h += it('m.docsize', 'Taille du document…');
+      h += it('bgPreset', 'Fond : photo plein cadre', null, { arg: 'photo' });
+      h += it('m.check', 'Vérifier avant publication');
+      h += '<hr>';
       h += it('zoomFit', 'Ajuster à l écran', 'Ctrl 0');
+      h += it('m.z100', 'Taille réelle', 'Ctrl 1');
+    } else if (n > 1) {
+      h += lab(n + ' calques sélectionnés');
+      h += it('group', 'Grouper', 'Ctrl G');
+      h += '<hr>';
+      h += lab('Aligner');
+      h += it('align', 'Centrer horizontalement', null, { arg: 'hcenter' });
+      h += it('align', 'Centrer verticalement', null, { arg: 'vcenter' });
+      h += it('align', 'Répartir horizontalement', null, { arg: 'dh', off: n < 3, why: 'Il faut au moins trois calques' });
+      h += '<hr>';
+      h += lab('Combiner les formes');
+      var formes = ls.filter(function (z) { return z.type === 'shape' || z.type === 'path'; }).length;
+      h += it('m.bool', 'Union', null, { arg: 'union', off: formes < 2, why: 'Il faut au moins deux formes ou tracés' });
+      h += it('m.bool', 'Soustraction', null, { arg: 'soustraction', off: formes < 2, why: 'Il faut au moins deux formes ou tracés' });
+      h += it('m.bool', 'Intersection', null, { arg: 'intersection', off: formes < 2, why: 'Il faut au moins deux formes ou tracés' });
+      h += '<hr>';
+      h += it('dup', 'Dupliquer', 'Ctrl D');
+      h += it('m.flatten', 'Aplatir en image', null, { why: 'Fusionne en une image : les calques ne seront plus modifiables' });
+      h += it('del', 'Supprimer', 'Suppr', { danger: true });
+    } else {
+      /* un seul calque : le menu prend la couleur de son type */
+      var typeLab = { text: 'Texte', image: 'Image', frame: 'Image', shape: 'Forme', path: 'Tracé', group: 'Groupe', icon: 'Icône' };
+      h += lab((typeLab[l.type] || 'Calque') + ' — ' + (l.name || defaultName(l)));
+
+      if (l.locked) {
+        h += it('toggleLock', 'Déverrouiller', null, { why: 'Ce calque est verrouillé : il ne peut être ni déplacé ni modifié' });
+        h += '<hr>';
+      }
+
+      if (l.type === 'text') {
+        h += it('ctxEdit', 'Modifier le texte', 'Entrée', { off: !!l.path, why: l.path ? 'Texte sur tracé : modifiez-le dans le panneau de droite' : '' });
+        h += it('m.hollow', l.ts.hollow ? 'Remplir le texte' : 'Texte en contour');
+        h += it('m.onpath', 'Placer sur un tracé', null, { off: true, why: 'Sélectionnez aussi un tracé' });
+        if (l.path) h += it('offPath', 'Remettre le texte à plat');
+        if (l.bind) h += it('unbind', 'Détacher de « ' + bindLabel(l.bind) + ' »');
+      } else if (l.type === 'image' || l.type === 'frame') {
+        h += it('pickImage', l.src ? 'Remplacer l image' : 'Choisir une image');
+        h += it('cropImage', 'Recadrer le contenu', null, { off: !l.src, why: 'Ce cadre est vide' });
+        h += it('ctxWand', 'Détourer le fond', 'W', { off: !l.src, why: 'Ce cadre est vide' });
+        h += it('m.maskadd', 'Ajouter un masque', null, { off: !!l.mask2, why: l.mask2 ? 'Ce calque a déjà un masque' : 'Effacer sans rien perdre' });
+        if (l.mask2) {
+          h += it('m.maskinv', 'Inverser le masque');
+          h += it('m.maskdel', 'Effacer le masque', null, { why: 'L image redevient entière' });
+        }
+        h += it('m.palimg', 'Palette tirée de la photo…', null, { off: !l.src, why: 'Ce cadre est vide' });
+        if (l.slot && l.slot !== 'libre') h += it('refreshSlot', 'Recharger depuis la base');
+      } else if (l.type === 'shape') {
+        h += it('m.bool', 'Combiner…', null, { off: true, why: 'Sélectionnez au moins deux formes' });
+        h += it('ctxToPath', 'Convertir en tracé', null, { why: 'Rend chaque point modifiable à la plume' });
+      } else if (l.type === 'path') {
+        h += it('nodeTool', 'Modifier les points', 'A');
+        h += it('m.unbool', 'Séparer', null, { off: !(l.subs && l.subs.length > 1), why: 'Ce tracé n est pas une forme combinée' });
+      } else if (l.type === 'group') {
+        h += it('group', 'Dissocier', 'Ctrl ⇧ G');
+        h += it('ctxEnter', 'Entrer dans le groupe', 'Double-clic');
+      }
+
+      h += '<hr>';
+      h += it('m.clip', l.clip ? 'Retirer le masque d écrêtage' : 'Créer un masque d écrêtage', 'Ctrl Alt G',
+        { why: 'Enferme ce calque dans la forme de celui du dessous' });
+      h += it('copyStyle', 'Copier le style', 'Ctrl Alt C');
+      h += it('pasteStyle', 'Coller le style', 'Ctrl Alt V', { off: !styleClip, why: 'Aucun style en mémoire' });
+      h += '<hr>';
+      h += lab('Disposition');
+      h += it('ctxFront', 'Premier plan', 'Ctrl ⇧ ]');
+      h += it('ctxUp', 'Monter', 'Ctrl ]');
+      h += it('ctxDown', 'Descendre', 'Ctrl [');
+      h += it('ctxBack', 'Arrière-plan', 'Ctrl ⇧ [');
+      h += '<hr>';
+      h += it('toggleVis', l.visible ? 'Masquer' : 'Afficher');
+      h += it('toggleLock', l.locked ? 'Déverrouiller' : 'Verrouiller');
+      h += it('dup', 'Dupliquer', 'Ctrl D');
+      if (l.type !== 'image' && l.type !== 'frame') {
+        h += it('m.flatten', 'Aplatir en image', null, { why: 'Devient une image : le texte et les formes ne seront plus modifiables' });
+      }
+      h += it('del', 'Supprimer', 'Suppr', { danger: true });
     }
+
     els.ctx.innerHTML = h;
     els.ctx.classList.add('is-on');
     var r = els.ctx.getBoundingClientRect();
     els.ctx.style.left = Math.min(x, window.innerWidth - r.width - 8) + 'px';
     els.ctx.style.top = Math.min(y, window.innerHeight - r.height - 8) + 'px';
     $$('button', els.ctx).forEach(function (b) {
+      if (b.disabled) return;
       b.addEventListener('click', function () {
-        var a = b.getAttribute('data-act');
+        var a = b.getAttribute('data-act'), arg = b.getAttribute('data-arg');
         closeCtx();
-        ctxAction(a);
+        ctxAction(a, arg);
       });
     });
   }
   function closeCtx() { els.ctx.classList.remove('is-on'); }
-  function ctxAction(a) {
+  function ctxAction(a, arg) {
     var l = selOne();
+    if (/^m\./.test(a)) return menuAction(a, arg);
     if (a === 'ctxFront' && l) return sendTo(l.id, 'front');
     if (a === 'ctxBack' && l) return sendTo(l.id, 'back');
     if (a === 'ctxUp' && l) return moveLayerOrder(l.id, 1);
@@ -7704,7 +8088,60 @@ window.BaobabsStudio = (function () {
     if (a === 'ctxPaste') return pasteLayers();
     if (a === 'ctxSelAll') return selectAll();
     if (a === 'zoomFit') return fitView();
-    runAction(a, { getAttribute: function () { return null; } });
+    if (a === 'ctxWand') { setTool('wand'); toast('Cliquez le fond à retirer'); return; }
+    if (a === 'ctxToPath') return convertirEnTrace();
+    if (a === 'ctxEnter' && l && l.type === 'group') {
+      if (l.children && l.children.length) select([l.children[l.children.length - 1].id]);
+      return;
+    }
+    /* les autres passent par le dispatcheur commun, avec leur argument */
+    runAction(a, {
+      getAttribute: function (k) {
+        if (k === 'data-arg') return arg;
+        if (k === 'data-k') return arg;
+        if (k === 'data-align') return arg;
+        return arg;
+      }
+    });
+  }
+
+  /* Une forme devient un tracé : ses points s'ouvrent à la plume. */
+  function convertirEnTrace() {
+    var l = selOne();
+    if (!l || l.type !== 'shape') { toast('Sélectionnez une forme', true); return; }
+    var subs = formeEnNoeuds(l);
+    if (!subs.length) { toast('Cette forme ne se convertit pas', true); return; }
+    var xs = [], ys = [];
+    subs.forEach(function (sub) {
+      sub.nodes.forEach(function (nd) { xs.push(nd.x, nd.h1x, nd.h2x); ys.push(nd.y, nd.h1y, nd.h2y); });
+    });
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    var W = Math.max(1, x1 - x0), H = Math.max(1, y1 - y0);
+    var p = makePath(doc, [], { closed: true, x: x0, y: y0, w: W, h: H });
+    p.subs = subs.map(function (sub) {
+      return {
+        closed: sub.closed,
+        nodes: sub.nodes.map(function (nd) {
+          return {
+            x: (nd.x - x0) / W, y: (nd.y - y0) / H,
+            h1x: (nd.h1x - x0) / W, h1y: (nd.h1y - y0) / H,
+            h2x: (nd.h2x - x0) / W, h2y: (nd.h2y - y0) / H
+          };
+        })
+      };
+    });
+    p.nodes = p.subs[0].nodes;
+    p.fill = clone(l.fill); p.stroke = clone(l.stroke);
+    p.name = (l.name || 'Forme') + ' — tracé';
+    change(function () {
+      var loc = locate(doc.layers, l.id);
+      if (!loc) return;
+      loc.arr.splice(loc.idx, 1, p);
+      sel = [p.id];
+    }, 'Conversion en tracé');
+    setTool('node');
+    toast('Convertie en tracé — outil A pour déplacer les points');
   }
 
   /* ===================================================================
@@ -7731,7 +8168,7 @@ window.BaobabsStudio = (function () {
         ids.push(n.id);
       });
       sel = ids;
-    });
+    }, 'Collage');
     prewarmImages();
     toast(ids.length + ' calque(s) collé(s)');
   }
@@ -7822,6 +8259,29 @@ window.BaobabsStudio = (function () {
       return;
     }
 
+    /* --- un geste en cours possède le clavier ---
+       Tant que la plume trace, que le recadrage se règle ou qu'un
+       contenu se cale, Ctrl+Z défait CE geste — pas une modification
+       antérieure du document, que l'utilisateur ne cherchait pas. */
+    if (pathDraft) {
+      if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); penUndo(); return; }
+      if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); penUndo(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); penCancel(); setTool('select'); return; }
+      if (e.key === 'Enter') { e.preventDefault(); commitPath(false); return; }
+      if (mod) return;              /* on ne laisse rien d'autre passer */
+    }
+    if (drag && drag.kind === 'crop') {
+      if (e.key === 'Escape' || (mod && e.key.toLowerCase() === 'z')) {
+        e.preventDefault();
+        drag = null; guides = []; requestDraw(); setTool('select');
+        toast('Recadrage abandonné');
+        return;
+      }
+    }
+    if (contentEdit && !edit) {
+      if (e.key === 'Escape') { e.preventDefault(); contentEdit = null; requestDraw(); toast('Recadrage terminé'); return; }
+    }
+
     /* --- édition de texte : le clavier lui appartient --- */
     if (edit) {
       if (e.key === 'Escape') { e.preventDefault(); exitTextEdit(); return; }
@@ -7902,11 +8362,13 @@ window.BaobabsStudio = (function () {
                   w: 'wand', e: 'erase', b: 'restore', c: 'crop' };
     if (tools[e.key.toLowerCase()] && !e.altKey && !e.shiftKey) { e.preventDefault(); setTool(tools[e.key.toLowerCase()]); return; }
 
+    /* Échap défait une couche à la fois, de la plus locale à la plus
+       globale. Fermer le Studio est la toute dernière — on ne perd pas
+       son travail parce qu'on a appuyé deux fois de suite. */
     if (e.key === 'Escape') {
       e.preventDefault();
-      if (pathDraft) { commitPath(false); return; }
-      if (contentEdit) { contentEdit = null; requestDraw(); return; }
       if (els.ctx.classList.contains('is-on')) { closeCtx(); return; }
+      if (tool !== 'select') { setTool('select'); toast('Outil Sélection'); return; }
       if (sel.length) { select([]); return; }
       close();
       return;
@@ -8251,6 +8713,7 @@ window.BaobabsStudio = (function () {
       panel: $('#bs-panel'),
       panelBody: $('#bs-panel-body'),
       props: $('#bs-props'),
+      propsBody: $('#bs-props-body'),
       layerList: $('#bs-layer-list'),
       toast: $('#bs-toast'),
       ctx: $('#bs-ctxmenu'),
@@ -8282,7 +8745,10 @@ window.BaobabsStudio = (function () {
       menubar: $('#bs-menubar'),
       menuPop: $('#bs-menu-pop'),
       fileJson: $('#bs-file-json'),
-      toolOpts: $('#bs-tool-opts')
+      toolOpts: $('#bs-tool-opts'),
+      workspace: $('.bs-workspace'),
+      right: $('.bs-right'),
+      layersBox: $('.bs-layers')
     };
   }
 
@@ -8952,6 +9418,16 @@ window.BaobabsStudio = (function () {
         M('Projets', 'm.panel', null, { arg: 'projets', on: panelName === 'projets' && !panelHidden }),
         SEP,
         M('Masquer le panneau de gauche', 'm.hidepanel', null, { on: panelHidden }),
+        SEP,
+        LAB('Disposition des panneaux'),
+        M('Réduire / déplier « Outils »', 'm.fold', null, { arg: 'panel', on: !!(dockEtat.panel && dockEtat.panel.folded) }),
+        M('Réduire / déplier « Propriétés »', 'm.fold', null, { arg: 'props', on: !!(dockEtat.props && dockEtat.props.folded) }),
+        M('Réduire / déplier « Calques »', 'm.fold', null, { arg: 'layers', on: !!(dockEtat.layers && dockEtat.layers.folded) }),
+        M('Détacher / réancrer « Outils »', 'm.loose', null, { arg: 'panel', on: !!(dockEtat.panel && dockEtat.panel.loose) }),
+        M('Détacher / réancrer « Propriétés »', 'm.loose', null, { arg: 'props', on: !!(dockEtat.props && dockEtat.props.loose) }),
+        M('Détacher / réancrer « Calques »', 'm.loose', null, { arg: 'layers', on: !!(dockEtat.layers && dockEtat.layers.loose) }),
+        M('Tout réancrer', 'm.dockall'),
+        SEP,
         M('Historique', 'm.history')
       ] },
 
@@ -9132,7 +9608,7 @@ window.BaobabsStudio = (function () {
     if (!l || !l.mask2) return;
     var m = maskCanvas(l, true);
     if (!m.ready) { toast('Masque en cours de chargement'); return; }
-    beginChange();
+    beginChange('Masque inversé');
     var d = m.ctx.getImageData(0, 0, m.cv.width, m.cv.height);
     for (var i = 3; i < d.data.length; i += 4) d.data[i] = 255 - d.data[i];
     m.ctx.putImageData(d, 0, 0);
@@ -9199,7 +9675,7 @@ window.BaobabsStudio = (function () {
     }
     if (n < 4) { toast('Rien de comparable ici — augmentez la tolérance'); return; }
 
-    beginChange();
+    beginChange('Baguette magique');
     var md = m.ctx.getImageData(0, 0, tw, th);
     for (i = 0; i < hit.length; i++) if (hit[i]) md.data[i * 4 + 3] = 0;
     m.ctx.putImageData(md, 0, 0);
@@ -9267,6 +9743,152 @@ window.BaobabsStudio = (function () {
     c.arc(x, y, r, 0, Math.PI * 2);
     c.fill();
     c.restore();
+  }
+
+  /* ===================================================================
+     54. PANNEAUX RÉDUCTIBLES ET DÉTACHABLES
+     ---------------------------------------------------------------
+     Trois panneaux se replient et se détachent : celui de gauche, les
+     Propriétés et les Calques. Détaché, un panneau retient sa place
+     d'origine (parent + index) : le bouton d'ancrage le remet
+     exactement d'où il vient, jamais « quelque part ».
+     =================================================================== */
+
+  var DOCKS = [
+    { id: 'panel',  el: 'panel',     titre: 'Outils' },
+    { id: 'props',  el: 'props',     titre: 'Propriétés' },
+    { id: 'layers', el: 'layersBox', titre: 'Calques' }
+  ];
+  var dockEtat = {};
+
+  var SVG_FOLD = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+  var SVG_LOOSE = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="12" height="12" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2"/></svg>';
+  var SVG_DOCK = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>';
+
+  function initDocks() {
+    DOCKS.forEach(function (d) {
+      var el = els[d.el];
+      if (!el) return;
+      el.classList.add('bs-dock');
+      el.setAttribute('data-dock', d.id);
+      dockEtat[d.id] = {
+        el: el, titre: d.titre,
+        parent: el.parentNode,
+        apres: el.nextElementSibling,   /* pour réinsérer exactement au bon rang */
+        folded: false, loose: false
+      };
+      var barre = document.createElement('div');
+      barre.className = 'bs-ptitle';
+      barre.innerHTML =
+        '<button type="button" class="bs-ptitle-b bs-ptitle-fold" title="Réduire ce panneau">' + SVG_FOLD + '</button>' +
+        '<span class="bs-ptitle-t">' + esc(d.titre) + '</span>' +
+        '<button type="button" class="bs-ptitle-b bs-ptitle-loose" title="Détacher ce panneau">' + SVG_LOOSE + '</button>';
+      el.insertBefore(barre, el.firstChild);
+
+      barre.querySelector('.bs-ptitle-fold').addEventListener('click', function (e) {
+        e.stopPropagation(); replierDock(d.id);
+      });
+      barre.querySelector('.bs-ptitle-loose').addEventListener('click', function (e) {
+        e.stopPropagation(); basculerDock(d.id);
+      });
+      /* double-clic sur la barre : replier, comme partout */
+      barre.addEventListener('dblclick', function (e) {
+        if (e.target.closest('button')) return;
+        replierDock(d.id);
+      });
+      barre.addEventListener('pointerdown', function (e) {
+        if (e.target.closest('button')) return;
+        if (!dockEtat[d.id].loose) return;
+        glisserDock(d.id, e);
+      });
+    });
+  }
+
+  function replierDock(id) {
+    var st = dockEtat[id];
+    if (!st) return;
+    st.folded = !st.folded;
+    st.el.classList.toggle('is-folded', st.folded);
+    var b = st.el.querySelector('.bs-ptitle-fold');
+    if (b) b.title = st.folded ? 'Déplier ce panneau' : 'Réduire ce panneau';
+    onResize();
+  }
+
+  function basculerDock(id) {
+    var st = dockEtat[id];
+    if (!st) return;
+    st.loose ? ancrerDock(id) : detacherDock(id);
+  }
+
+  function detacherDock(id) {
+    var st = dockEtat[id];
+    if (!st || st.loose) return;
+    var r = st.el.getBoundingClientRect();
+    var w = els.workspace.getBoundingClientRect();
+    st.loose = true;
+    st.el.classList.add('is-loose');
+    els.workspace.appendChild(st.el);
+    st.el.style.left = clamp(r.left - w.left, 8, Math.max(8, w.width - 260)) + 'px';
+    st.el.style.top = clamp(r.top - w.top, 8, Math.max(8, w.height - 140)) + 'px';
+    st.el.style.width = Math.max(240, Math.min(r.width, 420)) + 'px';
+    st.el.style.height = Math.max(160, Math.min(r.height, w.height * .72)) + 'px';
+    var b = st.el.querySelector('.bs-ptitle-loose');
+    if (b) { b.innerHTML = SVG_DOCK; b.title = 'Réancrer ce panneau à sa place'; }
+    majVides();
+    onResize();
+    toast('« ' + st.titre + ' » détaché — glissez sa barre de titre');
+  }
+
+  function ancrerDock(id) {
+    var st = dockEtat[id];
+    if (!st || !st.loose) return;
+    st.loose = false;
+    st.el.classList.remove('is-loose');
+    st.el.style.left = st.el.style.top = st.el.style.width = st.el.style.height = '';
+    /* réinsertion au rang exact d'origine */
+    if (st.apres && st.apres.parentNode === st.parent) st.parent.insertBefore(st.el, st.apres);
+    else st.parent.appendChild(st.el);
+    var b = st.el.querySelector('.bs-ptitle-loose');
+    if (b) { b.innerHTML = SVG_LOOSE; b.title = 'Détacher ce panneau'; }
+    majVides();
+    onResize();
+    toast('« ' + st.titre + ' » réancré');
+  }
+
+  /* Une colonne dont tous les panneaux sont partis ne doit pas garder
+     sa largeur en blanc. */
+  function majVides() {
+    [els.panel, els.right].forEach(function (col) {
+      if (!col) return;
+      var reste = [].slice.call(col.children).some(function (c) {
+        return c.classList.contains('bs-dock') || c.id === 'bs-panel-body';
+      });
+      col.classList.toggle('is-empty', !reste);
+    });
+    if (els.panel) els.panel.classList.toggle('is-empty', dockEtat.panel && dockEtat.panel.loose);
+    if (els.right) {
+      var p = dockEtat.props && dockEtat.props.loose;
+      var c = dockEtat.layers && dockEtat.layers.loose;
+      els.right.classList.toggle('is-empty', !!(p && c));
+    }
+  }
+
+  function glisserDock(id, ev) {
+    var st = dockEtat[id];
+    var w = els.workspace.getBoundingClientRect();
+    var r = st.el.getBoundingClientRect();
+    var dx = ev.clientX - r.left, dy = ev.clientY - r.top;
+    ev.preventDefault();
+    function mv(e) {
+      st.el.style.left = clamp(e.clientX - w.left - dx, 0, Math.max(0, w.width - 90)) + 'px';
+      st.el.style.top = clamp(e.clientY - w.top - dy, 0, Math.max(0, w.height - 30)) + 'px';
+    }
+    function up() {
+      document.removeEventListener('pointermove', mv);
+      document.removeEventListener('pointerup', up);
+    }
+    document.addEventListener('pointermove', mv);
+    document.addEventListener('pointerup', up);
   }
 
   /* ===================================================================
@@ -9993,6 +10615,15 @@ window.BaobabsStudio = (function () {
         els.panel.classList.toggle('is-hidden', panelHidden);
         onResize();
         return;
+      case 'm.fold': replierDock(arg); return;
+      case 'm.loose': basculerDock(arg); return;
+      case 'm.dockall':
+        DOCKS.forEach(function (d) {
+          if (dockEtat[d.id] && dockEtat[d.id].loose) ancrerDock(d.id);
+          if (dockEtat[d.id] && dockEtat[d.id].folded) replierDock(d.id);
+        });
+        toast('Panneaux remis en place');
+        return;
       case 'm.history': ouvrirHistorique(); return;
 
       /* --- aide --- */
@@ -10257,9 +10888,10 @@ window.BaobabsStudio = (function () {
       (n ? n + ' état' + (n > 1 ? 's' : '') + ' en arrière, ' + hist.redo.length + ' en avant.' : 'Aucune modification depuis l’ouverture.') + '</p>';
     if (n) {
       h += '<div class="bs-list" style="padding:0;max-height:300px;overflow-y:auto">';
-      for (var i = n - 1; i >= Math.max(0, n - 24); i--) {
+      for (var i = n - 1; i >= Math.max(0, n - 30); i--) {
         h += '<button type="button" class="bs-item" data-act="histGo" data-i="' + i + '">' +
-          '<span class="bs-item-txt"><b>Revenir ' + (n - i) + ' étape' + ((n - i) > 1 ? 's' : '') + ' en arrière</b></span></button>';
+          '<span class="bs-item-txt"><b>' + esc(hist.undo[i].t) + '</b>' +
+          '<small>revenir ' + (n - i) + ' étape' + ((n - i) > 1 ? 's' : '') + ' en arrière</small></span></button>';
       }
       h += '</div>';
     }
@@ -10270,8 +10902,9 @@ window.BaobabsStudio = (function () {
     var n = hist.undo.length - i;
     for (var k = 0; k < n; k++) {
       if (!hist.undo.length) break;
-      hist.redo.push(serialize(doc));
-      restore(hist.undo.pop());
+      var e = hist.undo.pop();
+      hist.redo.push({ j: serialize(doc), t: e.t });
+      restore(e.j);
     }
     syncHistButtons();
     markDirty(true);
@@ -10313,6 +10946,7 @@ window.BaobabsStudio = (function () {
     setLogo();
     wireChrome();
     setTool('select');            /* l'état JS et le DOM doivent partir d'accord */
+    initDocks();
     openPanel('modeles');
     renderProps();
     renderLayers();
