@@ -8282,6 +8282,10 @@ window.BaobabsStudio = (function () {
     wireFields(els.modalCard);
   }
   function closeModal() {
+    if (partageEnCours && partageEnCours.url) {
+      URL.revokeObjectURL(partageEnCours.url);
+      partageEnCours = null;
+    }
     els.modal.classList.remove('is-on');
     els.modal.setAttribute('aria-hidden', 'true');
     els.modalCard.innerHTML = '';
@@ -8676,6 +8680,7 @@ window.BaobabsStudio = (function () {
       if (k === 'x') { e.preventDefault(); copyLayers(true); return; }
       if (k === 'v') { e.preventDefault(); e.altKey ? collerStyle() : pasteLayers(); return; }
       if (k === 'e') { e.preventDefault(); openExport(); return; }
+      if (k === 'p' && e.shiftKey) { e.preventDefault(); partager(); return; }
       if (e.key === ']') { e.preventDefault(); var a = selOne(); if (a) e.shiftKey ? sendTo(a.id, 'front') : moveLayerOrder(a.id, 1); return; }
       if (e.key === '[') { e.preventDefault(); var b = selOne(); if (b) e.shiftKey ? sendTo(b.id, 'back') : moveLayerOrder(b.id, -1); return; }
       if (e.key === '0') { e.preventDefault(); fitView(); return; }
@@ -8764,7 +8769,96 @@ window.BaobabsStudio = (function () {
 
   /* Reprend le texte de l'affiche pour en faire une légende prête à
      coller sous la publication. */
-  function sharePublication() {
+  /* ===================================================================
+     54. PARTAGE VERS LES RÉSEAUX
+     ---------------------------------------------------------------
+     Pas d'API Instagram, pas de jeton, pas de validation Meta : on
+     passe par la feuille de partage du système. Le navigateur remet
+     le fichier à l'application choisie — Instagram, WhatsApp, ce que
+     la personne a installé. C'est la seule voie qui ne coûte rien et
+     qui ne périme pas quand une plateforme change ses règles.
+
+     Sur ordinateur la feuille n'accepte pas les fichiers : on retombe
+     alors sur téléchargement + légende copiée, ce qui est exactement
+     le geste que la personne faisait déjà.
+     =================================================================== */
+
+  function peutPartagerFichier() {
+    try {
+      if (!navigator.share || !navigator.canShare) return false;
+      var f = new File([new Blob([''], { type: 'image/png' })], 't.png', { type: 'image/png' });
+      return navigator.canShare({ files: [f] });
+    } catch (e) { return false; }
+  }
+
+  function partager() {
+    var txt = legendePublication();
+    toast('Préparation de l’image…');
+    imagesReady().then(function () {
+      var cv = renderToCanvas(2, doc);
+      return new Promise(function (res, rej) {
+        cv.toBlob(function (b) { b ? res(b) : rej(new Error('blob')); }, 'image/png');
+      });
+    }).then(function (blob) {
+      var nom = slug(doc.name || 'affiche') + '.png';
+      var file = new File([blob], nom, { type: 'image/png' });
+
+      if (peutPartagerFichier()) {
+        return navigator.share({
+          files: [file],
+          title: doc.name || 'Baobabs Basket Club',
+          text: txt
+        }).then(function () {
+          toast('Partagé', false, true);
+        }).catch(function (e) {
+          /* l'utilisateur a fermé la feuille : ce n'est pas une erreur */
+          if (e && e.name === 'AbortError') return;
+          fenetrePartage(blob, nom, txt);
+        });
+      }
+      fenetrePartage(blob, nom, txt);
+    }).catch(function () {
+      toast('Partage impossible — une image distante bloque la copie', true);
+    });
+  }
+
+  /* Repli d'ordinateur : on donne le fichier et la légende, et les
+     raccourcis vers les endroits où les déposer. */
+  function fenetrePartage(blob, nom, txt) {
+    var url = URL.createObjectURL(blob);
+    modal('Partager l’affiche',
+      '<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">' +
+      '<img src="' + url + '" alt="" style="width:92px;border-radius:8px;border:1px solid var(--bs-line);flex:none">' +
+      '<div style="font-size:12.5px;color:var(--bs-fg-2);line-height:1.6">' +
+      '<b style="color:var(--bs-fg)">' + esc(doc.name || 'Affiche') + '</b><br>' +
+      doc.w * 2 + ' × ' + doc.h * 2 + ' px · ' + Math.round(blob.size / 1024) + ' Ko<br><br>' +
+      'Le partage direct n’est proposé que sur téléphone. Ici, téléchargez l’image et collez la légende.' +
+      '</div></div>' +
+
+      '<div class="bs-f"><label>Légende</label>' +
+      '<textarea class="bs-in" id="bs-share-txt" rows="6">' + esc(txt) + '</textarea></div>' +
+
+      '<div class="bs-frow" style="margin-top:10px">' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center" data-act="shareCopy">Copier la légende</button>' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center" data-act="shareDl">Télécharger l’image</button>' +
+      '</div>' +
+
+      '<div class="bs-sec-lab" style="padding:14px 0 6px">Ouvrir le réseau</div>' +
+      '<div class="bs-frow">' +
+      '<a class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center;text-decoration:none" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">Instagram</a>' +
+      '<a class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center;text-decoration:none" href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer">Facebook</a>' +
+      '<a class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center;text-decoration:none" href="https://web.whatsapp.com/" target="_blank" rel="noopener noreferrer">WhatsApp</a>' +
+      '</div>' +
+      '<div class="bs-note" style="margin:12px 0 0">Depuis un <b>téléphone</b>, ce bouton ouvre directement la liste de vos applications : l’image et la légende y sont déjà.</div>',
+
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Fermer</button>' +
+      '<button type="button" class="bs-btn bs-btn-accent" data-act="sharePublier">Envoyer dans la médiathèque</button>');
+
+    partageEnCours = { blob: blob, nom: nom, url: url };
+  }
+  var partageEnCours = null;
+
+  function legendePublication() {
     var lignes = [];
     walk(doc.layers, function (l) {
       if (l.type === 'text' && l.visible) {
@@ -8775,12 +8869,25 @@ window.BaobabsStudio = (function () {
     lignes.sort(function (a, b) { return a.y - b.y; });
     var titre = lignes.slice().sort(function (a, b) { return b.size - a.size; })[0];
     var corps = lignes.map(function (x) { return x.t; }).filter(function (x, i, arr) { return arr.indexOf(x) === i; });
-    var txt = (titre ? titre.t.toUpperCase() + '\n\n' : '') +
+    /* la date et le lieu d'abord : c'est ce qu'on cherche dans une
+       légende de club, pas la ligne la plus grosse de l'affiche */
+    var infos = [];
+    if (data.match) {
+      if (data.match.date) infos.push(data.match.date);
+      if (data.match.lieu) infos.push(data.match.lieu);
+    }
+    return (titre ? titre.t.toUpperCase() + '\n\n' : '') +
       corps.filter(function (x) { return !titre || x !== titre.t; }).join('\n') +
+      (infos.length ? '\n\n' + infos.join(' · ') : '') +
+      ((doc.credits && doc.credits.length) ? '\n\n' + doc.credits.join(' · ') : '') +
       '\n\n#BaobabsBasketClub #BasketSenegal #Dakar';
+  }
+
+  function sharePublication() {
+    var txt = legendePublication();
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(txt)
-        .then(function () { toast('Texte de publication copié', false, true); })
+        .then(function () { toast('Légende copiée', false, true); })
         .catch(function () { showShareText(txt); });
     } else showShareText(txt);
   }
@@ -8836,6 +8943,24 @@ window.BaobabsStudio = (function () {
       case 'discardGo': { var f = pendingNav; closeModal(); markDirty(false); if (f) f(); return true; }
       case 'saveThenGo': { var g = pendingNav; closeModal(); saveProject(false).then(function () { if (g) g(); }); return true; }
       case 'zoomFit': fitView(); return true;
+      case 'shareCopy': {
+        var ta = $('#bs-share-txt', els.modalCard);
+        if (!ta) return true;
+        ta.select();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(ta.value).then(function () { toast('Légende copiée', false, true); })
+            .catch(function () { toast('Copiez le texte à la main (Ctrl+C)'); });
+        } else { try { document.execCommand('copy'); toast('Légende copiée', false, true); } catch (e) {} }
+        return true;
+      }
+      case 'shareDl':
+        if (partageEnCours) {
+          if (api && api.download) api.download(partageEnCours.blob, partageEnCours.nom);
+          else downloadBlob(partageEnCours.blob, partageEnCours.nom);
+          toast('Image téléchargée', false, true);
+        }
+        return true;
+      case 'sharePublier': closeModal(); publish(); return true;
       case 'flattenOk': closeModal(); aplatirConfirme = true; aplatirSelection(); return true;
       case 'palImg': appliquerPaletteImage(el.getAttribute('data-bg'), el.getAttribute('data-ac'), el.getAttribute('data-fg')); return true;
       case 'serieTgl': { var i = num(el.getAttribute('data-i'), 0); serieSel[i] = !serieSel[i]; ouvrirSerie(); return true; }
@@ -9122,6 +9247,7 @@ window.BaobabsStudio = (function () {
     on('#bs-redo', 'click', redo);
     on('#bs-save', 'click', function () { saveProject(false); });
     on('#bs-export', 'click', openExport);
+    on('#bs-share', 'click', partager);
     on('#bs-publish', 'click', publish);
     on('#bs-help', 'click', showHelp);
     on('#bs-close', 'click', function () { close(); });
@@ -9133,7 +9259,6 @@ window.BaobabsStudio = (function () {
     on('#bs-tgl-snap', 'click', function () { toggleFlag('snap'); });
     on('#bs-tgl-safe', 'click', function () { toggleFlag('safe'); });
     on('#bs-tgl-preview', 'click', togglePreview);
-    on('#bs-share', 'click', sharePublication);
     on('#bs-lyr-group', 'click', groupSelected);
     on('#bs-lyr-up', 'click', function () { var l = selOne(); if (l) moveLayerOrder(l.id, 1); });
     on('#bs-lyr-down', 'click', function () { var l = selOne(); if (l) moveLayerOrder(l.id, -1); });
@@ -9628,8 +9753,9 @@ window.BaobabsStudio = (function () {
         M('Les affiches du mois…', 'm.mois'),
         M('Exporter le projet (.json)', 'm.json'),
         SEP,
+        M('Partager sur les réseaux…', 'm.partage', 'Ctrl ⇧ P'),
         M('Publier dans la médiathèque', 'm.publish'),
-        M('Copier le texte de publication', 'm.share'),
+        M('Copier la légende seule', 'm.share'),
         SEP,
         M('Retour à l’accueil', 'm.home'),
         M('Fermer le Studio', 'm.close', 'Échap')
@@ -10914,6 +11040,7 @@ window.BaobabsStudio = (function () {
       case 'm.serie':    exportSerie(); return;
       case 'm.mois':     ouvrirSerie(); return;
       case 'm.json':     exportJson(); return;
+      case 'm.partage':  partager(); return;
       case 'm.publish':  publish(); return;
       case 'm.share':    sharePublication(); return;
       case 'm.home':     quitterVers(showHome); return;

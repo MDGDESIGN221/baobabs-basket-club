@@ -4376,7 +4376,73 @@
       }
     });
   }
-  function uploadFile(bucket,file){ var path=Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'); return fetch(SUPABASE_URL+'/storage/v1/object/'+bucket+'/'+path,{method:'POST',headers:sbHeaders({'Content-Type':file.type||'application/octet-stream'}),body:file}).then(function(r){ if(!r.ok) throw new Error('upload'); return SUPABASE_URL+'/storage/v1/object/public/'+bucket+'/'+path; }); }
+  // ===================== TÉLÉVERSEMENT =====================
+  // Une photo de téléphone pèse 4 à 8 Mo. Envoyée telle quelle, elle est
+  // stockée telle quelle et RESERVIE telle quelle à chaque visiteur —
+  // sur une connexion mobile sénégalaise, c'est le genre de détail qui
+  // fait fermer la page.
+  //
+  // Supabase sait redimensionner à la volée, mais c'est une option du
+  // plan payant. On compresse donc ici, dans le navigateur, avant
+  // l'envoi : 2000 px sur le grand côté, WebP qualité 82. Une photo de
+  // 5 Mo tombe autour de 250 Ko sans différence visible à l'écran.
+  //
+  // Tout passe par uploadFile — médiathèque, fiches joueuses, articles,
+  // produits, et le Studio. Un seul endroit à corriger, donc un seul
+  // endroit qui peut se tromper.
+  var IMG_MAX_COTE = 2000;      // px
+  var IMG_QUALITE  = 0.82;
+  var IMG_SEUIL    = 320 * 1024; // en dessous, on ne touche à rien
+
+  function compresserImage(file){
+    // Les SVG sont déjà minuscules et vectoriels : les rasteriser serait
+    // une perte sèche. Les GIF peuvent être animés : les convertir les
+    // figerait. On les laisse passer.
+    if (!file || !/^image\/(jpeg|png|webp)$/i.test(file.type||'')) return Promise.resolve(file);
+    if (file.size <= IMG_SEUIL) return Promise.resolve(file);
+
+    return new Promise(function(res){
+      var url = URL.createObjectURL(file);
+      var im = new Image();
+      im.onload = function(){
+        try {
+          var w = im.naturalWidth, h = im.naturalHeight;
+          var k = Math.min(1, IMG_MAX_COTE / Math.max(w, h));
+          var cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+          var cv = document.createElement('canvas');
+          cv.width = cw; cv.height = ch;
+          var cx = cv.getContext('2d');
+          cx.imageSmoothingQuality = 'high';
+          cx.drawImage(im, 0, 0, cw, ch);
+          cv.toBlob(function(b){
+            URL.revokeObjectURL(url);
+            // Si la « compression » a grossi le fichier — ça arrive sur
+            // les aplats et les captures d'écran — on garde l'original.
+            if (!b || b.size >= file.size) { res(file); return; }
+            var nom = file.name.replace(/\.[^.]+$/, '') + '.webp';
+            res(new File([b], nom, { type:'image/webp', lastModified: Date.now() }));
+          }, 'image/webp', IMG_QUALITE);
+        } catch(e){ URL.revokeObjectURL(url); res(file); }
+      };
+      im.onerror = function(){ URL.revokeObjectURL(url); res(file); };
+      im.src = url;
+    });
+  }
+
+  function uploadFile(bucket,file){
+    return compresserImage(file).then(function(f){
+      var path = Date.now()+'-'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      if (f !== file) console.info('[média] '+file.name+' : '+Math.round(file.size/1024)+' Ko → '+Math.round(f.size/1024)+' Ko');
+      return fetch(SUPABASE_URL+'/storage/v1/object/'+bucket+'/'+path,{
+        method:'POST',
+        headers:sbHeaders({'Content-Type':f.type||'application/octet-stream'}),
+        body:f
+      }).then(function(r){
+        if(!r.ok) throw new Error('upload');
+        return SUPABASE_URL+'/storage/v1/object/public/'+bucket+'/'+path;
+      });
+    });
+  }
 
   // ===================== HISTORIQUE — TRADUCTION DES CHAMPS =====================
   // Dictionnaire complet : nom technique (field_key stocké en base) -> libellé

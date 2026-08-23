@@ -1,0 +1,278 @@
+{
+  "$schema": "prompt de production — vidéo showreel. À donner tel quel à un modèle, un motion designer, ou à exécuter soi-même.",
+  "version": "1.0",
+  "date": "2026-08-23",
+
+  "objectif": "Produire une vidéo de démonstration montrant que Baobabs Basket Club — le site public, l'administration et Baobabs Studio — a été conçu et développé par MDG Design. Destinée aux réseaux et au portfolio.",
+
+  "regle_fondamentale": {
+    "enonce": "Toutes les images d'interface sont des CAPTURES RÉELLES du dépôt, jamais des interfaces générées.",
+    "pourquoi": "La vidéo sert à prouver une réalisation. Une interface inventée par un modèle vidéo se repère immédiatement — textes illisibles, boutons incohérents, données absurdes — et détruit exactement ce qu'on cherche à démontrer. Le générateur ne sert qu'aux fonds et aux particules, jamais aux écrans.",
+    "consequence": "Le pipeline est : capture → animation → montage. Pas : description → génération."
+  },
+
+  "format": {
+    "principal": { "ratio": "16:9", "resolution": "1920x1080", "cadence": 60, "usage": "LinkedIn, Behance, YouTube, site" },
+    "secondaire": { "ratio": "9:16", "resolution": "1080x1920", "cadence": 60, "usage": "Instagram, TikTok", "note": "Ne pas recadrer le 16:9 : recomposer, en empilant les écrans verticalement et en zoomant davantage. Une interface de bureau recadrée en vertical devient illisible." },
+    "duree_cible_s": 34,
+    "duree_acceptable_s": [28, 45],
+    "codec": "h264, 12-16 Mb/s, yuv420p",
+    "boucle": "La dernière image reprend la première : la vidéo tourne sans raccord visible."
+  },
+
+  "langage_de_mouvement": {
+    "source": "Mesuré image par image sur la référence fournie (265 images, 30 i/s). Voir BAOBABS-MOTION-brief.json pour l'analyse complète.",
+    "durees_ms": {
+      "eclosion": 870,
+      "ecrasement": 100,
+      "etirement": 130,
+      "derive_camera": 300,
+      "impact_camera": 16,
+      "detente_camera": 470,
+      "fouette": 200,
+      "revelation_bloc": 260,
+      "decalage_entre_elements": 100,
+      "machine_a_ecrire_par_caractere": 45
+    },
+    "courbes": {
+      "eclosion": "cubic-bezier(.16,.84,.44,1)",
+      "detente": "cubic-bezier(.16,1,.3,1)",
+      "fouette": "cubic-bezier(.7,0,.84,0)",
+      "entree": "cubic-bezier(.22,1,.36,1)"
+    },
+    "regles_non_negociables": [
+      "L'impact caméra dure UNE image. Pas d'interpolation vers le pic : saut sec puis détente de 470 ms. C'est ce détail qui donne la sensation de qualité.",
+      "Le dépassement est de 30 à 35 % au-dessus de la valeur de repos, sans rebond. Pas de ressort oscillant.",
+      "Aucune coupe franche : chaque changement de scène passe par un fouetté de 200 ms avec flou directionnel horizontal.",
+      "Le fond n'est jamais noir pur. Dégradé radial chaud, #010301 aux angles vers #0A1A08 au centre, qui s'intensifie sur chaque impact.",
+      "Une seule chose bouge vraiment à la fois. Le reste accompagne.",
+      "Toute série d'éléments entre en cascade, 100 ms entre voisins."
+    ]
+  },
+
+  "identite": {
+    "accent_principal": "#C6A257",
+    "accent_secondaire": "#7DFF4F",
+    "usage": "L'or #C6A257 porte le site et l'administration — c'est la couleur du blason. Le vert #7DFF4F n'apparaît qu'à l'arrivée du Studio, et ce basculement de couleur EST le marqueur de scène : on change de logiciel, on change de lumière.",
+    "vert_blason": "#1E5B3A",
+    "fond": "#050604",
+    "texte": "#FFFFFF",
+    "polices": {
+      "affiche": "Anton, Bebas Neue",
+      "titres": "Archivo 800-900",
+      "texte": "Inter",
+      "chiffres": "JetBrains Mono",
+      "note": "Ces polices sont déjà celles du projet. Aucune police extérieure."
+    }
+  },
+
+  "captures_a_realiser": {
+    "methode": "Serveur local, navigateur à 1920x1080, DPR 2. Enregistrer en vidéo (60 i/s) les séquences marquées « film », capturer en PNG les états marqués « fixe ».",
+    "commande_serveur": "python -m http.server 8899",
+    "liste": [
+      { "id": "C01", "type": "fixe", "url": "/index.html", "etat": "haut de page, en-tête complet" },
+      { "id": "C02", "type": "film", "url": "/index.html", "action": "défilement lent du haut vers la section Effectif, 6 s" },
+      { "id": "C03", "type": "fixe", "url": "/index.html", "etat": "section Prochain match" },
+      { "id": "C04", "type": "fixe", "url": "/index.html", "etat": "grille de l'effectif" },
+      { "id": "C05", "type": "fixe", "url": "/admin-matchs.html", "etat": "tableau de bord, barre latérale visible, bouton Studio vert bien lisible" },
+      { "id": "C06", "type": "film", "url": "/admin-matchs.html", "action": "passage d'un écran à l'autre dans la barre latérale, 4 s" },
+      { "id": "C07", "type": "fixe", "url": "/admin-matchs.html", "etat": "écran Matchs, tableau rempli" },
+      { "id": "C08", "type": "film", "url": "/admin-matchs.html", "action": "clic sur le bouton Studio, ouverture de la surcouche, 2 s" },
+      { "id": "C09", "type": "fixe", "url": "studio", "etat": "écran d'accueil, grille des 43 modèles" },
+      { "id": "C10", "type": "film", "url": "studio", "action": "clic sur un modèle, entrée dans l'atelier, 3 s" },
+      { "id": "C11", "type": "fixe", "url": "studio", "etat": "atelier complet : barre de menus, outils, affiche, panneau de calques" },
+      { "id": "C12", "type": "film", "url": "studio", "action": "DÉTOURAGE — sélection d'une photo, outil baguette magique, clic sur le fond, le fond disparaît. 5 s. C'EST LE PLAN LE PLUS IMPORTANT DE LA VIDÉO." },
+      { "id": "C13", "type": "film", "url": "studio", "action": "sélection de trois lettres dans un titre, changement de leur couleur seule, 4 s" },
+      { "id": "C14", "type": "film", "url": "studio", "action": "glisser un calque dans la pile, l'affiche change, 3 s" },
+      { "id": "C15", "type": "film", "url": "studio", "action": "ouverture d'un menu, survol d'une entrée grisée qui affiche sa raison, 3 s" },
+      { "id": "C16", "type": "fixe", "url": "studio", "etat": "fenêtre d'export ouverte, définitions ×1 à ×4" },
+      { "id": "C17", "type": "fixe", "source": "media/img/BBC_-_COLORED_LOGO_jjcrux.webp", "etat": "blason du club, fond transparent" },
+      { "id": "C18", "type": "fixe", "source": "affiches produites par le Studio", "etat": "6 à 8 affiches exportées, formats variés", "note": "Les produire réellement avec le Studio avant le tournage. Ce sont elles qui prouvent que l'outil sert." }
+    ]
+  },
+
+  "storyboard": [
+    {
+      "plan": 1,
+      "t": "0,0 - 2,2",
+      "titre": "L'étincelle",
+      "image": "Noir chaud. Une étincelle verticale fine, or, naît au centre.",
+      "mouvement": "L'étincelle éclôt en blason (870 ms, courbe eclosion, ×2,7). Le blason tourne de 8° pendant l'éclosion. Halo or qui s'étale jusqu'à 60 % du cadre.",
+      "assets": ["C17"],
+      "texte": null,
+      "son": "Un souffle grave qui monte, une frappe sèche à l'éclosion."
+    },
+    {
+      "plan": 2,
+      "t": "2,2 - 3,4",
+      "titre": "Le nom",
+      "image": "Le blason s'écrase en un trait horizontal, le nom en jaillit.",
+      "mouvement": "Écrasement 100 ms, étirement 130 ms. Puis « BAOBABS BASKET CLUB » en Anton, lettres qui se posent en cascade de 40 ms. Le blason se replace à gauche du texte.",
+      "texte": { "contenu": "BAOBABS BASKET CLUB", "police": "Anton", "traitement": "capitales, lueur or douce" },
+      "son": "Impact court, réverbération."
+    },
+    {
+      "plan": 3,
+      "t": "3,4 - 3,8",
+      "titre": "Fouetté",
+      "mouvement": "Flou directionnel horizontal, 200 ms, le nom s'efface vers la gauche."
+    },
+    {
+      "plan": 4,
+      "t": "3,8 - 8,5",
+      "titre": "LE SITE",
+      "image": "La page d'accueil arrive en perspective légère (rotation Y de 12°, se redressant à 0°).",
+      "mouvement": "Dérive 300 ms → IMPACT une image à ×1,35 → détente 470 ms à ×1,0. Puis défilement de la page, 4 s, avec un léger flou de mouvement vertical. Les cartes de l'effectif entrent en cascade de 100 ms au passage.",
+      "assets": ["C01", "C02", "C03", "C04"],
+      "texte": { "contenu": "LE SITE", "position": "coin haut gauche", "police": "Archivo 900", "traitement": "petit, capitales, interlettrage 0,18em, or" },
+      "surtitre": "Site public · 8 sections · données en direct"
+    },
+    {
+      "plan": 5,
+      "t": "8,5 - 8,9",
+      "titre": "Fouetté",
+      "mouvement": "Flou directionnel, la page part vers la gauche."
+    },
+    {
+      "plan": 6,
+      "t": "8,9 - 14,5",
+      "titre": "L'ADMINISTRATION",
+      "image": "Le tableau de bord arrive. Vue de trois-quarts, se redressant.",
+      "mouvement": "Même schéma dérive-impact-détente. Puis passage d'un écran à l'autre : chaque changement d'écran est marqué par un micro-fouetté de 120 ms. Les lignes des tableaux se remplissent en cascade.",
+      "assets": ["C05", "C06", "C07"],
+      "texte": { "contenu": "L'ADMINISTRATION", "surtitre": "43 écrans · Supabase · sécurité par rôles" },
+      "detail_obligatoire": "Terminer le plan sur le bouton Studio vert qui pulse, isolé par un halo qui assombrit le reste. C'est la charnière vers la scène suivante."
+    },
+    {
+      "plan": 7,
+      "t": "14,5 - 15,2",
+      "titre": "Bascule de lumière",
+      "mouvement": "Clic sur le bouton Studio. La surcouche s'ouvre. TOUTE LA LUMIÈRE DE LA VIDÉO PASSE DE L'OR AU VERT en 400 ms : le halo de fond, les accents, le grain.",
+      "assets": ["C08"],
+      "note": "C'est le moment fort de la vidéo. Ne pas le presser."
+    },
+    {
+      "plan": 8,
+      "t": "15,2 - 20,0",
+      "titre": "LE STUDIO",
+      "image": "L'écran d'accueil du Studio, grille de modèles.",
+      "mouvement": "Les 43 vignettes entrent en cascade de 40 ms, par vagues diagonales. Puis clic sur un modèle, entrée dans l'atelier avec un fouetté.",
+      "assets": ["C09", "C10", "C11"],
+      "texte": { "contenu": "BAOBABS STUDIO", "surtitre": "43 modèles · 15 polices · moteur canvas maison" }
+    },
+    {
+      "plan": 9,
+      "t": "20,0 - 25,0",
+      "titre": "LE DÉTOURAGE",
+      "image": "Gros plan sur le Studio, une photo sélectionnée.",
+      "mouvement": "Zoom sur l'outil baguette magique. Le curseur clique le fond. Le fond disparaît en 400 ms avec un balayage. Ralenti à 50 % sur la disparition. Puis Ctrl+Z : le fond revient. Puis re-clic : il repart.",
+      "assets": ["C12"],
+      "texte": { "contenu": "DÉTOURAGE NON DESTRUCTIF", "traitement": "s'écrit à la machine, 45 ms par caractère" },
+      "note": "Le aller-retour annuler/refaire prouve que rien n'est perdu. C'est l'argument technique le plus fort."
+    },
+    {
+      "plan": 10,
+      "t": "25,0 - 28,5",
+      "titre": "LA LETTRE",
+      "image": "Gros plan sur un titre dans l'affiche.",
+      "mouvement": "Trois lettres se surlignent. La barre de typographie apparaît au-dessus. Clic sur une pastille verte. Les trois lettres seules changent de couleur. Zoom encore, jusqu'à ce qu'une seule lettre remplisse le cadre.",
+      "assets": ["C13"],
+      "texte": { "contenu": "UNE LETTRE À LA FOIS" }
+    },
+    {
+      "plan": 11,
+      "t": "28,5 - 31,5",
+      "titre": "CE QUI SORT",
+      "image": "Les affiches produites par le Studio défilent, en grille 3x3 puis en mur.",
+      "mouvement": "Chaque affiche entre avec un impact d'une image, décalage de 80 ms. Le mur recule ensuite jusqu'à tenir dans le cadre.",
+      "assets": ["C18"],
+      "texte": { "contenu": "8 AFFICHES · 12 MINUTES", "note": "Remplacer par le chiffre réel." }
+    },
+    {
+      "plan": 12,
+      "t": "31,5 - 34,0",
+      "titre": "Retour",
+      "image": "Tout se dissout dans le flou. Le blason revient, seul, sur fond noir chaud.",
+      "mouvement": "Le blason tourne lentement, respire. Puis glisse à gauche pendant que la signature s'écrit lettre par lettre.",
+      "texte": { "contenu": "MDG DESIGN", "sous_texte": "site · administration · studio", "traitement": "machine à écrire, 45 ms" },
+      "son": "Retour du souffle grave, coupure nette sur la dernière image."
+    }
+  ],
+
+  "production": {
+    "voie_recommandee": {
+      "nom": "Capture réelle + After Effects",
+      "etapes": [
+        "Lancer le serveur local et capturer la liste ci-dessus.",
+        "Importer dans After Effects, composition 1920x1080 à 60 i/s.",
+        "Chaque écran est un calque 3D dans une caméra unique — c'est la caméra qui bouge, pas les calques. C'est ce qui donne la cohérence spatiale de la référence.",
+        "Les fouettés se font par CC Force Motion Blur ou ReelSmart, pas par flou gaussien.",
+        "Le grain et le halo en calques de réglage au-dessus de tout."
+      ],
+      "expressions_utiles": {
+        "impact_une_image": "s = 100; if (time >= tImpact && time < tImpact + thisComp.frameDuration) s = 135; else if (time >= tImpact) s = linear(easeOut(time, tImpact, tImpact+0.47), 135, 100); [s,s]",
+        "respiration": "amp=1.5; freq=0.4; s=100+amp*Math.sin(time*freq*Math.PI*2); [s,s]"
+      }
+    },
+    "voie_sans_after_effects": {
+      "nom": "Tout en HTML/CSS, capturé à l'écran",
+      "etapes": [
+        "Construire une page de showreel qui enchaîne les captures avec l'API Web Animations.",
+        "Enregistrer la page en 1920x1080 à 60 i/s.",
+        "Monter le son par-dessus avec ffmpeg."
+      ],
+      "avantage": "Aucun logiciel à acheter, et les courbes sont exactement celles du brief.",
+      "limite": "Pas de vrai flou de mouvement : le fouetté sera un filtre SVG directionnel, moins riche."
+    },
+    "voie_ia": {
+      "nom": "Générateur vidéo",
+      "usage_admis": ["fonds abstraits", "particules", "textures de grain", "transitions organiques"],
+      "usage_interdit": ["tout écran d'interface", "tout texte lisible", "le blason"],
+      "raison": "Un modèle vidéo hallucine les interfaces et les textes. La vidéo servant à prouver une réalisation, un écran inventé la disqualifie."
+    }
+  },
+
+  "son": {
+    "direction": "Une nappe grave continue, des impacts secs synchronisés sur chaque saut de caméra, des clics discrets sur les interactions d'interface.",
+    "synchronisation": "Chaque impact d'une image DOIT porter un son. C'est la moitié de l'effet.",
+    "sources_libres": ["freesound.org", "pixabay.com/sound-effects"],
+    "note": "Pas de musique avec paroles. Pas de voix off."
+  },
+
+  "textes_a_l_ecran": {
+    "regle": "Tout est en capitales, Archivo 900, interlettrage large, petit corps. Le texte ne raconte pas, il étiquette.",
+    "liste": [
+      "BAOBABS BASKET CLUB",
+      "LE SITE",
+      "L'ADMINISTRATION",
+      "BAOBABS STUDIO",
+      "DÉTOURAGE NON DESTRUCTIF",
+      "UNE LETTRE À LA FOIS",
+      "MDG DESIGN"
+    ],
+    "chiffres_verifies_dans_le_depot": {
+      "ecrans_admin": 43,
+      "modeles_studio": 43,
+      "polices": 15,
+      "formats_export": 19,
+      "note": "Ne pas gonfler ces chiffres. Ils sont vérifiables dans le dépôt et c'est leur exactitude qui donne du poids."
+    }
+  },
+
+  "livrables": [
+    "showreel_16-9_1920x1080.mp4",
+    "showreel_9-16_1080x1920.mp4",
+    "vignette_16-9.jpg — image fixe du plan 9, le détourage",
+    "boucle_courte_6s.mp4 — plans 1, 2 et 9 seulement, pour les stories"
+  ],
+
+  "criteres_de_reception": [
+    "Aucun écran d'interface généré : tout provient de captures du dépôt.",
+    "Chaque saut de caméra dure exactement une image, vérifiable en avançant image par image.",
+    "La bascule or → vert au plan 7 est nette et lisible.",
+    "Le plan du détourage montre l'aller-retour annuler/refaire.",
+    "Les chiffres affichés correspondent au dépôt.",
+    "La dernière image se raccorde à la première.",
+    "Aucun texte illisible à 100 % de zoom sur téléphone."
+  ]
+}
