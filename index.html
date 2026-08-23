@@ -687,20 +687,46 @@
   .bb-gal-i:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
   @media(max-width:520px){ .bb-gal{grid-template-columns:repeat(2,1fr)} .bb-gal-i:first-child{grid-column:span 2;grid-row:auto;aspect-ratio:9/16} }
 
+  /* --- journée de détection : le film et les photos --- */
+  .bb-det{display:grid;gap:clamp(14px,2.4vw,22px)}
+  @media(min-width:900px){ .bb-det{grid-template-columns:minmax(260px,320px) 1fr;align-items:start} }
+  .bb-det-photos{min-width:0}
+  .bb-gal-glisse,.bb-glisse{display:none;margin:10px 0 0;font-family:'Inter',sans-serif;font-size:12px;
+    letter-spacing:.04em;color:#7E8A82}
+  @media(max-width:899px){ .bb-glisse{display:block} }
+
+
+  /* commandes de lecture, communes aux deux vidéos */
+  .bb-vplay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;
+    width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    background:rgba(5,14,9,.62);border:1px solid rgba(243,239,230,.28);color:#F3EFE6;cursor:pointer;
+    transition:transform .2s ease,opacity .25s ease,background .2s ease}
+  .bb-vplay:hover{background:rgba(168,217,59,.34);transform:translate(-50%,-50%) scale(1.07)}
+  .bb-vplay .bb-vplay-pause{display:none}
+  .bb-vplay.is-lecture{opacity:0}
+  .bb-detvid:hover .bb-vplay.is-lecture,.bb-ps-player:hover .bb-vplay.is-lecture{opacity:1}
+  .bb-vplay.is-lecture .bb-vplay-lire{display:none}
+  .bb-vplay.is-lecture .bb-vplay-pause{display:block}
+
+  .bb-vson{position:absolute;right:10px;top:10px;z-index:3;display:inline-flex;align-items:center;gap:6px;
+    padding:7px 11px;border-radius:99px;background:rgba(5,14,9,.72);border:1px solid rgba(243,239,230,.22);
+    color:#F3EFE6;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.06em;cursor:pointer}
+  .bb-vson:hover{background:rgba(168,217,59,.3)}
+  .bb-vson .bb-vson-on{display:none}
+  .bb-vson:not(.is-muet) .bb-vson-on{display:block}
+  .bb-vson:not(.is-muet) .bb-vson-off{display:none}
+  @media(prefers-reduced-motion:reduce){ .bb-vplay{transition:none} }
+
   /* résumé filmé de la détection */
   .bb-detvid{position:relative;width:100%;max-width:420px;margin:0 auto clamp(14px,2vw,20px);
     aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#07130D;
     border:1px solid rgba(198,162,87,.28);box-shadow:0 24px 60px rgba(0,0,0,.5);cursor:pointer}
   .bb-detvid video,.bb-detvid img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
     transition:opacity .5s ease}
-  .bb-detvid-son{position:absolute;right:10px;top:10px;z-index:2;display:inline-flex;align-items:center;gap:6px;
-    padding:7px 11px;border-radius:99px;background:rgba(5,14,9,.72);border:1px solid rgba(243,239,230,.22);
-    color:#F3EFE6;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.06em;cursor:pointer}
-  .bb-detvid-son:hover{background:rgba(168,217,59,.3)}
   .bb-detvid-lab{position:absolute;left:10px;bottom:10px;z-index:2;font-family:'Inter',sans-serif;
     font-weight:700;font-size:10.5px;letter-spacing:.08em;color:#F3EFE6;background:rgba(5,14,9,.74);
     border-radius:5px;padding:4px 8px}
-  @media(min-width:900px){ .bb-detvid{float:left;max-width:300px;margin:0 clamp(14px,2vw,20px) 12px 0} }
+  @media(min-width:900px){ .bb-detvid{position:sticky;top:92px;max-width:none;margin:0} }
 
   /* visionneuse */
   .bb-lb{position:fixed;inset:0;z-index:220;display:none;align-items:center;justify-content:center;
@@ -920,11 +946,41 @@
      des cartes venaient se placer : réduites à une largeur nulle, elles
      laissaient dépasser leur face arrière hors de l'écran. On fixe donc
      le nombre de colonnes par palier. */
-  .bb-eff{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .bb-eff{display:grid;gap:16px;grid-template-columns:repeat(4,minmax(0,1fr))}
+  #bb-home-products{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
   .bb-eff>*{min-width:0}
   @media (max-width:1200px){.bb-eff{grid-template-columns:repeat(3,minmax(0,1fr))}}
   @media (max-width:900px){.bb-eff{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media (max-width:560px){.bb-eff{grid-template-columns:minmax(0,1fr)}}
+  /* LES RUBANS
+     Sur téléphone, une grille à une colonne devient un escalier : douze
+     photos faisaient six écrans, neuf joueuses en faisaient quatre. On
+     ne raccourcit pas la liste — on la couche. Le doigt parcourt de
+     gauche à droite, et la coupe de la tuile suivante dit qu'il y a une
+     suite, ce qu'une pile ne dit jamais.
+
+     Une seule règle pour les trois listes : trois copies auraient
+     divergé à la première retouche. */
+  @media(max-width:899px){
+    .bb-gal,.bb-eff,#bb-home-products{
+      display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;
+      -webkit-overflow-scrolling:touch;scrollbar-width:none;
+      padding-bottom:2px;scroll-padding-left:2px}
+    .bb-gal::-webkit-scrollbar,.bb-eff::-webkit-scrollbar,
+    #bb-home-products::-webkit-scrollbar{display:none}
+    .bb-gal>*,.bb-eff>*,#bb-home-products>*{scroll-snap-align:center;flex:0 0 auto}
+
+    .bb-gal-i{flex:0 0 64%;aspect-ratio:3/4}
+    .bb-gal-i:first-child{grid-column:auto;grid-row:auto;aspect-ratio:3/4;flex:0 0 64%}
+    .bb-gal-glisse{display:block}
+    .bb-detvid{max-width:none}
+
+    /* les joueuses et les produits gardent leur carte entière : on ne
+       les rogne pas, on en montre simplement une et un bout */
+    .bb-eff>*{flex:0 0 74%}
+    #bb-home-products>*{flex:0 0 74%}
+  }
+
   @media (max-width:400px){
     /* Sur les plus petits écrans, le compte passe dans le menu :
        on garde panier + menu, les deux gestes réellement utilisés. */
@@ -1332,8 +1388,14 @@
           <div class="bb-ps-grid">
             <div class="bb-ps-player" id="bb-ps-player" role="button" tabindex="0" aria-label="Lire la vidéo de la pré-saison">
               <img id="bb-ps-poster" src="/media/video/presaison-2026-2027-poster.webp" alt="Pré-saison 2026–2027 des Baobabs Basket Club" width="810" height="1440" loading="lazy" decoding="async">
-              <button type="button" class="bb-ps-play" aria-label="Lire la vidéo">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
+              <button type="button" class="bb-vplay" aria-label="Lire la vidéo">
+                <svg class="bb-vplay-lire" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+                <svg class="bb-vplay-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z"/></svg>
+              </button>
+              <button type="button" class="bb-vson is-muet" aria-label="Activer le son">
+                <svg class="bb-vson-off" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+                <svg class="bb-vson-on" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+                <span>Son</span>
               </button>
               <span class="bb-ps-dur" id="bb-ps-dur">0:17</span>
             </div>
@@ -1386,18 +1448,29 @@
           <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(28px,4vw,44px);color:#F3EFE6;margin:8px 0 0">La journée de détection</h2>
           <p style="max-width:56ch;font-size:15px;line-height:1.65;color:#C7CFC8;margin:10px 0 0;text-wrap:pretty">Deux jours, un terrain, et tous ceux qui sont venus tenter leur chance. Voilà à quoi ça ressemblait.</p>
         </div>
-        <!-- Le résumé filmé ouvre la galerie : il se lit tout seul en
-             arrivant à l'écran, muet et en boucle. Le son se demande. -->
-        <div class="bb-detvid" id="bb-detvid" aria-label="Résumé filmé de la journée de détection">
-          <img src="/media/video/detection-2026-07-poster.webp" alt="Le terrain des Baobabs pendant la journée de détection" width="810" height="1440" loading="lazy" decoding="async">
-          <button type="button" class="bb-detvid-son" id="bb-detvid-son" aria-label="Activer le son">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
-            <span>Son</span>
-          </button>
-          <span class="bb-detvid-lab">Le résumé · 0:38</span>
-        </div>
+        <!-- Le film à gauche, les photos à droite. Sur téléphone la
+             pile devient un ruban qu'on fait défiler du doigt : douze
+             photos empilées, c'était six écrans de défilement. -->
+        <div class="bb-det">
+          <div class="bb-detvid" id="bb-detvid" role="button" tabindex="0" aria-label="Résumé filmé de la journée de détection">
+            <img src="/media/video/detection-2026-07-poster.webp" alt="Le terrain des Baobabs pendant la journée de détection" width="810" height="1440" loading="lazy" decoding="async">
+            <button type="button" class="bb-vplay is-muet" aria-label="Lire la vidéo">
+              <svg class="bb-vplay-lire" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+              <svg class="bb-vplay-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z"/></svg>
+            </button>
+            <button type="button" class="bb-vson is-muet" aria-label="Activer le son">
+              <svg class="bb-vson-off" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+              <svg class="bb-vson-on" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+              <span>Son</span>
+            </button>
+            <span class="bb-detvid-lab">Le résumé · 0:38</span>
+          </div>
 
-        <div class="bb-gal" id="bb-gal"></div>
+          <div class="bb-det-photos">
+            <div class="bb-gal" id="bb-gal"></div>
+            <p class="bb-gal-glisse">Faites glisser pour voir les autres photos →</p>
+          </div>
+        </div>
       </section>
 
       <section id="bb-actus" class="bb-hide" style="padding:clamp(40px,6vw,72px) 0 0">
@@ -1414,7 +1487,8 @@
           <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,2.8vw,30px);letter-spacing:-.01em;color:#F3EFE6;margin:0">L'effectif</h2>
           <a href="#" style="display:inline-flex;align-items:center;gap:5px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;letter-spacing:.06em;color:#C6A257">Tout l'effectif <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
         </div>
-        <div id="bb-effectif" class="bb-eff" style="position:relative;z-index:1;display:grid;gap:16px"></div>
+        <div id="bb-effectif" class="bb-eff" style="position:relative;z-index:1"></div>
+          <p class="bb-glisse">Faites glisser pour voir la suite →</p>
       </section>
 
       <!-- ===== MÉDIAS ===== -->
@@ -1466,7 +1540,7 @@
           </div>
           <a id="bb-shop-link" href="#" data-nav="boutique" style="display:inline-flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;letter-spacing:.04em;color:#C6A257">Tout voir <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
         </div>
-        <div id="bb-home-products" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px"></div>
+        <div id="bb-home-products"></div>
         <div style="display:flex;justify-content:center;margin-top:clamp(20px,2.6vw,28px)">
           <a id="bb-shop-cta" href="#" data-nav="boutique" style="display:inline-flex;align-items:center;gap:9px;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;padding:15px 28px;border-radius:10px;border:1px solid rgba(198,162,87,.45);color:#C6A257;text-decoration:none">Voir toute la boutique <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
         </div>
@@ -1740,7 +1814,7 @@
           <button type="button" data-g="F" style="font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.04em;padding:8px 16px;border-radius:20px;border:1px solid rgba(243,239,230,.2);background:transparent;color:#C7CFC8;cursor:pointer;min-height:38px">Filles</button>
           <button type="button" data-g="M" style="font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.04em;padding:8px 16px;border-radius:20px;border:1px solid rgba(243,239,230,.2);background:transparent;color:#C7CFC8;cursor:pointer;min-height:38px">Garçons</button>
         </div>
-        <div id="bb-effectif-equipes" class="bb-eff" style="position:relative;z-index:1;display:grid;gap:16px"></div>
+        <div id="bb-effectif-equipes" class="bb-eff" style="position:relative;z-index:1"></div>
       </div>
       <div>
         <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(22px,2.6vw,28px);color:#F3EFE6;margin:0 0 18px">Catégories de formation</h3>
@@ -5721,24 +5795,44 @@ window.bbCloud = function(url, w){
     bbPsCdTimer = setInterval(peindre, 30000);
   }
 
-  /* Lecture sur place d'une vidéo dans son cadre.
-     `conteneur` doit contenir une <img> d'affiche : elle sert de repli
-     tant que le fichier n'est pas là, puis s'efface. */
-  function bbVideoSurPlace(conteneur, donneUrl){
-    if (!conteneur) return;
-    var demarree = false, v = null;
+  /* Lecture d'une vidéo dans son cadre, commandée au doigt.
+     Elle ne part JAMAIS seule : une vidéo qui se lance sans qu'on l'ait
+     demandée consomme le forfait de quelqu'un et l'interrompt.
+     On appuie pour lancer, on appuie pour mettre en pause, et le son
+     se demande à part.
 
-    /* Quelqu'un qui a demandé moins d'animations ne veut pas d'une vidéo
-       qui part toute seule. On lui laisse l'affiche et un bouton. */
-    var sobre = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+     `conteneur` porte une <img> d'affiche — elle reste visible tant
+     qu'on n'a rien demandé, et c'est elle qui donne son poids réel à
+     la page : rien d'autre n'est téléchargé avant le premier appui. */
+  function bbVideoInline(conteneur, donneUrl){
+    if (!conteneur) return null;
+    var v = null;
+    var btnLire = conteneur.querySelector('.bb-vplay');
+    var btnSon  = conteneur.querySelector('.bb-vson');
 
-    function poser(){
-      if (demarree) return;
+    function majBoutons(){
+      var lit = v && !v.paused;
+      if (btnLire){
+        btnLire.classList.toggle('is-lecture', !!lit);
+        btnLire.setAttribute('aria-label', lit ? 'Mettre en pause' : 'Lire la vidéo');
+      }
+      if (btnSon){
+        var muet = !v || v.muted;
+        btnSon.classList.toggle('is-muet', muet);
+        btnSon.setAttribute('aria-label', muet ? 'Activer le son' : 'Couper le son');
+        var t = btnSon.querySelector('span');
+        if (t) t.textContent = muet ? 'Son' : 'Muet';
+      }
+    }
+
+    function creer(){
+      if (v) return v;
       var src = bbSafeMedia(donneUrl());
-      if (!src) return;
-      demarree = true;
+      if (!src) return null;
       v = document.createElement('video');
-      v.muted = true; v.loop = true; v.playsInline = true;
+      /* muet au départ : c'est la seule façon dont un navigateur
+         accepte de lancer sans geste explicite sur le son */
+      v.muted = true; v.loop = true; v.playsInline = true; v.controls = false;
       v.setAttribute('playsinline',''); v.setAttribute('muted','');
       v.preload = 'auto';
       v.setAttribute('aria-label', conteneur.getAttribute('aria-label') || 'Vidéo');
@@ -5746,50 +5840,45 @@ window.bbCloud = function(url, w){
       if (aff && aff.getAttribute('src')) v.poster = aff.getAttribute('src');
       v.src = src;
       conteneur.insertBefore(v, conteneur.firstChild);
-      v.addEventListener('playing', function(){
-        if (aff) aff.style.opacity = '0';
-        var pl = conteneur.querySelector('.bb-ps-play');
-        if (pl) pl.style.opacity = '0';
-      }, { once:true });
-      var p = v.play(); if (p && p.catch) p.catch(function(){ demarree = false; });
+      v.addEventListener('playing', function(){ if (aff) aff.style.opacity = '0'; });
+      v.addEventListener('play',  majBoutons);
+      v.addEventListener('pause', majBoutons);
+      return v;
     }
 
-    /* Le clic passe AVANT l'observateur, et vaut dans tous les cas.
-       L'arrivée à l'écran est un confort ; le clic est la garantie.
-       Un onglet en arrière-plan, un économiseur de batterie ou un
-       navigateur qui suspend IntersectionObserver ne doivent pas
-       aboutir à une vignette qui ne répond à rien. */
+    function basculer(){
+      var el = creer();
+      if (!el) return;
+      if (el.paused){ var p = el.play(); if (p && p.catch) p.catch(function(){}); }
+      else el.pause();
+      majBoutons();
+    }
+
     conteneur.addEventListener('click', function(e){
-      if (e.target.closest('button')) return;
-      if (!demarree) { poser(); return; }
-      if (!v) return;
-      if (v.paused) { var p = v.play(); if (p && p.catch) p.catch(function(){}); }
-      else v.pause();
+      if (e.target.closest('.bb-vson')) return;   /* le son a son propre bouton */
+      basculer();
     });
     conteneur.addEventListener('keydown', function(e){
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
-      if (!demarree) { poser(); return; }
-      if (v) { if (v.paused) { var p = v.play(); if (p && p.catch) p.catch(function(){}); } else v.pause(); }
+      basculer();
     });
 
-    /* Départ automatique : seulement si l'utilisateur n'a pas demandé
-       moins d'animations, et seulement quand le navigateur sait dire
-       ce qui est à l'écran. */
-    if (sobre || !('IntersectionObserver' in window)) return;
+    if (btnSon) btnSon.addEventListener('click', function(e){
+      e.stopPropagation();
+      var el = creer();
+      if (!el) return;
+      el.muted = !el.muted;
+      /* demander le son, c'est vouloir regarder : on lance si besoin */
+      if (el.paused){ var p = el.play(); if (p && p.catch) p.catch(function(){}); }
+      majBoutons();
+    });
 
-    var obs = new IntersectionObserver(function(entrees){
-      entrees.forEach(function(e){
-        if (e.isIntersecting) {
-          poser();
-          if (v && v.paused) { var q = v.play(); if (q && q.catch) q.catch(function(){}); }
-        } else if (v && !v.paused) v.pause();
-      });
-    }, { threshold: 0.35 });
-    obs.observe(conteneur);
+    majBoutons();
+    return { lire: basculer };
   }
 
-  window.bbVideoSurPlace = bbVideoSurPlace;
+  window.bbVideoInline = bbVideoInline;
 
   function bbOpenVideo(url){
     var m = document.getElementById('bb-vid-modal'), v = document.getElementById('bb-vid-el');
@@ -6122,17 +6211,17 @@ window.bbCloud = function(url, w){
     //     verra jamais ;
     //   — mise en pause dès qu'elle sort du champ, pour ne pas faire tourner
     //     un décodeur dans le vide et vider la batterie.
-    bbVideoSurPlace(document.getElementById('bb-ps-player'), function(){ return bbPsVideoUrl; });
+    bbVideoInline(document.getElementById('bb-ps-player'), function(){ return bbPsVideoUrl; });
 
+    /* Le bouton sous le texte lance la vidéo avec le son : c'est ce
+       qu'on attend d'un « Regarder », par opposition au cadre lui-même
+       qui lance en silence. */
     var watch = document.getElementById('bb-ps-watch');
     if (watch) watch.addEventListener('click', function(){
-      var v = document.querySelector('#bb-ps-player video');
-      if (!v) return;
-      v.muted = false;
-      var p = v.play(); if (p && p.catch) p.catch(function(){});
-      var pl = document.querySelector('#bb-ps-player .bb-ps-play');
-      if (pl) pl.style.display = 'none';
-      watch.querySelector('span') && (watch.querySelector('span').textContent = 'Son activé');
+      var cadre = document.getElementById('bb-ps-player');
+      var son = cadre && cadre.querySelector('.bb-vson');
+      if (son) son.click();
+      if (cadre) cadre.scrollIntoView({ behavior:'smooth', block:'center' });
     });
 
     // La modale vidéo est écrite tout en bas de la page, après ce script :
@@ -6580,22 +6669,12 @@ window.bbCloud = function(url, w){
   var grille = document.getElementById('bb-gal');
   if (!grille) return;
 
-  /* le résumé filmé, lu sur place comme celui de la pré-saison */
-  if (window.bbVideoSurPlace) {
-    window.bbVideoSurPlace(document.getElementById('bb-detvid'), function(){
+  /* le résumé filmé, commandé au doigt comme celui de la pré-saison */
+  if (window.bbVideoInline) {
+    window.bbVideoInline(document.getElementById('bb-detvid'), function(){
       return '/media/video/detection-2026-07.mp4';
     });
   }
-  var son = document.getElementById('bb-detvid-son');
-  if (son) son.addEventListener('click', function(e){
-    e.stopPropagation();
-    var v = document.querySelector('#bb-detvid video');
-    if (!v) return;
-    v.muted = !v.muted;
-    son.querySelector('span').textContent = v.muted ? 'Son' : 'Muet';
-    son.setAttribute('aria-label', v.muted ? 'Activer le son' : 'Couper le son');
-    if (v.paused) { var p = v.play(); if (p && p.catch) p.catch(function(){}); }
-  });
 
   grille.innerHTML = PHOTOS.map(function(p, i){
     return '<button type="button" class="bb-gal-i" data-i="' + i + '" aria-label="Agrandir : ' + p.t.replace(/"/g,'&quot;') + '">' +
