@@ -687,6 +687,21 @@
   .bb-gal-i:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
   @media(max-width:520px){ .bb-gal{grid-template-columns:repeat(2,1fr)} .bb-gal-i:first-child{grid-column:span 2;grid-row:auto;aspect-ratio:9/16} }
 
+  /* résumé filmé de la détection */
+  .bb-detvid{position:relative;width:100%;max-width:420px;margin:0 auto clamp(14px,2vw,20px);
+    aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#07130D;
+    border:1px solid rgba(198,162,87,.28);box-shadow:0 24px 60px rgba(0,0,0,.5);cursor:pointer}
+  .bb-detvid video,.bb-detvid img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    transition:opacity .5s ease}
+  .bb-detvid-son{position:absolute;right:10px;top:10px;z-index:2;display:inline-flex;align-items:center;gap:6px;
+    padding:7px 11px;border-radius:99px;background:rgba(5,14,9,.72);border:1px solid rgba(243,239,230,.22);
+    color:#F3EFE6;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.06em;cursor:pointer}
+  .bb-detvid-son:hover{background:rgba(168,217,59,.3)}
+  .bb-detvid-lab{position:absolute;left:10px;bottom:10px;z-index:2;font-family:'Inter',sans-serif;
+    font-weight:700;font-size:10.5px;letter-spacing:.08em;color:#F3EFE6;background:rgba(5,14,9,.74);
+    border-radius:5px;padding:4px 8px}
+  @media(min-width:900px){ .bb-detvid{float:left;max-width:300px;margin:0 clamp(14px,2vw,20px) 12px 0} }
+
   /* visionneuse */
   .bb-lb{position:fixed;inset:0;z-index:220;display:none;align-items:center;justify-content:center;
     background:rgba(4,10,7,.95);padding:clamp(12px,3vw,32px)}
@@ -1320,7 +1335,7 @@
               <button type="button" class="bb-ps-play" aria-label="Lire la vidéo">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>
               </button>
-              <span class="bb-ps-dur" id="bb-ps-dur">0:38</span>
+              <span class="bb-ps-dur" id="bb-ps-dur">0:17</span>
             </div>
 
             <div style="display:flex;flex-direction:column;gap:clamp(14px,2vw,20px);min-width:0">
@@ -1371,6 +1386,17 @@
           <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(28px,4vw,44px);color:#F3EFE6;margin:8px 0 0">La journée de détection</h2>
           <p style="max-width:56ch;font-size:15px;line-height:1.65;color:#C7CFC8;margin:10px 0 0;text-wrap:pretty">Deux jours, un terrain, et tous ceux qui sont venus tenter leur chance. Voilà à quoi ça ressemblait.</p>
         </div>
+        <!-- Le résumé filmé ouvre la galerie : il se lit tout seul en
+             arrivant à l'écran, muet et en boucle. Le son se demande. -->
+        <div class="bb-detvid" id="bb-detvid" aria-label="Résumé filmé de la journée de détection">
+          <img src="/media/video/detection-2026-07-poster.webp" alt="Le terrain des Baobabs pendant la journée de détection" width="810" height="1440" loading="lazy" decoding="async">
+          <button type="button" class="bb-detvid-son" id="bb-detvid-son" aria-label="Activer le son">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+            <span>Son</span>
+          </button>
+          <span class="bb-detvid-lab">Le résumé · 0:38</span>
+        </div>
+
         <div class="bb-gal" id="bb-gal"></div>
       </section>
 
@@ -5695,6 +5721,76 @@ window.bbCloud = function(url, w){
     bbPsCdTimer = setInterval(peindre, 30000);
   }
 
+  /* Lecture sur place d'une vidéo dans son cadre.
+     `conteneur` doit contenir une <img> d'affiche : elle sert de repli
+     tant que le fichier n'est pas là, puis s'efface. */
+  function bbVideoSurPlace(conteneur, donneUrl){
+    if (!conteneur) return;
+    var demarree = false, v = null;
+
+    /* Quelqu'un qui a demandé moins d'animations ne veut pas d'une vidéo
+       qui part toute seule. On lui laisse l'affiche et un bouton. */
+    var sobre = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function poser(){
+      if (demarree) return;
+      var src = bbSafeMedia(donneUrl());
+      if (!src) return;
+      demarree = true;
+      v = document.createElement('video');
+      v.muted = true; v.loop = true; v.playsInline = true;
+      v.setAttribute('playsinline',''); v.setAttribute('muted','');
+      v.preload = 'auto';
+      v.setAttribute('aria-label', conteneur.getAttribute('aria-label') || 'Vidéo');
+      var aff = conteneur.querySelector('img');
+      if (aff && aff.getAttribute('src')) v.poster = aff.getAttribute('src');
+      v.src = src;
+      conteneur.insertBefore(v, conteneur.firstChild);
+      v.addEventListener('playing', function(){
+        if (aff) aff.style.opacity = '0';
+        var pl = conteneur.querySelector('.bb-ps-play');
+        if (pl) pl.style.opacity = '0';
+      }, { once:true });
+      var p = v.play(); if (p && p.catch) p.catch(function(){ demarree = false; });
+    }
+
+    /* Le clic passe AVANT l'observateur, et vaut dans tous les cas.
+       L'arrivée à l'écran est un confort ; le clic est la garantie.
+       Un onglet en arrière-plan, un économiseur de batterie ou un
+       navigateur qui suspend IntersectionObserver ne doivent pas
+       aboutir à une vignette qui ne répond à rien. */
+    conteneur.addEventListener('click', function(e){
+      if (e.target.closest('button')) return;
+      if (!demarree) { poser(); return; }
+      if (!v) return;
+      if (v.paused) { var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+      else v.pause();
+    });
+    conteneur.addEventListener('keydown', function(e){
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      if (!demarree) { poser(); return; }
+      if (v) { if (v.paused) { var p = v.play(); if (p && p.catch) p.catch(function(){}); } else v.pause(); }
+    });
+
+    /* Départ automatique : seulement si l'utilisateur n'a pas demandé
+       moins d'animations, et seulement quand le navigateur sait dire
+       ce qui est à l'écran. */
+    if (sobre || !('IntersectionObserver' in window)) return;
+
+    var obs = new IntersectionObserver(function(entrees){
+      entrees.forEach(function(e){
+        if (e.isIntersecting) {
+          poser();
+          if (v && v.paused) { var q = v.play(); if (q && q.catch) q.catch(function(){}); }
+        } else if (v && !v.paused) v.pause();
+      });
+    }, { threshold: 0.35 });
+    obs.observe(conteneur);
+  }
+
+  window.bbVideoSurPlace = bbVideoSurPlace;
+
   function bbOpenVideo(url){
     var m = document.getElementById('bb-vid-modal'), v = document.getElementById('bb-vid-el');
     if(!m || !v) return;
@@ -6014,17 +6110,30 @@ window.bbCloud = function(url, w){
       .finally(function(){ btn.disabled = false; btn.textContent = lib; });
     });
 
-    // Vidéo : la carte entière est cliquable, mais elle reste atteignable au
-    // clavier — c'est un bouton, pas seulement une image qui réagit.
-    var carte = document.getElementById('bb-ps-player');
-    if (carte){
-      carte.addEventListener('click', function(){ bbOpenVideo(bbPsVideoUrl); });
-      carte.addEventListener('keydown', function(e){
-        if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); bbOpenVideo(bbPsVideoUrl); }
-      });
-    }
+    // La vidéo se lit SUR PLACE. Ouvrir une fenêtre par-dessus la page pour
+    // regarder dix-sept secondes était une cérémonie inutile : on arrive
+    // dessus, elle part.
+    //
+    // Trois précautions, sinon c'est l'inverse d'un service :
+    //   — muette, sinon le navigateur refuse de lancer et, s'il acceptait,
+    //     ce serait pire ;
+    //   — preload="none" et src posée seulement à l'arrivée à l'écran :
+    //     personne ne télécharge trois mégaoctets pour un bloc qu'il ne
+    //     verra jamais ;
+    //   — mise en pause dès qu'elle sort du champ, pour ne pas faire tourner
+    //     un décodeur dans le vide et vider la batterie.
+    bbVideoSurPlace(document.getElementById('bb-ps-player'), function(){ return bbPsVideoUrl; });
+
     var watch = document.getElementById('bb-ps-watch');
-    if (watch) watch.addEventListener('click', function(){ bbOpenVideo(bbPsVideoUrl); });
+    if (watch) watch.addEventListener('click', function(){
+      var v = document.querySelector('#bb-ps-player video');
+      if (!v) return;
+      v.muted = false;
+      var p = v.play(); if (p && p.catch) p.catch(function(){});
+      var pl = document.querySelector('#bb-ps-player .bb-ps-play');
+      if (pl) pl.style.display = 'none';
+      watch.querySelector('span') && (watch.querySelector('span').textContent = 'Son activé');
+    });
 
     // La modale vidéo est écrite tout en bas de la page, après ce script :
     // elle n'existe pas encore à cet instant. On câble une fois le document
@@ -6470,6 +6579,23 @@ window.bbCloud = function(url, w){
 
   var grille = document.getElementById('bb-gal');
   if (!grille) return;
+
+  /* le résumé filmé, lu sur place comme celui de la pré-saison */
+  if (window.bbVideoSurPlace) {
+    window.bbVideoSurPlace(document.getElementById('bb-detvid'), function(){
+      return '/media/video/detection-2026-07.mp4';
+    });
+  }
+  var son = document.getElementById('bb-detvid-son');
+  if (son) son.addEventListener('click', function(e){
+    e.stopPropagation();
+    var v = document.querySelector('#bb-detvid video');
+    if (!v) return;
+    v.muted = !v.muted;
+    son.querySelector('span').textContent = v.muted ? 'Son' : 'Muet';
+    son.setAttribute('aria-label', v.muted ? 'Activer le son' : 'Couper le son');
+    if (v.paused) { var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+  });
 
   grille.innerHTML = PHOTOS.map(function(p, i){
     return '<button type="button" class="bb-gal-i" data-i="' + i + '" aria-label="Agrandir : ' + p.t.replace(/"/g,'&quot;') + '">' +
