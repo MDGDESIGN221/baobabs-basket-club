@@ -674,15 +674,33 @@
   .bb-bk-score{font-family:'Inter',sans-serif;font-weight:800;font-size:14px;color:#7E8A82}
 
   /* ===== partenaires ===== */
-  .bb-partners-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
-  .bb-partner{display:flex;align-items:center;justify-content:center;height:92px;background:#0F1E15;border:1px solid rgba(243,239,230,.08);border-radius:14px;padding:18px;transition:border-color .25s ease}
-  .bb-partner:hover{border-color:rgba(198,162,87,.4)}
-  .bb-partner img{max-height:100%;max-width:100%;width:auto;object-fit:contain;opacity:.55;filter:brightness(0) invert(1);transition:opacity .25s ease}
+  /* Une rangée centrée plutôt qu'une grille : avec deux partenaires,
+     « auto-fit » fabriquait six colonnes et le partenaire principal,
+     qui tient sur deux, débordait de l'écran. Des cartes de largeur
+     fixe se comportent pareil qu'on en ait deux ou douze. */
+  .bb-partners-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:16px}
+  .bb-partner{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    width:220px;min-height:150px;background:#0F1E15;border:1px solid rgba(243,239,230,.08);
+    border-radius:16px;padding:20px 18px;text-decoration:none;transition:border-color .25s ease,transform .25s ease}
+  .bb-partner:hover{border-color:rgba(198,162,87,.4);transform:translateY(-2px)}
+  .bb-partner-logo{display:flex;align-items:center;justify-content:center;height:64px;width:100%;overflow:hidden}
+  .bb-partner img{max-height:100%;max-width:100%;width:auto;object-fit:contain;opacity:.62;filter:brightness(0) invert(1);transition:opacity .25s ease}
   .bb-partner:hover img{opacity:1}
-  .bb-partner.is-color img{filter:none;opacity:.85}
-  .bb-partner.is-main{grid-column:span 2;height:112px;border-color:rgba(198,162,87,.45);background:linear-gradient(150deg,#12331F,#0A1B12)}
+  .bb-partner.is-color img{filter:none;opacity:.9}
+  /* le nom, en toutes lettres : un logo détouré en blanc ne se
+     reconnaît pas toujours, et l'écran lit mal les monogrammes */
+  .bb-partner-nom{font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.09em;
+    text-transform:uppercase;color:#8FA096;text-align:center;line-height:1.35;transition:color .25s ease}
+  .bb-partner:hover .bb-partner-nom{color:#DDE6DE}
+  .bb-partner-role{display:block;font-size:9.5px;letter-spacing:.16em;color:#C6A257;margin-bottom:3px;font-weight:700}
+  .bb-partner.is-main{width:300px;min-height:172px;border-color:rgba(198,162,87,.45);
+    background:linear-gradient(150deg,#12331F,#0A1B12)}
+  .bb-partner.is-main .bb-partner-logo{height:82px}
   .bb-partner.is-main img{opacity:.95}
-  @media(max-width:520px){ .bb-partner.is-main{grid-column:span 1} }
+  .bb-partner.is-main .bb-partner-nom{color:#E9F0EA;font-size:12px}
+  @media(max-width:520px){
+    .bb-partner,.bb-partner.is-main{width:100%;max-width:320px}
+  }
 
   /* ===== newsletter ===== */
   .bb-news-band{position:relative;overflow:hidden;background:linear-gradient(135deg,#0F4030 0%,#0A2318 60%,#07130D 100%)}
@@ -1604,8 +1622,14 @@
            ci-dessous est le repli affiché si la base ne répond pas :
            il doit donc rester à jour, lui aussi. -->
       <div class="bb-partners-grid" id="bb-partners-grid">
-        <a class="bb-partner is-main" href="https://man-properties-group.vercel.app" target="_blank" rel="noopener"><img src="/media/img/partenaire-mpg.svg" alt="Man Properties Group" loading="lazy" decoding="async"></a>
-        <div class="bb-partner"><img src="/media/img/partenaire-commune-mermoz-sacre-coeur.webp" alt="Commune de Mermoz / Sacré-Cœur" loading="lazy" decoding="async" style="max-height:88%;max-width:88%"></div>
+        <a class="bb-partner is-main" href="https://man-properties-group.vercel.app" target="_blank" rel="noopener">
+          <span class="bb-partner-logo"><img src="/media/img/partenaire-mpg.svg" alt="Man Properties Group" loading="lazy" decoding="async"></span>
+          <span class="bb-partner-nom"><span class="bb-partner-role">Partenaire principal</span>Man Properties Group</span>
+        </a>
+        <div class="bb-partner">
+          <span class="bb-partner-logo"><img src="/media/img/partenaire-commune-mermoz-sacre-coeur.webp" alt="Commune de Mermoz / Sacré-Cœur" loading="lazy" decoding="async"></span>
+          <span class="bb-partner-nom">Commune de Mermoz / Sacré-Cœur</span>
+        </div>
       </div>
       <div style="text-align:center;margin-top:24px"><button type="button" data-cta="contact" style="font-family:'Inter',sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.06em;color:#A8D93B;background:none;border:1px solid rgba(168,217,59,.4);border-radius:9px;padding:11px 22px;cursor:pointer">Devenir partenaire</button></div>
     </section>
@@ -4848,13 +4872,27 @@ window.bbCloud = function(url, w){
     el.innerHTML = list.map(function(p){
       var featured=(p.featured===true||p.featured==='true');
       var color=(p.force_white===false||p.force_white==='false');
+      // La zone du logo a une hauteur fixe et le logo la remplit déjà au
+      // mieux. Au-delà de 100 % il ne grossit pas : il DÉBORDE, et la
+      // carte paraît déséquilibrée à côté des autres. Le réglage ne sert
+      // donc qu'à réduire un logo trop bavard — un blason chargé face à
+      // un simple monogramme.
       var scale=parseInt(p.logo_scale,10); if(isNaN(scale)||!scale) scale=100;
+      scale=Math.max(40,Math.min(100,scale));
       var imgStyle=scale!==100?' style="max-height:'+scale+'%;max-width:'+scale+'%"':'';
-      var img = p.logo_url ? '<img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(p.logo_url,400):(p.logo_url)))+'" alt="'+esc(p.name||'')+'"'+imgStyle+' loading="lazy" decoding="async">' : '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:13px;color:#C7CFC8">'+esc(p.name||'')+'</span>';
+      var img = p.logo_url
+        ? '<img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(p.logo_url,400):(p.logo_url)))+'" alt="'+esc(p.name||'')+'"'+imgStyle+' loading="lazy" decoding="async">'
+        : '<span style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:26px;color:#5E6F64">'+esc((p.name||'?').trim().charAt(0).toUpperCase())+'</span>';
+      // Le nom est toujours écrit, même quand le logo est là : un
+      // monogramme détouré en blanc ne se reconnaît pas de loin.
+      var bloc = '<span class="bb-partner-logo">'+img+'</span>'
+               + '<span class="bb-partner-nom">'
+               + (featured?'<span class="bb-partner-role">Partenaire principal</span>':'')
+               + esc(p.name||'')+'</span>';
       var cls='bb-partner'+(color?' is-color':'')+(featured?' is-main':'');
       return p.website_url
-        ? '<a class="'+cls+'" href="'+window.bbSafeUrl(p.website_url)+'" target="_blank" rel="noopener">'+img+'</a>'
-        : '<div class="'+cls+'">'+img+'</div>';
+        ? '<a class="'+cls+'" href="'+window.bbSafeUrl(p.website_url)+'" target="_blank" rel="noopener">'+bloc+'</a>'
+        : '<div class="'+cls+'">'+bloc+'</div>';
     }).join('');
   }
 
