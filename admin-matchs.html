@@ -1215,12 +1215,43 @@
   .cd-back{display:inline-flex;align-items:center;gap:7px;background:none;border:none;color:var(--muted);font:inherit;font-weight:600;font-size:12.5px;cursor:pointer;padding:0;margin-bottom:14px}
   .cd-back:hover{color:var(--gold)}
 
-  /* --- Écran Comptes verrouillé --- */
-  .cp-lock{max-width:520px;text-align:center;padding:34px 30px}
-  .cp-lock-i{width:38px;height:38px;color:var(--gold);margin:0 auto 14px;display:block}
-  .cp-lock .card-sub{margin:0 auto 18px;max-width:44ch}
-  .cp-lock-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-  .cp-lock .msg{margin-top:12px}
+  /* --- Comptes & rôles ---
+     Le verrou n'est plus une porte devant l'écran : c'est un encart qui
+     s'ouvre au moment de changer un rôle. Lire qui fait quoi ne demande
+     rien ; seul le changement demande le mot de passe. */
+  .cp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .cp-head .card-title,.cp-head .card-sub{margin:0}
+  .cp-head .card-sub{margin-top:5px}
+  .cp-lock{display:flex;gap:14px;align-items:flex-start;margin:0 0 18px;padding:15px 17px;
+           border:1px solid rgba(198,162,87,.34);background:rgba(198,162,87,.07);border-radius:12px}
+  .cp-lock-i{width:22px;height:22px;color:var(--gold);flex:none;margin-top:3px}
+  .cp-lock b{display:block;margin-bottom:4px}
+  .cp-lock p{margin:0 0 12px;color:var(--muted);font-size:13.5px;max-width:62ch;line-height:1.55}
+  .cp-lock-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .cp-lock-row .qg-in{max-width:230px}
+  .cp-lock .msg{margin-top:10px}
+
+  /* Le cadenas de la ligne protégée : dit pourquoi il n'y a pas de menu
+     déroulant, plutôt que de laisser croire à une panne. */
+  .cp-protege{display:inline-flex;align-items:center;gap:6px;flex:none;color:var(--gold);
+              font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:999px;
+              border:1px solid rgba(198,162,87,.4);background:rgba(198,162,87,.1)}
+  .cp-protege svg{width:13px;height:13px;flex:none}
+
+  /* Les casquettes en toutes lettres — le tableau dit « quels écrans »,
+     ces cartes disent « quel métier ». */
+  .cp-roles{display:grid;gap:9px;margin-top:4px}
+  .cp-role{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:rgba(243,239,230,.02)}
+  .cp-role b{display:block;font-size:14px;margin-bottom:3px}
+  .cp-role span{color:var(--muted);font-size:13.5px;line-height:1.55}
+  .cp-role.moi{border-color:rgba(198,162,87,.4);background:rgba(198,162,87,.07)}
+
+  .cp-n{text-align:center;font-size:15px;font-weight:700}
+  .cp-n-w{color:var(--ok)}
+  .cp-n-r{color:var(--gold)}
+  .cp-n-n{color:var(--line-loud)}
+  .cp-legende{margin-top:12px;display:flex;gap:20px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+  .cp-legende i{font-style:normal;font-weight:700;margin-right:6px}
 
   /* --- Analytics : des barres en CSS, pas une bibliothèque --- */
   .an-chart{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:8px}
@@ -3289,30 +3320,53 @@
 
     <!-- ===== COMPTES & RÔLES ===== -->
     <section id="section-comptes" class="hide">
-      <div class="card cp-lock" id="cp-lock">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="cp-lock-i"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <h2 class="card-title">Écran protégé</h2>
-        <p class="card-sub">Distribuer les casquettes engage tout le club. Entrez le mot de passe pour ouvrir la liste des comptes.</p>
-        <div class="cp-lock-row">
-          <input type="password" id="cp-pwd" class="qg-in" placeholder="Mot de passe" autocomplete="off" style="max-width:280px">
-          <button type="button" class="btn btn-primary" id="cp-unlock">Déverrouiller</button>
+      <div class="callout">Un compte, un rôle&nbsp;— et le rôle décide des écrans que la personne voit en se connectant.
+        <b>Consulter qui porte quelle casquette ne demande rien</b>&nbsp;: la question se pose souvent, y répondre ne présente aucun risque.
+        Seul le <b>changement</b> d'un rôle demande le mot de passe.</div>
+
+      <div class="card">
+        <div class="cp-head">
+          <div>
+            <h2 class="card-title">Les comptes de l'administration</h2>
+            <p class="card-sub" id="cp-sub">Chargement…</p>
+          </div>
+          <button type="button" class="btn btn-ghost hide" id="cp-demander">Changer un rôle</button>
         </div>
-        <div class="msg" id="cp-lock-msg"></div>
+
+        <div class="cp-lock hide" id="cp-lock">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="cp-lock-i"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <div style="flex:1;min-width:0">
+            <b>Mot de passe requis</b>
+            <p>Distribuer les casquettes engage tout le club. C'est le même mot de passe que l'écran Historique.</p>
+            <div class="cp-lock-row">
+              <input type="password" id="cp-pwd" class="qg-in" placeholder="Mot de passe" autocomplete="off">
+              <button type="button" class="btn btn-primary" id="cp-unlock">Déverrouiller</button>
+              <button type="button" class="btn btn-ghost" id="cp-annuler">Annuler</button>
+            </div>
+            <div class="msg" id="cp-lock-msg"></div>
+          </div>
+        </div>
+
+        <div id="cp-list"></div>
+        <div class="msg" id="cp-msg"></div>
+        <p class="card-sub" style="margin-top:14px">Les comptes eux-mêmes se créent dans Supabase&nbsp;(Authentication), puis s'ajoutent à la table <code>admin_users</code>. Ici, on ne fait que distribuer les casquettes.</p>
       </div>
 
-      <div id="cp-inner" class="hide">
-        <div class="callout">Chaque compte a un rôle, et le rôle décide des écrans visibles. Les comptes se créent dans Supabase&nbsp;; ici, on leur donne leur casquette.</div>
-        <div class="card">
-          <h2 class="card-title">Les comptes de l'administration</h2>
-          <p class="card-sub" id="cp-sub">Chargement…</p>
-          <div id="cp-list"></div>
-          <div class="msg" id="cp-msg"></div>
-        </div>
       <div class="card" style="margin-top:16px">
-        <h2 class="card-title">Ce que chaque rôle peut ouvrir</h2>
-        <p class="card-sub">Lecture seule. Les droits se modifient dans la table <code>role_permissions</code>.</p>
-        <div style="overflow-x:auto"><table class="gd-sheet" id="cp-matrice"><tbody></tbody></table></div>
+        <h2 class="card-title">Ce que fait chaque casquette</h2>
+        <p class="card-sub">En une phrase, le métier de chaque rôle.</p>
+        <div class="cp-roles" id="cp-roles"></div>
       </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2 class="card-title">Qui ouvre quel écran</h2>
+        <p class="card-sub">Le tableau se lit par colonne&nbsp;: une casquette, et tout ce qu'elle trouve en se connectant. Les droits se règlent dans la table <code>role_permissions</code>.</p>
+        <div style="overflow-x:auto"><table class="gd-sheet" id="cp-matrice"><tbody></tbody></table></div>
+        <div class="cp-legende">
+          <span><i class="cp-n-w">✓</i>Consulte et modifie</span>
+          <span><i class="cp-n-r">○</i>Consulte seulement</span>
+          <span><i class="cp-n-n">·</i>N'a pas l'écran&nbsp;: il n'apparaît pas dans son menu</span>
+        </div>
       </div>
     </section>
     <section id="section-c_app" class="hide"><div id="qgc-c_app"></div></section>
@@ -4719,7 +4773,7 @@
     forms:{t:'Messages',d:'Les inscriptions newsletter, messages de contact et commandes boutique envoyés depuis le site public.'},
     home:{t:'Image du hero',d:'L\'image de fond et le texte d\'accroche du grand bloc d\'accueil.'},
     audit:{t:'Historique',d:'Qui a modifié quoi, et quand — protégé par mot de passe.'},
-    comptes:{t:'Comptes & rôles',d:'Qui a accès à l\'administration, et sous quelle casquette. Le rôle décide des écrans visibles.'},
+    comptes:{t:'Comptes & rôles',d:'Qui a accès à l\'administration, et sous quelle casquette. Consultable par tout administrateur ; changer un rôle demande le mot de passe.'},
     analytics:{t:'Analytics du club',d:'L\'argent, les adhérents, les abonnés. Ce que le club possède — pas le trafic du site.'}
   };
   // ===================== AIDE PAR ÉCRAN =====================
@@ -4779,7 +4833,7 @@
     forms: ["<b>Ce que le site vous envoie</b> : inscriptions newsletter, messages de contact, commandes.","Les candidatures ont leur propre écran, avec un vrai suivi de dossier."],
     home: ["<b>L'image de fond et l'accroche du grand bloc d'accueil.</b>","Si des bannières sont actives (écran Bannières & slider), elles passent devant cette image."],
     analytics: ["<b>Les statistiques sportives disent si l'équipe joue bien. Celles-ci disent si le club tient debout.</b> Deux questions différentes, posées par deux personnes différentes.","<b>Les recettes</b> comptent la boutique au jour de la commande, l'école au jour de l'encaissement réel : une mensualité de septembre payée en novembre est une recette de novembre, sinon la trésorerie raconterait une histoire qu'elle n'a pas vécue.","<b>« Mensualités recouvrées »</b> est le chiffre à surveiller. Sous 70 %, l'écran le passe en orange : c'est le moment de relancer, pas le mois suivant.","<b>Le trafic du site n'est pas ici</b>, volontairement. Un outil de mesure d'audience le fait mieux et gratuitement. Cet écran ne montre que ce que le club possède et peut recontacter — une adresse e-mail vaut mille pages vues.","Réservé à la présidence et à la direction sportive."],
-    comptes: ["<b>Un compte, un rôle.</b> Le rôle décide des écrans que la personne voit en se connectant — elle ne trouve pas les autres, elle ne les cherche pas.","<b>Seul un super administrateur</b> peut changer un rôle. Le changement s'applique à la prochaine connexion de la personne concernée.","Les comptes eux-mêmes se créent dans Supabase (Authentication), puis s'ajoutent à la table <code>admin_users</code>. Ici on ne fait que distribuer les casquettes.","Le tableau du bas montre qui voit quoi. Pour affiner les droits, c'est la table <code>role_permissions</code> — une ligne par autorisation.","<b>Ce filtrage range l'admin, il ne l'enferme pas encore</b> : au niveau de la base, tout compte administrateur garde l'accès complet. Le verrouillage viendra module par module."],
+    comptes: ["<b>Un compte, un rôle.</b> Le rôle décide des écrans que la personne voit en se connectant — elle ne trouve pas les autres, elle ne les cherche pas.","<b>Lire ne demande rien, changer demande le mot de passe.</b> Tout administrateur qui ouvre cet écran voit qui porte quelle casquette et ce que chaque casquette ouvre. Le mot de passe n'est réclamé qu'au moment de changer un rôle — et il faut en plus être super administrateur.","<b>Un compte est verrouillé en base : celui du propriétaire du site.</b> Personne d'autre que son titulaire ne peut changer son rôle, son adresse, ni le supprimer — même en passant directement par l'API, sans écran. Il porte un cadenas dans la liste.","Les comptes eux-mêmes se créent dans Supabase (Authentication), puis s'ajoutent à la table <code>admin_users</code>. Ici on ne fait que distribuer les casquettes.","Le tableau du bas distingue trois états : <b>✓</b> consulte et modifie, <b>○</b> consulte seulement, <b>·</b> n'a pas l'écran. Pour affiner, c'est la table <code>role_permissions</code> — une ligne par autorisation.","<b>Ce filtrage range l'admin, il ne l'enferme pas encore</b> : hors comptes, réglages et dossiers sensibles, la base accorde encore l'accès complet à tout administrateur. Le verrouillage se poursuit module par module."],
     audit: ["<b>Qui a modifié quoi, et quand.</b> Chaque ligne est une phrase, regroupée par jour ; l'ancienne valeur est barrée, la nouvelle à côté.","Protégé par mot de passe. La recherche et les filtres retrouvent une modification précise.","Rien ne s'efface : c'est la mémoire de l'admin."]
   };
 
@@ -4896,7 +4950,8 @@
       products: prLoad, articles: arLoad, categories: ctLoad,
       matches2: mcLoad, orders2: odLoad, clients: clLoad,
       applications: cdLoad, inscriptions: inLoad, analytics: anaLoad,
-      comptes: cpLoad, forms: loadForms,
+      comptes: function(){ cpCharger(); cpMatrice(); },
+      forms: loadForms,
       staff:     function(){ qgvLoad('staff'); },
       timeline:  function(){ qgvLoad('timeline'); },
       news:      function(){ qgvLoad('news'); },
@@ -12906,15 +12961,102 @@
   }
 
   // ===================== COMPTES & RÔLES =====================
-  var cpStarted = false;
+  //
+  // Deux étages, et la séparation EST le sujet de l'écran.
+  //
+  //   LIRE — qui porte quelle casquette, et ce que chaque casquette
+  //   ouvre. Ouvert à tout administrateur, sans mot de passe. La
+  //   question « qui a accès à quoi » revient à chaque nouvelle
+  //   personne ; y répondre ne présente aucun risque, et la refuser
+  //   oblige le président à écrire à quelqu'un pour une information
+  //   qui devrait simplement s'afficher.
+  //
+  //   CHANGER — distribuer les casquettes. Mot de passe ET rôle de
+  //   super administrateur : deux conditions, pas une.
+  //
+  // Et une ligne échappe à tout le monde : celle du propriétaire du
+  // site. Cette règle est écrite dans la BASE, pas ici — voir
+  // MIGRATION-phase2c-compte-proprietaire.sql. Un menu déroulant qu'on
+  // présenterait avant de se faire refuser serait pire que pas de menu
+  // du tout : ce qui suit ne fait donc que l'annoncer.
+  //
+  // La constante ci-dessous ne décide rien et ne protège rien — elle
+  // sert seulement à poser le cadenas au bon endroit. Elle doit rester
+  // identique à bbc_proprietaire_email() en base.
+  var CP_PROPRIETAIRE = 'mdgdesign221@gmail.com';
+
+  // Le métier de chaque casquette, en une phrase. Le tableau du bas dit
+  // « quels écrans » ; ceci dit « pour quoi faire ».
+  var ROLE_RESUME = {
+    super_admin:'Tout, sans exception, y compris distribuer les rôles. La casquette de la personne qui répond du site.',
+    president:'Voit tout le club et approuve. Publie le contenu, touche aux réglages et aux inscriptions — mais ne fait pas la saisie du quotidien.',
+    directeur_sportif:'Le sportif de bout en bout : matchs, effectif, statistiques, recrutement et école de basket. Ni la boutique, ni la billetterie, ni les comptes.',
+    coach:'Ses matchs et son effectif, feuille de match comprise. Ne touche ni à l’argent, ni au site public, ni aux comptes.',
+    community_manager:'Le site public : actualités, médias, bannières, partenaires. Voit les matchs et l’effectif pour pouvoir les raconter.'
+  };
+
+  var CP_MODULES = [
+    ['matchs','Matchs, calendrier, classement'],
+    ['effectif','Effectif, staff, bureau'],
+    ['stats','Statistiques'],
+    ['billetterie','Billetterie'],
+    ['boutique','Boutique, stock, commandes'],
+    ['contenu','Contenu du site public'],
+    ['inscriptions','École de basket'],
+    ['recrutement','Recrutement'],
+    ['reglages','Réglages et comptes'],
+    ['historique','Historique des modifications']
+  ];
+  // Une seule de ces autorisations suffit à faire d'un écran un écran
+  // où l'on agit, et non un écran qu'on regarde.
+  var CP_ECRIRE = ['creer','modifier','supprimer','publier','approuver'];
+
+  var cpStarted = false, cpRows = [], cpOuvert = false;
+
+  function cpNorm(m){ return String(m == null ? '' : m).trim().toLowerCase(); }
+  function cpMoi(){ return (currentSession && currentSession.user && currentSession.user.email) || ''; }
+  function cpEstProprio(email){ return cpNorm(email) === CP_PROPRIETAIRE; }
+  function cpJeSuisProprio(){ return cpEstProprio(cpMoi()); }
 
   function cpInit(){
     if (cpStarted) return; cpStarted = true;
-    var champ = document.getElementById('cp-pwd');
+
     document.getElementById('cp-unlock').addEventListener('click', cpUnlock);
-    champ.addEventListener('keydown', function(e){ if (e.key === 'Enter') cpUnlock(); });
+    document.getElementById('cp-pwd').addEventListener('keydown', function(e){ if (e.key === 'Enter') cpUnlock(); });
+    document.getElementById('cp-annuler').addEventListener('click', cpRefermer);
+    document.getElementById('cp-demander').addEventListener('click', function(){
+      document.getElementById('cp-lock').classList.remove('hide');
+      document.getElementById('cp-demander').classList.add('hide');
+      document.getElementById('cp-pwd').focus();
+    });
+
+    cpCharger();
+    cpCasquettes();
+    cpMatrice();
   }
 
+  function cpRefermer(){
+    document.getElementById('cp-pwd').value = '';
+    showMsg(document.getElementById('cp-lock-msg'), '', true);
+    document.getElementById('cp-lock').classList.add('hide');
+    cpRendre();
+  }
+
+  // ---- L'étage LECTURE ----
+  // admin_users est lisible par tout administrateur (politique
+  // admin_users_lecture) : aucun mot de passe n'est nécessaire pour
+  // répondre à « qui est qui ».
+  function cpCharger(){
+    return sbGet('admin_users?select=user_id,email,role&order=email.asc')
+      .then(function(rows){ cpRows = rows || []; cpRendre(); })
+      .catch(function(){
+        document.getElementById('cp-sub').textContent = 'Comptes indisponibles.';
+        document.getElementById('cp-list').innerHTML =
+          '<div class="empty">Passez MIGRATION-phase0-socle.sql pour activer les rôles.</div>';
+      });
+  }
+
+  // ---- L'étage CHANGEMENT ----
   // Le mot de passe n'est jamais comparé ici : il part au serveur, qui
   // répond par la liste des comptes ou par rien. Rien à cacher dans la
   // page, donc rien à y trouver.
@@ -12927,88 +13069,175 @@
     btn.disabled = true; showMsg(msg, 'Vérification…', true);
     tkRpc('bbc_comptes_deverrouiller', { pwd: pwd })
       .then(function(rows){
+        btn.disabled = false;
         if (!rows || !rows.length){
           showMsg(msg, 'Mot de passe refusé.', false);
-          btn.disabled = false; champ.select();
+          champ.select();
           return;
         }
         champ.value = '';
         showMsg(msg, '', true);
         document.getElementById('cp-lock').classList.add('hide');
-        document.getElementById('cp-inner').classList.remove('hide');
-        cpLoad(rows);
+        cpOuvert = true;
+        cpRows = rows;
+        cpRendre();
+        showMsg(document.getElementById('cp-msg'),
+          'Les menus sont ouverts. Un changement s’applique à la prochaine connexion de la personne concernée.', true);
       })
       .catch(function(){
-        showMsg(msg, "Vérification impossible. Passez MIGRATION-phase2b-comptes-verrouilles.sql.", false);
+        showMsg(msg, 'Vérification impossible. Passez MIGRATION-phase2b-comptes-verrouilles.sql.', false);
         btn.disabled = false;
       });
   }
 
-  function cpLoad(rows){
+  function cpRendre(){
     var estSuper = currentRole === 'super_admin';
-    Promise.resolve(rows || sbGet('admin_users?select=user_id,email,role&order=email.asc')).then(function(rows){
-      rows = rows || [];
-      document.getElementById('cp-sub').textContent =
-        rows.length + ' compte' + (rows.length>1?'s':'') +
-        (estSuper ? '' : ' — seul un super administrateur peut changer un rôle.');
-      var box = document.getElementById('cp-list');
-      box.innerHTML = rows.map(function(u){
-        var moi = currentSession && currentSession.user && currentSession.user.email === u.email;
-        return '<div class="rec-item" style="align-items:center">'+
-          '<div class="rec-main"><div class="rec-title">'+esc(u.email||'—')+
-            (moi?' <span class="status-pill" style="color:var(--gold);border:1px solid rgba(198,162,87,.4);background:rgba(198,162,87,.12)">vous</span>':'')+'</div>'+
-          '<div class="rec-meta">'+esc(ROLE_NOMS[u.role]||u.role||'—')+'</div></div>'+
-          (estSuper
-            ? '<select class="qg-in" data-cprole="'+esc(u.user_id)+'" style="flex:none;width:auto;min-width:180px">'+
-              Object.keys(ROLE_NOMS).map(function(r){
-                return '<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+esc(ROLE_NOMS[r])+'</option>';
-              }).join('')+'</select>'
-            : '')+
-        '</div>';
-      }).join('') || '<div class="empty">Aucun compte.</div>';
+    var proprio  = cpJeSuisProprio();
+    var moi      = cpNorm(cpMoi());
+    var box = document.getElementById('cp-list');
+    var n = cpRows.length;
 
-      box.querySelectorAll('[data-cprole]').forEach(function(sel){
-        var avant = sel.value;
-        sel.addEventListener('change', function(){
-          var uid = sel.getAttribute('data-cprole');
-          // Se retirer soi-même le rôle de super administrateur, c'est se
-          // fermer la porte de l'intérieur : on prévient avant.
-          var moi = rows.filter(function(u){ return String(u.user_id)===String(uid); })[0];
-          var estMoi = moi && currentSession && currentSession.user && currentSession.user.email === moi.email;
-          if (estMoi && sel.value !== 'super_admin' &&
-              !confirm('Vous changez VOTRE propre rôle.\n\nVous perdrez l\'accès à plusieurs écrans, et seul un autre super administrateur pourra vous le rendre.\n\nContinuer ?')){
-            sel.value = avant; return;
+    document.getElementById('cp-sub').textContent =
+      n + ' compte' + (n > 1 ? 's ont' : ' a') + ' accès à l’administration.' +
+      (estSuper ? '' : ' Seul un super administrateur peut changer un rôle.');
+
+    // Le bouton n'apparaît que pour qui pourrait s'en servir : faire
+    // chercher un mot de passe à quelqu'un qui serait refusé juste
+    // après, c'est lui faire perdre son temps deux fois.
+    var verrou = document.getElementById('cp-lock');
+    document.getElementById('cp-demander')
+      .classList.toggle('hide', !estSuper || cpOuvert || !verrou.classList.contains('hide'));
+
+    box.innerHTML = cpRows.map(function(u){
+      var estMoi     = moi && cpNorm(u.email) === moi;
+      var estProtege = cpEstProprio(u.email);
+      var modifiable = cpOuvert && estSuper && (!estProtege || proprio);
+
+      var droite = '';
+      if (estProtege && !proprio){
+        // Pas de menu grisé : un menu grisé se lit comme une panne. Un
+        // cadenas nommé se lit comme une décision.
+        droite = '<span class="cp-protege" title="Verrouillé dans la base : seul le titulaire de ce compte peut changer son rôle.">'+
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
+          '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Compte protégé</span>';
+      } else if (modifiable){
+        droite = '<select class="qg-in" data-cprole="'+esc(u.user_id)+'" style="flex:none;width:auto;min-width:190px">'+
+          Object.keys(ROLE_NOMS).map(function(r){
+            return '<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+esc(ROLE_NOMS[r])+'</option>';
+          }).join('')+'</select>';
+      }
+
+      return '<div class="rec-item" style="align-items:center">'+
+        '<div class="rec-main"><div class="rec-title">'+esc(u.email||'—')+
+          (estMoi ? ' <span class="status-pill" style="color:var(--gold);border:1px solid rgba(198,162,87,.4);background:rgba(198,162,87,.12)">vous</span>' : '')+
+        '</div>'+
+        '<div class="rec-meta">'+esc(ROLE_NOMS[u.role]||u.role||'—')+
+          (estProtege ? ' · propriétaire du site, compte verrouillé' : '')+'</div></div>'+
+        droite+
+      '</div>';
+    }).join('') || '<div class="empty">Aucun compte.</div>';
+
+    box.querySelectorAll('[data-cprole]').forEach(cpBrancherMenu);
+  }
+
+  function cpBrancherMenu(sel){
+    var avant = sel.value;
+    sel.addEventListener('change', function(){
+      var uid = sel.getAttribute('data-cprole');
+      var u = cpRows.filter(function(x){ return String(x.user_id) === String(uid); })[0];
+      if (!u){ sel.value = avant; return; }
+      var estMoi = cpNorm(u.email) === cpNorm(cpMoi());
+      var vise = sel.value;
+
+      // Se retirer soi-même le rôle de super administrateur, c'est se
+      // fermer la porte de l'intérieur — et si le compte est le compte
+      // protégé, personne d'autre ne peut la rouvrir.
+      if (estMoi && vise !== 'super_admin'){
+        var suite = cpEstProprio(u.email)
+          ? 'Votre compte étant verrouillé, personne d’autre ne pourra vous le rendre : il faudra passer par le SQL Editor de Supabase.'
+          : 'Seul un autre super administrateur pourra vous le rendre.';
+        if (!confirm('Vous changez VOTRE propre rôle.\n\nVous perdrez l’accès à plusieurs écrans. ' + suite + '\n\nContinuer ?')){
+          sel.value = avant; return;
+        }
+      }
+
+      sel.disabled = true;
+      sbPatchBy('admin_users','user_id',uid,{role:vise},'Comptes')
+        // On ne croit pas la réponse : on retourne voir la ligne.
+        // Une politique RLS qui refuse ne lève pas d'erreur, elle
+        // modifie zéro ligne — et PostgREST répond alors 204 comme
+        // pour un succès. Sans cette relecture, l'écran annoncerait
+        // « enregistré » sur un refus, ce qui est la pire des réponses.
+        .then(function(){
+          return sbGet('admin_users?select=role&user_id=eq.'+encodeURIComponent(uid));
+        })
+        .then(function(rows){
+          var pose = rows && rows[0] && rows[0].role;
+          if (pose !== vise){
+            var e = new Error('refus');
+            e.detail = 'La base a refusé sans le dire (aucune ligne modifiée). Ce compte est probablement protégé.';
+            throw e;
           }
-          sel.disabled = true;
-          sbPatchBy('admin_users','user_id',uid,{role:sel.value},'Comptes')
-            .then(function(){
-              avant = sel.value;
-              showMsg(document.getElementById('cp-msg'), 'Rôle enregistré. Il s\'appliquera à la prochaine connexion de la personne.', true);
-              if (estMoi) setTimeout(function(){ location.reload(); }, 1200);
-            })
-            .catch(function(){ sel.value = avant; showMsg(document.getElementById('cp-msg'), 'Le rôle n\'a pas pu être changé.', false); })
-            .finally(function(){ sel.disabled = false; });
+          avant = vise; u.role = vise;
+          showMsg(document.getElementById('cp-msg'),
+            'Rôle enregistré. Il s’appliquera à la prochaine connexion de ' + (u.email || 'la personne') + '.', true);
+          cpRendre();
+          if (estMoi) setTimeout(function(){ location.reload(); }, 1600);
+        })
+        .catch(function(e){
+          sel.value = avant; sel.disabled = false;
+          var d = (e && (e.detail || e.reason)) || '';
+          showMsg(document.getElementById('cp-msg'),
+            'Le rôle n’a pas été changé.' + (d ? ' ' + d : ''), false);
         });
-      });
-    }).catch(function(){
-      document.getElementById('cp-sub').textContent = 'Comptes indisponibles.';
-      document.getElementById('cp-list').innerHTML = '<div class="empty">Passez MIGRATION-phase0-socle.sql pour activer les rôles.</div>';
     });
+  }
 
-    // La matrice : qui voit quoi, d'un coup d'œil.
-    sbGet('role_permissions?select=role,module,action&action=eq.voir').then(function(rows){
-      rows = rows || [];
-      var modules = ['matchs','effectif','stats','billetterie','boutique','contenu','inscriptions','recrutement','reglages','historique'];
+  // Les casquettes en toutes lettres. C'est la réponse à « qui fait
+  // quoi » — le tableau qui suit répond à « qui ouvre quoi », ce n'est
+  // pas la même question.
+  function cpCasquettes(){
+    var box = document.getElementById('cp-roles'); if (!box) return;
+    box.innerHTML = Object.keys(ROLE_NOMS).map(function(r){
+      return '<div class="cp-role'+(currentRole === r ? ' moi' : '')+'">'+
+        '<b>'+esc(ROLE_NOMS[r])+(currentRole === r ? ' — votre casquette' : '')+'</b>'+
+        '<span>'+esc(ROLE_RESUME[r] || '')+'</span></div>';
+    }).join('');
+  }
+
+  // La matrice. Elle ne montrait que « voir », donc un rôle en simple
+  // consultation apparaissait identique à un rôle qui saisit — c'est
+  // précisément la confusion qui fait remplir un formulaire pendant
+  // vingt minutes avant de découvrir qu'on ne peut pas l'enregistrer.
+  // Trois états, donc, et non deux.
+  function cpNiveau(role, module, idx){
+    if (role === 'super_admin') return { k:'w', s:'✓', t:'Consulte et modifie' };
+    var p = idx[role + '|' + module] || {};
+    if (CP_ECRIRE.some(function(a){ return p[a]; })) return { k:'w', s:'✓', t:'Consulte et modifie' };
+    if (p.voir) return { k:'r', s:'○', t:'Consulte seulement' };
+    return { k:'n', s:'·', t:'N’a pas cet écran' };
+  }
+
+  function cpMatrice(){
+    var t = document.getElementById('cp-matrice'); if (!t) return;
+    sbGet('role_permissions?select=role,module,action').then(function(rows){
+      var idx = {};
+      (rows || []).forEach(function(p){
+        var c = p.role + '|' + p.module;
+        (idx[c] = idx[c] || {})[p.action] = true;
+      });
       var roles = Object.keys(ROLE_NOMS);
-      var t = document.getElementById('cp-matrice');
-      var head = '<tr><th>Module</th>'+roles.map(function(r){ return '<th>'+esc(ROLE_NOMS[r])+'</th>'; }).join('')+'</tr>';
-      t.innerHTML = head + modules.map(function(m){
-        return '<tr><td>'+esc(m)+'</td>'+roles.map(function(r){
-          var ok = r === 'super_admin' || rows.some(function(p){ return p.role===r && p.module===m; });
-          return '<td style="color:'+(ok?'#A8D93B':'var(--line-strong)')+'">'+(ok?'✓':'·')+'</td>';
-        }).join('')+'</tr>';
-      }).join('');
-    }).catch(function(){});
+      t.innerHTML =
+        '<tr><th>L’écran</th>' + roles.map(function(r){ return '<th>'+esc(ROLE_NOMS[r])+'</th>'; }).join('') + '</tr>' +
+        CP_MODULES.map(function(m){
+          return '<tr><td>'+esc(m[1])+'</td>' + roles.map(function(r){
+            var n = cpNiveau(r, m[0], idx);
+            return '<td class="cp-n cp-n-'+n.k+'" title="'+esc(ROLE_NOMS[r]+' : '+n.t)+'">'+n.s+'</td>';
+          }).join('') + '</tr>';
+        }).join('');
+    }).catch(function(){
+      t.innerHTML = '<tr><td>Tableau des droits indisponible — passez MIGRATION-phase0-socle.sql.</td></tr>';
+    });
   }
 
   function inExportCsv(){
