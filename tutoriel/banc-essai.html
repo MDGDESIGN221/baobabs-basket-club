@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutoriel — banc d'essai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Inter:wght@400..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tutoriel.css">
+<style>
+  /* Ce fichier n'est PAS livré : il sert à ouvrir le tutoriel hors de
+     l'administration, sans Supabase et sans connexion. On reproduit le
+     strict nécessaire — les jetons de couleur, une barre latérale avec
+     ses groupes et ses entrées, une zone d'écran — parce que c'est tout
+     ce que le tutoriel lit chez son hôte. */
+  :root{
+    --bg:#070E0A;--surface:#0E1811;--surface-2:#141F17;
+    --line:rgba(243,239,230,.07);--line-strong:rgba(243,239,230,.14);
+    --text:#F4F1E9;--muted:#A9B2AB;--faint:#7E8A81;
+    --gold:#C6A257;--gold-bright:#E4C179;--gold-soft:rgba(198,162,87,.12);
+    --gold-edge:rgba(198,162,87,.34);--ok:#93CE43;
+    --font-ui:'Archivo','Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-ui);display:flex;min-height:100vh}
+  #sidebar{width:250px;flex:none;background:var(--surface);border-right:1px solid var(--line);padding:16px 12px;overflow-y:auto}
+  .sb-group{margin-bottom:18px}
+  .sb-group.hide,.sb-link.hide{display:none}
+  .sb-group-label{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);padding:5px 10px}
+  .sb-link{display:block;width:100%;text-align:left;background:none;border:none;color:var(--muted);
+           font:600 13.5px var(--font-ui);padding:9px 11px;border-radius:8px;cursor:pointer}
+  .sb-link:hover{background:var(--surface-2);color:var(--text)}
+  .sb-link.active{background:var(--gold-soft);color:var(--gold-bright)}
+  main{flex:1;padding:28px 32px;min-width:0}
+  h1{font-size:24px;margin:0 0 6px}
+  #ecran{margin-top:22px;padding:22px;border:1px dashed var(--line-strong);border-radius:14px;min-height:280px}
+  #ecran h2{margin:0 0 8px;font-size:19px;color:var(--gold-bright)}
+  #ecran p{margin:0;color:var(--muted);font-size:14px;line-height:1.6;max-width:66ch}
+  .barre{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+  .barre button,.barre select{background:var(--surface-2);color:var(--text);border:1px solid var(--line-strong);
+    border-radius:9px;padding:9px 14px;font:700 13px var(--font-ui);cursor:pointer}
+  .note{color:var(--faint);font-size:12.5px;margin:10px 0 0}
+  #sidebar-scrim{display:none}
+</style>
+</head>
+<body>
+
+<aside id="sidebar">
+  <div class="sb-group" id="sb-pinned">
+    <div class="sb-group-label">Épinglés</div>
+    <button class="sb-link" data-section="gameday">Soir de match</button>
+  </div>
+
+  <div class="sb-group">
+    <div class="sb-group-label">Pilotage</div>
+    <button class="sb-link active" data-section="dashboard">Tableau de bord</button>
+    <button class="sb-link" data-section="analytics">Analytics du club</button>
+  </div>
+
+  <div class="sb-group">
+    <div class="sb-group-label">Match day</div>
+    <button class="sb-link" data-section="gameday">Soir de match</button>
+    <button class="sb-link" data-section="live">Direct</button>
+    <button class="sb-link" data-section="standings">Classement</button>
+  </div>
+
+  <div class="sb-group">
+    <div class="sb-group-label">L'effectif</div>
+    <button class="sb-link" data-section="squad">Joueurs</button>
+    <button class="sb-link" data-section="staff">Staff</button>
+  </div>
+
+  <div class="sb-group">
+    <div class="sb-group-label">Boutique</div>
+    <button class="sb-link" data-section="products">Produits</button>
+    <button class="sb-link" data-section="orders2">Commandes</button>
+  </div>
+
+  <div class="sb-group">
+    <div class="sb-group-label">Réglages</div>
+    <button class="sb-link" data-section="reglages">Réglages du site</button>
+    <button class="sb-link" data-section="comptes">Comptes &amp; rôles</button>
+  </div>
+</aside>
+<div id="sidebar-scrim"></div>
+
+<main>
+  <h1>Banc d'essai du tutoriel</h1>
+  <div class="barre">
+    <button id="ouvrir">Ouvrir le tutoriel</button>
+    <select id="role">
+      <option value="super_admin">Administration (voit tout)</option>
+      <option value="president">Présidence</option>
+      <option value="coach">Coach (menu réduit)</option>
+      <option value="community_manager">Communication</option>
+    </select>
+    <button id="vider">Oublier la progression</button>
+  </div>
+  <p class="note">Changer de rôle masque des entrées du menu, exactement comme appliquerRole() dans l'admin.
+     Le tutoriel doit alors sauter ces écrans sans qu'on lui dise quoi que ce soit.</p>
+
+  <div id="ecran">
+    <h2 id="ecran-t">Tableau de bord</h2>
+    <p id="ecran-d">Cliquez « Ouvrir le tutoriel ».</p>
+  </div>
+</main>
+
+<div id="tutoriel-host"></div>
+
+<script>
+(function(){
+  // ---- Les données que l'hôte fournirait ----
+  var METAS = {
+    dashboard:{t:'Tableau de bord',d:"Un coup d'œil sur tout : le prochain match, ce qui attend une réponse, et l'activité du site."},
+    analytics:{t:'Analytics du club',d:"L'argent, les adhérents, les abonnés. Ce que le club possède — pas le trafic du site."},
+    gameday:{t:'Soir de match',d:"L'écran du jour de match : composition, feuille de match, score en direct."},
+    live:{t:'Direct',d:"Le point par point. Ce que le public suit depuis son téléphone pendant la rencontre."},
+    standings:{t:'Classement',d:"Le classement du championnat, tel qu'il s'affiche sur le site public."},
+    squad:{t:'Joueurs',d:"L'effectif : photos, postes, numéros, statistiques de la saison."},
+    staff:{t:'Staff',d:"L'encadrement : entraîneurs, préparateurs, dirigeants."},
+    products:{t:'Produits',d:"Les articles de la boutique : maillots, ballons, accessoires."},
+    orders2:{t:'Commandes',d:"Les commandes passées sur le site, et où elles en sont."},
+    reglages:{t:'Réglages du site',d:"Les coordonnées, les réseaux, les textes qui reviennent partout."},
+    comptes:{t:'Comptes & rôles',d:"Qui a accès à l'administration, et sous quelle casquette."}
+  };
+  var AIDES = {
+    dashboard:["<b>Trois zones.</b> En haut le prochain match, au milieu ce qui demande une décision, en bas l'activité récente.",
+               "Les cartes sont cliquables : chacune mène à l'écran qui la concerne."],
+    analytics:["Les montants sont en FCFA et se recalculent à chaque ouverture.",
+               "L'export CSV reprend exactement ce que vous voyez, filtres compris."],
+    gameday:["<b>Un seul écran pour tout le match.</b> On y entre avant l'échauffement et on n'en sort qu'après la sirène.",
+             "La feuille de match se remplit action par action : chaque point saisi part en direct sur le site public.",
+             "Rien n'est perdu si la connexion coupe : la saisie reprend là où elle s'est arrêtée."],
+    live:["Ce que vous saisissez ici arrive sur le téléphone des supporters en deux secondes.",
+          "Le bouton rouge arrête le direct : à utiliser à la fin du match, pas à la mi-temps."],
+    standings:["Le classement ne se calcule pas tout seul : c'est vous qui le tenez à jour après chaque journée.",
+               "Le logo de chaque équipe se dépose une fois pour toutes."],
+    squad:["<b>Une fiche par joueur.</b> La photo se recadre directement ici, sans passer par un logiciel.",
+           "Un joueur retiré de l'effectif n'est pas supprimé : il passe en inactif et garde ses statistiques."],
+    staff:["Le staff s'affiche sur la page Club, dans l'ordre où vous le rangez ici."],
+    products:["<b>Le stock est lié à la vente.</b> Un article à zéro disparaît de la boutique tout seul.",
+              "Les tailles se gèrent article par article."],
+    orders2:["Chaque commande a un statut : reçue, préparée, remise. Le client voit le même."],
+    reglages:["Ce que vous changez ici apparaît sur toutes les pages du site public.",
+              "L'adresse et le téléphone servent aussi aux fiches Google du club."],
+    comptes:["<b>Un compte, un rôle.</b> Le rôle décide des écrans que la personne voit en se connectant.",
+             "Consulter ne demande rien ; changer un rôle demande le mot de passe et le rôle de super administrateur."]
+  };
+  var ROLE_NOMS = { super_admin:'Administration', president:'Présidence', directeur_sportif:'Direction sportive',
+                    coach:'Coach', community_manager:'Communication' };
+  var ROLE_RESUME = {
+    super_admin:'Tout, sans exception, y compris distribuer les rôles.',
+    president:'Voit tout le club et approuve. Publie le contenu, ne fait pas la saisie du quotidien.',
+    directeur_sportif:'Le sportif de bout en bout : matchs, effectif, statistiques, recrutement.',
+    coach:'Ses matchs et son effectif. Ne touche ni à l’argent ni au site public.',
+    community_manager:'Le site public : actualités, médias, bannières, partenaires.'
+  };
+  var MODULES = [['matchs','Matchs'],['effectif','Effectif'],['stats','Statistiques'],
+                 ['boutique','Boutique'],['contenu','Contenu'],['reglages','Réglages et comptes']];
+  var PERMS = [];
+  [['president',['matchs','effectif','stats','boutique','contenu','reglages'],['voir']],
+   ['coach',['matchs','effectif','stats'],['voir','modifier']],
+   ['community_manager',['contenu'],['voir','modifier']],
+   ['community_manager',['matchs','effectif'],['voir']]
+  ].forEach(function(g){ g[1].forEach(function(m){ g[2].forEach(function(a){ PERMS.push({role:g[0],module:m,action:a}); }); }); });
+  PERMS.push({role:'president',module:'reglages',action:'modifier'});
+
+  // Ce que chaque rôle peut ouvrir, pour masquer les entrées du menu
+  var VISIBLE = {
+    super_admin:null,                                        // tout
+    president:null,
+    coach:['dashboard','gameday','live','standings','squad','staff'],
+    community_manager:['dashboard','standings','squad','staff']
+  };
+
+  var courant = 'dashboard';
+
+  function appliquerRole(){
+    var r = document.getElementById('role').value;
+    var ok = VISIBLE[r];
+    document.querySelectorAll('#sidebar .sb-link[data-section]').forEach(function(b){
+      b.classList.toggle('hide', !!ok && ok.indexOf(b.getAttribute('data-section')) < 0);
+    });
+    document.querySelectorAll('#sidebar .sb-group').forEach(function(g){
+      var l = g.querySelectorAll('.sb-link');
+      if(!l.length) return;
+      g.classList.toggle('hide', !Array.prototype.some.call(l, function(b){ return !b.classList.contains('hide'); }));
+    });
+  }
+  document.getElementById('role').addEventListener('change', appliquerRole);
+  appliquerRole();
+
+  function aller(cle){
+    courant = cle;
+    document.querySelectorAll('.sb-link').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-section') === cle);
+    });
+    document.getElementById('ecran-t').textContent = (METAS[cle]||{}).t || cle;
+    document.getElementById('ecran-d').textContent = (METAS[cle]||{}).d || '';
+  }
+  document.querySelectorAll('.sb-link').forEach(function(b){
+    b.addEventListener('click', function(){ aller(b.getAttribute('data-section')); });
+  });
+
+  function api(){
+    // Des accesseurs, pas des valeurs : le banc laisse changer de role
+    // apres le montage, ce que l'admin ne fait jamais. Sans ca, le
+    // sommaire continuerait d'annoncer l'ancienne casquette.
+    return {
+      get role(){ return document.getElementById('role').value; },
+      get roleNom(){ return ROLE_NOMS[document.getElementById('role').value]; },
+      roles: Object.keys(ROLE_NOMS).map(function(k){ return {cle:k, nom:ROLE_NOMS[k], resume:ROLE_RESUME[k]}; }),
+      modules: MODULES.map(function(m){ return {cle:m[0], nom:m[1]}; }),
+      metas: METAS,
+      aides: AIDES,
+      plan: function(){
+        var out = [];
+        document.querySelectorAll('#sidebar .sb-group').forEach(function(g){
+          if (g.id === 'sb-pinned' || g.classList.contains('hide')) return;
+          var lab = g.querySelector('.sb-group-label');
+          var titre = lab ? (lab.textContent||'').trim() : '';
+          var ecrans = [];
+          g.querySelectorAll('.sb-link[data-section]').forEach(function(b){
+            if (b.classList.contains('hide')) return;
+            ecrans.push({ cle:b.getAttribute('data-section'), nom:(b.textContent||'').trim() });
+          });
+          if (titre && ecrans.length) out.push({ titre:titre, ecrans:ecrans });
+        });
+        return out;
+      },
+      lien: function(cle){ return document.querySelector('#sidebar .sb-link[data-section="'+cle+'"]'); },
+      aller: aller,
+      ecranCourant: function(){ return courant; },
+      matrice: function(){ return Promise.resolve(PERMS); },
+      ouvrirMenu: function(){}, fermerMenu: function(){}
+    };
+  }
+
+  var pret = false;
+  document.getElementById('ouvrir').addEventListener('click', function(){
+    if (pret){ window.BaobabsTutoriel.open(); return; }
+    fetch('tutoriel.html', {cache:'no-cache'}).then(function(r){ return r.text(); }).then(function(html){
+      var host = document.getElementById('tutoriel-host');
+      host.innerHTML = html;
+      var el = host.querySelector('#btut');
+      if (el) document.body.appendChild(el);
+      return new Promise(function(res, rej){
+        var s = document.createElement('script');
+        s.src = 'tutoriel.js';
+        s.onload = function(){ window.BaobabsTutoriel ? res() : rej(new Error('global absent')); };
+        s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }).then(function(){
+      window.BaobabsTutoriel.mount(document.getElementById('btut'), api());
+      pret = true;
+      window.BaobabsTutoriel.open();
+    }).catch(function(e){
+      // « Failed to fetch » n'apprend rien à personne. La cause est
+      // presque toujours la même : le fichier a été ouvert par
+      // double-clic. file:// charge bien les feuilles de style — la
+      // page paraît donc normale — mais interdit fetch(), et le
+      // tutoriel va chercher son fragment par fetch.
+      if (location.protocol === 'file:'){
+        alert('Ce banc d\'essai doit passer par un serveur.\n\n' +
+              'Ouvert par double-clic (file://), le navigateur interdit d\'aller chercher tutoriel.html.\n\n' +
+              'Dans le dossier du site, lancez :\n' +
+              '    python -m http.server 8899\n\n' +
+              'puis ouvrez :\n' +
+              '    http://localhost:8899/tutoriel/banc-essai.html');
+        return;
+      }
+      alert('Chargement impossible : ' + e.message +
+            '\n\nVérifiez que tutoriel.html et tutoriel.js sont bien à côté de ce fichier.');
+    });
+  });
+
+  document.getElementById('vider').addEventListener('click', function(){
+    try{ localStorage.removeItem('bbc_tut_progres'); localStorage.removeItem('bbc_tut_vu'); }catch(e){}
+    location.reload();
+  });
+})();
+</script>
+</body>
+</html>

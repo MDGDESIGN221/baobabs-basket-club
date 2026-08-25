@@ -1,0 +1,226 @@
+/* =====================================================================
+   TUTORIEL DE L'ADMINISTRATION — feuille de style
+   Racine unique : #btut. Aucun sélecteur ne commence autrement : pas de
+   :root, pas de * global, pas de html/body, pas d'élément nu. L'admin
+   hôte doit rester intacte.
+
+   Les couleurs sont celles de l'administration, reprises par var() avec
+   une valeur de repli. Deux raisons : le tutoriel suit le thème de
+   l'hôte sans le recopier, et le banc d'essai s'affiche correctement
+   sans l'hôte.
+   ===================================================================== */
+
+#btut{
+  --bt-bg:      var(--bg,          #070E0A);
+  --bt-surf:    var(--surface,     #0E1811);
+  --bt-surf2:   var(--surface-2,   #141F17);
+  --bt-line:    var(--line,        rgba(243,239,230,.07));
+  --bt-line2:   var(--line-strong, rgba(243,239,230,.14));
+  --bt-text:    var(--text,        #F4F1E9);
+  --bt-muted:   var(--muted,       #A9B2AB);
+  --bt-faint:   var(--faint,       #7E8A81);
+  --bt-gold:    var(--gold,        #C6A257);
+  --bt-gold-br: var(--gold-bright, #E4C179);
+  --bt-soft:    var(--gold-soft,   rgba(198,162,87,.12));
+  --bt-edge:    var(--gold-edge,   rgba(198,162,87,.34));
+  --bt-ok:      var(--ok,          #93CE43);
+  --bt-ui:      var(--font-ui, 'Archivo', 'Inter', system-ui, sans-serif);
+
+  position:fixed; inset:0; z-index:90;
+  /* Le conteneur ne capte rien : pendant la visite, l'administration
+     derrière doit rester cliquable. Chaque panneau rallume ce qu'il
+     lui faut. */
+  pointer-events:none;
+  font-family:var(--bt-ui);
+  color:var(--bt-text);
+}
+#btut.hide{display:none}
+#btut *,#btut *::before,#btut *::after{box-sizing:border-box}
+#btut button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+/* ---------------------------------------------------------------------
+   LE SOMMAIRE — plein écran, on choisit son chapitre
+   --------------------------------------------------------------------- */
+#btut .bt-somm{
+  position:absolute; inset:0; pointer-events:auto; overflow-y:auto;
+  background:linear-gradient(180deg, rgba(7,14,10,.97), rgba(7,14,10,.99));
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  padding:clamp(20px,5vw,56px) clamp(16px,4vw,32px);
+}
+#btut .bt-somm.hide{display:none}
+#btut .bt-in{max-width:900px;margin:0 auto}
+
+#btut .bt-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:26px}
+#btut .bt-kick{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--bt-gold);margin-bottom:9px}
+#btut .bt-h1{font-size:clamp(24px,4.4vw,34px);font-weight:800;line-height:1.15;margin:0 0 10px;letter-spacing:-.01em}
+#btut .bt-sub{margin:0;color:var(--bt-muted);font-size:14.5px;line-height:1.6;max-width:62ch}
+#btut .bt-sub b{color:var(--bt-text)}
+
+#btut .bt-x{
+  flex:none;width:40px;height:40px;border-radius:11px;border:1px solid var(--bt-line2);
+  display:grid;place-items:center;color:var(--bt-muted);transition:color .15s,border-color .15s,background .15s
+}
+#btut .bt-x:hover{color:var(--bt-text);border-color:var(--bt-edge);background:var(--bt-soft)}
+#btut .bt-x svg{width:17px;height:17px}
+
+/* La rangée de commandes */
+#btut .bt-cmds{display:flex;flex-wrap:wrap;gap:11px;align-items:center;margin-bottom:22px}
+#btut .bt-cta{
+  display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:12px;
+  background:var(--bt-gold);color:#1A1206;font-weight:800;font-size:14px;
+  transition:filter .15s,transform .15s
+}
+#btut .bt-cta:hover{filter:brightness(1.08)}
+#btut .bt-cta:active{transform:translateY(1px)}
+#btut .bt-cta svg{width:15px;height:15px}
+#btut .bt-ghost{
+  display:inline-flex;align-items:center;gap:9px;padding:13px 18px;border-radius:12px;
+  border:1px solid var(--bt-line2);color:var(--bt-text);font-weight:700;font-size:13.5px;
+  transition:border-color .15s,background .15s
+}
+#btut .bt-ghost:hover{border-color:var(--bt-edge);background:var(--bt-soft)}
+#btut .bt-ghost.hide{display:none}
+
+/* L'interrupteur de la voix */
+#btut .bt-voix{
+  display:inline-flex;align-items:center;gap:10px;padding:11px 16px;border-radius:12px;
+  border:1px solid var(--bt-line2);font-size:13.5px;font-weight:600;color:var(--bt-muted);
+  cursor:pointer;user-select:none;transition:border-color .15s,color .15s,background .15s
+}
+#btut .bt-voix:hover{border-color:var(--bt-edge);color:var(--bt-text)}
+#btut .bt-voix.on{border-color:var(--bt-edge);background:var(--bt-soft);color:var(--bt-gold-br)}
+#btut .bt-voix input{position:absolute;opacity:0;width:0;height:0}
+#btut .bt-voix svg{width:16px;height:16px;flex:none}
+#btut .bt-voix-note{font-size:12.5px;color:var(--bt-faint);flex-basis:100%;margin:-4px 0 0}
+
+/* Progression d'ensemble */
+#btut .bt-jauge{height:5px;border-radius:99px;background:var(--bt-line);overflow:hidden;margin-bottom:9px}
+#btut .bt-jauge i{display:block;height:100%;background:var(--bt-gold);border-radius:99px;transition:width .4s ease}
+#btut .bt-jauge-txt{margin:0 0 26px;font-size:13px;color:var(--bt-faint)}
+
+/* Les chapitres */
+#btut .bt-chaps{display:grid;gap:12px}
+#btut .bt-chap{
+  width:100%;text-align:left;padding:17px 19px;border-radius:14px;
+  border:1px solid var(--bt-line);background:var(--bt-surf);
+  display:flex;gap:16px;align-items:flex-start;
+  transition:border-color .15s,background .15s,transform .12s
+}
+#btut .bt-chap:hover{border-color:var(--bt-edge);background:var(--bt-surf2)}
+#btut .bt-chap:active{transform:translateY(1px)}
+#btut .bt-chap.fait{border-color:rgba(147,206,67,.28)}
+#btut .bt-chap-n{
+  flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  background:var(--bt-soft);color:var(--bt-gold);font-weight:800;font-size:13.5px
+}
+#btut .bt-chap.fait .bt-chap-n{background:rgba(147,206,67,.14);color:var(--bt-ok)}
+#btut .bt-chap-n svg{width:16px;height:16px}
+#btut .bt-chap-c{flex:1;min-width:0}
+#btut .bt-chap-t{font-weight:700;font-size:15.5px;margin-bottom:4px}
+#btut .bt-chap-m{font-size:12.5px;color:var(--bt-faint);margin-bottom:9px}
+#btut .bt-chap-e{display:flex;flex-wrap:wrap;gap:5px}
+#btut .bt-puce{
+  font-size:11.5px;padding:3px 9px;border-radius:99px;
+  border:1px solid var(--bt-line2);color:var(--bt-muted)
+}
+#btut .bt-puce.vu{border-color:rgba(147,206,67,.3);color:var(--bt-ok)}
+#btut .bt-chap-j{height:3px;border-radius:99px;background:var(--bt-line);overflow:hidden;margin-top:11px}
+#btut .bt-chap-j i{display:block;height:100%;background:var(--bt-ok);border-radius:99px;transition:width .4s ease}
+
+#btut .bt-pied{margin-top:26px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+#btut .bt-oublier{font-size:12.5px;color:var(--bt-faint);text-decoration:underline;text-underline-offset:3px}
+#btut .bt-oublier:hover{color:var(--bt-muted)}
+
+/* ---------------------------------------------------------------------
+   LE HALO — posé sur l'entrée de menu quand on arrive sur un écran
+   --------------------------------------------------------------------- */
+#btut .bt-spot{
+  position:fixed;border-radius:12px;pointer-events:none;
+  box-shadow:0 0 0 3px var(--bt-gold), 0 0 0 9999px rgba(6,17,9,.55);
+  transition:top .3s ease,left .3s ease,width .3s ease,height .3s ease,opacity .25s
+}
+#btut .bt-spot.hide{display:none}
+
+/* ---------------------------------------------------------------------
+   LE NARRATEUR — la barre basse pendant la visite
+   L'administration reste visible et cliquable au-dessus.
+   --------------------------------------------------------------------- */
+#btut .bt-narr{
+  position:absolute;left:50%;transform:translateX(-50%);
+  bottom:clamp(12px,2.5vw,24px);width:min(760px, calc(100vw - 24px));
+  pointer-events:auto;border-radius:16px;overflow:hidden;
+  background:var(--bt-surf);border:1px solid var(--bt-line2);
+  box-shadow:0 18px 48px rgba(0,0,0,.55)
+}
+#btut .bt-narr.hide{display:none}
+#btut .bt-narr-j{height:3px;background:var(--bt-line)}
+#btut .bt-narr-j i{display:block;height:100%;background:var(--bt-gold);transition:width .3s linear}
+#btut .bt-narr-in{padding:15px 17px}
+#btut .bt-ou{
+  font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--bt-gold);margin-bottom:7px;
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap
+}
+#btut .bt-ou em{font-style:normal;color:var(--bt-faint);letter-spacing:.08em}
+#btut .bt-dit{font-size:15px;line-height:1.6;color:var(--bt-text);margin-bottom:14px;min-height:2.6em}
+#btut .bt-dit b{color:var(--bt-gold-br);font-weight:700}
+#btut .bt-dit code{
+  font-family:ui-monospace,'JetBrains Mono',monospace;font-size:.88em;
+  padding:1px 5px;border-radius:5px;background:var(--bt-soft);color:var(--bt-gold-br)
+}
+
+#btut .bt-cmd{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+#btut .bt-b{
+  width:38px;height:38px;border-radius:10px;border:1px solid var(--bt-line2);
+  display:grid;place-items:center;color:var(--bt-muted);
+  transition:color .15s,border-color .15s,background .15s
+}
+#btut .bt-b:hover:not(:disabled){color:var(--bt-text);border-color:var(--bt-edge);background:var(--bt-soft)}
+#btut .bt-b:disabled{opacity:.32;cursor:default}
+#btut .bt-b svg{width:16px;height:16px}
+#btut .bt-b.on{color:var(--bt-gold-br);border-color:var(--bt-edge);background:var(--bt-soft)}
+#btut .bt-b-play{width:auto;padding:0 16px;gap:8px;font-weight:700;font-size:13px;color:var(--bt-text)}
+#btut .bt-esp{flex:1}
+#btut .bt-lien{font-size:12.5px;font-weight:700;color:var(--bt-muted);padding:9px 12px;border-radius:9px;transition:color .15s,background .15s}
+#btut .bt-lien:hover{color:var(--bt-text);background:var(--bt-soft)}
+
+/* ---------------------------------------------------------------------
+   LE CHAPITRE DES RÔLES — il n'a pas d'écran à visiter, il se raconte
+   dans le narrateur avec son propre tableau.
+   --------------------------------------------------------------------- */
+#btut .bt-roles{display:grid;gap:8px;margin:-4px 0 14px}
+#btut .bt-role{
+  padding:10px 13px;border-radius:10px;border:1px solid var(--bt-line);
+  font-size:13.5px;line-height:1.5;color:var(--bt-muted)
+}
+#btut .bt-role b{display:block;color:var(--bt-text);font-size:14px;margin-bottom:2px}
+#btut .bt-role.moi{border-color:var(--bt-edge);background:var(--bt-soft)}
+#btut .bt-tab{width:100%;border-collapse:collapse;font-size:12.5px;margin:-2px 0 14px}
+#btut .bt-tab th,#btut .bt-tab td{padding:5px 7px;border-bottom:1px solid var(--bt-line);text-align:left}
+#btut .bt-tab th{color:var(--bt-faint);font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700}
+#btut .bt-tab td.c{text-align:center;font-weight:700;font-size:14px}
+#btut .bt-wrap{overflow-x:auto;margin:0 -2px 0}
+
+/* ---------------------------------------------------------------------
+   Téléphone : le narrateur prend toute la largeur, les commandes
+   passent sur deux rangs plutôt que de se serrer à 28 px.
+   --------------------------------------------------------------------- */
+@media (max-width:560px){
+  #btut .bt-narr{width:calc(100vw - 16px);bottom:8px;border-radius:14px}
+  #btut .bt-narr-in{padding:13px 14px}
+  #btut .bt-dit{font-size:14.5px;margin-bottom:12px}
+  /* 44 px : le doigt n'a pas la précision de la souris, et cette barre
+     s'utilise debout au bord d'un terrain. */
+  #btut .bt-b{width:44px;height:44px}
+  #btut .bt-b-play{flex:1;height:44px}
+  #btut .bt-lien{padding:14px 14px}
+  #btut .bt-esp{flex-basis:100%;height:0}
+  #btut .bt-chap{padding:14px 15px;gap:12px}
+  #btut .bt-cta,#btut .bt-ghost,#btut .bt-voix{flex:1;justify-content:center}
+}
+
+/* Qui a demandé moins d'animations garde les transitions courtes et
+   perd le défilement doux : ce sont elles qui donnent la nausée. */
+@media (prefers-reduced-motion:reduce){
+  #btut .bt-spot,#btut .bt-jauge i,#btut .bt-chap-j i,#btut .bt-narr-j i{transition:none}
+}

@@ -12,6 +12,7 @@
      compose portent la typographie de la marque, et pas celle de l'outil. -->
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..600&family=Bebas+Neue&family=Oswald:wght@200..700&family=Teko:wght@300..700&family=Syne:wght@400..800&family=Outfit:wght@100..900&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=DM+Serif+Display:ital@0;1&family=Instrument+Serif:ital@0;1&family=Caveat:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/studio/studio.css">
+<link rel="stylesheet" href="/tutoriel/tutoriel.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
@@ -483,15 +484,6 @@
   .dym-hint{display:block;font-size:12.5px;color:var(--gold);margin-top:1px}
   .dym-hint button{background:none;border:none;color:var(--gold);font:inherit;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px}
 
-  /* ===== visite guidée ===== */
-  #tour-overlay{position:fixed;inset:0;z-index:70;pointer-events:none}
-  #tour-spot{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(6,17,9,.62);transition:top .28s ease,left .28s ease,width .28s ease,height .28s ease;pointer-events:none}
-  #tour-bubble{position:fixed;max-width:320px;background:var(--surface);border:1px solid var(--line-strong);border-radius:13px;padding:16px 18px;box-shadow:0 12px 32px rgba(17,17,17,.22);pointer-events:auto;transition:top .28s ease,left .28s ease}
-  .tour-step-count{font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
-  .tour-title{font-family:var(--font-ui);font-weight:700;font-size:17px;margin-bottom:6px}
-  .tour-body{color:var(--muted);font-size:13.5px;line-height:1.5}
-  .tour-actions{display:flex;align-items:center;gap:8px;margin-top:14px}
-  @media(max-width:480px){ #tour-bubble{max-width:calc(100vw - 32px)} }
   .row2{display:grid;grid-template-columns:1fr;gap:15px}
   @media(min-width:480px){.row2{grid-template-columns:1fr 1fr}}
   .score-row{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center}
@@ -1765,7 +1757,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           <kbd>Ctrl K</kbd>
         </button>
-        <button class="link-btn" id="help-btn" title="Revoir la visite guidée">
+        <button class="link-btn" id="help-btn" title="Tutoriel de l’administration">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg>
           <span class="hide-sm">Aide</span>
         </button>
@@ -1795,6 +1787,11 @@
        première ouverture depuis /studio/studio.html, puis déposé dans
        ce conteneur. Voir studioOuvrir(). -->
   <div id="studio-host"></div>
+
+  <!-- ===== TUTORIEL =====
+       Meme principe que le Studio : le fragment arrive de
+       /tutoriel/tutoriel.html au premier clic. Voir tutorielOuvrir(). -->
+  <div id="tutoriel-host"></div>
 
   <div class="sidebar-scrim" id="sidebar-scrim"></div>
 
@@ -3456,22 +3453,6 @@
   </div>
     </div>
   </div>
-
-  <div id="tour-overlay" class="hide">
-    <div id="tour-spot"></div>
-    <div id="tour-bubble">
-      <div class="tour-step-count" id="tour-count"></div>
-      <div class="tour-title" id="tour-title"></div>
-      <div class="tour-body" id="tour-body"></div>
-      <div class="tour-actions">
-        <button type="button" class="btn btn-ghost" id="tour-skip" style="width:auto;flex:none;min-height:40px;padding:9px 14px">Passer</button>
-        <div style="margin-left:auto;display:flex;gap:8px">
-          <button type="button" class="btn btn-ghost" id="tour-prev" style="width:auto;flex:none;min-height:40px;padding:9px 14px">Précédent</button>
-          <button type="button" class="btn btn-primary" id="tour-next" style="width:auto;flex:none;min-height:40px;padding:9px 16px">Suivant</button>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- La recherche globale doit être dans le DOM AVANT ce script : il câble
@@ -4036,6 +4017,117 @@
     }).then(function(){ studioEnCours = false; });
   }
   document.getElementById('studio-open').addEventListener('click', studioOuvrir);
+
+  // ---------------------------------------------------------------------
+  // LE TUTORIEL
+  //
+  // Même principe que le Studio : trois fichiers autonomes sous
+  // /tutoriel/, chargés au premier clic, un seul global
+  // (window.BaobabsTutoriel). Rien ne s'exécute au chargement de la page.
+  //
+  // Ce que le tutoriel reçoit et ce qu'il n'a PAS
+  //   Il ne reçoit aucun texte de tutoriel — il lit SECTION_META et
+  //   SECTION_HELP, c'est-à-dire les bulles « Comment ça marche ? » déjà
+  //   écrites écran par écran. Le tutoriel ne peut donc pas se
+  //   désynchroniser de l'aide : c'est la même source.
+  //
+  //   Il ne reçoit pas non plus la liste des écrans : il lit la barre
+  //   latérale telle qu'elle est affichée. appliquerRole() y a déjà
+  //   masqué ce que le rôle ne peut pas ouvrir, donc le filtrage par
+  //   rôle est acquis sans une ligne de plus — et un écran ajouté
+  //   demain entre dans le tutoriel tout seul.
+  // ---------------------------------------------------------------------
+  var tutPret = false, tutEnCours = false;
+
+  function tutorielApi(){
+    return {
+      role: currentRole,
+      roleNom: ROLE_NOMS[currentRole] || currentRole || '—',
+      roles: Object.keys(ROLE_NOMS).map(function(r){
+        return { cle:r, nom:ROLE_NOMS[r], resume:(typeof ROLE_RESUME === 'object' && ROLE_RESUME[r]) || '' };
+      }),
+      modules: (typeof CP_MODULES !== 'undefined' ? CP_MODULES : []).map(function(m){
+        return { cle:m[0], nom:m[1] };
+      }),
+      metas: SECTION_META,
+      aides: SECTION_HELP,
+
+      // Le plan, lu dans le menu. On saute #sb-pinned : les épinglés
+      // sont des copies des mêmes écrans, et le tutoriel les visiterait
+      // deux fois.
+      plan: function(){
+        var out = [];
+        document.querySelectorAll('#sidebar .sb-group').forEach(function(g){
+          if (g.id === 'sb-pinned' || g.classList.contains('hide')) return;
+          var lab = g.querySelector('.sb-group-label');
+          var titre = lab ? (lab.textContent || '').trim() : '';
+          var ecrans = [];
+          g.querySelectorAll('.sb-link[data-section]').forEach(function(b){
+            if (b.classList.contains('hide')) return;
+            ecrans.push({ cle: b.getAttribute('data-section'), nom: (b.textContent || '').trim() });
+          });
+          if (titre && ecrans.length) out.push({ titre: titre, ecrans: ecrans });
+        });
+        return out;
+      },
+
+      lien: function(cle){ return document.querySelector('#sidebar .sb-link[data-section="' + cle + '"]'); },
+      aller: function(cle){ showSection(cle); },
+      ecranCourant: function(){ return sectionCourante; },
+      matrice: function(){
+        return sbGet('role_permissions?select=role,module,action').catch(function(){ return []; });
+      },
+      ouvrirMenu: function(){
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('sidebar-scrim').classList.add('open');
+      },
+      fermerMenu: closeMobileNav
+    };
+  }
+
+  function tutorielCharger(){
+    if (window.BaobabsTutoriel) return Promise.resolve();
+    return fetch('/tutoriel/tutoriel.html', { cache: 'no-cache' })
+      .then(function(r){ if (!r.ok) throw new Error('fragment ' + r.status); return r.text(); })
+      .then(function(html){
+        var host = document.getElementById('tutoriel-host');
+        host.innerHTML = html;
+        // Comme le Studio : #btut est en position:fixed, et un ancêtre
+        // en display:none annule le fixed. Il doit être enfant direct
+        // de <body>, sinon il s'ouvre à 0 × 0 sans la moindre erreur.
+        var el = host.querySelector('#btut');
+        if (el) document.body.appendChild(el);
+        return new Promise(function(res, rej){
+          var s = document.createElement('script');
+          s.src = '/tutoriel/tutoriel.js';
+          s.onload = function(){ window.BaobabsTutoriel ? res() : rej(new Error('global absent')); };
+          s.onerror = function(){ rej(new Error('script')); };
+          document.head.appendChild(s);
+        });
+      });
+  }
+
+  function tutorielOuvrir(chap){
+    if (tutEnCours) return;
+    if (tutPret){ window.BaobabsTutoriel.open(chap); return; }
+    tutEnCours = true;
+    qgToast('Ouverture du tutoriel…');
+    tutorielCharger().then(function(){
+      window.BaobabsTutoriel.mount(document.getElementById('btut'), tutorielApi());
+      tutPret = true;
+      window.BaobabsTutoriel.open(chap);
+    }).catch(function(e){
+      console.error('[Tutoriel]', e);
+      // On dit CE QUI a manqué. « n'a pas pu se charger » envoie
+      // chercher dans la console quelqu'un qui n'ouvrira jamais la
+      // console — et les deux causes possibles se réparent seules :
+      // un fichier pas déployé, ou une version en cache.
+      qgToast('Le tutoriel n\'a pas pu se charger (' + (e && e.message ? e.message : 'raison inconnue') +
+              '). Vérifiez que le dossier /tutoriel/ est bien en ligne, puis rechargez avec Ctrl+Maj+R.', true);
+    }).then(function(){ tutEnCours = false; });
+  }
+  document.getElementById('help-btn').addEventListener('click', function(){ tutorielOuvrir(); });
+
 
   // ------------------------------------------------------------------
   // Le contrat passé au Studio. Il ne connaît ni Supabase, ni les noms
@@ -13995,76 +14087,6 @@
     auditRenderList();
   });
 
-  // ===================== VISITE GUIDÉE =====================
-  var TOUR_STEPS = [
-    { selector:'#dash-stats', section:'dashboard', title:'Le tableau de bord', body:"Un coup d'œil sur tout : prochain match, matchs joués, et ce qui attend une réponse dans vos messages." },
-    { selector:'#sidebar', section:'dashboard', title:'La navigation', body:"Toute la gestion du site passe par ici : matchs, adversaires, direct, effectif, actualités, boutique… Un clic pour changer de section. Sur mobile, le bouton en haut à gauche ouvre ce menu." },
-    { selector:'#opponent_select', section:'matches', title:"L'adversaire", body:"Choisissez l'équipe dans la liste. Absente ? Le lien juste en dessous permet d'en ajouter une nouvelle sans quitter la page." },
-    { selector:'#match_date', section:'matches', title:'Date et heure', body:"La date suffit pour un match à venir. L'heure est facultative — utile si vous voulez l'afficher sur le site." },
-    { selector:'.score-row', section:'matches', title:'Le score', body:"Dès que les deux scores sont remplis, le match bascule automatiquement en « Joué » et rejoint les résultats du site. Rien à changer à la main." },
-    { selector:'#preview-aside', section:'matches', title:'Aperçu en direct', body:"Cette carte reproduit exactement le rendu sur le site public, mise à jour à chaque frappe." },
-    { selector:'#help-btn', section:null, title:'Revoir cette aide', body:"Ce bouton relance la visite guidée à tout moment, si besoin." }
-  ];
-  var tourIdx=0, tourGen=0;
-  var tourOverlay=document.getElementById('tour-overlay'), tourSpot=document.getElementById('tour-spot'), tourBubble=document.getElementById('tour-bubble');
-
-  function positionTour(el){
-    var gen=++tourGen;
-    el.scrollIntoView({block:'center',behavior:'smooth'});
-    setTimeout(function(){
-      if(gen!==tourGen) return; // une étape plus récente a pris le relai : positionnement périmé, on l'ignore
-      var r=el.getBoundingClientRect();
-      var pad=8;
-      tourSpot.style.top=(r.top-pad)+'px'; tourSpot.style.left=(r.left-pad)+'px';
-      tourSpot.style.width=(r.width+pad*2)+'px'; tourSpot.style.height=(r.height+pad*2)+'px';
-
-      var bw=Math.min(320,window.innerWidth-32), bh=tourBubble.offsetHeight||160;
-      var top, left=Math.min(Math.max(r.left,16),window.innerWidth-bw-16);
-      var spaceBelow=window.innerHeight-r.bottom, spaceAbove=r.top;
-      if(spaceBelow>=bh+20){ top=r.bottom+16; }
-      else if(spaceAbove>=bh+20){ top=r.top-bh-16; }
-      else { top=Math.max(16,Math.min(r.bottom+16,window.innerHeight-bh-16)); }
-      top=Math.max(16,Math.min(top,window.innerHeight-bh-16));
-      tourBubble.style.top=top+'px'; tourBubble.style.left=left+'px';
-    },380);
-  }
-
-  function renderTourStep(i){
-    var step=TOUR_STEPS[i]; if(!step) return;
-    if(step.section) showSection(step.section);
-    if(step.selector==='#sidebar' && window.innerWidth<940){
-      document.getElementById('sidebar').classList.add('open');
-      document.getElementById('sidebar-scrim').classList.add('open');
-    } else {
-      closeMobileNav();
-    }
-    document.getElementById('tour-count').textContent='Étape '+(i+1)+' / '+TOUR_STEPS.length;
-    document.getElementById('tour-title').textContent=step.title;
-    document.getElementById('tour-body').textContent=step.body;
-    document.getElementById('tour-prev').style.visibility=(i===0)?'hidden':'visible';
-    document.getElementById('tour-next').textContent=(i===TOUR_STEPS.length-1)?'Terminer':'Suivant';
-    requestAnimationFrame(function(){
-      var el=document.querySelector(step.selector);
-      if(el) positionTour(el); else endTour();
-    });
-  }
-  function startTour(){
-    tourIdx=0; tourOverlay.classList.remove('hide');
-    renderTourStep(tourIdx);
-  }
-  function endTour(){
-    tourOverlay.classList.add('hide');
-    try{ localStorage.setItem('bbc_tour_seen','1'); }catch(e){}
-  }
-  document.getElementById('tour-next').addEventListener('click',function(){
-    if(tourIdx>=TOUR_STEPS.length-1){ endTour(); return; }
-    tourIdx++; renderTourStep(tourIdx);
-  });
-  document.getElementById('tour-prev').addEventListener('click',function(){
-    if(tourIdx<=0) return; tourIdx--; renderTourStep(tourIdx);
-  });
-  document.getElementById('tour-skip').addEventListener('click',endTour);
-  document.getElementById('help-btn').addEventListener('click',startTour);
 
   // ===================== INIT =====================
   function init(){
@@ -14072,9 +14094,17 @@
     loadedSections.matches=true; loadedSections.teams=true; loadedSections.dashboard=true;
     loadTeams().then(function(){ loadMatches(); updatePreview(); });
     loadDashboard();
-    var alreadySeen=false;
-    try{ alreadySeen=localStorage.getItem('bbc_tour_seen')==='1'; }catch(e){}
-    if(!alreadySeen) setTimeout(startTour,600);
+    // Premiere venue : on ouvre le SOMMAIRE du tutoriel, pas la visite.
+    // Lancer d'autorite quinze minutes de narration a quelqu'un qui vient
+    // pour corriger un score serait une prise d'otage ; un sommaire se
+    // referme d'un clic et se retrouve par le bouton Aide.
+    var dejaVu=false;
+    try{ dejaVu=localStorage.getItem('bbc_tut_vu')==='1'; }catch(e){}
+    // Le garde-fou : chargerRole() est asynchrone. Ouvert trop tot, le
+    // tutoriel lirait une barre laterale que appliquerRole() n'a pas
+    // encore filtree, et annoncerait « 0 ecran » a quelqu'un qui
+    // decouvre l'outil. On reessaiera a la prochaine connexion.
+    if(!dejaVu) setTimeout(function(){ if (currentRole) tutorielOuvrir(); },900);
   }
 
   // ===================== QG VISUEL — EFFECTIF (édition en direct sur players) =====================
