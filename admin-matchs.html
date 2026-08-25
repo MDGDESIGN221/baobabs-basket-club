@@ -193,6 +193,19 @@
   .sb-group.folded .sb-group-items{grid-template-rows:0fr}
   .sb-group-items>div{overflow:hidden;min-height:0}
   /* Les entrées sont numérotées pour être nommables à l'oral et à l'écrit. */
+  /* L'entree du tutoriel. Doree parce qu'elle n'ouvre pas un ecran mais
+     une visite : elle ne se comporte pas comme ses voisines, elle ne
+     doit pas leur ressembler tout a fait. Le .sb-link-num vide garde
+     l'alignement des icones -- sans lui, elle demarre 30 px a gauche
+     des autres, qui portent un numero. */
+  .sb-tut{color:var(--gold);margin-bottom:12px}
+  .sb-tut svg{opacity:1}
+  .sb-tut:hover{background:var(--gold-soft);color:var(--gold-bright)}
+  .sb-tut:hover svg{opacity:1}
+  .sb-tut-neuf{margin-left:auto;flex:none;font-size:9px;font-weight:800;letter-spacing:.08em;
+    text-transform:uppercase;padding:3px 7px;border-radius:999px;
+    background:var(--gold);color:#1A1206}
+  .sb-tut-neuf.hide{display:none}
   .sb-link-num{flex:none;font-family:var(--font-ui);font-weight:700;font-size:9.5px;color:var(--faint);opacity:.7;min-width:18px}
   .sb-link.active .sb-link-num{color:var(--gold);opacity:1}
   @media (prefers-reduced-motion:reduce){ .sb-group-items{transition:none} }
@@ -1799,6 +1812,18 @@
     <aside class="sidebar" id="sidebar">
       <button class="sidebar-close" id="sidebar-close" aria-label="Fermer la navigation">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+
+      <!-- Le tutoriel n'est pas un ecran, c'est une surcouche. Il vit donc
+           HORS des groupes -- ce qui le tient aussi hors du plan que le
+           tutoriel construit en lisant les .sb-group, sans quoi il se
+           visiterait lui-meme. Pas de data-section non plus : le cablage
+           general des liens ignore les boutons qui n'en ont pas. -->
+      <button class="sb-link sb-tut" type="button" id="sb-tutoriel" title="Le site vous explique lui-meme, ecran par ecran">
+        <span class="sb-link-num"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg>
+        Tutoriel
+        <span class="sb-tut-neuf hide" id="sb-tut-neuf">Nouveau</span>
       </button>
 
       <div class="sb-group sb-pinned hide" id="sb-pinned">
@@ -4051,6 +4076,7 @@
       }),
       metas: SECTION_META,
       aides: SECTION_HELP,
+      cibles: (typeof TUT_CIBLES !== 'undefined' ? TUT_CIBLES : {}),
 
       // Le plan, lu dans le menu. On saute #sb-pinned : les épinglés
       // sont des copies des mêmes écrans, et le tutoriel les visiterait
@@ -4108,6 +4134,11 @@
   }
 
   function tutorielOuvrir(chap){
+    // Quelle que soit la porte empruntée — menu, bouton Aide, ou
+    // l'ouverture automatique de la première connexion — la pastille a
+    // fait son travail dès qu'on entre.
+    var neuf = document.getElementById('sb-tut-neuf');
+    if (neuf) neuf.classList.add('hide');
     if (tutEnCours) return;
     if (tutPret){ window.BaobabsTutoriel.open(chap); return; }
     tutEnCours = true;
@@ -4127,6 +4158,26 @@
     }).then(function(){ tutEnCours = false; });
   }
   document.getElementById('help-btn').addEventListener('click', function(){ tutorielOuvrir(); });
+
+  // L'entrée de menu. Deux portes pour la même chose : le bouton Aide en
+  // haut, pour qui a un doute sur l'écran où il se trouve, et cette
+  // entrée-ci, pour qui cherche « le tutoriel » — et qui cherche dans le
+  // menu, jamais dans une icône « ? » d'en-tête.
+  (function(){
+    var b = document.getElementById('sb-tutoriel');
+    if (!b) return;
+    b.addEventListener('click', function(){
+      closeMobileNav();               // sur téléphone, le menu doit s'effacer
+      tutorielOuvrir();
+    });
+    // La pastille « Nouveau » disparaît dès la première ouverture, et ne
+    // revient jamais. Un badge permanent cesse d'être une information au
+    // bout de trois jours.
+    try {
+      if (localStorage.getItem('bbc_tut_vu') !== '1')
+        document.getElementById('sb-tut-neuf').classList.remove('hide');
+    } catch(e){}
+  })();
 
 
   // ------------------------------------------------------------------
@@ -4928,6 +4979,29 @@
     comptes: ["<b>Un compte, un rôle.</b> Le rôle décide des écrans que la personne voit en se connectant — elle ne trouve pas les autres, elle ne les cherche pas.","<b>Lire ne demande rien, changer demande le mot de passe.</b> Tout administrateur qui ouvre cet écran voit qui porte quelle casquette et ce que chaque casquette ouvre. Le mot de passe n'est réclamé qu'au moment de changer un rôle — et il faut en plus être super administrateur.","<b>Un compte est verrouillé en base : celui du propriétaire du site.</b> Personne d'autre que son titulaire ne peut changer son rôle, son adresse, ni le supprimer — même en passant directement par l'API, sans écran. Il porte un cadenas dans la liste.","Les comptes eux-mêmes se créent dans Supabase (Authentication), puis s'ajoutent à la table <code>admin_users</code>. Ici on ne fait que distribuer les casquettes.","Le tableau du bas distingue trois états : <b>✓</b> consulte et modifie, <b>○</b> consulte seulement, <b>·</b> n'a pas l'écran. Pour affiner, c'est la table <code>role_permissions</code> — une ligne par autorisation.","<b>Ce filtrage range l'admin, il ne l'enferme pas encore</b> : hors comptes, réglages et dossiers sensibles, la base accorde encore l'accès complet à tout administrateur. Le verrouillage se poursuit module par module."],
     audit: ["<b>Qui a modifié quoi, et quand.</b> Chaque ligne est une phrase, regroupée par jour ; l'ancienne valeur est barrée, la nouvelle à côté.","Protégé par mot de passe. La recherche et les filtres retrouvent une modification précise.","Rien ne s'efface : c'est la mémoire de l'admin."]
   };
+
+  // ===================== CE QUE LE POINTEUR DÉSIGNE =====================
+  // Un sélecteur par conseil, dans l'ordre exact de SECTION_HELP. Le
+  // tutoriel y amène sa main pendant qu'il lit la phrase.
+  //
+  // DEUX RÈGLES, ET LA SECONDE EST LA PLUS IMPORTANTE
+  //   · La table vit ICI, collée aux conseils qu'elle accompagne.
+  //     Ailleurs, les deux divergeraient à la première retouche : on
+  //     ajouterait un conseil sans décaler les cibles, et la main
+  //     désignerait le champ d'à côté sans que rien ne le signale.
+  //   · null vaut mieux qu'à peu près. Une main qui se pose sur le
+  //     mauvais élément pendant qu'on parle d'un autre fait chercher un
+  //     rapport qui n'existe pas — et fait douter de tout le reste.
+  //     Les écrans absents de cette table n'ont simplement pas de main.
+  var TUT_CIBLES = {
+    dashboard: ['#section-dashboard .db-nums', '#section-dashboard .db-num', '#db-cd', '#gs-open'],
+    gameday:   ['#gd-main', '#gd-score-b', '#gd-resa-search', '#gd-offers'],
+    live:      ['#set_yt_channel', '#set_live_mode', '#set_live_note'],
+    squad:     ['#ef-grid', '#ef-filter', '#ef-new'],
+    inscriptions: ['#in-board', '#in-board', null, '#in-filter-pay', null],
+    comptes:   ['#cp-list', '#cp-demander', '#cp-list', null, '#cp-matrice', null]
+  };
+
 
   // 'matches', 'roster' et 'shop' — les trois écrans « ancien » — ont été
   // retirés de la navigation. Leur balisage reste masqué dans la page le

@@ -142,6 +142,39 @@
 #btut .bt-spot.hide{display:none}
 
 /* ---------------------------------------------------------------------
+   LA MAIN
+   Un tutoriel qui se contente de parler laisse l'écran immobile, et on
+   ne sait pas de quoi il parle. La main va se poser sur la vraie chose
+   — le vrai champ, le vrai bouton — et le halo l'entoure. Elle ne
+   clique jamais : elle désigne.
+   --------------------------------------------------------------------- */
+#btut .bt-doigt{
+  position:fixed;width:30px;height:30px;pointer-events:none;z-index:2;
+  margin:-3px 0 0 -5px;                    /* la pointe, pas le coin du cadre */
+  transition:top .62s cubic-bezier(.34,.9,.28,1), left .62s cubic-bezier(.34,.9,.28,1);
+  filter:drop-shadow(0 3px 7px rgba(0,0,0,.65))
+}
+#btut .bt-doigt.hide{display:none}
+#btut .bt-doigt svg{width:100%;height:100%;display:block;fill:var(--bt-gold-br);stroke:#1A1206;stroke-width:1.1}
+
+/* L'arrivée : une onde brève, une seule fois. Une pulsation en boucle
+   attire l'œil en permanence et empêche de lire le texte. */
+#btut .bt-doigt::after{
+  content:'';position:absolute;inset:-9px;border-radius:50%;
+  border:2px solid var(--bt-gold-br);opacity:0;transform:scale(.4)
+}
+#btut .bt-doigt.pose::after{animation:btOnde .62s ease-out .5s 1}
+@keyframes btOnde{
+  0%  {opacity:.9;transform:scale(.4)}
+  100%{opacity:0;transform:scale(1.5)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #btut .bt-doigt{transition:none}
+  #btut .bt-doigt.pose::after{animation:none}
+}
+
+/* ---------------------------------------------------------------------
    LE NARRATEUR — la barre basse pendant la visite
    L'administration reste visible et cliquable au-dessus.
    --------------------------------------------------------------------- */

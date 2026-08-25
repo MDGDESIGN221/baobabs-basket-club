@@ -31,6 +31,8 @@
   var enLecture = false;
   var minuteur = null;
   var chien = null;         // chien de garde de la voix (voir dire())
+  var tPointe = null;       // attente de fin de defilement avant de pointer
+  var cibleCourante = null; // l element designe, pour le recalage au scroll
   var voixOn = false;
   var voixFr = null;
   var progres = { vus: {}, dernier: null };
@@ -198,8 +200,30 @@
       ecran: e.cle, nom: e.nom, halo: true,
       html: meta && meta.d ? meta.d : ('L’écran ' + e.nom + '.')
     });
+    // Chaque conseil peut porter une cible : le selecteur de la chose
+    // dont il parle. La table vit chez l'hote (TUT_CIBLES), a cote des
+    // conseils eux-memes -- separer les deux garantirait qu'ils
+    // divergent a la premiere retouche.
     var aides = (api.aides && api.aides[e.cle]) || [];
-    aides.forEach(function (a) { out.push({ ecran: e.cle, nom: e.nom, halo: false, html: a }); });
+    var vise = (api.cibles && api.cibles[e.cle]) || [];
+
+    // LE GARDE-FOU. Le jour où l'on ajoutera un conseil sans toucher aux
+    // cibles, les deux tables se décalent d'un cran : la main irait
+    // désigner le champ dont parlait la phrase PRÉCÉDENTE. Rien ne
+    // planterait, rien ne s'afficherait — le tutoriel se contenterait
+    // de mentir tranquillement. On préfère renoncer aux cibles de cet
+    // écran entier, et le dire en console.
+    if (vise.length && vise.length !== aides.length) {
+      try {
+        console.warn('[Tutoriel] « ' + e.cle +' » : ' + aides.length + ' conseils pour ' +
+          vise.length + ' cibles. Table TUT_CIBLES ignorée pour cet écran — réalignez-la.');
+      } catch (err) {}
+      vise = [];
+    }
+
+    aides.forEach(function (a, i) {
+      out.push({ ecran: e.cle, nom: e.nom, halo: false, html: a, cible: vise[i] || null });
+    });
     return out;
   }
 
@@ -376,7 +400,18 @@
 
     // Le halo n'apparaît qu'à l'arrivée sur un écran : c'est le moment
     // où « où est-ce que je clique ? » se pose. Ensuite il gênerait.
-    if (e.halo && e.ecran) poserHalo(e.ecran); else retirerHalo();
+    if (e.halo && e.ecran) {
+      poserHalo(e.ecran);                       // « voila ou on clique »
+    } else if (e.cible) {
+      // On cherche la cible DANS l'ecran courant : deux ecrans peuvent
+      // porter le meme identifiant de champ, et pointer celui d'un
+      // ecran masque poserait la main a 0,0.
+      var el = null;
+      try { el = document.querySelector(e.cible); } catch (err) { el = null; }
+      if (el && el.getClientRects().length) designer(el); else retirerHalo();
+    } else {
+      retirerHalo();
+    }
 
     var ou = $('bt-ou');
     ou.innerHTML = echapper(e.nom || '') + ' <em>· étape ' + (i + 1) + ' sur ' + etapes.length + '</em>';
@@ -448,28 +483,92 @@
 
   function poserHalo(cle) {
     var lien = api.lien(cle);
-    var spot = $('bt-spot');
     if (!lien) { retirerHalo(); return; }
 
     // Sur téléphone la barre latérale est repliée : on l'ouvre le temps
     // de montrer où se trouve l'entrée, puis on la referme à l'étape
     // suivante. Montrer un bouton invisible n'apprend rien.
     if (window.innerWidth < 940 && api.ouvrirMenu) api.ouvrirMenu();
+    designer(lien, true);
+  }
 
-    requestAnimationFrame(function () {
-      var r = lien.getBoundingClientRect();
-      if (!r.width && !r.height) { retirerHalo(); return; }
-      var p = 6;
-      spot.style.top = (r.top - p) + 'px';
-      spot.style.left = (r.left - p) + 'px';
-      spot.style.width = (r.width + p * 2) + 'px';
-      spot.style.height = (r.height + p * 2) + 'px';
-      spot.classList.remove('hide');
-    });
+  // ---- LA MAIN ----
+  // designer() est le seul chemin : entrée de menu ou champ au milieu
+  // d'un écran, c'est le même geste — on amène la chose à l'écran, la
+  // main y va, le halo l'entoure.
+  //
+  // Règle absolue : PAS de cible, PAS de main. Désigner approximativement
+  // pendant qu'on dit autre chose est pire que ne rien désigner — la
+  // personne cherche le rapport, ne le trouve pas, et cesse de faire
+  // confiance à tout le reste.
+  function designer(el, sansDefilement) {
+    if (!el) { retirerHalo(); return; }
+    cibleCourante = el;
+    if (tPointe) { clearTimeout(tPointe); tPointe = null; }
+
+    // L'élément peut être sous la ligne de flottaison : personne ne
+    // verra la main s'y poser si on ne l'amène pas d'abord.
+    var doux = !window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!sansDefilement) {
+      try { el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: doux ? 'smooth' : 'auto' }); }
+      catch (e) { try { el.scrollIntoView(); } catch (_) {} }
+    }
+
+    // On attend la fin du défilement avant de mesurer : mesurer pendant
+    // donne des coordonnées périmées, et la main se pose à côté.
+    tPointe = setTimeout(function () {
+      tPointe = null;
+      poser(el);
+    }, sansDefilement ? 40 : 420);
+  }
+
+  // Une liste vide mesure 0 × 0. Elle EXISTE — donc rien ne signale un
+  // problème — mais le halo s'y réduit à un point et la main désigne le
+  // vide. Ça n'a rien d'un cas tordu : un club sans joueuse enregistrée,
+  // une école sans inscription en juillet, et la moitié des écrans sont
+  // dans cet état. On remonte alors à l'ancêtre qui a une vraie surface,
+  // en général la carte qui contient la liste : « c'est ici que ça
+  // s'affiche » reste vrai, et reste visible.
+  function boiteUtile(el) {
+    var n = el, garde = 0;
+    while (n && garde++ < 6) {
+      var r = n.getBoundingClientRect();
+      if (r.width >= 24 && r.height >= 16) return n;
+      if (n.tagName === 'SECTION' || n.tagName === 'BODY') return null;
+      n = n.parentElement;
+    }
+    return null;
+  }
+
+  function poser(el) {
+    var spot = $('bt-spot'), doigt = $('bt-doigt');
+    el = boiteUtile(el);
+    if (!el) { retirerHalo(); return; }
+    var r = el.getBoundingClientRect();
+    if (r.width < 24 || r.height < 16) { retirerHalo(); return; }
+
+    var p = 6;
+    spot.style.top = (r.top - p) + 'px';
+    spot.style.left = (r.left - p) + 'px';
+    spot.style.width = (r.width + p * 2) + 'px';
+    spot.style.height = (r.height + p * 2) + 'px';
+    spot.classList.remove('hide');
+
+    // La main se pose vers le haut-gauche de la chose, pas en son
+    // centre : au centre elle masque précisément ce qu'elle désigne.
+    doigt.style.top = (r.top + Math.min(r.height * 0.55, 30)) + 'px';
+    doigt.style.left = (r.left + Math.min(r.width * 0.42, 46)) + 'px';
+    doigt.classList.remove('hide');
+    doigt.classList.remove('pose');
+    void doigt.offsetWidth;                  // redémarre l'onde d'arrivée
+    doigt.classList.add('pose');
   }
 
   function retirerHalo() {
+    cibleCourante = null;
+    if (tPointe) { clearTimeout(tPointe); tPointe = null; }
     $('bt-spot').classList.add('hide');
+    $('bt-doigt').classList.add('hide');
     if (window.innerWidth < 940 && api.fermerMenu) api.fermerMenu();
   }
 
@@ -564,9 +663,10 @@
 
     // Le halo est posé en coordonnées d'écran : il glisse dès que la
     // page bouge sous lui.
+    // Le halo et la main sont poses en coordonnees d'ecran : ils
+    // glissent des que la page bouge sous eux.
     var recaler = function () {
-      var e = etapes[idx];
-      if (e && e.halo && e.ecran && !$('bt-spot').classList.contains('hide')) poserHalo(e.ecran);
+      if (cibleCourante && cibleCourante.getClientRects().length) poser(cibleCourante);
     };
     window.addEventListener('resize', recaler);
     window.addEventListener('scroll', recaler, true);
