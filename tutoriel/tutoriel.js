@@ -370,6 +370,18 @@
     demoPhoto = {};
     if (api.verrou && api.verrou.armer) api.verrou.armer();
     racine.classList.add('demo');
+
+    // LE BANDEAU DOIT DIRE CE QUI VA VRAIMENT SE PASSER.
+    // Il annoncait « les champs se remplissent sous vos yeux » sur TOUS
+    // les ecrans -- y compris Soir de match, dont les quatre gestes sont
+    // en designation seule. On y voyait donc une promesse de saisie, et
+    // rien ne se remplissait : on croit que c'est casse.
+    var gestes = (api.demos && api.demos[ecran]) || [];
+    var saisit = gestes.some(function (g) { return g.geste === 'saisir' || g.geste === 'choisir'; });
+    var t = $('bt-demo-txt');
+    if (t) t.innerHTML = saisit
+      ? 'Démonstration — les champs se remplissent sous vos yeux, <b>rien n’est enregistré</b>'
+      : 'Démonstration — on vous montre <b>où</b>, sans rien toucher';
   }
 
   function demoPhotographier(el, sel) {
@@ -493,11 +505,16 @@
       s: aides.length + ' point' + (aides.length > 1 ? 's' : '') + ' — sur place, sans quitter l’écran'
     });
 
-    if (gestes.length) choix.push({
-      k: 'montrer', ico: 'M8 5v14l11-7z',
-      t: 'Me montrer comment faire',
-      s: gestes.length + ' geste' + (gestes.length > 1 ? 's' : '') + ' — rien ne sera enregistré'
-    });
+    if (gestes.length) {
+      var saisit = gestes.some(function (g) { return g.geste === 'saisir' || g.geste === 'choisir'; });
+      choix.push({
+        k: 'montrer', ico: 'M8 5v14l11-7z',
+        t: 'Me montrer comment faire',
+        s: gestes.length + ' geste' + (gestes.length > 1 ? 's' : '') +
+           (saisit ? ' — les champs se remplissent, rien n’est enregistré'
+                   : ' — on vous montre où, sans rien toucher')
+      });
+    }
 
     if (api.moduleDe && api.moduleDe(cle)) choix.push({
       k: 'acces', ico: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
