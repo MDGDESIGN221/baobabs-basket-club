@@ -61,7 +61,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-n';
+  var VERSION = '26.08-o';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -610,7 +610,7 @@
   // donnee du club touchee. Enregistrer, Exporter et Publier sont
   // DESIGNES, jamais cliques.
   var STUDIO_ACCUEIL = [
-    { c: '#bs-home-nav',  parcours: true, d: 'À gauche, la navigation de l’atelier&nbsp;: <b>Accueil</b>, <b>Nouveau</b> pour partir d’un format vierge, <b>Modèles</b> pour les maquettes déjà composées, et <b>Travaux récents</b> — vos affiches en cours.' },
+    { c: '#bs-home-nav',  d: 'À gauche, la navigation de l’atelier&nbsp;: <b>Accueil</b>, <b>Nouveau</b> pour partir d’un format vierge, <b>Modèles</b> pour les maquettes déjà composées, et <b>Travaux récents</b> — vos affiches en cours.' },
     { c: '#bs-home-main', d: 'Au centre, par quoi commencer. D’abord les <b>formats</b> — affiche 3:4, story, post carré, bannière du site — puis les <b>modèles en vedette</b>, des maquettes de match day qu’il n’y a plus qu’à remplir.' },
     { c: '#bs-home-tip',  d: 'Et le point à retenir&nbsp;: les <b>objets dynamiques</b>. Un calque marqué d’un éclair se remplit tout seul avec les données du club — l’adversaire, la date, le score. On ne les recopie jamais à la main.' }
   ];
@@ -623,7 +623,7 @@
   var STUDIO_ATELIER = [
     { c: '#bs-canvas',     d: 'Voilà un <b>plan de travail</b>. C’est la surface qu’on compose, aux dimensions exactes du format choisi&nbsp;: ce qu’on voit ici est ce qui sortira. Celui-ci part du modèle <b>Duel</b>.' },
     { c: '#bs-proj-name',  d: 'En haut, le <b>nom du projet</b>. La pastille juste à côté s’allume dès qu’une modification n’est pas enregistrée — tant qu’elle est là, le travail n’existe que dans cette page.' },
-    { c: '#bs-rail',       parcours: true, d: 'La <b>colonne d’outils</b>&nbsp;: modèles, images, photos, éléments, texte, styles, projets. Et <b>Données</b>, qui va chercher le prochain match dans l’administration pour remplir l’affiche toute seule.' },
+    { c: '#bs-rail',       d: 'La <b>colonne d’outils</b>&nbsp;: modèles, images, photos, éléments, texte, styles, projets. Et <b>Données</b>, qui va chercher le prochain match dans l’administration pour remplir l’affiche toute seule.' },
     { c: '#bs-props',      d: 'À droite, les <b>propriétés</b>. Tant que rien n’est sélectionné, ce sont celles de l’affiche — son format, ses dimensions. Dès qu’on choisit un élément, le panneau devient le sien.' },
     { c: '#bs-layer-list', parcours: '.bs-lyr, li, [data-id]', d: 'En dessous, les <b>calques</b>&nbsp;: nom de l’adversaire, logo, date, salle, titre… Chaque morceau de l’affiche est une ligne, et l’ordre de cette liste décide de ce qui passe devant.' },
     { c: '#bs-undo',       d: '<b>Annuler</b>, et sa jumelle pour refaire. Rien n’est définitif tant qu’on n’a pas enregistré&nbsp;: on peut essayer sans rien risquer.' },
@@ -1540,7 +1540,10 @@
       try { el = document.querySelector(sel); } catch (err) { el = null; }
       if (el && el.getClientRects().length) {
         designer(el);
-        if (e.parcours) parcourirEnumeration(e, g);
+        // Vaut pour tout le tutoriel, pas pour les seules etapes du
+        // Studio. `parcours: false` reste la porte de sortie si une
+        // cible precise ne doit jamais etre parcourue.
+        if (e.parcours !== false) parcourirEnumeration(e, g);
         return;
       }
       if (Date.now() < fin) { setTimeout(essai, 90); return; }
@@ -1982,12 +1985,43 @@
     });
   }
 
+  // UNE ENUMERATION SE RECONNAIT, ELLE NE SE DECLARE PAS.
+  //
+  // Marquer a la main les etapes qui enumerent, ce serait 98 selecteurs
+  // a relire et a tenir a jour -- et a laisser se perimer en silence.
+  // On fait donc ici ce que le tutoriel fait partout : on lit l'hote.
+  //
+  // Est un groupe une cible qui a de deux a six enfants manipulables,
+  // visibles, dont aucun ne remplit a lui seul le conteneur (auquel cas
+  // ce n'est pas une liste, c'est le conteneur avec une bordure). En
+  // dessous de deux il n'y a rien a parcourir ; au-dela de six ce n'est
+  // plus une enumeration mais un defile, et la main passerait trop vite
+  // pour qu'on lise quoi que ce soit.
+  function groupeOuPas(el) {
+    if (!el) return null;
+    var r = el.getBoundingClientRect();
+    // Trop petit dans les deux sens : c'est un controle, pas un groupe.
+    if (r.width < 90 && r.height < 60) return null;
+    var aire = r.width * r.height;
+    if (aire <= 0) return null;
+    var l = enfantsAParcourir(el, null).filter(function (x) {
+      var c = x.getBoundingClientRect();
+      return c.width * c.height < aire * 0.8;
+    });
+    return (l.length >= 2 && l.length <= 6) ? l : null;
+  }
+
   function parcourirEnumeration(e, g) {
+    // Une etape qui joue deja un geste pilote la main elle-meme. Deux
+    // scenarios sur le meme pointeur se disputeraient ses coordonnees.
+    if (e.geste) return;
     var hote = null;
     try { hote = document.querySelector(e.cible); } catch (err) { return; }
     if (!hote) return;
-    var items = enfantsAParcourir(hote, typeof e.parcours === 'string' ? e.parcours : null);
-    if (items.length < 2) return;
+    var items = (typeof e.parcours === 'string')
+      ? enfantsAParcourir(hote, e.parcours)
+      : groupeOuPas(hote);
+    if (!items || items.length < 2) return;
     // Au-dela de six, ce n'est plus une enumeration mais un defile :
     // la main passerait trop vite pour qu'on lise quoi que ce soit.
     items = items.slice(0, 6);
