@@ -47,6 +47,7 @@
   };
   var surcouche = null;     // '_connexion' | '_studio' | null
   var atelierOuvert = false;  // dans le Studio : accueil, ou plan de travail ?
+  var plancherGeste = 0;      // ms : duree du geste en cours, a respecter avant d'avancer
   // LE JETON D'ETAPE. Sans lui, avancer a la main accelere la visite --
   // voir montrer(). Chaque etape prend un numero ; tout ce qui etait en
   // vol pour une etape plus ancienne se tait en le comparant.
@@ -61,7 +62,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-q';
+  var VERSION = '26.08-r';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -1561,6 +1562,7 @@
     // En prenant le jeton avant d'annuler, tout ce qui etait en vol se
     // reconnait perime et se tait.
     var g = ++jeton;
+    plancherGeste = 0;
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
     var e = etapes[i]; if (!e) { terminer(); return; }
@@ -1688,7 +1690,11 @@
     var suite = function () {
       if (g !== jeton) return;             // une etape plus recente a pris le relai
       if (!enLecture) return;
-      var reste = 2200 - (Date.now() - depuis);
+      // 2 200 ms est le filet contre une voix qui echoue a la premiere
+      // syllabe. Mais une etape ne doit pas non plus partir avant la fin
+      // de son geste : le plancher est le plus grand des deux, plafonne
+      // pour qu'un tableau bien fourni ne fasse pas trainer la visite.
+      var reste = Math.max(2200, Math.min(plancherGeste, 6500)) - (Date.now() - depuis);
       if (reste > 0) {
         minuteur = setTimeout(function () { if (g === jeton && enLecture) suivant(); }, reste);
         return;
@@ -2049,6 +2055,9 @@
         doigtTape(el);
       }, 980 + i * pas);
     });
+    // On annonce jusqu'a quand la main sera occupee, sinon l'etape
+    // suivante arrive au milieu de l'enumeration.
+    plancherGeste = Math.max(plancherGeste, 980 + (items.length - 1) * pas + 620);
     return true;
   }
 
@@ -2083,6 +2092,7 @@
         setTimeout(function () { if (g === jeton) d.classList.remove('vole'); }, 720);
       }, 1050 + i * 820);
     });
+    plancherGeste = Math.max(plancherGeste, 1050 + 2 * 820 + 740);
   }
 
   // LA MAIN NE SE CONTENTE PLUS DE MONTRER.
@@ -2112,6 +2122,7 @@
       if (g !== jeton || etapes[idx] !== e) return;
       doigtTape(el);
     }, 1150);
+    plancherGeste = Math.max(plancherGeste, 1150 + 500);
   }
 
   // LE FIL. Ce qu'on dit et ce qu'on montre vivent chacun de leur cote
