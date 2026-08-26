@@ -61,7 +61,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-o';
+  var VERSION = '26.08-q';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -1540,10 +1540,7 @@
       try { el = document.querySelector(sel); } catch (err) { el = null; }
       if (el && el.getClientRects().length) {
         designer(el);
-        // Vaut pour tout le tutoriel, pas pour les seules etapes du
-        // Studio. `parcours: false` reste la porte de sortie si une
-        // cible precise ne doit jamais etre parcourue.
-        if (e.parcours !== false) parcourirEnumeration(e, g);
+        animerCible(e, g, el);
         return;
       }
       if (Date.now() < fin) { setTimeout(essai, 90); return; }
@@ -1879,7 +1876,22 @@
     // a la suivante quatre fois en trois secondes, et un narrateur qui
     // se replacerait a chaque saut donnerait le mal de mer. Il tient sa
     // position, prise sur la premiere.
-    if (!sansNarrateur) ecarterNarrateur(r);
+    //
+    // Mais tenir sa position ne veut pas dire s'asseoir sur ce qu'on
+    // designe. Constate au banc : deux sous-cibles couvertes a 53 % et
+    // 59 %. S'il en cache plus du tiers, il se pousse.
+    if (!sansNarrateur) {
+      ecarterNarrateur(r);
+    } else {
+      var nb = $('bt-narr');
+      if (nb && !nb.classList.contains('hide')) {
+        var qr = nb.getBoundingClientRect();
+        var ox = Math.min(r.right, qr.right) - Math.max(r.left, qr.left);
+        var oy = Math.min(r.bottom, qr.bottom) - Math.max(r.top, qr.top);
+        var aire = r.width * r.height;
+        if (ox > 0 && oy > 0 && aire > 0 && (ox * oy) / aire > 0.33) ecarterNarrateur(r);
+      }
+    }
 
     var p = 6;
     var L = r.width + p * 2, H = r.height + p * 2;
@@ -2008,20 +2020,24 @@
       var c = x.getBoundingClientRect();
       return c.width * c.height < aire * 0.8;
     });
-    return (l.length >= 2 && l.length <= 6) ? l : null;
+    if (l.length < 2) return null;
+    // Au-dela de six, la main n'enumere plus : elle echantillonne. Trois
+    // lignes d'un tableau de vingt disent « voici vos lignes » ; les
+    // vingt diraient seulement qu'on sait defiler.
+    return l.length <= 6 ? l : [l[0], l[1], l[2]];
   }
 
   function parcourirEnumeration(e, g) {
     // Une etape qui joue deja un geste pilote la main elle-meme. Deux
     // scenarios sur le meme pointeur se disputeraient ses coordonnees.
-    if (e.geste) return;
+    if (e.geste) return false;
     var hote = null;
-    try { hote = document.querySelector(e.cible); } catch (err) { return; }
-    if (!hote) return;
+    try { hote = document.querySelector(e.cible); } catch (err) { return false; }
+    if (!hote) return false;
     var items = (typeof e.parcours === 'string')
       ? enfantsAParcourir(hote, e.parcours)
       : groupeOuPas(hote);
-    if (!items || items.length < 2) return;
+    if (!items || items.length < 2) return false;
     // Au-dela de six, ce n'est plus une enumeration mais un defile :
     // la main passerait trop vite pour qu'on lise quoi que ce soit.
     items = items.slice(0, 6);
@@ -2033,6 +2049,69 @@
         doigtTape(el);
       }, 980 + i * pas);
     });
+    return true;
+  }
+
+  // LE BALAYAGE D'UNE REGION.
+  //
+  // Les trois quarts des reperes de l'administration designent une zone
+  // d'affichage : un panneau d'indicateurs, le corps d'un tableau, la
+  // grille d'un calendrier. Rien a presser, aucune liste courte -- la
+  // main s'y posait et flottait.
+  //
+  // Elle la parcourt donc, en trois temps, le long de son grand cote.
+  // C'est le geste du regard qui balaie, et il dit « tout ceci » mieux
+  // qu'un point immobile. Le halo, lui, reste sur la region entiere :
+  // c'est bien d'elle qu'on parle.
+  function balayer(el, g, e) {
+    var b = boiteUtile(el); if (!b) return;
+    var r = b.getBoundingClientRect();
+    // 30 px, pas 44 : une barre de filtres fait 36 px de haut et se
+    // balaie tres bien a l horizontale. Mesure sur le vrai admin --
+    // le seuil a 44 laissait 20 reperes immobiles pour rien.
+    if (r.width < 90 || r.height < 30) return;
+    var d = $('bt-doigt'); if (!d || d.classList.contains('hide')) return;
+    var horiz = r.width >= r.height * 1.2;
+    [0.2, 0.52, 0.84].forEach(function (f, i) {
+      setTimeout(function () {
+        if (g !== jeton || etapes[idx] !== e) return;
+        var x = horiz ? r.left + r.width * f : r.left + Math.min(r.width * 0.38, 70);
+        var y = horiz ? r.top + Math.min(r.height * 0.5, 44) : r.top + r.height * f;
+        d.style.left = Math.round(x) + 'px';
+        d.style.top = Math.round(y) + 'px';
+        d.classList.add('vole');
+        setTimeout(function () { if (g === jeton) d.classList.remove('vole'); }, 720);
+      }, 1050 + i * 820);
+    });
+  }
+
+  // LA MAIN NE SE CONTENTE PLUS DE MONTRER.
+  //
+  // Quand la cible n'est pas un groupe -- c'est le cas de la grande
+  // majorite des reperes, qui designent un controle precis -- la main
+  // arrivait et flottait. Si la chose designee est une chose sur
+  // laquelle on APPUIE, elle fait le geste.
+  //
+  // doigtTape() est purement visuel : il joue l'animation d'appui et
+  // l'onde, il n'emet AUCUN evenement. Rien n'est declenche dans
+  // l'administration, et c'est ce qui permet de le faire partout.
+  function animerCible(e, g, el) {
+    // Une demonstration pilote deja la main : deux scenarios sur le
+    // meme pointeur se disputeraient ses coordonnees.
+    if (e.geste) return;
+    if (e.parcours !== false && parcourirEnumeration(e, g)) return;
+    if (!el) return;
+    var t = el.tagName;
+    var appuyable = t === 'BUTTON' || t === 'A' ||
+      (el.getAttribute && el.getAttribute('role') === 'button') ||
+      (t === 'INPUT' && /^(submit|button|checkbox|radio)$/i.test(el.type || ''));
+    if (!appuyable) { balayer(el, g, e); return; }
+    // Apres l'arrivee, pas pendant : voir la main appuyer alors qu'elle
+    // vole encore ne se lit pas.
+    setTimeout(function () {
+      if (g !== jeton || etapes[idx] !== e) return;
+      doigtTape(el);
+    }, 1150);
   }
 
   // LE FIL. Ce qu'on dit et ce qu'on montre vivent chacun de leur cote
