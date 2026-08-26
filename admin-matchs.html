@@ -4139,6 +4139,12 @@
       }),
       metas: SECTION_META,
       aides: SECTION_HELP,
+      // De quel module depend un ecran : c'est ce qui permet de repondre
+      // « qui a acces a CET ecran-la » sans quitter l'ecran en question.
+      moduleDe: function(cle){
+        var m = SECTION_MODULE[cle];
+        return m ? { cle:m, nom:(MODULE_NOMS[m] || m) } : null;
+      },
       cibles: (typeof TUT_CIBLES !== 'undefined' ? TUT_CIBLES : {}),
       demos:  (typeof TUT_DEMOS  !== 'undefined' ? TUT_DEMOS  : {}),
       // Le verrou et le menage : le tutoriel ne peut pas les faire
@@ -4202,20 +4208,20 @@
       });
   }
 
-  function tutorielOuvrir(chap){
+  function tutorielOuvrir(chap, ecranContexte){
     // Quelle que soit la porte empruntée — menu, bouton Aide, ou
     // l'ouverture automatique de la première connexion — la pastille a
     // fait son travail dès qu'on entre.
     var neuf = document.getElementById('sb-tut-neuf');
     if (neuf) neuf.classList.add('hide');
     if (tutEnCours) return;
-    if (tutPret){ window.BaobabsTutoriel.open(chap); return; }
+    if (tutPret){ window.BaobabsTutoriel.open(chap, ecranContexte); return; }
     tutEnCours = true;
     qgToast('Ouverture du tutoriel…');
     tutorielCharger().then(function(){
       window.BaobabsTutoriel.mount(document.getElementById('btut'), tutorielApi());
       tutPret = true;
-      window.BaobabsTutoriel.open(chap);
+      window.BaobabsTutoriel.open(chap, ecranContexte);
     }).catch(function(e){
       console.error('[Tutoriel]', e);
       // On dit CE QUI a manqué. « n'a pas pu se charger » envoie
@@ -4226,7 +4232,15 @@
               '). Vérifiez que le dossier /tutoriel/ est bien en ligne, puis rechargez avec Ctrl+Maj+R.', true);
     }).then(function(){ tutEnCours = false; });
   }
-  document.getElementById('help-btn').addEventListener('click', function(){ tutorielOuvrir(); });
+  // Deux portes, deux intentions differentes -- et c'est le coeur du
+  // sujet. Le bouton Aide de l'en-tete part de LA OU L'ON EST : « je
+  // suis ici, qu'est-ce que je peux faire ici ». L'entree de menu, elle,
+  // ouvre la formation complete. Confondre les deux, c'est obliger
+  // quelqu'un de bloque sur un ecran a traverser un sommaire de dix
+  // chapitres pour retrouver l'ecran qu'il a deja sous les yeux.
+  document.getElementById('help-btn').addEventListener('click', function(){
+    tutorielOuvrir(null, sectionCourante || 'dashboard');
+  });
 
   // L'entrée de menu. Deux portes pour la même chose : le bouton Aide en
   // haut, pour qui a un doute sur l'écran où il se trouve, et cette

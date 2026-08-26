@@ -271,10 +271,21 @@
             'sa suppression sont verrouillés dans la base — même un autre super administrateur ne peut pas y toucher. ' +
             'Il porte un cadenas dans l’écran <b>Comptes &amp; rôles</b>.'
     });
+    // LE BUG SIGNALE. Ces etapes n'avaient pas d'ecran attache : elles
+    // parlaient des roles pendant qu'on regardait les joueuses. Le
+    // dernier pas mene desormais VRAIMENT a l'ecran dont il parle --
+    // quand le role y a droit, sinon il ne promet pas une porte fermee.
+    var vaAuxComptes = !!(api.metas && api.metas.comptes && api.lien('comptes') &&
+                          !api.lien('comptes').classList.contains('hide'));
     out.push({
       special: true, nom: 'Les rôles',
-      html: 'Pour changer un rôle : <b>Réglages → Comptes &amp; rôles</b>. Consulter ne demande rien ; ' +
-            'changer demande le mot de passe <i>et</i> le rôle de super administrateur.'
+      ecran: vaAuxComptes ? 'comptes' : null,
+      halo: vaAuxComptes,
+      html: vaAuxComptes
+        ? 'Et voici l’écran lui-même : <b>Réglages → Comptes &amp; rôles</b>. Consulter ne demande rien ; ' +
+          'changer un rôle demande le mot de passe <i>et</i> le rôle de super administrateur.'
+        : 'Pour changer un rôle, il faut passer par <b>Réglages → Comptes &amp; rôles</b> — un écran que votre ' +
+          'casquette n’ouvre pas. C’est un super administrateur qui s’en charge.'
     });
     return out;
   }
@@ -396,6 +407,151 @@
       if (p && p.geste && p.ecran === e.ecran) jouerGeste(p.geste, trouver(p.cible), true);
     }
     jouerGeste(e.geste, trouver(e.cible), false);
+  }
+
+  // ===================================================================
+  // L'AIDE DU CONTEXTE
+  //
+  // Le manque que tout le reste ne comblait pas. Quelqu'un sur l'écran
+  // Joueuses qui veut savoir qui a accès aux joueuses n'a pas à ouvrir
+  // un sommaire de dix chapitres, ni à se déplacer jusqu'à Comptes &
+  // rôles, ni à écouter une narration pendant qu'il regarde autre
+  // chose. Il demande, on répond, là où il est.
+  //
+  // Les deux premières réponses ne coûtent AUCUN texte à écrire :
+  //   « Comprendre cet écran »  = les conseils de cet écran, déjà écrits
+  //   « Qui a accès ici »       = SECTION_MODULE + role_permissions,
+  //                               déjà en base
+  // Le reste (les tâches) s'écrit, et c'est là qu'est le vrai coût.
+  // ===================================================================
+  var ctxEcran = null;
+
+  function ouvrirContexte(cle) {
+    ctxEcran = cle;
+    var meta = (api.metas && api.metas[cle]) || {};
+    var nom = meta.t || cle;
+
+    $('bt-ctx-t').textContent = nom;
+    $('bt-ctx-s').textContent = meta.d || '';
+    $('bt-ctx-ou').textContent = 'Vous êtes ici';
+    $('bt-ctx-rep').classList.add('hide');
+    $('bt-ctx-rep').innerHTML = '';
+
+    var choix = [];
+    var aides = (api.aides && api.aides[cle]) || [];
+    var gestes = (api.demos && api.demos[cle]) || [];
+
+    if (aides.length) choix.push({
+      k: 'comprendre', ico: 'M12 17h.01M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4',
+      t: 'Comprendre cet écran',
+      s: aides.length + ' point' + (aides.length > 1 ? 's' : '') + ' — sur place, sans quitter l’écran'
+    });
+
+    if (gestes.length) choix.push({
+      k: 'montrer', ico: 'M8 5v14l11-7z',
+      t: 'Me montrer comment faire',
+      s: gestes.length + ' geste' + (gestes.length > 1 ? 's' : '') + ' — rien ne sera enregistré'
+    });
+
+    if (api.moduleDe && api.moduleDe(cle)) choix.push({
+      k: 'acces', ico: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
+      t: 'Qui a accès à cet écran ?',
+      s: 'Les cinq casquettes, et ce que chacune peut y faire'
+    });
+
+    choix.push({
+      k: 'roles', ico: 'M3 3v18h18M7 14l3-4 3 3 5-7',
+      t: 'Voir tous les rôles et les accès',
+      s: 'Le tableau complet, écran par écran'
+    });
+
+    choix.push({
+      k: 'complet', ico: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z',
+      t: 'La visite complète',
+      s: 'Tous vos écrans, du début à la fin'
+    });
+
+    $('bt-ctx-choix').innerHTML = choix.map(function (c) {
+      return '<button type="button" class="bt-c" data-ctx="' + c.k + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="' + c.ico + '"/></svg>' +
+        '<span class="bt-c-t"><b>' + echapper(c.t) + '</b><span>' + echapper(c.s) + '</span></span>' +
+      '</button>';
+    }).join('');
+
+    $('bt-ctx-choix').querySelectorAll('[data-ctx]').forEach(function (b) {
+      b.addEventListener('click', function () { repondre(b.getAttribute('data-ctx'), b); });
+    });
+
+    $('bt-somm').classList.add('hide');
+    $('bt-narr').classList.add('hide');
+    $('bt-ctx').classList.remove('hide');
+    racine.classList.remove('hide');
+  }
+
+  function repondre(quoi, bouton) {
+    $('bt-ctx-choix').querySelectorAll('.bt-c').forEach(function (x) { x.classList.remove('on'); });
+
+    if (quoi === 'complet') { $('bt-ctx').classList.add('hide'); construirePlan(); rendreSommaire(); $('bt-somm').classList.remove('hide'); return; }
+    if (quoi === 'comprendre') { $('bt-ctx').classList.add('hide'); visiteEcran(ctxEcran, false); return; }
+    if (quoi === 'montrer')    { $('bt-ctx').classList.add('hide'); visiteEcran(ctxEcran, true);  return; }
+    if (quoi === 'roles')      { $('bt-ctx').classList.add('hide'); construirePlan(); demarrer('_roles'); return; }
+
+    if (quoi === 'acces') {
+      if (bouton) bouton.classList.add('on');
+      montrerAcces(ctxEcran);
+    }
+  }
+
+  // « Qui a accès à CET écran » — la réponse s'affiche sous la question,
+  // sans navigation, sans narration. C'est la demande exacte qui a
+  // motivé cette refonte.
+  function montrerAcces(cle) {
+    var mod = api.moduleDe(cle);
+    var rep = $('bt-ctx-rep');
+    rep.classList.remove('hide');
+    rep.innerHTML = '<h3>Qui a accès à « ' + echapper((api.metas[cle] || {}).t || cle) + ' »</h3>' +
+      '<p>Cet écran dépend de <code>' + echapper(mod.nom) + '</code>. Voici ce que chaque casquette peut y faire.</p>' +
+      '<div class="bt-perm"><p style="margin:0">Lecture des droits…</p></div>';
+
+    api.matrice().then(function (rows) {
+      var idxp = {};
+      (rows || []).forEach(function (p) {
+        var c = p.role + '|' + p.module;
+        (idxp[c] = idxp[c] || {})[p.action] = true;
+      });
+      var ecrire = ['creer', 'modifier', 'supprimer', 'publier', 'approuver'];
+      rep.querySelector('.bt-perm').innerHTML = (api.roles || []).map(function (r) {
+        var p = idxp[r.cle + '|' + mod.cle] || {};
+        var s, k, q;
+        if (r.cle === 'super_admin' || ecrire.some(function (a) { return p[a]; })) { s = '✓'; k = 'bt-w'; q = 'consulte et modifie'; }
+        else if (p.voir) { s = '○'; k = 'bt-r'; q = 'consulte seulement'; }
+        else { s = '·'; k = 'bt-n'; q = 'n’a pas cet écran'; }
+        return '<div class="bt-perm-l' + (r.cle === api.role ? ' moi' : '') + '">' +
+          '<span class="bt-perm-s ' + k + '">' + s + '</span>' +
+          '<span class="bt-perm-n">' + echapper(r.nom) + (r.cle === api.role ? ' — vous' : '') + '</span>' +
+          '<span class="bt-perm-q">' + q + '</span></div>';
+      }).join('');
+    }).catch(function () {
+      rep.querySelector('.bt-perm').innerHTML = '<p style="margin:0">Droits indisponibles.</p>';
+    });
+  }
+
+  // Une visite d'UN seul écran : celui où l'on est déjà. Pas de
+  // chapitre, pas de sommaire, pas de détour.
+  function visiteEcran(cle, avecGestes) {
+    var nom = (api.metas[cle] || {}).t || cle;
+    etapes = etapesEcran({ cle: cle, nom: nom });
+    if (!avecGestes) etapes = etapes.filter(function (e) { return !e.geste; });
+    // On est déjà sur l'écran : le halo d'arrivée sur l'entrée de menu
+    // n'apprend rien à quelqu'un qui vient de cliquer dessus.
+    if (etapes.length && etapes[0].halo) etapes[0].halo = false;
+    if (!etapes.length) return;
+    chapCourant = 'ctx:' + cle;
+    idx = 0;
+    $('bt-narr').classList.remove('hide');
+    enLecture = true;
+    majBoutonPlay();
+    montrer(0);
   }
 
   // ===================================================================
@@ -737,6 +893,7 @@
   function versSommaire() {
     enLecture = false;
     demoFin();
+    $('bt-ctx').classList.add('hide');
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
     retirerHalo();
@@ -748,6 +905,7 @@
   function fermer() {
     enLecture = false;
     demoFin();
+    $('bt-ctx').classList.add('hide');
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
     retirerHalo();
@@ -760,6 +918,7 @@
   // ===================================================================
   function brancher() {
     $('bt-fermer').addEventListener('click', fermer);
+    $('bt-ctx-fermer').addEventListener('click', fermer);
     $('bt-quitter').addEventListener('click', fermer);
     $('bt-somm-retour').addEventListener('click', versSommaire);
     $('bt-tout').addEventListener('click', function () { demarrer('tout'); });
@@ -817,15 +976,23 @@
       reglerVoix(voixOn);
       brancher();
     },
-    open: function (chap) {
+    // Deux entrees, deux intentions. Avec un ecran : « je suis ici,
+    // qu'est-ce que je peux faire ici ». Sans : la formation complete.
+    open: function (chap, ecranContexte) {
       if (!monte) return;
       construirePlan();
+      if (ecranContexte && api.metas && api.metas[ecranContexte]) {
+        ouvrirContexte(ecranContexte);
+        return;
+      }
       rendreSommaire();
+      $('bt-ctx').classList.add('hide');
       $('bt-narr').classList.add('hide');
       $('bt-somm').classList.remove('hide');
       racine.classList.remove('hide');
       if (chap) demarrer(chap);
     },
+    aide: function (ecran) { if (monte) { construirePlan(); ouvrirContexte(ecran); } },
     close: fermer,
     // Pour le banc d'essai et la console : savoir où on en est.
     etat: function () {
