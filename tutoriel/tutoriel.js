@@ -48,6 +48,7 @@
 
   var CLE_PROGRES = 'bbc_tut_progres';
   var CLE_VOIX = 'bbc_tut_voix';
+  var CLE_VOIX_NOM = 'bbc_tut_voix_nom';
 
   // ===================================================================
   // Petits outils
@@ -111,14 +112,50 @@
   // ===================================================================
   function voixDispo() { return typeof window.speechSynthesis !== 'undefined'; }
 
-  function choisirVoix() {
-    if (!voixDispo()) return null;
+  // LE CHOIX DE LA VOIX, ET L'ERREUR QUE J'AVAIS FAITE
+  //
+  // Je préférais les voix `localService`, pour qu'elles parlent sans
+  // réseau. C'est exactement le contraire de ce qu'il faut pour la
+  // qualité : sur Windows, les voix locales sont les vieilles SAPI5 —
+  // Hortense, Julie, Paul — et ce sont précisément les robotiques. Les
+  // « Natural » et « Online » de Windows 11, les « Google » de Chrome,
+  // les « Enhanced » d'Apple sonnent radicalement mieux. Je les
+  // écartais activement.
+  //
+  // On classe donc par qualité, et la voix locale devient le dernier
+  // recours plutôt que le premier choix.
+  function noteVoix(v) {
+    var n = (v.name || '').toLowerCase(), s = 0;
+    if (/natural|neural/.test(n)) s += 100;         // génération naturelle
+    if (/online/.test(n)) s += 60;                  // voix serveur
+    if (/google/.test(n)) s += 55;
+    if (/enhanced|premium|siri/.test(n)) s += 50;   // Apple
+    if (/eloquence|compact/.test(n)) s -= 40;       // très anciennes
+    if (/hortense|julie|paul|claude/.test(n)) s -= 20;
+    if (/microsoft/.test(n) && !/natural|online/.test(n)) s -= 18;
+    if (/^fr-fr/i.test(v.lang || '')) s += 10;      // français de France d'abord
+    if (v.default) s += 3;
+    return s;
+  }
+
+  function voixFrancaises() {
+    if (!voixDispo()) return [];
     var vs = window.speechSynthesis.getVoices() || [];
-    var fr = vs.filter(function (v) { return /^fr(-|_|$)/i.test(v.lang || ''); });
+    return vs.filter(function (v) { return /^fr(-|_|$)/i.test(v.lang || ''); })
+             .sort(function (a, b) { return noteVoix(b) - noteVoix(a); });
+  }
+
+  function choisirVoix() {
+    var fr = voixFrancaises();
     if (!fr.length) return null;
-    // Une voix locale ne dépend pas du réseau : sur un stade sans 4G,
-    // c'est la seule qui parlera.
-    return fr.filter(function (v) { return v.localService; })[0] || fr[0];
+    // Un choix explicite de la personne l'emporte toujours.
+    var voulu = null;
+    try { voulu = localStorage.getItem(CLE_VOIX_NOM); } catch (e) {}
+    if (voulu) {
+      var t = fr.filter(function (v) { return v.name === voulu; })[0];
+      if (t) return t;
+    }
+    return fr[0];
   }
 
   function preparerVoix() {
@@ -135,10 +172,41 @@
   }
 
   function majNoteVoix() {
-    var note = $('bt-voix-note'); if (!note) return;
-    if (!voixDispo()) { note.textContent = 'Ce navigateur ne sait pas lire à voix haute — le texte reste affiché.'; return; }
-    if (!voixFr) { note.textContent = 'Aucune voix française installée sur cet appareil — le texte reste affiché.'; return; }
-    note.textContent = '';
+    var note = $('bt-voix-note'), liste = $('bt-voix-liste'), essai = $('bt-voix-essai');
+    if (!note) return;
+
+    if (!voixDispo()) {
+      note.textContent = 'Ce navigateur ne sait pas lire à voix haute — le texte reste affiché.';
+      if (liste) liste.classList.add('hide'); if (essai) essai.classList.add('hide');
+      return;
+    }
+    var fr = voixFrancaises();
+    if (!fr.length) {
+      note.textContent = 'Aucune voix française installée sur cet appareil — le texte reste affiché.';
+      if (liste) liste.classList.add('hide'); if (essai) essai.classList.add('hide');
+      return;
+    }
+
+    // La qualité dépend entièrement de ce qui est installé : on laisse
+    // donc choisir, et on dit laquelle sonne le mieux plutôt que de
+    // décider à la place de la personne.
+    if (liste) {
+      liste.innerHTML = fr.map(function (v) {
+        var bonne = noteVoix(v) >= 50;
+        return '<option value="' + echapper(v.name) + '"' +
+               (voixFr && v.name === voixFr.name ? ' selected' : '') + '>' +
+               echapper(v.name.replace(/^Microsoft\s+/, '').replace(/\s*-\s*French.*$/i, '')) +
+               (bonne ? ' — voix naturelle' : '') + '</option>';
+      }).join('');
+      liste.classList.remove('hide');
+    }
+    if (essai) essai.classList.remove('hide');
+
+    note.innerHTML = (voixFr && noteVoix(voixFr) >= 50)
+      ? ''
+      : 'Cette voix est de l’ancienne génération, elle sonne mécanique. ' +
+        'Sur Windows&nbsp;: <b>Paramètres → Heure et langue → Voix → Ajouter des voix</b>, ' +
+        'installez une voix française <b>« Naturel »</b>, puis rouvrez le navigateur.';
   }
 
   function taire() {
@@ -152,16 +220,36 @@
     taire();
     var t = pourLaVoix(html);
     if (!t) return false;
-    var u = new SpeechSynthesisUtterance(t);
-    u.voice = voixFr; u.lang = voixFr.lang || 'fr-FR';
-    u.rate = 1.02; u.pitch = 1; u.volume = 1;
+    // PHRASE PAR PHRASE, PAS D'UN SEUL BLOC.
+    // Une longue chaîne est débitée d'un souffle, sans respiration : le
+    // moteur ne sait pas où poser les silences. En la découpant, chaque
+    // fin de phrase devient une vraie pause — c'est ce qui distingue le
+    // plus nettement une lecture humaine d'une lecture de machine.
+    // Pas de lookbehind ici : (?<=...) est une erreur de SYNTAXE, pas
+    // d'execution, sur Safari anterieur a 16.4 -- le fichier entier
+    // refuserait de se charger sur un iPhone pas a jour. On decoupe
+    // donc par correspondance, ce que tous les moteurs comprennent.
+    var morceaux = (t.match(/[^.!?…:]+[.!?…:]*\s*/g) || [t])
+      .map(function (x) { return x.trim(); })
+      .filter(function (x) { return x; });
+    if (!morceaux.length) morceaux = [t];
+
     var rendu = false;
     function unefois() { if (rendu) return; rendu = true; if (chien) { clearTimeout(chien); chien = null; } fini(); }
-    u.onend = unefois;
-    u.onerror = unefois;
-    // Piège 3 : la sécurité qui empêche la visite de se figer.
+
+    try {
+      morceaux.forEach(function (m, i) {
+        var u = new SpeechSynthesisUtterance(m);
+        u.voice = voixFr; u.lang = voixFr.lang || 'fr-FR';
+        // Un peu sous la vitesse par défaut : à 1,0 les voix françaises
+        // avalent les liaisons. 0,97 laisse le mot finir.
+        u.rate = 0.97; u.pitch = 1.02; u.volume = 1;
+        if (i === morceaux.length - 1) { u.onend = unefois; u.onerror = unefois; }
+        window.speechSynthesis.speak(u);   // la file du navigateur enchaîne
+      });
+    } catch (e) { return false; }
+
     chien = setTimeout(unefois, dureeEstimee(html) + 6000);
-    try { window.speechSynthesis.speak(u); } catch (e) { return false; }
     return true;
   }
 
@@ -170,6 +258,18 @@
     // étapes d'une seule ligne, plafond pour ne pas endormir.
     var n = mots(html);
     return Math.min(16000, Math.max(3800, 900 + n * 400));
+  }
+
+  // Entendre tout de suite : comparer deux voix de memoire ne marche
+  // pas, il faut les enchainer.
+  function essayerVoix() {
+    if (!voixDispo() || !voixFr) return;
+    taire();
+    var u = new SpeechSynthesisUtterance(
+      'Bonjour. Je vous accompagne dans l’administration des Baobabs. Voici comment je sonne.');
+    u.voice = voixFr; u.lang = voixFr.lang || 'fr-FR';
+    u.rate = 0.97; u.pitch = 1.02;
+    try { window.speechSynthesis.speak(u); } catch (e) {}
   }
 
   function reglerVoix(on) {
@@ -1398,6 +1498,16 @@
       ev.preventDefault();
       reglerVoix(!voixOn);
     });
+    var liste = $('bt-voix-liste');
+    if (liste) liste.addEventListener('change', function () {
+      try { localStorage.setItem(CLE_VOIX_NOM, liste.value); } catch (e) {}
+      voixFr = choisirVoix();
+      majNoteVoix();
+      essayerVoix();
+    });
+    var essai = $('bt-voix-essai');
+    if (essai) essai.addEventListener('click', essayerVoix);
+
     $('bt-voix2').addEventListener('click', function () {
       reglerVoix(!voixOn);
       // On relit l'étape en cours : activer la voix sans rien entendre
