@@ -26,7 +26,10 @@
   --bt-ok:      var(--ok,          #93CE43);
   --bt-ui:      var(--font-ui, 'Archivo', 'Inter', system-ui, sans-serif);
 
-  position:fixed; inset:0; z-index:90;
+  /* Au-dessus de TOUT : l'admin monte a 130, le Studio a 400. A 90, le
+     narrateur passait sous le Studio des qu'on l'ouvrait -- on
+     entendait un guide qu'on ne voyait plus. */
+  position:fixed; inset:0; z-index:500;
   /* Le conteneur ne capte rien : pendant la visite, l'administration
      derrière doit rester cliquable. Chaque panneau rallume ce qu'il
      lui faut. */
@@ -288,6 +291,79 @@
   #btut .bt-ctx{width:100vw;border-left:none;top:auto;height:82vh;border-top-left-radius:16px;border-top-right-radius:16px;border-top:1px solid var(--bt-line2)}
   #btut .bt-ctx-in{padding:20px 16px 28px}
   #btut .bt-c{padding:15px 14px}
+}
+
+/* ---------------------------------------------------------------------
+   LE BAC A SABLE — on manipule, rien ne s'enregistre
+   --------------------------------------------------------------------- */
+#btut .bt-bac{
+  position:absolute;inset:0;pointer-events:auto;overflow-y:auto;
+  background:linear-gradient(180deg, rgba(7,14,10,.97), rgba(7,14,10,.99));
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  padding:clamp(18px,4vw,44px) clamp(14px,4vw,32px)
+}
+#btut .bt-bac.hide{display:none}
+#btut .bt-bac-in{max-width:860px;margin:0 auto}
+#btut .bt-bac-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px}
+#btut .bt-bac-t{font-size:clamp(20px,3.6vw,26px);font-weight:800;margin:0 0 6px;letter-spacing:-.01em}
+#btut .bt-bac-s{margin:0;color:var(--bt-muted);font-size:14px;line-height:1.6;max-width:60ch}
+
+/* Les colonnes : c'est le geste le plus courant de l'admin -- faire
+   glisser une carte d'un etat a l'autre -- et le plus difficile a
+   expliquer par des mots. */
+#btut .bt-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+#btut .bt-col{
+  border:1px solid var(--bt-line);border-radius:13px;background:var(--bt-surf);
+  padding:12px 11px;min-height:190px;transition:border-color .15s,background .15s
+}
+#btut .bt-col.survol{border-color:var(--bt-gold);background:var(--bt-soft)}
+#btut .bt-col-t{
+  font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--bt-faint);margin-bottom:10px;display:flex;justify-content:space-between;gap:6px
+}
+#btut .bt-col-n{color:var(--bt-gold)}
+#btut .bt-carte-j{
+  padding:11px 12px;border-radius:10px;margin-bottom:7px;cursor:grab;
+  border:1px solid var(--bt-line2);background:var(--bt-surf2);
+  transition:transform .14s,box-shadow .14s,opacity .14s
+}
+#btut .bt-carte-j:active{cursor:grabbing}
+#btut .bt-carte-j.prise{opacity:.4;transform:scale(.97)}
+#btut .bt-carte-j:hover{border-color:var(--bt-edge);transform:translateY(-1px);
+  box-shadow:0 8px 20px -12px rgba(0,0,0,.8)}
+#btut .bt-carte-j b{display:block;font-size:13.5px;margin-bottom:2px}
+#btut .bt-carte-j span{color:var(--bt-muted);font-size:12px}
+
+/* Le formulaire d'exercice */
+#btut .bt-form{display:grid;gap:12px;max-width:460px}
+#btut .bt-champ label{display:block;font-size:12px;color:var(--bt-faint);margin-bottom:5px;font-weight:600}
+#btut .bt-champ input,#btut .bt-champ select{
+  width:100%;padding:12px 13px;border-radius:11px;border:1px solid var(--bt-line2);
+  background:var(--bt-surf2);color:var(--bt-text);font:14px var(--bt-ui)
+}
+#btut .bt-champ input:focus,#btut .bt-champ select:focus{outline:none;border-color:var(--bt-gold)}
+#btut .bt-recap{
+  margin-top:14px;padding:13px 15px;border-radius:11px;
+  border:1px dashed var(--bt-line2);color:var(--bt-muted);font-size:13px;line-height:1.6
+}
+#btut .bt-recap b{color:var(--bt-gold-br)}
+
+#btut .bt-bac-pied{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  flex-wrap:wrap;margin-top:22px;padding-top:16px;border-top:1px solid var(--bt-line)}
+#btut .bt-bac-score{font-size:13.5px;color:var(--bt-muted)}
+#btut .bt-bac-score b{color:var(--bt-ok)}
+#btut .bt-bac-cmd{display:flex;gap:9px;flex-wrap:wrap}
+
+/* Le rappel qui ne bouge pas : c'est lui qui autorise a essayer. */
+#btut .bt-bac-sur{
+  margin-top:16px;padding:10px 13px;border-radius:10px;font-size:12.5px;
+  border:1px solid rgba(147,206,67,.3);background:rgba(147,206,67,.08);color:var(--bt-text)
+}
+#btut .bt-bac-sur b{color:var(--bt-ok)}
+
+@media (max-width:640px){
+  #btut .bt-cols{grid-template-columns:1fr;gap:9px}
+  #btut .bt-col{min-height:auto}
 }
 
 /* ---------------------------------------------------------------------
@@ -633,6 +709,19 @@ html.bt-anim section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) 
    LE CHAPITRE DES RÔLES — il n'a pas d'écran à visiter, il se raconte
    dans le narrateur avec son propre tableau.
    --------------------------------------------------------------------- */
+/* La barre d'adresse dessinee : on ne peut pas designer celle du
+   navigateur, elle n'appartient pas a la page. On la reproduit, avec la
+   vraie adresse de l'installation -- pas un exemple. */
+#btut .bt-url{
+  display:flex;align-items:center;gap:9px;margin:11px 0 9px;padding:10px 13px;
+  border-radius:99px;border:1px solid var(--bt-line2);background:var(--bt-surf2)
+}
+#btut .bt-url-ico{font-size:12px;opacity:.8;flex:none}
+#btut .bt-url code{
+  font-family:ui-monospace,'JetBrains Mono',monospace;font-size:12.5px;
+  color:var(--bt-gold-br);overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+
 #btut .bt-roles{display:grid;gap:8px;margin:-4px 0 14px}
 #btut .bt-role{
   padding:10px 13px;border-radius:10px;border:1px solid var(--bt-line);

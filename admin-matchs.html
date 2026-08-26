@@ -1646,6 +1646,27 @@
   .tk-ref{font-family:var(--font-ui);font-weight:700;color:var(--gold-bright);letter-spacing:.04em}
 
   #gate{max-width:380px;margin:0 auto;padding:14vh 20px 0}
+  /* Le tutoriel montre l'ecran de connexion a quelqu'un qui est DEJA
+     connecte : il faut donc le sortir du flux, sinon il pousse toute la
+     page vers le bas. En surcouche, il ressemble a ce qu'on voit
+     vraiment en arrivant. La classe n'est posee que par le tutoriel, et
+     retiree par lui. */
+  #gate.tut-demo{
+    position:fixed;inset:0;z-index:450;margin:0;max-width:none;
+    padding:12vh 20px 40px;background:var(--bg);overflow-y:auto;
+    /* INERTE, ET C'EST ESSENTIEL. Montre a quelqu'un qui est deja
+       connecte, ce formulaire reste un vrai formulaire : un clic sur
+       « Se connecter » tenterait une authentification et pourrait le
+       faire sortir de sa propre session. On le rend donc intouchable
+       le temps de la demonstration. */
+    pointer-events:none;user-select:none
+  }
+  #gate.tut-demo::after{
+    content:'Écran de démonstration — vous êtes déjà connecté';
+    position:fixed;left:50%;transform:translateX(-50%);bottom:18px;
+    padding:8px 14px;border-radius:99px;font-size:12px;font-weight:700;
+    border:1px solid var(--gold-edge);background:var(--gold-soft);color:var(--gold-bright)
+  }
   #gate .brand{justify-content:center;margin-bottom:22px}
   #gate .card{text-align:center}
   #gate .card-title{font-size:22px}
@@ -4167,6 +4188,45 @@
           return { id:b.id, label:b.label || b.id, page:b.page || '',
                    champs:(b.fields || []).length };
         });
+      },
+
+      // L'ECRAN DE CONNEXION
+      // Il existe dans la page, simplement masque depuis qu'on est
+      // entre. Le tutoriel peut donc le montrer pour de vrai plutot que
+      // d'en faire une image -- une image serait fausse au premier
+      // changement. Il n'est jamais soumis : on ne remplit que
+      // l'adresse, jamais le mot de passe.
+      connexion: {
+        montrer: function(){
+          var g = document.getElementById('gate');
+          if (!g) return false;
+          g.classList.remove('hide'); g.classList.add('tut-demo');
+          return true;
+        },
+        cacher: function(){
+          var g = document.getElementById('gate');
+          if (!g) return;
+          g.classList.remove('tut-demo');
+          // On ne le remasque QUE si une session est ouverte : sinon on
+          // enfermerait dehors quelqu'un qui n'est pas connecte.
+          if (currentSession) g.classList.add('hide');
+        }
+      },
+
+      // LE STUDIO
+      // Une application a part, chargee au premier clic. Le tutoriel
+      // l'ouvre vraiment : c'est le seul moyen d'en montrer les
+      // commandes, et il ne s'y ecrit rien tant qu'on n'enregistre pas.
+      studio: {
+        ouvrir: function(){ try { studioOuvrir(); } catch(e){} },
+        fermer: function(){
+          try { if (window.BaobabsStudio && window.BaobabsStudio.isOpen()) window.BaobabsStudio.close(); }
+          catch(e){}
+        },
+        estOuvert: function(){
+          try { return !!(window.BaobabsStudio && window.BaobabsStudio.isOpen()); }
+          catch(e){ return false; }
+        }
       },
 
       // De quel module depend un ecran : c'est ce qui permet de repondre

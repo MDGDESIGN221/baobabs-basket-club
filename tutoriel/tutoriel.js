@@ -38,6 +38,7 @@
   var demoPhoto = {};       // valeurs d'origine des champs touches
   var frappe = null;        // minuteur de la frappe lettre par lettre
   var clicsSurveilles = false;
+  var surcouche = null;     // '_connexion' | '_studio' | null
   // LE JETON D'ETAPE. Sans lui, avancer a la main accelere la visite --
   // voir montrer(). Chaque etape prend un numero ; tout ce qui etait en
   // vol pour une etape plus ancienne se tait en le comparant.
@@ -52,7 +53,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-h';
+  var VERSION = '26.08-k';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -315,23 +316,38 @@
   function construirePlan() {
     plan = [];
 
-    // Chapitre 0 : les rôles. Il n'a pas d'écran à visiter — il se
-    // raconte dans le narrateur. C'est la question exacte que pose le
-    // président, elle mérite d'ouvrir le tutoriel et pas d'être
-    // reléguée en fin de parcours.
-    plan.push({ cle: '_roles', titre: 'Les rôles et les accès', ecrans: [], special: true });
-
-    // Chapitre 2 : le bandeau du haut. Sept commandes qu'on a sous les
-    // yeux a chaque seconde et que rien n'expliquait -- le Studio, la
-    // recherche, la cloche, la casquette affichee, le rechargement,
-    // l'aide, et la deconnexion. Elles ne sont dans aucun ecran, donc
-    // dans aucun chapitre : elles seraient restees invisibles.
+    // L'ORDRE SUIT CELUI DE LA JOURNEE, PAS CELUI DU CODE.
+    //
+    // Il commencait par les roles -- avant meme que la personne soit
+    // entree. On lui expliquait qui peut modifier la boutique alors
+    // qu'elle ne savait pas encore ou taper l'adresse. Chaque chapitre
+    // suppose maintenant le precedent :
+    //
+    //   1. arriver et entrer          on ne sait rien
+    //   2. le bandeau du haut         ou l'on est, ce qui est autour
+    //   3. les roles                  ce que JE peux faire ici
+    //   4. les ecrans, par groupe     le travail lui-meme
+    //   5. le Studio                  un atelier a cote
+    //   6. a vous                     on refait les gestes
+    //
+    // La pratique vient en dernier : on ne s'entraine pas a un geste
+    // qu'on n'a pas encore vu.
+    if (api.connexion) plan.push({ cle: '_connexion', titre: 'Arriver et se connecter', ecrans: [], special: true });
     plan.push({ cle: '_entete', titre: 'Le bandeau du haut', ecrans: [], special: true });
+    plan.push({ cle: '_roles', titre: 'Les rôles et les accès', ecrans: [], special: true });
 
     (api.plan() || []).forEach(function (g) {
       if (!g.ecrans || !g.ecrans.length) return;
       plan.push({ cle: 'g' + plan.length, titre: g.titre, ecrans: g.ecrans });
     });
+
+    // Le Studio est un atelier a cote : il ne se comprend qu'une fois
+    // qu'on sait ce qu'est un match et une actualite.
+    if (api.studio && document.getElementById('studio-open')) {
+      plan.push({ cle: '_studio', titre: 'Le Studio — composer une affiche', ecrans: [], special: true });
+    }
+    // Et la pratique ferme la marche : on refait ce qu'on vient de voir.
+    plan.push({ cle: '_pratique', titre: 'À vous — s’entraîner sans rien risquer', ecrans: [], special: true });
   }
 
   // Les étapes d'un écran : son intention, puis ses conseils.
@@ -521,6 +537,239 @@
       out.push({ special: true, nom: 'Le bandeau du haut', html: e.dit, cible: e.cible });
     });
     return out;
+  }
+
+  // ============ SE CONNECTER ============
+  // On montre le VRAI formulaire, pas une image : une image serait
+  // fausse au premier changement. Il n'est jamais soumis, et le mot de
+  // passe n'est jamais rempli -- meme pour de faux.
+  function etapesConnexion() {
+    var E = 'Arriver';
+    // L'adresse vient AVANT tout : on ne peut pas se connecter a une
+    // page qu'on n'a pas su atteindre. On ne peut pas designer la barre
+    // du navigateur -- elle n'appartient pas a la page -- alors on la
+    // dessine, avec la VRAIE adresse de l'installation.
+    var adresse = '';
+    try { adresse = location.origin + location.pathname; } catch (e) { adresse = '…'; }
+
+    return [
+      { special: true, nom: E,
+        html: 'Tout commence par l’adresse. On la tape dans la barre du navigateur, ou on la met en favori — ' +
+              'l’administration n’est liée depuis aucune page du site public, et c’est voulu.' +
+              '<div class="bt-url"><span class="bt-url-ico">🔒</span><code>' + echapper(adresse) + '</code></div>' +
+              '<span style="opacity:.75;font-size:12.5px">Mettez-la en favori&nbsp;: vous la taperez une fois, ' +
+              'pas tous les jours.</span>' },
+      { special: true, nom: 'Se connecter', connexion: true,
+        html: 'Et voici ce qui vous accueille. <b>C’est le vrai écran</b>, montré ici alors que vous êtes déjà ' +
+              'connecté — il ne sera pas envoyé.' },
+      // Volontairement AUCUNE saisie ici. Un champ de connexion ne se met
+      // pas en scene : on le designe, on l'explique, on n'y touche pas.
+      { special: true, nom: 'Se connecter', connexion: true, cible: '#gate-email',
+        html: 'Votre <b>adresse e-mail</b>, celle qui a été enregistrée pour vous. Ce n’est pas l’adresse ' +
+              'du club&nbsp;: c’est la vôtre, personnellement.' },
+      { special: true, nom: 'Se connecter', connexion: true, cible: '#pw',
+        html: 'Votre <b>mot de passe</b>. Je ne le remplis pas, même pour de faux — un champ de mot de passe ' +
+              'ne se met jamais en scène. Il vous a été communiqué à part.' },
+      { special: true, nom: 'Se connecter', connexion: true, cible: '#unlock-btn',
+        html: 'Et on entre. <b>Deux conditions, pas une</b>&nbsp;: le bon mot de passe, et un compte inscrit ' +
+              'dans l’administration. Un compte client du site ne suffit pas.' },
+      { special: true, nom: 'Se connecter', connexion: true, cible: '#gate-msg',
+        html: 'Si ça refuse, le message s’affiche ici. « <b>Identifiants incorrects</b> » veut dire adresse ou ' +
+              'mot de passe&nbsp;; « <b>ce compte n’a pas accès</b> » veut dire que le compte existe mais n’est ' +
+              'pas dans l’administration — là, il faut demander au responsable du site.' }
+    ];
+  }
+
+  // ============ LE STUDIO ============
+  var STUDIO = [
+    { c: '#bs-home',     d: 'Le Studio s’ouvre sur ses projets. Chaque affiche déjà composée se retrouve ici — on reprend, on duplique, on repart.' },
+    { c: '#bs-format',   d: 'Le <b>format</b> décide de tout le reste&nbsp;: story Instagram, post carré, bannière. On le choisit avant de composer, pas après.' },
+    { c: '#bs-rail',     d: 'La colonne d’outils&nbsp;: textes, images, formes, modèles. C’est par là qu’on ajoute.' },
+    { c: '#bs-canvas',   d: 'Le plan de travail. On y déplace, on redimensionne, on empile — comme sur une table.' },
+    { c: '#bs-undo',     d: '<b>Annuler</b> et <b>refaire</b>. Le filet de tout l’atelier&nbsp;: rien n’est définitif tant qu’on n’a pas exporté.' },
+    { c: '#bs-save',     d: '<b>Enregistrer</b> garde le projet pour y revenir. Ça ne publie rien.' },
+    { c: '#bs-export',   d: '<b>Exporter</b> produit l’image à partager. C’est ce fichier-là qui part sur les réseaux.' },
+    { c: '#bs-close',    d: 'Et on referme. L’administration est restée derrière, intacte&nbsp;: le Studio ne touche à aucune donnée du club.' }
+  ];
+
+  function etapesStudio() {
+    var E = 'Le Studio';
+    var out = [{
+      special: true, nom: E, studio: true,
+      html: 'Le <b>Studio</b> compose les affiches du club — annonce de match, résultat, portrait de joueuse. ' +
+            'C’est un atelier à part, qui s’ouvre par-dessus l’administration. On va l’ouvrir.'
+    }];
+    STUDIO.forEach(function (e) {
+      out.push({ special: true, nom: E, studio: true, cible: e.c, html: e.d });
+    });
+    return out;
+  }
+
+  // ===================================================================
+  // LE BAC A SABLE — on manipule, rien ne s'enregistre
+  //
+  // « Regardez-moi faire » ne suffit pas : on n'apprend un geste qu'en
+  // le faisant. Mais on n'ose pas glisser une vraie candidature dans
+  // une vraie colonne pour voir ce que ca fait.
+  //
+  // Ces cartes et ces champs n'appartiennent qu'a l'exercice. Aucun
+  // selecteur de l'admin, aucune requete, aucune ligne ecrite -- il n'y
+  // a rien a casser, donc rien a craindre. C'est ce qui autorise le
+  // geste.
+  // ===================================================================
+  var bacNo = 0, bacFait = 0;
+
+  var COLONNES = [
+    { id: 'nouvelle', t: 'Nouvelle' },
+    { id: 'etudier',  t: 'À étudier' },
+    { id: 'acceptee', t: 'Acceptée' }
+  ];
+  var CARTES_DEPART = [
+    { id: 'c1', nom: 'Awa Ndiaye',    sous: 'Meneuse · 16 ans',      col: 'nouvelle' },
+    { id: 'c2', nom: 'Fatou Diop',    sous: 'Ailière · 15 ans',      col: 'nouvelle' },
+    { id: 'c3', nom: 'Mariama Fall',  sous: 'Pivot · 17 ans',        col: 'etudier'  }
+  ];
+  var bacCartes = [];
+
+  function ouvrirBac(n) {
+    bacNo = n || 0;
+    $('bt-somm').classList.add('hide');
+    $('bt-ctx').classList.add('hide');
+    $('bt-narr').classList.add('hide');
+    retirerHalo();
+    fermerSurcouche();
+    $('bt-bac').classList.remove('hide');
+    racine.classList.remove('hide');
+    rendreBac();
+  }
+
+  function fermerBac() {
+    $('bt-bac').classList.add('hide');
+    versSommaire();
+  }
+
+  function rendreBac() {
+    if (bacNo === 0) return bacGlisser();
+    return bacCreer();
+  }
+
+  // ---- EXERCICE 1 : faire glisser une carte ----
+  // Le geste le plus courant de l'admin, et le plus difficile a
+  // expliquer par des mots.
+  function bacGlisser() {
+    bacCartes = CARTES_DEPART.map(function (c) { return { id:c.id, nom:c.nom, sous:c.sous, col:c.col }; });
+    $('bt-bac-t').textContent = 'Faire glisser une candidature';
+    $('bt-bac-s').innerHTML = 'Attrapez une carte et déposez-la dans une autre colonne — au doigt ou à la souris. ' +
+      'C’est exactement le geste des écrans <b>Candidatures</b>, <b>Commandes</b> et <b>École de basket</b>.';
+    peindreColonnes();
+    majScore('Déplacez au moins une carte.');
+  }
+
+  function peindreColonnes() {
+    $('bt-bac-corps').innerHTML =
+      '<div class="bt-cols">' + COLONNES.map(function (co) {
+        var dedans = bacCartes.filter(function (c) { return c.col === co.id; });
+        return '<div class="bt-col" data-col="' + co.id + '">' +
+          '<div class="bt-col-t"><span>' + echapper(co.t) + '</span>' +
+          '<span class="bt-col-n">' + dedans.length + '</span></div>' +
+          dedans.map(function (c) {
+            return '<div class="bt-carte-j" data-carte="' + c.id + '">' +
+              '<b>' + echapper(c.nom) + '</b><span>' + echapper(c.sous) + '</span></div>';
+          }).join('') + '</div>';
+      }).join('') + '</div>' +
+      '<div class="bt-bac-sur"><b>Rien n’est enregistré ici.</b> Ces trois candidatures n’existent que dans cet ' +
+      'exercice — vous pouvez les déplacer dans tous les sens.</div>';
+    armerGlisser();
+  }
+
+  // Glisser au pointeur plutot qu'en HTML5 : le drag natif ne marche pas
+  // au doigt, et la moitie du club est sur telephone.
+  function armerGlisser() {
+    var prise = null, colSurvol = null;
+
+    $('bt-bac-corps').querySelectorAll('[data-carte]').forEach(function (el) {
+      el.addEventListener('pointerdown', function (ev) {
+        prise = el;
+        el.classList.add('prise');
+        try { el.setPointerCapture(ev.pointerId); } catch (e) {}
+      });
+      el.addEventListener('pointermove', function (ev) {
+        if (prise !== el) return;
+        var sous = document.elementFromPoint(ev.clientX, ev.clientY);
+        var col = sous && sous.closest ? sous.closest('.bt-col') : null;
+        if (col !== colSurvol) {
+          if (colSurvol) colSurvol.classList.remove('survol');
+          colSurvol = col;
+          if (colSurvol) colSurvol.classList.add('survol');
+        }
+      });
+      el.addEventListener('pointerup', function (ev) {
+        if (prise !== el) return;
+        el.classList.remove('prise');
+        var sous = document.elementFromPoint(ev.clientX, ev.clientY);
+        var col = sous && sous.closest ? sous.closest('.bt-col') : null;
+        if (colSurvol) colSurvol.classList.remove('survol');
+        colSurvol = null; prise = null;
+        if (!col) return;
+        var cible = col.getAttribute('data-col');
+        var c = bacCartes.filter(function (x) { return x.id === el.getAttribute('data-carte'); })[0];
+        if (!c || c.col === cible) return;
+        c.col = cible;
+        bacFait++;
+        peindreColonnes();
+        majScore('<b>Déplacée.</b> Dans la vraie administration, ce geste change le statut du dossier et l’inscrit ' +
+                 'dans son journal. Ici, rien n’a bougé ailleurs.');
+      });
+    });
+  }
+
+  // ---- EXERCICE 2 : creer un billet ----
+  function bacCreer() {
+    $('bt-bac-t').textContent = 'Créer une catégorie de billet';
+    $('bt-bac-s').innerHTML = 'Remplissez les trois champs et créez. C’est la mécanique de l’écran ' +
+      '<b>Billetterie</b>&nbsp;: un tarif, un quota, et la vente s’ouvre.';
+    $('bt-bac-corps').innerHTML =
+      '<div class="bt-form">' +
+        '<div class="bt-champ"><label for="bt-x-cat">Catégorie</label>' +
+          '<input id="bt-x-cat" type="text" placeholder="Tribune officielle"></div>' +
+        '<div class="bt-champ"><label for="bt-x-prix">Tarif (FCFA)</label>' +
+          '<input id="bt-x-prix" type="number" placeholder="2000"></div>' +
+        '<div class="bt-champ"><label for="bt-x-quota">Places</label>' +
+          '<input id="bt-x-quota" type="number" placeholder="150"></div>' +
+        '<div class="bt-champ"><label for="bt-x-vente">Vente</label>' +
+          '<select id="bt-x-vente"><option value="fermee">Fermée</option>' +
+          '<option value="ouverte">Ouverte</option></select></div>' +
+        '<button type="button" class="bt-cta" id="bt-x-creer" style="justify-self:start">Créer la catégorie</button>' +
+      '</div>' +
+      '<div class="bt-recap hide" id="bt-x-recap"></div>' +
+      '<div class="bt-bac-sur"><b>Aucune catégorie n’est créée.</b> Rien ne part vers la base, rien n’apparaît ' +
+      'sur le site&nbsp;: ce formulaire ne parle à personne.</div>';
+
+    $('bt-x-creer').addEventListener('click', function () {
+      var cat = ($('bt-x-cat') || {}).value || '';
+      var prix = ($('bt-x-prix') || {}).value || '';
+      var quota = ($('bt-x-quota') || {}).value || '';
+      var vente = ($('bt-x-vente') || {}).value || 'fermee';
+      if (!cat.trim() || !prix || !quota) {
+        majScore('Il manque un champ — la vraie billetterie refuserait aussi.');
+        return;
+      }
+      var r = $('bt-x-recap');
+      r.classList.remove('hide');
+      r.innerHTML = 'Sur le site, cela donnerait&nbsp;: <b>' + echapper(cat) + '</b> — ' +
+        echapper(String(prix).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')) + ' FCFA, ' +
+        echapper(quota) + ' places, vente <b>' + (vente === 'ouverte' ? 'ouverte' : 'fermée') + '</b>.' +
+        (vente === 'fermee' ? '<br>Tant qu’aucune catégorie n’est ouverte, la billetterie n’apparaît pas sur le site.' : '');
+      bacFait++;
+      majScore('<b>Créée — pour de faux.</b> Vous venez de faire exactement le geste de l’écran Billetterie.');
+    });
+    majScore('Remplissez les trois champs, puis créez.');
+  }
+
+  function majScore(html) {
+    var s = $('bt-bac-score'); if (s) s.innerHTML = html;
+    var b = $('bt-bac-suivant');
+    if (b) b.textContent = bacNo === 0 ? 'Exercice suivant' : 'Terminer';
   }
 
   function echapper(s) {
@@ -1162,6 +1411,9 @@
 
   function etapesDuChapitre(c) {
     if (c.cle === '_entete') return etapesEntete();
+    if (c.cle === '_connexion') return etapesConnexion();
+    if (c.cle === '_pratique') { ouvrirBac(0); return []; }
+    if (c.cle === '_studio') return etapesStudio();
     if (c.special) return etapesRoles();
     var out = [];
     c.ecrans.forEach(function (e) { out = out.concat(etapesEcran(e)); });
@@ -1199,6 +1451,13 @@
     // demoFin() remet les valeurs d'origine PUIS efface le drapeau. Il
     // doit donc passer avant api.aller(), pas vingt lignes apres.
     if (demoEcran && (!e.geste || e.ecran !== demoEcran)) demoFin();
+
+    // Les chapitres qui OUVRENT quelque chose -- l'ecran de connexion,
+    // le Studio. On ouvre en entrant, on referme des qu'on en sort. Rien
+    // ne doit rester ouvert derriere soi : quelqu'un qui quitte le
+    // tutoriel devant un formulaire de connexion croit s'etre
+    // deconnecte.
+    gererSurcouche(e);
 
     // Navigation : seulement quand on change d'écran. Rappeler
     // showSection à chaque conseil relancerait le chargement des
@@ -1703,6 +1962,20 @@
     clicsSurveilles = on;
   }
 
+  function gererSurcouche(e) {
+    var veut = e.connexion ? '_connexion' : (e.studio ? '_studio' : null);
+    if (surcouche === veut) return;
+    fermerSurcouche();
+    if (veut === '_connexion' && api.connexion) { api.connexion.montrer(); surcouche = '_connexion'; }
+    if (veut === '_studio' && api.studio) { api.studio.ouvrir(); surcouche = '_studio'; }
+  }
+
+  function fermerSurcouche() {
+    if (surcouche === '_connexion' && api.connexion) api.connexion.cacher();
+    if (surcouche === '_studio' && api.studio) api.studio.fermer();
+    surcouche = null;
+  }
+
   function suivant() {
     if (idx >= etapes.length - 1) { terminer(); return; }
     montrer(idx + 1);
@@ -1726,6 +1999,7 @@
   function terminer() {
     enLecture = false;
     demoFin();
+    fermerSurcouche();
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
     retirerHalo();
@@ -1737,6 +2011,7 @@
   function versSommaire() {
     enLecture = false;
     demoFin();
+    fermerSurcouche();
     surveillerClics(false);
     carteRanger();
     $('bt-ctx').classList.add('hide');
@@ -1751,6 +2026,8 @@
   function fermer() {
     enLecture = false;
     demoFin();
+    fermerSurcouche();
+    $('bt-bac').classList.add('hide');
     surveillerClics(false);
     carteRanger();
     $('bt-ctx').classList.add('hide');
@@ -1767,6 +2044,12 @@
   function brancher() {
     $('bt-fermer').addEventListener('click', fermer);
     $('bt-ctx-fermer').addEventListener('click', fermer);
+    $('bt-bac-fermer').addEventListener('click', fermerBac);
+    $('bt-bac-rejouer').addEventListener('click', rendreBac);
+    $('bt-bac-suivant').addEventListener('click', function () {
+      if (bacNo === 0) { bacNo = 1; rendreBac(); }
+      else { progres.vus['_pratique'] = true; ecrireProgres(); fermerBac(); }
+    });
     $('bt-quitter').addEventListener('click', fermer);
     $('bt-somm-retour').addEventListener('click', versSommaire);
     $('bt-tout').addEventListener('click', function () { demarrer('tout'); });
@@ -1826,6 +2109,10 @@
     var recaler = function () {
       if (cibleCourante && cibleCourante.getClientRects().length) poser(cibleCourante);
     };
+    // Un rechargement en pleine demonstration ne doit pas laisser le
+    // formulaire de connexion en travers de l'ecran.
+    window.addEventListener('beforeunload', fermerSurcouche);
+
     window.addEventListener('resize', recaler);
     window.addEventListener('scroll', recaler, true);
   }
