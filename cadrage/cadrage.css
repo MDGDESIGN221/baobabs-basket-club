@@ -1,0 +1,117 @@
+/* ============================================================================
+   BAOBABS — CADRAGE
+   Tout est sous #bcadrage : rien ici ne peut atteindre le reste de
+   l'administration, et rien de l'administration n'atteint l'atelier.
+   ========================================================================= */
+
+#bcadrage{
+  position:fixed; inset:0; z-index:9000; display:none;
+  background:rgba(4,10,7,.86); backdrop-filter:blur(6px);
+  font-family:'Inter',system-ui,sans-serif; color:#F3EFE6;
+}
+#bcadrage.is-open{ display:flex; align-items:center; justify-content:center; padding:clamp(12px,3vw,32px); }
+
+#bcadrage .bc-panneau{
+  width:min(880px,100%); max-height:100%; display:flex; flex-direction:column;
+  background:#0A150F; border:1px solid rgba(198,162,87,.28); border-radius:18px;
+  box-shadow:0 30px 90px rgba(0,0,0,.6); overflow:hidden;
+}
+
+/* ---- en-tête ---- */
+#bcadrage .bc-tete{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:16px 20px; border-bottom:1px solid rgba(243,239,230,.09);
+}
+#bcadrage .bc-titre{ font-weight:700; font-size:15px; letter-spacing:-.01em; margin:0; flex:1; min-width:140px; }
+#bcadrage .bc-fermer{
+  background:none; border:0; color:#7E8A82; font-size:26px; line-height:1;
+  cursor:pointer; padding:0 4px; border-radius:8px;
+}
+#bcadrage .bc-fermer:hover{ color:#F3EFE6; }
+
+/* ---- l'interrupteur ordinateur / téléphone ---- */
+#bcadrage .bc-ecrans{ display:flex; gap:4px; background:rgba(243,239,230,.06); padding:4px; border-radius:11px; }
+#bcadrage .bc-ecran{
+  display:inline-flex; align-items:center; gap:7px; border:0; cursor:pointer;
+  background:none; color:#93A099; font-family:inherit; font-weight:600; font-size:12px;
+  padding:7px 13px; border-radius:8px;
+}
+#bcadrage .bc-ecran.is-on{ background:#16301F; color:#F3EFE6; box-shadow:0 1px 0 rgba(243,239,230,.06) inset; }
+#bcadrage .bc-ecran svg{ width:14px; height:14px; }
+
+/* ---- la scène ---- */
+#bcadrage .bc-scene{
+  flex:1; min-height:0; overflow:auto; padding:clamp(16px,3vw,26px);
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  background:
+    linear-gradient(45deg,rgba(243,239,230,.03) 25%,transparent 25%,transparent 75%,rgba(243,239,230,.03) 75%),
+    linear-gradient(45deg,rgba(243,239,230,.03) 25%,transparent 25%,transparent 75%,rgba(243,239,230,.03) 75%);
+  background-size:22px 22px; background-position:0 0,11px 11px;
+}
+#bcadrage .bc-cadre{
+  position:relative; overflow:hidden; border-radius:12px; background:#050D08;
+  border:1px solid rgba(198,162,87,.3); cursor:grab; touch-action:none;
+  max-width:100%; user-select:none;
+  /* flex:none est vital : le cadre est un enfant d'une colonne flex, et
+     par défaut il se laisse écraser en hauteur pour tenir dans la scène.
+     Un cadre écrasé n'a plus la forme de celui du site — on cadrerait
+     alors dans une fenêtre qui n'existe nulle part. */
+  flex:none; box-sizing:border-box;
+}
+#bcadrage .bc-cadre.is-drag{ cursor:grabbing; }
+#bcadrage .bc-cadre img{
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; display:block; pointer-events:none;
+}
+/* Les tiers, pour poser un visage là où l'œil l'attend. */
+#bcadrage .bc-tiers{ position:absolute; inset:0; pointer-events:none; opacity:.32; }
+#bcadrage .bc-tiers span{ position:absolute; background:#F3EFE6; }
+#bcadrage .bc-tiers span:nth-child(1){ left:33.33%; top:0; bottom:0; width:1px; }
+#bcadrage .bc-tiers span:nth-child(2){ left:66.66%; top:0; bottom:0; width:1px; }
+#bcadrage .bc-tiers span:nth-child(3){ top:33.33%; left:0; right:0; height:1px; }
+#bcadrage .bc-tiers span:nth-child(4){ top:66.66%; left:0; right:0; height:1px; }
+
+#bcadrage .bc-aide{ font-size:12px; color:#7E8A82; margin:0; text-align:center; }
+
+/* ---- le bandeau « le téléphone suit l'ordinateur » ---- */
+#bcadrage .bc-suit{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  width:100%; max-width:520px; padding:12px 14px; border-radius:12px;
+  background:rgba(168,217,59,.08); border:1px solid rgba(168,217,59,.25);
+  font-size:12.5px; line-height:1.5; color:#C7CFC8;
+}
+#bcadrage .bc-suit b{ color:#F3EFE6; }
+#bcadrage .bc-suit button{
+  margin-left:auto; flex:none; cursor:pointer; font-family:inherit; font-weight:600; font-size:12px;
+  background:none; border:1px solid rgba(168,217,59,.5); color:#A8D93B;
+  padding:7px 13px; border-radius:9px;
+}
+#bcadrage .bc-suit button:hover{ background:rgba(168,217,59,.12); }
+
+/* ---- les commandes ---- */
+#bcadrage .bc-pied{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:14px 20px; border-top:1px solid rgba(243,239,230,.09); background:#07130D;
+}
+#bcadrage .bc-zoom{ display:flex; align-items:center; gap:10px; flex:1; min-width:190px; }
+#bcadrage .bc-zoom label{ font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:#7E8A82; }
+#bcadrage .bc-zoom input[type=range]{ flex:1; accent-color:#C6A257; min-width:90px; }
+#bcadrage .bc-zoom .bc-val{ font-family:'JetBrains Mono',monospace; font-size:12px; color:#C6A257; min-width:44px; text-align:right; }
+
+#bcadrage .bc-btn{
+  cursor:pointer; font-family:inherit; font-weight:600; font-size:12.5px;
+  padding:10px 16px; border-radius:10px; border:1px solid rgba(243,239,230,.16);
+  background:none; color:#D8D6CE;
+}
+#bcadrage .bc-btn:hover{ border-color:rgba(243,239,230,.34); color:#F3EFE6; }
+#bcadrage .bc-btn--fort{ background:#C6A257; border-color:#C6A257; color:#07130D; }
+#bcadrage .bc-btn--fort:hover{ background:#D4B36B; border-color:#D4B36B; color:#07130D; }
+
+@media (max-width:640px){
+  #bcadrage .bc-pied{ gap:10px; }
+  #bcadrage .bc-btn{ flex:1; }
+  #bcadrage .bc-zoom{ order:-1; width:100%; flex:1 0 100%; }
+}
+@media (prefers-reduced-motion:reduce){
+  #bcadrage, #bcadrage *{ transition:none !important; }
+}

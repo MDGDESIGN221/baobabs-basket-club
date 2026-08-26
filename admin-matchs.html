@@ -12,6 +12,7 @@
      compose portent la typographie de la marque, et pas celle de l'outil. -->
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..600&family=Bebas+Neue&family=Oswald:wght@200..700&family=Teko:wght@300..700&family=Syne:wght@400..800&family=Outfit:wght@100..900&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=DM+Serif+Display:ital@0;1&family=Instrument+Serif:ital@0;1&family=Caveat:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/studio/studio.css">
+<link rel="stylesheet" href="/cadrage/cadrage.css">
 <link rel="stylesheet" href="/tutoriel/tutoriel.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1822,6 +1823,12 @@
        ce conteneur. Voir studioOuvrir(). -->
   <div id="studio-host"></div>
 
+  <!-- ===== CADRAGE =====
+       L'atelier de cadrage des images. Même montage que le Studio : la
+       feuille de style est chargée d'emblée (2 Ko), le script seulement
+       au premier clic sur « Cadrer ». Voir cadrageOuvrir(). -->
+  <div id="bcadrage"></div>
+
   <!-- ===== TUTORIEL =====
        Meme principe que le Studio : le fragment arrive de
        /tutoriel/tutoriel.html au premier clic. Voir tutorielOuvrir(). -->
@@ -3186,6 +3193,10 @@
           <input type="file" id="hero_file" accept="image/*">
           <input type="text" id="hero_url" placeholder="https://…" class="hide">
           <img id="hero_preview" class="logo-preview" style="width:100%;height:120px" alt="">
+          <!-- Le bouton « Cadrer » est posé ici par heroCadreBouton() : il
+               affiche l'état réel du cadrage, qui n'est connu qu'une fois
+               les réglages chargés. -->
+          <div class="qg-photo-actions" id="hero_cadrer_zone"></div>
         </div>
         <div class="field"><label for="set_hero_title">Titre d'accroche</label><input type="text" id="set_hero_title" placeholder="Ex : Le basket sénégalais, à la maison"></div>
         <div class="field">
@@ -4066,6 +4077,127 @@
     }).then(function(){ studioEnCours = false; });
   }
   document.getElementById('studio-open').addEventListener('click', studioOuvrir);
+
+  // ---------------------------------------------------------------------
+  // L'ATELIER DE CADRAGE
+  //
+  // Même montage que le Studio, et pour les mêmes raisons : un fichier à
+  // part (pas de collision de noms dans cette IIFE de 16 000 lignes), et
+  // un chargement au premier clic seulement.
+  //
+  // La surcouche est déplacée sous <body> avant d'être montée : #bcadrage
+  // vit dans #app, et #app passe en display:none sur l'écran de connexion.
+  // Un ancêtre masqué annule le position:fixed — c'est exactement ce qui
+  // avait fait ouvrir le Studio à 0 × 0, sans la moindre erreur en console.
+  var cadragePret = false, cadrageEnCours = false;
+
+  function cadrageCharger(){
+    if (window.BaobabsCadrage) return Promise.resolve();
+    return new Promise(function(res, rej){
+      var s = document.createElement('script');
+      s.src = '/cadrage/cadrage.js';
+      s.onload = function(){ window.BaobabsCadrage ? res() : rej(new Error('global absent')); };
+      s.onerror = function(){ rej(new Error('script')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function cadrageOuvrir(opts){
+    if (cadrageEnCours) return;
+    if (cadragePret){ window.BaobabsCadrage.ouvrir(opts); return; }
+    cadrageEnCours = true;
+    cadrageCharger().then(function(){
+      var hote = document.getElementById('bcadrage');
+      if (hote && hote.parentElement !== document.body) document.body.appendChild(hote);
+      window.BaobabsCadrage.monter(hote);
+      cadragePret = true;
+      window.BaobabsCadrage.ouvrir(opts);
+    }).catch(function(e){
+      console.error('[Cadrage]', e);
+      qgToast('L\'atelier de cadrage n\'a pas pu se charger', true);
+    }).then(function(){ cadrageEnCours = false; });
+  }
+
+  // Les images que le site rogne pour les faire entrer dans un cadre : ce
+  // sont les seules où « placer l'image » veut dire quelque chose. Un logo
+  // ou un favicon s'affiche en entier, il n'a rien à cadrer.
+  //
+  // Les deux nombres sont la forme du cadre (largeur ÷ hauteur) sur le site,
+  // relevés sur la page elle-même — d'abord en 1280 px, puis en 375 px. Ils
+  // ne changent que si quelqu'un retouche la mise en page.
+  //
+  // `y0` (et `x0`) est le cadrage écrit en dur dans la page pour cette
+  // image : trois d'entre elles sont déjà décalées à la main depuis des
+  // mois. L'atelier s'ouvre donc sur ce que le site montre vraiment, et non
+  // sur un centrage qui ne correspond à rien. Tant que personne n'a rien
+  // enregistré, le site ne lit aucun de ces réglages et garde son CSS.
+  var CADRABLES = {
+    hero_image_url:  { titre:'Image du hero',                d:0.97, m:0.79, y0:22 },
+    fo_p1_photo_url: { titre:'Face-Off — photo de gauche',   d:1.61, m:0.70, y0:0 },
+    fo_p2_photo_url: { titre:'Face-Off — photo de droite',   d:1.61, m:0.70, y0:12 },
+    md_image_url:    { titre:'Médias — visuel principal',    d:1.78, m:1.78 },
+    md2_image_url:   { titre:'Médias — vignette du haut',    d:2.28, m:2.28 },
+    md3_image_url:   { titre:'Médias — vignette du bas',     d:2.28, m:2.28 },
+    ps_poster_url:   { titre:'Pré-saison — image d\'attente', d:0.56, m:0.56 },
+    det_poster_url:  { titre:'Détection — image d\'attente',  d:0.56, m:0.56 },
+    try_poster1_url: { titre:'Tryouts — affiche 1',          d:0.80, m:0.80 },
+    try_poster2_url: { titre:'Tryouts — affiche 2',          d:0.80, m:0.80 }
+  };
+  // Les six réglages d'un cadrage, rangés dans site_settings à côté de
+  // l'image : ps_poster_url_x, ps_poster_url_mzoom… Aucune migration SQL,
+  // la table est en clef/valeur.
+  var CADRE_SUFFIXES = ['_x','_y','_zoom','_mx','_my','_mzoom'];
+  function cadreValeurs(cle){
+    var conf = CADRABLES[cle] || {};
+    function v(suf, repli){
+      var b = settings[cle + suf];
+      return (b === null || b === undefined || b === '') ? repli : b;
+    }
+    return {
+      x: v('_x', conf.x0 == null ? 50 : conf.x0),
+      y: v('_y', conf.y0 == null ? 50 : conf.y0),
+      zoom: v('_zoom', 100),
+      mx: v('_mx', null), my: v('_my', null), mzoom: v('_mzoom', null)
+    };
+  }
+  // Ce que dit le bouton : « Cadrer » tant que personne n'y a touché, et
+  // l'état réel dès qu'un réglage existe — sinon on ne sait jamais si une
+  // image est cadrée ou d'origine.
+  function cadreResume(v, cle){
+    var conf = CADRABLES[cle] || {};
+    var x0 = conf.x0 == null ? 50 : conf.x0, y0 = conf.y0 == null ? 50 : conf.y0;
+    var pose = (v.x != x0 || v.y != y0 || v.zoom != 100);
+    var tel  = (v.mx !== null && v.mx !== '' && v.mx !== undefined);
+    if (!pose && !tel) return 'Cadrer';
+    return 'Cadré' + (tel ? ' · ordi + tél.' : '');
+  }
+  // Le CSS du cadrage, écrit une seule fois. Les aperçus de l'admin s'en
+  // servent pour montrer l'image telle qu'elle tombera sur le site : un
+  // aperçu qui ignorerait le cadrage mentirait précisément là où on vient
+  // vérifier son travail. Même modèle que les photos de joueuses.
+  function cadreCss(v){
+    if (!v) return '';
+    var x = (v.x === '' || v.x == null) ? 50 : v.x,
+        y = (v.y === '' || v.y == null) ? 50 : v.y,
+        z = (v.zoom === '' || v.zoom == null) ? 100 : v.zoom;
+    return ';object-position:' + x + '% ' + y + '%;transform:scale(' + (z / 100) + ');transform-origin:' + x + '% ' + y + '%';
+  }
+  // Le cadrage tel que l'aperçu doit le montrer : ce qui est dans le
+  // formulaire s'il vient d'être posé, sinon ce qui est en base.
+  function cadreDeVue(vals, cle){
+    if (!CADRABLES[cle]) return null;
+    if (vals && vals[cle + '_x'] !== undefined)
+      return { x: vals[cle+'_x'], y: vals[cle+'_y'], zoom: vals[cle+'_zoom'] };
+    return cadreValeurs(cle);
+  }
+  function cadreBouton(cle){
+    var v = cadreValeurs(cle);
+    return '<button type="button" class="qg-file-btn qgc-cadrer" data-cadre="'+esc(cle)+'"'+
+      ' data-cx="'+esc(v.x)+'" data-cy="'+esc(v.y)+'" data-cz="'+esc(v.zoom)+'"'+
+      ' data-cmx="'+esc(v.mx==null?'':v.mx)+'" data-cmy="'+esc(v.my==null?'':v.my)+'" data-cmz="'+esc(v.mzoom==null?'':v.mzoom)+'">'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>'+
+      '<span>'+esc(cadreResume(v, cle))+'</span></button>';
+  }
 
   // ---------------------------------------------------------------------
   // LE TUTORIEL
@@ -5108,10 +5240,10 @@
     tickets:{t:'Billetterie',d:'Ouvrez la vente match par match : catégories, tarifs, quotas — et suivez les réservations.'},
     staff:{t:'Staff',d:'Les membres de l\'encadrement affichés dans le bloc « Le staff » du site.'},
     timeline:{t:'Notre histoire',d:'La chronologie du club affichée sur la page « Le Club ».'},
-    c_home:{t:'Page d\'accueil',d:'Le hero, le Face-Off, le bandeau de chiffres et la section Médias. Aperçu en direct à droite de chaque bloc.'},
-    c_club:{t:'Page « Le Club »',d:'L\'intro, les 3 cartes d\'objectifs et le camp de base.'},
+    c_home:{t:'Page d\'accueil',d:'Le hero, le Face-Off, la galerie de la détection, le bandeau de chiffres et la section Médias. Aperçu en direct à droite de chaque bloc.'},
+    c_club:{t:'Page « Le Club »',d:'L\'intro, les 3 cartes d\'objectifs, le camp de base et l\'en-tête de l\'organigramme.'},
     c_tryouts:{t:'Page Tryouts',d:'Le bloc de détection (dates, lieu, contact) et le teaser vidéo avec les affiches.'},
-    c_inscriptions:{t:'Pré-saison & inscriptions',d:'Le bloc vidéo de reprise sur l\'accueil, et toute la page Inscriptions : tarifs, catégories, horaires, textes du formulaire.'},
+    c_inscriptions:{t:'Pré-saison & inscriptions',d:'Le bloc vidéo de reprise sur l\'accueil, et toute la page Inscriptions : tarifs, catégories, horaires, titres des colonnes, textes du formulaire.'},
     inscriptions:{t:'Inscriptions',d:'Les enfants inscrits à l\'école de basket : dossier, suivi des paiements et journal de chaque décision.'},
     c_app:{t:'Appli mobile',d:'Le bloc « L\'appli des Baobabs » et les écrans affichés dans les téléphones.'},
     c_promo:{t:'Newsletter & bandeau CTA',d:'Newsletter, le bandeau « Rejoins la tribu » et leurs modales d\'abonnement et de contact. Contenu commun du footer, visible sur tout le site.'},
@@ -5170,8 +5302,8 @@
     bureau: ["<b>L'organigramme du club.</b> La structure de l'arbre est fixe ; vous éditez le titulaire, la photo et la fiche de chaque poste.","S'affiche sur la page « Le Club » du site."],
     staff: ["<b>Les membres de l'encadrement</b> affichés dans le bloc « Le staff » du site.","Une carte par personne : photo, nom, rôle."],
     timeline: ["<b>La chronologie du club</b> affichée sur la page « Le Club ».","Une étape = une année ou un moment marquant. L'ordre suit les dates."],
-    c_home: ["<b>Les textes et visuels de la page d'accueil</b> : hero, Face-Off, bandeau de chiffres, section Médias.","Le sommaire en haut saute directement au bloc voulu.","Chaque bloc a son aperçu réel à droite : ce que vous voyez est ce que le site affiche."],
-    c_club: ["<b>Les textes de la page « Le Club »</b> : intro, cartes d'objectifs, camp de base.","Aperçu réel à droite de chaque bloc."],
+    c_home: ["<b>Les textes et visuels de la page d'accueil</b> : hero, Face-Off, galerie de la détection, bandeau de chiffres, section Médias.","Le sommaire en haut saute directement au bloc voulu.","Chaque bloc a son aperçu réel à droite : ce que vous voyez est ce que le site affiche."],
+    c_club: ["<b>Les textes de la page « Le Club »</b> : intro, cartes d'objectifs, camp de base, en-tête de l'organigramme.","Aperçu réel à droite de chaque bloc."],
     c_tryouts: ["<b>La page de détection</b> : dates, lieu, contact, teaser vidéo et affiches.","Le formulaire de candidature du site envoie vers l'écran Candidatures."],
     c_inscriptions: ["<b>Deux blocs, deux endroits du site.</b> « Pré-saison » est la vidéo de reprise affichée sur l'accueil ; « Inscriptions » est la page complète de l'école de basket.","<b>Les tarifs se saisissent en chiffres seuls</b> (20000, pas « 20 000 F ») : le site met les espaces et ajoute FCFA tout seul.","Un tarif modifié ne change <b>que les futures inscriptions</b>. Les enfants déjà inscrits gardent le prix auquel ils se sont engagés — c'est voulu.","<b>Catégories</b> : une par ligne, sous la forme <code>U11 | Nés en 2016 et 2017</code>. La barre verticale sépare le nom des années.","Passer les inscriptions à « closes » affiche le message d'attente et retire le bouton d'envoi. La page reste lisible : tarifs, lieu et horaires continuent de s'afficher."],
     inscriptions: ["<b>Un enfant = un dossier.</b> Cliquez une carte pour l'ouvrir : coordonnées du responsable, santé, et l'argent encaissé.","Faites glisser une carte d'une colonne à l'autre pour changer son statut — chaque changement est écrit dans le journal du dossier.","<b>Les paiements s'enregistrent dans la fiche</b> : frais d'inscription d'un côté, mensualités mois par mois de l'autre. Un mois déjà encaissé ne peut pas l'être deux fois.","La pastille rouge « retard » apparaît dès qu'un enfant inscrit n'a pas réglé le mois en cours.","Les inscriptions arrivent du formulaire de la page Inscriptions du site."],
@@ -7721,7 +7853,13 @@
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.text();
       }),
-      sbGet('site_settings?select=*&limit=1').then(function(rows){ return (rows || [])[0] || {}; })
+      // site_settings est une table clef/valeur : une ligne par réglage.
+      // La lire comme un objet unique (une seule ligne, prise au hasard)
+      // faisait comparer chaque texte du site à du vide — l'écran signalait
+      // alors 200 écarts qui n'existaient pas.
+      sbGet('site_settings?select=*').then(function(rows){
+        var s = {}; (rows || []).forEach(function(r){ s[r.key] = r.value; }); return s;
+      })
     ]).then(function(res){
       coAnalyse(res[0], res[1]);
       btn.disabled = false; btn.textContent = 'Analyser le site';
@@ -7742,19 +7880,8 @@
     // l'analyse conclurait « en dur » sur des textes en réalité administrables.
     //   1. attribut data-bb="clef" sur l'élément
     //   2. appels set('id', s.clef) / bbSet('id', s.clef) dans le script
-    var idToKey = {}, consumed = {};
-
-    doc.querySelectorAll('[data-bb]').forEach(function(el){
-      var k = el.getAttribute('data-bb');
-      if (!k) return;
-      consumed[k] = true;
-      if (el.id) idToKey[el.id] = k;
-    });
-
-    [...html.matchAll(/\b(?:bbSet|set)\(\s*'([^']+)'\s*,\s*s\.([a-z0-9_]+)/g)].forEach(function(m){
-      idToKey[m[1]] = m[2];
-      consumed[m[2]] = true;
-    });
+    var rel = coRelever(html, doc);
+    var idToKey = rel.idToKey, consumed = rel.consumed;
     // Accès dynamiques (les grilles de tarifs) : la clef est construite au
     // vol, on marque toute la famille comme consommée.
     [...html.matchAll(/s\['([a-z_]+)'\s*\+\s*[a-z]\s*\+\s*'([a-z_]+)'\]/g)].forEach(function(m){
@@ -7763,6 +7890,14 @@
       });
     });
     [...html.matchAll(/s\.([a-z0-9_]+)/g)].forEach(function(m){ consumed[m[1]] = true; });
+    // Les six nombres d'un cadrage suivent leur image : la page les lit par
+    // un nom construit au vol (s[cle+'_x']), qu'aucune des expressions
+    // ci-dessus ne voit. Sans cette règle ils remonteraient tous comme des
+    // « réglages que le site ne lit pas », ce qui est faux.
+    Object.keys(s).forEach(function(k){
+      var m = k.match(/^(.+?)(_x|_y|_zoom|_mx|_my|_mzoom)$/);
+      if (m && consumed[m[1]]) consumed[k] = true;
+    });
 
     // ---- 1. Écarts : administrable, mais le fichier ne dit pas la même chose
     var ecart = [];
@@ -7780,17 +7915,54 @@
     });
 
     // ---- 2. En dur : un emplacement de contenu qu'aucun réglage n'alimente.
-    // On se limite aux identifiants bb-* : c'est la convention de nommage des
-    // zones de contenu du site. Chercher tout texte libre produirait du bruit.
+    // Deux passes. La première suit les identifiants bb-*, convention de
+    // nommage des zones de contenu du site. La seconde rattrape les blocs
+    // ajoutés sans aucun identifiant, que la première ne voyait pas du tout.
     var dur = [];
+    function lisible(el){
+      var t = (el.textContent || '').trim().replace(/\s+/g, ' ');
+      if (t.length < 3 || t.length > 400) return '';
+      if (/^[\d\s.,:%–—-]+$/.test(t)) return '';   // un compteur, pas un texte
+      return t;
+    }
+
     doc.querySelectorAll('[id^="bb-"]').forEach(function(el){
       if (idToKey[el.id]) return;
       if (el.hasAttribute('data-bb')) return;
       if (el.children.length) return;
-      var t = (el.textContent || '').trim().replace(/\s+/g, ' ');
-      if (t.length < 3 || t.length > 400) return;
-      if (/^[\d\s.,:%–—-]+$/.test(t)) return;   // un compteur, pas un texte
-      dur.push({ id: el.id, tag: el.tagName.toLowerCase(), text: t, section: coSection(el) });
+      var t = lisible(el);
+      if (t) dur.push({ id: el.id, tag: el.tagName.toLowerCase(), text: t, section: coSection(el) });
+    });
+
+    // Un bloc ajouté au site sans le moindre identifiant échappait
+    // entièrement à la liste ci-dessus : la galerie de la détection, par
+    // exemple, n'apparaissait nulle part — ni administrable, ni signalée
+    // comme telle. On repasse donc section par section : toute section dont
+    // AUCUN texte n'est alimenté par un réglage remonte ici en entier.
+    doc.querySelectorAll('section').forEach(function(sec){
+      if (sec.closest('template')) return;
+      var nourri = false;
+      sec.querySelectorAll('[id],[data-bb]').forEach(function(el){
+        if (el.hasAttribute('data-bb') || idToKey[el.id]) nourri = true;
+      });
+      if (nourri) return;
+      var textes = [];
+      sec.querySelectorAll('h1,h2,h3,p,dd,li').forEach(function(el){
+        if (el.children.length) return;
+        var t = lisible(el);
+        if (t && textes.indexOf(t) < 0) textes.push(t);
+      });
+      if (!textes.length) return;
+      var titre = textes[0];
+      var suite = textes.slice(1).join(' · ');
+      dur.push({
+        id: sec.id || '',
+        tag: 'section entière',
+        text: titre + (suite ? ' · ' + suite : ''),
+        section: sec.id ? '' : coSection(sec),
+        bloc: true,
+        n: textes.length
+      });
     });
 
     // ---- 3. Orphelins : un réglage rempli que la page ne lit pas
@@ -7860,9 +8032,10 @@
           var r = rows[parseInt(b.getAttribute('data-i'), 10)];
           if (!confirm('Enregistrer « ' + (r.file || '(vide)') + ' » dans le réglage ' + r.key + ' ?')) return;
           b.disabled = true; b.textContent = '…';
-          var body = {}; body[r.key] = r.file || null;
-          sbUpdate('site_settings', coSettings.id, body, 'Cohérence')
-            .then(function(){ showMsg(msg, 'Valeur adoptée. Le site l\'affichera au prochain chargement.', true); coScan(); })
+          // Une ligne par clef, écrite en upsert : la table n'a pas de
+          // colonne « id », un PATCH par identifiant n'y a jamais rien écrit.
+          sbUpsert('site_settings', [{ key: r.key, value: r.file || '' }], 'Cohérence')
+            .then(function(){ settings[r.key] = r.file || ''; showMsg(msg, 'Valeur adoptée. Le site l\'affichera au prochain chargement.', true); coScan(); })
             .catch(function(){ b.disabled = false; b.textContent = 'Adopter la valeur du fichier'; showMsg(msg, "L'enregistrement a échoué.", false); });
         });
       });
@@ -7871,8 +8044,14 @@
 
     if (coTab === 'dur'){
       box.innerHTML = rows.map(function(r){
+        // Un bloc entier et un texte isolé ne demandent pas le même geste :
+        // le premier réclame un champ dans l'admin, le second une ligne.
+        var titre = r.bloc
+          ? (r.id ? '#' + esc(r.id) : 'Section sans identifiant') +
+            ' <span style="color:var(--faint);font-weight:400">— bloc entier, ' + r.n + ' texte' + (r.n > 1 ? 's' : '') + ' qu\'aucun réglage n\'alimente</span>'
+          : '#' + esc(r.id) + ' <span style="color:var(--faint);font-weight:400">&lt;' + esc(r.tag) + '&gt;</span>';
         return '<div class="co-row">' +
-          '<div class="co-key">#' + esc(r.id) + ' <span style="color:var(--faint);font-weight:400">&lt;' + esc(r.tag) + '&gt;</span></div>' +
+          '<div class="co-key">' + titre + '</div>' +
           (r.section ? '<div class="co-where">dans ' + esc(r.section) + '</div>' : '') +
           '<div class="co-snip">' + esc(r.text) + '</div>' +
         '</div>';
@@ -8204,6 +8383,70 @@
   // ===================== RÉGLAGES (site_settings) =====================
   var settings={};
   function loadSettings(){ return sbGet('site_settings?select=*').then(function(rows){ settings={}; (rows||[]).forEach(function(r){ settings[r.key]=r.value; }); }).catch(function(){ settings={}; }); }
+
+  // ---------------------------------------------------------------------
+  // LES TEXTES DU SITE, LUS SUR LE SITE
+  // ---------------------------------------------------------------------
+  // Chaque champ de contenu existait en deux exemplaires : la phrase écrite
+  // dans index.html, et sa copie figée dans le `def:` du registre, plus bas.
+  // Modifier le site directement laissait donc l'admin sur l'ancienne phrase,
+  // et le premier « Enregistrer » renvoyait cette ancienne phrase sur le site.
+  //
+  // L'admin lit maintenant la page publique elle-même : téléchargée une fois
+  // par session, chaque réglage y retrouve le texte qu'il alimente. Rien à
+  // annoter dans le site — on suit les deux formes qu'il emploie déjà :
+  // l'attribut data-bb, et les appels bbSet('identifiant', s.clef).
+  var SITE_TXT = null;
+  var siteTxtPromesse = null;
+
+  function loadSiteTexts(force){
+    if (siteTxtPromesse && !force) return siteTxtPromesse;
+    siteTxtPromesse = fetch('index.html?_st=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function(html){ SITE_TXT = coTextesDuSite(html); return SITE_TXT; })
+      // Site illisible (hors ligne, admin déposé ailleurs) : on retombe sur
+      // les valeurs d'origine du registre. Aucun écran ne reste vide.
+      .catch(function(){ SITE_TXT = {}; return SITE_TXT; });
+    return siteTxtPromesse;
+  }
+
+  // Le relevé « quel réglage alimente quel texte », partagé avec l'écran
+  // Cohérence : deux relevés différents finiraient par se contredire.
+  function coRelever(html, doc){
+    var idToKey = {}, consumed = {};
+    doc.querySelectorAll('[data-bb]').forEach(function(el){
+      var k = el.getAttribute('data-bb');
+      if (!k) return;
+      consumed[k] = true;
+      if (el.id) idToKey[el.id] = k;
+    });
+    [...html.matchAll(/\b(?:bbSet|set)\(\s*'([^']+)'\s*,\s*s\.([a-z0-9_]+)/g)].forEach(function(m){
+      idToKey[m[1]] = m[2];
+      consumed[m[2]] = true;
+    });
+    return { idToKey: idToKey, consumed: consumed };
+  }
+
+  function coTextesDuSite(html){
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var map = coRelever(html, doc).idToKey;
+    var out = {};
+    Object.keys(map).forEach(function(id){
+      var el = doc.getElementById(id);
+      // Un conteneur n'a pas de texte propre ; un titre coupé par un <br>
+      // non plus — ceux-là gardent la valeur d'origine du registre.
+      if (!el || el.children.length) return;
+      var t = (el.textContent || '').trim().replace(/\s+/g, ' ');
+      if (t) out[map[id]] = t;
+    });
+    doc.querySelectorAll('[data-bb]').forEach(function(el){
+      var k = el.getAttribute('data-bb');
+      if (!k || out[k] || el.children.length) return;
+      var t = (el.textContent || '').trim().replace(/\s+/g, ' ');
+      if (t) out[k] = t;
+    });
+    return out;
+  }
   function saveSettings(pairs,msg,btn,sectionLabel){
     btn.disabled=true;
     var body=Object.keys(pairs).map(function(k){ return {key:k, value:pairs[k]==null?'':String(pairs[k])}; });
@@ -8284,12 +8527,59 @@
     document.getElementById('set_hero_title_color').value=settings.hero_title_color||'#F3EFE6';
     document.getElementById('set_hero_subtitle_color').value=settings.hero_subtitle_color||'#B9C2BB';
     document.getElementById('hero_url').value=settings.hero_image_url||''; var p=document.getElementById('hero_preview'); if(settings.hero_image_url){p.src=settings.hero_image_url;p.style.display='block';}
+    heroCadreBouton();
     updateHeroPreview();
   };
+
+  // Le hero ne passe pas par le registre : il a sa propre section, écrite à
+  // la main. Son bouton « Cadrer » est donc posé ici, mais il partage tout
+  // le reste avec ceux du registre — même atelier, mêmes six réglages.
+  var HERO_DEFAUT = '/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp';
+  function heroCadreBouton(){
+    var zone = document.getElementById('hero_cadrer_zone');
+    if (!zone) return;
+    zone.innerHTML = cadreBouton('hero_image_url');
+    var b = zone.querySelector('.qgc-cadrer');
+    b.addEventListener('click', function(){
+      var conf = CADRABLES.hero_image_url;
+      var champ = document.getElementById('hero_url');
+      // Sans image choisie, on cadre celle que le site affiche aujourd'hui :
+      // recadrer le visuel livré est un besoin aussi courant que le remplacer.
+      var url = (champ && champ.value.trim()) || HERO_DEFAUT;
+      cadrageOuvrir({
+        url: url, titre: conf.titre, ratioD: conf.d, ratioM: conf.m,
+        valeurs: { x:b.dataset.cx, y:b.dataset.cy, zoom:b.dataset.cz,
+                   mx:b.dataset.cmx||null, my:b.dataset.cmy||null, mzoom:b.dataset.cmz||null },
+        onValider: function(r){
+          b.dataset.cx=r.x; b.dataset.cy=r.y; b.dataset.cz=r.zoom;
+          b.dataset.cmx=(r.mx==null?'':r.mx); b.dataset.cmy=(r.my==null?'':r.my); b.dataset.cmz=(r.mzoom==null?'':r.mzoom);
+          var lab=b.querySelector('span'); if(lab) lab.textContent=cadreResume(r,'hero_image_url');
+          updateHeroPreview();
+          qgToast('Cadrage posé — cliquez sur « Enregistrer » pour l\'appliquer au site.');
+        }
+      });
+    });
+  }
+  // Les six nombres du cadrage du hero, à joindre à son enregistrement.
+  function heroCadreValeurs(){
+    var b = document.querySelector('#hero_cadrer_zone .qgc-cadrer');
+    if (!b) return {};
+    return {
+      hero_image_url_x: b.dataset.cx,   hero_image_url_y: b.dataset.cy,   hero_image_url_zoom: b.dataset.cz,
+      hero_image_url_mx: b.dataset.cmx, hero_image_url_my: b.dataset.cmy, hero_image_url_mzoom: b.dataset.cmz
+    };
+  }
+  // Ce que l'aperçu du hero doit montrer : le cadrage posé à l'instant s'il
+  // y en a un, sinon celui enregistré.
+  function heroCadreVue(){
+    var b = document.querySelector('#hero_cadrer_zone .qgc-cadrer');
+    if (!b) return cadreValeurs('hero_image_url');
+    return { x: b.dataset.cx, y: b.dataset.cy, zoom: b.dataset.cz };
+  }
   document.getElementById('save-home-btn').addEventListener('click',function(){
     var msg=document.getElementById('home-msg'); var btn=this; btn.disabled=true;
     imageValue(MEDIA_BUCKET, document.getElementById('hero_file'), document.getElementById('hero_url'), document.getElementById('hero_mode_url'))
-      .then(function(url){ saveSettings({ hero_title:document.getElementById('set_hero_title').value.trim(), hero_subtitle:document.getElementById('set_hero_subtitle').value.trim(), hero_image_url:url||'', hero_title_color:document.getElementById('set_hero_title_color').value, hero_subtitle_color:document.getElementById('set_hero_subtitle_color').value, club_email:document.getElementById('set_club_email').value.trim() }, msg, btn, 'Accueil · Hero'); })
+      .then(function(url){ saveSettings(Object.assign({ hero_title:document.getElementById('set_hero_title').value.trim(), hero_subtitle:document.getElementById('set_hero_subtitle').value.trim(), hero_image_url:url||'', hero_title_color:document.getElementById('set_hero_title_color').value, hero_subtitle_color:document.getElementById('set_hero_subtitle_color').value, club_email:document.getElementById('set_club_email').value.trim() }, heroCadreValeurs()), msg, btn, 'Accueil · Hero'); })
       .catch(function(){ showMsg(msg,'Erreur lors de l\'upload de l\'image.',false); btn.disabled=false; });
   });
 
@@ -8303,7 +8593,7 @@
     var photoSrc=collImgSrc('hero_preview')||'/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp';
     body.innerHTML=
       '<div style="position:relative;border-radius:14px;overflow:hidden;background:#0F1E15;min-height:210px">'+
-        '<img src="'+esc(photoSrc)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">'+
+        '<img src="'+esc(photoSrc)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover'+cadreCss(heroCadreVue())+'">'+
         '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,.94) 8%,rgba(5,14,9,.15) 55%,transparent)"></div>'+
         '<div style="position:relative;padding:18px">'+
           '<span style="display:inline-block;font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.16em;color:#07130D;background:linear-gradient(180deg,#D4B36A,#C6A257);padding:5px 11px;border-radius:6px;white-space:nowrap;margin-bottom:12px">CHAMPIONNAT · D2</span>'+
@@ -14035,7 +14325,7 @@
         document.getElementById('tk-sub-resa').classList.toggle('hide',k!=='resa');
         document.getElementById('tk-sub-texts').classList.toggle('hide',k!=='texts');
         if(k==='resa') tkLoadResa();
-        if(k==='texts') loadSettings().then(function(){ qgcRender(qgcGroup('tk_texts'),'qgc-tk-texts'); });
+        if(k==='texts') qgcPrep().then(function(){ qgcRender(qgcGroup('tk_texts'),'qgc-tk-texts'); });
       });
     });
     tkLoadOffers();
@@ -14270,16 +14560,16 @@
     bureau:function(){ LOADERS_bureau(); },
     staff:function(){ qgvInit('staff'); },
     timeline:function(){ qgvInit('timeline'); },
-    c_home:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_home'),'qgc-c_home'); }); },
-    c_club:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_club'),'qgc-c_club'); }); },
-    c_tryouts:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_tryouts'),'qgc-c_tryouts'); }); },
-    c_inscriptions:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_inscriptions'),'qgc-c_inscriptions'); }); },
+    c_home:function(){ qgcPrep().then(function(){ qgcRender(qgcGroup('c_home'),'qgc-c_home'); }); },
+    c_club:function(){ qgcPrep().then(function(){ qgcRender(qgcGroup('c_club'),'qgc-c_club'); }); },
+    c_tryouts:function(){ qgcPrep().then(function(){ qgcRender(qgcGroup('c_tryouts'),'qgc-c_tryouts'); }); },
+    c_inscriptions:function(){ qgcPrep().then(function(){ qgcRender(qgcGroup('c_inscriptions'),'qgc-c_inscriptions'); }); },
     inscriptions:function(){ inInit(); },
     comptes:function(){ cpInit(); },
     analytics:function(){ anaInit(); },
-    c_app:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_app'),'qgc-c_app'); }); },
-    c_promo:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_promo'),'qgc-c_promo'); }); },
-    c_legal:function(){ loadSettings().then(function(){ qgcRender(qgcGroup('c_legal'),'qgc-c_legal'); }); },
+    c_app:function(){ qgcPrep().then(function(){ qgcRender(qgcGroup('c_app'),'qgc-c_app'); }); },
+    c_promo:function(){ qgcPrep().then(function(){ qgcRender(qgcGroup('c_promo'),'qgc-c_promo'); }); },
+    c_legal:function(){ qgcPrep().then(function(){ qgcRender(qgcGroup('c_legal'),'qgc-c_legal'); }); },
     reglages:function(){ loadSettings().then(function(){ qgcRender(SETTINGS_BLOCKS,'qgs-mount'); }); },
     news:function(){ qgvInit('news'); },
     partners:function(){ qgvInit('partners'); },
@@ -15367,13 +15657,13 @@
       ],
       preview:function(v){
         var side = (v.md2_image_url||v.md3_image_url);
-        function vig(url,cap){ return url ? '<div style="position:relative;flex:1;min-height:86px;border-radius:11px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><img src="'+esc(url)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"><div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,.9),transparent 62%)"></div><div style="position:absolute;left:11px;right:11px;bottom:9px;font-family:var(--font-ui);font-weight:700;font-size:10px;line-height:1.3;color:#F3EFE6">'+esc(cap)+'</div></div>' : ''; }
+        function vig(url,cap,cle){ return url ? '<div style="position:relative;flex:1;min-height:86px;border-radius:11px;overflow:hidden;background:#0F1E15;border:1px solid rgba(243,239,230,.09)"><img src="'+esc(url)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover'+cadreCss(cadreDeVue(v,cle))+'"><div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,.9),transparent 62%)"></div><div style="position:absolute;left:11px;right:11px;bottom:9px;font-family:var(--font-ui);font-weight:700;font-size:10px;line-height:1.3;color:#F3EFE6">'+esc(cap)+'</div></div>' : ''; }
         return '<div>'+
           '<div style="font-family:var(--font-ui);font-weight:700;font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:#C6A257;border-left:2px solid currentColor;padding-left:8px">'+esc(v.md_kicker)+'</div>'+
           '<div style="font-family:var(--font-ui);font-weight:700;font-size:24px;color:#F3EFE6;margin:7px 0 14px">'+esc(v.md_title)+'</div>'+
           '<div style="display:grid;gap:11px;'+(side?'grid-template-columns:1.62fr 1fr':'')+'">'+
             '<div style="position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#0F1E15;border:1px solid rgba(198,162,87,.2)">'+
-              (v.md_image_url?'<img src="'+esc(v.md_image_url)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">':'')+
+              (v.md_image_url?'<img src="'+esc(v.md_image_url)+'" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover'+cadreCss(cadreDeVue(v,'md_image_url'))+'">':'')+
               '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,14,9,.92) 4%,rgba(5,14,9,.25) 52%,rgba(5,14,9,.1))"></div>'+
               (v.md_link_url?'<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:rgba(198,162,87,.92);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="#07130D"><path d="M8 5v14l11-7z"></path></svg></div>':'')+
               '<div style="position:absolute;left:0;right:0;bottom:0;padding:14px">'+
@@ -15381,7 +15671,7 @@
                 '<div style="font-family:var(--font-ui);font-weight:700;font-size:16px;line-height:1.12;color:#F3EFE6">'+esc(v.md_caption)+'</div>'+
               '</div>'+
             '</div>'+
-            (side?'<div style="display:flex;flex-direction:column;gap:11px">'+vig(v.md2_image_url,v.md2_caption)+vig(v.md3_image_url,v.md3_caption)+'</div>':'')+
+            (side?'<div style="display:flex;flex-direction:column;gap:11px">'+vig(v.md2_image_url,v.md2_caption,'md2_image_url')+vig(v.md3_image_url,v.md3_caption,'md3_image_url')+'</div>':'')+
           '</div>'+
         '</div><p class="pv-hint">Sans média secondaire, le média principal occupe toute la largeur. Le lien « '+esc(v.md_more_label||'Notre chaîne')+' » n\'apparaît que si une chaîne YouTube est renseignée dans <b>Réglages · Réseaux sociaux</b>.</p>';
       } },
@@ -15553,12 +15843,12 @@
       ],
       preview:function(v){
         var deux = !!v.try_poster2_url;
-        function carte(url,rot,z){ return '<div style="position:absolute;width:100%;aspect-ratio:3/4;border-radius:6px;overflow:hidden;border:1px solid rgba(198,162,87,.28);box-shadow:0 8px 24px rgba(0,0,0,.65);transform:rotate('+rot+'deg);z-index:'+z+'">'+(url?'<img src="'+esc(url)+'" alt="" style="width:100%;height:100%;object-fit:cover;opacity:.92">':'<div style="width:100%;height:100%;background:#0F1E15"></div>')+'<span style="position:absolute;top:5px;left:5px;background:rgba(5,14,9,.85);color:#A8D93B;font-family:var(--font-ui);font-size:7px;font-weight:700;letter-spacing:.1em;padding:2px 5px;border-radius:3px">'+esc(v.try_poster_badge)+'</span></div>'; }
+        function carte(url,rot,z,cle){ return '<div style="position:absolute;width:100%;aspect-ratio:3/4;border-radius:6px;overflow:hidden;border:1px solid rgba(198,162,87,.28);box-shadow:0 8px 24px rgba(0,0,0,.65);transform:rotate('+rot+'deg);z-index:'+z+'">'+(url?'<img src="'+esc(url)+'" alt="" style="width:100%;height:100%;object-fit:cover;opacity:.92'+cadreCss(cadreDeVue(v,cle))+'">':'<div style="width:100%;height:100%;background:#0F1E15"></div>')+'<span style="position:absolute;top:5px;left:5px;background:rgba(5,14,9,.85);color:#A8D93B;font-family:var(--font-ui);font-size:7px;font-weight:700;letter-spacing:.1em;padding:2px 5px;border-radius:3px">'+esc(v.try_poster_badge)+'</span></div>'; }
         return '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">'+
           '<div style="flex:1;min-width:180px">'+
             '<div style="font-family:var(--font-ui);font-weight:700;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:8px">Affiches</div>'+
             (v.try_poster1_url||v.try_poster2_url
-              ? '<div style="position:relative;width:130px;height:190px">'+carte(v.try_poster1_url,-8,1)+(deux?carte(v.try_poster2_url,6,2):'')+'</div>'
+              ? '<div style="position:relative;width:130px;height:190px">'+carte(v.try_poster1_url,-8,1,'try_poster1_url')+(deux?carte(v.try_poster2_url,6,2,'try_poster2_url'):'')+'</div>'
               : '<div style="border-radius:12px;border:1px dashed rgba(243,239,230,.2);padding:22px;text-align:center;font-size:11px;color:#7E8A82">Aucune affiche affichée</div>')+
             '<div style="margin-top:12px"><div style="font-family:var(--font-ui);font-weight:700;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:#A8D93B">'+esc(v.try_poster_kicker)+'</div><div style="font-size:11px;color:#C7CFC8;margin-top:3px">'+esc(v.try_poster_text)+'</div></div>'+
           '</div>'+
@@ -15600,7 +15890,7 @@
           }
         }
         var vign = v.ps_poster_url
-          ? '<div style="position:relative;width:104px;aspect-ratio:9/16;border-radius:10px;overflow:hidden;border:1px solid rgba(198,162,87,.3);flex:none"><img src="'+esc(v.ps_poster_url)+'" alt="" style="width:100%;height:100%;object-fit:cover"><span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:50%;background:rgba(198,162,87,.92);display:flex;align-items:center;justify-content:center;color:#07130D;font-size:13px">▶</span></div>'
+          ? '<div style="position:relative;width:104px;aspect-ratio:9/16;border-radius:10px;overflow:hidden;border:1px solid rgba(198,162,87,.3);flex:none"><img src="'+esc(v.ps_poster_url)+'" alt="" style="width:100%;height:100%;object-fit:cover'+cadreCss(cadreDeVue(v,'ps_poster_url'))+'"><span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:50%;background:rgba(198,162,87,.92);display:flex;align-items:center;justify-content:center;color:#07130D;font-size:13px">▶</span></div>'
           : '<div style="width:104px;aspect-ratio:9/16;border-radius:10px;border:1px dashed rgba(243,239,230,.2);display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#7E8A82;flex:none;padding:8px">Pas d\'image d\'attente</div>';
         return '<div style="background:radial-gradient(120% 130% at 82% 0%,#14402B 0%,#0A2318 46%,#061109 100%);border:1px solid rgba(198,162,87,.26);border-radius:14px;padding:18px;display:flex;gap:16px;align-items:flex-start">'+
           vign+
@@ -15612,6 +15902,112 @@
             cd+
           '</div></div>'+
           '<p class="pv-hint">Ce bloc s\'affiche <b>sur la page d\'accueil</b>, juste sous le grand visuel. La vidéo ne se télécharge que si le visiteur clique — l\'image d\'attente s\'affiche en attendant. <b>Le compte à rebours disparaît tout seul</b> une fois l\'heure passée : rien à débrancher le lendemain.</p>';
+      } },
+    // Ajouté le 26/08/2026. La galerie de la détection vivait sur le site
+    // depuis un mois sans le moindre champ ici : ni modifiable, ni même
+    // signalée comme non modifiable. Ses textes passent par la même mécanique
+    // que la pré-saison — bbSet('identifiant', s.clef) dans index.html — pour
+    // que l'écran Cohérence les reconnaisse sans qu'on lui explique rien.
+    { id:'club_detection', page:'Accueil · Galerie', label:'DÉTECTION — la journée en photos', fields:[
+        {key:'det_show', label:'Afficher le bloc sur l\'accueil', type:'select', def:'oui',
+          options:[['oui','Oui — le bloc est visible'],['non','Non — le bloc disparaît du site']]},
+        {key:'det_kicker', label:'Sur-titre', type:'text', def:'Juillet 2026 · Terrain des Baobabs'},
+        {key:'det_title', label:'Titre', type:'text', def:'La journée de détection'},
+        {key:'det_text', label:'Paragraphe', type:'textarea', def:'Deux jours, un terrain, et tous ceux qui sont venus tenter leur chance. Voilà à quoi ça ressemblait.'},
+        {key:'det_vidlab', label:'Étiquette posée sur la vidéo', type:'text', def:'Le résumé · 0:38'},
+        {key:'det_video_url', label:'Fichier vidéo — le résumé filmé', type:'video', def:'/media/video/detection-2026-07.mp4'},
+        {key:'det_poster_url', label:'Image d\'attente de la vidéo', type:'image', def:'/media/video/detection-2026-07-poster.webp'},
+        {key:'det_photos', label:'Photos — une par ligne : « numéro | légende », ou « adresse | légende »', type:'textarea',
+          def:'01 | Le panier du terrain des Baobabs, un matin de juillet.\n'+
+              '02 | Le coach accueille les joueuses avant le premier atelier.\n'+
+              '03 | Montée au panier pendant les ateliers du samedi.\n'+
+              '04 | Consignes avant la mise en place des exercices.\n'+
+              '05 | Conduite de balle sur le rond central.\n'+
+              '06 | Duel au rebond pendant les oppositions.\n'+
+              '07 | Un contre un, sous le regard du groupe.\n'+
+              '08 | Sur le bord du terrain, entre deux ateliers.\n'+
+              '09 | Opposition en maillots orange, dimanche matin.\n'+
+              '10 | Le jeu se met en place sur toute la largeur.\n'+
+              '11 | Le ballon en l’air, tout le monde suit.\n'+
+              '12 | Fin de session : le terrain est encore plein.'}
+      ],
+      preview:function(v){
+        if(String(v.det_show||'oui')==='non') return '<div class="pv-empty">Bloc masqué : il n\'apparaît pas sur l\'accueil.</div>';
+        var photos = String(v.det_photos||'').split('\n').map(function(l){
+          l = l.trim(); if(!l) return null;
+          var i = l.indexOf('|'), ref = (i<0?l:l.slice(0,i)).trim(), leg = (i<0?'':l.slice(i+1)).trim();
+          if(!ref) return null;
+          return { url: /^\d{1,3}$/.test(ref) ? '/media/img/detection-2026-'+('0'+ref).slice(-2)+'-t.webp' : ref, t: leg };
+        }).filter(Boolean);
+        var vign = photos.slice(0,6).map(function(p){
+          return '<div style="position:relative;aspect-ratio:3/4;border-radius:8px;overflow:hidden;border:1px solid rgba(243,239,230,.1)"><img src="'+esc(p.url)+'" alt="'+esc(p.t)+'" style="width:100%;height:100%;object-fit:cover"></div>';
+        }).join('');
+        var film = v.det_poster_url
+          ? '<div style="position:relative;width:96px;aspect-ratio:9/16;border-radius:10px;overflow:hidden;border:1px solid rgba(198,162,87,.3);flex:none"><img src="'+esc(v.det_poster_url)+'" alt="" style="width:100%;height:100%;object-fit:cover'+cadreCss(cadreDeVue(v,'det_poster_url'))+'"><span style="position:absolute;left:7px;bottom:7px;background:rgba(5,14,9,.82);color:#F3EFE6;font-family:var(--font-ui);font-size:8px;font-weight:700;padding:3px 6px;border-radius:4px">'+esc(v.det_vidlab)+'</span></div>'
+          : '<div style="width:96px;aspect-ratio:9/16;border-radius:10px;border:1px dashed rgba(243,239,230,.2);display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#7E8A82;flex:none;padding:8px">Pas d\'image d\'attente</div>';
+        return '<div>'+
+          '<div style="font-family:var(--font-ui);font-weight:700;font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:#C6A257;border-left:2px solid currentColor;padding-left:8px">'+esc(v.det_kicker)+'</div>'+
+          '<div style="font-family:var(--font-ui);font-weight:700;font-size:24px;color:#F3EFE6;margin:9px 0 7px">'+esc(v.det_title)+'</div>'+
+          '<div style="font-size:12px;line-height:1.55;color:#C7CFC8;max-width:52ch">'+esc(v.det_text)+'</div>'+
+          '<div style="display:flex;gap:12px;margin-top:15px;align-items:flex-start">'+film+
+            '<div style="flex:1;min-width:0"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px">'+
+              (vign||'<div style="grid-column:1/-1;border:1px dashed rgba(243,239,230,.2);border-radius:10px;padding:18px;text-align:center;font-size:11px;color:#7E8A82">Aucune photo listée : les douze photos livrées avec le site s\'affichent.</div>')+
+            '</div>'+
+            (photos.length>6?'<div style="font-size:10.5px;color:#7E8A82;margin-top:7px">+ '+(photos.length-6)+' autre'+(photos.length-6>1?'s':'')+' dans la galerie</div>':'')+
+            '</div></div>'+
+        '</div><p class="pv-hint">Le bloc s\'affiche <b>sur l\'accueil</b>, sous la pré-saison. <b>Une photo par ligne.</b> Le numéro (01 à 12) désigne une des images livrées avec le site ; une adresse complète (<code>/media/img/…</code>) désigne une photo téléversée depuis la Médiathèque. Ce qui suit la barre verticale est la légende : elle s\'affiche dans la visionneuse et se lit à voix haute pour les personnes qui n\'y voient pas. <b>Champ vidé = les douze photos d\'origine reviennent.</b></p>';
+      } },
+    // Ajoutés le 26/08/2026, après le relevé de l'écran Cohérence : sept
+    // blocs du site affichaient un titre écrit en dur au-dessus d'un contenu,
+    // lui, parfaitement administrable. Le club pouvait publier un article
+    // mais pas renommer « Les dernières du club ».
+    { id:'club_home_titres', page:'Accueil · Titres de sections', label:'TITRES DE SECTIONS — accueil', fields:[
+        {key:'home_news_kicker', label:'Actualités · sur-titre', type:'text', def:'Actualités'},
+        {key:'home_news_title', label:'Actualités · titre', type:'text', def:'Les dernières du club'},
+        {key:'squad_home_title', label:'Effectif · titre', type:'text', def:'L\'effectif'},
+        {key:'squad_home_link', label:'Effectif · lien à droite', type:'text', def:'Tout l\'effectif'},
+        {key:'partners_kicker', label:'Partenaires · sur-titre', type:'text', def:'Ils soutiennent les Baobabs'},
+        {key:'partners_title', label:'Partenaires · titre', type:'text', def:'Nos partenaires'}
+      ],
+      preview:function(v){
+        function bloc(k,t,lien){
+          return '<div style="padding:14px 0;border-bottom:1px solid rgba(243,239,230,.07)">'+
+            (k?'<div style="font-family:var(--font-ui);font-weight:700;font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:#C6A257;border-left:2px solid currentColor;padding-left:8px">'+esc(k)+'</div>':'')+
+            '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:'+(k?'7px':'0')+'">'+
+              '<div style="font-family:var(--font-ui);font-weight:700;font-size:21px;color:#F3EFE6">'+esc(t)+'</div>'+
+              (lien?'<div style="font-family:var(--font-ui);font-weight:600;font-size:10.5px;color:#C6A257;white-space:nowrap">'+esc(lien)+' →</div>':'')+
+            '</div></div>';
+        }
+        return '<div>'+bloc(v.home_news_kicker,v.home_news_title,'')+bloc('',v.squad_home_title,v.squad_home_link)+bloc(v.partners_kicker,v.partners_title,'')+'</div>'+
+          '<p class="pv-hint">Ce sont les <b>trois en-têtes</b> posés sur l\'accueil au-dessus des articles, des joueuses et des partenaires. Ce qu\'ils annoncent se gère ailleurs : <b>Articles</b>, <b>Effectif</b> et <b>Partenaires</b>. Ici on ne change que la phrase du dessus.</p>';
+      } },
+    { id:'club_org', page:'Page « Le Club » · Organigramme', label:'ORGANIGRAMME — en-tête', fields:[
+        {key:'org_kicker', label:'Sur-titre', type:'text', def:'Organigramme'},
+        {key:'org_title', label:'Titre', type:'text', def:'La structure du club'},
+        {key:'org_motto', label:'Devise sous le titre', type:'text', def:'Grandir ici · Régner partout'}
+      ],
+      preview:function(v){
+        return '<div style="text-align:center;padding:22px 14px;background:#07130D;border:1px solid rgba(243,239,230,.09);border-radius:14px">'+
+          '<div style="display:inline-block;font-family:var(--font-ui);font-weight:700;font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:#C6A257;border-left:2px solid currentColor;padding-left:8px">'+esc(v.org_kicker)+'</div>'+
+          '<div style="font-family:var(--font-ui);font-weight:700;font-size:22px;color:#F3EFE6;margin:9px 0 5px">'+esc(v.org_title)+'</div>'+
+          '<div style="font-family:var(--font-ui);font-weight:600;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#A8D93B">'+esc(v.org_motto)+'</div>'+
+        '</div><p class="pv-hint">L\'en-tête de l\'arbre des postes, sur la page « Le Club ». Les postes eux-mêmes, leurs titulaires et leurs fiches se modifient dans <b>Organigramme</b>.</p>';
+      } },
+    { id:'club_ins_titres', page:'Page Inscriptions · Titres', label:'INSCRIPTIONS — titres des colonnes', fields:[
+        {key:'ins_cats_title', label:'Titre au-dessus des catégories', type:'text', def:'Les catégories'},
+        {key:'ins_incl_title', label:'Titre au-dessus des prestations comprises', type:'text', def:'Ce qui est compris'},
+        {key:'ins_infos_title', label:'Titre au-dessus des infos pratiques', type:'text', def:'Infos pratiques'},
+        {key:'ins_suivi_title', label:'Titre du bloc de suivi', type:'text', def:'Suivre mon inscription'},
+        {key:'ins_suivi_text', label:'Phrase du bloc de suivi', type:'textarea', def:'Vous avez déjà inscrit votre enfant ? Entrez la référence reçue et votre numéro pour voir où en est le dossier.'}
+      ],
+      preview:function(v){
+        function t(x){ return '<div style="font-family:var(--font-ui);font-weight:700;font-size:16px;color:#F3EFE6;padding:11px 0;border-bottom:1px solid rgba(243,239,230,.07)">'+esc(x)+'</div>'; }
+        return '<div>'+t(v.ins_cats_title)+t(v.ins_incl_title)+t(v.ins_infos_title)+
+          '<div style="padding:11px 0"><div style="font-family:var(--font-ui);font-weight:700;font-size:16px;color:#F3EFE6">'+esc(v.ins_suivi_title)+'</div>'+
+          '<div style="font-size:12px;line-height:1.55;color:#93A099;margin-top:6px;max-width:46ch">'+esc(v.ins_suivi_text)+'</div>'+
+          '<div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap"><span style="border:1px solid rgba(243,239,230,.14);border-radius:9px;padding:7px 12px;font-size:10.5px;color:#7E8A82">Référence</span><span style="border:1px solid rgba(243,239,230,.14);border-radius:9px;padding:7px 12px;font-size:10.5px;color:#7E8A82">Téléphone</span><span style="border:1px solid rgba(198,162,87,.45);border-radius:9px;padding:7px 12px;font-size:10.5px;color:#C6A257">Vérifier</span></div>'+
+          '</div></div>'+
+          '<p class="pv-hint">Les quatre titres de la colonne de gauche de la page Inscriptions. <b>Les catégories, les prestations, le lieu et les horaires</b> se saisissent dans le bloc <b>INSCRIPTIONS — école de basket</b> ; ici, seulement les phrases qui les annoncent. Le formulaire de suivi, lui, fonctionne quoi qu\'on écrive.</p>';
       } },
     { id:'club_inscriptions', page:'Page Inscriptions', label:'INSCRIPTIONS — école de basket', fields:[
         {key:'ins_open', label:'État des inscriptions', type:'select', def:'oui',
@@ -15887,10 +16283,10 @@
     // « Boutique — en-tête sur l'accueil » vivait dans un 3e onglet de
     // l'ancien écran Boutique, supprimé depuis. C'est un bloc de la page
     // d'accueil : sa place est ici, avec les autres.
-    c_home:['club_hero','club_faceoff','club_stats','club_shop_home','club_media'],
-    c_club:['club_intro','club_obj','club_camp'],
+    c_home:['club_hero','club_faceoff','club_detection','club_stats','club_shop_home','club_media','club_home_titres'],
+    c_club:['club_intro','club_obj','club_camp','club_org'],
     c_tryouts:['club_tryouts','club_try_media'],
-    c_inscriptions:['club_presaison','club_inscriptions'],
+    c_inscriptions:['club_presaison','club_inscriptions','club_ins_titres'],
     c_app:['club_app','club_app_screens'],
     c_promo:['club_newsletter','club_tribu','club_cta_modals'],
     c_legal:['club_footer_cols','club_legal_mentions','club_legal_confid'],
@@ -15904,7 +16300,24 @@
     }).filter(Boolean);
   }
   function qgcAll(){ return CONTENT_BLOCKS.concat(SETTINGS_BLOCKS); }
-  function qgcVal(key){ var b=null; qgcAll().forEach(function(bl){ bl.fields.forEach(function(f){ if(f.key===key) b=f; }); }); var d=b?b.def:''; return (settings[key]!=null && settings[key]!=='')?settings[key]:d; }
+  // Trois sources, dans cet ordre : ce que le club a enregistré, puis ce que
+  // le site affiche réellement aujourd'hui, puis la valeur d'origine du
+  // registre. C'est le deuxième étage qui empêche l'admin de vieillir : une
+  // phrase changée directement dans index.html apparaît ici sans qu'on touche
+  // à ce fichier.
+  function qgcVal(key){
+    var b=null; qgcAll().forEach(function(bl){ bl.fields.forEach(function(f){ if(f.key===key) b=f; }); });
+    var d = b ? b.def : '';
+    if (settings[key]!=null && settings[key]!=='') return settings[key];
+    if (SITE_TXT && SITE_TXT[key]){
+      // Même texte à la mise en forme près : on garde l'original, qui seul
+      // conserve les retours à la ligne voulus.
+      if (SITE_TXT[key] !== String(d||'').trim().replace(/\s+/g,' ')) return SITE_TXT[key];
+    }
+    return d;
+  }
+  // Un écran de contenu a besoin des deux : la base et la page publique.
+  function qgcPrep(){ return Promise.all([loadSettings(), loadSiteTexts()]); }
   function qgcRender(blocks, mountId){
     var m=document.getElementById(mountId); if(!m) return;
     // Plus de deux blocs = un sommaire collant en tête : on saute au bloc
@@ -15918,7 +16331,10 @@
         // Textes longs et images prennent toute la largeur ; le reste se
         // range par deux, ce qui raccourcit la page de moitié.
         var wide=(f.type==='textarea'||f.type==='image'||f.type==='video')?' qgc-wide':'';
-        if(f.type==='image') return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><input id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'" placeholder="https://…" style="font-size:12.5px"><div class="qg-photo-actions"><label class="qg-file-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Téléverser</span><input type="file" data-kfile="'+f.key+'" data-kind="image" accept="image/*" style="display:none"></label></div></div>';
+        // Le bouton « Cadrer » n'apparaît que sur les images que le site
+        // rogne : proposer de cadrer un logo affiché en entier ne mènerait
+        // qu'à des essais sans effet visible.
+        if(f.type==='image') return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><input id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'" placeholder="https://…" style="font-size:12.5px"><div class="qg-photo-actions"><label class="qg-file-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Téléverser</span><input type="file" data-kfile="'+f.key+'" data-kind="image" accept="image/*" style="display:none"></label>'+(CADRABLES[f.key]?cadreBouton(f.key):'')+'</div></div>';
         // Même champ que l'image, mais pour un fichier vidéo. La vidéo livrée
         // avec le site vit dans /media/video ; en téléverser une autre ici
         // l'envoie dans la médiathèque et remplace celle du site.
@@ -15967,8 +16383,48 @@
     m.querySelectorAll('.qgc-in').forEach(function(el){ el.addEventListener('input',function(){ var bl=qgcAll().filter(function(b){ return b.fields.some(function(f){return f.key===el.getAttribute('data-k');}); })[0]; if(bl) qgcPreview(bl); }); });
     m.querySelectorAll('input[data-kfile]').forEach(function(fe){ fe.addEventListener('change',function(){ var file=fe.files[0]; if(!file) return; var key=fe.getAttribute('data-kfile'); var kind=fe.getAttribute('data-kind')||'image'; var span=fe.parentNode.querySelector('span'); var libelle=span?span.textContent:''; if(span) span.textContent='Envoi…'; uploadFile(MEDIA_BUCKET,file).then(function(url){ var inp=document.querySelector('.qgc-in[data-k="'+key+'"]'); if(inp){ inp.value=url; inp.dispatchEvent(new Event('input',{bubbles:true})); } if(span) span.textContent=libelle; qgToast(kind==='video'?'Vidéo envoyée ✓':'Image envoyée ✓'); }).catch(function(){ if(span) span.textContent=libelle; qgToast('Échec de l\'envoi',true); }); }); });
     m.querySelectorAll('.qgc-save').forEach(function(btn){ btn.addEventListener('click',function(){ qgcSave(btn.getAttribute('data-block'),btn); }); });
+
+    // « Cadrer » ouvre l'atelier sur l'image actuellement dans le champ —
+    // pas celle enregistrée en base : on cadre ce qu'on vient de choisir.
+    m.querySelectorAll('.qgc-cadrer').forEach(function(b){
+      b.addEventListener('click', function(){
+        var cle = b.getAttribute('data-cadre'), conf = CADRABLES[cle];
+        var champ = m.querySelector('.qgc-in[data-k="'+cle+'"]');
+        var url = champ ? String(champ.value||'').trim() : '';
+        if(!url){ qgToast('Choisissez d\'abord une image à cadrer.', true); return; }
+        cadrageOuvrir({
+          url: url, titre: conf.titre, ratioD: conf.d, ratioM: conf.m,
+          valeurs: { x:b.dataset.cx, y:b.dataset.cy, zoom:b.dataset.cz,
+                     mx:b.dataset.cmx||null, my:b.dataset.cmy||null, mzoom:b.dataset.cmz||null },
+          onValider: function(r){
+            b.dataset.cx=r.x; b.dataset.cy=r.y; b.dataset.cz=r.zoom;
+            b.dataset.cmx=(r.mx==null?'':r.mx); b.dataset.cmy=(r.my==null?'':r.my); b.dataset.cmz=(r.mzoom==null?'':r.mzoom);
+            var lab=b.querySelector('span'); if(lab) lab.textContent=cadreResume(r, cle);
+            var bl=qgcAll().filter(function(x){ return x.fields.some(function(f){ return f.key===cle; }); })[0];
+            if(bl) qgcPreview(bl);
+            // Le cadrage ne part pas tout seul : il suit le bouton
+            // Enregistrer du bloc, comme les textes de la même carte.
+            qgToast('Cadrage posé — cliquez sur « Enregistrer » pour l\'appliquer au site.');
+          }
+        });
+      });
+    });
   }
-  function qgcCollect(bl){ var v={}; bl.fields.forEach(function(f){ var el=document.querySelector('.qgc-in[data-k="'+f.key+'"]'); v[f.key]=el?el.value:qgcVal(f.key); }); return v; }
+  function qgcCollect(bl){
+    var v={};
+    bl.fields.forEach(function(f){ var el=document.querySelector('.qgc-in[data-k="'+f.key+'"]'); v[f.key]=el?el.value:qgcVal(f.key); });
+    // Les six nombres du cadrage voyagent avec l'image sans être des champs
+    // du registre : ils n'ont pas de case à remplir, seulement un atelier.
+    // Un champ mobile laissé vide veut dire « fais comme l'ordinateur ».
+    bl.fields.forEach(function(f){
+      if(f.type!=='image' || !CADRABLES[f.key]) return;
+      var b=document.querySelector('.qgc-cadrer[data-cadre="'+f.key+'"]');
+      if(!b) return;
+      v[f.key+'_x']=b.dataset.cx;   v[f.key+'_y']=b.dataset.cy;   v[f.key+'_zoom']=b.dataset.cz;
+      v[f.key+'_mx']=b.dataset.cmx; v[f.key+'_my']=b.dataset.cmy; v[f.key+'_mzoom']=b.dataset.cmz;
+    });
+    return v;
+  }
   function qgcPreview(bl){ var pv=document.getElementById('qgc-pv-'+bl.id); if(pv && bl.preview) pv.innerHTML=bl.preview(qgcCollect(bl)); }
   function qgcSave(blockId,btn){
     var bl=qgcAll().filter(function(b){return b.id===blockId;})[0]; if(!bl) return;
