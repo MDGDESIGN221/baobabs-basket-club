@@ -36,9 +36,10 @@
   var demoEcran = null;     // l'ecran dont la demonstration est en cours
   var demoPhoto = {};       // valeurs d'origine des champs touches
   var frappe = null;        // minuteur de la frappe lettre par lettre
+  var clicsSurveilles = false;
   var voixOn = false;
   var voixFr = null;
-  var progres = { vus: {}, dernier: null };
+  var progres = { vus: {}, dernier: null, role: null };
 
   var CLE_PROGRES = 'bbc_tut_progres';
   var CLE_VOIX = 'bbc_tut_voix';
@@ -84,8 +85,8 @@
   function lireProgres() {
     try {
       var b = JSON.parse(localStorage.getItem(CLE_PROGRES) || '{}');
-      progres = { vus: b.vus || {}, dernier: b.dernier || null };
-    } catch (e) { progres = { vus: {}, dernier: null }; }
+      progres = { vus: b.vus || {}, dernier: b.dernier || null, role: b.role || null };
+    } catch (e) { progres = { vus: {}, dernier: null, role: null }; }
   }
   function ecrireProgres() {
     try { localStorage.setItem(CLE_PROGRES, JSON.stringify(progres)); } catch (e) {}
@@ -238,55 +239,89 @@
     return out;
   }
 
+  // LE CHAPITRE DES ROLES
+  //
+  // Il decrivait une table que l'ecran Comptes & roles affiche deja, en
+  // la recopiant en tout petit dans le narrateur. Deux torts : il
+  // n'avait pas le mouvement des autres chapitres -- ni main, ni cadre,
+  // ni ecran qui arrive -- et il racontait au lieu de montrer.
+  //
+  // Quand la casquette ouvre l'ecran, on y VA et on designe les vraies
+  // choses. Sinon seulement, on retombe sur la version racontee, avec
+  // sa table embarquee : promettre un ecran qu'on ne peut pas ouvrir
+  // serait pire que de raconter.
   function etapesRoles() {
-    var out = [];
     var moi = api.role, moiNom = api.roleNom || moi;
+    var lien = api.lien && api.lien('comptes');
+    var surEcran = !!(lien && !lien.classList.contains('hide') && api.metas && api.metas.comptes);
 
-    out.push({
-      special: true, nom: 'Les rôles',
+    if (surEcran) return etapesRolesSurEcran(moiNom);
+    return etapesRolesRacontees(moi, moiNom);
+  }
+
+  // La version qui MONTRE : meme mouvement que n'importe quel ecran.
+  function etapesRolesSurEcran(moiNom) {
+    var out = [];
+    var E = 'comptes', N = 'Les rôles et les accès';
+    function pas(html, cible, halo) {
+      out.push({ ecran: E, nom: N, html: html, cible: cible || null, halo: !!halo });
+    }
+
+    pas('<b>Un compte, un rôle.</b> Le rôle décide des écrans que la personne voit en se connectant. ' +
+        'Elle ne trouve pas les autres — et surtout, elle ne les cherche pas. Tout se règle ici.', null, true);
+
+    pas('Voici les comptes qui ont accès à l’administration. Vous êtes connecté en <b>' + echapper(moiNom) +
+        '</b> : tout ce que ce tutoriel vous montre, vous pouvez l’ouvrir.', '#cp-list');
+
+    pas('Les cinq casquettes, et le métier de chacune. Ce n’est pas une hiérarchie : c’est un partage du travail.', '#cp-roles');
+
+    (api.roles || []).forEach(function (r, i) {
+      pas('<b>' + echapper(r.nom) + '</b> — ' + echapper(r.resume || ''),
+          '#cp-roles .cp-role:nth-child(' + (i + 1) + ')');
+    });
+
+    pas('Et le tableau complet, écran par écran. <b>✓</b> consulte et modifie, <b>○</b> consulte seulement, ' +
+        '<b>·</b> n’a pas l’écran — il n’apparaît même pas dans son menu.', '#cp-matrice');
+
+    pas('Un compte échappe à la règle : celui du <b>propriétaire du site</b>. Son rôle, son adresse et sa ' +
+        'suppression sont verrouillés dans la base — même un autre super administrateur ne peut pas y toucher. ' +
+        'Il porte un cadenas dans la liste.', '#cp-list');
+
+    pas('Pour changer un rôle, c’est ce bouton. Consulter ne demande rien&nbsp;; changer demande le mot de ' +
+        'passe <i>et</i> le rôle de super administrateur.', '#cp-demander');
+
+    return out;
+  }
+
+  // La version racontee, pour les casquettes qui n'ouvrent pas l'ecran.
+  function etapesRolesRacontees(moi, moiNom) {
+    var out = [];
+    out.push({ special: true, nom: 'Les rôles',
       html: '<b>Un compte, un rôle.</b> Le rôle décide des écrans que la personne voit en se connectant. ' +
-            'Elle ne trouve pas les autres — et surtout, elle ne les cherche pas.'
-    });
-    out.push({
-      special: true, nom: 'Les rôles',
+            'Elle ne trouve pas les autres — et surtout, elle ne les cherche pas.' });
+    out.push({ special: true, nom: 'Les rôles',
       html: 'Vous êtes connecté en <b>' + echapper(moiNom) + '</b>. Tout ce que ce tutoriel va vous montrer, ' +
-            'vous pouvez l’ouvrir. Ce qu’il ne vous montre pas ne vous concerne pas.'
-    });
+            'vous pouvez l’ouvrir. Ce qu’il ne vous montre pas ne vous concerne pas.' });
 
     (api.roles || []).forEach(function (r) {
-      out.push({
-        special: true, nom: 'Les rôles',
+      out.push({ special: true, nom: 'Les rôles',
         html: '<div class="bt-roles"><div class="bt-role' + (r.cle === moi ? ' moi' : '') + '"><b>' +
               echapper(r.nom) + (r.cle === moi ? ' — votre casquette' : '') + '</b>' +
-              echapper(r.resume || '') + '</div></div>'
-      });
+              echapper(r.resume || '') + '</div></div>' });
     });
 
-    out.push({ special: true, nom: 'Les rôles', tableau: true, html: 'Le tableau complet, casquette par casquette et écran par écran. ' +
-      '<b>✓</b> consulte et modifie, <b>○</b> consulte seulement, <b>·</b> n’a pas l’écran.' });
+    out.push({ special: true, nom: 'Les rôles', tableau: true,
+      html: 'Le tableau complet, casquette par casquette et écran par écran. ' +
+            '<b>✓</b> consulte et modifie, <b>○</b> consulte seulement, <b>·</b> n’a pas l’écran.' });
 
-    out.push({
-      special: true, nom: 'Les rôles',
-      html: 'Un seul compte échappe à la règle : celui du <b>propriétaire du site</b>. Son rôle, son adresse et ' +
-            'sa suppression sont verrouillés dans la base — même un autre super administrateur ne peut pas y toucher. ' +
-            'Il porte un cadenas dans l’écran <b>Comptes &amp; rôles</b>.'
-    });
-    // LE BUG SIGNALE. Ces etapes n'avaient pas d'ecran attache : elles
-    // parlaient des roles pendant qu'on regardait les joueuses. Le
-    // dernier pas mene desormais VRAIMENT a l'ecran dont il parle --
-    // quand le role y a droit, sinon il ne promet pas une porte fermee.
-    var vaAuxComptes = !!(api.metas && api.metas.comptes && api.lien('comptes') &&
-                          !api.lien('comptes').classList.contains('hide'));
-    out.push({
-      special: true, nom: 'Les rôles',
-      ecran: vaAuxComptes ? 'comptes' : null,
-      halo: vaAuxComptes,
-      html: vaAuxComptes
-        ? 'Et voici l’écran lui-même : <b>Réglages → Comptes &amp; rôles</b>. Consulter ne demande rien ; ' +
-          'changer un rôle demande le mot de passe <i>et</i> le rôle de super administrateur.'
-        : 'Pour changer un rôle, il faut passer par <b>Réglages → Comptes &amp; rôles</b> — un écran que votre ' +
-          'casquette n’ouvre pas. C’est un super administrateur qui s’en charge.'
-    });
+    out.push({ special: true, nom: 'Les rôles',
+      html: 'Un compte échappe à la règle : celui du <b>propriétaire du site</b>. Son rôle, son adresse et sa ' +
+            'suppression sont verrouillés dans la base — même un autre super administrateur ne peut pas y toucher.' });
+
+    out.push({ special: true, nom: 'Les rôles',
+      html: 'Pour changer un rôle, il faut passer par <b>Réglages → Comptes &amp; rôles</b> — un écran que votre ' +
+            'casquette n’ouvre pas. C’est un super administrateur qui s’en charge.' });
+
     return out;
   }
 
@@ -561,6 +596,7 @@
     idx = 0;
     $('bt-narr').classList.remove('hide');
     enLecture = true;
+    surveillerClics(true);
     majBoutonPlay();
     montrer(0);
   }
@@ -596,6 +632,22 @@
       ? 'Jamais commencé.'
       : (vusE >= totalE ? 'Tutoriel terminé — vous pouvez le revoir quand vous voulez.'
                         : vusE + ' écran' + (vusE > 1 ? 's' : '') + ' sur ' + totalE + ' déjà vus.');
+
+    // Le role a change depuis la derniere visite : on ne refait pas tout,
+    // on signale ce qui s'est ouvert.
+    var kick = racine.querySelector('.bt-kick');
+    if (kick) {
+      if (progres.role && progres.role !== api.role)
+        kick.innerHTML = 'Tutoriel · <span style="color:var(--bt-ok)">votre role a change</span>';
+      else kick.textContent = 'Tutoriel';
+    }
+
+    // Tout est vu : le bouton ne dit plus « me montrer », il dit
+    // « revoir ». Proposer de decouvrir ce qu'on connait deja donne le
+    // sentiment que le tutoriel ne suit pas.
+    var cta = $('bt-tout');
+    if (cta) cta.lastChild.textContent = (vusE >= totalE && totalE)
+      ? ' Revoir depuis le debut' : ' Tout me montrer';
 
     var rep = $('bt-reprendre');
     if (progres.dernier && plan.some(function (c) { return c.cle === progres.dernier.chap; })) {
@@ -677,6 +729,7 @@
     $('bt-somm').classList.add('hide');
     $('bt-narr').classList.remove('hide');
     enLecture = true;
+    surveillerClics(true);
     majBoutonPlay();
     montrer(idx);
   }
@@ -712,6 +765,7 @@
     if (e.special) { progres.vus['_roles'] = true; ecrireProgres(); }
 
     progres.dernier = { chap: chapCourant, i: i };
+    progres.role = api.role;
     ecrireProgres();
 
     // Le halo n'apparaît qu'à l'arrivée sur un écran : c'est le moment
@@ -1016,6 +1070,33 @@
     if (window.innerWidth < 940 && api.fermerMenu) api.fermerMenu();
   }
 
+  // ON NE LUTTE PAS CONTRE LA PERSONNE
+  // Si elle clique dans l'administration pendant la visite, c'est
+  // qu'elle explore. Continuer a defiler par-dessus son epaule --
+  // changer d'ecran sous ses doigts, parler d'autre chose que ce
+  // qu'elle regarde -- serait la pire des reponses. On se met en pause
+  // et on le dit.
+  //
+  // isTrusted distingue son clic de ceux que le tutoriel declenche
+  // lui-meme pendant une demonstration : sans cette garde, la
+  // demonstration se mettrait en pause toute seule au premier geste.
+  function clicDansAdmin(e) {
+    if (!e.isTrusted) return;
+    if (!enLecture) return;
+    if (racine && racine.contains(e.target)) return;
+    enLecture = false;
+    taire();
+    if (minuteur) { clearTimeout(minuteur); minuteur = null; }
+    majBoutonPlay();
+    var n = $('bt-pause'); if (n) n.classList.remove('hide');
+  }
+  function surveillerClics(on) {
+    if (on === clicsSurveilles) return;
+    if (on) document.addEventListener('click', clicDansAdmin, true);
+    else document.removeEventListener('click', clicDansAdmin, true);
+    clicsSurveilles = on;
+  }
+
   function suivant() {
     if (idx >= etapes.length - 1) { terminer(); return; }
     montrer(idx + 1);
@@ -1029,6 +1110,7 @@
     else { taire(); if (minuteur) { clearTimeout(minuteur); minuteur = null; } }
   }
   function majBoutonPlay() {
+    var np = $('bt-pause'); if (np && enLecture) np.classList.add('hide');
     var i = $('bt-play-i'), t = $('bt-play-t');
     if (t) t.textContent = enLecture ? 'Pause' : 'Reprendre';
     if (i) i.innerHTML = enLecture ? '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
@@ -1049,6 +1131,7 @@
   function versSommaire() {
     enLecture = false;
     demoFin();
+    surveillerClics(false);
     $('bt-ctx').classList.add('hide');
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
@@ -1061,6 +1144,7 @@
   function fermer() {
     enLecture = false;
     demoFin();
+    surveillerClics(false);
     $('bt-ctx').classList.add('hide');
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
@@ -1150,6 +1234,38 @@
     },
     aide: function (ecran) { if (monte) { construirePlan(); ouvrirContexte(ecran); } },
     close: fermer,
+
+    // LE DIAGNOSTIC. 98 selecteurs pointent vers un fichier de 15 000
+    // lignes qui bouge. Le jour ou l'un d'eux disparait, RIEN ne le
+    // signale : la main ne vient pas, et personne ne sait pourquoi.
+    // A lancer dans la console apres toute retouche de l'admin :
+    //     BaobabsTutoriel.diagnostic()
+    diagnostic: function () {
+      if (!monte) { console.warn('[Tutoriel] pas encore monte'); return; }
+      var pb = [], n = 0;
+      var cibles = api.cibles || {}, aides = api.aides || {};
+      Object.keys(cibles).forEach(function (ecran) {
+        var liste = cibles[ecran] || [];
+        var nc = liste.length, na = (aides[ecran] || []).length;
+        if (nc && na !== nc) pb.push(ecran + ' : ' + na + ' conseils pour ' + nc + ' cibles — table ignoree en entier');
+        liste.forEach(function (sel, i) {
+          if (!sel) return;
+          n++;
+          var t;
+          try { t = document.querySelectorAll(sel); }
+          catch (e) { pb.push(ecran + '[' + i + '] ' + sel + ' — selecteur invalide'); return; }
+          if (!t.length) pb.push(ecran + '[' + i + '] ' + sel + ' — INTROUVABLE');
+          else if (t.length > 1) pb.push(ecran + '[' + i + '] ' + sel + ' — ' + t.length + ' elements, seul le premier sera designe');
+        });
+      });
+      var ecransSansTable = Object.keys(aides).filter(function (k) { return !cibles[k]; });
+      console.log('%c[Tutoriel] ' + n + ' cibles verifiees sur ' + Object.keys(cibles).length + ' ecrans',
+                  'font-weight:bold');
+      if (ecransSansTable.length) console.log('  ecrans sans table de cibles : ' + ecransSansTable.join(', '));
+      if (!pb.length) console.log('%c  tout est en place', 'color:#93CE43');
+      else pb.forEach(function (l) { console.warn('  ' + l); });
+      return { cibles: n, problemes: pb };
+    },
     // Pour le banc d'essai et la console : savoir où on en est.
     etat: function () {
       return { chapitres: plan.length, etapes: etapes.length, idx: idx, lecture: enLecture, voix: voixOn, voixFr: voixFr && voixFr.name };
