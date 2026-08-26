@@ -62,7 +62,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-r';
+  var VERSION = '26.08-t';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -1510,6 +1510,171 @@
     montrer(idx);
   }
 
+  // ===================================================================
+  // LA QUESTION ECLAIR
+  // ===================================================================
+  // Elle ferme chaque groupe d'ecrans. Elle ne navigue nulle part : on
+  // reste ou l'on est, et l'on repond de memoire.
+  //
+  // Deux precautions qui ne se voient pas :
+  //   · on n'interroge JAMAIS sur le dernier ecran visite -- son titre
+  //     serait affiche derriere le narrateur, la reponse se lirait ;
+  //   · les propositions viennent d'AUTRES groupes. Discriminer entre
+  //     deux ecrans voisins ne prouve rien ; retrouver le bon groupe,
+  //     si.
+  function melanger(l) {
+    for (var i = l.length - 1; i > 0; i--) {
+      var k = Math.floor(Math.random() * (i + 1));
+      var t = l[i]; l[i] = l[k]; l[k] = t;
+    }
+    return l;
+  }
+
+  // Tous les ecrans que CE role peut voir, avec leur groupe. On lit le
+  // plan, comme partout ailleurs : rien n'est recopie.
+  function tousLesEcrans() {
+    var out = [];
+    (api.plan() || []).forEach(function (gr) {
+      (gr.ecrans || []).forEach(function (e) {
+        out.push({ cle: e.cle, nom: e.nom, groupe: gr.titre });
+      });
+    });
+    return out;
+  }
+
+  function questionDuGroupe(c) {
+    if (!c.ecrans || c.ecrans.length < 2) return null;   // pas d'ecran a exclure
+    var tous = tousLesEcrans();
+    if (tous.length < 3) return null;                    // pas de quoi faire deux leurres
+
+    var dansLeGroupe = {};
+    c.ecrans.forEach(function (e) { dansLeGroupe[e.cle] = true; });
+
+    // On ecarte le dernier visite : il est encore a l'ecran.
+    var dernier = c.ecrans[c.ecrans.length - 1].cle;
+    var candidats = c.ecrans.filter(function (e) {
+      if (e.cle === dernier) return false;
+      var d = (api.metas[e.cle] || {}).d || '';
+      return d.length >= 45;                             // une description trop courte n'apprend rien
+    });
+    if (!candidats.length) return null;
+
+    var bon = melanger(candidats.slice())[0];
+    var leurres = melanger(tous.filter(function (x) {
+      return !dansLeGroupe[x.cle] && x.nom !== bon.nom;
+    })).slice(0, 2);
+    if (leurres.length < 2) return null;
+
+    var enonce = ((api.metas[bon.cle] || {}).d || '').replace(/\s+/g, ' ').trim();
+    if (enonce.length > 165) {
+      var coupe = enonce.slice(0, 165);
+      var esp = coupe.lastIndexOf(' ');
+      enonce = (esp > 110 ? coupe.slice(0, esp) : coupe) + '…';
+    }
+
+    var bonNom = (api.metas[bon.cle] || {}).t || bon.nom;
+    var options = melanger([
+      { nom: bonNom, juste: true },
+      { nom: leurres[0].nom, juste: false },
+      { nom: leurres[1].nom, juste: false }
+    ]);
+
+    return {
+      special: true, nom: c.titre, question: {
+        cle: bon.cle, enonce: enonce, bonNom: bonNom,
+        groupe: c.titre, options: options
+      },
+      html: ''
+    };
+  }
+
+  // Le rendu tient dans le narrateur : pas de nouvelle surcouche a
+  // fermer, pas de nouvelle facon de sortir.
+  function rendreQuestion(e, g) {
+    var q = e.question;
+    var hote = $('bt-dit');
+    hote.innerHTML =
+      '<div class="bt-q">' +
+        '<span class="bt-q-lab">Question \u00e9clair</span>' +
+        '<p class="bt-q-en">\u00ab\u202f' + echapper(q.enonce) + '\u202f\u00bb</p>' +
+        '<p class="bt-q-dem">De quel \u00e9cran s\u2019agit-il\u202f?</p>' +
+        '<div class="bt-q-opts" role="group"></div>' +
+        '<button type="button" class="bt-q-passe">Je ne sais pas</button>' +
+        '<p class="bt-q-fb hide" aria-live="polite"></p>' +
+      '</div>';
+    var boite = hote.querySelector('.bt-q-opts');
+    q.options.forEach(function (o) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bt-q-opt';
+      b.textContent = o.nom;
+      b.addEventListener('click', function () { repondreQuestion(e, g, o.juste, b); });
+      boite.appendChild(b);
+    });
+    hote.querySelector('.bt-q-passe')
+        .addEventListener('click', function () { repondreQuestion(e, g, null, null); });
+
+    // La voix lit l'enonce, puis se tait : on ne bouscule personne qui
+    // reflechit. Aucune suite n'est programmee -- l'etape attend la
+    // reponse, c'est tout l'interet.
+    // La voix ne s'impose pas quand la lecture est en pause : la
+    // personne pilote, elle lit a son rythme.
+    if (enLecture) dire(q.enonce + '. De quel écran s’agit-il ?', function () {});
+  }
+
+  // Nom explicite EXPRES : un « repondre » existait deja, celui des cinq
+  // boutons du panneau d aide. Le doublon l aurait ecrase par hoisting et
+  // tue le panneau en silence -- le garde-fou ne comparait que la LISTE
+  // des noms, pas leurs doublons. Il les compte maintenant.
+  function repondreQuestion(e, g, juste, bouton) {
+    if (g !== jeton || etapes[idx] !== e) return;
+    var q = e.question;
+    var hote = $('bt-dit');
+    var opts = [].slice.call(hote.querySelectorAll('.bt-q-opt'));
+    if (!opts.length || opts[0].disabled) return;        // deja repondu
+
+    opts.forEach(function (b, i) {
+      b.disabled = true;
+      if (q.options[i].juste) b.classList.add('juste');
+    });
+    if (bouton && !juste) bouton.classList.add('faux');
+    var passe = hote.querySelector('.bt-q-passe');
+    if (passe) passe.disabled = true;
+
+    // On enregistre ce qui est ACQUIS, pas ce qui est vu. C'est la
+    // premiere brique : « vu » ne dit rien de ce qu'on sait faire.
+    progres.acquis = progres.acquis || {};
+    progres.acquis[q.cle] = (juste === true) ? 'retrouve'
+                          : (juste === false) ? 'manque' : 'passe';
+    ecrireProgres();
+
+    var fb = hote.querySelector('.bt-q-fb');
+    fb.classList.remove('hide');
+    var mot;
+    if (juste === true) {
+      mot = 'Exact.';
+      fb.innerHTML = '<b>Exact.</b> C’est bien <b>' + echapper(q.bonNom) +
+        '</b>, dans <b>' + echapper(q.groupe) + '</b>.';
+    } else if (juste === false) {
+      mot = 'Pas tout à fait.';
+      fb.innerHTML = '<b>Pas tout à fait.</b> C’était <b>' + echapper(q.bonNom) +
+        '</b>, dans <b>' + echapper(q.groupe) + '</b>.';
+    } else {
+      mot = 'C’est ' + q.bonNom + '.';
+      fb.innerHTML = 'C’est <b>' + echapper(q.bonNom) + '</b>, dans <b>' +
+        echapper(q.groupe) + '</b>. On y retournera si besoin.';
+    }
+    taire();
+    if (enLecture) dire(mot, function () {});
+
+    // On laisse le temps de lire avant d'enchainer. Plus long quand on
+    // s'est trompe : c'est la que la correction se retient.
+    if (minuteur) { clearTimeout(minuteur); minuteur = null; }
+    minuteur = setTimeout(function () {
+      if (g === jeton && enLecture && etapes[idx] === e) suivant();
+    }, juste === true ? 2000 : 3400);
+  }
+
   function etapesDuChapitre(c) {
     if (c.cle === '_entete') return etapesEntete();
     if (c.cle === '_connexion') return etapesConnexion();
@@ -1518,6 +1683,11 @@
     if (c.special) return etapesRoles();
     var out = [];
     c.ecrans.forEach(function (e) { out = out.concat(etapesEcran(e)); });
+    // Chaque groupe se termine par une question. Elle ne s'ajoute que si
+    // le groupe a de quoi la fabriquer -- jamais de question bancale
+    // pour tenir une cadence.
+    var q = questionDuGroupe(c);
+    if (q) out.push(q);
     return out;
   }
 
@@ -1675,6 +1845,17 @@
 
     $('bt-narr-j').style.width = Math.round((i + 1) / etapes.length * 100) + '%';
     $('bt-prec').disabled = (i === 0);
+
+    // UNE QUESTION N'AVANCE PAS TOUTE SEULE -- ET S'AFFICHE MEME EN PAUSE.
+    //
+    // Elle rend la main a la personne : aucune suite n'est programmee,
+    // c'est repondre -- ou passer -- qui relance la visite.
+    //
+    // Le branchement passe AVANT le retour de la pause. Place apres, la
+    // carte ne se dessinait pas quand la lecture etait arretee : le
+    // narrateur restait vide, sans la moindre erreur. Constate au banc,
+    // 5 questions generees et 0 affichee.
+    if (e.question) { rendreQuestion(e, g); return; }
 
     if (!enLecture) return;
 
@@ -2073,23 +2254,29 @@
   // qu'un point immobile. Le halo, lui, reste sur la region entiere :
   // c'est bien d'elle qu'on parle.
   function balayer(el, g, e) {
-    var b = boiteUtile(el); if (!b) return;
-    var r = b.getBoundingClientRect();
-    // 30 px, pas 44 : une barre de filtres fait 36 px de haut et se
-    // balaie tres bien a l horizontale. Mesure sur le vrai admin --
-    // le seuil a 44 laissait 20 reperes immobiles pour rien.
-    if (r.width < 90 || r.height < 30) return;
-    var d = $('bt-doigt'); if (!d || d.classList.contains('hide')) return;
-    var horiz = r.width >= r.height * 1.2;
-    [0.2, 0.52, 0.84].forEach(function (f, i) {
+    // ON MESURE DANS LE RENDEZ-VOUS, PAS A L'APPEL.
+    //
+    // balayer() est appelee juste apres designer(), qui differe poser()
+    // de 420 ms. C'est poser() qui retire .hide a la main : la tester
+    // ici revenait a la tester avant qu'elle existe, et le balayage
+    // renoncait en silence. La cible, elle, n'avait pas fini de defiler.
+    [0.2, 0.52, 0.84].forEach(function (i0, i) {
       setTimeout(function () {
         if (g !== jeton || etapes[idx] !== e) return;
-        var x = horiz ? r.left + r.width * f : r.left + Math.min(r.width * 0.38, 70);
-        var y = horiz ? r.top + Math.min(r.height * 0.5, 44) : r.top + r.height * f;
-        d.style.left = Math.round(x) + 'px';
-        d.style.top = Math.round(y) + 'px';
-        d.classList.add('vole');
-        setTimeout(function () { if (g === jeton) d.classList.remove('vole'); }, 720);
+        var dd = $('bt-doigt');
+        if (!dd || dd.classList.contains('hide')) return;
+        var b = boiteUtile(el); if (!b) return;
+        var r = b.getBoundingClientRect();
+        // 30 px, pas 44 : une barre de filtres fait 36 px de haut et se
+        // balaie tres bien a l'horizontale.
+        if (r.width < 90 || r.height < 30) return;
+        var horiz = r.width >= r.height * 1.2;
+        var x = horiz ? r.left + r.width * i0 : r.left + Math.min(r.width * 0.38, 70);
+        var y = horiz ? r.top + Math.min(r.height * 0.5, 44) : r.top + r.height * i0;
+        dd.style.left = Math.round(x) + 'px';
+        dd.style.top = Math.round(y) + 'px';
+        dd.classList.add('vole');
+        setTimeout(function () { if (g === jeton) dd.classList.remove('vole'); }, 720);
       }, 1050 + i * 820);
     });
     plancherGeste = Math.max(plancherGeste, 1050 + 2 * 820 + 740);
