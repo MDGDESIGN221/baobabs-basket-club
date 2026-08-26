@@ -33,6 +33,9 @@
   var chien = null;         // chien de garde de la voix (voir dire())
   var tPointe = null;       // attente de fin de defilement avant de pointer
   var cibleCourante = null; // l element designe, pour le recalage au scroll
+  var demoEcran = null;     // l'ecran dont la demonstration est en cours
+  var demoPhoto = {};       // valeurs d'origine des champs touches
+  var frappe = null;        // minuteur de la frappe lettre par lettre
   var voixOn = false;
   var voixFr = null;
   var progres = { vus: {}, dernier: null };
@@ -224,6 +227,14 @@
     aides.forEach(function (a, i) {
       out.push({ ecran: e.cle, nom: e.nom, halo: false, html: a, cible: vise[i] || null });
     });
+
+    // Puis la demonstration, s'il y en a une pour cet ecran. Un geste =
+    // une etape : c'est ce qui permet de mettre en pause dessus, de
+    // revenir dessus, et de repartir.
+    var gestes = (api.demos && api.demos[e.cle]) || [];
+    gestes.forEach(function (g) {
+      out.push({ ecran: e.cle, nom: e.nom, halo: false, html: g.dit, cible: g.cible, geste: g });
+    });
     return out;
   }
 
@@ -272,6 +283,119 @@
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
+  }
+
+  // ===================================================================
+  // LA DÉMONSTRATION
+  //
+  // Elle remplit de vrais champs sur de vrais écrans. Trois choses la
+  // rendent acceptable, et il faut les trois :
+  //
+  //   1. LE VERROU. L'hôte remplace ses fonctions d'écriture par un
+  //      refus, et bloque tout fetch non-GET vers Supabase. La
+  //      démonstration ne PEUT PAS enregistrer.
+  //   2. L'INSTANTANÉ. Chaque champ touché est photographié avant, et
+  //      remis exactement comme il était après — y compris si on ferme
+  //      brutalement ou qu'on revient en arrière au milieu.
+  //   3. LE DRAPEAU. On efface la trace « modifications non
+  //      enregistrées » de l'admin, sinon quitter l'écran déclencherait
+  //      une demande de confirmation pour des valeurs qui n'étaient pas
+  //      les siennes.
+  // ===================================================================
+  function trouver(sel) {
+    if (!sel) return null;
+    try { var el = document.querySelector(sel); return (el && el.getClientRects().length) ? el : null; }
+    catch (e) { return null; }
+  }
+
+  function feu(el) {
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function demoDebut(ecran) {
+    if (demoEcran === ecran) return;
+    demoFin();
+    demoEcran = ecran;
+    demoPhoto = {};
+    if (api.verrou && api.verrou.armer) api.verrou.armer();
+    racine.classList.add('demo');
+  }
+
+  function demoPhotographier(el, sel) {
+    if (Object.prototype.hasOwnProperty.call(demoPhoto, sel)) return;
+    demoPhoto[sel] = ('value' in el) ? el.value : null;
+  }
+
+  function demoRemettre() {
+    Object.keys(demoPhoto).forEach(function (sel) {
+      var el = null;
+      try { el = document.querySelector(sel); } catch (e) {}
+      if (el && demoPhoto[sel] !== null && 'value' in el) { el.value = demoPhoto[sel]; feu(el); }
+    });
+  }
+
+  function demoFin() {
+    if (frappe) { clearInterval(frappe); frappe = null; }
+    if (!demoEcran) return;
+    demoRemettre();
+    demoPhoto = {};
+    demoEcran = null;
+    if (api.verrou && api.verrou.desarmer) api.verrou.desarmer();
+    if (api.oublierModifs) api.oublierModifs();
+    racine.classList.remove('demo');
+  }
+
+  // La frappe se voit : une valeur qui apparaît d'un bloc ne montre rien,
+  // on n'a pas vu qu'elle avait été tapée.
+  function taper(el, txt) {
+    if (frappe) { clearInterval(frappe); frappe = null; }
+    el.focus({ preventScroll: true });
+    el.value = '';
+    var i = 0;
+    frappe = setInterval(function () {
+      if (i >= txt.length) { clearInterval(frappe); frappe = null; feu(el); return; }
+      el.value += txt.charAt(i++);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }, 55);
+  }
+
+  function jouerGeste(g, el, sansAnimation) {
+    if (!el) return;
+    if (g.geste === 'montrer') return;         // la main désigne, on ne touche à rien
+    demoPhotographier(el, g.cible);
+    if (g.geste === 'choisir') { el.value = g.valeur; feu(el); return; }
+    if (g.geste === 'cliquer') { el.click(); return; }
+    if (g.geste === 'saisir') {
+      if (sansAnimation) { el.value = g.valeur; feu(el); return; }
+      taper(el, g.valeur);
+    }
+  }
+
+  // Rejouer, plutôt que défaire. Revenir du geste 3 au geste 1 ne peut
+  // pas se faire en « annulant » : on remet l'état d'origine, on
+  // réapplique 0…n-1 d'un coup, puis on joue n pour de vrai. Marche
+  // dans les deux sens de lecture sans code séparé pour chacun.
+  function jouerDemo(i) {
+    var e = etapes[i];
+    // La frappe de l'étape précédente peut ne pas être terminée. Si on
+    // la laisse courir, elle continue d'ajouter ses lettres PAR-DESSUS
+    // ce que la nouvelle étape vient de poser : « samedi 20h » devenait
+    // « samedi 20hh ». Une seule frappe à la fois, toujours.
+    if (frappe) { clearInterval(frappe); frappe = null; }
+    demoDebut(e.ecran);
+    demoRemettre();
+    // On passe e.geste, pas e : l'étape PORTE le geste, elle n'en est
+    // pas un. Confondre les deux faisait lire e.geste.geste — un objet
+    // au lieu de « saisir » — donc aucun cas ne correspondait, et la
+    // démonstration se déroulait en ne faisant strictement rien. Sans
+    // la moindre erreur : le bandeau s'affichait, le verrou s'armait,
+    // les champs restaient vides.
+    for (var k = 0; k < i; k++) {
+      var p = etapes[k];
+      if (p && p.geste && p.ecran === e.ecran) jouerGeste(p.geste, trouver(p.cible), true);
+    }
+    jouerGeste(e.geste, trouver(e.cible), false);
   }
 
   // ===================================================================
@@ -400,6 +524,10 @@
 
     // Le halo n'apparaît qu'à l'arrivée sur un écran : c'est le moment
     // où « où est-ce que je clique ? » se pose. Ensuite il gênerait.
+    // On quitte la demonstration des qu'on quitte son ecran : les champs
+    // doivent retrouver leurs valeurs avant qu'on regarde ailleurs.
+    if (demoEcran && (!e.geste || e.ecran !== demoEcran)) demoFin();
+
     if (e.halo && e.ecran) {
       poserHalo(e.ecran);                       // « voila ou on clique »
     } else if (e.cible) {
@@ -412,6 +540,10 @@
     } else {
       retirerHalo();
     }
+
+    // Le geste part APRES que la main soit partie : voir la valeur
+    // s'ecrire avant de savoir ou on regarde n'apprend rien.
+    if (e.geste) setTimeout(function () { if (etapes[idx] === e) jouerDemo(idx); }, 520);
 
     var ou = $('bt-ou');
     ou.innerHTML = echapper(e.nom || '') + ' <em>· étape ' + (i + 1) + ' sur ' + etapes.length + '</em>';
@@ -593,6 +725,7 @@
 
   function terminer() {
     enLecture = false;
+    demoFin();
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
     retirerHalo();
@@ -603,6 +736,7 @@
 
   function versSommaire() {
     enLecture = false;
+    demoFin();
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
     retirerHalo();
@@ -613,6 +747,7 @@
 
   function fermer() {
     enLecture = false;
+    demoFin();
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
     retirerHalo();

@@ -4064,6 +4064,69 @@
   // ---------------------------------------------------------------------
   var tutPret = false, tutEnCours = false;
 
+  // ---------------------------------------------------------------------
+  // LE VERROU DE LA DÉMONSTRATION
+  //
+  // La démonstration remplit de vrais champs sur de vrais écrans d'un
+  // site en production. Une seule chose la rend acceptable : qu'elle ne
+  // PUISSE PAS enregistrer. Pas « qu'elle évite de » — qu'elle ne puisse
+  // pas.
+  //
+  // Deux étages, parce qu'un seul se contourne :
+  //   1. les cinq fonctions d'écriture de ce fichier sont remplacées par
+  //      un refus. C'est par elles que passent tous les écrans ;
+  //   2. window.fetch refuse en plus toute méthode autre que GET vers
+  //      Supabase. C'est le filet pour ce qui n'emprunte pas les
+  //      helpers — les RPC, et le code que quelqu'un ajoutera demain
+  //      sans savoir que cette démonstration existe.
+  //
+  // Le refus est silencieux côté bandeaux : afficher « erreur » pendant
+  // une démonstration ferait croire à une panne.
+  // ---------------------------------------------------------------------
+  var tutVerrou = null;
+
+  function tutVerrouArmer(){
+    if (tutVerrou) return;
+    var refus = function(){
+      var e = new Error('Démonstration : écriture bloquée');
+      e.demoBloquee = true;
+      return Promise.reject(e);
+    };
+    tutVerrou = {
+      sbInsert: sbInsert, sbUpdate: sbUpdate, sbPatchBy: sbPatchBy,
+      sbDelete: sbDelete, sbUpsert: sbUpsert, fetch: window.fetch
+    };
+    sbInsert = refus; sbUpdate = refus; sbPatchBy = refus;
+    sbDelete = refus; sbUpsert = refus;
+
+    var vraiFetch = tutVerrou.fetch;
+    window.fetch = function(url, opts){
+      var u = String((url && url.url) || url || '');
+      var m = ((opts && opts.method) || 'GET').toUpperCase();
+      if (m !== 'GET' && u.indexOf(SUPABASE_URL) === 0){
+        console.warn('[Tutoriel] écriture bloquée pendant la démonstration :', m, u);
+        return Promise.resolve(new Response('[]', {
+          status: 200, headers: { 'Content-Type': 'application/json' }
+        }));
+      }
+      return vraiFetch.apply(window, arguments);
+    };
+  }
+
+  function tutVerrouDesarmer(){
+    if (!tutVerrou) return;
+    sbInsert = tutVerrou.sbInsert; sbUpdate = tutVerrou.sbUpdate;
+    sbPatchBy = tutVerrou.sbPatchBy; sbDelete = tutVerrou.sbDelete;
+    sbUpsert = tutVerrou.sbUpsert; window.fetch = tutVerrou.fetch;
+    tutVerrou = null;
+  }
+
+  // Le verrou ne doit jamais survivre à la page : un rechargement au
+  // milieu d'une démonstration laisserait l'admin en lecture seule sans
+  // que rien ne l'explique. Il ne vit qu'en mémoire, donc il meurt avec
+  // elle — mais on le dit ici pour que personne ne le rende persistant.
+  window.addEventListener('beforeunload', tutVerrouDesarmer);
+
   function tutorielApi(){
     return {
       role: currentRole,
@@ -4077,6 +4140,12 @@
       metas: SECTION_META,
       aides: SECTION_HELP,
       cibles: (typeof TUT_CIBLES !== 'undefined' ? TUT_CIBLES : {}),
+      demos:  (typeof TUT_DEMOS  !== 'undefined' ? TUT_DEMOS  : {}),
+      // Le verrou et le menage : le tutoriel ne peut pas les faire
+      // lui-meme, il n'atteint ni les fonctions d'ecriture ni le
+      // drapeau des modifications non enregistrees.
+      verrou: { armer: tutVerrouArmer, desarmer: tutVerrouDesarmer },
+      oublierModifs: function(){ try { if (typeof dirtyClear === 'function') dirtyClear(); } catch(e){} },
 
       // Le plan, lu dans le menu. On saute #sb-pinned : les épinglés
       // sont des copies des mêmes écrans, et le tutoriel les visiterait
@@ -5001,6 +5070,50 @@
     inscriptions: ['#in-board', '#in-board', null, '#in-filter-pay', null],
     comptes:   ['#cp-list', '#cp-demander', '#cp-list', null, '#cp-matrice', null]
   };
+
+  // ===================== LES DÉMONSTRATIONS =====================
+  // « Montrer faire », et non plus seulement raconter. Chaque geste est
+  // une étape à part entière : on peut donc mettre en pause dessus,
+  // revenir en arrière, repartir.
+  //
+  //   saisir   la valeur s'écrit lettre par lettre, on la voit arriver
+  //   choisir  une liste déroulante change de valeur
+  //   montrer  la main désigne SANS toucher — pour les commandes qui
+  //            enregistrent pour de bon
+  //   cliquer  un vrai clic, réservé à ce qui n'écrit rien (onglets,
+  //            filtres, dépliage)
+  //
+  // CE QUI N'EST JAMAIS SCÉNARISÉ
+  // Aucun « cliquer » sur un bouton qui enregistre, publie ou supprime.
+  // Le verrou (tutVerrouArmer) est un filet, pas une permission : on ne
+  // s'en sert pas pour oser des gestes qu'on n'oserait pas sans lui.
+  // Sur le tableau de marque, +1 part en direct sur le site public —
+  // c'est donc « montrer », jamais « cliquer ».
+  var TUT_DEMOS = {
+    live: [
+      { cible:'#set_yt_channel', geste:'saisir', valeur:'UCbAoBaBsExempleDeChaine',
+        dit:'On colle ici l’identifiant de la chaîne YouTube du club. Il se trouve dans l’adresse de votre chaîne, après <code>/channel/</code>.' },
+      { cible:'#set_live_mode', geste:'choisir', valeur:'on',
+        dit:'« Forcé allumé » est le geste du soir de match si la détection ne suit pas. On repasse en automatique après la rencontre.' },
+      { cible:'#set_live_mode', geste:'choisir', valeur:'auto',
+        dit:'Et on revient en automatique — c’est le réglage de tous les autres jours.' },
+      { cible:'#set_live_note', geste:'saisir', valeur:'Prochain direct : samedi 20h',
+        dit:'Ce message s’affiche sur le site quand rien n’est diffusé.' },
+      { cible:'#save-live-btn', geste:'montrer',
+        dit:'Et on enregistre. <b>Ici, rien n’a été enregistré</b> — les champs vont retrouver leur valeur d’origine.' }
+    ],
+    gameday: [
+      { cible:'#gd-score-b', geste:'montrer',
+        dit:'À la table de marque, les touches <b>+1 / +2 / +3</b> montent le score de chaque équipe.' },
+      { cible:'#gd-undo', geste:'montrer',
+        dit:'Un panier compté deux fois&nbsp;? <b>Annuler le dernier geste</b> le retire. C’est le bouton le plus utile de l’écran.' },
+      { cible:'#gd-clock-btn', geste:'montrer',
+        dit:'Le chrono se démarre et s’arrête ici. Il tourne côté public en même temps.' },
+      { cible:'#gd-publish', geste:'montrer',
+        dit:'<b>Coup de sifflet final</b> ferme le direct et inscrit le résultat. À ne toucher qu’à la fin — le site suit en temps réel.' }
+    ]
+  };
+
 
 
   // 'matches', 'roster' et 'shop' — les trois écrans « ancien » — ont été
