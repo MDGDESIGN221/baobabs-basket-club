@@ -37,6 +37,10 @@
   var demoPhoto = {};       // valeurs d'origine des champs touches
   var frappe = null;        // minuteur de la frappe lettre par lettre
   var clicsSurveilles = false;
+  // LE JETON D'ETAPE. Sans lui, avancer a la main accelere la visite --
+  // voir montrer(). Chaque etape prend un numero ; tout ce qui etait en
+  // vol pour une etape plus ancienne se tait en le comparant.
+  var jeton = 0;
   var voixOn = false;
   var voixFr = null;
   var progres = { vus: {}, dernier: null, role: null };
@@ -742,6 +746,18 @@
   }
 
   function montrer(i) {
+    // L'INCREMENT VIENT EN PREMIER, ET C'EST TOUT LE SUJET.
+    //
+    // taire() appelle speechSynthesis.cancel(), et Chrome declenche
+    // onend SUR L'ELOCUTION ANNULEE. La fonction de suite de l'etape
+    // PRECEDENTE s'executait donc : elle voyait que ses 2,2 secondes
+    // etaient ecoulees, et avancait encore. Un clic sur « suivant »
+    // faisait deux etapes, et ca s'enchainait -- la visite accelerait
+    // toute seule des qu'on la pilotait a la main.
+    //
+    // En prenant le jeton avant d'annuler, tout ce qui etait en vol se
+    // reconnait perime et se tait.
+    var g = ++jeton;
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
     var e = etapes[i]; if (!e) { terminer(); return; }
@@ -774,6 +790,8 @@
     // doivent retrouver leurs valeurs avant qu'on regarde ailleurs.
     if (demoEcran && (!e.geste || e.ecran !== demoEcran)) demoFin();
 
+    if (!e.carte) carteRanger();
+
     // Une carte de chapitre n'est pas une etape a lire : elle passe, et
     // la suivante enchaine. En pause, elle reste a l'ecran.
     if (e.carte) {
@@ -782,7 +800,7 @@
       $('bt-dit').textContent = '';
       $('bt-narr-j').style.width = Math.round((i + 1) / etapes.length * 100) + '%';
       carteChapitre(e.carte.n, e.carte.titre, e.carte.sous, function () {
-        if (enLecture && etapes[idx] === e) suivant();
+        if (g === jeton && enLecture && etapes[idx] === e) suivant();
       });
       return;
     }
@@ -802,7 +820,7 @@
 
     // Le geste part APRES que la main soit partie : voir la valeur
     // s'ecrire avant de savoir ou on regarde n'apprend rien.
-    if (e.geste) setTimeout(function () { if (etapes[idx] === e) jouerDemo(idx); }, 520);
+    if (e.geste) setTimeout(function () { if (g === jeton && etapes[idx] === e) jouerDemo(idx); }, 520);
 
     // L'anneau : la progression se lit d'un coup d'oeil, sans compter.
     var pc = (i + 1) / etapes.length;
@@ -838,9 +856,13 @@
     // quoi que dise la synthèse vocale.
     var depuis = Date.now();
     var suite = function () {
+      if (g !== jeton) return;             // une etape plus recente a pris le relai
       if (!enLecture) return;
       var reste = 2200 - (Date.now() - depuis);
-      if (reste > 0) { minuteur = setTimeout(function () { if (enLecture) suivant(); }, reste); return; }
+      if (reste > 0) {
+        minuteur = setTimeout(function () { if (g === jeton && enLecture) suivant(); }, reste);
+        return;
+      }
       suivant();
     };
 
@@ -1048,16 +1070,31 @@
 
   // LA CARTE DE CHAPITRE. Une respiration entre deux parties : sans
   // elle, dix-neuf minutes sont un seul bloc indifferencie.
+  var carteT1 = null, carteT2 = null;
   function carteChapitre(n, titre, sous, quandFini) {
     var c = $('bt-carte'); if (!c) { quandFini(); return; }
+    carteRanger();
     $('bt-carte-n').textContent = n;
     $('bt-carte-t').textContent = titre;
     $('bt-carte-s').textContent = sous || '';
     c.classList.remove('hide', 'sort');
-    setTimeout(function () {
+    carteT1 = setTimeout(function () {
+      carteT1 = null;
       c.classList.add('sort');
-      setTimeout(function () { c.classList.add('hide'); c.classList.remove('sort'); quandFini(); }, 430);
+      carteT2 = setTimeout(function () {
+        carteT2 = null;
+        c.classList.add('hide'); c.classList.remove('sort');
+        quandFini();
+      }, 430);
     }, 1500);
+  }
+  // Appuyer sur « suivant » pendant une carte laissait la carte affichee
+  // PAR-DESSUS l'etape suivante : on entendait la voix d'un ecran qu'on
+  // ne voyait pas.
+  function carteRanger() {
+    if (carteT1) { clearTimeout(carteT1); carteT1 = null; }
+    if (carteT2) { clearTimeout(carteT2); carteT2 = null; }
+    var c = $('bt-carte'); if (c) { c.classList.add('hide'); c.classList.remove('sort'); }
   }
 
   function retirerHalo() {
@@ -1132,6 +1169,7 @@
     enLecture = false;
     demoFin();
     surveillerClics(false);
+    carteRanger();
     $('bt-ctx').classList.add('hide');
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
@@ -1145,6 +1183,7 @@
     enLecture = false;
     demoFin();
     surveillerClics(false);
+    carteRanger();
     $('bt-ctx').classList.add('hide');
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
