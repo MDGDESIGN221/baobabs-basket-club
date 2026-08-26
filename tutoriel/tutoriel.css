@@ -188,6 +188,18 @@
 
 #btut .bt-pied{margin-top:26px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 #btut .bt-oublier{font-size:12.5px;color:var(--bt-faint);text-decoration:underline;text-underline-offset:3px}
+/* L'etat des animations, ecrit noir sur blanc. Sans lui, « je ne vois
+   pas de difference » reste une devinette a deux inconnues : le cache,
+   et le reglage systeme. */
+#btut .bt-etat{
+  flex-basis:100%;margin:14px 0 0;padding:11px 13px;border-radius:10px;
+  font-size:12.5px;line-height:1.55;color:var(--bt-muted);
+  border:1px solid var(--bt-line);background:var(--bt-surf)
+}
+#btut .bt-etat b{color:var(--bt-text)}
+#btut .bt-etat.alerte{border-color:rgba(232,169,60,.34);background:rgba(232,169,60,.08)}
+#btut .bt-etat code{font-family:ui-monospace,monospace;font-size:.9em;padding:1px 5px;
+  border-radius:5px;background:var(--bt-soft);color:var(--bt-gold-br)}
 #btut .bt-oublier:hover{color:var(--bt-muted)}
 
 /* ---------------------------------------------------------------------
@@ -363,15 +375,16 @@ section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
    clique jamais : elle désigne.
    --------------------------------------------------------------------- */
 #btut .bt-doigt{
-  position:fixed;width:32px;height:32px;pointer-events:none;z-index:2;
-  margin:-3px 0 0 -5px;                    /* la pointe, pas le coin du cadre */
-  /* Le trajet est long et souple : c'est LUI qu'on doit voir. .62s
-     paraissait court parce que la main ne bougeait pas du tout --
-     elle se rallumait deja arrivee. */
-  transition:top .66s cubic-bezier(.28,.86,.24,1),
-             left .66s cubic-bezier(.28,.86,.24,1),
-             opacity .28s ease, transform .3s ease;
-  filter:drop-shadow(0 4px 9px rgba(0,0,0,.7))
+  position:fixed;width:38px;height:38px;pointer-events:none;z-index:2;
+  margin:-3px 0 0 -6px;                    /* la pointe, pas le coin du cadre */
+  /* Le trajet est LENT, et c'est voulu : c'est lui qu'on doit voir.
+     A 0,66 s sur un grand ecran, la main traverse trop vite pour qu'on
+     enregistre le mouvement -- on voit un avant et un apres, pas un
+     deplacement. 0,9 s se suit du regard. */
+  transition:top .9s cubic-bezier(.3,.82,.22,1),
+             left .9s cubic-bezier(.3,.82,.22,1),
+             opacity .28s ease, transform .34s ease;
+  filter:drop-shadow(0 5px 12px rgba(0,0,0,.75))
 }
 #btut .bt-doigt.hide{display:none}
 /* S'effacer sans quitter l'ecran : sinon elle perd sa position et le
@@ -383,9 +396,9 @@ section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
 #btut .bt-doigt.vole{transform:rotate(-14deg) scale(1.12)}
 /* La trainee : un halo qui la suit et se resorbe a l'arrivee. */
 #btut .bt-doigt::before{
-  content:'';position:absolute;inset:-6px;border-radius:50%;
-  background:radial-gradient(circle, rgba(228,193,121,.34), transparent 68%);
-  opacity:0;transition:opacity .3s ease
+  content:'';position:absolute;inset:-14px;border-radius:50%;
+  background:radial-gradient(circle, rgba(228,193,121,.55), rgba(228,193,121,.14) 45%, transparent 72%);
+  opacity:0;transition:opacity .26s ease
 }
 #btut .bt-doigt.vole::before{opacity:1}
 
@@ -440,7 +453,10 @@ section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
    toute animation, c'est leur livrer un tutoriel muet. */
 @media (prefers-reduced-motion:reduce){
   #btut .bt-doigt{
-    transition:top .26s linear, left .26s linear, opacity .2s ease
+    /* C'est le seul mouvement qui reste a ces personnes : autant qu'il
+       soit assez long pour se voir. 0,26 s etait indistinguable d'un
+       saut. */
+    transition:top .42s linear, left .42s linear, opacity .2s ease
   }
   #btut .bt-doigt.vole{transform:none}
   #btut .bt-doigt::before{display:none}

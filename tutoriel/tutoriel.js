@@ -50,6 +50,10 @@
   var CLE_VOIX = 'bbc_tut_voix';
   var CLE_VOIX_NOM = 'bbc_tut_voix_nom';
 
+  // Un numero de version affiche : « je ne vois pas de difference » ne
+  // doit pas rester une devinette entre un cache et un reglage systeme.
+  var VERSION = '26.08-c';
+
   // ===================================================================
   // Petits outils
   // ===================================================================
@@ -816,6 +820,29 @@
   // ===================================================================
   // LE SOMMAIRE
   // ===================================================================
+  // L'ETAT, ECRIT NOIR SUR BLANC.
+  // Deux choses peuvent rendre les animations invisibles, et aucune des
+  // deux ne se voit : un fichier reste en cache, ou « mouvement reduit »
+  // active dans le systeme. On les affiche plutot que de les faire
+  // deviner.
+  function rendreEtat() {
+    var e = $('bt-etat'); if (!e) return;
+    var reduit = false;
+    try { reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (err) {}
+
+    if (reduit) {
+      e.className = 'bt-etat alerte';
+      e.innerHTML = '<b>Vos animations sont réduites par votre système.</b> La main se déplace quand même, ' +
+        'mais sans élan ni traînée. Pour tout voir&nbsp;: <b>Paramètres → Accessibilité → Effets visuels → ' +
+        'Effets d’animation</b>, puis rouvrez le navigateur. <span style="opacity:.6">Version ' + VERSION + '</span>';
+    } else {
+      e.className = 'bt-etat';
+      e.innerHTML = 'Animations <b>complètes</b>. Si vous ne voyez rien bouger, le navigateur garde une ' +
+        'ancienne version&nbsp;: rechargez avec <code>Ctrl</code>&nbsp;+&nbsp;<code>Maj</code>&nbsp;+&nbsp;<code>R</code>. ' +
+        '<span style="opacity:.6">Version ' + VERSION + '</span>';
+    }
+  }
+
   function rendreSommaire() {
     var totalE = 0, vusE = 0;
     plan.forEach(function (c) {
@@ -860,6 +887,8 @@
     var cta = $('bt-tout');
     if (cta) cta.lastChild.textContent = (vusE >= totalE && totalE)
       ? ' Revoir depuis le debut' : ' Tout me montrer';
+
+    rendreEtat();
 
     var rep = $('bt-reprendre');
     if (progres.dernier && plan.some(function (c) { return c.cle === progres.dernier.chap; })) {
@@ -1577,6 +1606,10 @@
     //     BaobabsTutoriel.diagnostic()
     diagnostic: function () {
       if (!monte) { console.warn('[Tutoriel] pas encore monte'); return; }
+      var reduit = false;
+      try { reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+      console.log('[Tutoriel] version ' + VERSION + ' — animations ' +
+                  (reduit ? 'REDUITES par le systeme' : 'completes'));
       var pb = [], n = 0;
       var cibles = api.cibles || {}, aides = api.aides || {};
       Object.keys(cibles).forEach(function (ecran) {
