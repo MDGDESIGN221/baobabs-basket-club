@@ -13466,13 +13466,21 @@
       comptes.forEach(function(c){
         saut(9);
         var proprio = String(c.email||'').trim().toLowerCase() === CP_PROPRIETAIRE;
-        doc.setFont(TX,'normal'); doc.setFontSize(9.5); doc.setTextColor.apply(doc, INK);
-        doc.text(String(c.email||'—'), M, y);
+        var nom = cpNom(c.email);
+        doc.setFont(UI, nom ? 'bold' : 'normal'); doc.setFontSize(nom ? 10 : 9.5);
+        doc.setTextColor.apply(doc, INK);
+        doc.text(nom || String(c.email||'—'), M, y);
         doc.setFont(UI,'bold'); doc.setFontSize(9);
         doc.setTextColor.apply(doc, proprio ? GOLD : COURT);
         doc.text((ROLE_NOMS[c.role] || c.role || '—') + (proprio ? '   (compte verrouillé)' : ''),
                  PW - M, y, { align:'right' });
-        y += 4.2;
+        y += 4;
+        if (nom){
+          // L'adresse reste : c'est elle qui identifie le compte le jour
+          // ou il faut le retrouver dans Supabase.
+          doc.setFont(TX,'normal'); doc.setFontSize(8); doc.setTextColor.apply(doc, FAINT);
+          doc.text(String(c.email||''), M, y); y += 3.8;
+        }
         doc.setDrawColor.apply(doc, LINE); doc.setLineWidth(0.2);
         doc.line(M, y, PW - M, y); y += 4.4;
       });
@@ -13562,6 +13570,24 @@
   // sert seulement à poser le cadenas au bon endroit. Elle doit rester
   // identique à bbc_proprietaire_email() en base.
   var CP_PROPRIETAIRE = 'mdgdesign221@gmail.com';
+
+  // QUI SE CACHE DERRIERE UNE ADRESSE
+  // admin_users ne stocke qu'un e-mail et un role : une liste de six
+  // adresses ne dit a personne qui est qui. Un nom lisible se met ici,
+  // et il apparait a la fois dans l'ecran et dans le PDF des roles.
+  //
+  // La cle est l'adresse en minuscules. Une adresse absente de cette
+  // table s'affiche telle quelle -- rien ne casse, on voit juste
+  // l'e-mail comme avant.
+  var CP_NOMS = {
+    'mdgdesign221@gmail.com': 'MDG Creative Studio'
+    // ,'president@…': 'Nom du président'
+    // ,'…': '…'
+  };
+  function cpNom(email){
+    var e = String(email == null ? '' : email).trim().toLowerCase();
+    return CP_NOMS[e] || '';
+  }
 
   // Le métier de chaque casquette, en une phrase. Le tableau du bas dit
   // « quels écrans » ; ceci dit « pour quoi faire ».
@@ -13707,11 +13733,16 @@
           }).join('')+'</select>';
       }
 
+      // Le nom d'abord quand on en connait un : « MDG Creative Studio »
+      // se reconnait d'un coup d'oeil, pas « mdgdesign221@gmail.com ».
+      var nom = cpNom(u.email);
       return '<div class="rec-item" style="align-items:center">'+
-        '<div class="rec-main"><div class="rec-title">'+esc(u.email||'—')+
+        '<div class="rec-main"><div class="rec-title">'+esc(nom || u.email || '—')+
           (estMoi ? ' <span class="status-pill" style="color:var(--gold);border:1px solid rgba(198,162,87,.4);background:rgba(198,162,87,.12)">vous</span>' : '')+
         '</div>'+
-        '<div class="rec-meta">'+esc(ROLE_NOMS[u.role]||u.role||'—')+
+        '<div class="rec-meta">'+
+          (nom ? esc(u.email||'') + ' · ' : '')+
+          esc(ROLE_NOMS[u.role]||u.role||'—')+
           (estProtege ? ' · propriétaire du site, compte verrouillé' : '')+'</div></div>'+
         droite+
       '</div>';
