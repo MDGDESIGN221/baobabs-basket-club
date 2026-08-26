@@ -364,11 +364,18 @@
     el.focus({ preventScroll: true });
     el.value = '';
     var i = 0;
+    clavierMontrer(el);
     frappe = setInterval(function () {
-      if (i >= txt.length) { clearInterval(frappe); frappe = null; feu(el); return; }
-      el.value += txt.charAt(i++);
+      if (i >= txt.length) {
+        clearInterval(frappe); frappe = null; feu(el);
+        setTimeout(clavierCacher, 700);
+        return;
+      }
+      var lettre = txt.charAt(i++);
+      el.value += lettre;
+      clavierTouche(lettre, i / txt.length);
       el.dispatchEvent(new Event('input', { bubbles: true }));
-    }, 55);
+    }, 62);
   }
 
   function jouerGeste(g, el, sansAnimation) {
@@ -542,9 +549,13 @@
     var nom = (api.metas[cle] || {}).t || cle;
     etapes = etapesEcran({ cle: cle, nom: nom });
     if (!avecGestes) etapes = etapes.filter(function (e) { return !e.geste; });
-    // On est déjà sur l'écran : le halo d'arrivée sur l'entrée de menu
-    // n'apprend rien à quelqu'un qui vient de cliquer dessus.
-    if (etapes.length && etapes[0].halo) etapes[0].halo = false;
+    // On retire l'etape d'arrivee. Deux raisons : on est deja sur
+    // l'ecran, donc le halo sur l'entree de menu n'apprend rien a qui
+    // vient de cliquer dessus ; et son texte est la description de
+    // l'ecran, qu'on vient de lire dans le panneau. La repeter fait
+    // perdre trois secondes et donne l'impression que rien ne demarre.
+    if (etapes.length > 1 && etapes[0].halo && !etapes[0].cible) etapes = etapes.slice(1);
+    else if (etapes.length && etapes[0].halo) etapes[0].halo = false;
     if (!etapes.length) return;
     chapCourant = 'ctx:' + cle;
     idx = 0;
@@ -615,11 +626,13 @@
         '<span class="bt-chap-c">' +
           '<span class="bt-chap-t">' + echapper(c.titre) + '</span>' +
           '<span class="bt-chap-m">' + meta + '</span>' +
-          (n ? '<span class="bt-chap-e">' + c.ecrans.map(function (e) {
+          (n ? '<span class="bt-chap-e">' + c.ecrans.slice(0, 4).map(function (e) {
             return '<span class="bt-puce' + (progres.vus[e.cle] ? ' vu' : '') + '">' + echapper(e.nom) + '</span>';
-          }).join('') + '</span>' : '') +
+          }).join('') +
+          (n > 4 ? '<span class="bt-puce reste">+' + (n - 4) + '</span>' : '') + '</span>' : '') +
           (n ? '<span class="bt-chap-j"><i style="width:' + (n ? Math.round(vus / n * 100) : 0) + '%"></i></span>' : '') +
         '</span>' +
+        '<svg class="bt-chap-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>' +
       '</button>';
     }).join('');
 
@@ -636,7 +649,23 @@
     etapes = [];
 
     if (chapCle === 'tout') {
-      plan.forEach(function (c) { etapes = etapes.concat(etapesDuChapitre(c)); });
+      // Une carte avant chaque chapitre. Dix-neuf minutes d'affilee sans
+      // respiration sont un seul bloc indifferencie : on ne sait ni ou
+      // l'on en est, ni ce qui commence.
+      plan.forEach(function (c, i) {
+        var st = etapesDuChapitre(c);
+        if (!st.length) return;
+        var nEcr = c.ecrans.length;
+        etapes.push({
+          carte: {
+            n: 'Chapitre ' + (i + 1) + ' sur ' + plan.length,
+            titre: c.titre,
+            sous: nEcr ? nEcr + ' écran' + (nEcr > 1 ? 's' : '') : 'Qui fait quoi, et qui ne peut pas quoi'
+          },
+          nom: c.titre
+        });
+        etapes = etapes.concat(st);
+      });
     } else {
       var c = plan.filter(function (x) { return x.cle === chapCle; })[0];
       if (!c) return;
@@ -670,6 +699,13 @@
     // données et ferait clignoter l'écran à chaque phrase.
     if (e.ecran && api.ecranCourant() !== e.ecran) {
       api.aller(e.ecran);
+      // L'ecran ARRIVE au lieu d'apparaitre. Une bascule instantanee ne
+      // dit pas qu'on a change d'endroit ; ce leger recul, puis la mise
+      // au point, le dit sans un mot.
+      try {
+        var sec = document.getElementById('section-' + e.ecran);
+        if (sec) { sec.classList.remove('bt-entre'); void sec.offsetWidth; sec.classList.add('bt-entre'); }
+      } catch (err) {}
       progres.vus[e.ecran] = true;
       ecrireProgres();
     }
@@ -683,6 +719,19 @@
     // On quitte la demonstration des qu'on quitte son ecran : les champs
     // doivent retrouver leurs valeurs avant qu'on regarde ailleurs.
     if (demoEcran && (!e.geste || e.ecran !== demoEcran)) demoFin();
+
+    // Une carte de chapitre n'est pas une etape a lire : elle passe, et
+    // la suivante enchaine. En pause, elle reste a l'ecran.
+    if (e.carte) {
+      retirerHalo();
+      $('bt-ou').innerHTML = '';
+      $('bt-dit').textContent = '';
+      $('bt-narr-j').style.width = Math.round((i + 1) / etapes.length * 100) + '%';
+      carteChapitre(e.carte.n, e.carte.titre, e.carte.sous, function () {
+        if (enLecture && etapes[idx] === e) suivant();
+      });
+      return;
+    }
 
     if (e.halo && e.ecran) {
       poserHalo(e.ecran);                       // « voila ou on clique »
@@ -701,8 +750,15 @@
     // s'ecrire avant de savoir ou on regarde n'apprend rien.
     if (e.geste) setTimeout(function () { if (etapes[idx] === e) jouerDemo(idx); }, 520);
 
+    // L'anneau : la progression se lit d'un coup d'oeil, sans compter.
+    var pc = (i + 1) / etapes.length;
+    var C = 2 * Math.PI * 7.4;
     var ou = $('bt-ou');
-    ou.innerHTML = echapper(e.nom || '') + ' <em>· étape ' + (i + 1) + ' sur ' + etapes.length + '</em>';
+    ou.innerHTML =
+      '<svg class="bt-anneau" viewBox="0 0 19 19"><circle class="fond" cx="9.5" cy="9.5" r="7.4"/>' +
+      '<circle class="part" cx="9.5" cy="9.5" r="7.4" style="stroke-dasharray:' + C.toFixed(1) +
+      ';stroke-dashoffset:' + (C * (1 - pc)).toFixed(1) + '"/></svg>' +
+      echapper(e.nom || '') + ' <em>· étape ' + (i + 1) + ' sur ' + etapes.length + '</em>';
 
     // innerHTML volontaire : ces textes viennent de SECTION_HELP, écrit
     // dans le code source de l'admin, et portent des <b> et des <code>
@@ -710,6 +766,7 @@
     // n'entre jamais ici.
     var dit = $('bt-dit');
     dit.innerHTML = e.html || '';
+    dit.classList.remove('neuf'); void dit.offsetWidth; dit.classList.add('neuf');
     if (e.tableau) rendreTableauRoles(dit);
 
     $('bt-narr-j').style.width = Math.round((i + 1) / etapes.length * 100) + '%';
@@ -836,11 +893,32 @@
     if (r.width < 24 || r.height < 16) { retirerHalo(); return; }
 
     var p = 6;
+    var L = r.width + p * 2, H = r.height + p * 2;
     spot.style.top = (r.top - p) + 'px';
     spot.style.left = (r.left - p) + 'px';
-    spot.style.width = (r.width + p * 2) + 'px';
-    spot.style.height = (r.height + p * 2) + 'px';
+    spot.style.width = L + 'px';
+    spot.style.height = H + 'px';
     spot.classList.remove('hide');
+
+    // LE CADRE QUI SE DESSINE. Un rectangle qui apparait d'un coup ne
+    // raconte rien ; un trait qui part d'un coin et fait le tour dit
+    // « celle-ci, et pas une autre ». Le perimetre se recalcule a chaque
+    // pose : un champ de recherche et un tableau n'ont pas la meme.
+    var svg = $('bt-spot-svg'), rect = $('bt-spot-rect');
+    if (svg && rect) {
+      var w = Math.max(6, L - 4), hh = Math.max(6, H - 4);
+      svg.setAttribute('viewBox', '0 0 ' + L + ' ' + H);
+      rect.setAttribute('width', w); rect.setAttribute('height', hh);
+      var per = 2 * (w + hh);
+      rect.style.transition = 'none';
+      rect.style.strokeDasharray = per + ' ' + per;
+      rect.style.strokeDashoffset = per;
+      void rect.getBoundingClientRect();
+      rect.style.transition = '';
+      rect.style.strokeDashoffset = '0';
+    }
+    spot.classList.remove('pose'); void spot.offsetWidth; spot.classList.add('pose');
+    relierAuNarrateur(r);
 
     // La main se pose vers le haut-gauche de la chose, pas en son
     // centre : au centre elle masque précisément ce qu'elle désigne.
@@ -852,11 +930,89 @@
     doigt.classList.add('pose');
   }
 
+  // LE FIL. Ce qu'on dit et ce qu'on montre vivent chacun de leur cote
+  // sur l'ecran ; une courbe entre les deux fait la phrase. On ne le
+  // trace que si le narrateur est visible et assez loin de la cible --
+  // un fil de trois pixels est du bruit.
+  function relierAuNarrateur(r) {
+    var fil = $('bt-fil'), path = $('bt-fil-p'), narr = $('bt-narr');
+    if (!fil || !path || !narr || narr.classList.contains('hide')) { if (fil) fil.classList.add('hide'); return; }
+    var n = narr.getBoundingClientRect();
+    var x1 = r.left + r.width / 2, y1 = r.top + r.height / 2;
+    var x2 = n.left + n.width / 2, y2 = n.top;
+    if (Math.abs(y2 - y1) < 130) { fil.classList.add('hide'); return; }
+    var cy = (y1 + y2) / 2;
+    path.setAttribute('d', 'M' + x1 + ' ' + y1 + ' C' + x1 + ' ' + cy + ' ' + x2 + ' ' + cy + ' ' + x2 + ' ' + y2);
+    fil.classList.remove('hide');
+  }
+
+  // LE CLAVIER FANTOME. Une valeur qui apparait dans un champ ne dit pas
+  // qu'on l'a tapee. Les touches s'allument au rythme des lettres, et la
+  // barre du bas montre ou l'on en est dans le mot.
+  var CLAV_R = ['azertyuiop', 'qsdfghjklm', 'wxcvbn'];
+  function clavierPreparer() {
+    var c = $('bt-clav'); if (!c || c.dataset.pret) return;
+    c.querySelectorAll('.bt-clav-r').forEach(function (r, i) {
+      r.innerHTML = CLAV_R[i].split('').map(function (l) {
+        return '<span class="bt-clav-k" data-k="' + l + '">' + l + '</span>';
+      }).join('');
+    });
+    c.dataset.pret = '1';
+  }
+  function clavierMontrer(el) {
+    clavierPreparer();
+    var c = $('bt-clav'); if (!c || !el) return;
+    var r = el.getBoundingClientRect();
+    var lc = 230, hc = 96;
+    var g = Math.min(Math.max(8, r.left), window.innerWidth - lc - 8);
+
+    // Le narrateur occupe le bas de l'écran, et sur téléphone il en
+    // prend un bon tiers. Un clavier posé dessus cache la phrase qu'il
+    // est censé illustrer. On cherche donc une place LIBRE : sous le
+    // champ, sinon au-dessus, sinon au-dessus du narrateur.
+    var narr = $('bt-narr');
+    var plafond = window.innerHeight - 8;
+    if (narr && !narr.classList.contains('hide')) plafond = narr.getBoundingClientRect().top - 10;
+
+    var t = r.bottom + 12;
+    if (t + hc > plafond) t = r.top - hc - 12;          // au-dessus du champ
+    if (t < 8) t = Math.max(8, plafond - hc);           // au-dessus du narrateur
+    if (t + hc > window.innerHeight - 8) t = Math.max(8, window.innerHeight - hc - 8);
+
+    c.style.left = g + 'px'; c.style.top = t + 'px';
+    c.classList.remove('hide');
+    var b = $('bt-clav-b'); if (b) b.innerHTML = '<i></i>';
+  }
+  function clavierTouche(lettre, avancement) {
+    var c = $('bt-clav'); if (!c || c.classList.contains('hide')) return;
+    var k = c.querySelector('[data-k="' + String(lettre || '').toLowerCase() + '"]');
+    c.querySelectorAll('.bt-clav-k.on').forEach(function (x) { x.classList.remove('on'); });
+    if (k) { k.classList.add('on'); setTimeout(function () { k.classList.remove('on'); }, 120); }
+    var b = c.querySelector('#bt-clav-b i'); if (b) b.style.width = Math.round(avancement * 100) + '%';
+  }
+  function clavierCacher() { var c = $('bt-clav'); if (c) c.classList.add('hide'); }
+
+  // LA CARTE DE CHAPITRE. Une respiration entre deux parties : sans
+  // elle, dix-neuf minutes sont un seul bloc indifferencie.
+  function carteChapitre(n, titre, sous, quandFini) {
+    var c = $('bt-carte'); if (!c) { quandFini(); return; }
+    $('bt-carte-n').textContent = n;
+    $('bt-carte-t').textContent = titre;
+    $('bt-carte-s').textContent = sous || '';
+    c.classList.remove('hide', 'sort');
+    setTimeout(function () {
+      c.classList.add('sort');
+      setTimeout(function () { c.classList.add('hide'); c.classList.remove('sort'); quandFini(); }, 430);
+    }, 1500);
+  }
+
   function retirerHalo() {
     cibleCourante = null;
     if (tPointe) { clearTimeout(tPointe); tPointe = null; }
     $('bt-spot').classList.add('hide');
     $('bt-doigt').classList.add('hide');
+    $('bt-fil').classList.add('hide');
+    clavierCacher();
     if (window.innerWidth < 940 && api.fermerMenu) api.fermerMenu();
   }
 

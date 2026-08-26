@@ -99,33 +99,64 @@
 #btut .bt-jauge-txt{margin:0 0 26px;font-size:13px;color:var(--bt-faint)}
 
 /* Les chapitres */
-#btut .bt-chaps{display:grid;gap:12px}
+/* LE BUG QUI FAISAIT SE HEURTER LES TEXTES
+   Le titre et sa ligne d'information etaient des <span>, donc inline :
+   leur margin-bottom ne s'appliquait pas, et ils se repliaient l'un
+   dans l'autre des que la place manquait. Sur grand ecran ca tenait par
+   chance, sous 520 px ca se chevauchait. Tout est en grille maintenant,
+   et chaque enfant occupe sa propre ligne quoi qu'il arrive. */
+#btut .bt-chaps{display:grid;gap:10px}
 #btut .bt-chap{
-  width:100%;text-align:left;padding:17px 19px;border-radius:14px;
+  width:100%;text-align:left;padding:16px 18px;border-radius:14px;
   border:1px solid var(--bt-line);background:var(--bt-surf);
-  display:flex;gap:16px;align-items:flex-start;
-  transition:border-color .15s,background .15s,transform .12s
+  display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:start;
+  transition:border-color .18s,background .18s,transform .14s,box-shadow .18s
 }
-#btut .bt-chap:hover{border-color:var(--bt-edge);background:var(--bt-surf2)}
-#btut .bt-chap:active{transform:translateY(1px)}
-#btut .bt-chap.fait{border-color:rgba(147,206,67,.28)}
+#btut .bt-chap:hover{border-color:var(--bt-edge);background:var(--bt-surf2);
+  transform:translateY(-1px);box-shadow:0 10px 26px -14px rgba(0,0,0,.7)}
+#btut .bt-chap:active{transform:translateY(0)}
+#btut .bt-chap.fait{border-color:rgba(147,206,67,.26)}
+
 #btut .bt-chap-n{
   flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
-  background:var(--bt-soft);color:var(--bt-gold);font-weight:800;font-size:13.5px
+  background:var(--bt-soft);color:var(--bt-gold);font-weight:800;font-size:13.5px;
+  transition:background .18s,color .18s
 }
 #btut .bt-chap.fait .bt-chap-n{background:rgba(147,206,67,.14);color:var(--bt-ok)}
 #btut .bt-chap-n svg{width:16px;height:16px}
-#btut .bt-chap-c{flex:1;min-width:0}
-#btut .bt-chap-t{font-weight:700;font-size:15.5px;margin-bottom:4px}
-#btut .bt-chap-m{font-size:12.5px;color:var(--bt-faint);margin-bottom:9px}
-#btut .bt-chap-e{display:flex;flex-wrap:wrap;gap:5px}
+
+#btut .bt-chap-c{min-width:0;display:grid;gap:5px}
+#btut .bt-chap-t{
+  display:block;font-weight:700;font-size:15.5px;line-height:1.3;
+  overflow-wrap:anywhere
+}
+#btut .bt-chap-m{display:block;font-size:12.5px;color:var(--bt-faint);line-height:1.4}
+
+/* Les pastilles ne s'empilent plus a l'infini : au-dela de quatre, on
+   compte le reste. Neuf pastilles sur trois lignes noyaient le titre. */
+#btut .bt-chap-e{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
 #btut .bt-puce{
-  font-size:11.5px;padding:3px 9px;border-radius:99px;
-  border:1px solid var(--bt-line2);color:var(--bt-muted)
+  font-size:11.5px;padding:3px 9px;border-radius:99px;white-space:nowrap;
+  border:1px solid var(--bt-line2);color:var(--bt-muted);
+  max-width:16ch;overflow:hidden;text-overflow:ellipsis
 }
 #btut .bt-puce.vu{border-color:rgba(147,206,67,.3);color:var(--bt-ok)}
-#btut .bt-chap-j{height:3px;border-radius:99px;background:var(--bt-line);overflow:hidden;margin-top:11px}
-#btut .bt-chap-j i{display:block;height:100%;background:var(--bt-ok);border-radius:99px;transition:width .4s ease}
+#btut .bt-puce.reste{border-style:dashed;color:var(--bt-faint)}
+
+#btut .bt-chap-j{height:3px;border-radius:99px;background:var(--bt-line);overflow:hidden;margin-top:6px}
+#btut .bt-chap-j i{display:block;height:100%;background:var(--bt-ok);border-radius:99px;transition:width .5s cubic-bezier(.3,.9,.28,1)}
+
+/* Le chevron : il dit que la carte s'ouvre, ce qu'un rectangle ne dit
+   pas. Il avance au survol. */
+#btut .bt-chap-go{
+  align-self:center;flex:none;width:18px;height:18px;color:var(--bt-faint);
+  transition:transform .18s,color .18s
+}
+#btut .bt-chap:hover .bt-chap-go{transform:translateX(3px);color:var(--bt-gold)}
+
+/* Le titre lui-meme ne doit jamais deborder : « L'administration, ecran
+   par ecran » sortait de sa boite a 390 px. */
+#btut .bt-h1,#btut .bt-ctx-t{overflow-wrap:anywhere;hyphens:auto}
 
 #btut .bt-pied{margin-top:26px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 #btut .bt-oublier{font-size:12.5px;color:var(--bt-faint);text-decoration:underline;text-underline-offset:3px}
@@ -192,9 +223,104 @@
    LE HALO — posé sur l'entrée de menu quand on arrive sur un écran
    --------------------------------------------------------------------- */
 #btut .bt-spot{
-  position:fixed;border-radius:12px;pointer-events:none;
-  box-shadow:0 0 0 3px var(--bt-gold), 0 0 0 9999px rgba(6,17,9,.55);
-  transition:top .3s ease,left .3s ease,width .3s ease,height .3s ease,opacity .25s
+  position:fixed;border-radius:13px;pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(5,12,8,.62), 0 0 34px 4px rgba(198,162,87,.22) inset;
+  transition:top .42s cubic-bezier(.32,.86,.3,1),left .42s cubic-bezier(.32,.86,.3,1),
+             width .42s cubic-bezier(.32,.86,.3,1),height .42s cubic-bezier(.32,.86,.3,1)
+}
+/* Le cadre qui se dessine : un trait qui part d'un coin et fait le tour.
+   stroke-dashoffset animé — le dasharray est posé en JS, il dépend du
+   périmètre de la chose désignée. */
+#btut .bt-spot-svg{position:absolute;inset:-2px;overflow:visible}
+#btut .bt-spot-svg rect{
+  fill:none;stroke:var(--bt-gold-br);stroke-width:2.5;stroke-linecap:round;
+  transition:stroke-dashoffset .62s cubic-bezier(.3,.9,.28,1)
+}
+/* Une pointe de lumière qui glisse le long du cadre une fois posé. */
+#btut .bt-spot::after{
+  content:'';position:absolute;inset:-2px;border-radius:14px;pointer-events:none;
+  box-shadow:0 0 0 1px rgba(228,193,121,.28);opacity:0
+}
+#btut .bt-spot.pose::after{animation:btPose .9s ease-out 1}
+@keyframes btPose{0%{opacity:0;transform:scale(1.05)}45%{opacity:1}100%{opacity:0;transform:scale(1)}}
+
+/* Le fil entre ce qu'on dit et ce qu'on montre. */
+#btut .bt-fil{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#btut .bt-fil.hide{display:none}
+#btut .bt-fil path{
+  fill:none;stroke:rgba(228,193,121,.5);stroke-width:1.6;stroke-linecap:round;
+  stroke-dasharray:5 7;animation:btFil 22s linear infinite
+}
+@keyframes btFil{to{stroke-dashoffset:-240}}
+
+/* Le clavier fantôme, pendant une saisie. */
+#btut .bt-clav{
+  position:fixed;pointer-events:none;padding:9px 10px 8px;border-radius:12px;
+  background:rgba(14,24,17,.94);border:1px solid var(--bt-line2);
+  box-shadow:0 16px 40px rgba(0,0,0,.55);
+  display:grid;gap:4px;z-index:3;
+  animation:btClavIn .3s cubic-bezier(.2,1.1,.3,1) both
+}
+#btut .bt-clav.hide{display:none}
+@keyframes btClavIn{from{opacity:0;transform:translateY(10px) scale(.94)}to{opacity:1;transform:none}}
+#btut .bt-clav-r{display:flex;gap:3px;justify-content:center}
+#btut .bt-clav-k{
+  width:17px;height:17px;border-radius:4px;background:rgba(243,239,230,.06);
+  border:1px solid rgba(243,239,230,.09);font-size:8.5px;line-height:15px;
+  text-align:center;color:var(--bt-faint);text-transform:uppercase;
+  transition:background .09s,color .09s,transform .09s
+}
+#btut .bt-clav-k.on{background:var(--bt-gold);color:#1A1206;transform:translateY(1px) scale(.92);border-color:transparent}
+#btut .bt-clav-b{
+  height:5px;border-radius:99px;background:rgba(243,239,230,.06);margin-top:2px;overflow:hidden
+}
+#btut .bt-clav-b i{display:block;height:100%;background:var(--bt-gold);width:0;border-radius:99px;transition:width .06s linear}
+
+/* La carte de chapitre : une respiration, pas un écran de chargement. */
+#btut .bt-carte{
+  position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;
+  background:radial-gradient(ellipse at center, rgba(5,12,8,.9), rgba(5,12,8,.97))
+}
+#btut .bt-carte.hide{display:none}
+#btut .bt-carte-in{text-align:center;padding:0 24px;animation:btCarte .8s cubic-bezier(.2,.9,.25,1) both}
+#btut .bt-carte-n{
+  font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--bt-gold);margin-bottom:14px
+}
+#btut .bt-carte-t{font-size:clamp(28px,6vw,46px);font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-bottom:12px}
+#btut .bt-carte-s{color:var(--bt-muted);font-size:14.5px}
+@keyframes btCarte{
+  0%  {opacity:0;transform:translateY(26px) scale(.94);filter:blur(6px)}
+  100%{opacity:1;transform:none;filter:blur(0)}
+}
+#btut .bt-carte.sort .bt-carte-in{animation:btCarteOut .45s ease-in both}
+@keyframes btCarteOut{to{opacity:0;transform:translateY(-16px) scale(1.04);filter:blur(4px)}}
+
+/* L'ecran ARRIVE au lieu d'apparaitre. Seule regle a tenir : ne toucher
+   qu'a transform et opacity -- tout le reste ferait recalculer la mise
+   en page d'un ecran de 15 000 lignes a chaque changement. */
+#btut ~ .app-shell section.bt-entre,
+section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
+@keyframes btEntre{
+  0%  {opacity:0;transform:translateY(10px) scale(.988)}
+  100%{opacity:1;transform:none}
+}
+@media (prefers-reduced-motion:reduce){ section.bt-entre{animation:none} }
+
+/* Le texte du narrateur ne se remplace pas : il arrive. */
+#btut .bt-dit.neuf{animation:btDit .42s cubic-bezier(.2,.9,.3,1) both}
+@keyframes btDit{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+/* L'anneau de progression, dans la ligne du narrateur. */
+#btut .bt-anneau{width:19px;height:19px;flex:none;transform:rotate(-90deg)}
+#btut .bt-anneau circle{fill:none;stroke-width:2.6;stroke-linecap:round}
+#btut .bt-anneau .fond{stroke:rgba(243,239,230,.13)}
+#btut .bt-anneau .part{stroke:var(--bt-gold);transition:stroke-dashoffset .45s cubic-bezier(.3,.9,.28,1)}
+
+@media (prefers-reduced-motion:reduce){
+  #btut .bt-spot,#btut .bt-spot-svg rect{transition:none}
+  #btut .bt-spot.pose::after,#btut .bt-fil path,#btut .bt-clav,
+  #btut .bt-carte-in,#btut .bt-dit.neuf{animation:none}
 }
 #btut .bt-spot.hide{display:none}
 
