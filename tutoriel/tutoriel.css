@@ -330,7 +330,10 @@ section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
 #btut .bt-anneau .part{stroke:var(--bt-gold);transition:stroke-dashoffset .45s cubic-bezier(.3,.9,.28,1)}
 
 @media (prefers-reduced-motion:reduce){
-  #btut .bt-spot,#btut .bt-spot-svg rect{transition:none}
+  /* Le halo se deplace quand meme : sauter d'un endroit a l'autre sans
+     transition est plus desorientant que de glisser vite. */
+  #btut .bt-spot{transition:top .24s linear,left .24s linear,width .24s linear,height .24s linear}
+  #btut .bt-spot-svg rect{transition:stroke-dashoffset .3s linear}
   #btut .bt-spot.pose::after,#btut .bt-fil path,#btut .bt-clav,
   #btut .bt-carte-in,#btut .bt-dit.neuf{animation:none}
 }
@@ -344,12 +347,38 @@ section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
    clique jamais : elle désigne.
    --------------------------------------------------------------------- */
 #btut .bt-doigt{
-  position:fixed;width:30px;height:30px;pointer-events:none;z-index:2;
+  position:fixed;width:32px;height:32px;pointer-events:none;z-index:2;
   margin:-3px 0 0 -5px;                    /* la pointe, pas le coin du cadre */
-  transition:top .62s cubic-bezier(.34,.9,.28,1), left .62s cubic-bezier(.34,.9,.28,1);
-  filter:drop-shadow(0 3px 7px rgba(0,0,0,.65))
+  /* Le trajet est long et souple : c'est LUI qu'on doit voir. .62s
+     paraissait court parce que la main ne bougeait pas du tout --
+     elle se rallumait deja arrivee. */
+  transition:top .66s cubic-bezier(.28,.86,.24,1),
+             left .66s cubic-bezier(.28,.86,.24,1),
+             opacity .28s ease, transform .3s ease;
+  filter:drop-shadow(0 4px 9px rgba(0,0,0,.7))
 }
 #btut .bt-doigt.hide{display:none}
+/* S'effacer sans quitter l'ecran : sinon elle perd sa position et le
+   voyage suivant redevient une teleportation. */
+#btut .bt-doigt.efface{opacity:0}
+
+/* Pendant le vol : elle se penche dans le sens de la marche et grossit
+   un peu — comme une main qui se leve pour aller ailleurs. */
+#btut .bt-doigt.vole{transform:rotate(-14deg) scale(1.12)}
+/* La trainee : un halo qui la suit et se resorbe a l'arrivee. */
+#btut .bt-doigt::before{
+  content:'';position:absolute;inset:-6px;border-radius:50%;
+  background:radial-gradient(circle, rgba(228,193,121,.34), transparent 68%);
+  opacity:0;transition:opacity .3s ease
+}
+#btut .bt-doigt.vole::before{opacity:1}
+
+/* Au repos, elle respire : un tutoriel fige a l'air en panne. */
+#btut .bt-doigt:not(.vole):not(.efface){animation:btFlot 2.6s ease-in-out infinite}
+@keyframes btFlot{
+  0%,100%{transform:translateY(0)}
+  50%    {transform:translateY(-2.5px)}
+}
 #btut .bt-doigt svg{width:100%;height:100%;display:block;fill:var(--bt-gold-br);stroke:#1A1206;stroke-width:1.1}
 
 /* LE CLIC. La main ne se contente plus de designer : elle appuie, et
@@ -378,15 +407,29 @@ section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
   content:'';position:absolute;inset:-9px;border-radius:50%;
   border:2px solid var(--bt-gold-br);opacity:0;transform:scale(.4)
 }
-#btut .bt-doigt.pose::after{animation:btOnde .62s ease-out .5s 1}
+#btut .bt-doigt.pose::after{animation:btOnde .58s ease-out 1}
 @keyframes btOnde{
   0%  {opacity:.9;transform:scale(.4)}
   100%{opacity:0;transform:scale(1.5)}
 }
 
+/* MOUVEMENT REDUIT : ON REDUIT, ON NE SUPPRIME PAS.
+   Le deplacement de la main EST l'information -- sans lui on ne sait
+   pas ou elle est allee, et le tutoriel perd ce qu'il a de mieux. Ce
+   qui doit disparaitre, c'est le decoratif : la respiration au repos,
+   la trainee, le penchement, les ondes. Le trajet reste, plus court et
+   sans elan.
+   Beaucoup de gens ont ce reglage sans le savoir (Windows 11 :
+   Accessibilite > Effets visuels > Effets d'animation). Leur retirer
+   toute animation, c'est leur livrer un tutoriel muet. */
 @media (prefers-reduced-motion:reduce){
-  #btut .bt-doigt{transition:none}
-  #btut .bt-doigt.pose::after,#btut .bt-doigt.tape,#btut .bt-clic.part{animation:none}
+  #btut .bt-doigt{
+    transition:top .26s linear, left .26s linear, opacity .2s ease
+  }
+  #btut .bt-doigt.vole{transform:none}
+  #btut .bt-doigt::before{display:none}
+  #btut .bt-doigt.pose::after,#btut .bt-doigt.tape,#btut .bt-clic.part,
+  #btut .bt-doigt:not(.vole):not(.efface){animation:none}
 }
 
 /* ---------------------------------------------------------------------

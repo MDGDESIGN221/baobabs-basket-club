@@ -32,6 +32,7 @@
   var minuteur = null;
   var chien = null;         // chien de garde de la voix (voir dire())
   var tPointe = null;       // attente de fin de defilement avant de pointer
+  var tArrivee = null;      // fin du voyage de la main
   var cibleCourante = null; // l element designe, pour le recalage au scroll
   var demoEcran = null;     // l'ecran dont la demonstration est en cours
   var demoPhoto = {};       // valeurs d'origine des champs touches
@@ -194,6 +195,13 @@
     // reléguée en fin de parcours.
     plan.push({ cle: '_roles', titre: 'Les rôles et les accès', ecrans: [], special: true });
 
+    // Chapitre 2 : le bandeau du haut. Sept commandes qu'on a sous les
+    // yeux a chaque seconde et que rien n'expliquait -- le Studio, la
+    // recherche, la cloche, la casquette affichee, le rechargement,
+    // l'aide, et la deconnexion. Elles ne sont dans aucun ecran, donc
+    // dans aucun chapitre : elles seraient restees invisibles.
+    plan.push({ cle: '_entete', titre: 'Le bandeau du haut', ecrans: [], special: true });
+
     (api.plan() || []).forEach(function (g) {
       if (!g.ecrans || !g.ecrans.length) return;
       plan.push({ cle: 'g' + plan.length, titre: g.titre, ecrans: g.ecrans });
@@ -326,6 +334,44 @@
       html: 'Pour changer un rôle, il faut passer par <b>Réglages → Comptes &amp; rôles</b> — un écran que votre ' +
             'casquette n’ouvre pas. C’est un super administrateur qui s’en charge.' });
 
+    return out;
+  }
+
+  // LE BANDEAU DU HAUT
+  // Rien ici n'appartient a un ecran : ces boutons vivent au-dessus de
+  // tout, et c'est justement pour ca qu'ils echappaient au tutoriel. Pas
+  // de navigation -- on reste ou l'on est, et on designe.
+  var ENTETE = [
+    { cible:'#role-badge',
+      dit:'Votre <b>casquette</b> est écrite là, en permanence. Elle décide de ce que vous voyez : si un écran manque à votre menu, la réponse est ici.' },
+    { cible:'#gs-open',
+      dit:'La <b>recherche</b>, ou <code>Ctrl+K</code>. Elle cherche partout d’un coup : un match, un club, une joueuse, une référence de billet, un écran. C’est le chemin le plus court vers n’importe quoi.' },
+    { cible:'#notif-bell',
+      dit:'La <b>cloche</b> ne signale pas l’activité : elle signale ce qui <b>demande une décision</b>. Une candidature à trancher, une commande à préparer, un score à publier. Si elle est éteinte, rien ne vous attend.' },
+    { cible:'#refresh-btn',
+      dit:'<b>Recharger</b> les données de l’écran. Utile un soir de match, quand quelqu’un d’autre saisit en même temps que vous.' },
+    { cible:'#studio-open',
+      dit:'Le <b>Studio</b> compose les affiches du club : annonce de match, résultat, portrait de joueuse. Il s’ouvre par-dessus l’administration et se referme sans rien changer.' },
+    { cible:'#help-btn',
+      dit:'Et ce bouton-ci ouvre <b>ce tutoriel</b> — mais à partir de l’écran où vous vous trouvez. « Je suis ici, qu’est-ce que je peux faire ici. »' },
+    { cible:'#logout-btn',
+      dit:'<b>Se déconnecter.</b> À faire sur un ordinateur partagé, ou au club. En revenant, votre casquette et vos droits sont relus depuis la base : un rôle changé entre-temps s’applique à ce moment-là, pas avant.' }
+  ];
+
+  function etapesEntete() {
+    var out = [{
+      special: true, nom: 'Le bandeau du haut',
+      html: 'Ces commandes-là ne changent jamais&nbsp;: elles vous suivent d’un écran à l’autre. On les passe en revue une fois, et on n’y revient plus.'
+    }];
+    ENTETE.forEach(function (e) {
+      // Une commande absente ou masquee pour cette casquette n'est pas
+      // annoncee : promettre un bouton qu'on n'a pas serait pire que
+      // se taire.
+      var el = null;
+      try { el = document.querySelector(e.cible); } catch (err) {}
+      if (!el || !el.getClientRects().length) return;
+      out.push({ special: true, nom: 'Le bandeau du haut', html: e.dit, cible: e.cible });
+    });
     return out;
   }
 
@@ -730,14 +776,14 @@
     $('bt-chaps').innerHTML = plan.map(function (c, i) {
       var n = c.ecrans.length;
       var vus = c.ecrans.filter(function (e) { return progres.vus[e.cle]; }).length;
-      var fait = c.special ? !!progres.vus['_roles'] : (n > 0 && vus === n);
+      var fait = c.special ? !!progres.vus[c.cle] : (n > 0 && vus === n);
       var m = 0;
       c.ecrans.forEach(function (e) {
         m += mots((api.metas[e.cle] || {}).d || '');
         ((api.aides[e.cle]) || []).forEach(function (a) { m += mots(a); });
       });
-      var meta = c.special
-        ? 'Qui fait quoi, et qui ne peut pas quoi · ~2 min'
+      var meta = c.cle === '_entete' ? 'Les commandes qui vous suivent partout · ~1 min'
+        : c.special ? 'Qui fait quoi, et qui ne peut pas quoi · ~2 min'
         : n + ' écran' + (n > 1 ? 's' : '') + ' · ~' + minutes(m) + ' min';
 
       return '<div class="bt-chap' + (fait ? ' fait' : '') + '">' +
@@ -818,6 +864,7 @@
   }
 
   function etapesDuChapitre(c) {
+    if (c.cle === '_entete') return etapesEntete();
     if (c.special) return etapesRoles();
     var out = [];
     c.ecrans.forEach(function (e) { out = out.concat(etapesEcran(e)); });
@@ -842,6 +889,20 @@
     var e = etapes[i]; if (!e) { terminer(); return; }
     idx = i;
 
+    // ON RANGE LA DEMONSTRATION AVANT DE BOUGER, ET C'EST L'ORDRE QUI
+    // COMPTE.
+    //
+    // Les champs remplis par la demonstration mettent l'administration
+    // en « modifications non enregistrees ». Si l'on navigue avant de
+    // les avoir remis, showSection() ouvre une vraie fenetre du
+    // navigateur : « Quitter quand meme ? Elles seront perdues. » On la
+    // recevait en plein milieu de la visite, pour des valeurs d'exemple
+    // que le tutoriel venait lui-meme d'ecrire.
+    //
+    // demoFin() remet les valeurs d'origine PUIS efface le drapeau. Il
+    // doit donc passer avant api.aller(), pas vingt lignes apres.
+    if (demoEcran && (!e.geste || e.ecran !== demoEcran)) demoFin();
+
     // Navigation : seulement quand on change d'écran. Rappeler
     // showSection à chaque conseil relancerait le chargement des
     // données et ferait clignoter l'écran à chaque phrase.
@@ -857,7 +918,7 @@
       progres.vus[e.ecran] = true;
       ecrireProgres();
     }
-    if (e.special) { progres.vus['_roles'] = true; ecrireProgres(); }
+    if (e.special) { progres.vus[chapCourant === '_entete' ? '_entete' : '_roles'] = true; ecrireProgres(); }
 
     progres.dernier = { chap: chapCourant, i: i };
     progres.role = api.role;
@@ -865,10 +926,6 @@
 
     // Le halo n'apparaît qu'à l'arrivée sur un écran : c'est le moment
     // où « où est-ce que je clique ? » se pose. Ensuite il gênerait.
-    // On quitte la demonstration des qu'on quitte son ecran : les champs
-    // doivent retrouver leurs valeurs avant qu'on regarde ailleurs.
-    if (demoEcran && (!e.geste || e.ecran !== demoEcran)) demoFin();
-
     if (!e.carte) carteRanger();
 
     // Une carte de chapitre n'est pas une etape a lire : elle passe, et
@@ -1075,14 +1132,56 @@
     spot.classList.remove('pose'); void spot.offsetWidth; spot.classList.add('pose');
     relierAuNarrateur(r);
 
-    // La main se pose vers le haut-gauche de la chose, pas en son
-    // centre : au centre elle masque précisément ce qu'elle désigne.
-    doigt.style.top = (r.top + Math.min(r.height * 0.55, 30)) + 'px';
-    doigt.style.left = (r.left + Math.min(r.width * 0.42, 46)) + 'px';
-    doigt.classList.remove('hide');
-    doigt.classList.remove('pose');
-    void doigt.offsetWidth;                  // redémarre l'onde d'arrivée
-    doigt.classList.add('pose');
+    // LA MAIN DOIT VOYAGER, PAS SE TELEPORTER.
+    //
+    // Elle etait cachee en display:none entre deux etapes. En la
+    // rallumant a sa nouvelle position dans la meme image, aucune
+    // transition ne peut jouer : elle apparait deja arrivee. C'est
+    // pour ca qu'on ne la voyait jamais bouger -- seul le clavier
+    // semblait anime, parce que lui l'etait vraiment.
+    //
+    // Elle reste donc affichee pendant toute la visite, et on ne fait
+    // que changer ses coordonnees : la transition CSS s'occupe du
+    // trajet. Au tout premier affichage seulement, on la pose sans
+    // transition a un point de depart plausible, puis on la lance a
+    // l'image suivante.
+    var y = (r.top + Math.min(r.height * 0.55, 30));
+    var x = (r.left + Math.min(r.width * 0.42, 46));
+    var premiereFois = doigt.classList.contains('hide');
+    doigt.classList.remove('efface');
+
+    if (premiereFois) {
+      // Point de depart : le bord de l'ecran du cote d'ou elle vient,
+      // a la hauteur du narrateur. Elle entre dans le champ au lieu de
+      // se materialiser au milieu.
+      var narr = $('bt-narr');
+      var depart = narr && !narr.classList.contains('hide')
+        ? narr.getBoundingClientRect().top - 40
+        : window.innerHeight * 0.8;
+      doigt.style.transition = 'none';
+      doigt.style.left = Math.round(window.innerWidth * 0.5) + 'px';
+      doigt.style.top = Math.round(depart) + 'px';
+      doigt.classList.remove('hide');
+      void doigt.offsetWidth;
+      doigt.style.transition = '';
+    }
+
+    // Le voyage. requestAnimationFrame garantit que le navigateur a
+    // bien enregistre la position de depart avant qu'on change.
+    requestAnimationFrame(function () {
+      doigt.style.top = y + 'px';
+      doigt.style.left = x + 'px';
+      doigt.classList.add('vole');
+    });
+
+    // L'onde d'arrivee part quand la main arrive, pas quand elle
+    // decolle : sinon elle eclot dans le vide.
+    if (tArrivee) clearTimeout(tArrivee);
+    tArrivee = setTimeout(function () {
+      tArrivee = null;
+      doigt.classList.remove('vole');
+      doigt.classList.remove('pose'); void doigt.offsetWidth; doigt.classList.add('pose');
+    }, premiereFois ? 700 : 640);
   }
 
   // LE FIL. Ce qu'on dit et ce qu'on montre vivent chacun de leur cote
@@ -1180,7 +1279,10 @@
     cibleCourante = null;
     if (tPointe) { clearTimeout(tPointe); tPointe = null; }
     $('bt-spot').classList.add('hide');
-    $('bt-doigt').classList.add('hide');
+    // La main s'efface sans quitter l'ecran : la reprendre en
+    // display:none lui ferait perdre sa position, et le voyage suivant
+    // redeviendrait une teleportation.
+    $('bt-doigt').classList.add('efface');
     $('bt-fil').classList.add('hide');
     clavierCacher();
     if (window.innerWidth < 940 && api.fermerMenu) api.fermerMenu();
@@ -1203,6 +1305,11 @@
     enLecture = false;
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
+    // L'ecouteur est en capture : il passe AVANT le gestionnaire de
+    // l'admin. Ranger ici, c'est garantir que le clic qui suit -- une
+    // navigation, le plus souvent -- ne trouvera plus de champ rempli
+    // ni de drapeau leve.
+    demoFin();
     majBoutonPlay();
     var n = $('bt-pause'); if (n) n.classList.remove('hide');
   }

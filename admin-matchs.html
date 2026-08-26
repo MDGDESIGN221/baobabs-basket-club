@@ -3352,7 +3352,10 @@
             <h2 class="card-title">Les comptes de l'administration</h2>
             <p class="card-sub" id="cp-sub">Chargement…</p>
           </div>
-          <button type="button" class="btn btn-ghost hide" id="cp-demander">Changer un rôle</button>
+          <div style="display:flex;gap:9px;flex-wrap:wrap">
+            <button type="button" class="btn btn-ghost" id="cp-pdf">Exporter les rôles (PDF)</button>
+            <button type="button" class="btn btn-ghost hide" id="cp-demander">Changer un rôle</button>
+          </div>
         </div>
 
         <div class="cp-lock hide" id="cp-lock">
@@ -13410,6 +13413,131 @@
     });
   }
 
+  // ===================== QUI PEUT QUOI, SUR PAPIER =====================
+  // Le president demande « qui a acces a quoi » a chaque reunion de
+  // bureau. Un ecran ne se passe pas autour d'une table : ce document
+  // s'imprime, se pose, s'annote.
+  //
+  // Trois parties : les comptes et leur casquette, ce que fait chaque
+  // casquette, puis le tableau croise ecran par ecran.
+  function cpPdf(){
+    var Lib = window.jspdf && window.jspdf.jsPDF;
+    if (!Lib){ qgToast('Le module PDF n’a pas pu se charger.', true); return; }
+
+    Promise.all([
+      sbGet('admin_users?select=email,role&order=email.asc').catch(function(){ return []; }),
+      sbGet('role_permissions?select=role,module,action').catch(function(){ return []; })
+    ]).then(function(r){
+      var comptes = r[0] || [], perms = r[1] || [];
+      var doc = new Lib({ unit:'mm', format:'a4' });
+      try { cdRegisterPdfFonts(doc); } catch(e){}
+      var liste = doc.getFontList();
+      var UI = liste.SpaceGrotesk ? 'SpaceGrotesk' : 'helvetica';
+      var TX = liste.Inter ? 'Inter' : 'helvetica';
+
+      var PW=210, M=17, y=M;
+      var INK=[26,32,28], FAINT=[122,130,124], LINE=[226,229,222];
+      var GOLD=[198,162,87], COURT=[15,64,48], OK=[92,140,44];
+
+      function saut(h){ if (y + h > 275){ doc.addPage(); y = M; } }
+      function titre(t){
+        saut(16);
+        doc.setFont(UI,'bold'); doc.setFontSize(12); doc.setTextColor.apply(doc, COURT);
+        doc.text(t, M, y); y += 3;
+        doc.setDrawColor.apply(doc, GOLD); doc.setLineWidth(0.5);
+        doc.line(M, y, M + 26, y); y += 7;
+      }
+
+      doc.setFillColor.apply(doc, COURT); doc.rect(0, 0, PW, 30, 'F');
+      doc.setFont(UI,'bold'); doc.setFontSize(15); doc.setTextColor(243,239,230);
+      doc.text('Baobabs Basket Club', M, 13);
+      doc.setFont(TX,'normal'); doc.setFontSize(9.5); doc.setTextColor.apply(doc, GOLD);
+      doc.text('Accès à l’administration — qui peut faire quoi', M, 21);
+      doc.setTextColor(200,205,198); doc.setFontSize(8);
+      doc.text('Établi le ' + new Date().toLocaleDateString('fr-FR',
+        { day:'numeric', month:'long', year:'numeric' }), M, 26.5);
+      y = 40;
+
+      titre('Les comptes');
+      if (!comptes.length){
+        doc.setFont(TX,'normal'); doc.setFontSize(9.5); doc.setTextColor.apply(doc, FAINT);
+        doc.text('Aucun compte lisible.', M, y); y += 8;
+      }
+      comptes.forEach(function(c){
+        saut(9);
+        var proprio = String(c.email||'').trim().toLowerCase() === CP_PROPRIETAIRE;
+        doc.setFont(TX,'normal'); doc.setFontSize(9.5); doc.setTextColor.apply(doc, INK);
+        doc.text(String(c.email||'—'), M, y);
+        doc.setFont(UI,'bold'); doc.setFontSize(9);
+        doc.setTextColor.apply(doc, proprio ? GOLD : COURT);
+        doc.text((ROLE_NOMS[c.role] || c.role || '—') + (proprio ? '   (compte verrouillé)' : ''),
+                 PW - M, y, { align:'right' });
+        y += 4.2;
+        doc.setDrawColor.apply(doc, LINE); doc.setLineWidth(0.2);
+        doc.line(M, y, PW - M, y); y += 4.4;
+      });
+      y += 5;
+
+      titre('Ce que fait chaque casquette');
+      Object.keys(ROLE_NOMS).forEach(function(k){
+        var r2 = (typeof ROLE_RESUME === 'object' && ROLE_RESUME[k]) || '';
+        var txt = doc.splitTextToSize(r2, PW - M*2 - 4);
+        saut(9 + txt.length * 4.2);
+        doc.setFont(UI,'bold'); doc.setFontSize(9.5); doc.setTextColor.apply(doc, COURT);
+        doc.text(ROLE_NOMS[k], M, y); y += 4.6;
+        doc.setFont(TX,'normal'); doc.setFontSize(9); doc.setTextColor.apply(doc, FAINT);
+        doc.text(txt, M + 3, y); y += txt.length * 4.2 + 4;
+      });
+      y += 3;
+
+      titre('Qui ouvre quel écran');
+      var roles = Object.keys(ROLE_NOMS);
+      var mods = (typeof CP_MODULES !== 'undefined' ? CP_MODULES : []);
+      var idx = {};
+      perms.forEach(function(p){ var c=p.role+'|'+p.module; (idx[c]=idx[c]||{})[p.action]=true; });
+      var ECRIRE = ['creer','modifier','supprimer','publier','approuver'];
+      var colL = 62, colW = (PW - M*2 - colL) / roles.length;
+
+      saut(14);
+      doc.setFont(UI,'bold'); doc.setFontSize(6.6); doc.setTextColor.apply(doc, FAINT);
+      roles.forEach(function(r3,i){
+        doc.text(doc.splitTextToSize(ROLE_NOMS[r3], colW - 1),
+                 M + colL + i*colW + colW/2, y - 1, { align:'center' });
+      });
+      y += 3;
+      doc.setDrawColor.apply(doc, LINE); doc.line(M, y, PW - M, y); y += 5;
+
+      mods.forEach(function(m){
+        saut(7);
+        doc.setFont(TX,'normal'); doc.setFontSize(8.5); doc.setTextColor.apply(doc, INK);
+        doc.text(String(m[1]).slice(0,42), M, y);
+        roles.forEach(function(r3,i){
+          var pp = idx[r3+'|'+m[0]] || {}, sym, col;
+          if (r3 === 'super_admin' || ECRIRE.some(function(a2){ return pp[a2]; })) { sym='oui'; col=OK; }
+          else if (pp.voir) { sym='lecture'; col=GOLD; }
+          else { sym='—'; col=LINE; }
+          doc.setFont(UI, sym==='oui' ? 'bold' : 'normal'); doc.setFontSize(6.8);
+          doc.setTextColor.apply(doc, col);
+          doc.text(sym, M + colL + i*colW + colW/2, y, { align:'center' });
+        });
+        y += 3.2;
+        doc.setDrawColor(240,241,238); doc.setLineWidth(0.15);
+        doc.line(M, y, PW - M, y); y += 3.6;
+      });
+
+      y += 6; saut(14);
+      doc.setFont(TX,'normal'); doc.setFontSize(8); doc.setTextColor.apply(doc, FAINT);
+      doc.text(doc.splitTextToSize(
+        'oui = la personne consulte et modifie · lecture = elle consulte sans modifier · ' +
+        '— = l’écran n’apparaît pas dans son menu. Un rôle se change dans ' +
+        'Réglages → Comptes & rôles, par un super administrateur muni du mot de passe.',
+        PW - M*2), M, y);
+
+      doc.save('baobabs-roles-et-acces-' + new Date().toISOString().slice(0,10) + '.pdf');
+      qgToast('PDF des rôles enregistré.');
+    }).catch(function(){ qgToast('Le PDF n’a pas pu être produit.', true); });
+  }
+
   // ===================== COMPTES & RÔLES =====================
   //
   // Deux étages, et la séparation EST le sujet de l'écran.
@@ -13474,6 +13602,8 @@
     document.getElementById('cp-unlock').addEventListener('click', cpUnlock);
     document.getElementById('cp-pwd').addEventListener('keydown', function(e){ if (e.key === 'Enter') cpUnlock(); });
     document.getElementById('cp-annuler').addEventListener('click', cpRefermer);
+    var bp = document.getElementById('cp-pdf');
+    if (bp) bp.addEventListener('click', cpPdf);
     document.getElementById('cp-demander').addEventListener('click', function(){
       document.getElementById('cp-lock').classList.remove('hide');
       document.getElementById('cp-demander').classList.add('hide');
