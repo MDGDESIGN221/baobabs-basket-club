@@ -52,7 +52,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-d';
+  var VERSION = '26.08-e';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -861,6 +861,81 @@
     try { return localStorage.getItem(CLE_ANIM) === '1'; } catch (e) { return false; }
   }
 
+  // L'ESSAI DES ANIMATIONS
+  // « Je n'ai pas les memes animations » n'est pas exploitable : je ne
+  // sais pas lesquelles manquent. Cet essai les joue une par une, en
+  // les NOMMANT. La personne peut alors dire « la 3 et la 5 ne se
+  // passent pas », et la on cherche quelque chose de precis.
+  var ESSAIS = [
+    { n: '1. La main traverse l’écran',   f: essaiMain },
+    { n: '2. Le cadre se dessine',        f: essaiCadre },
+    { n: '3. La main appuie, une onde part', f: essaiClic },
+    { n: '4. Le clavier tape',            f: essaiClavier },
+    { n: '5. La carte de chapitre',       f: essaiCarte }
+  ];
+  var essaiEnCours = false;
+
+  function essaiMain(fini) {
+    var d = $('bt-doigt');
+    d.classList.remove('hide', 'efface');
+    d.style.transition = 'none';
+    d.style.left = Math.round(window.innerWidth * 0.18) + 'px';
+    d.style.top = Math.round(window.innerHeight * 0.3) + 'px';
+    void d.offsetWidth; d.style.transition = '';
+    requestAnimationFrame(function () {
+      d.classList.add('vole');
+      d.style.left = Math.round(window.innerWidth * 0.78) + 'px';
+      d.style.top = Math.round(window.innerHeight * 0.62) + 'px';
+    });
+    setTimeout(function () { d.classList.remove('vole'); fini(); }, 1400);
+  }
+
+  function essaiCadre(fini) {
+    var cible = $('bt-tout');
+    if (cible) { designer(cible, true); }
+    setTimeout(fini, 1500);
+  }
+
+  function essaiClic(fini) {
+    var cible = $('bt-tout');
+    if (cible) doigtTape(cible);
+    setTimeout(fini, 1100);
+  }
+
+  function essaiClavier(fini) {
+    var faux = document.createElement('input');
+    faux.style.cssText = 'position:fixed;left:12%;top:38%;width:260px;height:44px;' +
+      'border-radius:10px;border:1px solid rgba(198,162,87,.4);background:#141F17;' +
+      'color:#F4F1E9;padding:0 12px;font:14px sans-serif;z-index:3';
+    document.body.appendChild(faux);
+    taper(faux, 'on tape ici');
+    setTimeout(function () { clavierCacher(); faux.remove(); fini(); }, 2200);
+  }
+
+  function essaiCarte(fini) {
+    carteChapitre('Essai', 'La carte de chapitre', 'Elle passe entre deux parties', fini);
+  }
+
+  function lancerEssais() {
+    if (essaiEnCours) return;
+    essaiEnCours = true;
+    var e = $('bt-etat');
+    var i = 0;
+    function suite() {
+      if (i >= ESSAIS.length) {
+        retirerHalo();
+        essaiEnCours = false;
+        rendreEtat();
+        return;
+      }
+      var t = ESSAIS[i++];
+      if (e) e.innerHTML = '<b>Essai en cours&nbsp;:</b> ' + t.n +
+        '<br><span style="opacity:.7">Notez celles qui ne se produisent pas.</span>';
+      try { t.f(suite); } catch (err) { suite(); }
+    }
+    suite();
+  }
+
   function rendreEtat() {
     var e = $('bt-etat'); if (!e) return;
     var reduit = false;
@@ -886,8 +961,15 @@
         '<span style="opacity:.6">Version ' + VERSION + '</span>';
     }
 
+    // L'essai est propose dans tous les cas : c'est le seul moyen de
+    // savoir CE QUI manque, plutot que « ca ne marche pas ».
+    e.innerHTML += ' <button type="button" class="bt-etat-act" id="bt-anim-essai" ' +
+      'style="margin-left:8px">Tester les animations</button>';
+
     var b = $('bt-anim-act');
     if (b) b.addEventListener('click', function () { reglerAnim(!animForcee()); rendreEtat(); });
+    var t = $('bt-anim-essai');
+    if (t) t.addEventListener('click', lancerEssais);
   }
 
   function rendreSommaire() {
@@ -1280,12 +1362,34 @@
     return null;
   }
 
+  // LE NARRATEUR S'ECARTE DE CE QU'ON DESIGNE.
+  //
+  // Il est ancre en bas. Quand la cible est en bas de l'ecran -- le
+  // bouton « Envoyer le test », « Enregistrer », le dernier champ d'un
+  // formulaire -- il se posait DESSUS : on entourait d'un cadre dore
+  // quelque chose que le bloc de narration cachait.
+  //
+  // Faire defiler ne suffit pas : en bas de page il n'y a plus de marge.
+  // C'est donc le narrateur qui monte. La decision se prend sur la
+  // POSITION de la cible, pas sur le chevauchement constate : sinon il
+  // ferait l'aller-retour a chaque pixel de defilement.
+  function ecarterNarrateur(r) {
+    var narr = $('bt-narr');
+    if (!narr || narr.classList.contains('hide')) return;
+    var centre = r.top + r.height / 2;
+    narr.classList.toggle('haut', centre > window.innerHeight * 0.56);
+  }
+
   function poser(el) {
     var spot = $('bt-spot'), doigt = $('bt-doigt');
     el = boiteUtile(el);
     if (!el) { retirerHalo(); return; }
     var r = el.getBoundingClientRect();
     if (r.width < 24 || r.height < 16) { retirerHalo(); return; }
+
+    // On decide AVANT de poser le halo : le fil et le clavier se
+    // reglent ensuite sur la position reelle du narrateur.
+    ecarterNarrateur(r);
 
     var p = 6;
     var L = r.width + p * 2, H = r.height + p * 2;
@@ -1376,7 +1480,10 @@
     if (!fil || !path || !narr || narr.classList.contains('hide')) { if (fil) fil.classList.add('hide'); return; }
     var n = narr.getBoundingClientRect();
     var x1 = r.left + r.width / 2, y1 = r.top + r.height / 2;
-    var x2 = n.left + n.width / 2, y2 = n.top;
+    var x2 = n.left + n.width / 2;
+    // Le fil part du bord du narrateur qui regarde la cible : quand il
+    // est passe en haut, c'est son bord INFERIEUR.
+    var y2 = (y1 > n.bottom) ? n.bottom : n.top;
     if (Math.abs(y2 - y1) < 130) { fil.classList.add('hide'); return; }
     var cy = (y1 + y2) / 2;
     path.setAttribute('d', 'M' + x1 + ' ' + y1 + ' C' + x1 + ' ' + cy + ' ' + x2 + ' ' + cy + ' ' + x2 + ' ' + y2);
@@ -1407,14 +1514,26 @@
     // prend un bon tiers. Un clavier posé dessus cache la phrase qu'il
     // est censé illustrer. On cherche donc une place LIBRE : sous le
     // champ, sinon au-dessus, sinon au-dessus du narrateur.
+    // La zone interdite, c'est le narrateur -- ou qu'il soit. Il peut
+    // desormais etre en haut comme en bas : on raisonne sur sa boite,
+    // pas sur une hypothese.
     var narr = $('bt-narr');
-    var plafond = window.innerHeight - 8;
-    if (narr && !narr.classList.contains('hide')) plafond = narr.getBoundingClientRect().top - 10;
+    var iH = 0, iB = 0;                                  // bande interdite
+    if (narr && !narr.classList.contains('hide')) {
+      var nb = narr.getBoundingClientRect();
+      iH = nb.top; iB = nb.bottom;
+    }
+    function libre(top) {
+      if (top < 8 || top + hc > window.innerHeight - 8) return false;
+      if (!iB) return true;
+      return (top + hc < iH - 8) || (top > iB + 8);      // au-dessus ou en dessous
+    }
 
-    var t = r.bottom + 12;
-    if (t + hc > plafond) t = r.top - hc - 12;          // au-dessus du champ
-    if (t < 8) t = Math.max(8, plafond - hc);           // au-dessus du narrateur
-    if (t + hc > window.innerHeight - 8) t = Math.max(8, window.innerHeight - hc - 8);
+    var t = r.bottom + 12;                               // sous le champ
+    if (!libre(t)) t = r.top - hc - 12;                  // au-dessus du champ
+    if (!libre(t)) t = iB + 12;                          // sous le narrateur
+    if (!libre(t)) t = iH - hc - 12;                     // au-dessus du narrateur
+    if (!libre(t)) t = Math.max(8, window.innerHeight - hc - 8);
 
     c.style.left = g + 'px'; c.style.top = t + 'px';
     c.classList.remove('hide');
@@ -1460,6 +1579,10 @@
 
   function retirerHalo() {
     cibleCourante = null;
+    // Plus de cible : le narrateur reprend sa place habituelle. Le
+    // laisser en haut sans raison deroute -- on cherche ses commandes
+    // la ou elles etaient.
+    var nr = $('bt-narr'); if (nr) nr.classList.remove('haut');
     if (tPointe) { clearTimeout(tPointe); tPointe = null; }
     $('bt-spot').classList.add('hide');
     // La main s'efface sans quitter l'ecran : la reprendre en
