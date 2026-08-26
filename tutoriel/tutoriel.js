@@ -61,7 +61,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-m';
+  var VERSION = '26.08-n';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -610,7 +610,7 @@
   // donnee du club touchee. Enregistrer, Exporter et Publier sont
   // DESIGNES, jamais cliques.
   var STUDIO_ACCUEIL = [
-    { c: '#bs-home-nav',  d: 'À gauche, la navigation de l’atelier&nbsp;: <b>Accueil</b>, <b>Nouveau</b> pour partir d’un format vierge, <b>Modèles</b> pour les maquettes déjà composées, et <b>Travaux récents</b> — vos affiches en cours.' },
+    { c: '#bs-home-nav',  parcours: true, d: 'À gauche, la navigation de l’atelier&nbsp;: <b>Accueil</b>, <b>Nouveau</b> pour partir d’un format vierge, <b>Modèles</b> pour les maquettes déjà composées, et <b>Travaux récents</b> — vos affiches en cours.' },
     { c: '#bs-home-main', d: 'Au centre, par quoi commencer. D’abord les <b>formats</b> — affiche 3:4, story, post carré, bannière du site — puis les <b>modèles en vedette</b>, des maquettes de match day qu’il n’y a plus qu’à remplir.' },
     { c: '#bs-home-tip',  d: 'Et le point à retenir&nbsp;: les <b>objets dynamiques</b>. Un calque marqué d’un éclair se remplit tout seul avec les données du club — l’adversaire, la date, le score. On ne les recopie jamais à la main.' }
   ];
@@ -623,9 +623,9 @@
   var STUDIO_ATELIER = [
     { c: '#bs-canvas',     d: 'Voilà un <b>plan de travail</b>. C’est la surface qu’on compose, aux dimensions exactes du format choisi&nbsp;: ce qu’on voit ici est ce qui sortira. Celui-ci part du modèle <b>Duel</b>.' },
     { c: '#bs-proj-name',  d: 'En haut, le <b>nom du projet</b>. La pastille juste à côté s’allume dès qu’une modification n’est pas enregistrée — tant qu’elle est là, le travail n’existe que dans cette page.' },
-    { c: '#bs-rail',       d: 'La <b>colonne d’outils</b>&nbsp;: modèles, images, photos, éléments, texte, styles, projets. Et <b>Données</b>, qui va chercher le prochain match dans l’administration pour remplir l’affiche toute seule.' },
+    { c: '#bs-rail',       parcours: true, d: 'La <b>colonne d’outils</b>&nbsp;: modèles, images, photos, éléments, texte, styles, projets. Et <b>Données</b>, qui va chercher le prochain match dans l’administration pour remplir l’affiche toute seule.' },
     { c: '#bs-props',      d: 'À droite, les <b>propriétés</b>. Tant que rien n’est sélectionné, ce sont celles de l’affiche — son format, ses dimensions. Dès qu’on choisit un élément, le panneau devient le sien.' },
-    { c: '#bs-layer-list', d: 'En dessous, les <b>calques</b>&nbsp;: nom de l’adversaire, logo, date, salle, titre… Chaque morceau de l’affiche est une ligne, et l’ordre de cette liste décide de ce qui passe devant.' },
+    { c: '#bs-layer-list', parcours: '.bs-lyr, li, [data-id]', d: 'En dessous, les <b>calques</b>&nbsp;: nom de l’adversaire, logo, date, salle, titre… Chaque morceau de l’affiche est une ligne, et l’ordre de cette liste décide de ce qui passe devant.' },
     { c: '#bs-undo',       d: '<b>Annuler</b>, et sa jumelle pour refaire. Rien n’est définitif tant qu’on n’a pas enregistré&nbsp;: on peut essayer sans rien risquer.' },
     { c: '#bs-zoom-fit',   d: 'Le <b>zoom</b>, et ce bouton qui remet l’affiche entière à l’écran. Il sert plus souvent qu’on ne croit, quand on s’est perdu dans un détail.' },
     { c: '#bs-saveinfo',   d: 'Ici se lit l’état du projet. Il indique en ce moment <b>« Démonstration — jamais enregistré »</b>&nbsp;: ce plan de travail a été monté pour le tutoriel, il n’ira nulle part.' },
@@ -643,8 +643,11 @@
             'C’est un atelier à part, qui s’ouvre par-dessus l’administration. Il <b>lit</b> les données du club ' +
             'pour remplir les affiches, mais n’en modifie aucune. On l’ouvre.'
     }];
+    // e.parcours DOIT ETRE RECOPIE. Il ne l'etait pas : la table le
+    // declarait, la construction ne gardait que la cible et le texte, et
+    // la main restait immobile sans que rien ne le signale.
     STUDIO_ACCUEIL.forEach(function (e) {
-      out.push({ special: true, nom: E, studio: true, cible: e.c, html: e.d });
+      out.push({ special: true, nom: E, studio: true, cible: e.c, html: e.d, parcours: e.parcours });
     });
     out.push({
       special: true, nom: E, studio: true, atelier: true,
@@ -653,7 +656,7 @@
             '<span style="opacity:.75">Enregistrer, Exporter et Publier seront montrés, jamais cliqués.</span>'
     });
     STUDIO_ATELIER.forEach(function (e) {
-      out.push({ special: true, nom: E, studio: true, atelier: true, cible: e.c, html: e.d });
+      out.push({ special: true, nom: E, studio: true, atelier: true, cible: e.c, html: e.d, parcours: e.parcours });
     });
     return out;
   }
@@ -973,11 +976,19 @@
     }, 62);
   }
 
+  var tTape = null;
   // LA MAIN QUI APPUIE. Elle designait ; elle agit maintenant.
   function doigtTape(el) {
     var d = $('bt-doigt'), o = $('bt-clic');
     if (d && !d.classList.contains('hide')) {
       d.classList.remove('tape'); void d.offsetWidth; d.classList.add('tape');
+      // On RETIRE la classe une fois l'appui joue. Tant qu'elle reste,
+      // .bt-doigt:not(.tape) ne s'applique plus et la main cesse de
+      // respirer : elle se fige apres son premier clic. Le defaut ne se
+      // voyait pas avant, parce que btFlot ecrasait btTape de toute
+      // facon -- corriger l'un a decouvert l'autre.
+      if (tTape) clearTimeout(tTape);
+      tTape = setTimeout(function () { tTape = null; d.classList.remove('tape'); }, 460);
     }
     if (o && el) {
       var r = el.getBoundingClientRect();
@@ -1527,7 +1538,11 @@
       if (g !== jeton || etapes[idx] !== e) return;
       var el = null;
       try { el = document.querySelector(sel); } catch (err) { el = null; }
-      if (el && el.getClientRects().length) { designer(el); return; }
+      if (el && el.getClientRects().length) {
+        designer(el);
+        if (e.parcours) parcourirEnumeration(e, g);
+        return;
+      }
       if (Date.now() < fin) { setTimeout(essai, 90); return; }
       retirerHalo();
     })();
@@ -1847,7 +1862,7 @@
     if (etatAvant === etatApres) return;
   }
 
-  function poser(el) {
+  function poser(el, sansNarrateur) {
     var spot = $('bt-spot'), doigt = $('bt-doigt');
     el = boiteUtile(el);
     if (!el) { retirerHalo(); return; }
@@ -1856,7 +1871,12 @@
 
     // On decide AVANT de poser le halo : le fil et le clavier se
     // reglent ensuite sur la position reelle du narrateur.
-    ecarterNarrateur(r);
+    //
+    // Sauf pendant une enumeration : la main saute d'une entree de menu
+    // a la suivante quatre fois en trois secondes, et un narrateur qui
+    // se replacerait a chaque saut donnerait le mal de mer. Il tient sa
+    // position, prise sur la premiere.
+    if (!sansNarrateur) ecarterNarrateur(r);
 
     var p = 6;
     var L = r.width + p * 2, H = r.height + p * 2;
@@ -1936,6 +1956,49 @@
       doigt.classList.remove('vole');
       doigt.classList.remove('pose'); void doigt.offsetWidth; doigt.classList.add('pose');
     }, premiereFois ? 700 : 640);
+  }
+
+  // LE POINTEUR SUIT L'ENUMERATION.
+  //
+  // « Accueil, Nouveau, Modeles, Travaux recents » -- et la main restait
+  // plantee sur le bloc entier, immobile pendant quatre noms. On ne
+  // montre rien : on designe une zone pendant qu'on recite une liste.
+  //
+  // Une etape peut donc porter `parcours`. La main visite alors les
+  // enfants l'un apres l'autre et APPUIE sur chacun ; le halo suit. La
+  // cadence se cale sur leur nombre pour tenir dans la duree de l'etape.
+  //
+  // Aucun minuteur a ranger : le jeton suffit. Une etape depassee voit
+  // ses rendez-vous se reconnaitre perimes et ne rien faire.
+  function enfantsAParcourir(hote, sel) {
+    var l = [].slice.call(hote.querySelectorAll(sel || 'button, a, [role="button"], li'));
+    // Un bouton dans un bouton compterait deux fois, et la main
+    // reviendrait au meme endroit. On ne garde que les feuilles.
+    return l.filter(function (x, i) {
+      if (!x.getClientRects().length) return false;
+      var r = x.getBoundingClientRect();
+      if (r.width < 16 || r.height < 12) return false;
+      return !l.some(function (y, k) { return k !== i && y !== x && y.contains(x); });
+    });
+  }
+
+  function parcourirEnumeration(e, g) {
+    var hote = null;
+    try { hote = document.querySelector(e.cible); } catch (err) { return; }
+    if (!hote) return;
+    var items = enfantsAParcourir(hote, typeof e.parcours === 'string' ? e.parcours : null);
+    if (items.length < 2) return;
+    // Au-dela de six, ce n'est plus une enumeration mais un defile :
+    // la main passerait trop vite pour qu'on lise quoi que ce soit.
+    items = items.slice(0, 6);
+    var pas = Math.max(560, Math.min(1000, 3800 / items.length));
+    items.forEach(function (el, i) {
+      setTimeout(function () {
+        if (g !== jeton || etapes[idx] !== e) return;
+        poser(el, true);
+        doigtTape(el);
+      }, 980 + i * pas);
+    });
   }
 
   // LE FIL. Ce qu'on dit et ce qu'on montre vivent chacun de leur cote
