@@ -52,7 +52,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-f';
+  var VERSION = '26.08-h';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -365,6 +365,28 @@
 
     aides.forEach(function (a, i) {
       out.push({ ecran: e.cle, nom: e.nom, halo: false, html: a, cible: vise[i] || null });
+    });
+
+    // LES BLOCS DE L'ECRAN, UN PAR UN.
+    // Sur « Page d'accueil », le tutoriel disait une phrase et passait.
+    // L'ecran contient pourtant cinq blocs distincts, chacun avec son
+    // titre et ses champs -- le hero, le Face-Off, le bandeau de
+    // chiffres, la boutique, les medias. On les parcourt.
+    //
+    // Les intitules viennent du registre de l'hote : « Face-Off — Le
+    // duel des leaders » est ecrit une seule fois, la ou le bloc est
+    // defini. Le tutoriel ne peut pas le contredire.
+    var blocs = (api.blocs && api.blocs(e.cle)) || [];
+    blocs.forEach(function (b, i) {
+      var n = b.champs;
+      out.push({
+        ecran: e.cle, nom: e.nom, halo: false,
+        cible: '#qgc-card-' + b.id,
+        html: '<b>' + echapper(b.label) + '</b>' +
+              (b.page ? ' <span style="opacity:.7">· ' + echapper(b.page) + '</span>' : '') +
+              ' — ' + n + ' champ' + (n > 1 ? 's' : '') + ' à remplir.' +
+              (i === 0 ? ' L’aperçu de droite montre le rendu réel du site&nbsp;: ce que vous voyez est ce qui sera publié.' : '')
+      });
     });
 
     // Puis la demonstration, s'il y en a une pour cet ecran. Un geste =
@@ -942,18 +964,35 @@
     try { reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (err) {}
 
     var force = animForcee();
-    var bouton = '<button type="button" class="bt-etat-act" id="bt-anim-act">' +
-      (force ? 'Revenir au réglage de mon système' : 'Forcer les animations complètes') + '</button>';
+
+    // LA COMMANDE VA AVEC LES AUTRES COMMANDES.
+    // Elle vivait en pied de sommaire, ou personne ne descend. Quand le
+    // systeme bride les animations, elle se montre en haut, a cote de la
+    // voix, avec une pastille qui bat -- pour que la personne la voie
+    // sans qu'on ait a le lui dire. Sinon elle reste rangee.
+    var cmd = $('bt-anim-cmd');
+    if (cmd) {
+      if (reduit || force) {
+        cmd.textContent = force ? 'Animations forcées' : 'Activer les animations';
+        cmd.title = force
+          ? 'Cliquez pour revenir au réglage de votre système'
+          : 'Votre système les a réduites — cliquez pour les voir quand même';
+        cmd.classList.toggle('on', force);
+        cmd.classList.remove('hide');
+      } else {
+        cmd.classList.add('hide');
+      }
+    }
 
     if (reduit && !force) {
       e.className = 'bt-etat alerte';
       e.innerHTML = '<b>Votre système demande des animations réduites</b> — c’est pour ça que rien ne semble ' +
-        'bouger. Le tutoriel le respecte. Vous pouvez passer outre ici, tout de suite&nbsp;:<br>' + bouton +
-        '<br><span style="opacity:.6">Version ' + VERSION + '</span>';
+        'bouger. Le tutoriel le respecte&nbsp;; le bouton <b>« Activer les animations »</b>, en haut, passe outre. ' +
+        '<span style="opacity:.6">Version ' + VERSION + '</span>';
     } else if (force) {
       e.className = 'bt-etat';
-      e.innerHTML = 'Animations <b>forcées</b>, quel que soit le réglage de votre système.<br>' + bouton +
-        '<br><span style="opacity:.6">Version ' + VERSION + '</span>';
+      e.innerHTML = 'Animations <b>forcées</b>, quel que soit le réglage de votre système. ' +
+        '<span style="opacity:.6">Version ' + VERSION + '</span>';
     } else {
       e.className = 'bt-etat';
       e.innerHTML = 'Animations <b>complètes</b>. Si vous ne voyez rien bouger, le navigateur garde une ' +
@@ -961,13 +1000,9 @@
         '<span style="opacity:.6">Version ' + VERSION + '</span>';
     }
 
-    // L'essai est propose dans tous les cas : c'est le seul moyen de
-    // savoir CE QUI manque, plutot que « ca ne marche pas ».
     e.innerHTML += ' <button type="button" class="bt-etat-act" id="bt-anim-essai" ' +
       'style="margin-left:8px">Tester les animations</button>';
 
-    var b = $('bt-anim-act');
-    if (b) b.addEventListener('click', function () { reglerAnim(!animForcee()); rendreEtat(); });
     var t = $('bt-anim-essai');
     if (t) t.addEventListener('click', lancerEssais);
   }
@@ -1039,6 +1074,10 @@
       c.ecrans.forEach(function (e) {
         m += mots((api.metas[e.cle] || {}).d || '');
         ((api.aides[e.cle]) || []).forEach(function (a) { m += mots(a); });
+        // Chaque bloc ajoute une etape : la duree annoncee doit la
+        // compter, sinon « 3 min » en vaut sept et personne ne se fie
+        // plus au chiffre.
+        ((api.blocs && api.blocs(e.cle)) || []).forEach(function () { m += 22; });
       });
       var meta = c.cle === '_entete' ? 'Les commandes qui vous suivent partout · ~1 min'
         : c.special ? 'Qui fait quoi, et qui ne peut pas quoi · ~2 min'
@@ -1757,6 +1796,12 @@
       // On relit l'étape en cours : activer la voix sans rien entendre
       // laisse croire que ça n'a pas marché.
       if (voixOn && enLecture) montrer(idx);
+    });
+
+    var cmdAnim = $('bt-anim-cmd');
+    if (cmdAnim) cmdAnim.addEventListener('click', function () {
+      reglerAnim(!animForcee());
+      rendreEtat();
     });
 
     $('bt-oublier').addEventListener('click', function () {

@@ -4142,6 +4142,33 @@
       }),
       metas: SECTION_META,
       aides: SECTION_HELP,
+      // LES BLOCS D'UN ECRAN DE CONTENU
+      // Les ecrans « Pages du site » et « Reglages » ne sont pas du
+      // balisage : ils sont batis a l'execution depuis CONTENT_BLOCKS et
+      // SETTINGS_BLOCKS. Le tutoriel n'en disait donc qu'une phrase
+      // generique -- « les textes de la page d'accueil » -- alors que
+      // l'ecran contient cinq blocs nommes, dont « Face-Off — Le duel
+      // des leaders ».
+      //
+      // Ces registres portent deja le titre lisible de chaque bloc et
+      // le compte de ses champs. On les LIT, comme on lit la barre
+      // laterale : un bloc ajoute demain entrera tout seul dans le
+      // tutoriel, et son intitule ne pourra jamais diverger.
+      blocs: function(cle){
+        var liste = [];
+        if (cle === 'reglages'){
+          liste = (typeof SETTINGS_BLOCKS !== 'undefined' ? SETTINGS_BLOCKS : []);
+        } else if (typeof CONTENT_GROUPS !== 'undefined' && CONTENT_GROUPS[cle]){
+          liste = CONTENT_GROUPS[cle].map(function(id){
+            return (CONTENT_BLOCKS || []).filter(function(b){ return b.id === id; })[0];
+          }).filter(Boolean);
+        }
+        return liste.map(function(b){
+          return { id:b.id, label:b.label || b.id, page:b.page || '',
+                   champs:(b.fields || []).length };
+        });
+      },
+
       // De quel module depend un ecran : c'est ce qui permet de repondre
       // « qui a acces a CET ecran-la » sans quitter l'ecran en question.
       moduleDe: function(cle){
