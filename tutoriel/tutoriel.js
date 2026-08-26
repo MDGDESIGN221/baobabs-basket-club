@@ -52,7 +52,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-e';
+  var VERSION = '26.08-f';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -1373,11 +1373,49 @@
   // C'est donc le narrateur qui monte. La decision se prend sur la
   // POSITION de la cible, pas sur le chevauchement constate : sinon il
   // ferait l'aller-retour a chaque pixel de defilement.
+  function chevauchent(a, b, marge) {
+    marge = marge || 0;
+    return !(a.right < b.left - marge || a.left > b.right + marge ||
+             a.bottom < b.top - marge || a.top > b.bottom + marge);
+  }
+
   function ecarterNarrateur(r) {
     var narr = $('bt-narr');
     if (!narr || narr.classList.contains('hide')) return;
-    var centre = r.top + r.height / 2;
-    narr.classList.toggle('haut', centre > window.innerHeight * 0.56);
+
+    // ON MESURE, ON NE SUPPOSE PAS.
+    //
+    // Premiere version : le narrateur montait des que la cible passait
+    // dans la moitie basse de l'ecran. Erreur -- ca ne regarde que la
+    // HAUTEUR. Une entree de menu est en bas A GAUCHE (x 30-340) ; le
+    // narrateur est centre (x 430-1370). Ils ne se chevauchent jamais,
+    // et pourtant il montait -- pour aller masquer le titre de l'ecran
+    // qu'on venait d'ouvrir.
+    //
+    // On place donc le narrateur en bas, on mesure sa boite reelle, et
+    // on ne le deplace QUE s'il couvre vraiment la cible. Et s'il la
+    // couvre aussi en haut, il redescend : il n'y a rien a gagner a
+    // bouger pour un chevauchement equivalent.
+    var etatAvant = narr.classList.contains('haut');
+    var trans = narr.style.transition;
+    narr.style.transition = 'none';          // la mesure ne doit pas s'animer
+
+    narr.classList.remove('haut');
+    var enBas = narr.getBoundingClientRect();
+    var geneEnBas = chevauchent(r, enBas, 10);
+
+    if (geneEnBas) {
+      narr.classList.add('haut');
+      var enHaut = narr.getBoundingClientRect();
+      if (chevauchent(r, enHaut, 10)) narr.classList.remove('haut');
+    }
+
+    // On ne rend la transition qu'apres coup, et seulement si la
+    // position a reellement change : sinon on animerait un sur-place.
+    var etatApres = narr.classList.contains('haut');
+    void narr.offsetWidth;
+    narr.style.transition = trans;
+    if (etatAvant === etatApres) return;
   }
 
   function poser(el) {
