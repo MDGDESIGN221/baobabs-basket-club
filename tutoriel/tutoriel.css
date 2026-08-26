@@ -198,6 +198,14 @@
 }
 #btut .bt-etat b{color:var(--bt-text)}
 #btut .bt-etat.alerte{border-color:rgba(232,169,60,.34);background:rgba(232,169,60,.08)}
+#btut .bt-etat-act{
+  display:inline-flex;align-items:center;gap:8px;margin-top:9px;
+  padding:9px 14px;border-radius:10px;border:1px solid var(--bt-edge);
+  background:var(--bt-soft);color:var(--bt-gold-br);font:700 12.5px var(--bt-ui);
+  transition:filter .15s,transform .12s
+}
+#btut .bt-etat-act:hover{filter:brightness(1.12)}
+#btut .bt-etat-act:active{transform:translateY(1px)}
 #btut .bt-etat code{font-family:ui-monospace,monospace;font-size:.9em;padding:1px 5px;
   border-radius:5px;background:var(--bt-soft);color:var(--bt-gold-br)}
 #btut .bt-oublier:hover{color:var(--bt-muted)}
@@ -347,9 +355,31 @@ section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
 }
 @media (prefers-reduced-motion:reduce){ section.bt-entre{animation:none} }
 
-/* Le texte du narrateur ne se remplace pas : il arrive. */
-#btut .bt-dit.neuf{animation:btDit .42s cubic-bezier(.2,.9,.3,1) both}
-@keyframes btDit{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+/* LA TRANSITION ENTRE DEUX ETAPES
+   Le texte se remplacait d'un coup : rien ne disait qu'on avait change
+   d'etape, seulement que les mots n'etaient plus les memes. Il monte
+   maintenant depuis le bas en se defloutant, et la ligne du dessus
+   (« ou l'on est ») glisse avec lui, avec un temps de retard. Deux
+   elements qui bougent ensemble mais pas en meme temps : c'est ce qui
+   fait lire un enchainement plutot qu'un remplacement. */
+#btut .bt-dit.neuf{animation:btDit .5s cubic-bezier(.2,.9,.3,1) both}
+@keyframes btDit{
+  0%  {opacity:0;transform:translateY(14px);filter:blur(3px)}
+  60% {opacity:1;filter:blur(0)}
+  100%{opacity:1;transform:none;filter:blur(0)}
+}
+#btut .bt-ou.neuf{animation:btOu .42s cubic-bezier(.2,.9,.3,1) both}
+@keyframes btOu{from{opacity:0;transform:translateX(-9px)}to{opacity:1;transform:none}}
+
+/* Un balayage bref sur la barre de progression a chaque etape : le
+   regard sait ou regarder quand quelque chose change. */
+#btut .bt-narr-j{position:relative;overflow:hidden}
+#btut .bt-narr-j::after{
+  content:'';position:absolute;inset:0;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,rgba(228,193,121,.75),transparent)
+}
+#btut .bt-narr-j.passe::after{animation:btBalai .7s ease-out 1}
+@keyframes btBalai{to{transform:translateX(100%)}}
 
 /* L'anneau de progression, dans la ligne du narrateur. */
 #btut .bt-anneau{width:19px;height:19px;flex:none;transform:rotate(-90deg)}
@@ -441,6 +471,38 @@ section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
   0%  {opacity:.9;transform:scale(.4)}
   100%{opacity:0;transform:scale(1.5)}
 }
+
+/* L'EXCEPTION EXPLICITE
+   « Mouvement reduit » est un reglage systeme : on le respecte par
+   defaut. Mais quand quelqu'un demande expressement a voir les
+   animations, sa demande passe avant celle de son systeme -- il sait ce
+   qu'il fait, et il vient de cliquer pour le dire.
+   La classe .anim est posee par l'interrupteur du sommaire. */
+#btut.anim .bt-doigt{
+  transition:top .9s cubic-bezier(.3,.82,.22,1),
+             left .9s cubic-bezier(.3,.82,.22,1),
+             opacity .28s ease, transform .34s ease !important
+}
+#btut.anim .bt-doigt.vole{transform:rotate(-14deg) scale(1.12) !important}
+#btut.anim .bt-doigt::before{display:block !important}
+#btut.anim .bt-doigt.pose::after{animation:btOnde .58s ease-out 1 !important}
+#btut.anim .bt-doigt.tape{animation:btTape .42s cubic-bezier(.3,1.5,.4,1) !important}
+#btut.anim .bt-doigt:not(.vole):not(.efface){animation:btFlot 2.6s ease-in-out infinite !important}
+#btut.anim .bt-clic.part{animation:btClic .62s cubic-bezier(.2,.8,.3,1) !important}
+#btut.anim .bt-spot{
+  transition:top .42s cubic-bezier(.32,.86,.3,1),left .42s cubic-bezier(.32,.86,.3,1),
+             width .42s cubic-bezier(.32,.86,.3,1),height .42s cubic-bezier(.32,.86,.3,1) !important
+}
+#btut.anim .bt-spot-svg rect{transition:stroke-dashoffset .62s cubic-bezier(.3,.9,.28,1) !important}
+#btut.anim .bt-spot.pose::after{animation:btPose .9s ease-out 1 !important}
+#btut.anim .bt-fil path{animation:btFil 22s linear infinite !important}
+#btut.anim .bt-clav{animation:btClavIn .3s cubic-bezier(.2,1.1,.3,1) both !important}
+#btut.anim .bt-carte-in{animation:btCarte .8s cubic-bezier(.2,.9,.25,1) both !important}
+#btut.anim .bt-carte.sort .bt-carte-in{animation:btCarteOut .45s ease-in both !important}
+#btut.anim .bt-dit.neuf{animation:btDit .5s cubic-bezier(.2,.9,.3,1) both !important}
+#btut.anim .bt-demo-pt{animation:btBat 1.5s ease-in-out infinite !important}
+#btut.anim .bt-narr-j i,#btut.anim .bt-jauge i,#btut.anim .bt-chap-j i{transition:width .5s cubic-bezier(.3,.9,.28,1) !important}
+html.bt-anim section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both !important}
 
 /* MOUVEMENT REDUIT : ON REDUIT, ON NE SUPPRIME PAS.
    Le deplacement de la main EST l'information -- sans lui on ne sait

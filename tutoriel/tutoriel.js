@@ -52,7 +52,8 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-c';
+  var VERSION = '26.08-d';
+  var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
   // Petits outils
@@ -85,7 +86,28 @@
       .replace(/✓/g, ' peut consulter et modifier ')
       .replace(/○/g, ' peut consulter seulement ')
       .replace(/·/g, ' ')
+
+      // LES SYMBOLES SE LISENT, ET MAL.
+      // « +1 / +2 / +3 » sortait en « plus un barre oblique plus deux
+      // barre oblique plus trois ». Les moteurs nomment tout ce qu'ils
+      // ne savent pas prononcer.
+      //
+      // La barre n'est traduite que lorsqu'elle SEPARE -- entourée
+      // d'espaces. Une barre collée appartient à une adresse
+      // (« /channel/ », « https://… ») : la remplacer casserait le mot.
+      .replace(/\s+\/\s+/g, ', ')
+      .replace(/\s*\|\s*/g, ', ')
+      .replace(/(\w)\s*\+\s*(\w)/g, '$1 plus $2')
+      // Et le « + » qui ouvre un groupe : apres la traduction des
+      // barres, « +2 » n'a plus de lettre devant lui et echappait a la
+      // regle precedente -- « plus 1, +2, +3 ».
+      .replace(/([\s(,])\+(\d)/g, '$1plus $2')
+      .replace(/(^|[\s(])[−–]\s*(\d)/g, '$1moins $2')
+      .replace(/\s*&\s*/g, ' et ')
+      .replace(/\s*=\s*/g, ' égale ')
+      .replace(/(\d)\s*%/g, '$1 pour cent')
       .replace(/…/g, '...')
+
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -825,22 +847,47 @@
   // deux ne se voit : un fichier reste en cache, ou « mouvement reduit »
   // active dans le systeme. On les affiche plutot que de les faire
   // deviner.
+  // L'INTERRUPTEUR DES ANIMATIONS
+  // Le reglage systeme est respecte par defaut. Mais quand quelqu'un
+  // clique pour dire « je veux les voir », sa demande passe avant celle
+  // de sa machine. La classe est posee sur la racine du tutoriel ET sur
+  // <html>, parce que l'ecran qui arrive est anime hors de #btut.
+  function reglerAnim(force) {
+    try { localStorage.setItem(CLE_ANIM, force ? '1' : '0'); } catch (e) {}
+    racine.classList.toggle('anim', !!force);
+    try { document.documentElement.classList.toggle('bt-anim', !!force); } catch (e) {}
+  }
+  function animForcee() {
+    try { return localStorage.getItem(CLE_ANIM) === '1'; } catch (e) { return false; }
+  }
+
   function rendreEtat() {
     var e = $('bt-etat'); if (!e) return;
     var reduit = false;
     try { reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (err) {}
 
-    if (reduit) {
+    var force = animForcee();
+    var bouton = '<button type="button" class="bt-etat-act" id="bt-anim-act">' +
+      (force ? 'Revenir au réglage de mon système' : 'Forcer les animations complètes') + '</button>';
+
+    if (reduit && !force) {
       e.className = 'bt-etat alerte';
-      e.innerHTML = '<b>Vos animations sont réduites par votre système.</b> La main se déplace quand même, ' +
-        'mais sans élan ni traînée. Pour tout voir&nbsp;: <b>Paramètres → Accessibilité → Effets visuels → ' +
-        'Effets d’animation</b>, puis rouvrez le navigateur. <span style="opacity:.6">Version ' + VERSION + '</span>';
+      e.innerHTML = '<b>Votre système demande des animations réduites</b> — c’est pour ça que rien ne semble ' +
+        'bouger. Le tutoriel le respecte. Vous pouvez passer outre ici, tout de suite&nbsp;:<br>' + bouton +
+        '<br><span style="opacity:.6">Version ' + VERSION + '</span>';
+    } else if (force) {
+      e.className = 'bt-etat';
+      e.innerHTML = 'Animations <b>forcées</b>, quel que soit le réglage de votre système.<br>' + bouton +
+        '<br><span style="opacity:.6">Version ' + VERSION + '</span>';
     } else {
       e.className = 'bt-etat';
       e.innerHTML = 'Animations <b>complètes</b>. Si vous ne voyez rien bouger, le navigateur garde une ' +
         'ancienne version&nbsp;: rechargez avec <code>Ctrl</code>&nbsp;+&nbsp;<code>Maj</code>&nbsp;+&nbsp;<code>R</code>. ' +
         '<span style="opacity:.6">Version ' + VERSION + '</span>';
     }
+
+    var b = $('bt-anim-act');
+    if (b) b.addEventListener('click', function () { reglerAnim(!animForcee()); rendreEtat(); });
   }
 
   function rendreSommaire() {
@@ -1101,9 +1148,16 @@
     // dans le code source de l'admin, et portent des <b> et des <code>
     // qui font partie de l'explication. Aucune saisie d'utilisateur
     // n'entre jamais ici.
+    ou.classList.remove('neuf'); void ou.offsetWidth; ou.classList.add('neuf');
+
     var dit = $('bt-dit');
     dit.innerHTML = e.html || '';
     dit.classList.remove('neuf'); void dit.offsetWidth; dit.classList.add('neuf');
+
+    // Le balayage de la barre : un signal bref qui dit « on avance »,
+    // la ou le regard est deja pose.
+    var barre = $('bt-narr-j') && $('bt-narr-j').parentElement;
+    if (barre) { barre.classList.remove('passe'); void barre.offsetWidth; barre.classList.add('passe'); }
     if (e.tableau) rendreTableauRoles(dit);
 
     $('bt-narr-j').style.width = Math.round((i + 1) / etapes.length * 100) + '%';
@@ -1578,6 +1632,7 @@
       try { voixOn = localStorage.getItem(CLE_VOIX) === '1'; } catch (e) { voixOn = false; }
       preparerVoix();
       reglerVoix(voixOn);
+      reglerAnim(animForcee());
       brancher();
     },
     // Deux entrees, deux intentions. Avec un ecran : « je suis ici,
