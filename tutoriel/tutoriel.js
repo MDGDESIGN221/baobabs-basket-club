@@ -38,7 +38,15 @@
   var demoPhoto = {};       // valeurs d'origine des champs touches
   var frappe = null;        // minuteur de la frappe lettre par lettre
   var clicsSurveilles = false;
+  var META_SPECIAL = {
+    _connexion: 'De l’adresse du site à votre tableau de bord · ~2 min',
+    _entete:    'Les commandes qui vous suivent partout · ~1 min',
+    _roles:     'Qui fait quoi, et qui ne peut pas quoi · ~2 min',
+    _studio:    'Composer une affiche, et l’exporter · ~3 min',
+    _pratique:  'Deux exercices — rien ne s’enregistre · ~2 min'
+  };
   var surcouche = null;     // '_connexion' | '_studio' | null
+  var atelierOuvert = false;  // dans le Studio : accueil, ou plan de travail ?
   // LE JETON D'ETAPE. Sans lui, avancer a la main accelere la visite --
   // voir montrer(). Chaque etape prend un numero ; tout ce qui etait en
   // vol pour une etape plus ancienne se tait en le comparant.
@@ -53,7 +61,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-l';
+  var VERSION = '26.08-m';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -590,22 +598,41 @@
   }
 
   // ============ LE STUDIO ============
-  // LE STUDIO S'OUVRE SUR SES PROJETS, PAS SUR L'ATELIER.
+  // LE STUDIO SE MONTRE, IL NE SE RACONTE PAS.
   //
-  // Je designais #bs-format, #bs-rail, #bs-canvas -- qui vivent tous
-  // dans #bs-app, cache tant qu'aucun projet n'est ouvert. Le chapitre
-  // pointait donc le vide et « se limitait a l'accueil » : exactement ce
-  // qui a ete constate.
+  // J'avais fini par DECRIRE l'atelier faute de pouvoir l'ouvrir. C'est
+  // exactement le defaut signale : « le narrateur dit des choses qu'on ne
+  // voit pas illustrer ». Un chapitre qui decrit ce qu'il pourrait
+  // designer est un chapitre rate.
   //
-  // On ne promet plus que ce qui est la. L'atelier est decrit, pas
-  // designe -- et le tutoriel dit franchement pourquoi il n'y emmene
-  // pas : ouvrir un projet a la place de quelqu'un, c'est toucher a son
-  // travail.
+  // Le tutoriel ouvre donc un vrai plan de travail, monte en memoire a
+  // partir d'un modele : project.id nul, jamais enregistre, aucune
+  // donnee du club touchee. Enregistrer, Exporter et Publier sont
+  // DESIGNES, jamais cliques.
   var STUDIO_ACCUEIL = [
-    { c: '#bs-home-nav',   d: 'À gauche, les <b>formats</b>&nbsp;: story, post carré, bannière. Le format décide de tout le reste — on le choisit avant de composer, pas après.' },
-    { c: '#bs-home-main',  d: 'Au centre, <b>vos projets</b>. Chaque affiche déjà composée se retrouve ici — on la rouvre, on la duplique, on repart de la dernière. C’est aussi d’ici qu’on en crée une nouvelle.' },
-    { c: '#bs-home-tip',   d: 'Et un rappel de ce que fait l’atelier. <b>Le Studio ne touche à aucune donnée du club</b>&nbsp;: il fabrique des images, rien d’autre.' },
-    { c: '#bs-home-close', d: 'On referme par ici. L’administration est restée derrière, intacte.' }
+    { c: '#bs-home-nav',  d: 'À gauche, la navigation de l’atelier&nbsp;: <b>Accueil</b>, <b>Nouveau</b> pour partir d’un format vierge, <b>Modèles</b> pour les maquettes déjà composées, et <b>Travaux récents</b> — vos affiches en cours.' },
+    { c: '#bs-home-main', d: 'Au centre, par quoi commencer. D’abord les <b>formats</b> — affiche 3:4, story, post carré, bannière du site — puis les <b>modèles en vedette</b>, des maquettes de match day qu’il n’y a plus qu’à remplir.' },
+    { c: '#bs-home-tip',  d: 'Et le point à retenir&nbsp;: les <b>objets dynamiques</b>. Un calque marqué d’un éclair se remplit tout seul avec les données du club — l’adversaire, la date, le score. On ne les recopie jamais à la main.' }
+  ];
+
+  // PAS D'ETAPE SUR #bs-format : @media (max-width:1080px) masque
+  // .bs-inline-field, donc le selecteur de format n'est pas a l'ecran sur
+  // un portable. Le narrateur aurait parle dans le vide -- le defaut meme
+  // qu'on corrige ici. Les formats sont enseignes a l'accueil, ou ils
+  // occupent toute la colonne centrale.
+  var STUDIO_ATELIER = [
+    { c: '#bs-canvas',     d: 'Voilà un <b>plan de travail</b>. C’est la surface qu’on compose, aux dimensions exactes du format choisi&nbsp;: ce qu’on voit ici est ce qui sortira. Celui-ci part du modèle <b>Duel</b>.' },
+    { c: '#bs-proj-name',  d: 'En haut, le <b>nom du projet</b>. La pastille juste à côté s’allume dès qu’une modification n’est pas enregistrée — tant qu’elle est là, le travail n’existe que dans cette page.' },
+    { c: '#bs-rail',       d: 'La <b>colonne d’outils</b>&nbsp;: modèles, images, photos, éléments, texte, styles, projets. Et <b>Données</b>, qui va chercher le prochain match dans l’administration pour remplir l’affiche toute seule.' },
+    { c: '#bs-props',      d: 'À droite, les <b>propriétés</b>. Tant que rien n’est sélectionné, ce sont celles de l’affiche — son format, ses dimensions. Dès qu’on choisit un élément, le panneau devient le sien.' },
+    { c: '#bs-layer-list', d: 'En dessous, les <b>calques</b>&nbsp;: nom de l’adversaire, logo, date, salle, titre… Chaque morceau de l’affiche est une ligne, et l’ordre de cette liste décide de ce qui passe devant.' },
+    { c: '#bs-undo',       d: '<b>Annuler</b>, et sa jumelle pour refaire. Rien n’est définitif tant qu’on n’a pas enregistré&nbsp;: on peut essayer sans rien risquer.' },
+    { c: '#bs-zoom-fit',   d: 'Le <b>zoom</b>, et ce bouton qui remet l’affiche entière à l’écran. Il sert plus souvent qu’on ne croit, quand on s’est perdu dans un détail.' },
+    { c: '#bs-saveinfo',   d: 'Ici se lit l’état du projet. Il indique en ce moment <b>« Démonstration — jamais enregistré »</b>&nbsp;: ce plan de travail a été monté pour le tutoriel, il n’ira nulle part.' },
+    { c: '#bs-save',       d: '<b>Enregistrer</b> range le projet parmi vos <b>Travaux récents</b>, ceux de l’écran d’accueil. C’est ce qui permet de le rouvrir demain.' },
+    { c: '#bs-export',     d: '<b>Exporter</b> produit l’image&nbsp;: un fichier qui descend dans vos téléchargements. C’est ce fichier-là qu’on envoie sur les réseaux.' },
+    { c: '#bs-publish',    d: '<b>Publier</b> va plus loin&nbsp;: l’affiche part sur le site du club, visible de tous. À manier comme une publication d’actualité — une fois en ligne, elle est en ligne.' },
+    { c: '#bs-close',      d: 'Et on referme. L’administration est restée derrière, intacte&nbsp;: le Studio ne l’a pas remplacée, il s’est simplement posé par-dessus.' }
   ];
 
   function etapesStudio() {
@@ -613,18 +640,20 @@
     var out = [{
       special: true, nom: E, studio: true,
       html: 'Le <b>Studio</b> compose les affiches du club — annonce de match, résultat, portrait de joueuse. ' +
-            'C’est un atelier à part, qui s’ouvre par-dessus l’administration. On va l’ouvrir.'
+            'C’est un atelier à part, qui s’ouvre par-dessus l’administration. Il <b>lit</b> les données du club ' +
+            'pour remplir les affiches, mais n’en modifie aucune. On l’ouvre.'
     }];
     STUDIO_ACCUEIL.forEach(function (e) {
       out.push({ special: true, nom: E, studio: true, cible: e.c, html: e.d });
     });
     out.push({
-      special: true, nom: E, studio: true, cible: '#bs-home-main',
-      html: 'En <b>ouvrant un projet</b>, l’atelier apparaît&nbsp;: la colonne d’outils à gauche, le plan de ' +
-            'travail au centre, et en haut <b>Annuler</b>, <b>Enregistrer</b> et <b>Exporter</b>. Enregistrer ' +
-            'garde le projet&nbsp;; exporter produit l’image à partager — c’est ce fichier-là qui part sur les ' +
-            'réseaux. <span style="opacity:.75">Je ne vous y emmène pas&nbsp;: ouvrir un projet à votre place, ' +
-            'ce serait toucher à votre travail.</span>'
+      special: true, nom: E, studio: true, atelier: true,
+      html: 'Plutôt que de vous le décrire, <b>on ouvre un plan de travail</b>. Celui-ci est monté pour la ' +
+            'démonstration&nbsp;: il n’est enregistré nulle part, et rien de ce qu’on va voir ne partira sur le site. ' +
+            '<span style="opacity:.75">Enregistrer, Exporter et Publier seront montrés, jamais cliqués.</span>'
+    });
+    STUDIO_ATELIER.forEach(function (e) {
+      out.push({ special: true, nom: E, studio: true, atelier: true, cible: e.c, html: e.d });
     });
     return out;
   }
@@ -1381,9 +1410,16 @@
         // plus au chiffre.
         ((api.blocs && api.blocs(e.cle)) || []).forEach(function () { m += 22; });
       });
-      var meta = c.cle === '_entete' ? 'Les commandes qui vous suivent partout · ~1 min'
-        : c.special ? 'Qui fait quoi, et qui ne peut pas quoi · ~2 min'
-        : n + ' écran' + (n > 1 ? 's' : '') + ' · ~' + minutes(m) + ' min';
+      // UN RESUME PAR CHAPITRE, PAS UN POUR TOUS.
+      //
+      // Le test etait 'c.special ?' : les QUATRE chapitres speciaux
+      // heritaient donc du resume des roles. La table des matieres
+      // annoncait « Qui fait quoi, et qui ne peut pas quoi » devant
+      // « Arriver et se connecter », devant « Le Studio » et devant
+      // « A vous ». Un sommaire qui ment sur trois lignes sur quatre.
+      var meta = META_SPECIAL[c.cle]
+        || (c.special ? 'Un passage a part · ~2 min'
+                      : n + ' écran' + (n > 1 ? 's' : '') + ' · ~' + minutes(m) + ' min');
 
       return '<div class="bt-chap' + (fait ? ' fait' : '') + '">' +
         '<button type="button" class="bt-chap-h" data-chap="' + c.cle + '">' +
@@ -1471,6 +1507,30 @@
     var out = [];
     c.ecrans.forEach(function (e) { out = out.concat(etapesEcran(e)); });
     return out;
+  }
+
+  // UNE CIBLE PEUT N'EXISTER QU'UN INSTANT PLUS TARD.
+  //
+  // montrer() la cherchait une seule fois, dans la foulee. Or le Studio
+  // se telecharge au premier clic : quand la premiere etape du chapitre
+  // demandait #bs-home-nav, /studio/studio.html n'etait pas encore
+  // arrive. Aucune erreur, aucun halo -- le narrateur parlait de choses
+  // qu'on ne voyait pas. C'est ce qui a ete signale.
+  //
+  // getClientRects() reste le test : il ecarte les elements caches, donc
+  // une cible qui existe dans un ecran masque ne fait pas poser la main
+  // a 0,0. Le jeton garantit qu'une etape depassee n'ira jamais poser la
+  // sienne. Au bout de 2,5 s on renonce, comme avant.
+  function designerQuandPret(sel, g, e) {
+    var fin = Date.now() + 2500;
+    (function essai() {
+      if (g !== jeton || etapes[idx] !== e) return;
+      var el = null;
+      try { el = document.querySelector(sel); } catch (err) { el = null; }
+      if (el && el.getClientRects().length) { designer(el); return; }
+      if (Date.now() < fin) { setTimeout(essai, 90); return; }
+      retirerHalo();
+    })();
   }
 
   function montrer(i) {
@@ -1561,12 +1621,7 @@
     if (e.halo && e.ecran) {
       poserHalo(e.ecran);                       // « voila ou on clique »
     } else if (e.cible) {
-      // On cherche la cible DANS l'ecran courant : deux ecrans peuvent
-      // porter le meme identifiant de champ, et pointer celui d'un
-      // ecran masque poserait la main a 0,0.
-      var el = null;
-      try { el = document.querySelector(e.cible); } catch (err) { el = null; }
-      if (el && el.getClientRects().length) designer(el); else retirerHalo();
+      designerQuandPret(e.cible, g, e);
     } else {
       retirerHalo();
     }
@@ -2040,16 +2095,44 @@
 
   function gererSurcouche(e) {
     var veut = e.connexion ? '_connexion' : (e.studio ? '_studio' : null);
-    if (surcouche === veut) return;
-    fermerSurcouche();
-    if (veut === '_connexion' && api.connexion) { api.connexion.montrer(); surcouche = '_connexion'; }
-    if (veut === '_studio' && api.studio) { api.studio.ouvrir(); surcouche = '_studio'; }
+
+    // LE RETOUR ANTICIPE NE COUVRE QUE L'OUVERTURE, PAS LA SUITE.
+    //
+    // Il etait en tete de fonction : des la deuxieme etape du chapitre,
+    // surcouche valait deja '_studio' et gererSurcouche ressortait
+    // aussitot. Le bloc qui ouvre le plan de travail, place plus bas,
+    // n'etait donc JAMAIS atteint -- le Studio restait sur son accueil
+    // pendant que le narrateur decrivait la colonne d'outils. Constate
+    // au banc : 13 etapes sans le moindre halo.
+    if (surcouche !== veut) {
+      fermerSurcouche();
+      if (veut === '_connexion' && api.connexion) { api.connexion.montrer(); surcouche = '_connexion'; }
+      if (veut === '_studio' && api.studio) { api.studio.ouvrir(); surcouche = '_studio'; }
+    }
+
+    // LE STUDIO A DEUX DECORS, ET LES CIBLES DE L'UN N'EXISTENT PAS
+    // DANS L'AUTRE.
+    //
+    // L'accueil montre les projets ; l'atelier montre le plan de
+    // travail. #bs-format, #bs-rail, #bs-canvas vivent dans #bs-app,
+    // cache tant qu'aucun projet n'est ouvert -- les designer depuis
+    // l'accueil pointait le vide. On ouvre donc vraiment un plan de
+    // travail, monte en memoire et jamais enregistre.
+    if (surcouche === '_studio' && api.studio) {
+      if (e.atelier && !atelierOuvert) {
+        if (api.studio.atelier) { api.studio.atelier(); atelierOuvert = true; }
+      } else if (!e.atelier && atelierOuvert) {
+        if (api.studio.accueil) api.studio.accueil();
+        atelierOuvert = false;
+      }
+    }
   }
 
   function fermerSurcouche() {
     if (surcouche === '_connexion' && api.connexion) api.connexion.cacher();
     if (surcouche === '_studio' && api.studio) api.studio.fermer();
     surcouche = null;
+    atelierOuvert = false;
   }
 
   function suivant() {

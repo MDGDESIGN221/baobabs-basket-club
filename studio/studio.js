@@ -11564,6 +11564,35 @@ window.BaobabsStudio = (function () {
     loadDocument: function (d) { if (d && d.layers) { doc = clone(d); sel = []; syncFormatSelect(); prewarmImages(); fitView(); refreshAll(); } },
     exportBlob: function (scale) { return exportBlob(scale || 2, 'image/png'); },
     home: function () { if (mounted) showHome(); },
+
+    /* UN PLAN DE TRAVAIL DE DEMONSTRATION, POUR LE TUTORIEL.
+
+       Meme corps que newProjectDirect() : le document est monte EN
+       MEMOIRE a partir d un modele, project.id reste nul, markDirty(false).
+       Rien ne part en base -- seul un clic sur Enregistrer ecrirait, et le
+       tutoriel ne clique jamais dessus. enterWorkspace() fait ensuite
+       apparaitre l atelier, sans quoi #bs-rail et #bs-canvas restent dans
+       #bs-app cache et le tutoriel pointe le vide.
+
+       Refus net si un projet en cours a des modifications non
+       enregistrees : on ne remplace pas le travail de quelqu un pour
+       faire une demonstration. */
+    demoAtelier: function () {
+      if (!mounted || dirty) return false;
+      doc = newDoc('affiche', 'nuit');
+      applyTemplateInto(doc, 'md-duel-maquette');
+      project.id = null; project.isTemplate = false;
+      sel = []; hist.undo.length = 0; hist.redo.length = 0; hist.pre = null;
+      els.projName.value = doc.name;
+      syncFormatSelect();
+      applyBindings();
+      markDirty(false);
+      els.saveInfo.textContent = 'Démonstration — jamais enregistré';
+      renderPanel();
+      enterWorkspace();
+      return true;
+    },
+    estAtelier: function () { return mounted && !atHome; },
     version: VERSION
   };
 })();

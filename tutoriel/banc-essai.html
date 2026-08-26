@@ -89,6 +89,10 @@
   <h1>Banc d'essai du tutoriel</h1>
   <div class="barre">
     <button id="ouvrir">Ouvrir le tutoriel</button>
+    <!-- Le chapitre du Studio ne s'ajoute au plan que si ce bouton existe :
+         c'est ainsi que l'admin le masque aux roles qui n'y ont pas droit.
+         Sans lui, le banc ne voyait tout simplement pas ce chapitre. -->
+    <button id="studio-open" type="button">Ouvrir le Studio</button>
     <select id="role">
       <option value="super_admin">Administration (voit tout)</option>
       <option value="president">Présidence</option>
@@ -203,6 +207,48 @@
     b.addEventListener('click', function(){ aller(b.getAttribute('data-section')); });
   });
 
+  // LE STUDIO, POUR DE VRAI.
+  //
+  // Le banc n'en avait AUCUNE simulation : api.studio etait absent, le
+  // chapitre le traversait sans rien ouvrir, et la marche de bout en bout
+  // le declarait vert. C'est ainsi qu'un chapitre entier a pu rester
+  // casse sans que rien ne le signale -- « 0 anomalie sur 274 etapes »
+  // ne disait tout simplement rien du Studio.
+  //
+  // On charge donc le vrai /studio/*, avec sa feuille de style et son
+  // script. Le banc verifie ainsi les selecteurs reels, leur visibilite
+  // reelle, et la vraie bascule accueil -> plan de travail.
+  var bsPret = null;
+  function bsCharger(){
+    if (bsPret) return bsPret;
+    bsPret = fetch('../studio/studio.html', {cache:'no-cache'})
+      .then(function(r){ if (!r.ok) throw new Error('studio.html : ' + r.status); return r.text(); })
+      .then(function(html){
+        var l = document.createElement('link');
+        l.rel = 'stylesheet'; l.href = '../studio/studio.css';
+        document.head.appendChild(l);
+        var h = document.createElement('div');
+        h.innerHTML = html;
+        var el = h.querySelector('#bstudio');
+        // Hors de tout ancetre en display:none, sinon position:fixed
+        // ouvre a 0x0 sans la moindre erreur.
+        if (el) document.body.appendChild(el);
+        return new Promise(function(res, rej){
+          var s = document.createElement('script');
+          s.src = '../studio/studio.js';
+          s.onload = function(){ window.BaobabsStudio ? res() : rej(new Error('BaobabsStudio absent')); };
+          s.onerror = function(){ rej(new Error('studio.js illisible')); };
+          document.head.appendChild(s);
+        });
+      })
+      .then(function(){
+        // API d'hote vide : le Studio sait s'en passer. Il previent
+        // seulement que les projets ne survivront pas au rechargement.
+        window.BaobabsStudio.mount(document.getElementById('bstudio'), {});
+      });
+    return bsPret;
+  }
+
   function api(){
     // Des accesseurs, pas des valeurs : le banc laisse changer de role
     // apres le montage, ce que l'admin ne fait jamais. Sans ca, le
@@ -233,7 +279,36 @@
       aller: aller,
       ecranCourant: function(){ return courant; },
       matrice: function(){ return Promise.resolve(PERMS); },
-      ouvrirMenu: function(){}, fermerMenu: function(){}
+      ouvrirMenu: function(){}, fermerMenu: function(){},
+
+      // Mot pour mot ce que l'admin expose : le banc doit eprouver le
+      // MEME chemin, sinon il valide une mecanique qui n'existe qu'ici.
+      studio: {
+        ouvrir: function(){
+          bsCharger().then(function(){ window.BaobabsStudio.open(); })
+                     .catch(function(e){ console.error('[banc/studio]', e); });
+        },
+        fermer: function(){
+          try { if (window.BaobabsStudio && window.BaobabsStudio.isOpen()) window.BaobabsStudio.close(); }
+          catch(e){}
+        },
+        estOuvert: function(){
+          try { return !!(window.BaobabsStudio && window.BaobabsStudio.isOpen()); }
+          catch(e){ return false; }
+        },
+        atelier: function(){
+          var fin = Date.now() + 5000;
+          (function essai(){
+            var S = window.BaobabsStudio;
+            if (S && S.isOpen && S.isOpen() && S.demoAtelier) { S.demoAtelier(); return; }
+            if (Date.now() < fin) setTimeout(essai, 100);
+          })();
+        },
+        accueil: function(){
+          try { if (window.BaobabsStudio && window.BaobabsStudio.home) window.BaobabsStudio.home(); }
+          catch(e){}
+        }
+      }
     };
   }
 

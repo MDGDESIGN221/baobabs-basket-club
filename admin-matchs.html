@@ -4226,6 +4226,23 @@
         estOuvert: function(){
           try { return !!(window.BaobabsStudio && window.BaobabsStudio.isOpen()); }
           catch(e){ return false; }
+        },
+        // studioOuvrir() TELECHARGE /studio/* au premier appel. Demander
+        // l'atelier dans la foulee revenait a le demander a un Studio qui
+        // n'existait pas encore : aucune erreur, aucun atelier, et le
+        // tutoriel parlait d'un plan de travail qu'on ne voyait pas.
+        // On attend donc qu'il soit monte ET ouvert.
+        atelier: function(){
+          var fin = Date.now() + 5000;
+          (function essai(){
+            var S = window.BaobabsStudio;
+            if (S && S.isOpen && S.isOpen() && S.demoAtelier) { S.demoAtelier(); return; }
+            if (Date.now() < fin) setTimeout(essai, 100);
+          })();
+        },
+        accueil: function(){
+          try { if (window.BaobabsStudio && window.BaobabsStudio.home) window.BaobabsStudio.home(); }
+          catch(e){}
         }
       },
 
