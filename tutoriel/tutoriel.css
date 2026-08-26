@@ -107,15 +107,19 @@
    et chaque enfant occupe sa propre ligne quoi qu'il arrive. */
 #btut .bt-chaps{display:grid;gap:10px}
 #btut .bt-chap{
-  width:100%;text-align:left;padding:16px 18px;border-radius:14px;
+  padding:14px 16px 13px;border-radius:14px;
   border:1px solid var(--bt-line);background:var(--bt-surf);
-  display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:start;
-  transition:border-color .18s,background .18s,transform .14s,box-shadow .18s
+  transition:border-color .18s,background .18s
 }
-#btut .bt-chap:hover{border-color:var(--bt-edge);background:var(--bt-surf2);
-  transform:translateY(-1px);box-shadow:0 10px 26px -14px rgba(0,0,0,.7)}
-#btut .bt-chap:active{transform:translateY(0)}
+#btut .bt-chap:hover{border-color:var(--bt-edge);background:var(--bt-surf2)}
 #btut .bt-chap.fait{border-color:rgba(147,206,67,.26)}
+/* L'en-tete lance le chapitre entier ; les pastilles en dessous ouvrent
+   un ecran precis. Deux boutons distincts, pas un bouton dans un bouton. */
+#btut .bt-chap-h{
+  width:100%;text-align:left;display:grid;grid-template-columns:auto 1fr auto;
+  gap:13px;align-items:center;transition:transform .14s
+}
+#btut .bt-chap-h:active{transform:translateY(1px)}
 
 #btut .bt-chap-n{
   flex:none;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
@@ -134,16 +138,24 @@
 
 /* Les pastilles ne s'empilent plus a l'infini : au-dela de quatre, on
    compte le reste. Neuf pastilles sur trois lignes noyaient le titre. */
-#btut .bt-chap-e{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+/* Les pastilles sont l'acces direct : « 5.2 Stock » s'ouvre sans passer
+   par 5.1. Elles portent donc le numero du menu, celui qu'on a sous les
+   yeux toute la journee. */
+#btut .bt-chap-e{display:flex;flex-wrap:wrap;gap:5px;margin:11px 0 0;padding-left:47px}
 #btut .bt-puce{
-  font-size:11.5px;padding:3px 9px;border-radius:99px;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11.5px;padding:5px 10px;border-radius:99px;white-space:nowrap;
   border:1px solid var(--bt-line2);color:var(--bt-muted);
-  max-width:16ch;overflow:hidden;text-overflow:ellipsis
+  max-width:22ch;overflow:hidden;text-overflow:ellipsis;
+  transition:border-color .15s,color .15s,background .15s,transform .12s
 }
+#btut .bt-puce:hover{border-color:var(--bt-edge);color:var(--bt-gold-br);background:var(--bt-soft)}
+#btut .bt-puce:active{transform:translateY(1px)}
+#btut .bt-puce i{font-style:normal;font-weight:800;font-size:9.5px;opacity:.6;letter-spacing:.02em}
 #btut .bt-puce.vu{border-color:rgba(147,206,67,.3);color:var(--bt-ok)}
-#btut .bt-puce.reste{border-style:dashed;color:var(--bt-faint)}
+#btut .bt-puce.vu i{opacity:.75}
 
-#btut .bt-chap-j{height:3px;border-radius:99px;background:var(--bt-line);overflow:hidden;margin-top:6px}
+#btut .bt-chap-j{height:3px;border-radius:99px;background:var(--bt-line);overflow:hidden;margin:11px 0 0 47px}
 #btut .bt-chap-j i{display:block;height:100%;background:var(--bt-ok);border-radius:99px;transition:width .5s cubic-bezier(.3,.9,.28,1)}
 
 /* Le chevron : il dit que la carte s'ouvre, ce qu'un rectangle ne dit
@@ -340,6 +352,26 @@ section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
 #btut .bt-doigt.hide{display:none}
 #btut .bt-doigt svg{width:100%;height:100%;display:block;fill:var(--bt-gold-br);stroke:#1A1206;stroke-width:1.1}
 
+/* LE CLIC. La main ne se contente plus de designer : elle appuie, et
+   une onde part du point touche. Sans ce geste, « on clique ici » reste
+   une phrase ; avec lui, on a vu le clic. */
+#btut .bt-doigt.tape{animation:btTape .42s cubic-bezier(.3,1.5,.4,1)}
+@keyframes btTape{
+  0%,100%{transform:none}
+  32%    {transform:translate(2px,3px) scale(.84)}
+  55%    {transform:translate(1px,1px) scale(1.04)}
+}
+#btut .bt-clic{
+  position:fixed;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;
+  pointer-events:none;border:2px solid var(--bt-gold-br);opacity:0;z-index:4
+}
+#btut .bt-clic.part{animation:btClic .62s cubic-bezier(.2,.8,.3,1)}
+@keyframes btClic{
+  0%  {opacity:.95;transform:scale(.3)}
+  70% {opacity:.45}
+  100%{opacity:0;transform:scale(4.6)}
+}
+
 /* L'arrivée : une onde brève, une seule fois. Une pulsation en boucle
    attire l'œil en permanence et empêche de lire le texte. */
 #btut .bt-doigt::after{
@@ -354,7 +386,7 @@ section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
 
 @media (prefers-reduced-motion:reduce){
   #btut .bt-doigt{transition:none}
-  #btut .bt-doigt.pose::after{animation:none}
+  #btut .bt-doigt.pose::after,#btut .bt-doigt.tape,#btut .bt-clic.part{animation:none}
 }
 
 /* ---------------------------------------------------------------------

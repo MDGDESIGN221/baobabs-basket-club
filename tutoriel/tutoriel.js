@@ -363,6 +363,29 @@
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  // CE QU'UNE DEMONSTRATION FAIT VRAIMENT — trois cas, pas deux.
+  // Annoncer « sans rien toucher » sur un ecran ou l'on ouvre un dossier
+  // est aussi faux qu'annoncer une saisie la ou il n'y en a pas. Une
+  // seule fonction, pour que le choix propose et le bandeau affiche
+  // exactement la meme chose.
+  function natureDemo(ecran) {
+    var gestes = (api.demos && api.demos[ecran]) || [];
+    var saisit = gestes.some(function (g) { return g.geste === 'saisir' || g.geste === 'choisir'; });
+    var clique = gestes.some(function (g) { return g.geste === 'cliquer'; });
+    if (saisit) return {
+      court: 'les champs se remplissent, rien n’est enregistré',
+      long: 'les champs se remplissent sous vos yeux, <b>rien n’est enregistré</b>'
+    };
+    if (clique) return {
+      court: 'on ouvre et on montre, rien n’est modifié',
+      long: 'on ouvre et on montre — <b>rien n’est modifié</b>'
+    };
+    return {
+      court: 'on vous montre où, sans rien toucher',
+      long: 'on vous montre <b>où</b>, sans rien toucher'
+    };
+  }
+
   function demoDebut(ecran) {
     if (demoEcran === ecran) return;
     demoFin();
@@ -376,12 +399,8 @@
     // les ecrans -- y compris Soir de match, dont les quatre gestes sont
     // en designation seule. On y voyait donc une promesse de saisie, et
     // rien ne se remplissait : on croit que c'est casse.
-    var gestes = (api.demos && api.demos[ecran]) || [];
-    var saisit = gestes.some(function (g) { return g.geste === 'saisir' || g.geste === 'choisir'; });
     var t = $('bt-demo-txt');
-    if (t) t.innerHTML = saisit
-      ? 'Démonstration — les champs se remplissent sous vos yeux, <b>rien n’est enregistré</b>'
-      : 'Démonstration — on vous montre <b>où</b>, sans rien toucher';
+    if (t) t.innerHTML = 'Démonstration — ' + natureDemo(ecran).long;
   }
 
   function demoPhotographier(el, sel) {
@@ -429,12 +448,43 @@
     }, 62);
   }
 
+  // LA MAIN QUI APPUIE. Elle designait ; elle agit maintenant.
+  function doigtTape(el) {
+    var d = $('bt-doigt'), o = $('bt-clic');
+    if (d && !d.classList.contains('hide')) {
+      d.classList.remove('tape'); void d.offsetWidth; d.classList.add('tape');
+    }
+    if (o && el) {
+      var r = el.getBoundingClientRect();
+      o.style.left = (r.left + Math.min(r.width * 0.42, 46)) + 'px';
+      o.style.top = (r.top + Math.min(r.height * 0.55, 30)) + 'px';
+      o.classList.remove('part'); void o.offsetWidth; o.classList.add('part');
+    }
+  }
+
   function jouerGeste(g, el, sansAnimation) {
     if (!el) return;
-    if (g.geste === 'montrer') return;         // la main désigne, on ne touche à rien
+    if (g.geste === 'montrer') {
+      // On ne touche a rien -- mais si la chose designee est un bouton,
+      // la main fait le geste. « Coup de sifflet final, c'est ici » se
+      // comprend mieux quand on voit ou l'on appuierait.
+      if (!sansAnimation && el && /^(BUTTON|A)$/.test(el.tagName)) setTimeout(function(){ doigtTape(el); }, 380);
+      return;
+    }
     demoPhotographier(el, g.cible);
-    if (g.geste === 'choisir') { el.value = g.valeur; feu(el); return; }
-    if (g.geste === 'cliquer') { el.click(); return; }
+    if (g.geste === 'choisir') {
+      if (!sansAnimation) doigtTape(el);
+      el.value = g.valeur; feu(el); return;
+    }
+    if (g.geste === 'cliquer') {
+      // Le clic se VOIT avant de se produire : la main appuie, l'onde
+      // part du point touche, et l'effet suit. Sans ce decalage, l'ecran
+      // change avant qu'on ait compris ou l'on avait clique.
+      if (sansAnimation) { el.click(); return; }
+      doigtTape(el);
+      setTimeout(function () { try { el.click(); } catch (e) {} }, 210);
+      return;
+    }
     if (g.geste === 'saisir') {
       if (sansAnimation) { el.value = g.valeur; feu(el); return; }
       taper(el, g.valeur);
@@ -505,16 +555,11 @@
       s: aides.length + ' point' + (aides.length > 1 ? 's' : '') + ' — sur place, sans quitter l’écran'
     });
 
-    if (gestes.length) {
-      var saisit = gestes.some(function (g) { return g.geste === 'saisir' || g.geste === 'choisir'; });
-      choix.push({
-        k: 'montrer', ico: 'M8 5v14l11-7z',
-        t: 'Me montrer comment faire',
-        s: gestes.length + ' geste' + (gestes.length > 1 ? 's' : '') +
-           (saisit ? ' — les champs se remplissent, rien n’est enregistré'
-                   : ' — on vous montre où, sans rien toucher')
-      });
-    }
+    if (gestes.length) choix.push({
+      k: 'montrer', ico: 'M8 5v14l11-7z',
+      t: 'Me montrer comment faire',
+      s: gestes.length + ' geste' + (gestes.length > 1 ? 's' : '') + ' — ' + natureDemo(cle).court
+    });
 
     if (api.moduleDe && api.moduleDe(cle)) choix.push({
       k: 'acces', ico: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
@@ -679,6 +724,9 @@
       rep.classList.add('hide');
     }
 
+    // La carte n'est plus UN bouton : c'est un en-tete qui lance le
+    // chapitre, et une liste d'ecrans qu'on peut ouvrir directement.
+    // « Aller voir 5.2 Stock » ne doit pas obliger a traverser 5.1.
     $('bt-chaps').innerHTML = plan.map(function (c, i) {
       var n = c.ecrans.length;
       var vus = c.ecrans.filter(function (e) { return progres.vus[e.cle]; }).length;
@@ -692,22 +740,36 @@
         ? 'Qui fait quoi, et qui ne peut pas quoi · ~2 min'
         : n + ' écran' + (n > 1 ? 's' : '') + ' · ~' + minutes(m) + ' min';
 
-      return '<button type="button" class="bt-chap' + (fait ? ' fait' : '') + '" data-chap="' + c.cle + '">' +
-        '<span class="bt-chap-n">' + (fait
-          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>'
-          : (i + 1)) + '</span>' +
-        '<span class="bt-chap-c">' +
-          '<span class="bt-chap-t">' + echapper(c.titre) + '</span>' +
-          '<span class="bt-chap-m">' + meta + '</span>' +
-          (n ? '<span class="bt-chap-e">' + c.ecrans.slice(0, 4).map(function (e) {
-            return '<span class="bt-puce' + (progres.vus[e.cle] ? ' vu' : '') + '">' + echapper(e.nom) + '</span>';
-          }).join('') +
-          (n > 4 ? '<span class="bt-puce reste">+' + (n - 4) + '</span>' : '') + '</span>' : '') +
-          (n ? '<span class="bt-chap-j"><i style="width:' + (n ? Math.round(vus / n * 100) : 0) + '%"></i></span>' : '') +
-        '</span>' +
-        '<svg class="bt-chap-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>' +
-      '</button>';
+      return '<div class="bt-chap' + (fait ? ' fait' : '') + '">' +
+        '<button type="button" class="bt-chap-h" data-chap="' + c.cle + '">' +
+          '<span class="bt-chap-n">' + (fait
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>'
+            : (i + 1)) + '</span>' +
+          '<span class="bt-chap-c">' +
+            '<span class="bt-chap-t">' + echapper(c.titre) + '</span>' +
+            '<span class="bt-chap-m">' + meta + '</span>' +
+          '</span>' +
+          '<svg class="bt-chap-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>' +
+        '</button>' +
+        (n ? '<div class="bt-chap-e">' + c.ecrans.map(function (e) {
+          return '<button type="button" class="bt-puce' + (progres.vus[e.cle] ? ' vu' : '') +
+            '" data-ecran="' + echapper(e.cle) + '" title="Ouvrir directement ce tutoriel">' +
+            (e.num ? '<i>' + echapper(e.num) + '</i>' : '') + echapper(e.nom) + '</button>';
+        }).join('') + '</div>' : '') +
+        (n ? '<div class="bt-chap-j"><i style="width:' + Math.round(vus / n * 100) + '%"></i></div>' : '') +
+      '</div>';
     }).join('');
+
+    // L'acces direct : une pastille ouvre le tutoriel de CET ecran-la.
+    $('bt-chaps').querySelectorAll('[data-ecran]').forEach(function (b) {
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        var cle = b.getAttribute('data-ecran');
+        $('bt-somm').classList.add('hide');
+        $('bt-ctx').classList.add('hide');
+        visiteEcran(cle, true);
+      });
+    });
 
     $('bt-chaps').querySelectorAll('[data-chap]').forEach(function (b) {
       b.addEventListener('click', function () { demarrer(b.getAttribute('data-chap')); });

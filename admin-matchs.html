@@ -4156,16 +4156,34 @@
       // Le plan, lu dans le menu. On saute #sb-pinned : les épinglés
       // sont des copies des mêmes écrans, et le tutoriel les visiterait
       // deux fois.
+      // ATTENTION AU textContent NU.
+      // sbBuildNav() insere un <span class="sb-link-num">5.2</span> DANS
+      // chaque bouton du menu, et un numero de groupe dans chaque
+      // libelle. Lire textContent brut donnait « 5.2Stock » et
+      // « 5BOUTIQUE » -- le tutoriel affichait ca partout, et ca ne se
+      // voyait pas sur banc d'essai puisque le banc ne numerote pas.
+      // On separe donc le numero du nom : il sert aussi a proposer
+      // l'acces direct a un ecran precis.
       plan: function(){
+        function propre(el, aJeter){
+          var c = el.cloneNode(true);
+          c.querySelectorAll(aJeter).forEach(function(x){ x.remove(); });
+          return (c.textContent || '').replace(/\s+/g, ' ').trim();
+        }
         var out = [];
         document.querySelectorAll('#sidebar .sb-group').forEach(function(g){
           if (g.id === 'sb-pinned' || g.classList.contains('hide')) return;
           var lab = g.querySelector('.sb-group-label');
-          var titre = lab ? (lab.textContent || '').trim() : '';
+          var titre = lab ? propre(lab, '.sb-group-num, .sb-group-cv, svg') : '';
           var ecrans = [];
           g.querySelectorAll('.sb-link[data-section]').forEach(function(b){
             if (b.classList.contains('hide')) return;
-            ecrans.push({ cle: b.getAttribute('data-section'), nom: (b.textContent || '').trim() });
+            var num = b.querySelector('.sb-link-num');
+            ecrans.push({
+              cle: b.getAttribute('data-section'),
+              nom: propre(b, '.sb-link-num, .sb-link-badge, svg'),
+              num: num ? (num.textContent || '').trim() : ''
+            });
           });
           if (titre && ecrans.length) out.push({ titre: titre, ecrans: ecrans });
         });
@@ -5228,6 +5246,27 @@
         dit:'Son titre, juste en dessous du nom.' },
       { cible:'#set_founder_bio', geste:'saisir', valeur:'Il crée le club en 2014 avec douze joueuses et un ballon.',
         dit:'La présentation. L’aperçu de droite montre le rendu réel, au mot près. <b>Ici, rien n’a été enregistré.</b>' }
+    ],
+
+    // ---- CANDIDATURES : ouvrir un dossier, le lire, l'exporter ----
+    // cdOpen() ne fait que des sbGet : ouvrir une candidature ne modifie
+    // rien. C'est le seul endroit ou la demonstration se permet
+    // d'ouvrir quelque chose pour de vrai.
+    //
+    // Le bouton PDF est designe, jamais clique : il declencherait un
+    // telechargement, et une demonstration ne doit rien deposer sur
+    // l'ordinateur de qui la regarde.
+    applications: [
+      { cible:'#cd-board', geste:'montrer',
+        dit:'Chaque carte est un dossier de recrutement. Les colonnes sont les étapes&nbsp;: nouvelle, à étudier, entretien, acceptée.' },
+      { cible:'#cd-board .rec-card, #cd-board [data-id], #cd-rows [data-id]', geste:'cliquer',
+        dit:'On ouvre un dossier d’un clic.' },
+      { cible:'#cd-doc', geste:'montrer',
+        dit:'La fiche complète&nbsp;: profil, coordonnées, parcours, taille et poste, plus le journal de toutes les décisions déjà prises.' },
+      { cible:'#cd-pdf-btn', geste:'montrer',
+        dit:'<b>Fiche PDF</b> l’exporte en un document propre — à imprimer pour une réunion de sélection, ou à envoyer au coach.' },
+      { cible:'#cd-back', geste:'cliquer',
+        dit:'Et on revient à la liste. <b>Rien n’a été modifié</b>&nbsp;: ouvrir un dossier ne fait que le lire.' }
     ],
 
     // ---- SOIR DE MATCH : designation seule, et c'est voulu ----
