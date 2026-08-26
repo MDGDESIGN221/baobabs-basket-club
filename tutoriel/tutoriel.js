@@ -53,7 +53,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-k';
+  var VERSION = '26.08-l';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -107,6 +107,15 @@
       .replace(/\s*&\s*/g, ' et ')
       .replace(/\s*=\s*/g, ' égale ')
       .replace(/(\d)\s*%/g, '$1 pour cent')
+      // « Baobabs » ressort en « baobab-bé-esse » : les moteurs francais
+      // prononcent le S final d'un mot qu'ils ne connaissent pas. Au
+      // singulier ils le disent juste -- et c'est ainsi qu'on le
+      // prononce de toute facon.
+      .replace(/\bBaobabs\b/g, 'Baobab')
+      .replace(/\bbaobabs\b/g, 'baobab')
+      // Une adresse lue caractere par caractere est insupportable, et
+      // n'apprend rien : elle est affichee juste au-dessus.
+      .replace(/https?:\/\/\S+/gi, ' l’adresse affichée à l’écran ')
       .replace(/…/g, '...')
 
       .replace(/\s+/g, ' ')
@@ -581,15 +590,22 @@
   }
 
   // ============ LE STUDIO ============
-  var STUDIO = [
-    { c: '#bs-home',     d: 'Le Studio s’ouvre sur ses projets. Chaque affiche déjà composée se retrouve ici — on reprend, on duplique, on repart.' },
-    { c: '#bs-format',   d: 'Le <b>format</b> décide de tout le reste&nbsp;: story Instagram, post carré, bannière. On le choisit avant de composer, pas après.' },
-    { c: '#bs-rail',     d: 'La colonne d’outils&nbsp;: textes, images, formes, modèles. C’est par là qu’on ajoute.' },
-    { c: '#bs-canvas',   d: 'Le plan de travail. On y déplace, on redimensionne, on empile — comme sur une table.' },
-    { c: '#bs-undo',     d: '<b>Annuler</b> et <b>refaire</b>. Le filet de tout l’atelier&nbsp;: rien n’est définitif tant qu’on n’a pas exporté.' },
-    { c: '#bs-save',     d: '<b>Enregistrer</b> garde le projet pour y revenir. Ça ne publie rien.' },
-    { c: '#bs-export',   d: '<b>Exporter</b> produit l’image à partager. C’est ce fichier-là qui part sur les réseaux.' },
-    { c: '#bs-close',    d: 'Et on referme. L’administration est restée derrière, intacte&nbsp;: le Studio ne touche à aucune donnée du club.' }
+  // LE STUDIO S'OUVRE SUR SES PROJETS, PAS SUR L'ATELIER.
+  //
+  // Je designais #bs-format, #bs-rail, #bs-canvas -- qui vivent tous
+  // dans #bs-app, cache tant qu'aucun projet n'est ouvert. Le chapitre
+  // pointait donc le vide et « se limitait a l'accueil » : exactement ce
+  // qui a ete constate.
+  //
+  // On ne promet plus que ce qui est la. L'atelier est decrit, pas
+  // designe -- et le tutoriel dit franchement pourquoi il n'y emmene
+  // pas : ouvrir un projet a la place de quelqu'un, c'est toucher a son
+  // travail.
+  var STUDIO_ACCUEIL = [
+    { c: '#bs-home-nav',   d: 'À gauche, les <b>formats</b>&nbsp;: story, post carré, bannière. Le format décide de tout le reste — on le choisit avant de composer, pas après.' },
+    { c: '#bs-home-main',  d: 'Au centre, <b>vos projets</b>. Chaque affiche déjà composée se retrouve ici — on la rouvre, on la duplique, on repart de la dernière. C’est aussi d’ici qu’on en crée une nouvelle.' },
+    { c: '#bs-home-tip',   d: 'Et un rappel de ce que fait l’atelier. <b>Le Studio ne touche à aucune donnée du club</b>&nbsp;: il fabrique des images, rien d’autre.' },
+    { c: '#bs-home-close', d: 'On referme par ici. L’administration est restée derrière, intacte.' }
   ];
 
   function etapesStudio() {
@@ -599,8 +615,16 @@
       html: 'Le <b>Studio</b> compose les affiches du club — annonce de match, résultat, portrait de joueuse. ' +
             'C’est un atelier à part, qui s’ouvre par-dessus l’administration. On va l’ouvrir.'
     }];
-    STUDIO.forEach(function (e) {
+    STUDIO_ACCUEIL.forEach(function (e) {
       out.push({ special: true, nom: E, studio: true, cible: e.c, html: e.d });
+    });
+    out.push({
+      special: true, nom: E, studio: true, cible: '#bs-home-main',
+      html: 'En <b>ouvrant un projet</b>, l’atelier apparaît&nbsp;: la colonne d’outils à gauche, le plan de ' +
+            'travail au centre, et en haut <b>Annuler</b>, <b>Enregistrer</b> et <b>Exporter</b>. Enregistrer ' +
+            'garde le projet&nbsp;; exporter produit l’image à partager — c’est ce fichier-là qui part sur les ' +
+            'réseaux. <span style="opacity:.75">Je ne vous y emmène pas&nbsp;: ouvrir un projet à votre place, ' +
+            'ce serait toucher à votre travail.</span>'
     });
     return out;
   }
@@ -630,6 +654,35 @@
     { id: 'c3', nom: 'Mariama Fall',  sous: 'Pivot · 17 ans',        col: 'etudier'  }
   ];
   var bacCartes = [];
+
+  // UN CONSTRUCTEUR NE DOIT RIEN OUVRIR.
+  //
+  // etapesDuChapitre() retournait [] pour la pratique en ouvrant le bac
+  // au passage. Or « Tout me montrer » appelle ce constructeur pour
+  // CHAQUE chapitre afin d'aplatir la liste : le bac s'ouvrait donc des
+  // le clic, par-dessus la visite, et masquait l'ecran de connexion
+  // qu'on etait en train d'expliquer. Constate en capture.
+  //
+  // Le chapitre rend maintenant une vraie etape ; c'est montrer() qui
+  // ouvre le bac en y arrivant, et le referme en repartant.
+  function etapesPratique() {
+    return [{
+      special: true, nom: 'À vous', pratique: true,
+      html: 'Assez regardé. <b>Deux exercices</b>, sur des données qui n’existent que pour vous&nbsp;: ' +
+            'faire glisser une candidature, puis créer une catégorie de billet. Rien de ce que vous ferez ' +
+            'ne sera enregistré.'
+    }];
+  }
+
+  // Ouvert DEPUIS la visite : le narrateur reste, pour pouvoir
+  // continuer ou revenir en arriere apres l'exercice.
+  function ouvrirBacDepuisVisite() {
+    $('bt-somm').classList.add('hide');
+    $('bt-ctx').classList.add('hide');
+    retirerHalo();
+    $('bt-bac').classList.remove('hide');
+    rendreBac();
+  }
 
   function ouvrirBac(n) {
     bacNo = n || 0;
@@ -1412,7 +1465,7 @@
   function etapesDuChapitre(c) {
     if (c.cle === '_entete') return etapesEntete();
     if (c.cle === '_connexion') return etapesConnexion();
-    if (c.cle === '_pratique') { ouvrirBac(0); return []; }
+    if (c.cle === '_pratique') return etapesPratique();
     if (c.cle === '_studio') return etapesStudio();
     if (c.special) return etapesRoles();
     var out = [];
@@ -1458,6 +1511,14 @@
     // tutoriel devant un formulaire de connexion croit s'etre
     // deconnecte.
     gererSurcouche(e);
+
+    // Le bac a sable : ouvert quand on arrive sur l'etape de pratique,
+    // referme des qu'on en part.
+    if (e.pratique) {
+      if ($('bt-bac').classList.contains('hide')) { bacNo = 0; ouvrirBacDepuisVisite(); }
+    } else if (!$('bt-bac').classList.contains('hide')) {
+      $('bt-bac').classList.add('hide');
+    }
 
     // Navigation : seulement quand on change d'écran. Rappeler
     // showSection à chaque conseil relancerait le chargement des
@@ -1671,6 +1732,14 @@
   // C'est donc le narrateur qui monte. La decision se prend sur la
   // POSITION de la cible, pas sur le chevauchement constate : sinon il
   // ferait l'aller-retour a chaque pixel de defilement.
+  // La surface reellement cachee, pour departager deux mauvaises
+  // positions.
+  function aire(a, b) {
+    var l = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+    var h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+    return (l > 0 && h > 0) ? l * h : 0;
+  }
+
   function chevauchent(a, b, marge) {
     marge = marge || 0;
     return !(a.right < b.left - marge || a.left > b.right + marge ||
@@ -1705,7 +1774,14 @@
     if (geneEnBas) {
       narr.classList.add('haut');
       var enHaut = narr.getBoundingClientRect();
-      if (chevauchent(r, enHaut, 10)) narr.classList.remove('haut');
+      // Une cible plus haute que l'ecran -- un long tableau, une colonne
+      // de chiffres -- chevauche le narrateur DES DEUX COTES. On ne peut
+      // plus l'eviter, alors on prend le moindre mal : le cote ou l'on
+      // en cache le moins. Revenir bêtement en bas laissait la cible
+      // couverte (constate a l'etape 30 du parcours complet).
+      if (chevauchent(r, enHaut, 10)) {
+        if (aire(r, enBas) <= aire(r, enHaut)) narr.classList.remove('haut');
+      }
     }
 
     // On ne rend la transition qu'apres coup, et seulement si la
