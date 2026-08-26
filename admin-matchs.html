@@ -449,6 +449,24 @@
   .qgc-fields .qg-field{margin:0;min-width:0}
   .qgc-fields .qgc-wide{grid-column:1/-1}
 
+  /* Apparence d'un titre : replié par défaut. Ouvert, il occuperait la
+     moitié de la page pour un réglage qu'on touche une fois par an, et
+     noierait le champ de texte qui, lui, sert tous les jours. */
+  .qgc-ap{margin-top:9px;border:1px dashed var(--line-strong);border-radius:10px;background:rgba(243,239,230,.02)}
+  .qgc-ap>summary{cursor:pointer;list-style:none;padding:8px 11px;font-family:var(--font-ui);font-weight:600;
+                  font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+  .qgc-ap>summary::-webkit-details-marker{display:none}
+  .qgc-ap>summary::before{content:'▸ ';color:var(--faint)}
+  .qgc-ap[open]>summary::before{content:'▾ '}
+  .qgc-ap>summary:hover{color:var(--ink)}
+  .qgc-ap>summary b{color:#A8D93B;font-weight:600}
+  .qgc-ap-grille{display:grid;grid-template-columns:auto 1fr;gap:9px 11px;align-items:center;padding:4px 11px 11px}
+  .qgc-ap-grille label{font-size:11.5px;color:var(--faint);white-space:nowrap}
+  .qgc-ap-grille select{font-size:12.5px;padding:7px 9px}
+  .qgc-ap-essai{margin:0 11px 11px;padding:11px 13px;border-radius:9px;background:#07130D;
+                border:1px solid rgba(243,239,230,.08);font-family:var(--font-ui);font-weight:700;
+                line-height:1.25;overflow-wrap:anywhere}
+
   .qgc-actions{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:26px;padding-top:20px;border-top:1px dashed var(--line-strong)}
   .qgc-actions .msg{margin-top:0;flex:1;min-width:190px}
 
@@ -4200,6 +4218,78 @@
   }
 
   // ---------------------------------------------------------------------
+  // L'APPARENCE D'UN TITRE — taille et couleur
+  //
+  // Des choix fermés, jamais un champ libre. Une taille écrite à la main
+  // ou un code couleur tapé au clavier casse la mise en page au premier
+  // essai, et personne ne sait revenir en arrière. Ici, le pire qu'on
+  // puisse faire est un titre un peu trop gros — et « Normale » le remet
+  // en place.
+  //
+  // La taille est un facteur, pas une valeur : les titres du site sont
+  // écrits en clamp() et grandissent avec la fenêtre. On multiplie cette
+  // taille, on ne la remplace pas.
+  var STYLABLES = {
+    club_intro_kicker:1, club_intro_title:1,
+    ps_kicker:1, ps_title:1,
+    det_kicker:1, det_title:1,
+    home_news_kicker:1, home_news_title:1,
+    squad_home_title:1,
+    partners_kicker:1, partners_title:1,
+    org_kicker:1, org_title:1, org_motto:1,
+    md_kicker:1, md_title:1,
+    shop_kicker:1, shop_title:1,
+    ins_cats_title:1, ins_incl_title:1, ins_infos_title:1, ins_suivi_title:1
+  };
+  var AP_TAILLES = [
+    ['',    'Normale'],
+    ['0.85','Beaucoup plus petite'],
+    ['0.92','Plus petite'],
+    ['1.12','Plus grande'],
+    ['1.25','Beaucoup plus grande']
+  ];
+  // Sur téléphone, « rien » veut dire « comme sur ordinateur » — pas
+  // « normale ». D'où l'échelon 1 explicite, qui sert à revenir à la
+  // taille d'origine sur le seul téléphone.
+  var AP_TAILLES_M = [
+    ['',    'Comme sur ordinateur'],
+    ['1',   'Normale'],
+    ['0.85','Beaucoup plus petite'],
+    ['0.92','Plus petite'],
+    ['1.12','Plus grande'],
+    ['1.25','Beaucoup plus grande']
+  ];
+  var AP_COULEURS = [
+    ['',        'Couleur d\'origine'],
+    ['#F3EFE6', 'Ivoire'],
+    ['#C6A257', 'Or'],
+    ['#A8D93B', 'Vert'],
+    ['#C7CFC8', 'Gris clair'],
+    ['#93A099', 'Gris']
+  ];
+  function apValeur(cle, suf){
+    var b = settings[cle + suf];
+    return (b === null || b === undefined) ? '' : String(b);
+  }
+  function apListe(cle, suf, options){
+    var v = apValeur(cle, suf);
+    return '<select class="qg-in qgc-ap-in" data-ap-k="'+esc(cle+suf)+'">'+options.map(function(o){
+      return '<option value="'+esc(o[0])+'"'+(v===o[0]?' selected':'')+'>'+esc(o[1])+'</option>';
+    }).join('')+'</select>';
+  }
+  function apparenceBloc(cle){
+    return '<details class="qgc-ap" data-ap-for="'+esc(cle)+'">'+
+      '<summary>Apparence'+(apValeur(cle,'_size')||apValeur(cle,'_msize')||apValeur(cle,'_color')?' <b>· réglée</b>':'')+'</summary>'+
+      '<div class="qgc-ap-grille">'+
+        '<label>Taille</label>'+apListe(cle,'_size',AP_TAILLES)+
+        '<label>Sur téléphone</label>'+apListe(cle,'_msize',AP_TAILLES_M)+
+        '<label>Couleur</label>'+apListe(cle,'_color',AP_COULEURS)+
+      '</div>'+
+      '<div class="qgc-ap-essai" data-ap-essai="'+esc(cle)+'"></div>'+
+    '</details>';
+  }
+
+  // ---------------------------------------------------------------------
   // LE TUTORIEL
   //
   // Même principe que le Studio : trois fichiers autonomes sous
@@ -7895,7 +7985,7 @@
     // ci-dessus ne voit. Sans cette règle ils remonteraient tous comme des
     // « réglages que le site ne lit pas », ce qui est faux.
     Object.keys(s).forEach(function(k){
-      var m = k.match(/^(.+?)(_x|_y|_zoom|_mx|_my|_mzoom)$/);
+      var m = k.match(/^(.+?)(_x|_y|_zoom|_mx|_my|_mzoom|_size|_msize|_color)$/);
       if (m && consumed[m[1]]) consumed[k] = true;
     });
 
@@ -16342,12 +16432,12 @@
         // Un tarif est un nombre : clavier numérique sur téléphone, et pas
         // de « 20 000 F » saisi à la main que le site devrait redécouper.
         if(f.type==='number') return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><input id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'" type="text" inputmode="numeric" pattern="[0-9]*"></div>';
-        if(f.type==='textarea') return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><textarea id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" rows="3">'+esc(v)+'</textarea></div>';
+        if(f.type==='textarea') return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><textarea id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" rows="3">'+esc(v)+'</textarea>'+(STYLABLES[f.key]?apparenceBloc(f.key):'')+'</div>';
         // Un réglage qui n'a que deux ou trois états mérite une liste, pas
         // un champ libre où l'on peut écrire « oui » aussi bien que « Oui ».
         if(f.type==='select') return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><select id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'">'+
           (f.options||[]).map(function(o){ return '<option value="'+esc(o[0])+'"'+(String(v)===String(o[0])?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('')+'</select></div>';
-        return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><input id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'"></div>';
+        return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><input id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'">'+(STYLABLES[f.key]?apparenceBloc(f.key):'')+'</div>';
       }).join('');
       return '<article class="card qgc-block" id="qgc-card-'+esc(bl.id)+'">'+
         '<header class="qgc-block-head"><span class="qgc-block-page">'+esc(bl.page)+'</span><h2 class="qgc-block-title">'+esc(bl.label)+'</h2></header>'+
@@ -16383,6 +16473,27 @@
     m.querySelectorAll('.qgc-in').forEach(function(el){ el.addEventListener('input',function(){ var bl=qgcAll().filter(function(b){ return b.fields.some(function(f){return f.key===el.getAttribute('data-k');}); })[0]; if(bl) qgcPreview(bl); }); });
     m.querySelectorAll('input[data-kfile]').forEach(function(fe){ fe.addEventListener('change',function(){ var file=fe.files[0]; if(!file) return; var key=fe.getAttribute('data-kfile'); var kind=fe.getAttribute('data-kind')||'image'; var span=fe.parentNode.querySelector('span'); var libelle=span?span.textContent:''; if(span) span.textContent='Envoi…'; uploadFile(MEDIA_BUCKET,file).then(function(url){ var inp=document.querySelector('.qgc-in[data-k="'+key+'"]'); if(inp){ inp.value=url; inp.dispatchEvent(new Event('input',{bubbles:true})); } if(span) span.textContent=libelle; qgToast(kind==='video'?'Vidéo envoyée ✓':'Image envoyée ✓'); }).catch(function(){ if(span) span.textContent=libelle; qgToast('Échec de l\'envoi',true); }); }); });
     m.querySelectorAll('.qgc-save').forEach(function(btn){ btn.addEventListener('click',function(){ qgcSave(btn.getAttribute('data-block'),btn); }); });
+
+    // L'échantillon montre le texte réel, à la taille et à la couleur
+    // choisies. Le mettre ici plutôt que dans l'aperçu du bloc évite de
+    // réécrire dix fonctions d'aperçu — et il est sous la main du réglage.
+    function apEssai(cle){
+      var boite=m.querySelector('[data-ap-essai="'+cle+'"]'); if(!boite) return;
+      var champ=m.querySelector('.qgc-in[data-k="'+cle+'"]');
+      var taille=m.querySelector('[data-ap-k="'+cle+'_size"]');
+      var coul=m.querySelector('[data-ap-k="'+cle+'_color"]');
+      var f=parseFloat(taille&&taille.value)||1;
+      boite.textContent=(champ&&String(champ.value).trim())||'(texte vide)';
+      boite.style.fontSize=(15*f).toFixed(1)+'px';
+      boite.style.color=(coul&&coul.value)||'#F3EFE6';
+    }
+    m.querySelectorAll('.qgc-ap').forEach(function(d){
+      var cle=d.getAttribute('data-ap-for');
+      apEssai(cle);
+      d.querySelectorAll('.qgc-ap-in').forEach(function(sel){ sel.addEventListener('change', function(){ apEssai(cle); }); });
+      var champ=m.querySelector('.qgc-in[data-k="'+cle+'"]');
+      if(champ) champ.addEventListener('input', function(){ apEssai(cle); });
+    });
 
     // « Cadrer » ouvre l'atelier sur l'image actuellement dans le champ —
     // pas celle enregistrée en base : on cadre ce qu'on vient de choisir.
@@ -16422,6 +16533,16 @@
       if(!b) return;
       v[f.key+'_x']=b.dataset.cx;   v[f.key+'_y']=b.dataset.cy;   v[f.key+'_zoom']=b.dataset.cz;
       v[f.key+'_mx']=b.dataset.cmx; v[f.key+'_my']=b.dataset.cmy; v[f.key+'_mzoom']=b.dataset.cmz;
+    });
+    // De meme pour l'apparence : trois listes deroulantes, pas des champs
+    // du registre. Une valeur vide efface le reglage et rend au texte
+    // l'apparence ecrite dans la page.
+    bl.fields.forEach(function(f){
+      if(!STYLABLES[f.key]) return;
+      ['_size','_msize','_color'].forEach(function(suf){
+        var el=document.querySelector('[data-ap-k="'+f.key+suf+'"]');
+        if(el) v[f.key+suf]=el.value;
+      });
     });
     return v;
   }

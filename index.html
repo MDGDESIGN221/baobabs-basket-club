@@ -757,6 +757,13 @@
     .bb-cadre{ --cc-x:var(--mcx,var(--cx,50%)); --cc-y:var(--mcy,var(--cy,50%)); --cc-z:var(--mcz,var(--cz,1)); }
   }
 
+  /* --- taille de titre réglée depuis l'admin ---
+     Même principe que le cadrage : bbApparence() pose --ts et --mts,
+     ces deux règles choisissent laquelle sert, et la taille reste un
+     facteur appliqué au clamp() d'origine. */
+  .bb-typo{ --bb-ts:var(--ts,1); }
+  @media(max-width:768px){ .bb-typo{ --bb-ts:var(--mts,var(--ts,1)); } }
+
   /* ===== partenaires ===== */
   /* Une rangée centrée plutôt qu'une grille : avec deux partenaires,
      « auto-fit » fabriquait six colonnes et le partenaire principal,
@@ -5376,7 +5383,7 @@ window.bbCloud = function(url, w){
     }).catch(function(){});
 
     sbFetch('site_settings?select=*').then(function(rows){
-      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyHeroSplit(s); applyContent(s); applySiteSettings(s); applyFaceOff(s); applyNewsletter(s); applyLegal(s); applyMedia(s); applyApp(s); applyAppScreens(s); applyTryouts(s); applyTryMedia(s); applyPresaison(s); applyDetection(s); applyEntetes(s); applyInscriptions(s); applyStats(s); applyTribu(s); applyCamp(s); applyFooterCols(s); applyCtaModals(s); bbSeoEnrich(s);
+      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyHeroSplit(s); applyContent(s); applySiteSettings(s); applyFaceOff(s); applyNewsletter(s); applyLegal(s); applyMedia(s); applyApp(s); applyAppScreens(s); applyTryouts(s); applyTryMedia(s); applyPresaison(s); applyDetection(s); applyEntetes(s); applyInscriptions(s); applyStats(s); applyTribu(s); applyCamp(s); applyFooterCols(s); applyCtaModals(s); applyApparence(s); bbSeoEnrich(s);
       applyTickets(s);
       if(window.bbApplyLegacySettings) window.bbApplyLegacySettings(s);
       bbRevealSoon();
@@ -5580,6 +5587,58 @@ window.bbCloud = function(url, w){
   function bbCadreTous(sel, s, cle){
     if(!bbCadreRegle(s, cle)) return;
     document.querySelectorAll(sel).forEach(function(el){ bbCadre(el, s, cle); });
+  }
+
+  // ============================================================================
+  // APPARENCE DES TITRES — taille et couleur
+  // ============================================================================
+  // Deux réglages par texte, pris dans une liste fermée : un facteur de
+  // taille et une couleur de la palette du club. Pas de CSS libre dans
+  // l'admin — une feuille de style ouverte casse la mise en page au premier
+  // essai, et personne ne sait revenir en arrière.
+  //
+  // La taille est un FACTEUR, jamais une valeur. Les titres du site sont
+  // écrits en clamp() : ils grandissent avec la fenêtre. Y écrire « 32px »
+  // supprimerait cette adaptation. On multiplie donc la taille d'origine,
+  // relue dans la page et mise de côté au premier passage.
+  var BB_APPARENCE = {
+    club_intro_kicker:'bb-club-kicker',   club_intro_title:'bb-club-title',
+    ps_kicker:'bb-ps-kicker',             ps_title:'bb-ps-title',
+    det_kicker:'bb-det-kicker',           det_title:'bb-det-title',
+    home_news_kicker:'bb-actus-kicker',   home_news_title:'bb-actus-title',
+    squad_home_title:'bb-eff-title',
+    partners_kicker:'bb-partners-kicker', partners_title:'bb-partners-title',
+    org_kicker:'bb-org-kicker',           org_title:'bb-org-title', org_motto:'bb-org-motto',
+    md_kicker:'bb-media-kicker',          md_title:'bb-media-title',
+    shop_kicker:'bb-shop-kicker',         shop_title:'bb-shop-title',
+    ins_cats_title:'bb-ins-cats-title',   ins_incl_title:'bb-ins-incl-title',
+    ins_infos_title:'bb-ins-infos-title', ins_suivi_title:'bb-ins-suivi-title'
+  };
+  // La palette du club, et rien d'autre. Une couleur venue d'ailleurs est
+  // ignorée plutôt qu'appliquée : c'est ce qui empêche un texte gris sur
+  // fond gris d'arriver en ligne.
+  var BB_COULEURS = { '#F3EFE6':1, '#C6A257':1, '#A8D93B':1, '#C7CFC8':1, '#93A099':1 };
+
+  function bbApparence(el, s, cle){
+    if(!el || !s) return;
+    var t = s[cle+'_size'], mt = s[cle+'_msize'], c = s[cle+'_color'];
+    if (t || mt){
+      if (!el.dataset.bbBase) el.dataset.bbBase = el.style.fontSize || getComputedStyle(el).fontSize;
+      if (el.dataset.bbBase){
+        el.classList.add('bb-typo');
+        if (t)  el.style.setProperty('--ts', t);
+        if (mt) el.style.setProperty('--mts', mt);
+        el.style.fontSize = 'calc(' + el.dataset.bbBase + ' * var(--bb-ts, 1))';
+      }
+    }
+    if (c && BB_COULEURS[String(c).toUpperCase()]) el.style.color = c;
+  }
+
+  function applyApparence(s){
+    if(!s) return;
+    Object.keys(BB_APPARENCE).forEach(function(k){
+      bbApparence(document.getElementById(BB_APPARENCE[k]), s, k);
+    });
   }
 
   function bbSet(id,val){ if(val==null||val==='') return; var el=document.getElementById(id); if(el) el.textContent=val; }
