@@ -5710,6 +5710,27 @@ window.bbCloud = function(url, w){
               if (!p) return;                       // joueuse partie du club : deja filtree
               (l.is_starter ? cinq : banc).push(p);
             });
+
+            // LE BANC AVANT LE MATCH.
+            //
+            // L admin ne cree une ligne dans match_stats que pour les CINQ
+            // titulaires : les autres n en ont une qu en entrant en jeu ou
+            // quand on saisit leurs statistiques. Avant la rencontre, le
+            // banc serait donc vide -- pour une composition d avant-match,
+            // c est le contraire du but.
+            //
+            // On le deduit : les joueuses ACTIVES qui ne commencent pas.
+            // Ce n est pas une invention, c est une soustraction -- et les
+            // blessees, les prets et les departs sont deja ecartes par le
+            // statut que l admin tient a jour. Un banc explicitement saisi
+            // l emporte toujours.
+            if (!banc.length){
+              var titulaire = {};
+              cinq.forEach(function(p){ titulaire[String(p.id)] = 1; });
+              banc = (typeof players !== 'undefined' ? players : []).filter(function(p){
+                return !titulaire[String(p.id)] && (p.status || 'active') === 'active';
+              });
+            }
             // Le cinq se lit dans l'ordre des postes, pas dans celui de la
             // base : PG, SG, SF, PF, C -- c'est ainsi qu'on lit une compo.
             var ordre = { PG:1, SG:2, SF:3, PF:4, C:5 };
