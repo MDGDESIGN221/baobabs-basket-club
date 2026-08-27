@@ -1536,14 +1536,10 @@
     <div style="max-width:1500px;margin:0 auto;padding:9px clamp(16px,4vw,24px);display:flex;align-items:center;justify-content:space-between;font-size:12px">
       <div style="display:flex;gap:22px;color:#93A099;font-weight:500">
         <a href="#" data-cta="contact" style="color:inherit">Licenciés</a>
-        <a href="#" data-nav="inscriptions" style="color:inherit">École de basket</a>
-        <a href="#" data-nav="club" style="color:inherit">Le Centre</a>
-        <a href="#" style="color:inherit">Partenaires</a>
+        <a href="#" data-nav="accueil" data-ancre="bb-partners-title" style="color:inherit">Partenaires</a>
       </div>
       <div style="display:flex;gap:14px;align-items:center;color:#93A099">
         <span style="color:#F3EFE6;font-weight:600">FR</span><span style="opacity:.5">EN</span>
-        <span style="width:1px;height:12px;background:rgba(243,239,230,.18)"></span>
-        <a href="#" style="color:#C6A257;font-weight:600">Connexion</a>
       </div>
     </div>
   </div>
@@ -8561,5 +8557,35 @@ window.bbImgOpt = (function(){
   requestAnimationFrame(boucle);
 })();
 </script>
+
+<script>
+/* ==========================================================================
+   « PARTENAIRES » NE MENAIT NULLE PART
+
+   Le lien portait un href="#" et aucun gestionnaire : il avait l'air
+   d'un lien, il ne faisait rien. Le grep ne le voit pas — un href="#"
+   est syntaxiquement valide.
+
+   Les partenaires ne sont pas une page mais un bloc de l'accueil :
+   data-nav conduit a la page, data-ancre descend jusqu'au bloc. Un
+   seul ecouteur sur le document, donc rien a rebrancher quand un
+   ecran se redessine.
+   ========================================================================== */
+(function(){
+  // data-ancre : la cible n'est pas une page mais un bloc DANS une page.
+  // On laisse d'abord data-nav faire son travail, puis on descend — la
+  // cible n'existe pas encore au moment du clic.
+  document.addEventListener('click', function(e){
+    var el = e.target.closest && e.target.closest('[data-ancre]');
+    if (!el) return;
+    var id = el.getAttribute('data-ancre');
+    setTimeout(function(){
+      var cible = document.getElementById(id);
+      if (cible) cible.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 140);
+  }, false);
+})();
+</script>
+
 </body>
 </html>
