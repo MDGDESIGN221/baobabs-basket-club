@@ -17413,6 +17413,24 @@
   }
 
   // ===================== CONTENU ÉDITORIAL (blocs settings, aperçu réel) =====================
+  // Un apercu commun aux pages qui se ressemblent : bandeau, titre,
+  // phrase d'intro, puis les titres de blocs. Le recopier par groupe,
+  // c'est autant d'endroits ou il finira par diverger.
+  function pvPage(badge, titre, intro, sous){
+    var e = function(x){ return esc(x == null ? '' : x); };
+    return '<div style="background:#060C09;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:20px">' +
+      (badge ? '<span style="display:inline-block;font-family:var(--font-text);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#07130D;background:var(--gold);padding:4px 10px;border-radius:100px;margin-bottom:12px">' + e(badge) + '</span>' : '') +
+      '<div style="font-family:var(--font-ui);font-weight:700;font-size:26px;letter-spacing:-.02em;color:var(--text);line-height:1.05">' + e(titre) + '</div>' +
+      (intro ? '<p style="font-size:13px;line-height:1.6;color:var(--muted);margin:10px 0 0;max-width:56ch">' + e(intro) + '</p>' : '') +
+      ((sous && sous.length)
+        ? '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">' +
+            sous.filter(Boolean).map(function(x){
+              return '<span style="font-family:var(--font-ui);font-weight:700;font-size:12px;color:var(--text);border:1px solid var(--line-strong);border-radius:100px;padding:5px 12px">' + e(x) + '</span>';
+            }).join('') + '</div>'
+        : '') +
+    '</div>';
+  }
+
   var CONTENT_BLOCKS = [
     { id:'club_intro', page:'Page « Le Club »', label:'Intro — bandeau', fields:[
         {key:'club_intro_kicker', label:'Sur-titre', type:'text', def:'Le Club'},
@@ -18011,6 +18029,59 @@
         function modale(t,d,ok){ return '<div style="background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:18px"><div style="font-family:var(--font-ui);font-weight:700;font-size:16px;color:#F3EFE6">'+esc(t)+'</div><div style="font-size:12px;line-height:1.55;color:#B9C2BB;margin-top:8px">'+esc(d)+'</div><div style="margin-top:14px;height:34px;border-radius:8px;border:1px solid rgba(243,239,230,.12);background:#07130D"></div><div style="display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11.5px;color:#A8D93B"><span>✓</span>'+esc(ok)+'</div></div>'; }
         return '<div style="display:grid;gap:12px">'+modale(v.cta_sub_title,v.cta_sub_desc,v.cta_sub_success)+modale(v.cta_con_title,v.cta_con_desc,v.cta_con_success)+'</div><p class="pv-hint">Ouvertes par les deux boutons du bandeau « Rejoins la tribu Baobabs ».</p>';
       } },
+    // ---------------------------------------------------------------
+    // LES QUATRE PAGES QUI N'AVAIENT AUCUN GROUPE
+    //
+    // Le registre en declarait deja 312 champs : le site etait tres
+    // largement editable. Mais quatre pages n'y figuraient pas, et
+    // leurs titres restaient donc figes dans le code — Equipes,
+    // Competitions, Boutique, et Actualites.
+    //
+    // On s'en tient a ce qui est du CONTENU : le bandeau, le titre, la
+    // phrase d'intro, les titres de blocs. Les libelles de formulaire
+    // et les boutons d'ossature restent dans le code, ou est leur
+    // place : un ecran de trois cents champs ne serait pas plus
+    // editable, il serait inutilisable.
+    // ---------------------------------------------------------------
+    { id:'club_equipes', page:'Page \u00ab \u00c9quipes \u00bb', label:'\u00c9quipes \u2014 Titres de la page', fields:[
+        {key:'eq_badge', label:'Bandeau', type:'text', def:'SAISON 2026\u20132027'},
+        {key:'eq_h2', label:'Titre de la page', type:'text', def:'Nos \u00e9quipes'},
+        {key:'eq_intro', label:"Phrase d'intro", type:'textarea', def:"L'effectif senior et les cat\u00e9gories de formation du club, de Benjamins \u00e0 Seniors."},
+        {key:'eq_h3_senior', label:'Titre du bloc \u00ab effectif \u00bb', type:'text', def:'Effectif senior'},
+        {key:'eq_h3_formation', label:'Titre du bloc \u00ab formation \u00bb', type:'text', def:'Cat\u00e9gories de formation'}
+      ],
+      preview:function(v){
+        return pvPage(v.eq_badge, v.eq_h2, v.eq_intro, [v.eq_h3_senior, v.eq_h3_formation]);
+      } },
+
+    { id:'club_competitions', page:'Page \u00ab Comp\u00e9titions \u00bb', label:'Comp\u00e9titions \u2014 Titres de la page', fields:[
+        {key:'cp_badge', label:'Bandeau', type:'text', def:'CHAMPIONNAT \u00b7 D2 DAKAR'},
+        {key:'cp_h2', label:'Titre de la page', type:'text', def:'Comp\u00e9titions'},
+        {key:'cp_intro', label:"Phrase d'intro", type:'textarea', def:'Le calendrier et les r\u00e9sultats officiels des Baobabs, mis \u00e0 jour en direct par le club.'},
+        {key:'cp_h3_saison', label:'Titre du bloc \u00ab saison \u00bb', type:'text', def:'La saison'},
+        {key:'cp_h3_classement', label:'Titre du bloc \u00ab classement \u00bb', type:'text', def:'Classement'},
+        {key:'cp_classement_sub', label:'Sous-titre du classement', type:'text', def:'Championnat D2 \u00b7 Dakar'}
+      ],
+      preview:function(v){
+        return pvPage(v.cp_badge, v.cp_h2, v.cp_intro, [v.cp_h3_saison, v.cp_h3_classement, v.cp_classement_sub]);
+      } },
+
+    { id:'club_boutique_page', page:'Page \u00ab Boutique \u00bb', label:'Boutique \u2014 Titres de la page', fields:[
+        {key:'bt_badge', label:'Bandeau', type:'text', def:'SAISON 2026'},
+        {key:'bt_h2', label:'Titre de la page', type:'text', def:'Boutique officielle'},
+        {key:'bt_intro', label:"Phrase d'intro", type:'textarea', def:'Les maillots officiels des Baobabs, \u00e9dition 2026. Retrait au club ou livraison \u00e0 Dakar.'}
+      ],
+      preview:function(v){ return pvPage(v.bt_badge, v.bt_h2, v.bt_intro, []); } },
+
+    { id:'club_actualites', page:'Page \u00ab Actualit\u00e9s \u00bb', label:'Actualit\u00e9s \u2014 Titres de la page', fields:[
+        {key:'ac_kicker', label:'Sur-titre', type:'text', def:'Le club'},
+        {key:'ac_h2', label:'Titre de la page', type:'text', def:'Actualit\u00e9s'}
+      ],
+      preview:function(v){
+        return pvPage(v.ac_kicker, v.ac_h2,
+          'Les articles se g\u00e8rent dans l\'\u00e9cran Actualit\u00e9s ; ici, seuls les titres de la page.', []);
+      } },
+
     { id:'club_tickets_page', page:'Billetterie · Page publique', label:'Billetterie — Textes de la page publique', fields:[
         {key:'tk_badge', label:'Bandeau (en-tête)', type:'text', def:'Saison 2026 · Championnat D2'},
         {key:'tk_h1', label:'Titre principal', type:'text', def:'BILLETTERIE'},
