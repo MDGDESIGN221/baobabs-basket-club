@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Composition — banc d'essai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Inter:wght@400..900&display=swap" rel="stylesheet">
+<style>
+  /* Ce fichier n'est PAS livré : il sert à ouvrir le composeur de
+     composition hors de l'administration, sans Supabase et sans
+     connexion — pour juger la planche, essayer le glisser-déposer et
+     lire ce qui PARTIRAIT en base, sans rien écrire nulle part.
+
+     Il ne recopie ni la feuille de style ni le code du composeur : il
+     va les CHERCHER dans admin-matchs.html au chargement. Une copie
+     vieillirait en silence, et on finirait par juger une interface qui
+     n'est plus celle qu'on livre. */
+  :root{
+    --bg:#070E0A;--surface:#0E1811;--surface-2:#141F17;--surface-3:#1B2A20;
+    --line:rgba(243,239,230,.07);--line-strong:rgba(243,239,230,.14);--line-loud:rgba(243,239,230,.22);
+    --text:#F4F1E9;--muted:#A9B2AB;--faint:#7E8A81;
+    --gold:#C6A257;--gold-bright:#E4C179;--gold-lit:#F0CE85;
+    --gold-soft:rgba(198,162,87,.12);--gold-edge:rgba(198,162,87,.34);
+    --lime:#A8D93B;--ok:#93CE43;--ok-wash:rgba(147,206,67,.12);
+    --warn:#E8A93C;--warn-wash:rgba(232,169,60,.12);
+    --danger:#E5564A;--danger-wash:rgba(229,86,74,.12);
+    --r-sm:6px;--r-md:8px;--r-lg:12px;--r-full:999px;
+    --font-ui:'Archivo',sans-serif;
+    --font-text:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--font-text); line-height:1.5; padding:26px clamp(14px,4vw,40px) 80px;
+  }
+  h1{ font-family:var(--font-ui); font-size:19px; margin:0 0 4px }
+  .sous{ color:var(--faint); font-size:13px; margin:0 0 20px; max-width:70ch }
+  .cadre{ max-width:1120px; margin:0 auto }
+  .barre{
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+    padding:12px 14px; margin-bottom:18px; border-radius:var(--r-md);
+    background:var(--surface); border:1px solid var(--line);
+  }
+  .barre b{ font-family:var(--font-ui); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint) }
+  .bsc{
+    font-family:var(--font-ui); font-weight:600; font-size:12.5px;
+    background:var(--surface-2); border:1px solid var(--line-strong); color:var(--muted);
+    border-radius:var(--r-sm); padding:8px 13px; cursor:pointer;
+  }
+  .bsc.on{ background:var(--gold); border-color:var(--gold); color:#0A1B0D }
+  .panneau{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:clamp(14px,2.4vw,24px) }
+  .empty{ color:var(--faint); font-size:13px; padding:18px 2px }
+  .hint{ color:var(--faint); font-size:12.5px; line-height:1.55 }
+  .hint b{ color:var(--muted) }
+  #journal{
+    margin-top:22px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11.5px;
+    background:#060C08; border:1px solid var(--line); border-radius:var(--r-md);
+    padding:12px 14px; max-height:260px; overflow:auto; color:var(--muted);
+  }
+  #journal div{ padding:2px 0; border-bottom:1px solid rgba(243,239,230,.04) }
+  #journal .del{ color:var(--danger) } #journal .ins{ color:var(--ok) } #journal .pat{ color:var(--gold-bright) }
+  #toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+    background:var(--surface-3); border:1px solid var(--line-strong); color:var(--text);
+    padding:10px 16px; border-radius:var(--r-full); font-size:13px; opacity:0;
+    transition:opacity .2s; pointer-events:none; z-index:9;
+  }
+  #toast.on{ opacity:1 }
+  #toast.err{ border-color:rgba(229,86,74,.5); color:#FFD9D4 }
+</style>
+</head>
+<body>
+<div class="cadre">
+  <h1>Composition — banc d'essai</h1>
+  <p class="sous">La feuille de style et le code viennent de <code>admin-matchs.html</code>, lus au chargement.
+     Les données sont fausses, rien n'est écrit : le journal du bas montre les requêtes qui PARTIRAIENT.</p>
+
+  <div class="barre">
+    <b>Base</b>
+    <button type="button" class="bsc on" id="b-avec">avec lineup_sort et is_captain</button>
+    <button type="button" class="bsc" id="b-sans">sans (migration pas passée)</button>
+    <span style="flex:1"></span>
+    <button type="button" class="bsc" id="b-vider">Repartir de zéro</button>
+  </div>
+
+  <div class="panneau">
+    <!-- Le seul morceau recopié de l'admin : l'ossature de trois lignes
+         dans laquelle le composeur se dessine. -->
+    <div class="mc-compo" id="mc-compo">
+      <div class="mc-compo-h">
+        <h3>Composition</h3>
+        <span class="mc-compo-n" id="mc-compo-n">…</span>
+      </div>
+      <div id="mc-compo-list"><div class="empty">Lecture de l'effectif…</div></div>
+    </div>
+  </div>
+
+  <div id="journal"><div>— le journal des écritures —</div></div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ---- ce que le composeur croit avoir en face de lui ----------------
+  var PHOTO = '/media/img/';
+  var EFFECTIF = [
+    { id:'p4',  name:'Aïda Diop',    jersey_number:4,  position:'Meneuse',       status:'active',  photo_url:PHOTO+'nouvel_num_4_umsjcf.webp',  photo_x:50, photo_y:0,  photo_zoom:100 },
+    { id:'p6',  name:'Rama Mbaye',   jersey_number:6,  position:'Meneuse',       status:'active',  photo_url:PHOTO+'numero_6_hkmpa0.webp',      photo_x:50, photo_y:0,  photo_zoom:100 },
+    { id:'p7',  name:'Fatou Fall',   jersey_number:7,  position:'Ailière',       status:'active',  photo_url:PHOTO+'nouvel_num_7_ee3qcx.webp',  photo_x:50, photo_y:0,  photo_zoom:100 },
+    { id:'p10', name:'Awa Ndiaye',   jersey_number:10, position:'Pivot',         status:'active',  photo_url:PHOTO+'nouvel_num_10_sztbqj.webp', photo_x:50, photo_y:0,  photo_zoom:100 },
+    { id:'p11', name:'Khady Sy',     jersey_number:11, position:'Ailière-forte', status:'blessee', photo_url:PHOTO+'Joueuse_maillot_blanc___fond_transparent_b0fu2e.webp', photo_x:50, photo_y:0, photo_zoom:100 },
+    { id:'p15', name:'Ndèye Guèye',  jersey_number:15, position:'Pivot',         status:'active',  photo_url:PHOTO+'numero_15_aijnyv.webp',     photo_x:50, photo_y:0,  photo_zoom:100 },
+    { id:'p23', name:'Mariama Sarr', jersey_number:23, position:'Arrière',       status:'active',  photo_url:PHOTO+'18_juil._2026_02_12_16-Photoroom_dm3j1p.webp', photo_x:50, photo_y:0, photo_zoom:100 },
+    { id:'p33', name:'Bineta Cissé', jersey_number:33, position:'Arrière',       status:'active',  photo_url:PHOTO+'numero_33_kgoopf.webp',     photo_x:50, photo_y:0,  photo_zoom:100 },
+    { id:'p99', name:'Sokhna Ba',    jersey_number:99, position:'Ailière',       status:'partie',  photo_url:'',                                photo_x:50, photo_y:0,  photo_zoom:100 }
+  ];
+  var DEPART = [
+    { player_id:'p4',  is_starter:true,  lineup_sort:1,  is_captain:true,  minutes:0, pts:0 },
+    { player_id:'p23', is_starter:true,  lineup_sort:2,  is_captain:false, minutes:0, pts:0 },
+    { player_id:'p7',  is_starter:true,  lineup_sort:3,  is_captain:false, minutes:0, pts:0 },
+    { player_id:'p11', is_starter:true,  lineup_sort:4,  is_captain:false, minutes:0, pts:0 },
+    { player_id:'p10', is_starter:true,  lineup_sort:5,  is_captain:false, minutes:0, pts:0 },
+    { player_id:'p15', is_starter:false, lineup_sort:11, is_captain:false, minutes:0, pts:0 },
+    // Celle-ci porte des statistiques : la retirer ne doit PAS effacer
+    // sa ligne, seulement la sortir de la composition.
+    { player_id:'p33', is_starter:false, lineup_sort:12, is_captain:false, minutes:18, pts:9 }
+  ];
+
+  var colonnes = true;
+  var lignes = JSON.parse(JSON.stringify(DEPART));
+
+  // ---- le journal -----------------------------------------------------
+  var jrn = document.getElementById('journal');
+  function noter(type, texte){
+    var d = document.createElement('div');
+    d.className = type; d.textContent = texte;
+    jrn.insertBefore(d, jrn.firstChild);
+  }
+
+  // ---- les fausses portes de sortie ----------------------------------
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function sbHeaders(){ return {}; }
+  function attendre(v){ return new Promise(function(r){ setTimeout(function(){ r(v); }, 90); }); }
+
+  function sbGet(chemin){
+    if (chemin.indexOf('players?') === 0) return attendre(EFFECTIF.slice());
+    if (chemin.indexOf('match_stats?select=id') === 0){
+      var pid = /player_id=eq\.([^&]+)/.exec(chemin);
+      var t = pid ? lignes.filter(function(l){ return l.player_id === pid[1]; }) : [];
+      return attendre(t.map(function(l){ return { id:'x-' + l.player_id }; }));
+    }
+    return attendre([]);
+  }
+  function sbInsert(table, corps){
+    noter('ins', 'INSERT ' + table + ' ' + JSON.stringify(corps));
+    var l = { player_id:corps.player_id, is_starter:!!corps.is_starter,
+              lineup_sort:(corps.lineup_sort == null ? null : corps.lineup_sort),
+              is_captain:!!corps.is_captain, minutes:0, pts:0 };
+    lignes.push(l);
+    return attendre(null);
+  }
+  function sbPatchBy2(table, mid, pid, corps){
+    noter('pat', 'PATCH  ' + table + ' [' + pid + '] ' + JSON.stringify(corps));
+    lignes.forEach(function(l){ if (l.player_id === pid) for (var k in corps) l[k] = corps[k]; });
+    return attendre(null);
+  }
+  function fauxFetch(url, opts){
+    var m = ((opts && opts.method) || 'GET').toUpperCase();
+    if (m === 'DELETE'){
+      var pid = /player_id=eq\.([^&]+)/.exec(url);
+      noter('del', 'DELETE match_stats [' + (pid ? pid[1] : '?') + ']');
+      if (pid) lignes = lignes.filter(function(l){ return l.player_id !== pid[1]; });
+      // 204 = « pas de contenu ». Lui donner un corps fait échouer la
+      // construction de la Response, et la suppression semblerait rater.
+      return attendre(new Response(null, { status:204 }));
+    }
+    // La sonde des deux colonnes de rangement.
+    if (url.indexOf('lineup_sort') >= 0 && !colonnes)
+      return attendre(new Response('{"code":"42703"}', { status:400 }));
+    var vues = lignes.map(function(l){
+      var c = { player_id:l.player_id, is_starter:l.is_starter, minutes:l.minutes, pts:l.pts };
+      if (colonnes){ c.lineup_sort = l.lineup_sort; c.is_captain = l.is_captain; }
+      return c;
+    });
+    return attendre(new Response(JSON.stringify(vues), {
+      status:200, headers:{ 'Content-Type':'application/json' }
+    }));
+  }
+  var minuteur = null;
+  function qgToast(msg, err){
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'on' + (err ? ' err' : '');
+    clearTimeout(minuteur); minuteur = setTimeout(function(){ t.className = ''; }, 2600);
+  }
+
+  // ---- on va chercher l'original -------------------------------------
+  var A_CSS = '  /* ── LA COMPOSITION DANS LA FICHE DU MATCH';
+  var Z_CSS = '\n\n  .md-tree{';
+  var A_JS  = '  // LA COMPOSITION, DANS LA FICHE DU MATCH';
+  var Z_JS  = '\n\n  function mcRenderDoc(){';
+
+  function morceau(txt, debut, fin, quoi){
+    var d = txt.indexOf(debut);
+    if (d < 0) throw new Error('introuvable dans admin-matchs.html : ' + quoi);
+    var f = txt.indexOf(fin, d);
+    if (f < 0) throw new Error('fin introuvable : ' + quoi);
+    return txt.slice(d, f);
+  }
+
+  var charger = null;
+
+  fetch('../admin-matchs.html')
+    .then(function(r){ if (!r.ok) throw new Error('admin-matchs.html : ' + r.status); return r.text(); })
+    .then(function(txt){
+      txt = txt.replace(/\r\n/g, '\n');
+
+      var css = document.createElement('style');
+      css.textContent = morceau(txt, A_CSS, Z_CSS, 'la feuille de style');
+      document.head.appendChild(css);
+
+      // On remonte d'une ligne : la barre de signes égale au-dessus du
+      // titre fait partie du bloc.
+      var iTitre = txt.indexOf(A_JS);
+      var iDebut = txt.lastIndexOf('\n', iTitre) + 1;
+      var js = txt.slice(iDebut, txt.indexOf(Z_JS, iTitre));
+
+      var usine = new Function(
+        'SUPABASE_URL', 'sbHeaders', 'esc', 'sbGet', 'sbInsert', 'sbPatchBy2', 'qgToast', 'fetch',
+        js + '\nreturn { charger:mcCompoCharger, etat:function(){ return mcCompo; } };'
+      );
+      var api = usine('https://exemple.invalide', sbHeaders, esc, sbGet, sbInsert, sbPatchBy2, qgToast, fauxFetch);
+      charger = api.charger;
+      // Une main dans le cambouis : window.BANC.etat() rend l'état interne
+      // du composeur, window.BANC.lignes() la fausse base. De quoi vérifier
+      // ce qui a été écrit sans ouvrir l'administration.
+      window.BANC = { etat:api.etat, lignes:function(){ return lignes; }, colonnes:function(){ return colonnes; } };
+      charger({ id:'match-essai' });
+      noter('', 'code et style lus dans admin-matchs.html — ' + js.split('\n').length + ' lignes');
+    })
+    .catch(function(e){
+      document.getElementById('mc-compo-list').innerHTML =
+        '<div class="empty">Le banc d\'essai n\'a pas pu lire admin-matchs.html : ' + esc(e.message) +
+        '<br>Ouvrez cette page par un serveur (le fichier voisin n\'est pas lisible en <code>file://</code>).</div>';
+    });
+
+  // ---- les deux interrupteurs -----------------------------------------
+  function relancer(){
+    if (charger) charger({ id:'match-essai' });
+  }
+  document.getElementById('b-avec').addEventListener('click', function(){
+    colonnes = true;
+    this.classList.add('on'); document.getElementById('b-sans').classList.remove('on');
+    noter('', 'base AVEC lineup_sort et is_captain'); relancer();
+  });
+  document.getElementById('b-sans').addEventListener('click', function(){
+    colonnes = false;
+    this.classList.add('on'); document.getElementById('b-avec').classList.remove('on');
+    noter('', 'base SANS les deux colonnes'); relancer();
+  });
+  document.getElementById('b-vider').addEventListener('click', function(){
+    lignes = JSON.parse(JSON.stringify(DEPART));
+    noter('', 'données remises à leur état de départ'); relancer();
+  });
+})();
+</script>
+</body>
+</html>
