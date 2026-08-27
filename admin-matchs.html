@@ -194,13 +194,31 @@
   /* ===================== APP SHELL / SIDEBAR ===================== */
   .app-shell{display:flex;max-width:1400px;margin:0 auto}
   .sidebar{flex:none;width:264px;border-right:1px solid var(--line);min-height:calc(100vh - 65px);padding:20px 14px 40px;position:sticky;top:65px;align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
+  /* ── LES TEINTES DE GROUPE ──────────────────────────────────────
+     Dix teintes desaturees, a clarte egale : aucune ne domine. Elles
+     ne touchent QUE les reperes -- numeros, icone, etat actif. Le texte
+     des entrees reste creme, la lecture est inchangee.
+     sbBuildNav() pose --sb-t sur chaque groupe selon son numero ; le
+     groupe Epingles n'en a pas et garde donc l'or. */
+  #sidebar{
+    --sb-h1:#D9BC79;  /* Pilotage — l'or du club */
+    --sb-h2:#E0A07C;  /* Match day */
+    --sb-h3:#D897A6;  /* L'effectif */
+    --sb-h4:#B79ACB;  /* École de basket */
+    --sb-h5:#93A8DA;  /* Boutique */
+    --sb-h6:#79B9BC;  /* Pages du site */
+    --sb-h7:#8AC290;  /* Contenus & médias */
+    --sb-h8:#B3C283;  /* Messages */
+    --sb-h9:#CBB28C;  /* Réglages */
+    --sb-h10:#A3B0BA; /* en réserve */
+  }
   .sb-group{margin-bottom:22px}
   /* Le libellé devient le bouton de repli : avec une trentaine d'entrées,
      tout ne tient pas à l'écran et l'ascenseur interne de la barre est
      facile à manquer. Replier rend la navigation entière visible. */
   .sb-group-label{display:flex;align-items:center;gap:7px;width:100%;background:none;border:none;font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding:5px 10px;margin-bottom:5px;cursor:pointer;text-align:left;border-radius:7px;transition:color .14s,background .14s}
   .sb-group-label:hover{color:var(--text);background:var(--surface-2)}
-  .sb-group-num{flex:none;font-size:9.5px;letter-spacing:0;color:var(--gold);opacity:.8;min-width:11px}
+  .sb-group-num{flex:none;font-size:9.5px;letter-spacing:0;color:var(--sb-t,var(--gold));opacity:.9;min-width:11px}
   .sb-group-cv{flex:none;width:11px;height:11px;margin-left:auto;opacity:.55;transition:transform .2s cubic-bezier(.22,1,.36,1)}
   .sb-group.folded .sb-group-cv{transform:rotate(-90deg)}
   .sb-group-items{display:grid;grid-template-rows:1fr;transition:grid-template-rows .22s cubic-bezier(.22,1,.36,1)}
@@ -221,15 +239,15 @@
     background:var(--gold);color:#1A1206}
   .sb-tut-neuf.hide{display:none}
   .sb-link-num{flex:none;font-family:var(--font-ui);font-weight:700;font-size:9.5px;color:var(--faint);opacity:.7;min-width:18px}
-  .sb-link.active .sb-link-num{color:var(--gold);opacity:1}
+  .sb-link.active .sb-link-num{color:var(--sb-t,var(--gold));opacity:1}
   @media (prefers-reduced-motion:reduce){ .sb-group-items{transition:none} }
   .sb-link{position:relative;display:flex;align-items:center;gap:12px;width:100%;background:transparent;border:none;color:var(--muted);border-radius:10px;padding:11px 12px 11px 16px;font-family:var(--font-ui);font-weight:600;font-size:13.5px;text-align:left;margin-bottom:3px;transition:background .15s,color .15s}
-  .sb-link svg{width:18px;height:18px;flex:none;opacity:.75;transition:opacity .15s}
+  .sb-link svg{width:18px;height:18px;flex:none;opacity:.62;color:var(--sb-t,var(--muted));transition:opacity .15s,color .15s}
   .sb-link:hover{background:var(--surface-2);color:var(--text)}
-  .sb-link:hover svg{opacity:1}
-  .sb-link.active{background:linear-gradient(90deg,var(--gold-soft),transparent);color:var(--gold-bright);font-weight:700}
-  .sb-link.active svg{opacity:1;color:var(--gold)}
-  .sb-link.active::before{content:'';position:absolute;left:0;top:8%;bottom:8%;width:3px;border-radius:3px;background:linear-gradient(180deg,var(--gold),var(--lime))}
+  .sb-link:hover svg{opacity:.95}
+  .sb-link.active{background:linear-gradient(90deg,color-mix(in srgb,var(--sb-t,var(--gold)) 15%,transparent),transparent);color:var(--sb-t,var(--gold-bright));font-weight:700}
+  .sb-link.active svg{opacity:1;color:var(--sb-t,var(--gold))}
+  .sb-link.active::before{content:'';position:absolute;left:0;top:8%;bottom:8%;width:3px;border-radius:3px;background:var(--sb-t,var(--gold))}
   .sb-link-badge{margin-left:auto;flex:none;background:var(--danger);color:#fff;font-family:var(--font-ui);font-weight:700;font-size:10px;line-height:1;border-radius:20px;padding:4px 7px;min-width:18px;text-align:center}
   .app-main{flex:1;min-width:0}
 
@@ -7622,6 +7640,13 @@
       if (!isPinned) num++;
       var gn = num;
 
+      // La teinte du groupe. Posee ici parce que c'est le seul endroit
+      // qui connait le numero -- et elle descend a toutes les entrees
+      // par heritage, sans qu'on ait a les toucher une par une.
+      // Le groupe Epingles n'est pas numerote : il garde l'or, ce qui le
+      // distingue justement des groupes fixes.
+      if (!isPinned) grp.style.setProperty('--sb-t', 'var(--sb-h' + (((gn - 1) % 10) + 1) + ')');
+
       // Le libellé devient un bouton, et les entrées passent dans un
       // conteneur dont la hauteur s'anime.
       var items = Array.prototype.slice.call(grp.children).filter(function(c){ return c !== lab; });
@@ -8191,6 +8216,87 @@
     });
   }
 
+  // OU SE CORRIGE UNE CLEF.
+  //
+  // Bati une seule fois, a la demande. Les registres ne bougent pas en
+  // cours de session : les relire a chaque ligne d'ecart couterait pour
+  // rien.
+  var coIndexOu = null;
+  function coOuIndex(){
+    if (coIndexOu) return coIndexOu;
+    var idx = {};
+    // Les blocs de contenu : CONTENT_GROUPS dit quel ecran les affiche.
+    try {
+      if (typeof CONTENT_GROUPS !== 'undefined' && typeof CONTENT_BLOCKS !== 'undefined'){
+        Object.keys(CONTENT_GROUPS).forEach(function(ecran){
+          (CONTENT_GROUPS[ecran] || []).forEach(function(bid){
+            var bloc = (CONTENT_BLOCKS || []).filter(function(b){ return b.id === bid; })[0];
+            if (!bloc) return;
+            (bloc.fields || []).forEach(function(f){
+              if (f && f.key && !idx[f.key]) idx[f.key] = {
+                ecran: ecran, bloc: bloc.label || bloc.id, champ: f.label || f.key
+              };
+            });
+          });
+        });
+      }
+    } catch (e) {}
+    // Les reglages : un seul ecran les porte tous.
+    try {
+      (typeof SETTINGS_BLOCKS !== 'undefined' ? SETTINGS_BLOCKS : []).forEach(function(bloc){
+        (bloc.fields || []).forEach(function(f){
+          if (f && f.key && !idx[f.key]) idx[f.key] = {
+            ecran: 'reglages', bloc: bloc.label || bloc.id, champ: f.label || f.key
+          };
+        });
+      });
+    } catch (e) {}
+    coIndexOu = idx;
+    return idx;
+  }
+
+  // Tous les groupes de contenu ne sont pas des ecrans. « tk_texts » en
+  // porte 38 clefs et n existe ni dans SECTION_META ni dans le DOM : ses
+  // textes s editent DANS la Billetterie, sous un onglet. Sans cet alias,
+  // 38 ecarts auraient offert un bouton vers le vide.
+  var CO_ALIAS = { tk_texts: { ecran: 'tickets', onglet: 'Textes' } };
+
+  function coOuCorriger(key){
+    var t = coOuIndex()[key];
+    if (!t) return null;
+    var ecran = t.ecran, onglet = '';
+    if (CO_ALIAS[ecran]) { onglet = CO_ALIAS[ecran].onglet; ecran = CO_ALIAS[ecran].ecran; }
+    var meta = (typeof SECTION_META !== 'undefined' && SECTION_META[ecran]) || null;
+    // Pas de bouton plutot qu un bouton qui ment : si l ecran n est pas
+    // declare, on ne promet rien.
+    if (!meta) return null;
+    return { ecran: ecran, ecranNom: meta.t || ecran, bloc: t.bloc, champ: t.champ, onglet: onglet };
+  }
+
+  // Le bouton qui y mene. Rendu vide quand la clef n'appartient a aucun
+  // bloc connu : mieux vaut pas de bouton qu'un bouton qui ment.
+  function coBoutonOu(key, i){
+    var t = coOuCorriger(key);
+    if (!t) return '';
+    return '<button type="button" class="btn btn-ghost co-ou" data-ou="' + i + '" ' +
+      'style="padding:8px 13px;font-size:12px">Corriger dans « ' + esc(t.ecranNom) + ' »</button>';
+  }
+
+  function coBrancherOu(box, rows){
+    box.querySelectorAll('.co-ou').forEach(function(b){
+      b.addEventListener('click', function(){
+        var r = rows[parseInt(b.getAttribute('data-ou'), 10)];
+        var t = r && coOuCorriger(r.key);
+        if (!t) return;
+        showSection(t.ecran);
+        // On nomme le bloc ET le champ : arriver sur le bon ecran ne suffit
+        // pas quand il en contient sept.
+        qgToast('« ' + t.champ + ' », dans le bloc « ' + t.bloc + ' »' +
+                (t.onglet ? ', onglet « ' + t.onglet + ' »' : '') + '.');
+      });
+    });
+  }
+
   function coAnalyse(html, s){
     coSettings = s;
     var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -8339,13 +8445,15 @@
             '<div class="co-box"><div class="co-box-l">Dans le fichier</div><div class="co-box-v">' + (r.file ? esc(r.file) : '<em>vide</em>') + '</div></div>' +
             '<div class="co-box win"><div class="co-box-l">Dans l\'admin — c\'est ce qui s\'affiche</div><div class="co-box-v">' + (r.db ? esc(r.db) : '<em>vide</em>') + '</div></div>' +
           '</div>' +
-          '<div style="margin-top:11px">' +
+          '<div style="margin-top:11px;display:flex;gap:8px;flex-wrap:wrap">' +
+            coBoutonOu(r.key, i) +
             '<button type="button" class="btn btn-ghost co-adopt" data-i="' + i + '" style="padding:8px 13px;font-size:12px">Adopter la valeur du fichier</button>' +
           '</div>' +
         '</div>';
       }).join('');
 
       var msg = document.getElementById('co-msg');
+      coBrancherOu(box, rows);
       box.querySelectorAll('.co-adopt').forEach(function(b){
         b.addEventListener('click', function(){
           var r = rows[parseInt(b.getAttribute('data-i'), 10)];
@@ -17345,11 +17453,17 @@
      ============================================================ */
   .sb-link{border-radius:var(--r-sm);padding:9px 12px 9px 15px;margin-bottom:1px;font-weight:550;font-size:13px}
   .sb-link svg{width:16px;height:16px;opacity:.6}
-  .sb-link.active{background:var(--gold-soft);color:var(--gold-bright);font-weight:700}
-  .sb-link.active::before{top:0;bottom:0;width:2px;border-radius:0;background:var(--gold)}
+  /* LA TEINTE DE GROUPE PASSE AUSSI ICI.
+     Ce bloc de refonte redeclare la barre laterale plus bas dans le
+     fichier : a specificite egale, c est lui qui gagne. Poser la teinte
+     seulement en haut ne changeait rien -- constate, le numero de groupe
+     restait gris pour les dix groupes pendant que les icones, elles,
+     etaient bien teintees. */
+  .sb-link.active{background:color-mix(in srgb,var(--sb-t,var(--gold)) 15%,transparent);color:var(--sb-t,var(--gold-bright));font-weight:700}
+  .sb-link.active::before{top:0;bottom:0;width:2px;border-radius:0;background:var(--sb-t,var(--gold))}
   .sb-group{margin-bottom:var(--s4)}
   .sb-group-label{font-size:9.5px;letter-spacing:.16em;padding:6px 10px;margin-bottom:2px;border-radius:var(--r-sm)}
-  .sb-group-num{color:var(--faint);opacity:1}
+  .sb-group-num{color:var(--sb-t,var(--faint));opacity:1}
   .sb-link-num{font-size:9px;opacity:.55}
   .sb-link-badge{border-radius:4px;padding:3px 6px;font-size:9.5px}
   .sidebar{padding:16px 10px 40px}
