@@ -1066,6 +1066,75 @@
   /* ===================== MÉDIATHÈQUE ===================== */
   .md-split{display:grid;grid-template-columns:236px minmax(0,1fr);gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
   @media (max-width:820px){ .md-split{grid-template-columns:1fr} }
+  /* ── LE SELECTEUR D'IMAGES ──────────────────────────────────────
+     Il vit hors de #app : une surcouche en position:fixed sous un
+     ancetre en display:none s'ouvre a 0x0, sans erreur. */
+  .imgp-b{
+    flex:none; display:inline-flex; align-items:center; gap:6px;
+    background:var(--surface-2); border:1px solid var(--line-strong);
+    color:var(--muted); border-radius:9px; padding:0 11px; height:38px;
+    font-family:var(--font-ui); font-weight:600; font-size:12px; cursor:pointer;
+    transition:border-color .15s, color .15s;
+  }
+  .imgp-b:hover{ border-color:var(--gold); color:var(--gold) }
+  .imgp-b svg{ width:14px; height:14px; flex:none }
+  .imgp-b:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
+
+  #imgp{
+    position:fixed; inset:0; z-index:460;
+    background:rgba(4,9,6,.72); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  #imgp.hide{ display:none }
+  .imgp-boite{
+    width:min(880px,100%); max-height:min(78vh,660px);
+    background:var(--surface); border:1px solid var(--line-strong);
+    border-radius:16px; display:flex; flex-direction:column; overflow:hidden;
+    box-shadow:0 24px 70px rgba(0,0,0,.55);
+  }
+  .imgp-tete{
+    display:flex; align-items:center; gap:11px; flex-wrap:wrap;
+    padding:15px 17px; border-bottom:1px solid var(--line);
+  }
+  .imgp-tete h3{
+    margin:0; font-family:var(--font-ui); font-weight:700; font-size:15px; color:var(--text);
+  }
+  .imgp-pour{ font-size:12px; color:var(--faint); font-family:var(--font-ui) }
+  .imgp-q{
+    flex:1; min-width:150px; background:var(--surface-2);
+    border:1px solid var(--line-strong); border-radius:9px;
+    padding:9px 12px; color:var(--text); font:inherit; font-size:13px;
+  }
+  .imgp-grille{
+    flex:1; overflow-y:auto; padding:14px 17px;
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(124px,1fr)); gap:10px;
+    align-content:start;
+  }
+  .imgp-item{
+    background:var(--surface-2); border:1px solid var(--line);
+    border-radius:11px; overflow:hidden; cursor:pointer; padding:0;
+    display:flex; flex-direction:column; text-align:left;
+    /* align-self:start est indispensable : sans lui la tuile s etire a la
+       hauteur de sa rangee et se retrouvait ecrasee a 2 px, l image
+       debordant par-dessous. Mesure : tuile 130x2, image 128x96. */
+    align-self:start;
+    transition:border-color .15s, transform .15s;
+  }
+  .imgp-item:hover{ border-color:var(--gold); transform:translateY(-2px) }
+  .imgp-item:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
+  .imgp-vue{
+    width:100%; aspect-ratio:4/3; object-fit:cover; display:block;
+    background:var(--surface); color:transparent;
+  }
+  .imgp-nom{
+    font-family:var(--font-ui); font-size:11px; line-height:1.35; color:var(--muted);
+    padding:7px 8px; word-break:break-word;
+  }
+  .imgp-vide{ grid-column:1/-1; color:var(--faint); font-size:13px; padding:18px 2px }
+  @media (max-width:520px){
+    .imgp-grille{ grid-template-columns:repeat(auto-fill,minmax(96px,1fr)) }
+  }
+
   .md-tree{border-right:1px solid var(--line);background:var(--surface-2);padding:12px 8px;min-height:420px}
   @media (max-width:820px){ .md-tree{border-right:none;border-bottom:1px solid var(--line);min-height:0} }
   /* Arborescence : l'indentation est portée par un padding calculé, et le
@@ -1859,6 +1928,21 @@
        feuille de style est chargée d'emblée (2 Ko), le script seulement
        au premier clic sur « Cadrer ». Voir cadrageOuvrir(). -->
   <div id="bcadrage"></div>
+
+  <!-- Le sélecteur d'images. Hors de #app, comme le Studio et le cadrage :
+       une surcouche en position:fixed sous un ancêtre en display:none
+       s'ouvre à 0×0, sans la moindre erreur. -->
+  <div id="imgp" class="hide" role="dialog" aria-modal="true" aria-label="Choisir une image">
+    <div class="imgp-boite">
+      <div class="imgp-tete">
+        <h3>Choisir une image</h3>
+        <span class="imgp-pour" id="imgp-pour"></span>
+        <input type="search" class="imgp-q" id="imgp-q" placeholder="Nom de fichier…">
+        <button type="button" class="btn btn-ghost" id="imgp-fermer" style="padding:8px 13px;font-size:12.5px">Fermer</button>
+      </div>
+      <div class="imgp-grille" id="imgp-grille"></div>
+    </div>
+  </div>
 
   <!-- ===== TUTORIEL =====
        Meme principe que le Studio : le fragment arrive de
@@ -4123,6 +4207,7 @@
     }).then(function(){ studioEnCours = false; });
   }
   document.getElementById('studio-open').addEventListener('click', studioOuvrir);
+  imgpDemarrer();
 
   // ---------------------------------------------------------------------
   // L'ATELIER DE CADRAGE
@@ -11112,6 +11197,178 @@
     { n:'Another pose of cap 2K 202607222144', u:'/media/img/Another_pose_of_cap_2K_202607222144_gbyhjs.webp', g:'@site-boutique' },
     { n:'Cap in black 2K 202607222143', u:'/media/img/Cap_in_black_2K_202607222143_rdhxvf.webp', g:'@site-boutique' }
   ];
+  // ===================================================================
+  // LE SELECTEUR D'IMAGES
+  // ===================================================================
+  // La mediatheque ne savait faire qu'une chose : copier une adresse. Il
+  // fallait ensuite revenir sur la fiche et coller. Elle s'ouvre
+  // maintenant DEPUIS le champ.
+  //
+  // On ne recopie pas son contenu : on reutilise mdFiles, donc les quatre
+  // origines -- envois, fiches, site, depot -- sont la sans un mot de
+  // plus.
+
+  var IMGP_OUI = /(logo|photo|image|img|hero|poster|visuel|couverture|affiche|banniere|banner|portrait|avatar)/i;
+  // « set_hero_title » contient « hero » et n'est pas une image. Sans ce
+  // filtre, le bouton se posait sur des champs de texte.
+  var IMGP_NON = /(title|titre|texte|text|sous_titre|subtitle|alt|nom|name|couleur|color|lien|link|url_page|slug|cle|key)/i;
+  var IMGP_EXT = /\.(jpe?g|png|webp|gif|svg|avif)\b/i;
+
+  function imgpEstChampImage(el){
+    if (!el || el.tagName !== 'INPUT') return false;
+    var t = (el.type || 'text').toLowerCase();
+    if (t !== 'text' && t !== 'url') return false;
+    if (el.dataset.imgp) return false;                 // deja equipe
+    var ph = el.placeholder || '';
+    var nom = (el.id || '') + ' ' + (el.name || '');
+    // Un placeholder qui montre une extension d'image tranche a lui seul :
+    // c'est ainsi que les champs batis a l'execution se reconnaissent.
+    if (IMGP_EXT.test(ph)) return !IMGP_NON.test(nom);
+    return IMGP_OUI.test(nom + ' ' + ph) && !IMGP_NON.test(nom);
+  }
+
+  var IMGP_ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>';
+
+  function imgpEquiper(el){
+    if (!imgpEstChampImage(el)) return;
+    el.dataset.imgp = '1';
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'imgp-b';
+    b.title = 'Choisir dans la médiathèque';
+    b.innerHTML = IMGP_ICONE + '<span>Médiathèque</span>';
+    b.addEventListener('click', function(){ imgpOuvrir(el); });
+    // Apres le champ, dans son propre flux : on ne touche pas a la mise
+    // en page du formulaire, on s'y ajoute.
+    if (el.parentElement) el.parentElement.insertBefore(b, el.nextSibling);
+  }
+
+  function imgpBalayer(racine){
+    if (!racine || !racine.querySelectorAll) return;
+    try { racine.querySelectorAll('input').forEach(imgpEquiper); } catch (e) {}
+    if (racine.tagName === 'INPUT') imgpEquiper(racine);
+  }
+
+  // LES FORMULAIRES DE FICHE SONT BATIS A L'EXECUTION.
+  //
+  // Au chargement, le DOM ne porte que quatre champs image sur la
+  // douzaine qui existent : les autres naissent quand on ouvre un
+  // article, un produit, une joueuse. Un balayage unique les raterait
+  // tous -- on observe donc les ajouts.
+  var imgpObs = null;
+  function imgpDemarrer(){
+    if (imgpObs) return;
+
+    // LE BALAYAGE INITIAL ARRIVE TROP TOT.
+    //
+    // imgpDemarrer() s ecoute au fil du script, avant que les sections
+    // du bas soient analysees : le premier balayage trouvait ZERO champ
+    // alors que trois existent en dur. On repasse donc quand le document
+    // est pret -- et tout de suite s il l est deja.
+    if (document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', function(){ imgpBalayer(document.body); });
+    }
+    imgpBalayer(document.body);
+
+    // Hors de #app, comme le Studio et le cadrage : position:fixed sous
+    // un ancetre en display:none s ouvre a 0x0, sans erreur.
+    var sur = document.getElementById('imgp');
+    if (sur && sur.parentElement !== document.body) document.body.appendChild(sur);
+    imgpObs = new MutationObserver(function(lots){
+      lots.forEach(function(l){
+        for (var i = 0; i < l.addedNodes.length; i++){
+          var n = l.addedNodes[i];
+          if (n.nodeType === 1) imgpBalayer(n);
+        }
+      });
+    });
+    imgpObs.observe(document.body, { childList: true, subtree: true });
+
+    document.getElementById('imgp-fermer').addEventListener('click', imgpFermer);
+    document.getElementById('imgp-q').addEventListener('input', imgpRendre);
+    document.getElementById('imgp').addEventListener('click', function(e){
+      if (e.target && e.target.id === 'imgp') imgpFermer();   // clic sur le fond
+    });
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape' && !document.getElementById('imgp').classList.contains('hide')) imgpFermer();
+    });
+  }
+
+  var imgpCible = null;
+  function imgpOuvrir(champ){
+    imgpCible = champ;
+    var boite = document.getElementById('imgp');
+    var pour = document.getElementById('imgp-pour');
+    // On rappelle DANS QUEL champ on va coller : le selecteur s'ouvre
+    // par-dessus le formulaire, et on oublie vite d'ou l'on vient.
+    var lab = champ.closest('.field, .form-row, label');
+    var titre = lab ? (lab.querySelector('label, .lab, .hint') || {}).textContent : '';
+    pour.textContent = titre ? ('pour « ' + String(titre).trim().slice(0, 42) + ' »') : '';
+    boite.classList.remove('hide');
+    document.getElementById('imgp-q').value = '';
+    document.getElementById('imgp-q').focus();
+    if (!mdFiles.length){
+      document.getElementById('imgp-grille').innerHTML =
+        '<p class="imgp-vide">Lecture de la médiathèque…</p>';
+      mdList().then(imgpRendre).catch(function(){
+        document.getElementById('imgp-grille').innerHTML =
+          '<p class="imgp-vide">La médiathèque n\'a pas pu être lue.</p>';
+      });
+    } else imgpRendre();
+  }
+
+  function imgpFermer(){
+    document.getElementById('imgp').classList.add('hide');
+    if (imgpCible) { try { imgpCible.focus(); } catch (e) {} }
+    imgpCible = null;
+  }
+
+  function imgpRendre(){
+    var grille = document.getElementById('imgp-grille'); if (!grille) return;
+    var q = (document.getElementById('imgp-q').value || '').trim().toLowerCase();
+    // Les videos n'ont rien a faire dans un champ image.
+    var lot = mdFiles.filter(function(x){
+      if (!x.url) return false;
+      if (mdIsVideo(x.name || x.url)) return false;
+      // Les icones d onglet sont declarees dans la page, donc relevees --
+      // mais proposer un favicon de 48 px comme image de bandeau n a
+      // aucun sens.
+      if (/(favicon|apple-touch-icon)/i.test(x.url)) return false;
+      return !q || String(x.name || '').toLowerCase().indexOf(q) >= 0;
+    });
+    // Une meme image peut venir de deux origines : on ne la propose
+    // qu'une fois.
+    var vus = {};
+    lot = lot.filter(function(x){ if (vus[x.url]) return false; vus[x.url] = 1; return true; });
+
+    if (!lot.length){
+      grille.innerHTML = '<p class="imgp-vide">' +
+        (q ? 'Aucune image à ce nom.' : 'Aucune image pour l’instant.') + '</p>';
+      return;
+    }
+    grille.innerHTML = lot.slice(0, 300).map(function(x){
+      return '<button type="button" class="imgp-item" data-u="' + esc(x.url) + '">' +
+        '<img class="imgp-vue" src="' + esc(x.url) + '" alt="" loading="lazy">' +
+        '<span class="imgp-nom">' + esc(x.name || '') + '</span></button>';
+    }).join('');
+    grille.querySelectorAll('.imgp-item').forEach(function(b){
+      b.addEventListener('click', function(){ imgpChoisir(b.getAttribute('data-u')); });
+    });
+  }
+
+  function imgpChoisir(url){
+    var c = imgpCible;
+    if (!c) { imgpFermer(); return; }
+    c.value = url;
+    // Les deux evenements : certains ecrans ecoutent input, d'autres
+    // change. En omettre un laissait l'apercu sur l'ancienne image et le
+    // bouton Enregistrer eteint.
+    c.dispatchEvent(new Event('input',  { bubbles: true }));
+    c.dispatchEvent(new Event('change', { bubbles: true }));
+    imgpFermer();
+    qgToast('Image choisie — pensez à enregistrer.');
+  }
+
   var MD_BUCKET = 'site-media';
 
   // LA PAGE PUBLIQUE, LUE UNE FOIS PAR SESSION.
