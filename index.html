@@ -1493,6 +1493,59 @@
     #bb-live-card.bb-live-repos .bb-live-info-title{ flex:1 1 100% }
   }
 
+
+  /* ================================================================
+     LE HERO S'ANIME
+     ================================================================
+     Trois gestes, pas un de plus. Un hero qui bouge de partout ne
+     donne pas trois fois plus d'energie : il donne le tournis, et on
+     n'attend plus qu'il se taise.
+
+     Ce qui existait deja et n'a pas ete refait : la cascade des
+     quatre colonnes (85 ms l'une apres l'autre) et le comptage des
+     chiffres. Le module de mouvement se coupe entierement quand le
+     visiteur a demande moins d'animations — les regles ci-dessous
+     portent donc leur propre garde, pour celles qui ne passent pas
+     par lui. */
+
+  /* --- la barre se deploie de la gauche, comme un trait tire --- */
+  @keyframes bbHrBarre{ from{ transform:scaleX(.02) } to{ transform:scaleX(1) } }
+  @keyframes bbHrDedans{ from{ opacity:0 } to{ opacity:1 } }
+  .bb-motion .bb-hr-bar{
+    transform-origin:left center;
+    animation:bbHrBarre .74s cubic-bezier(.16,.84,.3,1) both;
+  }
+  .bb-motion .bb-hr-bar > *{ animation:bbHrDedans .5s ease .48s both }
+
+  /* --- la photo respire ---
+     Un mouvement lent et continu : dix-huit secondes pour un
+     aller-retour de six pour cent. Assez pour qu'une image fixe
+     cesse d'etre une image fixe, trop lent pour qu'on le remarque. */
+  @keyframes bbHrSouffle{ from{ transform:scale(1) } to{ transform:scale(1.06) } }
+  #bb-hero-img{
+    animation:bbHrSouffle 18s ease-in-out infinite alternate;
+    transform-origin:50% 30%;
+  }
+
+  /* --- les colonnes repondent au survol ---
+     Le chiffre monte de quatre pixels, la pastille se remplit. Une
+     colonne qui ne repond pas au curseur passe pour une image. */
+  .bb-hr-c{ transition:background .3s ease }
+  .bb-hr-n{ transition:transform .3s cubic-bezier(.2,.8,.3,1) }
+  .bb-hr-pill{ transition:background .25s ease, color .25s ease, border-color .25s ease }
+  .bb-hr-c:hover{ background:rgba(15,64,48,.05) }
+  .bb-hr-c:hover .bb-hr-n{ transform:translateY(-4px) }
+  .bb-hr-c:hover .bb-hr-pill{ background:var(--hr-encre); color:var(--hr-papier); border-color:var(--hr-encre) }
+  #bb-hero-img-wrap:hover{ background:#0F1E15 }
+  #bb-hero-img-wrap:hover .bb-hr-pill{ background:#A8D93B; color:#05100A; border-color:#A8D93B }
+
+  @media (prefers-reduced-motion:reduce){
+    .bb-motion .bb-hr-bar, .bb-motion .bb-hr-bar > *{ animation:none }
+    #bb-hero-img{ animation:none }
+    .bb-hr-c, .bb-hr-n, .bb-hr-pill{ transition:none }
+    .bb-hr-c:hover .bb-hr-n{ transform:none }
+  }
+
 </style>
 </head>
 <body>
@@ -1668,7 +1721,7 @@
           </div>
 
           <div class="bb-hr-c" id="bb-hero-overlays">
-            <div id="bb-hs-jx" class="bb-hr-n">—</div>
+            <div id="bb-hs-jx" class="bb-hr-n" data-bb-sens="bas">—</div>
             <span id="bb-hs-matchlabel" class="bb-hr-pill">Prochain match</span>
             <div id="bb-next-match">
               <div id="bb-next-match-teams" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
@@ -8280,7 +8333,12 @@ document.addEventListener('keydown', function(e){
     if (!m) return;               // « D2 », « 84–79 »… intouchés
     var pre = m[1], target = parseInt(m[2], 10), post = m[3];
     if (target < 2) return;
-    var from = target > 1900 ? target - 30 : 0;
+    // Trois departs possibles. Une annee part de trente ans plus
+    // tot — partir de zero pour atteindre 2026 donnerait un defile de
+    // chiffres illisible. Un compte a rebours part d'AU-DESSUS et
+    // descend : c'est le seul sens qu'il ait. Le reste monte de zero.
+    var from = el.getAttribute('data-bb-sens') === 'bas' ? target + 40
+             : (target > 1900 ? target - 30 : 0);
     var t0 = null, dur = 1500;
     function frame(ts){
       if (!t0) t0 = ts;
@@ -8300,7 +8358,7 @@ document.addEventListener('keydown', function(e){
     });
   }, { threshold: 0.6 });
 
-  var NUMS = '#bb-hs-f1v,#bb-hs-f2v,#bb-hs-f3v,[data-bb="stat1-v"],[data-bb="stat2-v"],[data-bb="stat3-v"],[data-bb="stat4-v"]';
+  var NUMS = '#bb-hs-f1v,#bb-hs-f2v,#bb-hs-f3v,#bb-hs-jx,[data-bb="stat1-v"],[data-bb="stat2-v"],[data-bb="stat3-v"],[data-bb="stat4-v"]';
   function scanNumbers(){
     document.querySelectorAll(NUMS).forEach(function(el){
       if (!el.__bbNum){ el.__bbNum = true; ioNum.observe(el); }
