@@ -1563,6 +1563,210 @@
     #bb-hs-btn1:hover, #bb-hs-btn2:hover, #bb-hs-ticket:hover,
     #bb-hs-figures > div:hover{ transform:none }
   }
+
+  /* ================================================================
+     LES ACTUALITES — PRESENTATION EDITORIALE
+     ================================================================
+     CE QUE LES DONNEES PERMETTENT, ET RIEN DE PLUS. Sur les articles
+     en base, trois champs sont toujours remplis — titre, corps, image,
+     date — et quatre ne le sont JAMAIS : chapo, rubrique, auteur, texte
+     alternatif. Une maquette a pastilles de rubrique et signatures
+     d'auteur aurait donc affiche des cases vides sur chaque article.
+     Tout ce qui suit s'appuie sur les quatre champs reels.
+
+     LA GRAMMAIRE, prise aux affiches de reference :
+       — un PANNEAU clair qui chevauche l'image, avec un angle
+         fortement arrondi d'un seul cote ;
+       — un BLOC DE DATE en colonne, separe du titre par un filet
+         vertical, comme les cartouches « SAT 16TH MAY » ;
+       — une hierarchie tranchee : une tete tres grande, une liste
+         numerotee ensuite. Pas de troisieme taille intermediaire.
+
+     POURQUOI UNE LISTE ET NON DES CARTES. Trois cartes identiques ne
+     hierarchisent rien et remplissent la page de vignettes. Une liste
+     numerotee, filetee, avec la date en colonne et une vignette a
+     droite, se lit comme un sommaire de magazine — et elle tient sans
+     rubrique ni auteur. */
+
+  /* ---- l'ouverture de section ---- */
+  .bb-ac-mast{
+    display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
+    gap:12px 28px; padding-bottom:clamp(14px,1.8vw,20px);
+    border-bottom:2px solid #F3EFE6; margin-bottom:clamp(22px,3vw,36px);
+  }
+  .bb-ac-kick{
+    display:flex; align-items:center; gap:10px; margin:0 0 10px;
+    font-family:'Inter',sans-serif; font-weight:800; font-size:10.5px;
+    letter-spacing:.24em; text-transform:uppercase; color:#A8D93B;
+  }
+  .bb-ac-kick::before{ content:''; width:22px; height:2px; background:#A8D93B; flex:none }
+  .bb-ac-h1{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-.03em;
+    font-size:clamp(34px,6vw,76px); line-height:.94; color:#F3EFE6; margin:0;
+    text-transform:uppercase;
+  }
+  .bb-ac-n{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:11.5px;
+    letter-spacing:.14em; text-transform:uppercase; color:#7E8A82; padding-bottom:5px;
+  }
+
+  /* ---- la tete : l'image, et le panneau qui la chevauche ---- */
+  .bb-ac-tete{
+    display:block; width:100%; text-align:left; padding:0; border:0; background:none;
+    color:inherit; font:inherit; cursor:pointer; position:relative;
+  }
+  .bb-ac-tete-vis{
+    display:block; position:relative; aspect-ratio:16/9; overflow:hidden;
+    border-radius:18px; background:#0F1E15;
+  }
+  .bb-ac-tete-vis img{
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
+    transition:transform .6s cubic-bezier(.2,.8,.3,1);
+  }
+  .bb-ac-tete:hover .bb-ac-tete-vis img{ transform:scale(1.03) }
+  .bb-ac-tete-vis::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(4,12,8,.1) 40%, rgba(4,12,8,.6) 100%);
+  }
+  /* Le panneau. Un seul angle tres arrondi : c'est lui qui donne
+     l'allure d'affiche, et il doit rester du meme cote que le bloc de
+     date pour que l'oeil parte de la. */
+  .bb-ac-panneau{
+    display:flex; align-items:stretch; gap:clamp(14px,2vw,26px);
+    background:#F3EFE6; color:#0A1409;
+    border-radius:14px 14px 14px 64px;
+    padding:clamp(16px,2.2vw,26px) clamp(20px,3vw,40px) clamp(16px,2.2vw,26px) clamp(20px,2.6vw,34px);
+    margin:clamp(-70px,-7vw,-40px) 0 0 clamp(0px,2vw,32px);
+    max-width:min(92%,860px); position:relative; z-index:2;
+    box-shadow:0 24px 60px rgba(3,10,6,.5);
+  }
+  .bb-ac-quand{
+    flex:none; display:flex; flex-direction:column; justify-content:center;
+    align-items:center; text-align:center; gap:2px;
+    padding-right:clamp(14px,2vw,26px); border-right:1px solid rgba(10,20,9,.22);
+  }
+  .bb-ac-quand b{
+    font-family:'Anton',Impact,sans-serif; font-weight:400; font-size:clamp(26px,3.4vw,44px);
+    line-height:.9; letter-spacing:-.01em;
+  }
+  .bb-ac-quand span{
+    font-family:'Inter',sans-serif; font-weight:800; font-size:10px;
+    letter-spacing:.18em; text-transform:uppercase; color:#4A574E;
+  }
+  .bb-ac-panneau-t{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-.028em;
+    font-size:clamp(20px,2.9vw,40px); line-height:1.08; margin:0; min-width:0;
+    align-self:center;
+  }
+  .bb-ac-tete:hover .bb-ac-panneau-t{ text-decoration:underline; text-underline-offset:4px }
+  @media (max-width:640px){
+    .bb-ac-panneau{ margin:-28px 0 0; max-width:100%; border-radius:12px 12px 12px 40px;
+      flex-direction:column; gap:12px }
+    .bb-ac-quand{ flex-direction:row; align-items:baseline; gap:8px; padding:0 0 10px;
+      border-right:none; border-bottom:1px solid rgba(10,20,9,.22) }
+  }
+
+  /* ---- le sommaire ---- */
+  .bb-ac-sommaire{ margin-top:clamp(30px,4vw,54px); border-top:1px solid rgba(243,239,230,.16) }
+  .bb-ac-l{
+    display:grid; grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center; gap:clamp(14px,2.4vw,30px);
+    width:100%; text-align:left; padding:clamp(16px,2.2vw,26px) 0; border:0;
+    border-bottom:1px solid rgba(243,239,230,.16); background:none; color:inherit;
+    font:inherit; cursor:pointer; transition:background .25s ease;
+  }
+  .bb-ac-l:hover{ background:rgba(168,217,59,.05) }
+  .bb-ac-l:focus-visible{ outline:2px solid #A8D93B; outline-offset:-2px }
+  .bb-ac-no{
+    font-family:'Anton',Impact,sans-serif; font-weight:400;
+    font-size:clamp(24px,3vw,40px); line-height:1; color:rgba(243,239,230,.26);
+    font-variant-numeric:tabular-nums; flex:none; min-width:1.6em;
+    transition:color .25s ease;
+  }
+  .bb-ac-l:hover .bb-ac-no{ color:#A8D93B }
+  .bb-ac-corps-l{ display:block; min-width:0 }
+  .bb-ac-d{
+    display:block; font-family:'Inter',sans-serif; font-weight:800; font-size:10px;
+    letter-spacing:.18em; text-transform:uppercase; color:#A8D93B; margin-bottom:6px;
+  }
+  .bb-ac-t{
+    display:block; font-family:'Space Grotesk',sans-serif; font-weight:700;
+    letter-spacing:-.024em; font-size:clamp(17px,2vw,26px); line-height:1.16; color:#F3EFE6;
+  }
+  .bb-ac-ex{
+    display:block; font-family:'Inter',sans-serif; font-size:14px; line-height:1.6;
+    color:#8F9A91; margin-top:7px; max-width:64ch;
+  }
+  .bb-ac-mini{
+    display:block; flex:none; width:clamp(84px,11vw,150px); aspect-ratio:4/3;
+    border-radius:10px; overflow:hidden; background:#0F1E15; position:relative;
+  }
+  .bb-ac-mini img{
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
+    filter:grayscale(.35); transition:filter .3s ease, transform .5s cubic-bezier(.2,.8,.3,1);
+  }
+  .bb-ac-l:hover .bb-ac-mini img{ filter:none; transform:scale(1.05) }
+  @media (max-width:620px){
+    .bb-ac-l{ grid-template-columns:auto minmax(0,1fr); gap:12px }
+    .bb-ac-mini{ display:none }
+    .bb-ac-ex{ display:none }
+  }
+
+  /* ---- la lecture ---- */
+  .bb-ac-retour{
+    display:inline-flex; align-items:center; gap:9px; background:none; border:0; padding:0;
+    cursor:pointer; font-family:'Inter',sans-serif; font-weight:800; font-size:11px;
+    letter-spacing:.16em; text-transform:uppercase; color:#A8D93B;
+    margin-bottom:clamp(18px,2.4vw,28px);
+  }
+  .bb-ac-retour:hover{ text-decoration:underline }
+  .bb-ac-retour:focus-visible{ outline:2px solid #A8D93B; outline-offset:3px }
+  .bb-ac-art{ max-width:min(100%,860px) }
+  .bb-ac-art-h{
+    display:flex; align-items:flex-start; gap:clamp(16px,2.4vw,32px);
+    padding-bottom:clamp(16px,2.2vw,24px); border-bottom:2px solid #F3EFE6;
+    margin-bottom:clamp(20px,2.8vw,32px);
+  }
+  .bb-ac-art-h .bb-ac-quand{
+    border-right:1px solid rgba(243,239,230,.24); color:#F3EFE6;
+    padding-right:clamp(14px,2vw,26px); align-self:stretch;
+  }
+  .bb-ac-art-h .bb-ac-quand span{ color:#8F9A91 }
+  .bb-ac-art h2{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-.03em;
+    font-size:clamp(26px,4.4vw,52px); line-height:1.04; color:#F3EFE6; margin:0; align-self:center;
+  }
+  .bb-ac-fig{
+    margin:0 0 clamp(22px,3vw,34px); border-radius:16px; overflow:hidden;
+    background:#0F1E15; border:1px solid rgba(243,239,230,.1);
+  }
+  .bb-ac-fig img{ display:block; width:100%; height:auto }
+  /* La colonne de lecture est bornee a 68 signes : au-dela, l'oeil perd
+     le debut de la ligne suivante. Ce n'est pas un gout, c'est mesure. */
+  .bb-ac-corps{
+    font-family:'Inter',sans-serif; font-size:16.5px; line-height:1.8; color:#C7CFC8;
+    max-width:68ch;
+  }
+  .bb-ac-corps > p:first-child::first-letter{
+    float:left; font-family:'Anton',Impact,sans-serif; font-size:3.4em; line-height:.82;
+    padding:.04em .12em 0 0; color:#A8D93B;
+  }
+  .bb-ac-corps p{ margin:0 0 1.15em }
+  .bb-ac-corps b, .bb-ac-corps strong{ color:#F3EFE6 }
+  .bb-ac-pied{
+    max-width:min(100%,860px);
+    margin-top:clamp(28px,3.6vw,44px); padding-top:clamp(16px,2.2vw,22px);
+    border-top:1px solid rgba(243,239,230,.16);
+  }
+  .bb-ac-vide{
+    font-family:'Inter',sans-serif; font-size:14px; color:#7E8A82;
+    padding:clamp(30px,5vw,60px) 0; text-align:center;
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .bb-ac-tete-vis img, .bb-ac-mini img, .bb-ac-l, .bb-ac-no{ transition:none }
+    .bb-ac-tete:hover .bb-ac-tete-vis img, .bb-ac-l:hover .bb-ac-mini img{ transform:none }
+  }
 </style>
 </head>
 <body>
@@ -1629,6 +1833,7 @@
         <a href="#" data-nav="club" class="bb-nav-link" style="color:#D8D6CE">Le Club</a>
         <a href="#" data-nav="equipes" class="bb-nav-link" style="color:#D8D6CE">Équipes</a>
         <a href="#" data-nav="competitions" class="bb-nav-link" style="color:#D8D6CE">Compétitions</a>
+            <a href="#" data-nav="actualites" class="bb-nav-link" style="color:#D8D6CE">Actualités</a>
         <a href="#" data-nav="billetterie" class="bb-nav-link" style="color:#D8D6CE">Billetterie</a>
         <a href="#" data-nav="tryouts" class="bb-nav-link try" style="color:#D8D6CE">Tryouts</a>
         <a href="#" data-nav="inscriptions" class="bb-nav-link try" style="color:#D8D6CE">Inscriptions</a>
@@ -1664,6 +1869,7 @@
         <a href="#" data-nav="club" style="color:#F3EFE6;padding:13px 0;border-bottom:1px solid rgba(243,239,230,.06)">Le Club</a>
         <a href="#" data-nav="equipes" style="color:#F3EFE6;padding:13px 0;border-bottom:1px solid rgba(243,239,230,.06)">Équipes</a>
         <a href="#" data-nav="competitions" style="color:#F3EFE6;padding:13px 0;border-bottom:1px solid rgba(243,239,230,.06)">Compétitions</a>
+        <a href="#" data-nav="actualites" style="color:#F3EFE6;padding:13px 0;border-bottom:1px solid rgba(243,239,230,.06)">Actualités</a>
         <a href="#" data-nav="billetterie" style="color:#F3EFE6;padding:13px 0;border-bottom:1px solid rgba(243,239,230,.06)">Billetterie</a>
         <a href="#" data-nav="tryouts" style="color:#A8D93B;padding:13px 0;border-bottom:1px solid rgba(243,239,230,.06)">Tryouts</a>
         <a href="#" data-nav="inscriptions" style="color:#A8D93B;padding:13px 0;border-bottom:1px solid rgba(243,239,230,.06)">Inscriptions · École de basket</a>
@@ -2064,11 +2270,15 @@
       </section>
 
       <section id="bb-actus" class="bb-hide" style="padding:clamp(40px,6vw,72px) 0 0">
-        <div style="margin-bottom:clamp(20px,3vw,30px)">
-          <span id="bb-actus-kicker" style="font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:var(--bb-or);text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Actualités</span>
-          <h2 id="bb-actus-title" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(28px,4vw,44px);color:#F3EFE6;margin:8px 0 0">Les dernières du club</h2>
+        <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:clamp(20px,3vw,30px)">
+          <div><span id="bb-actus-kicker" style="font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:var(--bb-or);text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Actualités</span>
+          <h2 id="bb-actus-title" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(28px,4vw,44px);color:#F3EFE6;margin:8px 0 0">Les dernières du club</h2></div>
+          <a href="#" data-nav="actualites" style="font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#A8D93B;flex:none">Toutes les actualités →</a>
         </div>
-        <div id="bb-actus-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(16px,2.4vw,22px)"></div>
+        <!-- La grille est desormais portee par le rendu : une premiere en
+             pleine largeur, puis trois vignettes. Le conteneur ne fait plus
+             que les empiler. -->
+        <div id="bb-actus-grid" style="display:grid;gap:clamp(16px,2.4vw,22px)"></div>
       </section>
 
       <section style="padding:44px 0 8px;position:relative">
@@ -2473,6 +2683,38 @@
           </table>
         </div>
       </div>
+    </div>
+  </main>
+
+  <!-- ===== ACTUALITÉS =====
+       Une page au même rang qu'Accueil ou Compétitions. Elle porte
+       deux vues : la liste, et la lecture d'un article. Les deux
+       vivent dans le même écran — passer de l'une à l'autre ne
+       recharge rien, mais laisse quand même une étape d'historique,
+       pour que le bouton « retour » du téléphone referme l'article. -->
+  <main id="bb-page-actualites" class="bb-fade bb-hide">
+    <div style="max-width:1500px;margin:0 auto;padding:clamp(28px,4vw,44px) clamp(16px,4vw,24px) clamp(60px,8vw,88px)">
+
+      <!-- la liste -->
+      <div id="bb-ac-liste">
+        <!-- L'ouverture de section : un titre en capitales, un filet
+             plein, et le compte a droite. C'est ce qui dit qu'on entre
+             dans une rubrique et non sur une page de plus. -->
+        <div class="bb-ac-mast">
+          <div>
+            <p class="bb-ac-kick">Le club</p>
+            <h2 class="bb-ac-h1">Actualités</h2>
+          </div>
+          <span class="bb-ac-n" id="bb-ac-n"></span>
+        </div>
+        <div id="bb-ac-tete"></div>
+        <div class="bb-ac-sommaire" id="bb-ac-sommaire"></div>
+        <div class="bb-ac-vide bb-hide" id="bb-ac-vide">Aucune actualité publiée pour le moment.</div>
+      </div>
+
+      <!-- la lecture -->
+      <div id="bb-ac-lecture" class="bb-hide"></div>
+
     </div>
   </main>
 
@@ -3852,6 +4094,14 @@ window.bbCloud = function(url, w){
   // Un lien partagé (#billetterie) ou un rafraîchissement rouvre la bonne page.
   window.addEventListener('load', function(){
     var h = (location.hash || '').replace('#', '');
+    // « #actualites-12 » ouvre directement l'article : une adresse
+    // partagee sur WhatsApp doit tomber sur l'article, pas sur la liste.
+    var art = /^actualites-(.+)$/.exec(h);
+    if (art){
+      goTo('actualites', true);
+      window.bbAcAOuvrir = art[1];        // les donnees ne sont pas encore la
+      h = 'actualites';
+    }
     if (h && PAGES.indexOf(h) !== -1 && h !== state.page) goTo(h, true);
     if (!history.state || !history.state.bbPage) history.replaceState({ bbPage: state.page || 'accueil' }, '', '#' + (state.page || 'accueil'));
   });
@@ -3860,6 +4110,14 @@ window.bbCloud = function(url, w){
     var p = (e.state && e.state.bbPage) || 'accueil';
     closeOverlays();
     goTo(p, true);
+    // Un article ouvert est une etape d'historique a lui seul : le
+    // bouton « retour » du telephone doit le refermer avant de quitter
+    // la page, et non sauter les deux d'un coup.
+    if (typeof bbAcOuvrir === 'function'){
+      var a = e.state && e.state.bbArticle;
+      if (p === 'actualites' && a) bbAcOuvrir(a, true);
+      else bbAcFermer(true);
+    }
   });
 
   function setActiveNav(){
@@ -3872,7 +4130,7 @@ window.bbCloud = function(url, w){
   var tryVisibleTimer = null;
   var homeTryInSeen = false;
 
-  var PAGES = ['accueil','boutique','equipes','competitions','club','tryouts','inscriptions','billetterie'];
+  var PAGES = ['accueil','actualites','boutique','equipes','competitions','club','tryouts','inscriptions','billetterie'];
   var equipesInSeen = false;
 
   // goTo joue la sortie de la page courante, puis passe la main à applyPage.
@@ -3923,6 +4181,9 @@ window.bbCloud = function(url, w){
       activePage.classList.add('bb-page-in');
     }
 
+    // On quitte les Actualites : l'article ouvert se referme, sinon on
+    // le retrouverait ouvert en revenant, sans savoir pourquoi.
+    if (page !== 'actualites' && typeof bbAcFermer === 'function') bbAcFermer(true);
     if (page === 'billetterie' && typeof bbBillLoad === 'function') bbBillLoad();
 
     var tryoutsPage = document.getElementById('bb-page-tryouts');
@@ -6496,7 +6757,7 @@ window.bbCloud = function(url, w){
   function bbApplyLink(a,val){
     if(val==null||val==='') return;
     var v=String(val).trim(), low=v.toLowerCase();
-    var nav=['accueil','club','equipes','competitions','tryouts','inscriptions','boutique','billetterie'];
+    var nav=['accueil','actualites','club','equipes','competitions','tryouts','inscriptions','boutique','billetterie'];
     a.removeAttribute('data-nav'); a.removeAttribute('data-cta'); a.removeAttribute('data-ticket'); a.removeAttribute('target'); a.removeAttribute('rel');
     if(/^(https?:|mailto:|tel:)/i.test(v)){ a.href=v; if(/^https?:/i.test(v)){ a.target='_blank'; a.rel='noopener'; } return; }
     if(nav.indexOf(low)>=0){ a.setAttribute('data-nav',low); a.href='#'; return; }
@@ -7591,29 +7852,225 @@ window.bbCloud = function(url, w){
     wrap.classList.remove('bb-hide');
   }
 
+  // ===================================================================
+  // LES ACTUALITES — LE SOMMAIRE, ET LA LECTURE
+  // ===================================================================
+  // La table `news` porte un `body` complet depuis toujours. L'accueil
+  // n'en montrait que les 160 premiers caracteres, et rien n'etait
+  // cliquable : le club ecrivait des articles que personne ne pouvait
+  // lire. Tout ce qui suit ne fait qu'ouvrir ce qui existait deja.
+  //
+  // CE QUE LES DONNEES PERMETTENT. Titre, corps, image et date sont
+  // toujours remplis. Chapo, rubrique, auteur ne le sont jamais. On ne
+  // dessine donc ni pastille de rubrique ni signature : elles seraient
+  // vides sur chaque article. Le chapo se deduit du corps.
+
+  var bbNews = [];
+
+  function bbAcJour(d){
+    if (!d) return null;
+    var x = new Date(String(d).slice(0, 10) + 'T00:00:00');
+    if (isNaN(x.getTime())) return null;
+    return {
+      j: x.getDate(),
+      m: x.toLocaleDateString('fr-FR', { month:'long' }),
+      a: x.getFullYear(),
+      long: x.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' })
+    };
+  }
+
+  // Le bloc de date en colonne — le cartouche des affiches : le
+  // quantieme en gros, le mois et l'annee dessous.
+  function bbAcCartouche(d){
+    var q = bbAcJour(d);
+    if (!q) return '';
+    return '<span class="bb-ac-quand">' +
+        '<b>' + q.j + '</b>' +
+        '<span>' + esc(q.m) + '</span>' +
+        '<span>' + q.a + '</span>' +
+      '</span>';
+  }
+
+  // Le corps est de l'HTML : une vignette qui l'afficherait tel quel
+  // montrerait « <p>Les Baobabs… ». On en extrait le texte.
+  function bbAcTexte(html){
+    var s = String(html == null ? '' : html);
+    if (s.indexOf('<') < 0) return s;
+    var d = document.createElement('div');
+    d.innerHTML = s;
+    return (d.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+  function bbAcChapo(n, max){
+    var t = bbAcTexte(n.excerpt || n.body || '');
+    if (!t) return '';
+    return t.length > max ? t.slice(0, max).replace(/\s+\S*$/, '') + '…' : t;
+  }
+
+  function bbAcImage(n, large, cls){
+    if (!n.image_url) return '';
+    var x = (n.image_url_x == null || n.image_url_x === '') ? 50 : n.image_url_x,
+        y = (n.image_url_y == null || n.image_url_y === '') ? 50 : n.image_url_y,
+        z = (n.image_url_zoom == null || n.image_url_zoom === '') ? 100 : n.image_url_zoom;
+    var src = window.bbCloud ? window.bbCloud(n.image_url, large ? 1600 : 700) : n.image_url;
+    return '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="' + window.bbSafeUrl(src) +
+           '" alt="' + esc(n.image_alt || n.title || '') + '" loading="lazy" decoding="async" ' +
+           'style="object-position:' + x + '% ' + y + '%;transform:scale(' + (z / 100) +
+           ');transform-origin:' + x + '% ' + y + '%">';
+  }
+
+  // LA TETE. L'image, et le panneau clair qui la chevauche — un seul
+  // angle tres arrondi, du meme cote que le cartouche de date, pour
+  // que l'oeil parte de la.
+  function bbAcTete(n){
+    return '<button type="button" class="bb-ac-tete" data-ac="' + esc(String(n.id)) + '">' +
+        '<span class="bb-ac-tete-vis">' + bbAcImage(n, true) + '</span>' +
+        '<span class="bb-ac-panneau">' +
+          bbAcCartouche(n.published_at) +
+          '<span class="bb-ac-panneau-t">' + esc(n.title || 'Sans titre') + '</span>' +
+        '</span>' +
+      '</button>';
+  }
+
+  // UNE LIGNE DE SOMMAIRE. Un numero, un filet, la date, le titre, et
+  // une vignette a droite. Ca se lit comme un sommaire de magazine, et
+  // ca tient sans rubrique ni auteur.
+  function bbAcLigne(n, i){
+    var q = bbAcJour(n.published_at);
+    var ex = bbAcChapo(n, 150);
+    return '<button type="button" class="bb-ac-l" data-ac="' + esc(String(n.id)) + '">' +
+        '<span class="bb-ac-no">' + ('0' + (i + 1)).slice(-2) + '</span>' +
+        '<span class="bb-ac-corps-l">' +
+          (q ? '<span class="bb-ac-d">' + esc(q.long) + '</span>' : '') +
+          '<span class="bb-ac-t">' + esc(n.title || 'Sans titre') + '</span>' +
+          (ex ? '<span class="bb-ac-ex">' + esc(ex) + '</span>' : '') +
+        '</span>' +
+        (n.image_url ? '<span class="bb-ac-mini">' + bbAcImage(n, false) + '</span>' : '<span></span>') +
+      '</button>';
+  }
+
+  function bbAcBrancher(racine){
+    if (!racine) return;
+    racine.querySelectorAll('[data-ac]').forEach(function(b){
+      b.addEventListener('click', function(){ bbAcOuvrir(b.getAttribute('data-ac')); });
+    });
+  }
+
+  // ---------- la page ----------
+  function bbAcRendreListe(){
+    var tete = document.getElementById('bb-ac-tete');
+    var som = document.getElementById('bb-ac-sommaire');
+    var vide = document.getElementById('bb-ac-vide');
+    var cpt = document.getElementById('bb-ac-n');
+    if (!tete || !som) return;
+
+    if (!bbNews.length){
+      tete.innerHTML = ''; som.innerHTML = '';
+      if (vide) vide.classList.remove('bb-hide');
+      if (cpt) cpt.textContent = '';
+      return;
+    }
+    if (vide) vide.classList.add('bb-hide');
+    if (cpt){
+      var q1 = bbAcJour(bbNews[bbNews.length - 1].published_at);
+      var q2 = bbAcJour(bbNews[0].published_at);
+      cpt.textContent = bbNews.length + (bbNews.length > 1 ? ' articles' : ' article') +
+        (q1 && q2 && q1.a ? ' · ' + (q1.a === q2.a ? q1.a : q1.a + ' — ' + q2.a) : '');
+    }
+    tete.innerHTML = bbAcTete(bbNews[0]);
+    som.innerHTML = bbNews.slice(1).map(function(x, i){ return bbAcLigne(x, i + 1); }).join('');
+    bbAcBrancher(tete); bbAcBrancher(som);
+  }
+
+  function bbAcParId(id){
+    for (var i = 0; i < bbNews.length; i++)
+      if (String(bbNews[i].id) === String(id)) return bbNews[i];
+    return null;
+  }
+
+  function bbAcOuvrir(id, sansHistorique){
+    var n = bbAcParId(id);
+    var boite = document.getElementById('bb-ac-lecture');
+    if (!n || !boite) return;
+    if (state.page !== 'actualites') goTo('actualites', true);
+
+    var corps = n.body ? bbRich(n.body) : '';
+    boite.innerHTML =
+      '<button type="button" class="bb-ac-retour" data-ac-retour>← Toutes les actualités</button>' +
+      '<article class="bb-ac-art">' +
+        '<header class="bb-ac-art-h">' +
+          bbAcCartouche(n.published_at) +
+          '<h2>' + esc(n.title || 'Sans titre') + '</h2>' +
+        '</header>' +
+        (n.image_url ? '<figure class="bb-ac-fig">' + bbAcImage(n, true) + '</figure>' : '') +
+        (corps ? '<div class="bb-ac-corps">' + corps + '</div>' : '') +
+      '</article>' +
+      '<div class="bb-ac-pied">' +
+        '<button type="button" class="bb-ac-retour" style="margin:0" data-ac-retour>← Toutes les actualités</button>' +
+      '</div>';
+    boite.querySelectorAll('[data-ac-retour]').forEach(function(b){
+      b.addEventListener('click', function(){ bbAcFermer(); });
+    });
+
+    document.getElementById('bb-ac-liste').classList.add('bb-hide');
+    boite.classList.remove('bb-hide');
+    state.article = String(id);
+
+    // L'adresse porte le slug quand il existe : « #actualites/le-titre »
+    // se partage et se comprend, la ou un identifiant ne dit rien.
+    if (!sansHistorique){
+      var ancre = n.slug ? ('#actualites/' + n.slug) : ('#actualites-' + id);
+      history.pushState({ bbPage:'actualites', bbArticle:String(id) }, '', ancre);
+    }
+    window.scrollTo({ top:0, behavior:'auto' });
+  }
+
+  function bbAcFermer(sansHistorique){
+    var boite = document.getElementById('bb-ac-lecture');
+    var liste = document.getElementById('bb-ac-liste');
+    if (!boite || !liste) return;
+    boite.classList.add('bb-hide');
+    boite.innerHTML = '';
+    liste.classList.remove('bb-hide');
+    state.article = null;
+    if (!sansHistorique && state.page === 'actualites'){
+      history.pushState({ bbPage:'actualites' }, '', '#actualites');
+    }
+  }
+
+  // ---------- l'accueil ----------
   function renderActus(rows){
     if (window.bbAppFeed) bbAppFeed.news(rows || []);
-    var el=document.getElementById('bb-actus-grid'); var sec=document.getElementById('bb-actus'); if(!el||!sec) return;
-    function fdate(d){ if(!d) return ''; try{ return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return d; } }
-    el.innerHTML=rows.map(function(n){
-      var nx=(n.image_url_x==null||n.image_url_x==='')?50:n.image_url_x, ny=(n.image_url_y==null||n.image_url_y==='')?50:n.image_url_y, nz=(n.image_url_zoom==null||n.image_url_zoom==='')?100:n.image_url_zoom;
-      var img = n.image_url ? '<div style="aspect-ratio:16/10;overflow:hidden;background:#0F1E15"><img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(n.image_url,1000):(n.image_url)))+'" alt="'+esc(n.title||'')+'" style="width:100%;height:100%;object-fit:cover;object-position:'+nx+'% '+ny+'%;transform:scale('+(nz/100)+');transform-origin:'+nx+'% '+ny+'%" loading="lazy" decoding="async"></div>' : '';
-      // Le chapô est écrit pour être lu ici : on le préfère au début du
-      // corps de l'article, qui n'a pas été rédigé comme une accroche.
-      var lead = n.excerpt || n.body || '';
-      var body = lead ? '<p style="font-size:14px;line-height:1.6;color:#B9C2BB;margin:8px 0 0">'+esc(String(lead).slice(0,160))+(String(lead).length>160?'…':'')+'</p>' : '';
-      var cat = n.category ? '<span style="display:inline-block;font-family:\'Inter\',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#0A1B0D;background:var(--bb-or);border-radius:100px;padding:4px 9px;margin-bottom:9px">'+esc(n.category)+'</span>' : '';
-      var sign = n.author ? '<div style="font-size:12px;color:#7E8A82;margin-top:11px;padding-top:11px;border-top:1px solid rgba(243,239,230,.09)">Par '+esc(n.author)+'</div>' : '';
-      return '<article style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:16px;overflow:hidden">'+img+
-        '<div style="padding:18px 20px 22px">'+
-          cat+
-          (n.published_at?'<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:11px;letter-spacing:.1em;color:var(--bb-or);text-transform:uppercase">'+esc(fdate(n.published_at))+'</div>':'')+
-          '<h3 style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:21px;color:#F3EFE6;margin:6px 0 0;line-height:1.1">'+esc(n.title||'')+'</h3>'+
-          body+
-          sign+
-        '</div></article>';
-    }).join('');
-    sec.classList.remove('bb-hide');
+    bbNews = rows || [];
+    bbAcRendreListe();
+
+    var el = document.getElementById('bb-actus-grid');
+    var sec = document.getElementById('bb-actus');
+    if (!el || !sec) return;
+    // L'accueil montre la meme tete, puis deux lignes de sommaire. Le
+    // reste vit sur la page — c'est a ca qu'elle sert.
+    el.innerHTML = bbNews.length
+      ? bbAcTete(bbNews[0]) +
+        (bbNews.length > 1
+          ? '<div class="bb-ac-sommaire" style="margin-top:clamp(22px,3vw,34px)">' +
+              bbNews.slice(1, 3).map(function(x, i){ return bbAcLigne(x, i + 1); }).join('') +
+            '</div>'
+          : '')
+      : '';
+    bbAcBrancher(el);
+    if (bbNews.length) sec.classList.remove('bb-hide');
+
+    // Une adresse d'article a ete demandee avant que les donnees
+    // n'arrivent : c'est maintenant qu'on peut l'honorer.
+    if (window.bbAcAOuvrir){
+      var vise = window.bbAcAOuvrir;
+      window.bbAcAOuvrir = null;
+      var trouve = bbAcParId(vise);
+      if (!trouve){
+        for (var i = 0; i < bbNews.length; i++)
+          if (bbNews[i].slug === vise) { trouve = bbNews[i]; break; }
+      }
+      if (trouve) bbAcOuvrir(trouve.id, true);
+    }
   }
 
   function applyFounder(s){
