@@ -1047,186 +1047,197 @@
   /* ================================================================
      LE CINQ MAJEUR — LA PLANCHE D'AVANT-MATCH
      ================================================================
-     Codes des planches de composition : une grille de portraits
-     rectangulaires tous traites de la meme facon, un numero qui se lit
-     de loin, le nom en bandeau sous la photo, et les remplacantes en
-     une ligne de texte au bas de l'affiche.
+     Maquette livree par la direction artistique, integree ici. Deux
+     ecarts assumes, tous deux imposes par le reel :
 
-     Le traitement unique des photos n'est pas un effet de style, c'est
-     ce qui fait tenir la planche : cinq portraits pris a cinq endroits,
-     sous cinq lumieres, ne forment une equipe que si la couleur les
-     rassemble. On les passe donc tous au vert du club. Le survol seul
-     rend a chacune sa couleur d'origine.
+     1. LES NOMS DE CLASSES. La maquette nommait .bb-tile, .bb-photo,
+        .bb-name. Ce fichier fait 620 ko et tout y commence par bb- :
+        .bb-name y existait deja douze fois. Tout est donc range sous
+        bb-lu-, comme le reste du bloc.
 
-     Ce qui vient du club et non des references : le vert profond, l'or,
-     le lime, Anton pour les chiffres, et le grain d'impression. */
+     2. LE CADRAGE DES PORTRAITS. La maquette posait un
+        object-position:50% 14% pour tout le monde. Le club regle le
+        cadrage photo par photo dans l'administration ; l'ecraser
+        reviendrait a defaire ce travail a chaque publication.
+
+     LE PARTI PRIS : l'oblique, mais en accent. Seuls le titre et les
+     numeros penchent — les deux plus gros caracteres de la planche.
+     Les sous-titres, l'heure et le reste restent droits : penchee
+     partout, l'inclinaison n'attire plus l'oeil nulle part.
+
+     Neuf degres de skewX, et non font-style:italic : Anton n'a pas de
+     style incline, le demander au navigateur donnerait une simulation.
+     Ici l'inclinaison est geometrique et voulue.
+
+     LES PHOTOS. Elles ne sont pas teintees. Cinq portraits pris a cinq
+     endroits gardent leurs vraies couleurs, et c'est un vignetage vert
+     qui les rassemble par les bords, avec un voile d'or en haut et un
+     pied assombri sous le bandeau du nom. Le visage reste intact. */
   #bb-lineup{ padding:clamp(44px,6vw,76px) 0 0 }
 
   .bb-lu{
-    position:relative; overflow:hidden;
-    border:1px solid rgba(198,162,87,.22); border-radius:18px;
-    background:
-      radial-gradient(130% 100% at 80% -12%, rgba(168,217,59,.10), transparent 56%),
-      linear-gradient(158deg,#0C2A1C 0%,#081C13 48%,#05100A 100%);
+    width:100%; position:relative;
+    background:#081C13;
+    box-shadow:0 30px 80px rgba(3,9,6,.55);
+    display:grid; grid-template-columns:minmax(0,1fr) 34px;
   }
-  /* Le grain. Une affiche imprimee n'est jamais lisse ; sans lui, le
-     fond vert fait ecran de veille. */
-  .bb-lu::before{
-    content:''; position:absolute; inset:0; z-index:0; pointer-events:none; opacity:.45;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)' opacity='.2'/%3E%3C/svg%3E");
-  }
-  .bb-lu-in{ position:relative; z-index:1; padding:clamp(20px,3.2vw,40px) }
+  .bb-lu-in{ min-width:0; padding:clamp(20px,2.6vw,30px) clamp(16px,2.4vw,26px) clamp(18px,2.2vw,24px) }
 
-  /* ---- l'en-tete : le titre a gauche, les ecussons a droite ---- */
-  .bb-lu-top{ display:flex; align-items:flex-start; gap:16px }
-  .bb-lu-kick{
-    font-family:'Inter',sans-serif; font-weight:800; font-size:10.5px;
-    letter-spacing:.26em; text-transform:uppercase; color:#A8D93B;
-    display:flex; align-items:center; gap:9px;
+  /* La tranche : une affiche a un dos. */
+  .bb-lu-spine{ background:#05100A; display:grid; place-items:center }
+  .bb-lu-spine span{
+    writing-mode:vertical-rl; font-family:'Inter',sans-serif; font-weight:800;
+    font-size:10px; letter-spacing:.32em; text-transform:uppercase;
+    color:rgba(198,162,87,.75); white-space:nowrap;
   }
-  .bb-lu-kick::before{ content:''; width:20px; height:2px; background:#A8D93B; flex:none }
+
+  /* ---- l'en-tete ---- */
+  .bb-lu-top{
+    display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
+    gap:16px 24px; margin:0 0 clamp(14px,1.8vw,20px);
+  }
   .bb-lu-ttl{
     font-family:'Anton',Impact,sans-serif; font-weight:400;
-    font-size:clamp(34px,6.4vw,72px); line-height:.9; letter-spacing:.004em;
-    text-transform:uppercase; color:#F3EFE6; margin:10px 0 0;
+    font-size:clamp(42px,6.6vw,74px); line-height:.84; letter-spacing:-.01em;
+    text-transform:uppercase; color:#F3EFE6; margin:0; padding-left:8px;
+    transform:skewX(-9deg); transform-origin:left bottom;
   }
-  .bb-lu-crests{
-    margin-left:auto; flex:none; display:flex; align-items:center;
-    gap:clamp(8px,1.4vw,14px); padding-top:3px;
+  .bb-lu-topr{ text-align:right; padding-bottom:6px; min-width:0 }
+  .bb-lu-comp{
+    font-family:'Inter',sans-serif; font-weight:800; font-size:10.5px;
+    letter-spacing:.2em; text-transform:uppercase; color:#A8D93B; margin:0;
   }
-  .bb-lu-crest{ width:clamp(30px,4.2vw,50px); height:clamp(30px,4.2vw,50px); object-fit:contain; display:block }
-  .bb-lu-crests span{ width:1px; height:24px; background:rgba(243,239,230,.2); flex:none }
+  .bb-lu-when{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:12.5px;
+    color:rgba(243,239,230,.72); margin:5px 0 0;
+  }
 
-  /* ---- la ligne de match : des barres obliques, comme sur une affiche ---- */
-  .bb-lu-meta{
-    display:flex; flex-wrap:wrap; align-items:center; gap:7px 12px;
-    margin:clamp(14px,2vw,20px) 0 0; padding:0 0 clamp(15px,2.2vw,22px);
-    border-bottom:1px solid rgba(243,239,230,.12);
-    font-family:'Inter',sans-serif; font-weight:700;
-    font-size:clamp(10.5px,1.1vw,12.5px); line-height:1.5;
-    letter-spacing:.13em; text-transform:uppercase; color:rgba(243,239,230,.7);
-  }
-  .bb-lu-meta b{ color:#F3EFE6; font-weight:800 }
-  .bb-lu-meta em{ font-style:normal; font-weight:800; color:#E4C179 }
-  .bb-lu-meta i{ font-style:normal; color:rgba(243,239,230,.26) }
-  .bb-lu-ha{
-    margin-left:auto; flex:none; font-family:'Inter',sans-serif; font-weight:800;
-    font-size:9.5px; letter-spacing:.14em; padding:4px 10px; border-radius:100px;
-  }
-  .bb-lu-ha.dom{ background:rgba(168,217,59,.14); color:#A8D93B; border:1px solid rgba(168,217,59,.38) }
-  .bb-lu-ha.ext{ background:rgba(198,162,87,.12); color:#C6A257; border:1px solid rgba(198,162,87,.34) }
-
-  /* ---- la grille des cinq ----
-     Flex et non grid : sur une rangee incomplete — trois colonnes pour
-     cinq portraits — les orphelins se centrent d'eux-memes au lieu de
-     laisser un trou a droite. */
+  /* ---- la grille des cinq : 5 colonnes, puis 3, puis 2 ---- */
   .bb-lu-grid{
-    --g:clamp(8px,1.1vw,14px);
-    display:flex; flex-wrap:wrap; justify-content:center; gap:var(--g);
-    margin:clamp(20px,2.8vw,32px) 0 0;
+    display:grid; gap:9px; grid-template-columns:repeat(2,minmax(0,1fr));
+    margin:0; padding:0; list-style:none;
   }
-  .bb-lu-p{ width:calc((100% - 4 * var(--g)) / 5); min-width:0 }
+  @media (min-width:620px){ .bb-lu-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) } }
+  @media (min-width:980px){ .bb-lu-grid{ grid-template-columns:repeat(5,minmax(0,1fr)) } }
 
-  .bb-lu-fig{
-    position:relative; aspect-ratio:3/4; overflow:hidden; border-radius:3px;
-    border:1px solid rgba(198,162,87,.3);
-    background:linear-gradient(168deg,#143024,#08170F);
-    transition:border-color .28s ease;
-  }
+  /* ---- une vignette ---- */
+  .bb-lu-p{ position:relative; aspect-ratio:3/4; overflow:hidden; background:#0F4030 }
   .bb-lu-ph{
     position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
-    z-index:1; filter:grayscale(.45) contrast(1.06) saturate(.85);
-    transform:scale(var(--z,1));
-    transition:filter .45s ease, transform .5s cubic-bezier(.2,.8,.3,1);
+    filter:contrast(1.06) saturate(1.06); transform:scale(var(--z,1));
   }
-  /* Le vert du club pose en mode « couleur » : la matiere de la photo
-     reste, sa teinte devient celle de l'equipe. */
-  .bb-lu-tint{
-    position:absolute; inset:0; z-index:2; pointer-events:none;
-    background:#0F4030; mix-blend-mode:color; opacity:.6;
-    transition:opacity .4s ease;
+  /* Le vignetage : ce qui fait tenir cinq photos heterogenes ensemble,
+     sans toucher aux visages. */
+  .bb-lu-vig{
+    position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(115% 80% at 50% 12%,
+      rgba(15,64,48,0) 38%, rgba(8,28,19,.55) 78%, rgba(5,16,10,.9) 100%);
   }
-  /* Le bas qui s'assombrit : sans lui, le numero se perd sur une photo claire. */
+  .bb-lu-au{
+    position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(180deg, rgba(198,162,87,.14) 0%, rgba(198,162,87,0) 30%);
+  }
   .bb-lu-sh{
-    position:absolute; inset:0; z-index:3; pointer-events:none;
-    background:linear-gradient(180deg, rgba(6,18,12,0) 40%, rgba(6,18,12,.72) 80%, rgba(4,12,8,.93) 100%);
+    position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(to top, rgba(5,16,10,.9) 0%, rgba(5,16,10,0) 46%);
   }
-  .bb-lu-p:hover .bb-lu-fig{ border-color:#A8D93B }
-  .bb-lu-p:hover .bb-lu-ph{ filter:none; transform:scale(calc(var(--z,1) * 1.05)) }
-  .bb-lu-p:hover .bb-lu-tint{ opacity:0 }
+  .bb-lu-gr{
+    position:absolute; inset:0; pointer-events:none; opacity:.22;
+    background:repeating-linear-gradient(0deg, rgba(5,16,10,.3) 0 1px, transparent 1px 3px);
+  }
+  .bb-lu-ring{
+    position:absolute; inset:0; pointer-events:none;
+    box-shadow:inset 0 0 0 1px rgba(228,193,121,.24);
+    transition:box-shadow .25s ease;
+  }
+  .bb-lu-p:hover .bb-lu-ring{ box-shadow:inset 0 0 0 1px rgba(168,217,59,.75) }
 
   .bb-lu-no{
-    position:absolute; z-index:4; left:7px; bottom:2px;
-    font-family:'Anton',Impact,sans-serif; line-height:.82;
-    font-size:clamp(38px,5.2vw,66px); letter-spacing:-.035em; color:#F3EFE6;
-    text-shadow:0 5px 18px rgba(4,12,8,.9); pointer-events:none; user-select:none;
+    position:absolute; right:12px; top:4px; z-index:2;
+    font-family:'Anton',Impact,sans-serif; font-size:clamp(58px,7vw,86px);
+    line-height:1; color:#F3EFE6; transform:skewX(-9deg);
+    text-shadow:0 6px 22px rgba(5,16,10,.6);
+    font-variant-numeric:tabular-nums; pointer-events:none; user-select:none;
   }
-  .bb-lu-tag{ position:absolute; z-index:4; top:7px; left:7px; display:flex; gap:4px }
-  .bb-lu-pos, .bb-lu-cap{
-    font-family:'Inter',sans-serif; font-weight:800; font-size:9px;
-    letter-spacing:.12em; color:#0A1B0D; padding:3px 6px; border-radius:3px;
+  .bb-lu-band{
+    position:absolute; left:0; right:0; bottom:0; z-index:2;
+    background:#05100A; border-top:2px solid #C6A257; padding:8px 10px 9px;
   }
-  .bb-lu-pos{ background:#A8D93B }
-  .bb-lu-cap{ background:#E4C179 }
   .bb-lu-nm{
-    margin:9px 0 0; text-align:center;
-    font-family:'Inter',sans-serif; font-weight:800;
-    font-size:clamp(10.5px,1.02vw,13px); line-height:1.25;
-    text-transform:uppercase; letter-spacing:.02em; color:#F3EFE6;
+    font-family:'Anton',Impact,sans-serif; font-size:clamp(15px,1.55vw,17px);
+    line-height:1; letter-spacing:.015em; text-transform:uppercase;
+    color:#F3EFE6; margin:0;
+  }
+  .bb-lu-meta{
+    display:flex; align-items:center; gap:6px;
+    font-family:'Inter',sans-serif; font-weight:700; font-size:9px;
+    letter-spacing:.14em; text-transform:uppercase;
+    color:rgba(243,239,230,.62); margin:3px 0 0;
+  }
+  .bb-lu-cap{
+    flex:none; width:14px; height:14px; border-radius:50%;
+    background:#A8D93B; color:#05100A; font-family:'Anton',Impact,sans-serif;
+    font-size:9.5px; display:grid; place-items:center;
   }
 
-  /* ---- le bas de l'affiche : remplacantes et encadrement ---- */
-  .bb-lu-rep{
-    margin:clamp(24px,3.4vw,40px) 0 0;
-    padding:clamp(16px,2.2vw,24px) clamp(14px,2vw,22px);
-    border:1px solid rgba(243,239,230,.1); border-radius:12px;
-    background:rgba(243,239,230,.025);
-    display:grid; gap:clamp(16px,2.2vw,24px);
+  /* ---- le pied : banc, encadrement, match ---- */
+  .bb-lu-under{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:20px 28px; margin-top:clamp(18px,2.2vw,26px);
+    padding-top:clamp(14px,1.8vw,20px); border-top:1px solid rgba(243,239,230,.14);
   }
-  /* Pas d'encadrement renseigne : pas de rangee vide dans la grille. */
-  .bb-lu-rep > div:empty{ display:none }
-  .bb-lu-h{
-    display:flex; align-items:center; gap:11px; margin:0 0 11px;
-    font-family:'Inter',sans-serif; font-weight:800; font-size:10px;
-    letter-spacing:.24em; text-transform:uppercase; color:rgba(243,239,230,.5);
+  /* Un bloc sans contenu ne doit pas reserver sa colonne. */
+  .bb-lu-under > div:empty{ display:none }
+  .bb-lu-sub{
+    font-family:'Anton',Impact,sans-serif; font-size:30px; line-height:.9;
+    text-transform:uppercase; color:#F3EFE6; margin:0 0 12px;
   }
-  .bb-lu-h b{ color:#F3EFE6; font-weight:800 }
-  .bb-lu-h i{ flex:1; height:1px; background:rgba(243,239,230,.1); font-style:normal }
-  .bb-lu-bench{ display:flex; flex-wrap:wrap; gap:9px 24px }
-  .bb-lu-b{ display:flex; align-items:baseline; gap:7px }
+  .bb-lu-bench{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:8px 18px; margin:0; padding:0; list-style:none;
+  }
+  .bb-lu-bench li{ display:flex; align-items:baseline; gap:9px; min-width:0 }
   .bb-lu-bno{
-    font-family:'Anton',Impact,sans-serif; font-size:18px; line-height:1;
-    color:#C6A257; font-variant-numeric:tabular-nums;
+    flex:none; min-width:22px; text-align:right;
+    font-family:'Anton',Impact,sans-serif; font-size:19px; color:#C6A257;
+    font-variant-numeric:tabular-nums;
   }
   .bb-lu-bnm{
-    font-family:'Inter',sans-serif; font-weight:700; font-size:12.5px;
-    letter-spacing:.05em; text-transform:uppercase; color:rgba(243,239,230,.86);
+    font-family:'Inter',sans-serif; font-weight:800; font-size:14px;
+    letter-spacing:.01em; text-transform:uppercase; color:#F3EFE6;
+    min-width:0; overflow:hidden; text-overflow:ellipsis;
   }
-  .bb-lu-vide{ font-family:'Inter',sans-serif; font-size:12.5px; color:rgba(243,239,230,.42) }
-  .bb-lu-coach{ display:flex; align-items:center; gap:13px }
-  .bb-lu-cav{
-    width:46px; height:46px; border-radius:50%; object-fit:cover; flex:none;
-    border:1px solid rgba(198,162,87,.45); background:#12281D;
+  .bb-lu-lab{
+    font-family:'Inter',sans-serif; font-weight:800; font-size:9.5px;
+    letter-spacing:.2em; text-transform:uppercase;
+    color:rgba(243,239,230,.5); margin:0 0 7px;
   }
-  .bb-lu-crl{
+  .bb-lu-staff{ font-family:'Inter',sans-serif; font-weight:800; font-size:13.5px; color:#F3EFE6; margin:0 }
+  .bb-lu-role{
     font-family:'Inter',sans-serif; font-weight:700; font-size:9.5px;
-    letter-spacing:.16em; text-transform:uppercase; color:#C6A257; margin-bottom:3px;
+    letter-spacing:.14em; text-transform:uppercase;
+    color:rgba(243,239,230,.55); margin:3px 0 0;
   }
-  .bb-lu-cnm{ font-family:'Inter',sans-serif; font-weight:800; font-size:15px; color:#F3EFE6 }
+  .bb-lu-mt{ display:flex; flex-direction:column; gap:10px; justify-content:flex-end }
+  .bb-lu-vs{ display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+  .bb-lu-vs img{ width:34px; height:34px; object-fit:contain; display:block; flex:none }
+  .bb-lu-club{ font-family:'Anton',Impact,sans-serif; font-size:22px; text-transform:uppercase; color:#F3EFE6 }
+  .bb-lu-opp{ font-family:'Anton',Impact,sans-serif; font-size:22px; text-transform:uppercase; color:#E4C179 }
+  .bb-lu-x{ font-family:'Inter',sans-serif; font-weight:800; font-size:10.5px; letter-spacing:.16em; color:#C6A257 }
+  .bb-lu-time{
+    font-family:'Anton',Impact,sans-serif; font-size:19px; color:#05100A;
+    background:#A8D93B; padding:3px 10px;
+  }
+  .bb-lu-rule{ height:3px; background:linear-gradient(90deg,#A8D93B,rgba(168,217,59,0)) }
 
-  /* ---- on ne retrecit pas les portraits jusqu'a l'illisible : on
-         reduit le nombre de colonnes ---- */
-  @media (max-width:980px){
-    .bb-lu-p{ width:calc((100% - 2 * var(--g)) / 3) }
-  }
   @media (max-width:620px){
-    .bb-lu-p{ width:calc((100% - var(--g)) / 2) }
-    .bb-lu-ha{ margin-left:0 }
-    .bb-lu-crests{ gap:8px }
+    /* « Stadium Marius Ndiaye (Dakar) » ne tient pas sur une ligne a
+       375 px : on la laisse passer a la ligne plutot que deborder. */
+    .bb-lu-topr{ text-align:left; width:100% }
+    .bb-lu-when{ white-space:normal }
   }
   @media (prefers-reduced-motion:reduce){
-    .bb-lu-ph, .bb-lu-tint, .bb-lu-fig{ transition:none }
-    .bb-lu-p:hover .bb-lu-ph{ transform:scale(var(--z,1)) }
+    .bb-lu-ring{ transition:none }
   }
 </style>
 </head>
@@ -1584,35 +1595,37 @@
       <!-- ===== LE CINQ MAJEUR =====
            Une section à part, qui ne remplace pas l'Effectif :
              Effectif    = tout le club.
-             Cinq majeur = les cinq annoncés pour ce match, les
-                           remplaçantes, l'encadrement.
+             Cinq majeur = les cinq annoncés pour ce match, le banc,
+                           l'encadrement.
            Elle reste masquée tant qu'aucune composition n'est publiée :
-           une planche vide serait pire que pas de planche. -->
+           une planche vide serait pire que pas de planche.
+
+           Les deux listes qui se remplissent après coup — les cinq et le
+           banc — gardent leurs identifiants et restent dans le HTML :
+           c'est par eux que le moteur d'animation les observe. -->
       <section id="bb-lineup" class="bb-hide">
         <div class="bb-lu">
           <div class="bb-lu-in">
             <header class="bb-lu-top">
-              <div style="min-width:0">
-                <div class="bb-lu-kick" id="bb-lu-kick">Prochain match</div>
-                <h2 class="bb-lu-ttl">Cinq majeur</h2>
+              <h2 class="bb-lu-ttl">Cinq majeur</h2>
+              <div class="bb-lu-topr">
+                <p class="bb-lu-comp" id="bb-lu-comp"></p>
+                <p class="bb-lu-when" id="bb-lu-when"></p>
               </div>
-              <div class="bb-lu-crests" id="bb-lu-crests"></div>
             </header>
-
-            <!-- La ligne du match, en barres obliques : qui, quand, où —
-                 dans cet ordre, sur une seule ligne tant qu'elle tient. -->
-            <p class="bb-lu-meta" id="bb-lu-meta"></p>
 
             <div class="bb-lu-grid" id="bb-lu-five"></div>
 
-            <div class="bb-lu-rep">
-              <div>
-                <div class="bb-lu-h"><b>Remplaçantes</b><i></i></div>
-                <div class="bb-lu-bench" id="bb-lu-bench"></div>
+            <div class="bb-lu-under">
+              <div id="bb-lu-banc-wrap">
+                <h3 class="bb-lu-sub">Banc</h3>
+                <ul class="bb-lu-bench" id="bb-lu-bench"></ul>
               </div>
               <div id="bb-lu-coach-wrap"></div>
+              <div class="bb-lu-mt" id="bb-lu-mt"></div>
             </div>
           </div>
+          <div class="bb-lu-spine" aria-hidden="true"><span>Baobabs Basket Club · Dakar</span></div>
         </div>
       </section>
 
@@ -5523,10 +5536,11 @@ window.bbCloud = function(url, w){
 
   var BB_LU_LOGO = '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp';
 
-  // Les postes tels que l'admin les ecrit, ramenes aux cinq abreviations
-  // qu'on lit sur une composition. Le trait d'union, l'accent et le
-  // masculin comptent : « Ailière-forte » non traduit se coupait en
-  // « AIL », et deux ailieres differentes portaient la meme etiquette.
+  // Les postes ramenes aux cinq abreviations du basket. Elles ne
+  // s'affichent nulle part : elles servent a RANGER le cinq quand le
+  // staff n'a pas pose d'ordre lui-meme. Le trait d'union et l'accent
+  // comptent — « Ailiere-forte » non traduit se coupait en « AIL », et
+  // deux ailieres differentes portaient la meme etiquette.
   var BB_LU_POS = { PG:'PG', SG:'SG', SF:'SF', PF:'PF', C:'C',
                     'Meneur':'PG', 'Meneuse':'PG',
                     'Arrière':'SG', 'Arriere':'SG',
@@ -5538,71 +5552,84 @@ window.bbCloud = function(url, w){
     var s = String(v || '').trim();
     if (!s) return '';
     if (BB_LU_POS[s]) return BB_LU_POS[s];
-    // Un poste ecrit autrement : on retente sans accent ni trait
-    // d'union avant de renoncer et de couper le mot.
-    var plat = s.normalize ? s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[-‑]/g, ' ') : s;
-    var trouve = null;
+    var plat = bbLuPlat(s), trouve = null;
     Object.keys(BB_LU_POS).forEach(function(k){
-      if (trouve) return;
-      var kp = k.normalize ? k.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[-‑]/g, ' ') : k;
-      if (kp.toLowerCase() === plat.toLowerCase()) trouve = BB_LU_POS[k];
+      if (!trouve && bbLuPlat(k) === plat) trouve = BB_LU_POS[k];
     });
     return trouve || (s.length <= 3 ? s.toUpperCase() : s.slice(0, 3).toUpperCase());
   }
+  function bbLuPlat(s){
+    return (s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : s)
+             .replace(/[-\u2011]/g, ' ').toLowerCase();
+  }
+
+  // CE QUI S'AFFICHE, c'est le poste en toutes lettres — « Meneuse »,
+  // « Arriere » — et non l'abreviation anglaise. Une seule exception :
+  // « Ailiere-forte » ne tient pas sous un portrait de 150 px.
+  function bbLuPosteLu(v){
+    var s = String(v || '').trim();
+    if (!s) return '';
+    return /^ailiere[ -]forte$/.test(bbLuPlat(s)) ? 'Ail. forte' : s;
+  }
 
   function bbLuDate(d, t){
-    if (!d) return { jour:'', heure: t || '' };
+    if (!d) return { jour:'', heure: (t || '').slice(0, 5) };
     var x = new Date(String(d) + 'T00:00:00');
-    if (isNaN(x.getTime())) return { jour:String(d), heure: t || '' };
-    var jour = x.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
-    return { jour: jour, heure: (t || '').slice(0, 5) };
+    if (isNaN(x.getTime())) return { jour:String(d), heure: (t || '').slice(0, 5) };
+    var jour = x.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    return { jour: jour.charAt(0).toUpperCase() + jour.slice(1), heure: (t || '').slice(0, 5) };
   }
 
   // Le portrait garde le cadrage choisi dans l'admin : les memes trois
   // nombres que partout ailleurs sur le site. Le zoom passe par une
   // variable CSS et non par un transform en ligne — sinon il gagnerait
-  // contre la feuille de style, et le survol ne pourrait plus rien
-  // agrandir du tout.
+  // contre la feuille de style.
   function bbLuCadre(p){
     var x = (p.px == null ? 50 : p.px), y = (p.py == null ? 0 : p.py), z = (p.pz == null ? 100 : p.pz);
     return 'object-position:' + x + '% ' + y + '%;transform-origin:' + x + '% ' + y + '%;--z:' + (z / 100);
   }
 
-  // UNE CARTE DE LA PLANCHE.
+  // UNE VIGNETTE DE LA PLANCHE.
   //
-  // Le numero est pose sur la photo, en bas a gauche, assez grand pour
-  // se lire de loin : c'est lui qu'on cherche sur une affiche, pas le
-  // nom. Le nom vient dessous, en bandeau, comme sur une feuille
-  // d'equipe. Le poste et le brassard se lisent en haut.
+  // Quatre voiles empiles sur la photo, et aucun ne touche au visage :
+  // un vignetage vert qui ferme les bords, un voile d'or en haut, un
+  // pied assombri sous le bandeau, un grain de trame. C'est ce qui fait
+  // tenir ensemble cinq portraits pris a cinq endroits — sans les
+  // teinter, donc sans leur retirer leur carnation.
   function bbLuCarte(p){
+    var no = (p.no == null || p.no === '') ? '' : String(p.no);
+    var poste = bbLuPosteLu(p.pos);
+    var alt = [p.name || 'Joueuse', no ? 'numéro ' + no : '', p.cap ? 'capitaine' : '']
+                .filter(Boolean).join(', ');
     var ph = p.src
-      ? '<img class="bb-lu-ph" src="' + window.bbSafeUrl(p.src) + '" alt="" loading="lazy" decoding="async" style="' + bbLuCadre(p) + '">'
+      ? '<img class="bb-lu-ph" src="' + window.bbSafeUrl(p.src) + '" alt="' + esc(alt) +
+        '" loading="lazy" decoding="async" style="' + bbLuCadre(p) + '">'
       : '';
-    var pos = bbLuPos(p.pos);
-    var no  = (p.no == null || p.no === '') ? '' : String(p.no);
+    var sous = [poste, p.cap ? 'Capitaine' : ''].filter(Boolean).join(' · ');
     return '<article class="bb-lu-p">' +
-        '<div class="bb-lu-fig">' +
-          ph +
-          '<span class="bb-lu-tint"></span>' +
-          '<span class="bb-lu-sh"></span>' +
-          '<div class="bb-lu-tag">' +
-            (pos ? '<span class="bb-lu-pos">' + esc(pos) + '</span>' : '') +
-            (p.cap ? '<span class="bb-lu-cap">Cap.</span>' : '') +
-          '</div>' +
-          (no ? '<span class="bb-lu-no">' + esc(no) + '</span>' : '') +
+        ph +
+        '<span class="bb-lu-vig" aria-hidden="true"></span>' +
+        '<span class="bb-lu-au" aria-hidden="true"></span>' +
+        '<span class="bb-lu-sh" aria-hidden="true"></span>' +
+        '<span class="bb-lu-gr" aria-hidden="true"></span>' +
+        '<span class="bb-lu-ring" aria-hidden="true"></span>' +
+        (no ? '<span class="bb-lu-no">' + esc(no) + '</span>' : '') +
+        '<div class="bb-lu-band">' +
+          '<p class="bb-lu-nm">' + esc(p.name || '') + '</p>' +
+          (sous
+            ? '<p class="bb-lu-meta">' +
+                (p.cap ? '<span class="bb-lu-cap" aria-hidden="true">C</span>' : '') +
+                esc(sous) + '</p>'
+            : '') +
         '</div>' +
-        '<p class="bb-lu-nm">' + esc(p.name || '') + '</p>' +
       '</article>';
   }
 
-  // Les remplacantes : une ligne de texte, numero et nom, comme au bas
-  // d'une affiche. Pas de vignettes — elles feraient concurrence aux
-  // cinq, qui sont le sujet.
   function bbLuBanc(p){
-    return '<span class="bb-lu-b">' +
-        '<b class="bb-lu-bno">' + esc(String(p.no == null ? '—' : p.no)) + '</b>' +
+    return '<li>' +
+        '<span class="bb-lu-bno">' + esc(String(p.no == null ? '—' : p.no)) + '</span>' +
         '<span class="bb-lu-bnm">' + esc(p.name || '') + '</span>' +
-      '</span>';
+      '</li>';
   }
 
   function bbLuRendre(m, cinq, banc, coach){
@@ -5611,50 +5638,47 @@ window.bbCloud = function(url, w){
     if (!m || !cinq.length) return;
 
     var dom = m.is_home !== false;
-    var crest = function(u, alt){
-      return u ? '<img class="bb-lu-crest" src="' + window.bbSafeUrl(u) + '" alt="' + esc(alt) +
-                 '" loading="lazy" decoding="async">' : '';
-    };
-    document.getElementById('bb-lu-crests').innerHTML =
-      crest(BB_LU_LOGO, 'Baobabs Basket Club') +
-      (m.opponent_logo_url ? '<span></span>' + crest(m.opponent_logo_url, m.opponent_name || 'Adversaire') : '');
-
-    // Le sur-titre dit la journee quand elle est renseignee : « Journée 7 »
-    // situe le match. Le nom de la competition, lui, est trop long pour
-    // un sur-titre : sa place est dans la ligne du dessous.
-    var kick = document.getElementById('bb-lu-kick');
-    if (kick) kick.textContent = m.round_label || 'Prochain match';
-
     var d = bbLuDate(m.match_date, m.match_time);
-    var bouts = ['<b>Baobabs BC</b> <em>vs</em> <b>' + esc(m.opponent_name || 'Adversaire') + '</b>'];
-    // La date et l'heure ne font qu'un renseignement : les separer par
-    // une barre en ferait deux, et la ligne s'allongerait pour rien.
-    if (d.jour || d.heure)
-      bouts.push(esc(d.jour + (d.jour && d.heure ? ' · ' : '') + d.heure));
-    if (m.venue) bouts.push(esc(m.venue));
-    if (m.competition) bouts.push(esc(m.competition));
-    document.getElementById('bb-lu-meta').innerHTML =
-      bouts.join('<i>//</i>') +
-      '<span class="bb-lu-ha ' + (dom ? 'dom' : 'ext') + '">' + (dom ? 'À domicile' : 'À l\'extérieur') + '</span>';
 
+    // ---- l'en-tete ----
+    document.getElementById('bb-lu-comp').textContent =
+      m.competition || m.round_label || 'Prochain match';
+    document.getElementById('bb-lu-when').textContent =
+      [d.jour, m.venue].filter(Boolean).join(' · ');
+
+    // ---- les cinq ----
     document.getElementById('bb-lu-five').innerHTML = cinq.map(bbLuCarte).join('');
 
-    var bench = document.getElementById('bb-lu-bench');
-    bench.innerHTML = banc.length
-      ? banc.map(bbLuBanc).join('')
-      : '<span class="bb-lu-vide">Les remplaçantes seront annoncées avant la rencontre.</span>';
+    // ---- le banc ----
+    var wrap = document.getElementById('bb-lu-banc-wrap');
+    document.getElementById('bb-lu-bench').innerHTML = banc.map(bbLuBanc).join('');
+    wrap.classList.toggle('bb-hide', !banc.length);
 
-    var cw = document.getElementById('bb-lu-coach-wrap');
-    cw.innerHTML = coach
-      ? '<div class="bb-lu-h"><b>Encadrement</b><i></i></div>' +
-        '<div class="bb-lu-coach">' +
-          (coach.photo_url
-            ? '<img class="bb-lu-cav" src="' + window.bbSafeUrl(window.bbCloud ? window.bbCloud(coach.photo_url, 200) : coach.photo_url) + '" alt="" loading="lazy" decoding="async">'
-            : '<div class="bb-lu-cav"></div>') +
-          '<div><div class="bb-lu-crl">' + esc(coach.role || 'Entraîneur') + '</div>' +
-          '<div class="bb-lu-cnm">' + esc(coach.name || '') + '</div></div>' +
-        '</div>'
+    // ---- l'encadrement ----
+    // Sans coach renseigne, le bloc disparait. « Nom non communique »
+    // occuperait une colonne pour ne rien dire.
+    document.getElementById('bb-lu-coach-wrap').innerHTML = coach
+      ? '<p class="bb-lu-lab">Encadrement</p>' +
+        '<p class="bb-lu-staff">' + esc(coach.name || '') + '</p>' +
+        '<p class="bb-lu-role">' + esc(coach.role || 'Entraîneur') + '</p>'
       : '';
+
+    // ---- le match ----
+    var crest = function(u, alt){
+      return u ? '<img src="' + window.bbSafeUrl(u) + '" alt="' + esc(alt) +
+                 '" loading="lazy" decoding="async">' : '';
+    };
+    document.getElementById('bb-lu-mt').innerHTML =
+      '<p class="bb-lu-lab">Prochain match · ' + (dom ? 'à domicile' : 'à l\'extérieur') + '</p>' +
+      '<div class="bb-lu-vs">' +
+        crest(BB_LU_LOGO, 'Baobabs Basket Club') +
+        '<span class="bb-lu-club">Baobabs</span>' +
+        '<span class="bb-lu-x">' + (dom ? 'VS' : 'CHEZ') + '</span>' +
+        '<span class="bb-lu-opp">' + esc(m.opponent_name || 'Adversaire') + '</span>' +
+        crest(m.opponent_logo_url, 'Écusson ' + (m.opponent_name || 'adversaire')) +
+        (d.heure ? '<span class="bb-lu-time">' + esc(d.heure) + '</span>' : '') +
+      '</div>' +
+      '<div class="bb-lu-rule"></div>';
 
     sec.classList.remove('bb-hide');
     if (window.bbRescanMotion) window.bbRescanMotion();
@@ -5707,8 +5731,8 @@ window.bbCloud = function(url, w){
             // LE BANC AVANT LE MATCH.
             //
             // Une composition peut n'annoncer que les cinq. Avant la
-            // rencontre, les remplacantes seraient alors vides — pour une
-            // planche d'avant-match, c'est le contraire du but.
+            // rencontre, le banc serait alors vide — pour une planche
+            // d'avant-match, c'est le contraire du but.
             //
             // On le deduit : les joueuses ACTIVES qui ne commencent pas.
             // Ce n'est pas une invention, c'est une soustraction — et les
@@ -5727,8 +5751,8 @@ window.bbCloud = function(url, w){
             //
             // Celui pose dans l'admin passe avant tout : c'est un choix,
             // pas un detail d'affichage. A defaut, le cinq se lit dans
-            // l'ordre des postes — PG, SG, SF, PF, C — et le banc par
-            // numero de maillot, comme au bas d'une affiche.
+            // l'ordre des postes — meneuse, arriere, ailiere, ailiere
+            // forte, pivot — et le banc par numero de maillot.
             var ordre = { PG:1, SG:2, SF:3, PF:4, C:5 };
             var parRang = function(secours){
               return function(a, b){
