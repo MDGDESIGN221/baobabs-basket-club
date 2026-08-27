@@ -1153,6 +1153,52 @@
     .imgp-grille{ grid-template-columns:repeat(auto-fill,minmax(96px,1fr)) }
   }
 
+  /* ── LA COMPOSITION DANS LA FICHE DU MATCH ────────────────────── */
+  .mc-compo{ margin-top:22px; padding-top:20px; border-top:1px solid var(--line) }
+  .mc-compo-h{ display:flex; align-items:baseline; gap:12px; margin-bottom:6px }
+  .mc-compo-h h3{ margin:0; font-family:var(--font-ui); font-weight:700; font-size:15px; color:var(--text) }
+  .mc-compo-n{
+    font-family:var(--font-ui); font-weight:700; font-size:11.5px;
+    letter-spacing:.06em; color:var(--faint);
+    padding:3px 9px; border-radius:100px; background:var(--surface-2);
+    border:1px solid var(--line-strong);
+  }
+  .mc-compo-n.ok{ color:var(--ok); border-color:rgba(147,206,67,.4); background:rgba(147,206,67,.1) }
+  .mc-compo-n.trop{ color:var(--danger); border-color:rgba(217,128,119,.4) }
+  .mc-compo-r{
+    display:flex; align-items:center; gap:11px; padding:8px 11px;
+    border-radius:9px; border:1px solid transparent;
+    transition:background .15s, border-color .15s;
+  }
+  .mc-compo-r:hover{ background:var(--surface-2) }
+  .mc-compo-r.est-titu{ background:rgba(198,162,87,.07); border-color:rgba(198,162,87,.26) }
+  .mc-compo-no{
+    flex:none; min-width:26px; text-align:right;
+    font-family:var(--font-ui); font-weight:700; font-size:14px; color:var(--gold);
+  }
+  .mc-compo-nm{ flex:1; min-width:0; font-family:var(--font-ui); font-weight:600; font-size:13.5px; color:var(--text) }
+  .mc-compo-ps{ flex:none; font-size:11.5px; color:var(--faint) }
+  .mc-compo-bl{
+    flex:none; font-family:var(--font-ui); font-weight:700; font-size:9.5px;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--danger);
+  }
+  .mc-compo-g{ flex:none; display:flex; gap:4px }
+  .mc-compo-b{
+    font-family:var(--font-ui); font-weight:600; font-size:11.5px;
+    background:var(--surface-2); border:1px solid var(--line-strong); color:var(--muted);
+    border-radius:7px; padding:6px 10px; cursor:pointer;
+    transition:background .14s, border-color .14s, color .14s;
+  }
+  .mc-compo-b:hover{ border-color:var(--gold); color:var(--gold) }
+  .mc-compo-b.on.titu{ background:var(--gold); border-color:var(--gold); color:#0A1B0D }
+  .mc-compo-b.on.banc{ background:var(--surface); border-color:var(--gold); color:var(--gold) }
+  .mc-compo-b.on.non{ background:var(--surface); border-color:var(--line-strong); color:var(--faint) }
+  .mc-compo-b:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
+  @media (max-width:640px){
+    .mc-compo-r{ flex-wrap:wrap }
+    .mc-compo-g{ width:100%; justify-content:flex-end }
+  }
+
   .md-tree{border-right:1px solid var(--line);background:var(--surface-2);padding:12px 8px;min-height:420px}
   @media (max-width:820px){ .md-tree{border-right:none;border-bottom:1px solid var(--line);min-height:0} }
   /* Arborescence : l'indentation est portée par un padding calculé, et le
@@ -12033,6 +12079,105 @@
     if (!mcStarted) mcInit(); else mcRender();
   }
 
+  // ===================================================================
+  // LA COMPOSITION, DANS LA FICHE DU MATCH
+  // ===================================================================
+  // Trois etats par joueuse, et le troisieme compte autant que les deux
+  // autres : « pas retenue » doit pouvoir se dire, sinon on ne peut plus
+  // revenir sur un choix.
+  var mcCompo = { rows: [], roster: [], mid: null };
+
+  function mcCompoCharger(m){
+    mcCompo.mid = m.id;
+    var box = document.getElementById('mc-compo-list'); if (!box) return;
+    Promise.all([
+      sbGet('players?select=id,name,jersey_number,position,status&order=jersey_number.asc'),
+      sbGet('match_stats?select=player_id,is_starter&match_id=eq.' + m.id)
+    ]).then(function(res){
+      // Une joueuse partie du club ne peut plus etre alignee. Les
+      // blessees restent listees : c'est au staff de decider, pas au
+      // logiciel -- une blessure peut etre remise la veille.
+      mcCompo.roster = (res[0] || []).filter(function(p){ return (p.status || 'active') !== 'partie'; });
+      mcCompo.rows = res[1] || [];
+      mcCompoRendre();
+    }).catch(function(){
+      box.innerHTML = '<div class="empty">L’effectif n’a pas pu être lu.</div>';
+    });
+  }
+
+  function mcCompoEtat(pid){
+    var r = mcCompo.rows.filter(function(x){ return String(x.player_id) === String(pid); })[0];
+    if (!r) return 'non';
+    return r.is_starter ? 'titu' : 'banc';
+  }
+
+  function mcCompoRendre(){
+    var box = document.getElementById('mc-compo-list'); if (!box) return;
+    if (!mcCompo.roster.length){
+      box.innerHTML = '<div class="empty">Aucune joueuse dans l’effectif.</div>';
+      return;
+    }
+    var nTitu = mcCompo.rows.filter(function(r){ return r.is_starter; }).length;
+    var nBanc = mcCompo.rows.length - nTitu;
+    var cpt = document.getElementById('mc-compo-n');
+    if (cpt){
+      cpt.textContent = nTitu + ' sur 5 · ' + nBanc + ' au banc';
+      cpt.className = 'mc-compo-n' + (nTitu === 5 ? ' ok' : (nTitu > 5 ? ' trop' : ''));
+    }
+    box.innerHTML = mcCompo.roster.map(function(p){
+      var e = mcCompoEtat(p.id);
+      var bt = function(k, lib){
+        return '<button type="button" class="mc-compo-b' + (e === k ? ' on ' + k : '') +
+               '" data-pid="' + esc(String(p.id)) + '" data-etat="' + k + '">' + lib + '</button>';
+      };
+      return '<div class="mc-compo-r' + (e === 'titu' ? ' est-titu' : '') + '">' +
+        '<span class="mc-compo-no">' + esc(String(p.jersey_number == null ? '—' : p.jersey_number)) + '</span>' +
+        '<span class="mc-compo-nm">' + esc(p.name || '') + '</span>' +
+        '<span class="mc-compo-ps">' + esc(p.position || '') + '</span>' +
+        (String(p.status||'active') === 'blessee' ? '<span class="mc-compo-bl">blessée</span>' : '') +
+        '<span class="mc-compo-g">' + bt('titu','Titulaire') + bt('banc','Banc') + bt('non','—') + '</span>' +
+      '</div>';
+    }).join('');
+
+    box.querySelectorAll('.mc-compo-b').forEach(function(b){
+      b.addEventListener('click', function(){ mcCompoPoser(b.getAttribute('data-pid'), b.getAttribute('data-etat')); });
+    });
+  }
+
+  function mcCompoPoser(pid, etat){
+    var mid = mcCompo.mid;
+    if (!mid) return;
+    var actuel = mcCompoEtat(pid);
+    if (actuel === etat) return;
+
+    // On peint tout de suite et on ecrit ensuite : attendre le reseau
+    // pour voir son propre clic donne une interface qui colle.
+    mcCompo.rows = mcCompo.rows.filter(function(r){ return String(r.player_id) !== String(pid); });
+    if (etat !== 'non') mcCompo.rows.push({ player_id: pid, is_starter: etat === 'titu' });
+    mcCompoRendre();
+
+    var fini = function(){ /* deja peint */ };
+    var rate = function(){
+      qgToast('La composition n’a pas pu être enregistrée.', true);
+      mcCompoCharger({ id: mid });          // on remet ce que dit la base
+    };
+
+    if (etat === 'non'){
+      // Pas de sbDelete par clef composee : la feuille de match n'a pas
+      // d'identifiant simple, elle se designe par le couple.
+      fetch(SUPABASE_URL + '/rest/v1/match_stats?match_id=eq.' + mid + '&player_id=eq.' + pid,
+            { method:'DELETE', headers: sbHeaders() })
+        .then(function(r){ if (!r.ok) throw new Error('del'); fini(); })
+        .catch(rate);
+      return;
+    }
+    var corps = { is_starter: etat === 'titu' };
+    sbGet('match_stats?select=id&match_id=eq.' + mid + '&player_id=eq.' + pid).then(function(rows){
+      if (rows && rows.length) return sbPatchBy2('match_stats', mid, pid, corps);
+      return sbInsert('match_stats', { match_id: mid, player_id: pid, is_starter: corps.is_starter }, 'Matchs');
+    }).then(fini).catch(rate);
+  }
+
   function mcRenderDoc(){
     var m = mcById(mcSel); if (!m){ mcSel=null; mcRender(); return; }
     var st = MC_STATUT[mcStatut(m)] || MC_STATUT.a_venir;
@@ -12184,7 +12329,19 @@
           field('mc-att','Affluence', m.attendance, 'number', 'Nombre de spectateurs')+
         '</div>'+
         field('mc-notes','Notes internes', m.notes, 'textarea', 'Consignes, logistique, informations pratiques')+
-        saveBar();
+        saveBar()+
+        '<div class="mc-compo" id="mc-compo">' +
+          '<div class="mc-compo-h">' +
+            '<h3>Composition</h3>' +
+            '<span class="mc-compo-n" id="mc-compo-n">…</span>' +
+          '</div>' +
+          '<p class="hint" style="margin:0 0 12px">Le cinq de départ et le banc pour cette rencontre. ' +
+            'Publiés sur le site dès qu’au moins une titulaire est désignée — vous pouvez donc annoncer ' +
+            'la composition plusieurs jours avant le match. Le cinq posé ici se retrouve sur le terrain ' +
+            'dans « Soir de match ».</p>' +
+          '<div id="mc-compo-list"><div class="empty">Lecture de l’effectif…</div></div>' +
+        '</div>';
+      mcCompoCharger(m);
       mcWireSave(m, ['mc-date','mc-time','mc-home','mc-venue','mc-comp','mc-round','mc-ref','mc-att','mc-notes'], function(){
         var t = document.getElementById('mc-time').value;
         return {
