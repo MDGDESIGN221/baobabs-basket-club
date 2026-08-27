@@ -1280,15 +1280,15 @@
     background:#A8D93B; border-radius:100px;
     margin:clamp(10px,1.1vw,14px); padding:8px 10px;
   }
+  /* La pastille n'ecrit plus « BAOBABS » : le bloc-marque du bandeau
+     le dit deja quelques pixels plus haut, et le sur-titre juste a
+     cote le redisait une troisieme fois. Elle garde l'ecusson, qui
+     sert d'ancrage a la barre, et se tait. */
   .bb-hr-mark{
-    display:flex; align-items:center; gap:9px; flex:none;
-    background:var(--hr-encre); border-radius:100px; padding:9px 18px;
+    display:grid; place-items:center; flex:none;
+    width:38px; height:38px; background:var(--hr-encre); border-radius:50%;
   }
-  .bb-hr-mark img{ width:20px; height:20px; object-fit:contain; display:block }
-  .bb-hr-mark span{
-    font-family:'Anton',Impact,sans-serif; font-size:14px;
-    letter-spacing:.06em; text-transform:uppercase; color:var(--hr-papier);
-  }
+  .bb-hr-mark img{ width:22px; height:22px; object-fit:contain; display:block }
   .bb-hr-kick{
     flex:1; min-width:0;
     font-family:'Inter',sans-serif; font-weight:700; font-size:11.5px;
@@ -1313,9 +1313,27 @@
     gap:clamp(14px,2.4vw,40px); align-items:end;
     padding:clamp(16px,2.4vw,30px) clamp(16px,2.2vw,26px) clamp(18px,2.6vw,32px);
   }
+  /* L'INTERLIGNE EST UNE QUESTION DE LANGUE.
+
+     Anton porte des capitales hautes, et un É accentué monte ENCORE
+     au-dessus. Mesuré sur la fonte elle-même, à 72 px :
+
+       « LE BASKET »   monte 63 px, descend  1 px
+       « SÉNÉGALAIS »  monte 80 px  ← l'accent coûte 17 px à lui seul
+       « QUI MONTE »   monte 63 px, descend  7 px (la queue du Q)
+
+     Il faut donc 1 + 80 = 81 px entre deux lignes de base, soit
+     1,12 em. Le .84 d'origine en donnait 61 : l'accent du É tapait en
+     plein dans « LE BASKET ». Invisible sur un titre anglais, franc
+     sur un titre français.
+
+     1.18 couvre le cas et laisse de la marge. Le titre venant de
+     l'admin, il doit tenir quel que soit le texte saisi : seule une
+     ligne finissant par Q suivie d'une ligne commençant par É
+     demanderait davantage. */
   .bb-hr-h1{
     font-family:'Anton',Impact,sans-serif; font-weight:400;
-    font-size:clamp(38px,6.4vw,96px); line-height:.84; letter-spacing:-.012em;
+    font-size:clamp(38px,6.4vw,96px); line-height:1.18; letter-spacing:-.012em;
     text-transform:uppercase; color:var(--hr-encre); margin:0;
     transform:skewX(-9deg); transform-origin:left bottom;
   }
@@ -1432,6 +1450,44 @@
   @media (prefers-reduced-motion:reduce){
     .bb-hr-cta a, #bb-hero-img-b{ transition:none }
   }
+
+  /* ================================================================
+     LA CARTE DU DIRECT, AU REPOS
+     ================================================================
+     Hors match, elle reservait quand meme un lecteur 16/9 pleine
+     largeur : six cents pixels de vide, sur toute la largeur de
+     l'ecran, pour annoncer qu'il ne se passe rien. Un espace vide
+     n'attire pas l'attention, il la gaspille.
+
+     Au repos elle se replie en une bande. Le message y tient sur une
+     ligne, et le bouton du canal « lien » — la ou la CSP interdit
+     d'integrer le lecteur — y reste a sa place.
+
+     Le positionnement du panneau d'attente est passe du style en
+     ligne a cette classe : un style en ligne l'emporte sur la feuille
+     de style, il aurait fallu un !important pour le replier. */
+  .bb-live-scene{
+    position:relative; width:100%; aspect-ratio:16/9; margin-top:14px; background:#07130D;
+  }
+  .bb-live-fb{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; text-align:center; padding:20px;
+  }
+  #bb-live-card.bb-live-repos .bb-live-scene{ aspect-ratio:auto; margin-top:12px }
+  #bb-live-card.bb-live-repos .bb-live-fb{
+    position:relative; inset:auto;
+    flex-direction:row; flex-wrap:wrap; align-items:center; justify-content:flex-start;
+    gap:4px 12px; text-align:left; padding:13px 16px 15px;
+  }
+  #bb-live-card.bb-live-repos .bb-live-info-icon{ width:19px; height:19px; flex:none }
+  #bb-live-card.bb-live-repos .bb-live-info-title{ flex:none }
+  #bb-live-card.bb-live-repos .bb-live-info-sub{ flex:1 1 200px; min-width:0 }
+  @media (max-width:620px){
+    #bb-live-card.bb-live-repos .bb-live-fb{ gap:3px 10px }
+    #bb-live-card.bb-live-repos .bb-live-info-title{ flex:1 1 100% }
+  }
+
 </style>
 </head>
 <body>
@@ -1474,8 +1530,6 @@
   <div id="bb-utility" style="background:#0C1A12;border-bottom:1px solid rgba(243,239,230,.06)">
     <div style="max-width:1500px;margin:0 auto;padding:9px clamp(16px,4vw,24px);display:flex;align-items:center;justify-content:space-between;font-size:12px">
       <div style="display:flex;gap:22px;color:#93A099;font-weight:500">
-        <a href="#" data-nav="billetterie" style="color:inherit">Billetterie</a>
-        <a href="#" data-nav="boutique" style="color:inherit">Boutique</a>
         <a href="#" data-cta="contact" style="color:inherit">Licenciés</a>
         <a href="#" data-nav="inscriptions" style="color:inherit">École de basket</a>
         <a href="#" data-nav="club" style="color:inherit">Le Centre</a>
@@ -1563,9 +1617,8 @@
                n'est PAS une navigation — le site en a déjà une juste
                au-dessus, en poser une seconde sèmerait le doute. -->
           <div class="bb-hr-bar">
-            <span class="bb-hr-mark">
-              <img id="bb-hero-logo" src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club">
-              <span>Baobabs</span>
+            <span class="bb-hr-mark" aria-hidden="true">
+              <img id="bb-hero-logo" src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="">
             </span>
             <span id="bb-hs-kicker" class="bb-hr-kick">Baobabs Basket Club · Dakar</span>
             <span id="bb-hs-ctas" class="bb-hr-cta">
@@ -1651,7 +1704,7 @@
       <!-- La carte "direct" quitte le hero et prend toute la largeur : elle ne se
            remplit que les jours de match (voir window.bbInitLive). -->
       <div id="bb-live-wrap" style="margin-top:16px">
-        <div id="bb-live-card" style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-left:3px solid #C0271B;border-radius:12px;overflow:hidden">
+        <div id="bb-live-card" class="bb-live-repos" style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-left:3px solid #C0271B;border-radius:12px;overflow:hidden">
             <div id="bb-live-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0">
               <div id="bb-live-badge" style="display:none;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#F3EFE6">
                 <span style="width:8px;height:8px;border-radius:50%;background:#C0271B;animation:bbPulse 1.3s infinite"></span>EN DIRECT
@@ -1660,11 +1713,11 @@
                 <span style="width:8px;height:8px;border-radius:50%;background:#7E8A82"></span>PAS DE DIRECT EN COURS
               </div>
             </div>
-            <div id="bb-live-player-wrap" style="position:relative;width:100%;aspect-ratio:16/9;margin-top:14px;background:#07130D">
+            <div id="bb-live-player-wrap" class="bb-live-scene">
               <div style="position:absolute;inset:0;background-image:url('/media/img/Duo_Baobabs___contre-plong_e_snmhff.webp');background-size:cover;background-position:center;filter:blur(6px);transform:scale(1.08)"></div>
               <div style="position:absolute;inset:0;background:rgba(7,19,13,.82)"></div>
               <iframe id="bb-live-iframe" src="" title="Direct Baobabs Basket Club" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:none" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-              <div id="bb-live-fallback" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:20px">
+              <div id="bb-live-fallback" class="bb-live-fb">
                 <svg class="bb-live-info-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#C6A257" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2"></rect></svg>
                 <span class="bb-live-info-title" style="font-family:'Inter',sans-serif;font-weight:600;font-size:13px;color:#B9C2BB">Aucun match en direct pour le moment</span>
                 <span class="bb-live-info-sub" style="font-family:'Inter',sans-serif;font-weight:500;font-size:11.5px;color:#7E8A82">La diffusion démarre automatiquement ici dès qu'un live commence</span>
@@ -1698,6 +1751,10 @@
               var a = fallback.querySelector('[data-bb-gen="live-link"]');
               if (a) a.remove();
             }
+            // Au repos, la carte se replie : voir .bb-live-repos dans la
+            // feuille de style. Reserver un lecteur 16/9 pour dire qu'il
+            // n'y a rien a regarder, c'est meubler.
+            var carte = document.getElementById('bb-live-card');
             function bbLiveOff(note){
               if (note && fallbackText) fallbackText.textContent = note;
               bbLiveDropLink();
@@ -1706,6 +1763,7 @@
               fallback.style.display = '';
               liveBadge.style.display = 'none';
               offlineBadge.style.display = 'flex';
+              if (carte) carte.classList.add('bb-live-repos');
             }
             function bbLiveEmbed(src){
               bbLiveDropLink();
@@ -1714,6 +1772,7 @@
               fallback.style.display = 'none';
               liveBadge.style.display = 'flex';
               offlineBadge.style.display = 'none';
+              if (carte) carte.classList.remove('bb-live-repos');
             }
             // Plateformes que la CSP ne peut pas autoriser une à une :
             // plutôt qu'un lecteur intégré, un bouton qui y renvoie.
