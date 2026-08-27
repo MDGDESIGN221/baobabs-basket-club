@@ -3923,6 +3923,17 @@
 
   function sbGet(path){
     var table = String(path).split('?')[0];
+    // ENTRAINEMENT : cette table-la rend des lignes d'exemple.
+    // Voir tutFauxArmer(). Une seule table est detournee a la fois --
+    // celle dont l'exercice a besoin. Tout le reste continue de lire la
+    // base pour de vrai, sinon les ecrans se videraient et le tutoriel
+    // montrerait un club mort.
+    if (tutFaux && Object.prototype.hasOwnProperty.call(tutFaux, table)){
+      return Promise.resolve(tutFaux[table].map(function(r){
+        var c = {}; for (var k in r) if (Object.prototype.hasOwnProperty.call(r,k)) c[k] = r[k];
+        return c;                       // une copie : l'ecran peut la modifier sans abimer le jeu
+      }));
+    }
     return fetch(SUPABASE_URL+'/rest/v1/'+path, {headers:sbHeaders()})
       .then(function(r){ if(!r.ok) return sbThrow(r, 'GET '+path, table); return r.json(); }, sbNet(table, 'GET '+path))
       .then(function(rows){ sbAvertirTroncature(path, rows); return rows; });
@@ -4331,6 +4342,53 @@
   // ---------------------------------------------------------------------
   var tutVerrou = null;
 
+  // LES LIGNES D'EXEMPLE.
+  //
+  // Elles ne vivent qu'en memoire, et leur cycle de vie est celui du
+  // verrou d'ecriture : desarmer l'un desarme l'autre. Deux verrous
+  // separes, c'est un qui reste arme tout seul un jour -- et quelqu'un
+  // qui travaille sur des candidatures qui n'existent pas.
+  var tutFaux = null;
+
+  var TUT_JEUX = {
+    // L'ecran Candidatures. Trois dossiers a des etapes differentes, pour
+    // qu'on ait quelque chose a deplacer. Les noms portent « (exemple) » :
+    // personne ne doit croire une seconde qu'il traite un vrai dossier.
+    candidatures: {
+      recruitment_requests: [
+        { id:'tut-1', first_name:'Awa', last_name:'Ndiaye (exemple)',
+          full_name:'Awa Ndiaye (exemple)', email:'awa.exemple@baobabs.test',
+          phone:'+221 77 000 00 01', city:'Dakar', birth_date:'2007-03-14', age:18,
+          category:'Senior F', position:'Meneuse', height:172,
+          previous_clubs:'ASC Ville de Dakar', photo_url:'',
+          status:'nouvelle', created_at:'2026-08-24T09:12:00+00:00' },
+        { id:'tut-2', first_name:'Moussa', last_name:'Diop (exemple)',
+          full_name:'Moussa Diop (exemple)', email:'moussa.exemple@baobabs.test',
+          phone:'+221 77 000 00 02', city:'Rufisque', birth_date:'2005-11-02', age:20,
+          category:'Senior M', position:'Ailier', height:194,
+          previous_clubs:'DUC', photo_url:'',
+          status:'a_etudier', created_at:'2026-08-21T16:40:00+00:00' },
+        { id:'tut-3', first_name:'Fatou', last_name:'Sarr (exemple)',
+          full_name:'Fatou Sarr (exemple)', email:'fatou.exemple@baobabs.test',
+          phone:'+221 77 000 00 03', city:'Thiès', birth_date:'2009-06-28', age:16,
+          category:'Cadette', position:'Intérieure', height:181,
+          previous_clubs:'', photo_url:'',
+          status:'entretien', created_at:'2026-08-18T11:05:00+00:00' }
+      ]
+    }
+  };
+
+  // On accepte le nom d'un jeu du registre, ou un jeu fourni tel quel :
+  // une mission portera ses propres lignes plutot que d'aller les
+  // inscrire ici. { table: [lignes] } dans les deux cas.
+  function tutFauxArmer(jeu){
+    var d = (typeof jeu === 'string') ? TUT_JEUX[jeu] : jeu;
+    if (!d || typeof d !== 'object') { tutFaux = null; return false; }
+    tutFaux = d;
+    return true;
+  }
+  function tutFauxDesarmer(){ tutFaux = null; }
+
   function tutVerrouArmer(){
     if (tutVerrou) return;
     var refus = function(){
@@ -4360,6 +4418,9 @@
   }
 
   function tutVerrouDesarmer(){
+    // Un seul cycle de vie pour les deux moities : on ne peut pas
+    // rendre l'ecriture sans rendre la lecture en meme temps.
+    tutFauxDesarmer();
     if (!tutVerrou) return;
     sbInsert = tutVerrou.sbInsert; sbUpdate = tutVerrou.sbUpdate;
     sbPatchBy = tutVerrou.sbPatchBy; sbDelete = tutVerrou.sbDelete;
@@ -4479,6 +4540,21 @@
       // L'image est fabriquee sur place, en SVG : aucune requete, elle
       // ne peut pas manquer a l'appel, et son sujet est franchement
       // decentre pour qu'on VOIE ce que cadrer veut dire.
+      // LES DONNEES D'EXERCICE.
+      //
+      // armer('candidatures') garnit l'ecran Candidatures de trois
+      // dossiers d'exemple. Les vrais dossiers du club ne sont pas
+      // touches -- ils ne sont meme pas lus. Et l'ecriture reste
+      // bloquee par ailleurs : ce que la personne fait ne quitte jamais
+      // sa page.
+      donnees: {
+        armer: function(nom){
+          try { tutVerrouArmer(); return tutFauxArmer(nom); } catch(e){ return false; }
+        },
+        desarmer: function(){ try { tutVerrouDesarmer(); } catch(e){} },
+        jeux: function(){ try { return Object.keys(TUT_JEUX); } catch(e){ return []; } }
+      },
+
       cadrage: {
         ouvrir: function(){
           try {
