@@ -1767,6 +1767,182 @@
     .bb-ac-tete-vis img, .bb-ac-mini img, .bb-ac-l, .bb-ac-no{ transition:none }
     .bb-ac-tete:hover .bb-ac-tete-vis img, .bb-ac-l:hover .bb-ac-mini img{ transform:none }
   }
+
+  /* ================================================================
+     LA BILLETTERIE — L'ACHAT REDEVIENT LE SUJET
+     ================================================================
+     La page comptait DIX encarts d'explication autour d'une seule
+     liste : trois pour la marche à suivre, quatre pour les règles,
+     trois pour le lieu. Il fallait passer trois écrans de prose avant
+     de voir un prix. On expliquait comment acheter à quelqu'un qui
+     n'avait pas encore vu ce qu'il pouvait acheter.
+
+     LE PRINCIPE : le prochain match devient un BILLET, en haut, avec
+     ses quatre catégories, leurs prix et leurs places restantes. Les
+     explications se replient en une bande de trois étapes et quatre
+     lignes de règles — même texte, cinq fois moins de place.
+
+     LA DONNÉE QUI NE SERVAIT À RIEN : quota et places vendues sont en
+     base depuis toujours. Personne ne les voyait. « 47 places
+     restantes » décide plus sûrement qu'un paragraphe. */
+
+  /* ---- la bande des trois étapes ---- */
+  .bb-bl-etapes{
+    display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:0; margin-top:clamp(24px,3.2vw,38px);
+    border-top:1px solid rgba(243,239,230,.16);
+    border-bottom:1px solid rgba(243,239,230,.16);
+  }
+  .bb-bl-e{
+    padding:clamp(14px,1.8vw,20px) clamp(12px,1.6vw,22px);
+    border-right:1px solid rgba(243,239,230,.16);
+  }
+  .bb-bl-e:last-child{ border-right:none }
+  .bb-bl-e b{
+    display:block; font-family:'Inter',sans-serif; font-weight:800; font-size:11px;
+    letter-spacing:.16em; text-transform:uppercase; color:#A8D93B; margin-bottom:7px;
+  }
+  .bb-bl-e span{
+    display:block; font-family:'Inter',sans-serif; font-size:13px; line-height:1.55; color:#A9B2AB;
+  }
+  @media (max-width:720px){
+    .bb-bl-etapes{ grid-template-columns:1fr }
+    .bb-bl-e{ border-right:none; border-bottom:1px solid rgba(243,239,230,.16) }
+    .bb-bl-e:last-child{ border-bottom:none }
+  }
+
+  /* ---- LE BILLET : le prochain match ---- */
+  .bb-bl-billet{
+    display:grid; grid-template-columns:auto minmax(0,1fr);
+    background:#0A150F; border:1px solid rgba(var(--bb-fil-rgb),.3);
+    border-radius:18px 18px 18px 56px; overflow:hidden;
+    margin-bottom:clamp(18px,2.4vw,26px);
+  }
+  /* Le cartouche de date, sur toute la hauteur : c'est par là qu'on
+     entre dans un billet. */
+  .bb-bl-quand{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    padding:clamp(18px,2.4vw,30px) clamp(16px,2.2vw,28px);
+    background:linear-gradient(165deg,#12402F,#081C13);
+    border-right:1px solid rgba(var(--bb-fil-rgb),.3);
+  }
+  .bb-bl-quand b{
+    font-family:'Anton',Impact,sans-serif; font-weight:400;
+    font-size:clamp(32px,4.2vw,54px); line-height:.88; color:#F3EFE6;
+  }
+  .bb-bl-quand span{
+    font-family:'Inter',sans-serif; font-weight:800; font-size:10px;
+    letter-spacing:.18em; text-transform:uppercase; color:#A8D93B;
+  }
+  .bb-bl-quand em{
+    font-style:normal; font-family:'Inter',sans-serif; font-weight:700; font-size:10px;
+    letter-spacing:.14em; text-transform:uppercase; color:rgba(243,239,230,.5);
+  }
+  .bb-bl-corps{ min-width:0 }
+  .bb-bl-tete{
+    display:flex; flex-wrap:wrap; align-items:center; gap:12px 16px;
+    padding:clamp(16px,2.2vw,24px) clamp(16px,2.2vw,26px);
+    border-bottom:1px solid rgba(243,239,230,.12);
+  }
+  .bb-bl-tete img{ width:44px; height:44px; object-fit:contain; flex:none }
+  .bb-bl-vs{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-.02em;
+    font-size:clamp(17px,2.1vw,25px); color:#F3EFE6; min-width:0; flex:1;
+  }
+  .bb-bl-ou{
+    display:block; font-family:'Inter',sans-serif; font-weight:500; font-size:12.5px;
+    letter-spacing:.02em; color:#A9B2AB; margin-top:4px;
+  }
+  .bb-bl-jx{
+    flex:none; font-family:'Anton',Impact,sans-serif; font-size:15px;
+    color:#08160D; background:#A8D93B; padding:3px 11px; border-radius:100px;
+  }
+
+  /* ---- le tableau des places ---- */
+  .bb-bl-r{
+    display:grid; grid-template-columns:minmax(0,1.5fr) auto minmax(0,1fr) auto;
+    align-items:center; gap:12px clamp(12px,2vw,24px);
+    padding:clamp(12px,1.6vw,16px) clamp(16px,2.2vw,26px);
+    border-bottom:1px solid rgba(243,239,230,.08);
+  }
+  .bb-bl-r:last-child{ border-bottom:none }
+  .bb-bl-cat{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:14.5px; color:#F3EFE6; min-width:0;
+  }
+  .bb-bl-prix{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-.02em;
+    font-size:clamp(16px,1.9vw,21px); color:var(--bb-or-clair); white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .bb-bl-reste{
+    font-family:'Inter',sans-serif; font-weight:600; font-size:12px;
+    letter-spacing:.04em; color:#7E8A82; white-space:nowrap;
+  }
+  .bb-bl-reste.peu{ color:#E8A93C }
+  .bb-bl-reste.nul{ color:#E5564A }
+  .bb-bl-cta{
+    flex:none; font-family:'Inter',sans-serif; font-weight:800; font-size:11.5px;
+    letter-spacing:.1em; text-transform:uppercase; padding:11px 20px; border-radius:100px;
+    background:#A8D93B; color:#08160D; border:0; cursor:pointer; white-space:nowrap;
+    transition:transform .2s ease, background .2s ease;
+  }
+  .bb-bl-cta:hover{ transform:translateY(-2px); background:#C8E88A }
+  .bb-bl-cta:focus-visible{ outline:2px solid #A8D93B; outline-offset:3px }
+  .bb-bl-complet{
+    flex:none; font-family:'Inter',sans-serif; font-weight:800; font-size:10.5px;
+    letter-spacing:.14em; text-transform:uppercase; color:#7E8A82;
+    border:1px solid rgba(243,239,230,.18); border-radius:100px; padding:10px 18px;
+  }
+  @media (max-width:680px){
+    .bb-bl-billet{ grid-template-columns:1fr; border-radius:16px }
+    .bb-bl-quand{ flex-direction:row; gap:10px; align-items:baseline;
+      border-right:none; border-bottom:1px solid rgba(var(--bb-fil-rgb),.3); padding:14px 18px }
+    .bb-bl-r{ grid-template-columns:minmax(0,1fr) auto; gap:6px 14px }
+    .bb-bl-reste{ grid-column:1 }
+    .bb-bl-cta, .bb-bl-complet{ grid-column:2; grid-row:1 / span 2 }
+  }
+
+  /* ---- les matchs suivants ---- */
+  .bb-bl-suite{ margin-top:clamp(20px,2.6vw,30px) }
+  .bb-bl-s{
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px;
+    padding:14px 4px; border-bottom:1px solid rgba(243,239,230,.12);
+  }
+  .bb-bl-s-d{
+    flex:none; min-width:104px; font-family:'Inter',sans-serif; font-weight:800; font-size:10.5px;
+    letter-spacing:.14em; text-transform:uppercase; color:#A8D93B;
+  }
+  .bb-bl-s-t{
+    flex:1; min-width:160px; font-family:'Inter',sans-serif; font-weight:700;
+    font-size:14.5px; color:#F3EFE6;
+  }
+  .bb-bl-s-p{
+    flex:none; font-family:'Space Grotesk',sans-serif; font-weight:700;
+    font-size:14px; color:var(--bb-or-clair); white-space:nowrap;
+  }
+
+  /* ---- « bon à savoir » : des lignes, plus des boîtes ---- */
+  .bb-bl-savoir{
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:0 clamp(20px,3vw,44px);
+    border-top:1px solid rgba(243,239,230,.16);
+  }
+  .bb-bl-sv{
+    padding:clamp(13px,1.7vw,18px) 0;
+    border-bottom:1px solid rgba(243,239,230,.12);
+  }
+  .bb-bl-sv b{
+    display:block; font-family:'Inter',sans-serif; font-weight:800; font-size:11px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--bb-or); margin-bottom:6px;
+  }
+  .bb-bl-sv p{
+    margin:0; font-family:'Inter',sans-serif; font-size:13.5px; line-height:1.6; color:#A9B2AB;
+  }
+  @media (max-width:640px){ .bb-bl-savoir{ grid-template-columns:1fr } }
+
+  @media (prefers-reduced-motion:reduce){
+    .bb-bl-cta{ transition:none } .bb-bl-cta:hover{ transform:none }
+  }
 </style>
 </head>
 <body>
@@ -2968,20 +3144,7 @@
         <span style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#A8D93B;border-left:2px solid currentColor;padding-left:10px" data-bb="tk_badge">Saison 2026 · Championnat D2</span>
         <h1 data-bb-reveal data-reveal-step="70" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(46px,9vw,120px);line-height:.9;letter-spacing:-.015em;color:#F3EFE6;margin:14px 0 0" data-bb="tk_h1">BILLETTERIE</h1>
         <p data-bb-reveal data-reveal-step="26" style="max-width:52ch;font-size:clamp(14.5px,1.1vw,16px);line-height:1.65;color:#C7CFC8;margin:18px 0 0;text-wrap:pretty" data-bb="tk_intro">Réservez votre place pour les matchs à domicile des Baobabs. La réservation est gratuite et immédiate&nbsp;: vous réglez sur place, au guichet, le jour du match.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:clamp(26px,3.4vw,40px);max-width:920px">
-          <div data-bb-tilt data-tilt-rotation="7" data-tilt-halo="360" style="position:relative;background:rgba(243,239,230,.04);border:1px solid rgba(243,239,230,.1);border-radius:13px;padding:16px 18px">
-            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:var(--bb-or);margin-bottom:5px" data-bb="tk_step1_title">1 · Réservez en ligne</div>
-            <div style="font-size:13px;line-height:1.55;color:#A9B2AB" data-bb="tk_step1_text">Choisissez le match, la catégorie et le nombre de places.</div>
-          </div>
-          <div data-bb-tilt data-tilt-rotation="7" data-tilt-halo="360" style="position:relative;background:rgba(243,239,230,.04);border:1px solid rgba(243,239,230,.1);border-radius:13px;padding:16px 18px">
-            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:var(--bb-or);margin-bottom:5px" data-bb="tk_step2_title">2 · Gardez la référence</div>
-            <div style="font-size:13px;line-height:1.55;color:#A9B2AB" data-bb="tk_step2_text">Un code du type BBC-7K4M2 s'affiche à la fin de la réservation.</div>
-          </div>
-          <div data-bb-tilt data-tilt-rotation="7" data-tilt-halo="360" style="position:relative;background:rgba(243,239,230,.04);border:1px solid rgba(243,239,230,.1);border-radius:13px;padding:16px 18px">
-            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:var(--bb-or);margin-bottom:5px" data-bb="tk_step3_title">3 · Payez au guichet</div>
-            <div style="font-size:13px;line-height:1.55;color:#A9B2AB" data-bb="tk_step3_text">Présentez votre référence à l'entrée et réglez sur place.</div>
-          </div>
-        </div>
+        <div class="bb-bl-etapes"><div class="bb-bl-e"><b data-bb="tk_step1_title">1 · Réservez en ligne</b><span data-bb="tk_step1_text">Choisissez le match, la catégorie et le nombre de places.</span></div><div class="bb-bl-e"><b data-bb="tk_step2_title">2 · Gardez la référence</b><span data-bb="tk_step2_text">Un code du type BBC-7K4M2 s'affiche à la fin de la réservation.</span></div><div class="bb-bl-e"><b data-bb="tk_step3_title">3 · Payez au guichet</b><span data-bb="tk_step3_text">Présentez votre référence à l'entrée et réglez sur place.</span></div></div>
       </div>
     </div>
     <div style="max-width:1500px;margin:0 auto;padding:clamp(32px,4.6vw,60px) clamp(16px,4vw,24px) clamp(56px,7vw,96px)">
@@ -3002,24 +3165,7 @@
       <section style="margin-top:clamp(40px,5vw,72px)">
         <span style="display:inline-block;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#A8D93B;border-left:2px solid currentColor;padding-left:10px" data-bb="tk_savoir_badge">Bon à savoir</span>
         <h2 data-bb-reveal data-reveal-step="58" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,3.2vw,38px);line-height:1;color:#F3EFE6;margin:14px 0 clamp(18px,2.4vw,26px)" data-bb="tk_savoir_h2">Avant de venir au match</h2>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px">
-          <div data-bb-tilt data-tilt-rotation="8" data-tilt-halo="400" style="position:relative;background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
-            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:var(--bb-or);margin-bottom:7px" data-bb="tk_card1_title">Guichet</div>
-            <p style="font-size:13.5px;line-height:1.6;color:#A9B2AB;margin:0" data-bb="tk_card1_text">Il ouvre une heure avant le coup d'envoi. Arrivez en avance les soirs d'affiche&nbsp;: les files se forment vite.</p>
-          </div>
-          <div data-bb-tilt data-tilt-rotation="8" data-tilt-halo="400" style="position:relative;background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
-            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:var(--bb-or);margin-bottom:7px" data-bb="tk_card2_title">Paiement</div>
-            <p style="font-size:13.5px;line-height:1.6;color:#A9B2AB;margin:0" data-bb="tk_card2_text">Espèces et paiement mobile acceptés au guichet. Aucun paiement n'est demandé au moment de la réservation.</p>
-          </div>
-          <div data-bb-tilt data-tilt-rotation="8" data-tilt-halo="400" style="position:relative;background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
-            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:var(--bb-or);margin-bottom:7px" data-bb="tk_card3_title">Votre réservation</div>
-            <p style="font-size:13.5px;line-height:1.6;color:#A9B2AB;margin:0" data-bb="tk_card3_text">Une place non retirée 15 minutes avant le début du match peut être remise en vente. Prévenez-nous en cas d'empêchement.</p>
-          </div>
-          <div data-bb-tilt data-tilt-rotation="8" data-tilt-halo="400" style="position:relative;background:#0A150F;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:20px">
-            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:15px;color:var(--bb-or);margin-bottom:7px" data-bb="tk_card4_title">Groupes &amp; écoles</div>
-            <p style="font-size:13.5px;line-height:1.6;color:#A9B2AB;margin:0" data-bb="tk_card4_text">À partir de 10 places, contactez le club&nbsp;: nous réservons un bloc de sièges et un tarif adapté.</p>
-          </div>
-        </div>
+        <div class="bb-bl-savoir"><div class="bb-bl-sv"><b data-bb="tk_card1_title">Guichet</b><p data-bb="tk_card1_text">Il ouvre une heure avant le coup d'envoi. Arrivez en avance les soirs d'affiche&nbsp;: les files se forment vite.</p></div><div class="bb-bl-sv"><b data-bb="tk_card2_title">Paiement</b><p data-bb="tk_card2_text">Espèces et paiement mobile acceptés au guichet. Aucun paiement n'est demandé au moment de la réservation.</p></div><div class="bb-bl-sv"><b data-bb="tk_card3_title">Votre réservation</b><p data-bb="tk_card3_text">Une place non retirée 15 minutes avant le début du match peut être remise en vente. Prévenez-nous en cas d'empêchement.</p></div><div class="bb-bl-sv"><b data-bb="tk_card4_title">Groupes &amp; écoles</b><p data-bb="tk_card4_text">À partir de 10 places, contactez le club&nbsp;: nous réservons un bloc de sièges et un tarif adapté.</p></div></div>
       </section>
 
       <section style="margin-top:clamp(28px,3.4vw,42px);background:#060C09;border:1px solid rgba(243,239,230,.09);border-radius:20px;padding:clamp(24px,3.4vw,38px);display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:clamp(20px,3vw,36px)">
@@ -5595,66 +5741,99 @@ window.bbCloud = function(url, w){
     var groups = bbTkGroups();
     if (!groups.length){
       box.innerHTML =
-        '<div style="border:1px dashed rgba(var(--bb-or-rgb),.32);border-radius:18px;padding:clamp(30px,5vw,54px);text-align:center;background:rgba(243,239,230,.02)">' +
-          '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(20px,2.6vw,28px);color:#F3EFE6;margin-bottom:10px">Aucune vente ouverte pour le moment</div>' +
-          '<p style="font-size:14px;line-height:1.65;color:#A9B2AB;margin:0 auto 22px;max-width:46ch">Les billets du prochain match à domicile sont mis en vente ici quelques jours avant la rencontre. Inscrivez-vous à la newsletter pour être prévenu·e.</p>' +
+        '<div style="border:1px dashed rgba(var(--bb-fil-rgb),.4);border-radius:18px;padding:clamp(30px,5vw,54px);text-align:center;background:rgba(168,217,59,.04)">' +
+          '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(20px,2.6vw,28px);color:#F3EFE6;margin-bottom:10px">Pas de billets en vente pour l’instant</div>' +
+          '<p style="font-size:14px;line-height:1.65;color:#A9B2AB;margin:0 auto 22px;max-width:46ch">Les billets du prochain match à domicile sont mis en vente dès que la date est confirmée.</p>' +
           '<button type="button" data-cta="subscribe" class="bb-btn-solid" style="width:auto">Être prévenu·e</button>' +
         '</div>';
       return;
     }
-    box.innerHTML = groups.map(function(g, $index){
-      var m = g.match;
-      var days = null;
-      if (m.match_date){
-        var d = new Date(m.match_date + 'T00:00:00');
-        days = Math.ceil((d - new Date(new Date().toDateString())) / 86400000);
-      }
-      var badge = days == null ? '' : (days <= 0 ? 'AUJOURD\'HUI' : 'J-' + days);
-      var oppLogo = m.opponent_logo_url || '';
-      var cats = g.offers.map(function(o){
-        var left = Math.max((o.quota || 0) - (o.sold || 0), 0);
-        var sold = left <= 0;
-        return bbTkStub({
-          category: o.category, price: o.price_fcfa, sold: sold,
-          meta: sold ? 'Complet' : left + ' place(s) restante(s)',
-          metaWarn: !sold && left <= 10,
-          action: sold ? '<span class="bb-tk-off">Complet</span>'
-                       : '<button type="button" class="bb-tk-cta" data-bill-offer="' + o.id + '">Réserver</button>'
-        });
-      }).join('');
-      // Le prochain match reçoit la nappe de couleur ; les suivants gardent la
-      // bordure sobre, pour que la hiérarchie reste lisible.
-      var featured = $index === 0;
-      return '<article class="' + (featured ? 'bb-blobcard' : '') + '" data-bb-tilt data-tilt-rotation="4" data-tilt-halo="900" style="margin-bottom:clamp(16px,2vw,22px);border-radius:' + (featured ? '24px' : '20px') + ';overflow:hidden;' + (featured ? '' : 'background:#0A150F;border:1px solid rgba(243,239,230,.09);') + '">' +
-        (featured ? '<span class="bb-blobs" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="bb-blobs-fade" aria-hidden="true"></span>' : '') +
-        '<div>' +
-        '<div style="position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:clamp(14px,2vw,26px);padding:clamp(22px,2.8vw,30px) clamp(18px,2.4vw,26px);border-bottom:1px solid rgba(var(--bb-fil-rgb),.18)' + (featured ? '' : ';overflow:hidden') + '">' +
-          (featured ? '' : '<span style="position:absolute;inset:0;background:linear-gradient(140deg,#0F2417,#081C13)" aria-hidden="true"></span>') +
-          '<img src="' + window.bbSafeUrl(BBC_LOGO)+ '" alt="Baobabs" style="position:relative;z-index:2;width:52px;height:52px;object-fit:contain;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy">' +
-          '<span style="position:relative;z-index:2;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:16px;color:var(--bb-or)">' + (m.is_home ? 'VS' : '@') + '</span>' +
-          (oppLogo ? '<img src="' + bbTkEsc(oppLogo) + '" alt="" style="position:relative;z-index:2;width:52px;height:52px;object-fit:contain;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);flex:none" loading="lazy">' : '') +
-          '<div style="position:relative;z-index:2;flex:1;min-width:180px">' +
-            '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.01em;font-size:clamp(18px,2.2vw,24px);color:#F3EFE6;line-height:1.1">Baobabs ' + (m.is_home ? 'vs ' : '@ ') + bbTkEsc(m.opponent_name || '') + '</div>' +
-            '<div style="font-size:13px;color:#A9B2AB;margin-top:5px">' + bbTkEsc(bbTkDate(m.match_date, m.match_time)) + (m.venue ? ' · ' + bbTkEsc(m.venue) : '') + '</div>' +
-          '</div>' +
-          (badge ? '<span style="position:relative;z-index:2;flex:none;font-family:\'Inter\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.1em;color:#07130D;background:var(--bb-or);padding:6px 12px;border-radius:20px">' + badge + '</span>' : '') +
-        '</div>' +
-        '<div style="position:relative;display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;padding:clamp(18px,2.4vw,26px)">' + cats + '</div>' +
-        '</div>' +
-      '</article>';
-    }).join('');
-  }
 
-  document.addEventListener('click', function(e){
-    var b = e.target.closest && e.target.closest('[data-bill-offer]');
-    if (b){ e.preventDefault(); bbTkOpen(b.getAttribute('data-bill-offer')); return; }
-    var s = e.target.closest && e.target.closest('[data-bill-scroll]');
-    if (s){
-      e.preventDefault();
-      var list = document.getElementById('bb-bill-list');
-      if (list) window.scrollTo({ top: Math.max(list.getBoundingClientRect().top + window.pageYOffset - 90, 0), behavior: 'smooth' });
+    var MOIS = ['janv.','févr.','mars','avril','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+    function quand(m){
+      if (!m.match_date) return null;
+      var d = new Date(m.match_date + 'T00:00:00');
+      if (isNaN(d.getTime())) return null;
+      var J = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
+      return { jour:J[d.getDay()], q:d.getDate(), mois:MOIS[d.getMonth()], an:d.getFullYear(), d:d };
     }
-  });
+    function jx(m){
+      var q = quand(m); if (!q) return '';
+      var n = Math.ceil((q.d - new Date(new Date().toDateString())) / 86400000);
+      return n <= 0 ? 'AUJOURD’HUI' : 'J-' + n;
+    }
+
+    // LE PREMIER MATCH DEVIENT UN BILLET.
+    //
+    // Cartouche de date à gauche sur toute la hauteur, l'affiche en
+    // haut, et les catégories en lignes : nom, prix, places restantes,
+    // bouton. Quota et places vendues étaient en base depuis toujours
+    // et n'apparaissaient nulle part — « 47 places restantes » décide
+    // plus sûrement qu'un paragraphe.
+    function billet(g){
+      var m = g.match, q = quand(m), badge = jx(m);
+      var lignes = g.offers.map(function(o){
+        var reste = Math.max((o.quota || 0) - (o.sold || 0), 0);
+        var vide = reste <= 0 || o.is_open === false;
+        var classe = vide ? 'nul' : (reste <= 10 ? 'peu' : '');
+        return '<div class="bb-bl-r">' +
+            '<span class="bb-bl-cat">' + bbTkEsc(o.category) + '</span>' +
+            '<span class="bb-bl-prix">' + bbTkPrice(o.price_fcfa) + '</span>' +
+            '<span class="bb-bl-reste ' + classe + '">' +
+              (vide ? 'Complet' : reste + (reste > 1 ? ' places restantes' : ' place restante')) +
+            '</span>' +
+            (vide
+              ? '<span class="bb-bl-complet">Complet</span>'
+              : '<button type="button" class="bb-bl-cta" data-bill-offer="' + o.id + '">Réserver</button>') +
+          '</div>';
+      }).join('');
+
+      return '<article class="bb-bl-billet">' +
+          (q ? '<div class="bb-bl-quand"><span>' + q.jour + '</span><b>' + q.q + '</b>' +
+               '<span>' + q.mois + '</span><em>' + q.an + '</em></div>' : '<div class="bb-bl-quand"><em>Date à venir</em></div>') +
+          '<div class="bb-bl-corps">' +
+            '<div class="bb-bl-tete">' +
+              '<img src="' + window.bbSafeUrl(BBC_LOGO) + '" alt="Baobabs">' +
+              '<div class="bb-bl-vs">Baobabs <span style="color:var(--bb-or)">vs</span> ' +
+                bbTkEsc(m.opponent_name || 'Adversaire') +
+                '<span class="bb-bl-ou">' + bbTkEsc(bbTkDate(m.match_date, m.match_time)) +
+                (m.venue ? ' · ' + bbTkEsc(m.venue) : '') + '</span>' +
+              '</div>' +
+              (m.opponent_logo_url ? '<img src="' + bbTkEsc(m.opponent_logo_url) + '" alt="">' : '') +
+              (badge ? '<span class="bb-bl-jx">' + badge + '</span>' : '') +
+            '</div>' +
+            lignes +
+          '</div>' +
+        '</article>';
+    }
+
+    // LES SUIVANTS RESTENT DES LIGNES. Détailler quatre catégories pour
+    // chaque match de la saison rendrait la page illisible, et le
+    // visiteur ne réserve presque jamais le troisième match à l'avance.
+    function suivant(g){
+      var m = g.match, q = quand(m);
+      var mini = g.offers.reduce(function(a, o){
+        var p = Number(o.price_fcfa) || 0;
+        return (a === null || p < a) ? p : a;
+      }, null);
+      var libre = g.offers.filter(function(o){
+        return o.is_open !== false && Math.max((o.quota||0) - (o.sold||0), 0) > 0;
+      })[0];
+      return '<div class="bb-bl-s">' +
+          '<span class="bb-bl-s-d">' + (q ? q.jour + ' ' + q.q + ' ' + q.mois : '—') + '</span>' +
+          '<span class="bb-bl-s-t">Baobabs vs ' + bbTkEsc(m.opponent_name || 'Adversaire') + '</span>' +
+          (mini !== null ? '<span class="bb-bl-s-p">dès ' + bbTkPrice(mini) + '</span>' : '') +
+          (libre
+            ? '<button type="button" class="bb-bl-cta" data-bill-offer="' + libre.id + '">Réserver</button>'
+            : '<span class="bb-bl-complet">Complet</span>') +
+        '</div>';
+    }
+
+    box.innerHTML = billet(groups[0]) +
+      (groups.length > 1
+        ? '<div class="bb-bl-suite">' + groups.slice(1).map(suivant).join('') + '</div>'
+        : '');
+  }
 
   function bbTkGroups(){
     var order = [], byMatch = {};
