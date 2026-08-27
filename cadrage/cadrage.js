@@ -113,6 +113,10 @@
 
     etat = {
       url: opts.url,
+      // Certains cadres ont la même forme sur téléphone et sur ordinateur —
+      // une carte de joueuse reste un portrait. Leur montrer un onglet
+      // Téléphone serait promettre un réglage qui n'aurait rien à régler.
+      sansMobile: !!opts.sansMobile,
       ratioD: nb(opts.ratioD, 1.6),
       ratioM: nb(opts.ratioM, nb(opts.ratioD, 1.6)),
       vue: 'd',
@@ -139,6 +143,9 @@
       etat.nh = img.naturalHeight || 0;
     };
     img.src = opts.url;
+
+    var ecrans = $('.bc-ecrans');
+    if (ecrans) ecrans.style.display = etat.sansMobile ? 'none' : '';
 
     choisirEcran('d');
     racine.classList.add('is-open');

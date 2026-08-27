@@ -4394,6 +4394,38 @@
       '<span>'+esc(cadreResume(v, cle))+'</span></button>';
   }
 
+  // Le cadrage d'un élément de collection : la photo d'une joueuse, l'image
+  // d'une actualité. Trois curseurs abstraits — Horizontal, Vertical, Zoom —
+  // demandaient de deviner où l'image allait tomber. C'est le même stockage
+  // et les mêmes trois valeurs, seul le geste change : on place l'image à la
+  // main, dans un cadre de la forme de celui du site.
+  //
+  // Pas d'onglet Téléphone ici : une carte de joueuse reste un portrait et
+  // une carte d'actualité garde ses proportions sur petit écran. Proposer un
+  // réglage mobile serait promettre une différence qui n'existe pas — et il
+  // faudrait six colonnes de plus en base pour la ranger.
+  var CADRE_COLLECTION = {
+    photo:     { titre:'Photo de la joueuse',   ratio:0.88, y0:0  },
+    image_url: { titre:'Image de l\'actualité', ratio:1.60, y0:50 }
+  };
+  function cadrerCollection(champ, url, cur, apres){
+    var conf = CADRE_COLLECTION[champ] || { titre:'Image', ratio:1.6, y0:50 };
+    if (!url){ qgToast('Choisissez d\'abord une image à cadrer.', true); return; }
+    function v(suf, repli){
+      var b = cur[champ + suf];
+      return (b === null || b === undefined || b === '') ? repli : b;
+    }
+    cadrageOuvrir({
+      url: url, titre: conf.titre, ratioD: conf.ratio, ratioM: conf.ratio, sansMobile: true,
+      valeurs: { x: v('_x', 50), y: v('_y', conf.y0), zoom: v('_zoom', 100) },
+      onValider: function(r){
+        cur[champ + '_x'] = r.x; cur[champ + '_y'] = r.y; cur[champ + '_zoom'] = r.zoom;
+        if (apres) apres();
+        qgToast('Cadrage posé — pensez à enregistrer la fiche.');
+      }
+    });
+  }
+
   // ---------------------------------------------------------------------
   // L'APPARENCE D'UN TITRE — taille et couleur
   //
@@ -4416,7 +4448,12 @@
     org_kicker:1, org_title:1, org_motto:1,
     md_kicker:1, md_title:1,
     shop_kicker:1, shop_title:1,
-    ins_cats_title:1, ins_incl_title:1, ins_infos_title:1, ins_suivi_title:1
+    ins_cats_title:1, ins_incl_title:1, ins_infos_title:1, ins_suivi_title:1,
+    // Les paragraphes. Un titre trop grand se voit tout de suite ; un
+    // paragraphe trop petit ne se voit pas, il se lit mal — c'est pour lui
+    // que le réglage sert vraiment.
+    hs_text:1, club_intro_text:1, club_obj1_text:1, club_obj2_text:1, club_obj3_text:1,
+    ps_text:1, det_text:1, ins_text:1, ins_suivi_text:1, md_caption:1, app_text:1
   };
   var AP_TAILLES = [
     ['',    'Normale'],
@@ -8483,7 +8520,20 @@
     }
 
     if (coTab === 'ecart'){
-      box.innerHTML = rows.map(function(r, i){
+      // Adopter en bloc. Après une refonte du site, la liste peut compter
+      // trente lignes : les reprendre une par une, avec une confirmation
+      // chacune, décourage avant la dixième — et l'admin reste faux.
+      // Une seule requête, un seul upsert : la table encaisse le lot.
+      var barre = rows.length > 1
+        ? '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;' +
+          'border:1px solid rgba(198,162,87,.28);border-radius:12px;background:rgba(198,162,87,.06)">' +
+            '<span style="font-size:12.5px;color:var(--faint);flex:1;min-width:180px">' +
+            '<b style="color:var(--ink)">' + rows.length + ' textes</b> diffèrent entre le fichier et l\'admin.</span>' +
+            '<button type="button" class="btn btn-ghost co-adopt-tout" style="padding:8px 13px;font-size:12px">' +
+            'Adopter les ' + rows.length + ' valeurs du fichier</button>' +
+          '</div>'
+        : '';
+      box.innerHTML = barre + rows.map(function(r, i){
         return '<div class="co-row">' +
           '<div class="co-key">' + esc(r.key) + '</div>' +
           '<div class="co-where">élément #' + esc(r.id) + '</div>' +
@@ -8500,6 +8550,24 @@
 
       var msg = document.getElementById('co-msg');
       coBrancherOu(box, rows);
+
+      var tout = box.querySelector('.co-adopt-tout');
+      if (tout) tout.addEventListener('click', function(){
+        if (!confirm('Reprendre les ' + rows.length + ' valeurs du fichier dans l\'admin ?\n\n' +
+                     'Ce que le site affiche aujourd\'hui deviendra ce que l\'admin enregistre. Rien n\'est perdu : chaque valeur remplacée reste dans l\'Historique.')) return;
+        tout.disabled = true; tout.textContent = 'Adoption…';
+        sbUpsert('site_settings', rows.map(function(r){ return { key:r.key, value:r.file || '' }; }), 'Cohérence')
+          .then(function(){
+            rows.forEach(function(r){ settings[r.key] = r.file || ''; });
+            showMsg(msg, rows.length + ' valeurs adoptées. Le site les affichera au prochain chargement.', true);
+            coScan();
+          })
+          .catch(function(){
+            tout.disabled = false; tout.textContent = 'Adopter les ' + rows.length + ' valeurs du fichier';
+            showMsg(msg, "L'enregistrement groupé a échoué. Les valeurs n'ont pas été modifiées.", false);
+          });
+      });
+
       box.querySelectorAll('.co-adopt').forEach(function(b){
         b.addEventListener('click', function(){
           var r = rows[parseInt(b.getAttribute('data-i'), 10)];
@@ -16287,13 +16355,8 @@
     if(f.type==='boolean'){ var isOn=(v===true||v==='true')?true:((v===false||v==='false')?false:(f.bdefault===true)); var onL=f.onLabel||(f.name==='in_stock'?'En stock':'Oui'); var offL=f.offLabel||(f.name==='in_stock'?'Épuisé':'Non'); return '<div class="qg-field">'+lab+'<select class="qg-in" id="'+id+'"><option value="true"'+(isOn?' selected':'')+'>'+esc(onL)+'</option><option value="false"'+(!isOn?' selected':'')+'>'+esc(offL)+'</option></select></div>'; }
     if(f.type==='image'){ var posHtml=''; if(f.pos){ var px=(cur[f.name+'_x']==null||cur[f.name+'_x']==='')?50:cur[f.name+'_x'], py=(cur[f.name+'_y']==null||cur[f.name+'_y']==='')?50:cur[f.name+'_y'], pz=(cur[f.name+'_zoom']==null||cur[f.name+'_zoom']==='')?100:cur[f.name+'_zoom'];
         posHtml='<div class="qg-pos" id="'+id+'-pos"><div class="qg-pos-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Cadrage de l\'image</div>'+
-          '<div class="qg-pos-grid">'+
-            '<label>Horizontal</label><input type="range" min="0" max="100" value="'+px+'" data-pos="'+f.name+'_x"><span class="val" id="'+id+'-x-v">'+px+'%</span>'+
-            '<label>Vertical</label><input type="range" min="0" max="100" value="'+py+'" data-pos="'+f.name+'_y"><span class="val" id="'+id+'-y-v">'+py+'%</span>'+
-            '<label>Zoom</label><input type="range" min="100" max="250" value="'+pz+'" data-pos="'+f.name+'_zoom"><span class="val" id="'+id+'-z-v">'+pz+'%</span>'+
-          '</div>'+
           '<div class="qg-pos-preview" id="'+id+'-pos-pv"><img alt=""></div>'+
-          '<button type="button" class="qg-pos-reset" data-posreset="'+f.name+'">Recentrer</button></div>'; }
+          '<div class="qg-photo-actions">'+'<button type="button" class="qg-file-btn qg-pos-ouvrir" data-poscadre="'+f.name+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg><span>Cadrer</span></button>'+'<button type="button" class="qg-pos-reset" data-posreset="'+f.name+'">Recentrer</button></div></div>'; }
       return '<div class="qg-field">'+lab+'<input class="qg-in" id="'+id+'" placeholder="https://…" value="'+esc(v)+'" style="font-size:12.5px"><div class="qg-photo-actions"><label class="qg-file-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span id="'+id+'-lbl">Téléverser</span><input type="file" id="'+id+'-file" accept="image/*" style="display:none"></label></div>'+posHtml+'</div>';
     }
     var t=(f.type==='number')?'number':(f.type==='date'?'date':(f.type==='url'?'url':'text'));
@@ -16308,7 +16371,13 @@
     if(f.type==='image'){ var fe=document.getElementById(id+'-file'); if(fe) fe.addEventListener('change',function(){ var file=fe.files[0]; if(!file) return; var lbl=document.getElementById(id+'-lbl'); if(lbl) lbl.textContent='Envoi…'; uploadFile(MEDIA_BUCKET,file).then(function(url){ var cur=qgvCurrent(key); if(cur) cur[f.name]=url; e.value=url; if(lbl) lbl.textContent='Téléverser'; qgvRenderCards(key); if(f.pos) qgvPosPreview(key,id,f.name); qgToast('Image envoyée ✓'); }).catch(function(){ if(lbl) lbl.textContent='Téléverser'; qgToast('Échec de l\'envoi de l\'image',true); }); }); }
     if(f.type==='image' && f.pos){
       var box=document.getElementById(id+'-pos'); if(box){
-        box.querySelectorAll('input[type=range]').forEach(function(sl){ sl.addEventListener('input',function(){ var cur=qgvCurrent(key); if(!cur) return; var k=sl.getAttribute('data-pos'); cur[k]=parseInt(sl.value,10); var suf=k.slice(-1)==='m'?'z':(k.slice(-1)); var vid=id+'-'+(k.indexOf('_x')>=0?'x':(k.indexOf('_y')>=0?'y':'z'))+'-v'; var ve=document.getElementById(vid); if(ve) ve.textContent=sl.value+'%'; qgvPosPreview(key,id,f.name); qgvRenderCards(key); }); });
+        var ouvrir=box.querySelector('.qg-pos-ouvrir');
+        if(ouvrir) ouvrir.addEventListener('click',function(){
+          var cur=qgvCurrent(key); if(!cur) return;
+          cadrerCollection(f.name, cur[f.name]||'', cur, function(){
+            qgvPosPreview(key,id,f.name); qgvRenderCards(key);
+          });
+        });
         var rb=box.querySelector('[data-posreset]'); if(rb) rb.addEventListener('click',function(){ var cur=qgvCurrent(key); if(!cur) return; cur[f.name+'_x']=50; cur[f.name+'_y']=50; cur[f.name+'_zoom']=100; qgvRenderInspector(key); qgvRenderCards(key); });
         qgvPosPreview(key,id,f.name);
       }
@@ -17347,17 +17416,18 @@
   function qgPosBlock(baseId, cur, field){
     var x=(cur[field+'_x']==null||cur[field+'_x']==='')?50:cur[field+'_x'], y=(cur[field+'_y']==null||cur[field+'_y']==='')?0:cur[field+'_y'], z=(cur[field+'_zoom']==null||cur[field+'_zoom']==='')?100:cur[field+'_zoom'];
     return '<div class="qg-pos" id="'+baseId+'-pos"><div class="qg-pos-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Cadrage de la photo</div>'+
-      '<div class="qg-pos-grid">'+
-        '<label>Horizontal</label><input type="range" min="0" max="100" value="'+x+'" data-pos="'+field+'_x"><span class="val" id="'+baseId+'-x-v">'+x+'%</span>'+
-        '<label>Vertical</label><input type="range" min="0" max="100" value="'+y+'" data-pos="'+field+'_y"><span class="val" id="'+baseId+'-y-v">'+y+'%</span>'+
-        '<label>Zoom</label><input type="range" min="100" max="250" value="'+z+'" data-pos="'+field+'_zoom"><span class="val" id="'+baseId+'-z-v">'+z+'%</span>'+
-      '</div>'+
       '<div class="qg-pos-preview" id="'+baseId+'-pos-pv"><img alt=""></div>'+
-      '<button type="button" class="qg-pos-reset" data-posreset="'+field+'">Recentrer</button></div>';
+      '<div class="qg-photo-actions">'+'<button type="button" class="qg-file-btn qg-pos-ouvrir" data-poscadre="'+field+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg><span>Cadrer</span></button>'+'<button type="button" class="qg-pos-reset" data-posreset="'+field+'">Recentrer</button></div></div>';
   }
   function qgPosBlockBind(baseId, field){
     var box=document.getElementById(baseId+'-pos'); if(!box) return;
-    box.querySelectorAll('input[type=range]').forEach(function(sl){ sl.addEventListener('input',function(){ var cur=qgCurrent(); if(!cur) return; var k=sl.getAttribute('data-pos'); cur[k]=parseInt(sl.value,10); var which=k.indexOf('_x')>=0?'x':(k.indexOf('_y')>=0?'y':'z'); var ve=document.getElementById(baseId+'-'+which+'-v'); if(ve) ve.textContent=sl.value+'%'; qgPosBlockPreview(baseId,field); qgRenderCards(); }); });
+    var ouvrir=box.querySelector('.qg-pos-ouvrir');
+    if(ouvrir) ouvrir.addEventListener('click',function(){
+      var cur=qgCurrent(); if(!cur) return;
+      cadrerCollection(field, cur[field==='photo'?'photo_url':field]||'', cur, function(){
+        qgPosBlockPreview(baseId,field); qgRenderCards();
+      });
+    });
     var rb=box.querySelector('[data-posreset]'); if(rb) rb.addEventListener('click',function(){ var cur=qgCurrent(); if(!cur) return; cur[field+'_x']=50; cur[field+'_y']=0; cur[field+'_zoom']=100; qgRenderInspector(); qgRenderCards(); });
     qgPosBlockPreview(baseId,field);
   }
@@ -17466,10 +17536,6 @@
   .qg-pos{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.12)}
   .qg-pos-head{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8b968e;margin-bottom:10px}
   .qg-pos-head svg{width:13px;height:13px}
-  .qg-pos-grid{display:grid;grid-template-columns:78px 1fr 42px;gap:8px 10px;align-items:center}
-  .qg-pos-grid label{font-size:12px;font-weight:600;color:var(--muted)}
-  .qg-pos-grid input[type=range]{width:100%;accent-color:var(--gold)}
-  .qg-pos-grid .val{font-size:12px;font-weight:700;color:var(--text);text-align:right;font-variant-numeric:tabular-nums}
   .qg-pos-preview{margin-top:11px;height:112px;border-radius:9px;overflow:hidden;background:#0A150F;border:1px solid var(--line)}
   .qg-pos-preview img{width:100%;height:100%;object-fit:cover;display:block}
   .qg-pos-reset{margin-top:9px;background:none;border:none;color:var(--muted);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:0}
