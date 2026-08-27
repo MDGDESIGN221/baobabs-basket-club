@@ -5698,7 +5698,14 @@ window.bbCloud = function(url, w){
       .then(function(ms){
         var m = (ms || [])[0];
         if (!m) return;
-        return sbFetch('match_stats?select=player_id,is_starter&match_id=eq.' + encodeURIComponent(m.id))
+        // On lit d abord la VUE : elle n expose que trois colonnes, la
+        // ou match_stats porte toutes les statistiques de chaque joueuse.
+        // Repli sur la table si la vue n existe pas encore -- le site
+        // marche donc avant comme apres la migration.
+        return sbFetch('match_lineup_public?select=player_id,is_starter&match_id=eq.' + encodeURIComponent(m.id))
+          .catch(function(){
+            return sbFetch('match_stats?select=player_id,is_starter&match_id=eq.' + encodeURIComponent(m.id));
+          })
           .then(function(st){
             var lignes = st || [];
             if (!lignes.length) return;
