@@ -2806,7 +2806,11 @@
         <input type="search" class="mod-search" id="md-search" placeholder="Nom de fichier…">
         <button type="button" class="btn btn-ghost" id="md-refresh" style="padding:10px 14px;font-size:13px">Rafraîchir</button>
       </div>
-      <div class="callout">Tous les visuels du site, rangés par dossier. Déposez vos images dans le dossier ouvert&nbsp;: elles seront rangées là, et non plus toutes mélangées à la racine.</div>
+      <div class="callout">Vos images viennent de quatre endroits, et la colonne de gauche les sépare.
+        <b>Vos envois</b>&nbsp;: ce que vous déposez ici — visible sur le site seulement si vous collez son adresse quelque part.
+        <b>Utilisées par les fiches</b>&nbsp;: les logos, portraits et visuels enregistrés dans les fiches adversaires, joueuses, produits.
+        <b>Sur le site</b>&nbsp;: ce que la page d'accueil affiche réellement, relevé sur la page elle-même à chaque ouverture.
+        <b>Dans le dépôt</b>&nbsp;: les fichiers présents dans <code>/media</code> que la page n'utilise pas.</div>
       <div class="md-split">
         <div class="md-tree" id="md-tree"></div>
         <div class="md-body">
@@ -11052,15 +11056,25 @@
     });
     return out;
   }
+  // LES GROUPES SONT DERIVES, PLUS INVENTES.
+  //
+  // Il y en avait six -- Identite, Accueil, Tryouts, Effectif, Boutique,
+  // Partenaires -- decides a la main. Rien dans la page ne dit a quel
+  // groupe appartient une image : le classement etait donc recopie, donc
+  // faux des la premiere retouche. Trois groupes suffisent, et chacun se
+  // deduit de l'adresse elle-meme.
   var MD_SITE_GROUPS = [
-    { id:'@site-identite', name:'Identité & logos' },
-    { id:'@site-accueil', name:'Accueil' },
-    { id:'@site-tryouts', name:'Tryouts' },
-    { id:'@site-effectif', name:'Effectif (portraits)' },
-    { id:'@site-boutique', name:'Boutique' },
-    { id:'@site-partenaires', name:'Partenaires' }
+    { id:'@site-img',   name:'Images de la page' },
+    { id:'@site-video', name:'Vidéos de la page' },
+    { id:'@site-ext',   name:'Hébergées ailleurs' }
   ];
-  // Inventaire des visuels codés directement dans index.html (relevé automatique).
+
+  // Ce qui dort dans le depot sans servir. C'est le lot le plus utile :
+  // 76 fichiers sur 111 etaient dans ce cas, invisibles partout.
+  var MD_DOSSIER_GROUPS = [
+    { id:'@depot-inutilise', name:'Jamais utilisées nulle part' }
+  ];
+
   var MD_SITE_ASSETS = [
     { n:'Og banner', u:'https://www.baobabsbasketclub.com/og-banner.png', g:'@site-identite' },
     { n:'BBC COLORED LOGO', u:'/media/img/BBC_-_COLORED_LOGO_jjcrux.webp', g:'@site-identite' },
@@ -11099,6 +11113,104 @@
     { n:'Cap in black 2K 202607222143', u:'/media/img/Cap_in_black_2K_202607222143_rdhxvf.webp', g:'@site-boutique' }
   ];
   var MD_BUCKET = 'site-media';
+
+  // LA PAGE PUBLIQUE, LUE UNE FOIS PAR SESSION.
+  //
+  // Sans cache-buster on comparerait avec la version d'hier ; sans cache
+  // du tout on la retelechargerait a chaque rafraichissement de l'ecran.
+  var mdPageCache = null;
+  function mdPage(){
+    if (mdPageCache) return mdPageCache;
+    mdPageCache = fetch('index.html?_md=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.text() : ''; })
+      .catch(function(){ return ''; });
+    return mdPageCache;
+  }
+
+  // L'inventaire du dossier /media. Vercel ne sait pas lister un
+  // dossier : le manifeste est ecrit par outils-inventaire-media.py et
+  // committe avec les images.
+  var mdManifCache = null;
+  function mdManifeste(){
+    if (mdManifCache) return mdManifCache;
+    mdManifCache = fetch('/media/index.json', { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; });
+    return mdManifCache;
+  }
+
+  // Le manifeste lu ce tour-ci. Il attend que tout soit charge : voir
+  // mdOrphelins().
+  var mdManifDuTour = null;
+
+  // CE QUI DORT DANS LE DEPOT SANS SERVIR NULLE PART.
+  //
+  // Une image absente de index.html n'est pas orpheline pour autant :
+  // les logos d'adversaires, les portraits et les visuels de produits
+  // sont des adresses enregistrees dans les fiches. On ne peut donc
+  // conclure qu'une fois TOUTES les origines chargees -- page, fiches,
+  // envois, catalogue des clubs connus.
+  //
+  // La comparaison se fait sur le nom de fichier decode. Deux raisons :
+  // une fiche peut porter une adresse absolue (https://.../media/img/x)
+  // la ou le manifeste a un chemin relatif, et un %C3%A9 fige dans un
+  // nom ferait passer une image en service pour un orphelin.
+  function mdNomDeFichier(u){
+    var n = String(u || '').split('?')[0].split('#')[0].split('/').pop();
+    try { n = decodeURIComponent(n); } catch (e) {}
+    return n.toLowerCase();
+  }
+
+  function mdOrphelins(){
+    var manif = mdManifDuTour;
+    if (!manif || !manif.fichiers){ mdCounts['@depot-inutilise'] = 0; return; }
+    var servis = {};
+    mdFiles.forEach(function(x){
+      if (x.dir === '@depot-inutilise') return;
+      if (x.url) servis[mdNomDeFichier(x.url)] = 1;
+      if (x.path) servis[mdNomDeFichier(x.path)] = 1;
+    });
+    var lot = [];
+    manif.fichiers.forEach(function(fi){
+      if (servis[mdNomDeFichier(fi.chemin)]) return;
+      lot.push({ name: fi.nom, dir: '@depot-inutilise',
+                 path: '@depot-inutilise:' + fi.chemin,
+                 url: fi.chemin, size: fi.octets || 0, db: true });
+    });
+    mdCounts['@depot-inutilise'] = lot.length;
+    mdFiles = mdFiles.concat(lot);
+  }
+
+  var MD_EXT_MEDIA = /\.(png|jpe?g|webp|gif|svg|avif|mp4|webm|mov|m4v)$/i;
+
+  function mdJoliNom(u){
+    var n = String(u).split('?')[0].split('/').pop();
+    try { n = decodeURIComponent(n); } catch (e) {}
+    return n.replace(MD_EXT_MEDIA, '').replace(/[_-]+/g, ' ').trim() || n;
+  }
+
+  // On releve TOUTES les adresses de media de la page : attributs src,
+  // srcset, poster, url() des styles, et les chaines des scripts. Une
+  // seule expression, parce qu'une image citee dans un script compte
+  // autant qu'une balise <img> -- c'est ainsi que les deux videos
+  // manquaient.
+  function mdReleverSite(html){
+    if (!html) return null;
+    var vus = {}, out = [];
+    var re = /["'(\s]((?:https?:\/\/|\/)[^"'()\s<>]+)/g, m;
+    while ((m = re.exec(html))){
+      var u = m[1].replace(/[\\),;]+$/, '');
+      if (!MD_EXT_MEDIA.test(u.split('?')[0])) continue;
+      if (vus[u]) continue;
+      vus[u] = 1;
+      var g = /^https?:/i.test(u) ? '@site-ext'
+            : (/\.(mp4|webm|mov|m4v)$/i.test(u.split('?')[0]) ? '@site-video' : '@site-img');
+      out.push({ n: mdJoliNom(u), u: u, g: g });
+    }
+    return out.length ? out : null;
+  }
+
+
   var mdFiles = [], mdDir = '', mdStarted = false, mdCounts = {}, mdPick = null;
 
   var MD_ICON_FOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>';
@@ -11158,13 +11270,26 @@
       });
       mdCounts[''] = mdFiles.filter(function(x){ return x.dir === ''; }).length;
       mdRender();
-      MD_SITE_GROUPS.forEach(function(g){
-        var lot = MD_SITE_ASSETS.filter(function(a){ return a.g === g.id; }).map(function(a){
-          return { name: a.n, dir: g.id, path: g.id + ':' + a.u, url: a.u, size: 0, db: true };
+      // TROIS ETAGES, COMME AILLEURS DANS L'ADMIN : la page publique
+      // d'abord, l'instantane seulement si elle est injoignable. Le
+      // tableau fige ne sert plus que de filet.
+      return Promise.all([mdPage(), mdManifeste()]).then(function(res){
+        var releve = mdReleverSite(res[0]) || MD_SITE_ASSETS;
+        var manif = res[1];
+
+        MD_SITE_GROUPS.forEach(function(g){
+          var lot = releve.filter(function(a){ return a.g === g.id; }).map(function(a){
+            return { name: a.n, dir: g.id, path: g.id + ':' + a.u, url: a.u, size: 0, db: true };
+          });
+          mdCounts[g.id] = lot.length;
+          mdFiles = mdFiles.concat(lot);
         });
-        mdCounts[g.id] = lot.length;
-        mdFiles = mdFiles.concat(lot);
-      });
+
+        // Le manifeste attend la fin : voir mdOrphelins(). Une image
+        // absente de la page peut tres bien servir dans une fiche.
+        mdManifDuTour = manif;
+        return null;
+      }).then(function(){
       return Promise.all(MD_DB_SOURCES.map(function(src){
         return sbGet(src.query).then(function(rows){ return mdDbItems(src, rows); }).catch(function(){ return []; });
       })).then(function(lots){
@@ -11183,8 +11308,10 @@
           mdCounts['@teams'] = (mdCounts['@teams'] || 0) + extra.length;
           mdFiles = mdFiles.concat(extra);
         }
+        mdOrphelins();
         mdRenderTree();
         mdRender();
+      });
       });
     }).catch(function(){
       if (msg) showMsg(msg, "La médiathèque n'a pas pu être lue. Le bucket « site-media » existe-t-il, et est-il public ?", false);
@@ -11227,8 +11354,10 @@
       '</div>' +
       '<div style="font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:16px 0 7px">Utilisées par les fiches</div>' +
       '<div class="md-kids">' + MD_DB_SOURCES.map(function(fo){ return mdNode(fo); }).join('') + '</div>' +
-      '<div style="font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:16px 0 7px">Codées dans le site</div>' +
-      '<div class="md-kids">' + MD_SITE_GROUPS.map(function(fo){ return mdNode(fo); }).join('') + '</div>';
+      '<div style="font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:16px 0 7px">Sur le site</div>' +
+      '<div class="md-kids">' + MD_SITE_GROUPS.map(function(fo){ return mdNode(fo); }).join('') + '</div>' +
+      '<div style="font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:16px 0 7px">Dans le dépôt</div>' +
+      '<div class="md-kids">' + MD_DOSSIER_GROUPS.map(function(fo){ return mdNode(fo); }).join('') + '</div>';
     box.querySelectorAll('.md-node').forEach(function(b){
       b.addEventListener('click', function(){
         mdDir = b.getAttribute('data-dir') || '';
