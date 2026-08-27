@@ -249,6 +249,37 @@
     return bsPret;
   }
 
+  // LE CADRAGE, POUR DE VRAI. Meme montage que le Studio : on charge le
+  // vrai module plutot qu'une maquette, pour eprouver les selecteurs
+  // reels et leur geometrie reelle.
+  var bcPret = null;
+  function bcCharger(){
+    if (bcPret) return bcPret;
+    bcPret = new Promise(function(res, rej){
+      var l = document.createElement('link');
+      l.rel = 'stylesheet'; l.href = '../cadrage/cadrage.css';
+      document.head.appendChild(l);
+      var s = document.createElement('script');
+      s.src = '../cadrage/cadrage.js';
+      s.onload = function(){ window.BaobabsCadrage ? res() : rej(new Error('BaobabsCadrage absent')); };
+      s.onerror = function(){ rej(new Error('cadrage.js illisible')); };
+      document.head.appendChild(s);
+    }).then(function(){
+      var hote = document.getElementById('bcadrage');
+      if (hote && hote.parentElement !== document.body) document.body.appendChild(hote);
+      window.BaobabsCadrage.monter(hote);
+    });
+    return bcPret;
+  }
+
+  // La meme image d'exemple que l'admin fabrique pour le tutoriel.
+  var IMG_EX = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200">' +
+    '<rect width="1600" height="1200" fill="#0d2a18"/>' +
+    '<circle cx="1210" cy="360" r="190" fill="#E4C179"/>' +
+    '<text x="120" y="860" font-family="sans-serif" font-size="66" fill="#F4F1E9">IMAGE D EXEMPLE</text>' +
+    '</svg>');
+
   function api(){
     // Des accesseurs, pas des valeurs : le banc laisse changer de role
     // apres le montage, ce que l'admin ne fait jamais. Sans ca, le
@@ -283,6 +314,24 @@
 
       // Mot pour mot ce que l'admin expose : le banc doit eprouver le
       // MEME chemin, sinon il valide une mecanique qui n'existe qu'ici.
+      cadrage: {
+        ouvrir: function(){
+          bcCharger().then(function(){
+            window.BaobabsCadrage.ouvrir({
+              url: IMG_EX, titre: 'Image d\u2019exemple \u2014 tutoriel',
+              ratioD: 16/9, ratioM: 4/5, valeurs: { x: 66, y: 34, zoom: 1 }
+            });
+          }).catch(function(e){ console.error('[banc/cadrage]', e); });
+        },
+        fermer: function(){
+          try { if (window.BaobabsCadrage && window.BaobabsCadrage.estOuvert()) window.BaobabsCadrage.fermer(); }
+          catch(e){}
+        },
+        estOuvert: function(){
+          try { return !!(window.BaobabsCadrage && window.BaobabsCadrage.estOuvert()); }
+          catch(e){ return false; }
+        }
+      },
       studio: {
         ouvrir: function(){
           bsCharger().then(function(){ window.BaobabsStudio.open(); })
@@ -357,5 +406,8 @@
   });
 })();
 </script>
+  <!-- L'hote de l'atelier de cadrage. Sa seule presence fait entrer le
+       chapitre dans le plan, exactement comme dans l'admin. -->
+  <div id="bcadrage"></div>
 </body>
 </html>

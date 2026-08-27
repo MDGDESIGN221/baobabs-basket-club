@@ -4468,6 +4468,38 @@
         }
       },
 
+      // L'ATELIER DE CADRAGE, POUR LE TUTORIEL.
+      //
+      // On l'ouvre SANS onValider. Le module de cadrage n'ecrit jamais
+      // de lui-meme : c'est l'appelant qui recoit le resultat et decide
+      // quoi en faire. Sans ce rappel, « Enregistrer le cadrage » n'a
+      // nulle part ou aller -- le verrou est structurel, pas une
+      // precaution qu'on aurait ajoutee par-dessus.
+      //
+      // L'image est fabriquee sur place, en SVG : aucune requete, elle
+      // ne peut pas manquer a l'appel, et son sujet est franchement
+      // decentre pour qu'on VOIE ce que cadrer veut dire.
+      cadrage: {
+        ouvrir: function(){
+          try {
+            cadrageOuvrir({
+              url: TUT_IMAGE_EXEMPLE,
+              titre: 'Image d\u2019exemple \u2014 tutoriel',
+              ratioD: 16/9, ratioM: 4/5,
+              valeurs: { x: 66, y: 34, zoom: 1 }
+            });
+          } catch(e){}
+        },
+        fermer: function(){
+          try { if (window.BaobabsCadrage && window.BaobabsCadrage.estOuvert()) window.BaobabsCadrage.fermer(); }
+          catch(e){}
+        },
+        estOuvert: function(){
+          try { return !!(window.BaobabsCadrage && window.BaobabsCadrage.estOuvert()); }
+          catch(e){ return false; }
+        }
+      },
+
       // De quel module depend un ecran : c'est ce qui permet de repondre
       // « qui a acces a CET ecran-la » sans quitter l'ecran en question.
       moduleDe: function(cle){
@@ -5423,6 +5455,25 @@
   //     mauvais élément pendant qu'on parle d'un autre fait chercher un
   //     rapport qui n'existe pas — et fait douter de tout le reste.
   //     Les écrans absents de cette table n'ont simplement pas de main.
+  // Une photo d'exemple, dessinee sur place. Le ballon est volontairement
+  // pousse dans un coin : sans sujet decentre, deplacer le cadre ne
+  // montre rien.
+  var TUT_IMAGE_EXEMPLE = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200">' +
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="#0d2a18"/><stop offset="1" stop-color="#06120b"/>' +
+    '</linearGradient></defs>' +
+    '<rect width="1600" height="1200" fill="url(#g)"/>' +
+    '<circle cx="1210" cy="360" r="190" fill="#E4C179"/>' +
+    '<path d="M1020 360h380M1210 170v380M1080 230q130 130 0 260M1340 230q-130 130 0 260" ' +
+    'stroke="#0d2a18" stroke-width="9" fill="none"/>' +
+    '<rect x="120" y="900" width="620" height="14" fill="rgba(228,193,121,.5)"/>' +
+    '<text x="120" y="860" font-family="Archivo,sans-serif" font-size="66" ' +
+    'font-weight="700" fill="#F4F1E9">IMAGE D\u2019EXEMPLE</text>' +
+    '<text x="124" y="972" font-family="Archivo,sans-serif" font-size="34" ' +
+    'fill="rgba(244,241,233,.62)">Tutoriel \u2014 rien n\u2019est enregistr\u00e9</text>' +
+    '</svg>');
+
   var TUT_CIBLES = {
     // -- Pilotage --------------------------------------------------
     dashboard:  ['#section-dashboard .db-nums', '#section-dashboard .db-num', '#db-cd', '#gs-open'],

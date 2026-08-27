@@ -42,6 +42,7 @@
     _connexion: 'De l’adresse du site à votre tableau de bord · ~2 min',
     _entete:    'Les commandes qui vous suivent partout · ~1 min',
     _roles:     'Qui fait quoi, et qui ne peut pas quoi · ~2 min',
+    _cadrage:   'Choisir ce que le site garde d’une photo · ~2 min',
     _studio:    'Composer une affiche, et l’exporter · ~3 min',
     _pratique:  'Deux exercices — rien ne s’enregistre · ~2 min'
   };
@@ -62,7 +63,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-t';
+  var VERSION = '26.08-u';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -361,6 +362,11 @@
 
     // Le Studio est un atelier a cote : il ne se comprend qu'une fois
     // qu'on sait ce qu'est un match et une actualite.
+    // Le cadrage vient AVANT le Studio : on apprend a placer une image
+    // avant d'apprendre a en composer une.
+    if (api.cadrage && document.querySelector('[data-cadrer], .btn-cadrer, #bcadrage')) {
+      plan.push({ cle: '_cadrage', titre: 'Cadrer une image du site', ecrans: [], special: true });
+    }
     if (api.studio && document.getElementById('studio-open')) {
       plan.push({ cle: '_studio', titre: 'Le Studio — composer une affiche', ecrans: [], special: true });
     }
@@ -635,6 +641,43 @@
     { c: '#bs-publish',    d: '<b>Publier</b> va plus loin&nbsp;: l’affiche part sur le site du club, visible de tous. À manier comme une publication d’actualité — une fois en ligne, elle est en ligne.' },
     { c: '#bs-close',      d: 'Et on referme. L’administration est restée derrière, intacte&nbsp;: le Studio ne l’a pas remplacée, il s’est simplement posé par-dessus.' }
   ];
+
+  // L'ATELIER DE CADRAGE.
+  //
+  // Sept boutons « Cadrer » y menent depuis l'administration. Ce n'est
+  // pas un ecran : c'est une surcouche, comme le Studio -- d'ou le
+  // meme traitement.
+  //
+  // « Enregistrer le cadrage » est DESIGNE, jamais clique. Et de toute
+  // facon il ne pourrait rien faire : le tutoriel ouvre l'atelier sans
+  // lui donner de rappel de validation.
+  var CADRAGE = [
+    { c: '.bc-scene',   d: 'Voici l’atelier. À gauche, <b>l’image entière</b>. Le rectangle clair par-dessus montre <b>ce que le site en garde</b> — le reste est coupé.' },
+    { c: '.bc-cadre',   d: 'On <b>fait glisser</b> l’image sous ce cadre pour choisir ce qui reste visible. Un ballon dans le coin, un visage coupé&nbsp;: c’est ici que ça se règle.' },
+    { c: '#bc-zoom',    d: 'Le <b>zoom</b> rapproche ou éloigne. Attention&nbsp;: trop zoomer sur une petite photo la rend floue sur le site.' },
+    { c: '.bc-ecrans',  d: 'Et c’est le point important&nbsp;: <b>l’ordinateur et le téléphone n’ont pas le même cadre</b>. On règle les deux séparément — une photo parfaite sur ordinateur peut couper une tête sur téléphone.' },
+    // PAS D'ETAPE SUR .bc-fermer : la croix fait 23 px de large, un
+    // pixel sous le seuil de boiteUtile(). Le halo remontait donc a
+    // .bc-tete et repetait le halo precedent, mot pour mot au meme
+    // endroit. On decrit la barre entiere, croix comprise -- le texte
+    // colle a ce qui est montre.
+    { c: '.bc-tete',    d: 'En haut, le titre rappelle <b>quelle image</b> on est en train de cadrer — ici une image d’exemple créée pour le tutoriel. Et tout à droite, la <b>croix</b> referme l’atelier&nbsp;: l’écran d’où l’on venait est resté tel quel.' },
+    { c: '[data-valider]', d: '<b>Enregistrer le cadrage</b> renvoie les réglages à l’écran d’où l’on vient — il faut encore y cliquer sur <b>Enregistrer</b> pour que le site change. <span style="opacity:.75">Ici, ce bouton ne mène nulle part&nbsp;: rien n’a été mis en jeu.</span>' }
+  ];
+
+  function etapesCadrage() {
+    var E = 'Cadrer une image';
+    var out = [{
+      special: true, nom: E, cadrage: true,
+      html: 'Les photos du site sont <b>rognées</b> pour entrer dans leur cadre — et ce que le rognage garde ' +
+            'n’est pas toujours ce qu’on voulait montrer. L’<b>atelier de cadrage</b> sert à le décider soi-même. ' +
+            'On l’ouvre sur une image d’exemple.'
+    }];
+    CADRAGE.forEach(function (e) {
+      out.push({ special: true, nom: E, cadrage: true, cible: e.c, html: e.d });
+    });
+    return out;
+  }
 
   function etapesStudio() {
     var E = 'Le Studio';
@@ -1679,6 +1722,7 @@
     if (c.cle === '_entete') return etapesEntete();
     if (c.cle === '_connexion') return etapesConnexion();
     if (c.cle === '_pratique') return etapesPratique();
+    if (c.cle === '_cadrage') return etapesCadrage();
     if (c.cle === '_studio') return etapesStudio();
     if (c.special) return etapesRoles();
     var out = [];
@@ -2468,7 +2512,9 @@
   }
 
   function gererSurcouche(e) {
-    var veut = e.connexion ? '_connexion' : (e.studio ? '_studio' : null);
+    var veut = e.connexion ? '_connexion'
+             : (e.studio ? '_studio'
+             : (e.cadrage ? '_cadrage' : null));
 
     // LE RETOUR ANTICIPE NE COUVRE QUE L'OUVERTURE, PAS LA SUITE.
     //
@@ -2482,6 +2528,7 @@
       fermerSurcouche();
       if (veut === '_connexion' && api.connexion) { api.connexion.montrer(); surcouche = '_connexion'; }
       if (veut === '_studio' && api.studio) { api.studio.ouvrir(); surcouche = '_studio'; }
+      if (veut === '_cadrage' && api.cadrage) { api.cadrage.ouvrir(); surcouche = '_cadrage'; }
     }
 
     // LE STUDIO A DEUX DECORS, ET LES CIBLES DE L'UN N'EXISTENT PAS
@@ -2505,6 +2552,7 @@
   function fermerSurcouche() {
     if (surcouche === '_connexion' && api.connexion) api.connexion.cacher();
     if (surcouche === '_studio' && api.studio) api.studio.fermer();
+    if (surcouche === '_cadrage' && api.cadrage) api.cadrage.fermer();
     surcouche = null;
     atelierOuvert = false;
   }
