@@ -6401,6 +6401,42 @@ window.bbCloud = function(url, w){
       if(rows && rows.length){ timeline = rows.map(function(r){ return { year:r.year||'', title:r.title||'', text:r.body||'' }; }); renderTimeline(); }
     }).catch(function(){});
 
+    // LA GALERIE, SI ELLE EXISTE EN BASE.
+    //
+    // Les douze photos de la detection sont livrees avec le site,
+    // ecrites dans le code. Tant que la table `gallery` n'a pas ete
+    // creee, cette lecture echoue et le catch ne fait rien : la
+    // galerie livree reste a l'ecran. Le site marche donc avant comme
+    // apres la migration — c'est la seule facon de la passer sans
+    // fenetre de panne.
+    //
+    // window.bbDetGalerie est la porte que la galerie livree expose
+    // deja pour se laisser remplacer. On ne reecrit rien : on
+    // l'appelle.
+    sbFetch('gallery?select=image_url,video_url,caption,sort&published=is.true&order=sort.asc')
+      .then(function(rows){
+        if (!rows || !rows.length || !window.bbDetGalerie) return;
+        var photos = [], film = null;
+        rows.forEach(function(r){
+          if (r.video_url){ film = r.video_url; return; }   // le film n'est pas une vignette
+          // Une photo livree avec le site garde son numero : la galerie
+          // sait alors charger la vignette allegee (-t.webp) plutot que
+          // la pleine taille. Une photo televersee n'a que son adresse.
+          var m = /\/media\/img\/detection-2026-(\d{2})\.webp$/.exec(r.image_url || '');
+          // Une legende vide en base ne doit pas EFFACER celle qui est
+          // livree avec la photo : la reprise en base n'a pas emporte
+          // les douze legendes d'origine, et une photo sans legende
+          // s'annonce « image » a un lecteur d'ecran. La base fait
+          // autorite quand elle dit quelque chose, pas quand elle se
+          // tait.
+          photos.push(m ? { n: m[1], t: r.caption || null }
+                        : { u: r.image_url, t: r.caption || '' });
+        });
+        if (film) window.bbDetGalerie.video(film);
+        if (photos.length) window.bbDetGalerie.photos(photos);
+      })
+      .catch(function(){});
+
     sbFetch('news?select=*&order=published_at.desc,sort.asc&limit=12').then(function(rows){
       // Filet de sécurité côté site : la politique de lecture en base exclut
       // déjà les brouillons, mais si elle est un jour élargie, rien ne doit
@@ -8169,7 +8205,20 @@ window.bbCloud = function(url, w){
      la galerie s'affiche d'abord telle qu'elle est livrée, puis se
      laisse remplacer si le club a modifié la liste ou la vidéo. */
   window.bbDetGalerie = {
-    photos: function(liste){ if (liste && liste.length){ PHOTOS = liste; idx = 0; dessiner(); } },
+    // Une entree sans legende (t null) recupere celle de la photo de
+    // meme numero livree avec le site : la base peut remplacer la
+    // liste sans faire perdre les textes d'origine.
+    photos: function(liste){
+      if (!liste || !liste.length) return;
+      var avant = {};
+      PHOTOS.forEach(function(p){ if (p.n) avant[p.n] = p.t; });
+      PHOTOS = liste.map(function(p){
+        if (p.t == null && p.n && avant[p.n]) { p = { n:p.n, u:p.u, t:avant[p.n] }; }
+        if (p.t == null) p.t = '';
+        return p;
+      });
+      idx = 0; dessiner();
+    },
     video:  function(url){ if (url) filmUrl = url; }
   };
 
