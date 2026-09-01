@@ -4409,6 +4409,35 @@
   var BAOBABS_LOGO = "/media/img/BBC_-_COLORED_LOGO_jjcrux.webp";
   var MEDIA_BUCKET = "site-media";
 
+  // ===================== LES FONCTIONS SERVEUR ONT DEUX NOMS =====================
+  //
+  // ET C'EST TOUT LE PIEGE. Dans le tableau de bord Supabase, « Name »
+  // est une etiquette d'affichage, qu'on peut changer a tout moment. Le
+  // SLUG, lui, est TIRE AU SORT a la creation depuis l'editeur du
+  // tableau de bord -- bright-endpoint, hyper-processor, swift-api -- et
+  // c'est le slug, pas le nom, qui forme l'URL.
+  //
+  // On deploie donc consciencieusement une fonction nommee
+  // « envoi-newsletter », le tableau de bord l'affiche sous ce nom, et
+  // elle repond en realite a /functions/v1/bright-endpoint. L'admin, qui
+  // appelait le nom, recevait un 404 -- exactement comme si rien n'avait
+  // ete deploye. On peut y passer des heures : la liste dit que la
+  // fonction est la, la mesure dit qu'elle n'existe pas, et les deux ont
+  // raison.
+  //
+  // Deployee par la ligne de commande, le slug EST le nom du dossier
+  // (supabase/functions/<nom>/index.ts) : c'est la seule facon d'en
+  // obtenir un lisible. Le jour ou ces fonctions seront redeployees
+  // ainsi, il suffira de remettre les vrais noms ci-dessous.
+  //
+  // Verifie a la mesure : bright-endpoint et hyper-processor repondent,
+  // envoi-newsletter et alerte-inscription rendent 404.
+  var FN = {
+    newsletter:  'bright-endpoint',           // affichee « envoi-newsletter »
+    alerte:      'hyper-processor',           // affichee « alerte-inscription »
+    reservation: 'confirmation-reservation'   // pas encore deployee
+  };
+
   // storageKey dédiée : sans ça, une session client (index.html) ouverte
   // dans un autre onglet du même domaine écraserait cette session admin
   // (et inversement), le SDK Supabase partageant sinon la même clé de
@@ -7471,11 +7500,12 @@
         '<code class="nw-hs-cmd">npx supabase login<br>' +
         'npx supabase link --project-ref lmwbwasupqkvswukieav<br>' +
         'npx supabase functions deploy</code>' +
-        '<span>Par le tableau de bord, c’est <b>Edge Functions</b> → <i>Deploy a new function</i> ' +
-        '→ <i>Via Editor</i>, sous le nom exact <code>envoi-newsletter</code>, avec le contenu de ' +
-        '<code>supabase/functions/envoi-newsletter/index.ts</code> — <b>et il faut cliquer Deploy à la fin</b> : ' +
-        'écrire la fonction ne la déploie pas. Les cinq causes d’un « j’ai suivi et rien ne se passe » ' +
-        'sont listées dans <code>DEPLOIEMENT-FONCTIONS.txt</code>. ' +
+        '<span><b>Attention au piège si vous passez par le tableau de bord</b> : le nom que vous ' +
+        'tapez n’est qu’une étiquette. L’adresse réelle vient d’un <i>slug</i> tiré au sort ' +
+        '(<code>bright-endpoint</code>, <code>swift-api</code>…), visible dans la colonne URL de la liste ' +
+        'des fonctions. Une fonction affichée « envoi-newsletter » peut très bien répondre ailleurs — ' +
+        'et l’admin, qui appelle un nom précis, ne la trouve pas. La ligne de commande, elle, donne au ' +
+        'slug le nom du dossier. Tout est expliqué dans <code>DEPLOIEMENT-FONCTIONS.txt</code>. ' +
         'Ce bandeau disparaîtra tout seul le jour où la fonction répondra.</span>';
       // On n'éteint pas les boutons : quelqu'un peut déployer la fonction
       // pendant que l'écran est ouvert, et un bouton mort ne se rallume
@@ -7484,7 +7514,7 @@
     }
     // OPTIONS plutôt que POST : on demande « es-tu là ? » sans rien
     // envoyer. Une fonction déployée répond aux requêtes préliminaires.
-    fetch(SUPABASE_URL + '/functions/v1/envoi-newsletter', { method:'OPTIONS' })
+    fetch(SUPABASE_URL + '/functions/v1/' + FN.newsletter, { method:'OPTIONS' })
       .then(function(r){ if (r.status === 404) manque(); else box.classList.add('hide'); })
       .catch(function(){ manque(); });
   }
@@ -7533,7 +7563,7 @@
     showMsg(msg, testEmail ? 'Envoi du test…' : 'Envoi en cours — ne fermez pas la page…', true);
     var payload = { subject: subject, body: body };
     if (testEmail) payload.test_email = testEmail;
-    fetch(SUPABASE_URL + '/functions/v1/envoi-newsletter', {
+    fetch(SUPABASE_URL + '/functions/v1/' + FN.newsletter, {
       method: 'POST',
       headers: sbHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload)
@@ -7548,9 +7578,9 @@
           nwLoad();
           return;
         }
-        showMsg(msg, 'Envoi refusé : ' + ((x.j && x.j.error) || 'raison inconnue') + '. La fonction «\u00a0envoi-newsletter\u00a0» est-elle déployée (NOTICE-NEWSLETTER.txt) ?', false);
+        showMsg(msg, 'Envoi refusé : ' + ((x.j && x.j.error) || 'raison inconnue') + '. Voir DEPLOIEMENT-FONCTIONS.txt.', false);
       })
-      .catch(function(){ showMsg(msg, "L'envoi a échoué — vérifiez que la fonction «\u00a0envoi-newsletter\u00a0» est déployée.", false); })
+      .catch(function(){ showMsg(msg, "L'envoi a échoué — la fonction n'a pas répondu. Voir DEPLOIEMENT-FONCTIONS.txt.", false); })
       .finally(function(){ nwBusy = false; });
   }
   document.getElementById('nw-test-btn').addEventListener('click', function(){ nwSend(document.getElementById('nw-test').value.trim()); });

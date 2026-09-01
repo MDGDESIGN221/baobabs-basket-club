@@ -1,84 +1,79 @@
-BAOBABS BASKET CLUB — Déployer les fonctions serveur
-====================================================
+BAOBABS BASKET CLUB — Les fonctions serveur
+===========================================
 
-CE QU'ON SAIT
-  Les quatre fonctions serveur (newsletter, confirmation de réservation,
-  alerte d'inscription, aide à la rédaction) ne sont pas déployées.
-  Vérifié : les quatre répondent 404 sur
-  https://lmwbwasupqkvswukieav.supabase.co/functions/v1/…
+LE PIÈGE, ET IL EXPLIQUE TOUT
+  Une fonction Supabase a DEUX noms.
 
-  Le code est prêt depuis le début. Il est maintenant rangé aussi dans
-  supabase/functions/, là où l'outil en ligne de commande va le chercher
-  tout seul.
+    · « Name »  — l'étiquette affichée dans la liste. On la choisit, on
+                  peut la changer, elle ne sert qu'à s'y retrouver.
+    · le SLUG   — ce qui forme l'URL. Créée depuis l'éditeur du tableau
+                  de bord, la fonction reçoit un slug TIRÉ AU SORT :
+                  bright-endpoint, hyper-processor, swift-api…
 
-  DEUX CHEMINS EXISTENT, ils marchent tous les deux. Prenez celui que
-  vous voulez — mais lisez « SI RIEN NE SE PASSE » à la fin.
+  On déploie donc consciencieusement une fonction nommée
+  « envoi-newsletter », le tableau de bord l'affiche sous ce nom — et
+  elle répond en réalité à /functions/v1/bright-endpoint.
 
+  L'administration, qui appelle un nom précis, recevait un 404 : le même
+  résultat que si rien n'avait été déployé. La liste disait « c'est là »,
+  la mesure disait « ça n'existe pas », et les deux avaient raison.
 
-CHEMIN A — LE TABLEAU DE BORD (sans rien installer)
-  1. supabase.com/dashboard → votre projet → menu de gauche,
-     Edge Functions.
-  2. Bouton « Deploy a new function » → choisir « Via Editor ».
-  3. Nom EXACT (tout en minuscules, avec les tirets) :
-
-         envoi-newsletter
-
-  4. Effacer tout le contenu de l'éditeur, coller tout le fichier
-     supabase/functions/envoi-newsletter/index.ts
-     (ou edge-function-newsletter.ts, c'est le même).
-  5. Cliquer sur DEPLOY — et attendre la fin. Tant qu'on n'a pas cliqué
-     Deploy, la fonction n'existe pas : elle est seulement écrite.
-
-  Recommencer pour les trois autres si vous les voulez :
-     confirmation-reservation, alerte-inscription, aide-redaction
+  Le slug se lit dans la colonne URL de la liste des fonctions, ou dans
+  le fil d'Ariane quand on ouvre une fonction.
 
 
-CHEMIN B — LA LIGNE DE COMMANDE (plus sûr, tout d'un coup)
-  Un terminal ouvert DANS le dossier du site, puis :
+ÉTAT MESURÉ DU PROJET lmwbwasupqkvswukieav
+  Affiché                  Slug réel                  Répond
+  ------------------------------------------------------------------
+  envoi-newsletter         bright-endpoint            oui
+  alerte-inscription       hyper-processor            oui
+  generate-text            generate-text              oui
+  send-order-confirmation  send-order-confirmation    oui
+  swift-api                swift-api                  oui
+  confirmation-reservation  —                         NON (absente)
+
+  L'admin appelle désormais les slugs réels : voir la table FN en tête
+  du script de admin-matchs.html. Une seule adresse à corriger le jour
+  où les fonctions seront redéployées sous un nom lisible.
+
+
+CE QUI RESTE À FAIRE
+  1. confirmation-reservation n'existe sous aucun slug connu. C'est
+     l'e-mail envoyé au supporter quand il réserve un billet : le site
+     l'appelle (index.html) et n'obtient rien. Soit elle correspond à
+     « swift-api » — auquel cas dites-le, on ajustera la table FN —
+     soit elle n'a jamais été déployée.
+  2. Les secrets Brevo, sans lesquels une fonction déployée répond mais
+     n'envoie rien : BREVO_API_KEY, BBC_SENDER_EMAIL, et si l'on veut
+     BBC_SENDER_NAME. Supabase → Edge Functions → Secrets.
+     Ne les mettez jamais dans un fichier du dépôt.
+
+
+DÉPLOYER AVEC UN SLUG LISIBLE — LA LIGNE DE COMMANDE
+  C'est la seule façon d'obtenir un slug qui soit le nom : déployée
+  ainsi, la fonction prend le nom de son dossier.
+
+  Un terminal ouvert DANS le dossier du site :
 
       npx supabase login
       npx supabase link --project-ref lmwbwasupqkvswukieav
       npx supabase functions deploy
 
-  La troisième commande déploie les quatre fonctions d'un seul coup, en
-  lisant supabase/functions/. Le mot de passe demandé à l'étape 2 est
-  celui de la BASE DE DONNÉES (Project Settings → Database), pas celui
-  de votre compte.
+  La dernière commande envoie les quatre fonctions rangées dans
+  supabase/functions/ (envoi-newsletter, confirmation-reservation,
+  alerte-inscription, aide-redaction), chacune sous son propre nom.
 
+  Le mot de passe demandé au « link » est celui de la BASE DE DONNÉES
+  (Project Settings → Database), pas celui de votre compte.
 
-LES SECRETS — SANS EUX, RIEN NE PART
-  Déployée ou non, une fonction sans ses secrets échoue à l'envoi. Les
-  e-mails passent par Brevo :
-
-      BREVO_API_KEY       la clé d'API de votre compte Brevo
-      BBC_SENDER_EMAIL    l'adresse d'expédition, VÉRIFIÉE chez Brevo
-      BBC_SENDER_NAME     facultatif — « Baobabs Basket Club »
-
-  Où : Supabase → Edge Functions → Secrets → Add new secret.
-
-  Ne mettez jamais ces valeurs dans un fichier du dépôt : elles n'ont
-  rien à faire sur GitHub.
-
-
-SI RIEN NE SE PASSE — LES CINQ CAUSES, DANS L'ORDRE
-  1. DEPLOY N'A PAS ÉTÉ CLIQUÉ. Écrire la fonction dans l'éditeur ne la
-     déploie pas. C'est la cause la plus fréquente.
-  2. LE NOM N'EST PAS LE BON. « envoi-newsletter » exactement : pas
-     d'underscore, pas de majuscule, pas d'espace au bout. L'admin
-     appelle ce nom-là et aucun autre.
-  3. CE N'EST PAS LE BON PROJET. Vérifiez que la référence affichée dans
-     l'adresse du tableau de bord est bien lmwbwasupqkvswukieav.
-  4. LE DÉPLOIEMENT A ÉCHOUÉ À LA COMPILATION. Edge Functions → la
-     fonction → onglet Logs : l'erreur y est écrite.
-  5. LES SECRETS MANQUENT. La fonction répond alors, mais l'envoi
-     échoue. Le message d'erreur de l'admin le dit.
+  Une fois cela fait, remettez les vrais noms dans la table FN de
+  admin-matchs.html — le commentaire qui l'accompagne le rappelle.
 
 
 VÉRIFIER SANS RIEN ENVOYER
-  L'écran Newsletter de l'administration interroge la fonction à chaque
-  ouverture. Tant qu'elle manque, un bandeau orange s'affiche ; il
-  disparaît tout seul dès qu'elle répond. C'est le signal le plus simple,
-  et il ne coûte pas un e-mail.
+  L'écran Newsletter interroge la fonction à chaque ouverture. Tant
+  qu'elle ne répond pas, un bandeau orange s'affiche ; il disparaît tout
+  seul dès qu'elle répond. Cela ne coûte pas un e-mail.
 
   En ligne de commande :
       npx supabase functions list
