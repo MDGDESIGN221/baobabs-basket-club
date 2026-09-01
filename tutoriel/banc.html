@@ -81,7 +81,7 @@ ce qui est absent ou invisible, et rend le premier présent. Ne demande aucune s
 
   var tb = document.querySelector('#res tbody'), bons = 0;
   cas.forEach(function (c) {
-    var el = T.essaiTrouver(c[1]);
+    var el = T.essai.trouver(c[1]);
     var got = !el ? 'rien'
       : el.tagName + (el.id ? '#' + el.id : '') + (el.className ? '.' + el.className : '');
     var ok = got === c[2];
@@ -97,11 +97,63 @@ ce qui est absent ou invisible, et rend le premier présent. Ne demande aucune s
   // repli n'existe. Les deux premières ont un repli valable.
   var diag = T.diagnostic();
 
+  // ---- LA VOIX -------------------------------------------------------
+  // Une carte de chapitre est restée muette pendant plusieurs versions
+  // sans que rien ne le signale : on le vérifie désormais ici.
+  function ligne(nom, attendu, obtenu) {
+    var ok = String(obtenu) === String(attendu);
+    if (ok) bons++;
+    total++;
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + nom + '</td><td><code>voix</code></td><td>' + attendu +
+      '</td><td>' + obtenu + '</td><td class="' + (ok ? 'ok' : 'ko') + '">' +
+      (ok ? 'OK' : 'ÉCHEC') + '</td>';
+    tb.appendChild(tr);
+    return ok;
+  }
+
+  var total = cas.length;
+  // Le banc écrit dans localStorage comme le vrai tutoriel : on note le
+  // réglage de la personne pour le lui rendre intact à la fin.
+  var reglageAvant = null;
+  try { reglageAvant = localStorage.getItem('bbc_tut_voix'); } catch (e) {}
+
+  // La liste des voix arrive de façon asynchrone : on attend qu'elle
+  // soit là, comme le fait une personne qui clique quelques secondes
+  // après avoir ouvert l'écran. Au-delà de 3 s, c'est un échec.
+  var attendu = 0;
+  while (!T.etat().voixFr && attendu < 3000) {
+    await new Promise(function (r) { setTimeout(r, 150); });
+    attendu += 150;
+  }
+
+  T.essai.voix(false);
+  ligne('voix éteinte : dire() rend false', 'false', T.essai.parle('Essai.'));
+
+  var allumee = T.essai.voix(true);
+  ligne('une voix française est trouvée (' + attendu + ' ms)', true, !!allumee.voixFr);
+  ligne('voix allumée : dire() rend true', 'true', T.essai.parle('Essai de la voix.'));
+  speechSynthesis.cancel();
+
+  // La carte doit lancer la voix : on mesure si la parole démarre.
+  var avant = speechSynthesis.speaking || speechSynthesis.pending;
+  T.essai.carte('Chapitre 1 sur 8', 'Le club', '4 écrans');
+  await new Promise(function (r) { setTimeout(r, 250); });
+  ligne('la carte de chapitre lance la voix', 'true',
+        String(speechSynthesis.speaking || speechSynthesis.pending));
+  speechSynthesis.cancel();
+  // On rend le réglage tel qu'on l'a trouvé.
+  try {
+    if (reglageAvant === null) localStorage.removeItem('bbc_tut_voix');
+    else localStorage.setItem('bbc_tut_voix', reglageAvant);
+  } catch (e) {}
+
   document.getElementById('bilan').innerHTML =
-    bons + ' / ' + cas.length + ' cas passent — diagnostic : ' +
-    diag.problemes.length + ' défaut(s) signalé(s)';
-  window.__banc = { reussis: bons, total: cas.length, diagnostic: diag };
-  console.log('[banc] ' + bons + '/' + cas.length + ' — diagnostic ' + JSON.stringify(diag.problemes));
+    bons + ' / ' + total + ' cas passent — diagnostic : ' +
+    diag.problemes.length + ' défaut(s) signalé(s) · voix : ' +
+    (allumee.voixFr || 'aucune');
+  window.__banc = { reussis: bons, total: total, diagnostic: diag, voix: allumee.voixFr };
+  console.log('[banc] ' + bons + '/' + total + ' — voix ' + allumee.voixFr);
 })();
 </script>
 </body>

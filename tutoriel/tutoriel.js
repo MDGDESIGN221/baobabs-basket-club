@@ -182,7 +182,14 @@
     if (/eloquence|compact/.test(n)) s -= 40;       // très anciennes
     if (/hortense|julie|paul|claude/.test(n)) s -= 20;
     if (/microsoft/.test(n) && !/natural|online/.test(n)) s -= 18;
-    if (/^fr-fr/i.test(v.lang || '')) s += 10;      // français de France d'abord
+    // LE FRANÇAIS DE FRANCE PESE PLUS QUE +10.
+    // Avec pour tout choix les vieilles voix Windows, les penalites de
+    // nom (-20 sur Hortense, Julie, Paul) faisaient gagner « Nathalie —
+    // French (Canada) » : la visite se racontait avec l'accent quebecois
+    // devant un public dakarois. +30 remet la region devant le nom, sans
+    // renverser l'ordre quand une voix naturelle existe : une fr-CA
+    // naturelle (160) passe toujours devant une fr-FR ancienne (-8).
+    if (/^fr-fr/i.test(v.lang || '')) s += 30;
     if (v.default) s += 3;
     return s;
   }
@@ -207,17 +214,39 @@
     return fr[0];
   }
 
+  // LA LISTE DES VOIX ARRIVE APRES, ET PARFOIS SANS PREVENIR.
+  //
+  // getVoices() rend une liste VIDE au premier appel : le navigateur
+  // charge les voix de son cote. On montait donc le tutoriel avec
+  // voixFr a null, et l'on s'en remettait a un unique 'voiceschanged'.
+  // Chrome ne garantit pas cet evenement -- s'il est deja passe, il ne
+  // repassera pas -- et alors voixFr restait null pour toute la visite :
+  // dire() renoncait a chaque etape et le tutoriel se deroulait muet,
+  // sans qu'aucun message ne dise pourquoi.
+  //
+  // On ecoute l'evenement ET on rappelle quelques fois. Trois secondes
+  // suffisent partout ou on a pu mesurer.
   function preparerVoix() {
     if (!voixDispo()) return;
     voixFr = choisirVoix();
-    if (!voixFr) {
+    majNoteVoix();
+    if (voixFr) return;
+
+    var essais = 0;
+    function reessayer() {
+      if (voixFr) return;
+      voixFr = choisirVoix();
+      majNoteVoix();
+      if (voixFr || ++essais > 12) return;
+      setTimeout(reessayer, 250);
+    }
+    try {
       window.speechSynthesis.addEventListener('voiceschanged', function once() {
         window.speechSynthesis.removeEventListener('voiceschanged', once);
-        voixFr = choisirVoix();
-        majNoteVoix();
+        reessayer();
       });
-    }
-    majNoteVoix();
+    } catch (e) {}
+    setTimeout(reessayer, 250);
   }
 
   function majNoteVoix() {
@@ -265,7 +294,12 @@
 
   // Rend true si la voix a pris le relai, false s'il faut un minuteur.
   function dire(html, fini) {
-    if (!voixOn || !voixDispo() || !voixFr) return false;
+    if (!voixOn || !voixDispo()) return false;
+    // DERNIER FILET. Si la liste des voix est arrivee apres le montage
+    // et que la relance de preparerVoix() n'a rien donne, on retente au
+    // moment de parler plutot que de rester muet pour de bon.
+    if (!voixFr) { voixFr = choisirVoix(); if (voixFr) majNoteVoix(); }
+    if (!voixFr) return false;
     taire();
     var t = pourLaVoix(html);
     if (!t) return false;
@@ -2835,13 +2869,23 @@
       c.style.setProperty('--bt-reserve', libre + 'px');
     }
     c.classList.remove('hide', 'sort');
-    // L'ENTREE DECALEE DURE 1,1 s À ELLE SEULE (le sous-titre part à
-    // .46 s et met .66 s). À 1,5 s au total, la carte commençait à sortir
-    // avant d'avoir fini d'entrer : on voyait une annonce bâclée, ce qui
-    // est exactement l'inverse de l'effet cherché. 2,4 s laissent le
-    // temps de lire le titre — et la carte reste interruptible : un clic
-    // sur « suivant » la range aussitôt.
-    carteT1 = setTimeout(function () {
+
+    // LA CARTE PARLE, ELLE AUSSI.
+    //
+    // Elle ne le faisait pas : le narrateur etait vide, aucune voix
+    // n'etait lancee, et la carte tenait 2,4 s en silence. Comme une
+    // carte ouvre la visite et qu'une autre annonce chaque chapitre,
+    // le tutoriel COMMENCAIT muet et se taisait a chaque transition --
+    // on croyait la voix perdue alors que seules les etapes ordinaires
+    // parlaient encore.
+    //
+    // Le surtitre, le titre et le sous-titre forment l'annonce :
+    // « Chapitre 3 sur 8. Le club. Quatre ecrans. »
+    var annonce = [n, titre, sous].filter(function (x) { return x; }).join('. ');
+    var sorti = false;
+    function sortir() {
+      if (sorti) return;
+      sorti = true;
       carteT1 = null;
       c.classList.add('sort');
       carteT2 = setTimeout(function () {
@@ -2849,7 +2893,25 @@
         c.classList.add('hide'); c.classList.remove('sort');
         quandFini();
       }, 420);
-    }, 2400);
+    }
+
+    // L'ENTREE DECALEE DURE 1,1 s À ELLE SEULE (le sous-titre part à
+    // .46 s et met .66 s) : sortir avant, c'est une annonce bâclée.
+    // C'est le plancher, meme quand la voix va plus vite.
+    var PLANCHER = 1500, depart = Date.now();
+
+    // Quand la voix lit, c'est ELLE qui donne la duree : une annonce
+    // coupee au milieu s'entend, et 2,4 s en dur ne peuvent pas convenir
+    // a la fois a « C'est tout » et a une phrase de vingt mots.
+    var voixPrise = dire(annonce, function () {
+      if (sorti) return;
+      var reste = Math.max(0, PLANCHER - (Date.now() - depart));
+      carteT1 = setTimeout(sortir, reste);
+    });
+
+    // Sans voix, on garde le rythme connu : 2,4 s pour lire le titre.
+    // La carte reste interruptible — « suivant » la range aussitot.
+    if (!voixPrise) carteT1 = setTimeout(sortir, 2400);
   }
   // Appuyer sur « suivant » pendant une carte laissait la carte affichee
   // PAR-DESSUS l'etape suivante : on entendait la voix d'un ecran qu'on
@@ -3232,11 +3294,19 @@
       else pb.forEach(function (l) { console.warn('  ' + l); });
       return { cibles: n, problemes: pb };
     },
-    // Le banc d'essai (tutoriel/banc.html) verifie la resolution des
-    // cibles sans avoir a ouvrir l'admin ni a s'y connecter : c'est le
-    // seul moyen de prouver le repli en liste sur une machine ou l'on
-    // n'a pas de session.
-    essaiTrouver: function (sel) { return trouver(sel); },
+    // LE BANC D'ESSAI — tutoriel/banc.html.
+    //
+    // L'admin est derriere une authentification : sans ces points
+    // d'entree, la seule facon de verifier le tutoriel serait de s'y
+    // connecter, donc de ne jamais le verifier. C'est ainsi qu'une
+    // carte de chapitre a pu rester muette sans que rien ne le dise.
+    essai: {
+      trouver: function (sel) { return trouver(sel); },
+      // Rend true si la voix a pris le relai — c'est le contrat de dire().
+      parle:   function (texte, fini) { return dire(texte, fini || function () {}); },
+      voix:    function (on) { reglerVoix(on); return { voixOn: voixOn, voixFr: voixFr && voixFr.name }; },
+      carte:   function (n, titre, sous, fini) { carteChapitre(n, titre, sous, fini || function () {}); }
+    },
     // Pour le banc d'essai et la console : savoir où on en est.
     etat: function () {
       return { chapitres: plan.length, etapes: etapes.length, idx: idx, lecture: enLecture, voix: voixOn, voixFr: voixFr && voixFr.name };
