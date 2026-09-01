@@ -14513,25 +14513,51 @@
       lines.forEach(function(ln){ doc.text(ln, M+7, ly); ly += 5.2; });
       y += h + 3;
     }
-    // Notation : cinq pastilles, remplies jusqu'à la note. Plus lisible à
-    // l'impression noir et blanc qu'un « 3 / 5 » noyé dans la grille.
+    // UNE ETOILE, PAS UNE PASTILLE.
+    //
+    // Le PDF dessinait cinq ronds. C'etait defendable sur le papier --
+    // un disque plein se lit de loin -- mais l'ecran, lui, montre des
+    // etoiles : on note une candidate avec cinq etoiles, on imprime la
+    // fiche, et on recoit cinq ronds. Le doute porte alors sur la note
+    // elle-meme : est-ce la meme chose qui est comptee ? Une fiche
+    // imprimee doit ressembler a l'ecran dont elle sort.
+    //
+    // jsPDF ne connait pas l'etoile : on la trace. Dix sommets alternes,
+    // le creux a 42 % du rayon -- en dessous l'etoile devient une roue,
+    // au-dessus une croix. doc.lines() attend des ECARTS depuis le point
+    // precedent, pas des coordonnees absolues.
+    function etoilePdf(cx, cy, r, style){
+      var pts = [], i, a, rr;
+      for (i = 0; i < 10; i++){
+        a  = -Math.PI/2 + i * Math.PI/5;
+        rr = (i % 2 === 0) ? r : r * 0.42;
+        pts.push([cx + Math.cos(a)*rr, cy + Math.sin(a)*rr]);
+      }
+      var ecarts = [];
+      for (i = 1; i < pts.length; i++)
+        ecarts.push([pts[i][0] - pts[i-1][0], pts[i][1] - pts[i-1][1]]);
+      doc.lines(ecarts, pts[0][0], pts[0][1], [1,1], style, true);
+    }
+    // Notation : cinq etoiles, pleines jusqu'a la note, evidees ensuite.
+    // Les evidees comptent autant que les pleines -- « 3 sur 5 » se lit
+    // sans avoir a chercher le total ailleurs.
     function ratingRow(n){
       checkPageBreak(11);
       fInter(6.8); col(FAINT);
       doc.text('APPRÉCIATION INTERNE', M, y, { charSpace:0.35 });
-      var cy = y + 4.4;
+      var cy = y + 4.6;
       for (var i=0; i<5; i++){
-        var cx = M + 2 + i*5.4;
+        var cx = M + 2.4 + i*5.8;
         if (i < n){
           doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
-          doc.circle(cx, cy, 1.7, 'F');
+          etoilePdf(cx, cy, 2.4, 'F');
         } else {
-          doc.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); doc.setLineWidth(0.35);
-          doc.circle(cx, cy, 1.7, 'S');
+          doc.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); doc.setLineWidth(0.3);
+          etoilePdf(cx, cy, 2.4, 'S');
         }
       }
       fSGMed(9.5); col(INK);
-      doc.text(n+' sur 5', M + 2 + 5*5.4 + 2, cy+1.4);
+      doc.text(n+' sur 5', M + 2.4 + 5*5.8 + 1.5, cy+1.4);
       y += 13;
     }
     // Pastille de statut pleine (fond coloré), comme les status-pill du
