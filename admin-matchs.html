@@ -1175,7 +1175,12 @@
      Il vit hors de #app : une surcouche en position:fixed sous un
      ancetre en display:none s'ouvre a 0x0, sans erreur. */
   .imgp-b{
-    flex:none; display:inline-flex; align-items:center; gap:6px;
+    /* align-self : dans une colonne de formulaire, un enfant flex
+       s'etire sur toute la largeur. Les deux boutons faisaient donc
+       chacun une barre pleine largeur sous le champ, alors qu'ils
+       portent deux mots. */
+    flex:none; align-self:flex-start; width:max-content;
+    display:inline-flex; align-items:center; gap:6px;
     background:var(--surface-2); border:1px solid var(--line-strong);
     color:var(--muted); border-radius:9px; padding:0 11px; height:38px;
     font-family:var(--font-ui); font-weight:600; font-size:12px; cursor:pointer;
@@ -1183,7 +1188,24 @@
   }
   .imgp-b:hover{ border-color:var(--gold); color:var(--gold) }
   .imgp-b svg{ width:14px; height:14px; flex:none }
-  .imgp-b:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
+  .imgp-b:focus-visible,.imgp-b:focus-within{ outline:2px solid var(--gold); outline-offset:2px }
+  .imgp-row{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:8px }
+  .imgp-b-up{ margin-left:0 }
+  .imgp-b.occupe{ opacity:.6; pointer-events:none }
+
+  /* Le profil de traitement des images, sous la zone de dépôt. */
+  .md-prof{margin:14px 0 18px;padding:13px 15px;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:var(--r-lg)}
+  .md-prof-l{display:block;font-family:var(--font-ui);font-weight:700;font-size:9.5px;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+  .md-prof-ch{display:flex;gap:8px;flex-wrap:wrap}
+  .md-prof-b{background:var(--surface);border:1px solid var(--line-strong);border-radius:100px;
+    padding:8px 15px;color:var(--muted);font:600 12px var(--font-text);cursor:pointer;min-height:36px;
+    transition:border-color .14s,color .14s,background .14s}
+  .md-prof-b:hover{border-color:var(--gold);color:var(--text)}
+  .md-prof-b:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  .md-prof-b.on{background:var(--gold-soft);border-color:var(--gold);color:var(--gold-bright)}
+  .md-prof-a{margin:10px 0 0;font-size:12px;line-height:1.55;color:var(--muted)}
 
   /* ===== DEMANDER QUELQUE CHOSE ===== */
   #dem{ position:fixed; inset:0; z-index:480;
@@ -3518,6 +3540,15 @@
             </label>
           </div>
           <div class="md-drop" id="md-drop">Glissez vos images ici — elles iront dans le dossier ouvert.</div>
+          <!-- Le reglage vit ICI, a cote du televersement, et vaut pour
+               TOUS les ecrans : fiches joueuses, produits, articles,
+               Studio. Le poser ailleurs (dans Reglages du site) aurait
+               ete plus range et beaucoup moins trouve. -->
+          <div class="md-prof" id="md-prof">
+            <span class="md-prof-l">Traitement des images envoyées</span>
+            <div class="md-prof-ch" id="md-prof-ch"></div>
+            <p class="md-prof-a" id="md-prof-a"></p>
+          </div>
           <div class="md-grid" id="md-grid"></div>
         </div>
       </div>
@@ -4711,11 +4742,16 @@
       .then(function(r){
         if(!r.ok) return sbThrow(r, r.status===409?'duplicate':'insert', table);
         auditLogInsert(table,body,sectionLabel);
+        // ON REND LA LIGNE CREEE. Elle etait lue pour l'annulation, puis
+        // jetee : l'appelant ne pouvait pas ouvrir ce qu'il venait de
+        // creer, et devait le retrouver dans la liste par son nom. Les
+        // appelants qui ne s'en servent pas ne changent pas.
         return r.json().then(function(cree){
           var ligne = Array.isArray(cree) ? cree[0] : cree;
           if (ligne && ligne.id != null)
             undoPousser({ type:'creation', table:table, id:ligne.id, quoi:undoNom(table, ligne), section:sectionLabel });
-        }).catch(function(){});
+          return ligne || null;
+        }).catch(function(){ return null; });
       }, sbNet(table,'insert'));
   }
   function sbUpdate(table,id,body,sectionLabel){
@@ -5878,8 +5914,38 @@
   // Tout passe par uploadFile — médiathèque, fiches joueuses, articles,
   // produits, et le Studio. Un seul endroit à corriger, donc un seul
   // endroit qui peut se tromper.
-  var IMG_MAX_COTE = 2000;      // px
-  var IMG_QUALITE  = 0.82;
+  // TROIS PROFILS, PAS UN CURSEUR.
+  // « 2000 px, qualite 82 » ne veut rien dire pour qui prepare une
+  // affiche ; « ce que le site affiche » et « pour imprimer » le disent.
+  // Le profil est retenu : on le choisit une fois, pas a chaque photo.
+  //
+  // Pas de SVG ici, malgre la demande : le SVG est un format de trace,
+  // pas de photo. Convertir une photographie en SVG produit soit une
+  // image geante enveloppee dans du XML, soit une aquarelle vaguement
+  // ressemblante. Le format leger d'une photo, c'est le WebP -- 25 a
+  // 35 % de moins qu'un JPEG a qualite egale, et le site en sert deja
+  // partout. Les vrais SVG televerses passent intacts, sans conversion.
+  var IMG_PROFILS = {
+    web:    { nom:'Web — ce que le site affiche', cote:2000, q:0.82,
+              aide:'Le bon choix pour tout ce qui se voit à l’écran. Une photo de 5 Mo tombe autour de 250 Ko, sans différence visible.' },
+    haute:  { nom:'Haute définition — grands écrans, affiches', cote:3000, q:0.9,
+              aide:'Trois fois plus lourd, pour les visuels qu’on regarde en grand ou qu’on recadre ensuite.' },
+    origine:{ nom:'Taille d’origine — aucun traitement', cote:0, q:1,
+              aide:'Le fichier part tel quel. À réserver aux images déjà préparées : au-delà de 2 Mo, la page du site devient lente sur téléphone.' }
+  };
+  var IMG_PROFIL = 'web';
+  try { var pr = localStorage.getItem('bbc_img_profil'); if (IMG_PROFILS[pr]) IMG_PROFIL = pr; } catch(e){}
+  function imgProfil(){ return IMG_PROFILS[IMG_PROFIL] || IMG_PROFILS.web; }
+  function imgProfilPoser(cle){
+    if (!IMG_PROFILS[cle]) return;
+    IMG_PROFIL = cle;
+    try { localStorage.setItem('bbc_img_profil', cle); } catch(e){}
+  }
+  function imgPoids(o){
+    if (o < 1024) return o + ' o';
+    if (o < 950*1024) return Math.round(o/1024) + ' Ko';
+    return (Math.round(o/1024/102.4)/10).toString().replace('.', ',') + ' Mo';
+  }
   var IMG_SEUIL    = 320 * 1024; // en dessous, on ne touche à rien
 
   function compresserImage(file){
@@ -5887,6 +5953,7 @@
     // une perte sèche. Les GIF peuvent être animés : les convertir les
     // figerait. On les laisse passer.
     if (!file || !/^image\/(jpeg|png|webp)$/i.test(file.type||'')) return Promise.resolve(file);
+    if (imgProfil().cote === 0) return Promise.resolve(file);   // profil « taille d'origine »
     if (file.size <= IMG_SEUIL) return Promise.resolve(file);
 
     return new Promise(function(res){
@@ -5895,7 +5962,7 @@
       im.onload = function(){
         try {
           var w = im.naturalWidth, h = im.naturalHeight;
-          var k = Math.min(1, IMG_MAX_COTE / Math.max(w, h));
+          var k = Math.min(1, imgProfil().cote / Math.max(w, h));
           var cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
           var cv = document.createElement('canvas');
           cv.width = cw; cv.height = ch;
@@ -5909,7 +5976,7 @@
             if (!b || b.size >= file.size) { res(file); return; }
             var nom = file.name.replace(/\.[^.]+$/, '') + '.webp';
             res(new File([b], nom, { type:'image/webp', lastModified: Date.now() }));
-          }, 'image/webp', IMG_QUALITE);
+          }, 'image/webp', imgProfil().q);
         } catch(e){ URL.revokeObjectURL(url); res(file); }
       };
       im.onerror = function(){ URL.revokeObjectURL(url); res(file); };
@@ -5917,10 +5984,50 @@
     });
   }
 
+  var IMG_GAIN = { avant:0, apres:0, n:0, t:null };
+  // Le choix du profil : trois pastilles, et l'explication de celle qui
+  // est active en dessous. On ne montre pas les trois explications a la
+  // fois -- on choisit rarement, on lit une fois.
+  function mdProfilRendre(){
+    var ch = document.getElementById('md-prof-ch'), a = document.getElementById('md-prof-a');
+    if (!ch) return;
+    ch.innerHTML = Object.keys(IMG_PROFILS).map(function(k){
+      return '<button type="button" class="md-prof-b'+(k===IMG_PROFIL?' on':'')+'" data-prof="'+k+'">'+
+        esc(IMG_PROFILS[k].nom)+'</button>';
+    }).join('');
+    if (a) a.textContent = imgProfil().aide;
+    ch.querySelectorAll('[data-prof]').forEach(function(b){
+      b.addEventListener('click', function(){
+        imgProfilPoser(b.getAttribute('data-prof'));
+        mdProfilRendre();
+        qgToast('Les prochaines images seront traitées en « '+imgProfil().nom.split(' — ')[0]+' ».');
+      });
+    });
+  }
+
   function uploadFile(bucket,file){
     return compresserImage(file).then(function(f){
       var path = Date.now()+'-'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-      if (f !== file) console.info('[média] '+file.name+' : '+Math.round(file.size/1024)+' Ko → '+Math.round(f.size/1024)+' Ko');
+      // ON LE DIT. Le gain partait dans la console : personne ne l'y a
+      // jamais lu, et on continuait a croire qu'une photo de 5 Mo etait
+      // partie telle quelle -- donc a redimensionner a la main avant,
+      // par precaution, ce qui est exactement le travail que ce code
+      // devait supprimer.
+      if (f !== file){
+        console.info('[média] '+file.name+' : '+Math.round(file.size/1024)+' Ko → '+Math.round(f.size/1024)+' Ko');
+        IMG_GAIN.avant += file.size; IMG_GAIN.apres += f.size; IMG_GAIN.n++;
+        clearTimeout(IMG_GAIN.t);
+        // Un envoi groupe (une galerie de douze photos) ne doit pas
+        // faire douze messages : on attend la fin du lot et on resume.
+        IMG_GAIN.t = setTimeout(function(){
+          if (!IMG_GAIN.n) return;
+          if (typeof qgToast === 'function') qgToast(
+            (IMG_GAIN.n > 1 ? IMG_GAIN.n + ' images allégées' : 'Image allégée') +
+            ' · ' + imgPoids(IMG_GAIN.avant) + ' → ' + imgPoids(IMG_GAIN.apres) +
+            ' (WebP, ' + imgProfil().cote + ' px max)');
+          IMG_GAIN.avant = 0; IMG_GAIN.apres = 0; IMG_GAIN.n = 0;
+        }, 700);
+      }
       return fetch(SUPABASE_URL+'/storage/v1/object/'+bucket+'/'+path,{
         method:'POST',
         headers:sbHeaders({'Content-Type':f.type||'application/octet-stream'}),
@@ -6237,13 +6344,13 @@
     coherence: ["<b>Compare la page publique en ligne avec le contenu de l'admin</b> : écarts de texte, contenu codé en dur, réglages inutilisés.","Protégé par le mot de passe de l'historique — l'écran expose la structure interne du site.","« Adopter » récupère la valeur du site dans l'admin en un clic."],
     banners: ["<b>Les grandes bannières du bloc d'accueil</b> : visuel, titre, bouton, et période d'affichage.","Une bannière programmée s'affiche toute seule à sa date de début et disparaît à sa date de fin.","Sans bannière active, le site affiche l'image du hero classique — rien ne casse."],
     announce: ["<b>Le bandeau tout en haut du site</b> : report de match, ouverture de vente, information urgente.","Trois tons au choix : information (bleu), alerte (rouge), succès (vert).","Un visiteur peut fermer le bandeau ; il ne réapparaît pas pour lui tant que l'annonce ne change pas."],
-    squad: ["<b>Une fiche par joueuse</b> : portrait, poste, numéro, statut (apte, blessée, partie…), parcours et statistiques.","Le statut s'affiche sur le site dans la section Équipes.","La photo se glisse directement sur la fiche ou se colle en lien."],
+    squad: ["<b>Une fiche par joueuse</b> : portrait, poste, numéro, statut (apte, blessée, partie…), parcours et statistiques.","<b>Nouvelle fiche</b> demande le nom, le numéro et le poste — puis <b>ouvre la fiche</b> pour la suite. Le numéro proposé est le premier libre, et les postes proposés sont ceux déjà utilisés dans l’effectif : rien ne vous oblige à les suivre.","Le statut s'affiche sur le site dans la section Équipes.","<b>La photo : trois boutons sous le champ.</b> <b>Médiathèque</b> reprend une image déjà envoyée, <b>Téléverser</b> en envoie une depuis cet appareil — elle est allégée au passage — et <b>Cadrer la photo</b> choisit ce que le site garde du portrait. Le cadrage se sauve avec la fiche : pensez à enregistrer."],
     products: ["<b>Le catalogue de la boutique</b> : visuels, prix, description, tailles.","<b>Dupliquer</b> sur une fiche crée une copie suffixée « (copie) » — pratique pour décliner un maillot.","Le stock se gère par taille dans l'écran Stock voisin ; un produit épuisé reste visible mais non commandable."],
     stock: ["<b>L'état des réserves, par taille.</b> Saisie rapide des quantités, seuil d'alerte par produit.","« Épuisé » et « stock bas » se calculent tout seuls ; le site suit automatiquement.","Le rail de droite (grands écrans) et le tableau de bord remontent les produits à recommander."],
     articles: ["<b>La rédaction des actualités</b> : texte, chapô, image de couverture, catégorie, auteur, référencement.","Un article passe par des statuts : brouillon → publié. Seuls les publiés apparaissent sur le site.","Le chapô et la catégorie s'affichent sur les cartes d'actualité du site."],
     categories: ["<b>Les rubriques des actualités</b>, chacune avec sa couleur.","Utilisées sur le site (étiquettes des articles) et dans l'admin pour filtrer."],
     galerie: ["<b>Les photos que le site affiche dans sa galerie</b>, dans l’ordre où elles y sont. Le numéro sur une vignette est son rang sur le site.","Le formulaire du haut ajoute une photo : l’adresse de l’image suffit, la légende et l’album sont facultatifs.","<b>Publiée / Masquée</b> retire une photo du site sans la supprimer — elle reste ici, prête à revenir. Les flèches ‹ et › la déplacent dans l’ordre, et le site suit aussitôt.","La légende s’écrit sur la vignette et s’enregistre quand vous quittez le champ. <b>Supprimer</b> ne retire que la ligne : le fichier reste dans la Médiathèque.","<b>Film</b> ne concerne que les vidéos : l’image ajoutée au-dessus devient alors l’affiche du film."],
-    media: ["<b>Tous les visuels du site, en trois familles.</b> <b>Vos fichiers</b> : ce que vous téléversez ici, rangé par dossier. <b>Utilisées par les fiches</b> : les images enregistrées dans les fiches (joueuses, produits, articles…). <b>Codées dans le site</b> : les visuels écrits dans la page elle-même (hero, affiches, logos).","Un clic sur une image copie son adresse — collez-la dans n'importe quel champ image.","Le téléversement ne marche que dans « Vos fichiers » ; les deux autres familles se modifient depuis leur source — la fiche concernée pour les images de fiches ; pour les visuels codés dans le site, demandez une modification du site."],
+    media: ["<b>Tous les visuels du site, en trois familles.</b> <b>Vos fichiers</b> : ce que vous téléversez ici, rangé par dossier. <b>Utilisées par les fiches</b> : les images enregistrées dans les fiches (joueuses, produits, articles…). <b>Codées dans le site</b> : les visuels écrits dans la page elle-même (hero, affiches, logos).","Un clic sur une image copie son adresse — collez-la dans n'importe quel champ image.","Le téléversement ne marche que dans « Vos fichiers » ; les deux autres familles se modifient depuis leur source — la fiche concernée pour les images de fiches ; pour les visuels codés dans le site, demandez une modification du site.","<b>Vos images sont allégées toutes seules à l’envoi</b>, et le message vous dit de combien. Une photo de 5 Mo tombe autour de 250 Ko, sans différence visible — c’est ce qui garde le site rapide sur téléphone. Le réglage sous la zone de dépôt vaut pour <b>tout l’admin</b>, pas seulement pour cet écran."],
     calendar: ["<b>La saison en un coup d'œil</b> : vue mois ou liste chronologique.","Cliquez une rencontre pour ouvrir sa fiche complète.","Les matchs sans lieu à moins de 48 h sont signalés."],
     matches2: ["<b>Une fiche par rencontre</b>, en onglets : feuille de match, résultat, billetterie, diffusion, médias.","C'est le centre de gestion d'un match — tout ce qui le concerne au même endroit.","Les autres écrans (Calendrier, Résultats, Billetterie) mènent ici."],
     results: ["<b>La file d'après-match</b> : les rencontres jouées dont le score manque encore.","Saisissez les deux scores dans les cases façon tableau d'affichage, puis <b>Publier</b> — le site se met à jour immédiatement.","« Tout est à jour » = rien en attente, tout va bien."],
@@ -6321,7 +6428,7 @@
     tickets:    ['#tk-offers-list', null, '#tk-offers-list', '#tk-copygrid', '#tickets-subtabs'],
 
     // -- Le club ---------------------------------------------------
-    squad:      ['#ef-grid', '#ef-filter', '#ef-new'],
+    squad:      ['#ef-grid', '#ef-new', '#ef-filter', '#ef-photo'],
     staff:      ['#qgv-staff', '#qgv-staff'],
     bureau:     ['#set_bureau_holder', '#bureau_preview_body'],
     founder:    ['#founder_preview_body', '#set_founder_name'],
@@ -6357,7 +6464,7 @@
     articles:   ['#ar-list-view', '#ar-filter', null],
     categories: ['#ct-rows', '#ct-rows'],
     galerie:    ['#gal-grille', '#gal-url', '#gal-grille', '#gal-grille', '#gal-video'],
-    media:      ['#md-search', '#md-grid', '#md-drop'],
+    media:      ['#md-search', '#md-grid', '#md-drop', '#md-prof'],
     news:       ['#qgv-news', '#qgv-news'],
     partners:   ['#qgv-partners', '#qgv-partners'],
     timeline:   ['#qgv-timeline', '#qgv-timeline'],
@@ -10686,7 +10793,12 @@
       }).then(function(v){
         if (!v) return;
         return sbInsert('products', { name: v.name, in_stock: true, sort: (prRows.length + 1) }, 'Produits')
-          .then(function(){ qgToast(v.name + ' — fiche créée ✓'); return prLoad(); })
+          .then(function(cree){
+            qgToast(v.name + ' — fiche créée ✓ Ajoutez le prix et les visuels.');
+            return prLoad().then(function(){
+              if (cree && cree.id != null){ prSel = cree.id; prDirty = false; prRender(); }
+            });
+          })
           .catch(function(){ showMsg(document.getElementById('pr-msg'), 'La création a échoué.', false); });
       });
     });
@@ -11395,7 +11507,18 @@
         if (!isNaN(num)) corps.jersey_number = num;
         if (v.position) corps.position = v.position;
         return sbInsert('players', corps, 'Joueuses')
-          .then(function(){ qgToast(v.name + ' — fiche créée ✓'); return efLoad(); })
+          .then(function(cree){
+            qgToast(v.name + ' — fiche créée ✓ Ajoutez sa photo et ses informations.');
+            return efLoad().then(function(){
+              // ON OUVRE CE QU'ON VIENT DE CREER.
+              // La fiche retombait dans la liste, et il fallait la
+              // retrouver pour y mettre la photo, le cadrage, la taille,
+              // le parcours -- tout ce pour quoi on l'avait creee. La
+              // creation ouvre donc l'atelier, comme un carnet qu'on
+              // ouvre a la page qu'on vient d'y ajouter.
+              if (cree && cree.id != null){ efSel = cree.id; efDirty = false; efRender(); }
+            });
+          })
           .catch(function(){ showMsg(document.getElementById('ef-msg'), 'La création a échoué.', false); });
       });
     });
@@ -11515,6 +11638,18 @@
             fld('ef-sort', 'Ordre d\'affichage', r.sort, 'number', '0 = en premier') +
           '</div>' +
           fld('ef-photo', 'Photo (adresse)', r.photo_url, 'text', 'https://… .jpg') +
+          // CADRER LA PHOTO, DEPUIS LA FICHE.
+          // Le cadrage existait deja (cadrerCollection) et la base porte
+          // ses trois colonnes -- mais la fiche ne l'offrait nulle part,
+          // et surtout n'enregistrait pas photo_x / _y / _zoom : cadrer
+          // depuis ailleurs, puis enregistrer ici, effacait le cadrage.
+          // Les deux moities se rejoignent enfin.
+          '<div class="qg-photo-actions" style="margin:-8px 0 16px">' +
+            '<button type="button" class="qg-file-btn" id="ef-cadrer">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>' +
+            '<span>Cadrer la photo</span></button>' +
+            '<span class="hint" style="margin:0">Le site affiche un portrait : choisissez ce qu’il garde.</span>' +
+          '</div>' +
           fld('ef-inj', 'Note de blessure', r.injury_note, 'textarea', 'Nature et retour prévu — visible de vous seul.') +
           fld('ef-bio', 'Bio', r.bio, 'textarea', 'Le parcours, le style de jeu, ce qui la caractérise.') +
         '</div>' +
@@ -11560,6 +11695,11 @@
         instagram: v('ef-insta').trim() || null,
         sort: v('ef-sort') === '' ? null : parseInt(v('ef-sort'), 10),
         photo_url: v('ef-photo').trim() || null,
+        // Les trois nombres du cadrage voyagent avec la photo. Ils sont
+        // poses par cadrerCollection() sur l'objet r, et repartent ici.
+        photo_x: (r.photo_x == null ? null : r.photo_x),
+        photo_y: (r.photo_y == null ? null : r.photo_y),
+        photo_zoom: (r.photo_zoom == null ? null : r.photo_zoom),
         injury_note: v('ef-inj').trim() || null,
         bio: v('ef-bio').trim() || null,
         stats: stats
@@ -11567,6 +11707,15 @@
         .then(function(){ efDirty = false; note.textContent = 'Enregistré.'; return efLoad(); })
         .then(function(){ b.disabled = false; if (efSel) efRenderDoc(); })
         .catch(function(){ b.disabled = false; note.textContent = "L'enregistrement a échoué."; });
+    });
+
+    var bCadre = document.getElementById('ef-cadrer');
+    if (bCadre) bCadre.addEventListener('click', function(){
+      var url = (document.getElementById('ef-photo').value || '').trim();
+      cadrerCollection('photo', url, r, function(){
+        efDirty = true;
+        if (note) note.textContent = 'Cadrage posé — pensez à enregistrer.';
+      });
     });
 
     document.getElementById('ef-del').addEventListener('click', function(){
@@ -12145,6 +12294,7 @@
   }
 
   var IMGP_ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>';
+  var IMGP_UP_ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>';
 
   function imgpEquiper(el){
     if (!imgpEstChampImage(el)) return;
@@ -12155,9 +12305,50 @@
     b.title = 'Choisir dans la médiathèque';
     b.innerHTML = IMGP_ICONE + '<span>Médiathèque</span>';
     b.addEventListener('click', function(){ imgpOuvrir(el); });
-    // Apres le champ, dans son propre flux : on ne touche pas a la mise
-    // en page du formulaire, on s'y ajoute.
-    if (el.parentElement) el.parentElement.insertBefore(b, el.nextSibling);
+
+    // ET UN BOUTON TELEVERSER, AU MEME ENDROIT.
+    // « Mediatheque » ne sert qu'a reprendre une image DEJA envoyee. Pour
+    // une photo qui vient du telephone, il fallait ouvrir la
+    // Mediatheque, la deposer, en copier l'adresse, revenir sur la fiche
+    // et la coller -- cinq gestes et un changement d'ecran pour une
+    // photo. Le fichier part maintenant depuis la fiche, allege au
+    // passage par uploadFile comme partout ailleurs.
+    var t = document.createElement('label');
+    t.className = 'imgp-b imgp-b-up';
+    t.title = 'Envoyer un fichier depuis cet appareil';
+    t.innerHTML = IMGP_UP_ICONE + '<span>Téléverser</span>' +
+      '<input type="file" accept="image/*" style="display:none">';
+    var inp = t.querySelector('input');
+    inp.addEventListener('change', function(){
+      var f = inp.files && inp.files[0]; if (!f) return;
+      var lbl = t.querySelector('span'), avant = lbl.textContent;
+      lbl.textContent = 'Envoi…'; t.classList.add('occupe');
+      uploadFile(MEDIA_BUCKET, f).then(function(url){
+        el.value = url;
+        // On previent le formulaire comme si l'on avait tape l'adresse :
+        // c'est ce qui met a jour l'apercu et le drapeau « non
+        // enregistre ». Sans cet evenement, la fiche croit n'avoir pas
+        // change et perd la photo au premier changement d'ecran.
+        el.dispatchEvent(new Event('input', { bubbles:true }));
+        el.dispatchEvent(new Event('change', { bubbles:true }));
+      }).catch(function(){
+        qgToast('L’envoi a échoué.', true);
+      }).then(function(){
+        lbl.textContent = avant; t.classList.remove('occupe'); inp.value = '';
+      });
+    });
+
+    // Apres le champ, sur UNE ligne : les colonnes de formulaire sont des
+    // flex verticaux, ou deux boutons frères se posent l'un sous l'autre
+    // et occupent deux etages pour quatre mots. On les met donc dans leur
+    // propre rangee -- la mise en page du formulaire n'est pas touchee,
+    // on s'y ajoute.
+    if (el.parentElement){
+      var rang = document.createElement('div');
+      rang.className = 'imgp-row';
+      rang.appendChild(b); rang.appendChild(t);
+      el.parentElement.insertBefore(rang, el.nextSibling);
+    }
   }
 
   function imgpBalayer(racine){
@@ -12493,8 +12684,9 @@
   }
 
   function mdInit(){
-    if (mdStarted){ mdRender(); return; }
+    if (mdStarted){ mdRender(); mdProfilRendre(); return; }
     mdStarted = true;
+    mdProfilRendre();
 
     document.getElementById('md-search').addEventListener('input', mdRender);
     document.getElementById('md-refresh').addEventListener('click', function(){ mdList(); });
