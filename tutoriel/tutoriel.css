@@ -444,6 +444,37 @@
 #btut .bt-clav-b i{display:block;height:100%;background:var(--bt-gold);width:0;border-radius:99px;transition:width .06s linear}
 
 /* ===================================================================
+   LE MODE PRESENTATION
+   Devant une salle, la barre de commandes n'apprend rien à personne :
+   c'est du décor qu'il faudrait expliquer. Elle s'efface tant que la
+   souris ne bouge pas, et revient au premier mouvement — celui qui
+   présente garde la main sans que la salle voie l'outil.
+   Le texte grossit : ce qui se lit à cinquante centimètres ne se lit
+   pas à cinq mètres.
+   =================================================================== */
+#btut.presentation .bt-narr{
+  transition:opacity .55s ease,transform .55s cubic-bezier(.2,.9,.3,1)
+}
+/* Le bouton dit qu'il est actif : sans cela on ne sait plus si l'on a
+   appuyé, et on appuie deux fois. */
+#btut .bt-ghost.on{border-color:var(--bt-gold);color:var(--bt-gold);background:rgba(228,193,121,.12)}
+#btut.presentation.repos .bt-cmd{opacity:0;pointer-events:none;transition:opacity .5s ease}
+#btut.presentation .bt-cmd{transition:opacity .3s ease}
+#btut.presentation .bt-dit{font-size:clamp(17px,1.6vw,23px);line-height:1.55}
+#btut.presentation .bt-ou{font-size:13.5px}
+#btut.presentation .bt-narr{max-width:min(1180px,94vw)}
+#btut.presentation .bt-carte-t{font-size:clamp(34px,7vw,74px)}
+#btut.presentation .bt-carte-s{font-size:clamp(15px,1.5vw,21px)}
+#btut.presentation .bt-carte-n{font-size:13px;letter-spacing:.26em}
+/* Le cadre se voit de loin : deux pixels et demi disparaissent au fond
+   d'une salle, et c'est justement ce qu'on est venu montrer. */
+#btut.presentation .bt-spot-svg rect{stroke-width:3.4}
+#btut.presentation .bt-spot{box-shadow:0 0 0 9999px rgba(5,12,8,.7), 0 0 46px 6px rgba(198,162,87,.28) inset}
+@media (prefers-reduced-motion:reduce){
+  #btut.presentation.repos .bt-cmd{opacity:1}
+}
+
+/* ===================================================================
    LA CARTE DE CHAPITRE
    Une respiration, pas un écran de chargement — et, devant une salle,
    le seul moment où l'on peut reprendre l'attention. Elle était sobre ;
@@ -529,6 +560,19 @@
   #btut .bt-carte-t,#btut .bt-carte-s{animation:none;opacity:1;transform:none;filter:none}
   #btut .bt-carte-fil{width:74px}
 }
+/* MAIS LE BOUTON « ACTIVER LES ANIMATIONS » PASSE AVANT LA MACHINE.
+   Beaucoup de postes Windows ont « animations » désactivé sans que
+   personne l'ait choisi — et ce sont précisément ceux qu'on branche à un
+   vidéoprojecteur. Sans ces règles, la présentation serait figée le jour
+   où on la montre, et personne ne saurait pourquoi. */
+#btut.anim .bt-carte-fond{animation:btCarteFond 3.4s cubic-bezier(.2,.7,.3,1) both !important}
+#btut.anim .bt-carte-n{animation:btCarteMonte .62s cubic-bezier(.16,.84,.28,1) both !important}
+#btut.anim .bt-carte-fil{animation:btCarteFil .72s cubic-bezier(.16,.84,.28,1) .18s both !important}
+#btut.anim .bt-carte-t{animation:btCarteMonte .7s cubic-bezier(.16,.84,.28,1) .3s both !important}
+#btut.anim .bt-carte-s{animation:btCarteMonte .66s cubic-bezier(.16,.84,.28,1) .46s both !important}
+#btut.anim .bt-spot.pose::before{animation:btOndeCadre 1.15s cubic-bezier(.2,.7,.3,1) .34s 1 !important}
+#btut.anim.presentation.repos .bt-cmd{opacity:0 !important}
+html.bt-anim section.bt-entre{animation:btEntre .62s cubic-bezier(.18,.86,.26,1) both !important}
 
 /* L'ecran ARRIVE au lieu d'apparaitre. Seule regle a tenir : ne toucher
    qu'a transform et opacity -- tout le reste ferait recalculer la mise

@@ -5648,9 +5648,35 @@
     };
   }
 
+  // ===================== LA VERSION DES FICHIERS DU TUTORIEL =====================
+  //
+  // À CHANGER À CHAQUE RETOUCHE de tutoriel.css, .js ou .html.
+  //
+  // POURQUOI. Les trois fichiers étaient demandés sans version. Le
+  // navigateur garde une feuille de style bien plus longtemps qu'une
+  // page : on déploie une refonte des animations, on rouvre le
+  // tutoriel, et il ne se passe rien — pas une erreur, pas un indice,
+  // juste l'ancienne apparence. On croit que le travail n'a pas été
+  // fait, ou pire, qu'il ne marche pas.
+  //
+  // Le fragment était déjà en « no-cache », mais no-cache ne veut pas
+  // dire « ne garde pas » : il veut dire « revalide » — et sans en-tête
+  // de validation côté serveur, le navigateur garde quand même.
+  //
+  // Une version dans l'adresse change le fichier demandé : il n'y a
+  // plus rien à revalider, ni rien à espérer du serveur.
+  var TUT_V = '2026-09-01-c';
+
   function tutorielCharger(){
     if (window.BaobabsTutoriel) return Promise.resolve();
-    return fetch('/tutoriel/tutoriel.html', { cache: 'no-cache' })
+    // La feuille est liée en tête de page, sans version : on la
+    // remplace ici par la même adresse versionnée. Le navigateur charge
+    // la neuve et l'ancienne cesse de s'appliquer.
+    try {
+      var lien = document.querySelector('link[rel="stylesheet"][href*="/tutoriel/tutoriel.css"]');
+      if (lien && lien.href.indexOf('v=' + TUT_V) < 0) lien.href = '/tutoriel/tutoriel.css?v=' + TUT_V;
+    } catch(e){}
+    return fetch('/tutoriel/tutoriel.html?v=' + TUT_V, { cache: 'no-cache' })
       .then(function(r){ if (!r.ok) throw new Error('fragment ' + r.status); return r.text(); })
       .then(function(html){
         var host = document.getElementById('tutoriel-host');
@@ -5662,7 +5688,7 @@
         if (el) document.body.appendChild(el);
         return new Promise(function(res, rej){
           var s = document.createElement('script');
-          s.src = '/tutoriel/tutoriel.js';
+          s.src = '/tutoriel/tutoriel.js?v=' + TUT_V;
           s.onload = function(){ window.BaobabsTutoriel ? res() : rej(new Error('global absent')); };
           s.onerror = function(){ rej(new Error('script')); };
           document.head.appendChild(s);

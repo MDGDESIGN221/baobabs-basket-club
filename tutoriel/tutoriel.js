@@ -2124,6 +2124,49 @@
     return null;
   }
 
+  // UN HALO PLUS GRAND QUE L'ECRAN NE DESIGNE RIEN.
+  //
+  // boiteUtile remonte quand la cible est trop petite. Il manquait
+  // l'inverse. Mesure sur les quarante-quatre ecrans : trente-six cibles
+  // couvrent plus de 30 % de la fenetre, et une douzaine la DEPASSENT --
+  // #gd-main 219 %, #qgc-c_home 189 %. Le cadre sort alors de l'ecran
+  // par le haut et par le bas : il ne reste qu'un assombrissement des
+  // bords, et rien qui ressemble a « c'est ici ». C'est ce qu'on voit
+  // quand on dit que « ca pointe mal ».
+  //
+  // Ces selecteurs ne sont pas faux pour autant : « la galerie », « la
+  // liste des adversaires », « l'editeur de la page d'accueil » sont
+  // bien ce dont parle la phrase. On descend donc au PREMIER ENFANT qui
+  // a une vraie surface — la premiere photo, la premiere ligne, la barre
+  // de chapitres. Designer le premier element d'une liste, c'est
+  // designer la liste ; designer un rectangle plus grand que l'ecran,
+  // c'est ne rien designer.
+  //
+  // Trois descentes au plus, et on s'arrete si l'enfant devient minuscule
+  // par rapport a son parent : mieux vaut un cadre un peu large qu'un
+  // cadre pose sur un detail dont personne ne parle.
+  function boiteJuste(el) {
+    var n = boiteUtile(el);
+    if (!n) return null;
+    var vh = window.innerHeight || 800, vw = window.innerWidth || 1200;
+    var aire = vh * vw, garde = 0;
+    while (n && garde++ < 3) {
+      var r = n.getBoundingClientRect();
+      var trop = r.height > vh * 0.78 || (r.width * r.height) > aire * 0.5;
+      if (!trop) break;
+      var suivant = null;
+      var enfants = n.children || [];
+      for (var i = 0; i < enfants.length; i++) {
+        var b = enfants[i].getBoundingClientRect();
+        if (b.width >= 24 && b.height >= 16 &&
+            b.width * b.height > r.width * r.height * 0.04) { suivant = enfants[i]; break; }
+      }
+      if (!suivant) break;
+      n = suivant;
+    }
+    return n;
+  }
+
   // LE NARRATEUR S'ECARTE DE CE QU'ON DESIGNE.
   //
   // Il est ancre en bas. Quand la cible est en bas de l'ecran -- le
@@ -2197,7 +2240,7 @@
 
   function poser(el, sansNarrateur) {
     var spot = $('bt-spot'), doigt = $('bt-doigt');
-    el = boiteUtile(el);
+    el = boiteJuste(el);
     if (!el) { retirerHalo(); return; }
     var r = el.getBoundingClientRect();
     if (r.width < 24 || r.height < 16) { retirerHalo(); return; }
@@ -2438,7 +2481,70 @@
   // doigtTape() est purement visuel : il joue l'animation d'appui et
   // l'onde, il n'emet AUCUN evenement. Rien n'est declenche dans
   // l'administration, et c'est ce qui permet de le faire partout.
+  // ===================================================================
+  // LES CHIFFRES SE COMPTENT
+  //
+  // Un tableau de bord montre « 27 licenciées ». Le nombre est deja la
+  // quand on le designe : rien ne bouge, et le regard passe. Le meme
+  // nombre qui monte de zero pendant qu'on en parle se REGARDE -- c'est
+  // le seul moment ou une donnee devient un evenement.
+  //
+  // TROIS PRECAUTIONS, ET LA DERNIERE EST LA PLUS IMPORTANTE
+  //   · on ne touche qu'aux elements dont le texte est UNIQUEMENT un
+  //     nombre. « 12 matchs » n'est pas anime : on ne va pas decouper la
+  //     phrase de quelqu'un d'autre ;
+  //   · la forme d'origine est REMISE A LA FIN, telle quelle. Le compte
+  //     rend « 20000 » la ou le site ecrivait « 20 000 FCFA » : sans
+  //     cette remise, le tutoriel laisserait derriere lui un tableau de
+  //     bord moins bien mis en forme qu'avant son passage ;
+  //   · au-dela de 4 chiffres on ne compte pas. Voir defiler un total en
+  //     francs CFA jusqu'a 410 000 prend le pas sur ce qui est dit.
+  function chiffresAnimer(el, g) {
+    if (!el || !el.querySelectorAll) return;
+    // Le reglage systeme est respecte -- SAUF si l'on a demande les
+    // animations par le bouton. Beaucoup de machines Windows ont
+    // « animations » desactive sans que personne l'ait choisi, et c'est
+    // exactement celles qu'on branche a un videoprojecteur : sans cette
+    // exception, le tutoriel serait fige le jour ou on le montre.
+    var doux = !window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!doux && !animForcee()) return;
+    var cibles = [];
+    var candidats = el.querySelectorAll('b,strong,span,em,i,div,td');
+    Array.prototype.forEach.call(candidats, function (n) {
+      if (n.children.length) return;                 // feuille seulement
+      var t = (n.textContent || '').trim();
+      // Espaces d'affichage possibles entre les milliers : espace
+      // ordinaire, insecable, insecable fine. Ecrits en \u… et non
+      // collés dans la classe : un caractère invisible dans une regex
+      // ne se voit pas à la relecture, et casse tout sans le dire.
+      if (!/^\d[\d\u0020\u00a0\u202f]*$/.test(t)) return;   // un nombre, rien d'autre
+      var v = parseInt(t.replace(/[^\d]/g, ''), 10);
+      if (isNaN(v) || v <= 0 || v > 9999) return;
+      cibles.push({ n: n, texte: t, val: v });
+    });
+    if (!cibles.length || cibles.length > 12) return;
+
+    var debut = null, duree = 780;
+    function pas(ts) {
+      if (g !== jeton) { cibles.forEach(function (c) { c.n.textContent = c.texte; }); return; }
+      if (debut === null) debut = ts;
+      var p = Math.min(1, (ts - debut) / duree);
+      // Sortie en douceur : un compteur lineaire s'arrete net, et l'oeil
+      // lit l'arret plutot que le nombre.
+      var k = 1 - Math.pow(1 - p, 3);
+      cibles.forEach(function (c) {
+        c.n.textContent = p < 1 ? String(Math.round(c.val * k)) : c.texte;
+      });
+      if (p < 1) requestAnimationFrame(pas);
+    }
+    cibles.forEach(function (c) { c.n.textContent = '0'; });
+    requestAnimationFrame(pas);
+  }
+
   function animerCible(e, g, el) {
+    // Les chiffres d'abord : ils partent avec la pose du cadre, pas
+    // apres, sinon on regarde deux fois le meme endroit.
+    chiffresAnimer(el, g);
     // Une demonstration pilote deja la main : deux scenarios sur le
     // meme pointeur se disputeraient ses coordonnees.
     if (e.geste) return;
@@ -2814,11 +2920,69 @@
 
     document.addEventListener('keydown', function (e) {
       if (racine.classList.contains('hide')) return;
-      if (e.key === 'Escape') { fermer(); return; }
+      // Échap sort d'abord du mode présentation, et ferme seulement au
+      // second appui : sinon on quitte tout le tutoriel devant la salle
+      // en voulant juste sortir du plein écran.
+      if (e.key === 'Escape') {
+        if (racine.classList.contains('presentation')) { presentationBasculer(false); return; }
+        fermer(); return;
+      }
+      if (e.key === 'p' || e.key === 'P') {
+        presentationBasculer(!racine.classList.contains('presentation'));
+        e.preventDefault(); return;
+      }
       if ($('bt-narr').classList.contains('hide')) return;
       if (e.key === 'ArrowRight') { suivant(); e.preventDefault(); }
       if (e.key === 'ArrowLeft') { precedent(); e.preventDefault(); }
       if (e.key === ' ') { basculerLecture(); e.preventDefault(); }
+    });
+
+    // ================= LE MODE PRESENTATION =================
+    // Plein ecran, commandes effacees au repos. On demande le plein
+    // ecran au navigateur mais on ne s'y fie pas : il le refuse quand
+    // l'appel ne suit pas un vrai clic, et sur certaines machines
+    // d'entreprise il est desactive. Le mode fonctionne sans lui —
+    // simplement dans la fenetre.
+    var reposT = null;
+    function presentationBasculer(on) {
+      racine.classList.toggle('presentation', !!on);
+      racine.classList.remove('repos');
+      if (reposT) { clearTimeout(reposT); reposT = null; }
+      var b = $('bt-presentation');
+      if (b) b.classList.toggle('on', !!on);
+      try {
+        if (on && document.documentElement.requestFullscreen && !document.fullscreenElement)
+          document.documentElement.requestFullscreen().catch(function () {});
+        if (!on && document.fullscreenElement && document.exitFullscreen)
+          document.exitFullscreen().catch(function () {});
+      } catch (e) {}
+      if (on) reposArmer();
+    }
+    // Les commandes s'effacent apres trois secondes sans souris, et
+    // reviennent au premier mouvement. Trois secondes : assez long pour
+    // ne pas clignoter pendant qu'on cherche le bouton, assez court pour
+    // que l'ecran soit propre quand on parle.
+    function reposArmer() {
+      if (!racine.classList.contains('presentation')) return;
+      if (reposT) clearTimeout(reposT);
+      racine.classList.remove('repos');
+      reposT = setTimeout(function () {
+        reposT = null;
+        if (racine.classList.contains('presentation')) racine.classList.add('repos');
+      }, 3000);
+    }
+    document.addEventListener('mousemove', reposArmer, { passive: true });
+    document.addEventListener('touchstart', reposArmer, { passive: true });
+    var bp = $('bt-presentation');
+    if (bp) bp.addEventListener('click', function () {
+      presentationBasculer(!racine.classList.contains('presentation'));
+    });
+    // Sortir du plein ecran par la touche du navigateur doit sortir du
+    // mode : sinon les commandes resteraient effacees dans une fenetre
+    // normale, et plus rien ne repondrait a la souris.
+    document.addEventListener('fullscreenchange', function () {
+      if (!document.fullscreenElement && racine.classList.contains('presentation'))
+        presentationBasculer(false);
     });
 
     // Le halo est posé en coordonnées d'écran : il glisse dès que la
