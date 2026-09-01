@@ -391,6 +391,26 @@
 #btut .bt-spot.pose::after{animation:btPose .9s ease-out 1}
 @keyframes btPose{0%{opacity:0;transform:scale(1.05)}45%{opacity:1}100%{opacity:0;transform:scale(1)}}
 
+/* L'ONDE QUI PART DU CADRE.
+   Le cadre se dessine, puis plus rien ne bouge pendant que la phrase se
+   lit — dix, quinze secondes d'image fixe. Dans une salle, c'est le
+   moment exact où les regards partent ailleurs. Une onde qui s'échappe
+   du cadre juste après la pose dit « c'est ici », et une seule fois :
+   répétée en boucle elle deviendrait un clignotant, et un clignotant
+   cesse d'être vu au bout de trois occurrences.
+   Elle est en ::before pour laisser ::after à la pointe de lumière —
+   les deux jouent ensemble, à des rythmes différents. */
+#btut .bt-spot::before{
+  content:'';position:absolute;inset:0;border-radius:13px;pointer-events:none;
+  border:2px solid rgba(228,193,121,.5);opacity:0
+}
+#btut .bt-spot.pose::before{animation:btOndeCadre 1.15s cubic-bezier(.2,.7,.3,1) .34s 1}
+@keyframes btOndeCadre{
+  0%  {opacity:.85;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.11)}
+}
+@media (prefers-reduced-motion:reduce){ #btut .bt-spot.pose::before{animation:none} }
+
 /* Le fil entre ce qu'on dit et ce qu'on montre. */
 #btut .bt-fil{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 #btut .bt-fil.hide{display:none}
@@ -423,34 +443,111 @@
 }
 #btut .bt-clav-b i{display:block;height:100%;background:var(--bt-gold);width:0;border-radius:99px;transition:width .06s linear}
 
-/* La carte de chapitre : une respiration, pas un écran de chargement. */
+/* ===================================================================
+   LA CARTE DE CHAPITRE
+   Une respiration, pas un écran de chargement — et, devant une salle,
+   le seul moment où l'on peut reprendre l'attention. Elle était sobre ;
+   sobre quarante-quatre fois de suite, cela s'appelle monotone.
+   =================================================================== */
 #btut .bt-carte{
   position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;
-  background:radial-gradient(ellipse at center, rgba(5,12,8,.9), rgba(5,12,8,.97))
+  overflow:hidden;
+  /* Le narrateur est ancré en bas et reste visible pendant la carte —
+     ses commandes doivent rester atteignables pour passer l'annonce. Il
+     couvrait donc le sous-titre. On réserve sa hauteur : la carte se
+     centre dans ce qui reste, et non dans la fenêtre entière. */
+  padding-bottom:clamp(120px,17vh,170px);
+  background:radial-gradient(ellipse 90% 70% at 50% 42%, rgba(10,27,13,.94), rgba(4,10,7,.985))
 }
 #btut .bt-carte.hide{display:none}
-#btut .bt-carte-in{text-align:center;padding:0 24px;animation:btCarte .8s cubic-bezier(.2,.9,.25,1) both}
-#btut .bt-carte-n{
-  font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--bt-gold);margin-bottom:14px
+/* Pendant l'annonce, la barre s'efface sans disparaître : l'œil va au
+   titre, la main retrouve les commandes si elle les cherche. */
+#btut .bt-narr.efface{opacity:.34;transform:translateY(6px) scale(.985)}
+#btut .bt-narr{transition:opacity .4s ease,transform .4s cubic-bezier(.2,.9,.3,1)}
+#btut .bt-narr.efface:hover,#btut .bt-narr.efface:focus-within{opacity:1;transform:none}
+
+/* Le numéro du chapitre en très grand, en réserve : il occupe le fond
+   sans le charger, et dit où l'on en est sans qu'on ait à compter.
+   Il monte lentement pendant toute la carte — un mouvement continu
+   derrière un texte fixe donne de la profondeur sans distraire. */
+/* Il est positionné dans .bt-carte-in : les deux partagent un centre par
+   construction, et non par une correction chiffrée qui se démentirait au
+   premier changement de hauteur de fenêtre. */
+#btut .bt-carte-fond{
+  position:absolute;left:50%;top:50%;z-index:0;
+  /* Assez grand pour qu'on le lise sans le chercher, assez petit pour
+     qu'il reste DERRIÈRE le titre : au-delà, il cesse d'être un fond et
+     devient le sujet. */
+  font-family:var(--bt-ui);font-weight:800;font-size:min(38vh,30vw);line-height:.8;
+  color:transparent;-webkit-text-stroke:2px rgba(228,193,121,.13);
+  transform:translate(-50%,-50%);pointer-events:none;user-select:none;
+  animation:btCarteFond 3.4s cubic-bezier(.2,.7,.3,1) both
 }
-#btut .bt-carte-t{font-size:clamp(28px,6vw,46px);font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-bottom:12px}
-#btut .bt-carte-s{color:var(--bt-muted);font-size:14.5px}
-@keyframes btCarte{
-  0%  {opacity:0;transform:translateY(26px) scale(.94);filter:blur(6px)}
+/* Le texte passe devant le chiffre. */
+#btut .bt-carte-n,#btut .bt-carte-fil,
+#btut .bt-carte-t,#btut .bt-carte-s{position:relative;z-index:1}
+@keyframes btCarteFond{
+  0%  {opacity:0;transform:translate(-50%,-42%) scale(1.14)}
+  35% {opacity:1}
+  100%{opacity:1;transform:translate(-50%,-56%) scale(1)}
+}
+
+#btut .bt-carte-in{position:relative;text-align:center;padding:0 24px;max-width:min(30ch,92vw)}
+/* ENTRÉE DÉCALÉE. Trois choses qui arrivent ensemble sont un bloc ;
+   trois choses qui arrivent l'une après l'autre sont une phrase. */
+#btut .bt-carte-n{
+  font-size:11.5px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--bt-gold);margin-bottom:13px;
+  animation:btCarteMonte .62s cubic-bezier(.16,.84,.28,1) both
+}
+#btut .bt-carte-fil{
+  height:2px;width:0;margin:0 auto 18px;background:var(--bt-gold);border-radius:2px;
+  animation:btCarteFil .72s cubic-bezier(.16,.84,.28,1) .18s both
+}
+@keyframes btCarteFil{ from{width:0;opacity:.2} to{width:74px;opacity:1} }
+#btut .bt-carte-t{
+  font-size:clamp(30px,6.4vw,52px);font-weight:800;letter-spacing:-.022em;line-height:1.06;
+  margin-bottom:14px;
+  animation:btCarteMonte .7s cubic-bezier(.16,.84,.28,1) .3s both
+}
+#btut .bt-carte-s{
+  color:var(--bt-muted);font-size:15px;line-height:1.5;
+  animation:btCarteMonte .66s cubic-bezier(.16,.84,.28,1) .46s both
+}
+@keyframes btCarteMonte{
+  0%  {opacity:0;transform:translateY(22px);filter:blur(5px)}
+  70% {filter:blur(0)}
   100%{opacity:1;transform:none;filter:blur(0)}
 }
-#btut .bt-carte.sort .bt-carte-in{animation:btCarteOut .45s ease-in both}
-@keyframes btCarteOut{to{opacity:0;transform:translateY(-16px) scale(1.04);filter:blur(4px)}}
+/* La sortie emporte tout d'un bloc : on quitte le chapitre, on ne le
+   démonte pas pièce par pièce. */
+#btut .bt-carte.sort .bt-carte-in,
+#btut .bt-carte.sort .bt-carte-fond{animation:btCarteOut .42s ease-in both}
+@keyframes btCarteOut{to{opacity:0;transform:translateY(-18px) scale(1.05);filter:blur(5px)}}
+@media (prefers-reduced-motion:reduce){
+  #btut .bt-carte-fond,#btut .bt-carte-n,#btut .bt-carte-fil,
+  #btut .bt-carte-t,#btut .bt-carte-s{animation:none;opacity:1;transform:none;filter:none}
+  #btut .bt-carte-fil{width:74px}
+}
 
 /* L'ecran ARRIVE au lieu d'apparaitre. Seule regle a tenir : ne toucher
    qu'a transform et opacity -- tout le reste ferait recalculer la mise
    en page d'un ecran de 15 000 lignes a chaque changement. */
+/* DIX PIXELS NE SE VOIENT PAS AU FOND D'UNE SALLE.
+   Le réglage d'origine — 10 px, échelle .988 — était juste pour
+   quelqu'un assis devant son écran : discret, presque subliminal. Sur un
+   vidéoprojecteur, à cinq mètres, il n'existe pas : les écrans se
+   remplacent, et rien ne dit qu'on vient d'en changer. On amplifie donc
+   le geste sans changer sa nature : plus de course, un souffle d'échelle,
+   un flou qui se dissipe. On reste sur transform, opacity et filter —
+   tout le reste ferait recalculer la mise en page d'un écran de 15 000
+   lignes à chaque changement. */
 #btut ~ .app-shell section.bt-entre,
-section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) both}
+section.bt-entre{animation:btEntre .62s cubic-bezier(.18,.86,.26,1) both}
 @keyframes btEntre{
-  0%  {opacity:0;transform:translateY(10px) scale(.988)}
-  100%{opacity:1;transform:none}
+  0%  {opacity:0;transform:translateY(26px) scale(.972);filter:blur(7px)}
+  55% {opacity:1;filter:blur(0)}
+  100%{opacity:1;transform:none;filter:blur(0)}
 }
 @media (prefers-reduced-motion:reduce){ section.bt-entre{animation:none} }
 

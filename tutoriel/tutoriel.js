@@ -1544,6 +1544,36 @@
     etapes = [];
 
     if (chapCle === 'tout') {
+      // UNE OUVERTURE, ET UNE FIN.
+      //
+      // La visite commencait sur le premier chapitre et s'arretait sur le
+      // dernier conseil : deux bords francs, sans annonce ni conclusion.
+      // Tant qu'on la suit seul devant son ecran, cela ne manque a
+      // personne. Projetee devant une salle, c'est ce qui separe une
+      // demonstration d'un defilement -- on ne sait pas quand ca commence
+      // et on ne sait pas que c'est fini.
+      //
+      // Le compte des ecrans et des minutes est CALCULE, jamais ecrit :
+      // le jour ou un ecran s'ajoute, l'ouverture le dit sans qu'on y
+      // touche. Une promesse chiffree a la main devient fausse a la
+      // premiere retouche, et c'est la seule chose que la salle peut
+      // verifier tout de suite.
+      var nEcrans = 0, nMots = 0;
+      plan.forEach(function (c) {
+        nEcrans += (c.ecrans || []).length;
+        (c.ecrans || []).forEach(function (e) {
+          ((api.aides && api.aides[e.cle]) || []).forEach(function (a) { nMots += mots(a); });
+        });
+      });
+      etapes.push({
+        carte: {
+          n: 'Baobabs Basket Club',
+          titre: 'L’administration, écran par écran',
+          sous: nEcrans + ' écrans · ' + minutes(nMots) + ' minutes · rien n’est enregistré'
+        },
+        nom: 'Ouverture'
+      });
+
       // Une carte avant chaque chapitre. Dix-neuf minutes d'affilee sans
       // respiration sont un seul bloc indifferencie : on ne sait ni ou
       // l'on en est, ni ce qui commence.
@@ -1560,6 +1590,16 @@
           nom: c.titre
         });
         etapes = etapes.concat(st);
+      });
+      // La fin. Elle ne remercie pas : elle rappelle ce qui vient d'être
+      // montré, en chiffres, et rend la main.
+      etapes.push({
+        carte: {
+          n: 'C’est tout',
+          titre: 'Vous avez fait le tour',
+          sous: nEcrans + ' écrans, et chacun explique ce qu’il fait. Le bouton Aide les rouvre un par un.'
+        },
+        nom: 'Fin'
       });
     } else {
       var c = plan.filter(function (x) { return x.cle === chapCle; })[0];
@@ -2504,7 +2544,39 @@
     $('bt-carte-n').textContent = n;
     $('bt-carte-t').textContent = titre;
     $('bt-carte-s').textContent = sous || '';
+    // LE CHIFFRE DU FOND. On le tire du surtitre — « Chapitre 7 sur 17 »
+    // donne 7 — plutôt que de le passer en argument : le surtitre est
+    // déjà construit une fois, et deux sources finiraient par ne plus
+    // dire le même nombre. Sans chiffre (les cartes spéciales), on
+    // laisse le fond vide plutôt que d'inventer.
+    var fond = $('bt-carte-fond');
+    if (fond) {
+      var m = String(n || '').match(/(\d+)/);
+      fond.textContent = m ? m[1] : '';
+    }
+    // ON RÉSERVE LA PLACE DU NARRATEUR, MESURÉE.
+    // Une valeur en dur ne peut pas convenir : le narrateur grandit avec
+    // le texte, et la fenêtre change de hauteur d'une machine à l'autre.
+    // Réservée trop courte, la barre mange le sous-titre de la carte ;
+    // trop longue, la carte remonte et flotte. On mesure.
+    var narr = $('bt-narr');
+    if (narr) {
+      narr.classList.add('efface');
+      var hb = narr.getBoundingClientRect();
+      var libre = Math.max(90, Math.round((window.innerHeight || 800) - hb.top + 28));
+      c.style.paddingBottom = libre + 'px';
+      // Le chiffre de fond se cale sur le même centre optique que le
+      // texte : sans cela il descend derrière la barre pendant que le
+      // titre reste haut, et la composition a deux centres.
+      c.style.setProperty('--bt-reserve', libre + 'px');
+    }
     c.classList.remove('hide', 'sort');
+    // L'ENTREE DECALEE DURE 1,1 s À ELLE SEULE (le sous-titre part à
+    // .46 s et met .66 s). À 1,5 s au total, la carte commençait à sortir
+    // avant d'avoir fini d'entrer : on voyait une annonce bâclée, ce qui
+    // est exactement l'inverse de l'effet cherché. 2,4 s laissent le
+    // temps de lire le titre — et la carte reste interruptible : un clic
+    // sur « suivant » la range aussitôt.
     carteT1 = setTimeout(function () {
       carteT1 = null;
       c.classList.add('sort');
@@ -2512,8 +2584,8 @@
         carteT2 = null;
         c.classList.add('hide'); c.classList.remove('sort');
         quandFini();
-      }, 430);
-    }, 1500);
+      }, 420);
+    }, 2400);
   }
   // Appuyer sur « suivant » pendant une carte laissait la carte affichee
   // PAR-DESSUS l'etape suivante : on entendait la voix d'un ecran qu'on
@@ -2522,6 +2594,10 @@
     if (carteT1) { clearTimeout(carteT1); carteT1 = null; }
     if (carteT2) { clearTimeout(carteT2); carteT2 = null; }
     var c = $('bt-carte'); if (c) { c.classList.add('hide'); c.classList.remove('sort'); }
+    // La barre reprend sa présence dès que la carte s'en va — y compris
+    // quand on passe l'annonce à la main, sinon elle resterait pâle pour
+    // le reste de la visite.
+    var narr = $('bt-narr'); if (narr) narr.classList.remove('efface');
   }
 
   function retirerHalo() {
