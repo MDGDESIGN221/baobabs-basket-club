@@ -3583,7 +3583,16 @@
     <section id="section-matches2" class="hide">
       <div id="mc-list-view">
         <div class="mod-head">
-          
+          <!-- IL N'Y AVAIT AUCUN MOYEN D'AJOUTER UN MATCH.
+               Le formulaire « Ajouter un match » existe toujours, mais
+               dans #section-matches -- l'ancien ecran, retire du menu
+               quand les fiches l'ont remplace. Il est donc reste dans la
+               page, cache pour toujours : la creation d'un match etait
+               injoignable, et le raccourci « Ajouter un match » du
+               tableau de bord ouvrait cet ecran-ci, ou il n'y a rien
+               pour le faire. -->
+          <button type="button" class="btn btn-primary" id="mc-new"
+            style="padding:10px 16px;font-size:13px;flex:none;width:auto;min-width:0">Nouveau match</button>
           <span class="mod-count" id="mc-count">—</span>
           <input type="search" class="mod-search" id="mc-search" placeholder="Adversaire, salle, compétition…">
           <select id="mc-filter" aria-label="Filtrer les matchs" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px">
@@ -12992,6 +13001,7 @@
     mcStarted = true;
     document.getElementById('mc-search').addEventListener('input', mcRender);
     document.getElementById('mc-filter').addEventListener('change', mcRender);
+    document.getElementById('mc-new').addEventListener('click', mcNouveau);
     document.getElementById('mc-back').addEventListener('click', function(){
       if (mcDirty && !confirm('Des modifications ne sont pas enregistrées. Quitter quand même ?')) return;
       mcSel = null; mcDirty = null; mcRender();
@@ -13083,6 +13093,78 @@
     var f = document.getElementById('mc-filter');
     if (f && filtre != null && f.value !== filtre){ f.value = filtre; }
     mcRender();
+  }
+
+  // NOUVEAU MATCH. Cinq champs, et pas un de plus : ce qu'on sait au
+  // moment ou le calendrier tombe. Le reste -- feuille de match,
+  // billetterie, diffusion, medias -- vit dans la fiche, qui s'ouvre
+  // aussitot.
+  //
+  // L'adversaire se choisit dans la liste des clubs deja enregistres
+  // (ecran Adversaires) : c'est elle qui porte les logos, et un nom
+  // retape a la main donnerait un match sans ecusson que personne ne
+  // saurait rattraper.
+  function mcNouveau(){
+    var clubs = (teamsCache || []).slice().sort(function(a,b){
+      return String(a.name||'').localeCompare(String(b.name||''));
+    });
+    if (!clubs.length){
+      demander({
+        titre: 'Aucun adversaire enregistré',
+        detail: 'Un match se crée contre un club de la liste des adversaires — c’est elle qui porte les logos. '
+              + 'Ajoutez-en un dans l’écran <b>Adversaires</b>, puis revenez ici.',
+        ok: 'Ouvrir Adversaires', champs: []
+      }).then(function(v){ if (v) showSection('teams'); });
+      return;
+    }
+    // Les lieux deja utilises : on ne retape pas « Stadium Marius Ndiaye »
+    // a chaque match, et une faute de frappe ne cree pas une salle de plus.
+    var lieux = [];
+    (mcRows||[]).forEach(function(m){ if (m.venue && lieux.indexOf(m.venue) < 0) lieux.push(m.venue); });
+    var comps = [];
+    (mcRows||[]).forEach(function(m){ if (m.competition && comps.indexOf(m.competition) < 0) comps.push(m.competition); });
+    demander({
+      titre: 'Nouveau match',
+      detail: 'La fiche s’ouvrira ensuite : feuille de match, billetterie, diffusion et médias y sont réunis.',
+      ok: 'Créer le match',
+      champs: [
+        { cle:'club', label:'Adversaire', requis:true, type:'select',
+          options: clubs.map(function(c){ return [String(c.id), c.name]; }) },
+        { cle:'date', label:'Date (jj/mm/aaaa)', requis:true, exemple:'19/09/2026' },
+        { cle:'heure', label:'Heure', exemple:'19:00' },
+        { cle:'ou', label:'Domicile ou déplacement', type:'select', valeur:'1',
+          options: [['1','À domicile'], ['0','En déplacement']] },
+        { cle:'lieu', label:'Salle', exemple:'Stadium Marius Ndiaye (Dakar)', suggestions:lieux },
+        { cle:'comp', label:'Compétition', exemple:'Championnat National D2', suggestions:comps }
+      ]
+    }).then(function(v){
+      if (!v) return;
+      var club = clubs.filter(function(c){ return String(c.id) === String(v.club); })[0];
+      // On accepte jj/mm/aaaa comme aaaa-mm-jj : personne n'ecrit une
+      // date a l'envers spontanement, et refuser la forme francaise sur
+      // un site senegalais serait une brimade.
+      var d = String(v.date||'').trim(), iso = null;
+      var fr = d.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+      if (fr) iso = fr[3] + '-' + ('0'+fr[2]).slice(-2) + '-' + ('0'+fr[1]).slice(-2);
+      else if (/^\d{4}-\d{2}-\d{2}$/.test(d)) iso = d;
+      if (!iso){ qgToast('Date incomprise — écrivez-la 19/09/2026.', true); return; }
+      var h = String(v.heure||'').trim();
+      if (h && !/^\d{1,2}:\d{2}$/.test(h)){ qgToast('Heure incomprise — écrivez-la 19:00.', true); return; }
+      return sbInsert('matches', {
+        opponent_name: club ? club.name : null,
+        opponent_logo_url: (club && club.logo_url) || null,
+        match_date: iso,
+        match_time: h ? (h.length === 4 ? '0'+h : h) : null,
+        is_home: v.ou === '1',
+        venue: v.lieu || null,
+        competition: v.comp || null
+      }, 'Matchs').then(function(cree){
+        qgToast('Match créé ✓ Complétez la fiche.');
+        return mcLoad().then(function(){
+          if (cree && cree.id != null) mcOpen(cree.id, 'feuille');
+        });
+      }).catch(function(){ qgToast('La création a échoué.', true); });
+    });
   }
 
   function mcOpen(id, tab){
@@ -18910,7 +18992,9 @@
       var liste = (c.suggestions && c.suggestions.length)
         ? '<datalist id="' + id + '-l">' + c.suggestions.map(function(x){
             return '<option value="' + esc(String(x)) + '">'; }).join('') + '</datalist>' : '';
-      var opt = c.requis ? '' : ' <span class="opt">(optionnel)</span>';
+      // Une liste deroulante a TOUJOURS une valeur : la dire optionnelle
+      // ferait croire qu'on peut la laisser vide, ce qui n'existe pas.
+      var opt = (c.requis || c.type === 'select') ? '' : ' <span class="opt">(optionnel)</span>';
       if (c.type === 'select')
         return '<div class="field"><label for="' + id + '">' + esc(c.label) + opt + '</label>' +
           '<select id="' + id + '" data-cle="' + esc(c.cle) + '">' +
