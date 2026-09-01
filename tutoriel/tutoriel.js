@@ -926,6 +926,14 @@
   // ===================================================================
   function trouver(sel) {
     if (!sel) return null;
+    // UNE CIBLE PEUT ETRE DANS UN TIROIR FERME.
+    // Les ecrans « Pages du site » ne montrent qu'un chapitre a la fois :
+    // les six autres blocs existent, mais sont caches. getClientRects()
+    // les compte pour rien, et la main renoncait en silence -- le
+    // tutoriel disait « le Face-Off, cinq champs » sans rien designer.
+    // On demande donc a l'hote d'ouvrir le chapitre : lui seul sait
+    // quel bloc appartient a quel chapitre.
+    if (api.revele) { try { api.revele(sel); } catch (e) {} }
     try { var el = document.querySelector(sel); return (el && el.getClientRects().length) ? el : null; }
     catch (e) { return null; }
   }
@@ -1749,6 +1757,10 @@
   // sienne. Au bout de 2,5 s on renonce, comme avant.
   function designerQuandPret(sel, g, e) {
     var fin = Date.now() + 2500;
+    // Meme raison que dans trouver() : on ouvre le chapitre AVANT
+    // d'attendre que la cible apparaisse, sinon on l'attend pour rien
+    // pendant deux secondes et demie, puis on renonce.
+    if (api.revele) { try { api.revele(sel); } catch (err) {} }
     (function essai() {
       if (g !== jeton || etapes[idx] !== e) return;
       var el = null;

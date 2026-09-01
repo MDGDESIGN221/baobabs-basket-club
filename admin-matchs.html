@@ -466,6 +466,40 @@
     .qgc-chip{min-height:42px;padding:10px 15px}   /* cible tactile */
   }
 
+  /* LE NUMERO DEVANT LE NOM. Sept pastilles de longueurs inegales ne
+     disent pas combien il y en a, ni ou l'on en est. Le numero le dit,
+     et le compteur « 3 / 7 » a l'autre bout de la barre le confirme. */
+  .qgc-chip-n{flex:none;margin-right:8px;min-width:17px;height:17px;border-radius:5px;
+    display:inline-grid;place-items:center;background:rgba(243,239,230,.07);
+    font-family:var(--font-ui);font-weight:700;font-size:9.5px;color:var(--faint);
+    transition:background .15s,color .15s}
+  .qgc-chip.on .qgc-chip-n{background:rgba(198,162,87,.22);color:var(--gold-bright)}
+  .qgc-nav-compte{flex:none;margin-left:auto;font-family:var(--font-ui);font-weight:700;
+    font-size:10.5px;letter-spacing:.08em;color:var(--faint);font-variant-numeric:tabular-nums}
+  @media(max-width:760px){ .qgc-nav-compte{display:none} }
+
+  /* LE PIED DE CHAPITRE. On finit de remplir, on est en bas ; l'onglet
+     suivant est en haut. Sans ces deux boutons, on ne va pas le
+     chercher -- on s'arrete au premier chapitre. */
+  .qgc-pas{display:flex;align-items:stretch;justify-content:space-between;gap:12px;
+    margin-top:26px;padding-top:20px;border-top:1px solid var(--line)}
+  .qgc-pas-b{display:flex;flex-direction:column;gap:3px;max-width:47%;background:transparent;
+    border:1px solid var(--line-strong);border-radius:var(--r-lg);padding:11px 15px;
+    color:var(--muted);cursor:pointer;text-align:left;font:inherit;
+    transition:border-color .15s,color .15s}
+  .qgc-pas-b:hover{border-color:var(--gold);color:var(--text)}
+  .qgc-pas-b:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  .qgc-pas-next{text-align:right;align-items:flex-end}
+  .qgc-pas-l{font-family:var(--font-ui);font-weight:700;font-size:9.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--faint)}
+  .qgc-pas-t{font-size:13px;font-weight:600;line-height:1.3;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+  .qgc-pas-b:hover .qgc-pas-l{color:var(--gold)}
+  @media(max-width:600px){ .qgc-pas-t{display:none} .qgc-pas-b{max-width:none;flex:1} }
+
+  /* Un chapitre referme est cache, pas supprime : ses champs gardent ce
+     qu'on y a tape. [hidden] doit battre le display:grid des cartes. */
+  .qgc-block[hidden]{display:none}
   .qgc-block{margin-bottom:26px}
   .qgc-block + .qgc-block{margin-top:0}   /* neutralise .card + .card */
   .qgc-block-head{margin-bottom:22px;padding-bottom:16px;border-bottom:1px solid var(--line)}
@@ -523,6 +557,42 @@
   .gd-score{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:clamp(54px,9vw,88px);line-height:1;color:var(--gold-bright);background:rgba(6,17,9,.75);border:1px solid var(--line-strong);border-radius:16px;padding:12px 24px;min-width:124px;text-align:center;font-variant-numeric:tabular-nums}
   .gd-mid{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:32px;color:var(--faint);align-self:center;padding-top:8px}
   .gd-keys{display:flex;gap:7px}
+
+  /* LA BARRE QUI SUIT LE SCORE.
+     position:sticky, et non fixed : elle se colle sous le bandeau du
+     haut quand le grand tableau sort de l'ecran, et redescend d'elle
+     meme quand il revient -- sans un octet de JavaScript, donc sans
+     ecouteur de defilement qui se declenche soixante fois par seconde
+     pendant qu'on tient l'ecran a bout de bras.
+     Le z-index reste sous celui de la barre du haut (20) et au-dessus
+     des cartes. */
+  .gd-suit{position:sticky;top:64px;z-index:6;display:flex;align-items:center;
+    gap:12px;flex-wrap:wrap;margin:12px 0 0;padding:10px 16px;
+    background:rgba(9,15,11,.94);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border:1px solid var(--line-strong);border-radius:var(--r-lg);box-shadow:var(--e2)}
+  .gd-suit-t{font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--faint);max-width:15ch;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  .gd-suit-s{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:26px;
+    line-height:1;color:var(--gold-bright);font-variant-numeric:tabular-nums;min-width:2ch;
+    text-align:center}
+  .gd-suit-d{color:var(--faint);font-size:16px}
+  .gd-suit-p{font-size:11.5px;color:var(--faint);margin-left:6px}
+  .gd-suit-p b{font-family:var(--font-ui);color:var(--gold)}
+  .gd-suit-keys{display:flex;gap:6px;margin-left:auto}
+  .gd-suit-keys .gd-key{width:38px;height:38px;border-radius:9px;font-size:13px}
+  .gd-suit-undo{flex:none;background:transparent;border:1px solid var(--line-strong);
+    border-radius:9px;padding:9px 13px;color:var(--muted);font:600 11.5px var(--font-text);
+    cursor:pointer;transition:border-color .15s,color .15s}
+  .gd-suit-undo:hover{border-color:var(--danger);color:var(--text)}
+  .gd-suit-undo:focus-visible,.gd-suit-keys .gd-key:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  /* Sur telephone, le nom de l'adversaire et l'annulation passent a la
+     ligne plutot que d'ecraser le score -- c'est le score qu'on regarde. */
+  @media(max-width:720px){
+    .gd-suit{gap:9px;padding:9px 12px}
+    .gd-suit-undo{order:9;width:100%;text-align:center}
+    .gd-suit-p{display:none}
+  }
   /* POURQUOI IL N'Y A PAS DE +1 DU COTE DES BAOBABS.
      Les points de l'adversaire n'ont personne a qui etre attribues :
      trois touches suffisent, et c'est fini. Les notres vont dans la
@@ -2711,6 +2781,32 @@
             <button type="button" class="gd-per-btn" id="gd-period-next">Période suivante</button>
           </div>
           <div class="msg" id="gd-score-msg" style="text-align:center"></div>
+        </div>
+
+        <!-- ===== LE SCORE QUI SUIT ===== 
+             Un panier se compte en trois gestes : la joueuse, le geste,
+             et un coup d'oeil au score. Les deux premiers sont en bas de
+             page, le troisieme etait en haut. A quarante paniers par
+             match, cela fait quatre-vingts allers-retours debout, dans
+             une salle bruyante -- et c'est la qu'on se trompe de ligne.
+             Cette barre se colle sous le bandeau des que le grand
+             tableau sort de l'ecran : le score, la periode, les points
+             de l'adversaire et l'annulation restent sous les yeux, la
+             console reste sous les doigts. Rien de nouveau, tout est
+             deja la : simplement plus rien a aller chercher. -->
+        <div class="gd-suit" id="gd-suit">
+          <span class="gd-suit-t">Baobabs</span>
+          <span class="gd-suit-s" id="gd-suit-b">0</span>
+          <span class="gd-suit-d">–</span>
+          <span class="gd-suit-s" id="gd-suit-o">0</span>
+          <span class="gd-suit-t gd-suit-adv" id="gd-suit-opp">Adversaire</span>
+          <span class="gd-suit-p">Période <b id="gd-suit-per">1</b></span>
+          <span class="gd-suit-keys">
+            <button type="button" class="gd-key" data-adv="lf" title="Un point pour l'adversaire">+1</button>
+            <button type="button" class="gd-key" data-adv="panier2" title="Deux points pour l'adversaire">+2</button>
+            <button type="button" class="gd-key" data-adv="panier3" title="Trois points pour l'adversaire">+3</button>
+          </span>
+          <button type="button" class="gd-suit-undo" id="gd-undo-suit">Annuler le dernier geste</button>
         </div>
 
         <!-- ===== TABLE DE MARQUE =====
@@ -5122,6 +5218,9 @@
         var m = SECTION_MODULE[cle];
         return m ? { cle:m, nom:(MODULE_NOMS[m] || m) } : null;
       },
+      // Le tutoriel appelle ceci avant de designer : si la cible est dans
+      // un chapitre referme, l'hote l'ouvre. L'hote seul sait le faire.
+      revele: function(sel){ try { qgcRevele(sel); } catch(e){} },
       cibles: (typeof TUT_CIBLES !== 'undefined' ? TUT_CIBLES : {}),
       demos:  (typeof TUT_DEMOS  !== 'undefined' ? TUT_DEMOS  : {}),
       // Le verrou et le menage : le tutoriel ne peut pas les faire
@@ -7193,6 +7292,8 @@
       gdLoadRoster(); gdLoadSheet(); gdLoadLive();
       document.getElementById('gd-kicker').textContent = gdMatch.match_date===today ? 'Ce soir' : 'Prochain match';
       document.getElementById('gd-opp-name').textContent = gdMatch.opponent_name||'Adversaire';
+      var so=document.getElementById('gd-suit-opp');
+      if(so) so.textContent = gdMatch.opponent_name||'Adversaire';
       document.getElementById('gd-meta').textContent = [formatDateShort(gdMatch.match_date), gdMatch.match_time?String(gdMatch.match_time).slice(0,5):null, gdMatch.venue, gdMatch.is_home?'À domicile':'Déplacement'].filter(Boolean).join(' · ');
       gdPaintScore();
       gdLoadSide();
@@ -7202,6 +7303,11 @@
   function gdPaintScore(){
     document.getElementById('gd-score-b').textContent=gdScore.b;
     document.getElementById('gd-score-o').textContent=gdScore.o;
+    // La barre collante affiche le meme score : une seule fonction le
+    // pose aux deux endroits, sinon l'un des deux finirait par mentir.
+    var sb=document.getElementById('gd-suit-b'), so=document.getElementById('gd-suit-o');
+    if(sb) sb.textContent=gdScore.b;
+    if(so) so.textContent=gdScore.o;
   }
 
   function gdLoadSide(){
@@ -7915,7 +8021,8 @@
     lamp.classList.toggle('on', on);
     txt.textContent = on ? 'En direct sur le site — le score s\'y met à jour à chaque point.'
                          : 'Le direct démarre au premier point marqué.';
-    if(l && l.period){ gdPeriod = l.period; document.getElementById('gd-period').textContent = l.period; }
+    if(l && l.period){ gdPeriod = l.period; document.getElementById('gd-period').textContent = l.period;
+      var sp=document.getElementById('gd-suit-per'); if(sp) sp.textContent = l.period; }
   }
 
   function gdLoadLive(){
@@ -7945,6 +8052,15 @@
       b.addEventListener('click', function(){ gdGeste(b.getAttribute('data-kind'), 'bbc'); });
     });
 
+    // Les deux boutons « Annuler » -- celui de la console et celui de la
+    // barre collante -- doivent faire exactement la meme chose. On cable
+    // le second sur le premier plutot que de recopier le geste : deux
+    // copies finiraient par diverger, et l'annulation est precisement ce
+    // qu'on actionne dans la panique.
+    var undoSuit = document.getElementById('gd-undo-suit');
+    if (undoSuit) undoSuit.addEventListener('click', function(){
+      document.getElementById('gd-undo').click();
+    });
     document.getElementById('gd-undo').addEventListener('click', function(){
       if(!gdMatch) return;
       var b=this; b.disabled=true;
@@ -7985,6 +8101,7 @@
       gdPeriod = Math.min(gdPeriod+1, 8);
       gdReste = GD_PERIODE_S;
       document.getElementById('gd-period').textContent = gdPeriod;
+      var sp2=document.getElementById('gd-suit-per'); if(sp2) sp2.textContent = gdPeriod;
       gdClockPaint();
       qgToast('Période '+gdPeriod+' — chrono remis à '+gdMMSS(GD_PERIODE_S));
     });
@@ -18305,14 +18422,54 @@
   }
   // Un écran de contenu a besoin des deux : la base et la page publique.
   function qgcPrep(){ return Promise.all([loadSettings(), loadSiteTexts()]); }
+  // Un chapitre replie n'est pas absent : il est cache. Tout ce qui vise
+  // un bloc -- le tutoriel, un raccourci, une recherche -- passe par ici
+  // pour que le chapitre s'ouvre AVANT qu'on aille designer quoi que ce
+  // soit dedans. C'est le seul endroit qui connait la correspondance
+  // bloc -> chapitre, et il la tient de qgcRender lui-meme.
+  var QGC_CHAPITRES = {};
+  function qgcRevele(sel){
+    if (!sel || typeof sel !== 'string') return;
+    var m = sel.match(/#qgc-card-([A-Za-z0-9_-]+)/);
+    if (!m) return;
+    var id = m[1];
+    Object.keys(QGC_CHAPITRES).forEach(function(mid){
+      var g = QGC_CHAPITRES[mid];
+      if (g.ids.indexOf(id) >= 0) g.poser(id);
+    });
+  }
+
   function qgcRender(blocks, mountId){
     var m=document.getElementById(mountId); if(!m) return;
     // Plus de deux blocs = un sommaire collant en tête : on saute au bloc
     // voulu au lieu de faire défiler toute la page.
-    var nav = blocks.length>2 ? '<nav class="qgc-nav" aria-label="Blocs de cette page"><span class="qgc-nav-label">Aller à</span><div class="qgc-nav-list">'+blocks.map(function(b){
-      return '<button type="button" class="qgc-chip" data-qgc-go="'+esc(b.id)+'">'+esc(b.label)+'</button>';
-    }).join('')+'</div></nav>' : '';
-    m.innerHTML='<div class="qgc-page">'+nav+blocks.map(function(bl){
+    // UN BLOC A LA FOIS, ET NON PLUS SEPT L'UN SOUS L'AUTRE.
+    //
+    // Le sommaire collant sautait au bloc voulu ; la page, elle, restait
+    // un rouleau de sept formulaires. On arrive sur « Page d'accueil » et
+    // on voit un mur -- le hero, le Face-Off, la detection, les chiffres,
+    // la boutique, les medias, les titres -- sans savoir ou l'un finit ni
+    // ou l'autre commence. Le sommaire devient donc ce qu'il pretendait
+    // etre : des chapitres. On en lit un, les autres attendent.
+    //
+    // Ce n'est pas de la navigation : on ne quitte pas l'ecran, rien
+    // n'est recharge, et les champs des chapitres refermes gardent ce
+    // qu'on y a tape -- ils sont caches, pas detruits. Le bouton
+    // Enregistrer de chaque chapitre n'envoie que le sien.
+    //
+    // A partir de DEUX blocs, et non plus trois : deux formulaires
+    // empiles posent deja la question « lequel est-ce que je remplis ? ».
+    var multi = blocks.length > 1;
+    var nav = multi ? '<nav class="qgc-nav" aria-label="Chapitres de cette page">'+
+      '<span class="qgc-nav-label">Chapitre</span>'+
+      '<div class="qgc-nav-list" role="tablist" aria-label="Chapitres">'+blocks.map(function(b,i){
+        return '<button type="button" role="tab" class="qgc-chip" id="qgc-tab-'+esc(b.id)+'"'+
+          ' data-qgc-go="'+esc(b.id)+'" aria-controls="qgc-card-'+esc(b.id)+'"'+
+          ' aria-selected="false" tabindex="-1">'+
+          '<span class="qgc-chip-n">'+(i+1)+'</span>'+esc(b.label)+'</button>';
+      }).join('')+'</div>'+
+      '<span class="qgc-nav-compte" aria-hidden="true"></span></nav>' : '';
+    m.innerHTML='<div class="qgc-page">'+nav+blocks.map(function(bl, iBl){
       var fields=bl.fields.map(function(f){
         var v=qgcVal(f.key), fid='qgc-f-'+f.key;
         // Textes longs et images prennent toute la largeur ; le reste se
@@ -18336,36 +18493,115 @@
           (f.options||[]).map(function(o){ return '<option value="'+esc(o[0])+'"'+(String(v)===String(o[0])?' selected':'')+'>'+esc(o[1])+'</option>'; }).join('')+'</select></div>';
         return '<div class="qg-field'+wide+'"><label for="'+fid+'">'+esc(f.label)+'</label><input id="'+fid+'" class="qg-in qgc-in" data-k="'+f.key+'" value="'+esc(v)+'">'+(STYLABLES[f.key]?apparenceBloc(f.key):'')+'</div>';
       }).join('');
-      return '<article class="card qgc-block" id="qgc-card-'+esc(bl.id)+'">'+
+      return '<article class="card qgc-block" id="qgc-card-'+esc(bl.id)+'"'+
+        (multi ? ' role="tabpanel" aria-labelledby="qgc-tab-'+esc(bl.id)+'" tabindex="0"' : '')+'>'+
         '<header class="qgc-block-head"><span class="qgc-block-page">'+esc(bl.page)+'</span><h2 class="qgc-block-title">'+esc(bl.label)+'</h2></header>'+
         '<div class="qgc-block-body">'+
           '<div class="qgc-form"><div class="qgc-fields">'+fields+'</div>'+
             '<div class="qgc-actions"><button type="button" class="btn btn-primary qgc-save" data-block="'+bl.id+'">Enregistrer</button>'+
             '<div class="msg" id="qgc-msg-'+bl.id+'" role="status" aria-live="polite"></div></div></div>'+
           '<aside class="qgc-preview"><div class="qgc-preview-label">Aperçu réel</div><div id="qgc-pv-'+bl.id+'"></div></aside>'+
-        '</div></article>';
+        '</div>'+
+        // ON SORT D'UN CHAPITRE PAR LE BAS, LA OU L'ON A FINI DE LIRE.
+        // Remonter chercher l'onglet suivant en haut de page apres avoir
+        // rempli un formulaire est un aller-retour qu'on ne fait pas : on
+        // s'arrete au premier chapitre, et les six autres ne sont jamais
+        // ouverts. Le nom du chapitre suivant est ecrit sur le bouton --
+        // « ce qui vient apres » n'a pas a se deviner.
+        (multi ? '<nav class="qgc-pas" aria-label="Chapitre précédent ou suivant">'+
+          (iBl > 0
+            ? '<button type="button" class="qgc-pas-b" data-qgc-go="'+esc(blocks[iBl-1].id)+'">'+
+              '<span class="qgc-pas-l">‹ Précédent</span><span class="qgc-pas-t">'+esc(blocks[iBl-1].label)+'</span></button>'
+            : '<span></span>')+
+          (iBl < blocks.length-1
+            ? '<button type="button" class="qgc-pas-b qgc-pas-next" data-qgc-go="'+esc(blocks[iBl+1].id)+'">'+
+              '<span class="qgc-pas-l">Suivant ›</span><span class="qgc-pas-t">'+esc(blocks[iBl+1].label)+'</span></button>'
+            : '<span></span>')+
+        '</nav>' : '')+
+        '</article>';
     }).join('')+'</div>';
     blocks.forEach(function(bl){ qgcPreview(bl); });
-    var chips = m.querySelectorAll('[data-qgc-go]');
-    chips.forEach(function(b){
-      b.addEventListener('click', function(){
-        var c=document.getElementById('qgc-card-'+b.getAttribute('data-qgc-go'));
-        if(!c) return;
-        var nv=m.querySelector('.qgc-nav');
-        var y=c.getBoundingClientRect().top+window.scrollY-(64+(nv?nv.offsetHeight:0)+16);
-        window.scrollTo({top:y, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
-      });
-    });
-    // Le sommaire suit la lecture : on sait toujours dans quel bloc on est.
-    if (chips.length && 'IntersectionObserver' in window){
-      var io = new IntersectionObserver(function(entries){
-        entries.forEach(function(en){
-          if(!en.isIntersecting) return;
-          var id = en.target.id.slice(9); // 'qgc-card-'
-          chips.forEach(function(c){ c.classList.toggle('on', c.getAttribute('data-qgc-go')===id); });
+    // ---- LE PASSAGE D'UN CHAPITRE A L'AUTRE -------------------------
+    if (multi){
+      var onglets = [].slice.call(m.querySelectorAll('.qgc-nav-list [data-qgc-go]'));
+      var compte  = m.querySelector('.qgc-nav-compte');
+      var idsBl   = blocks.map(function(b){ return b.id; });
+
+      function poser(id, opt){
+        opt = opt || {};
+        var i = idsBl.indexOf(id);
+        if (i < 0) { i = 0; id = idsBl[0]; }
+        blocks.forEach(function(bl){
+          var c = document.getElementById('qgc-card-'+bl.id);
+          if (c) c.hidden = (bl.id !== id);
         });
-      }, {rootMargin:'-140px 0px -62% 0px'});
-      blocks.forEach(function(bl){ var c=document.getElementById('qgc-card-'+bl.id); if(c) io.observe(c); });
+        onglets.forEach(function(t){
+          var on = t.getAttribute('data-qgc-go') === id;
+          t.classList.toggle('on', on);
+          t.setAttribute('aria-selected', on ? 'true' : 'false');
+          t.tabIndex = on ? 0 : -1;
+          // L'onglet choisi doit rester visible : sur telephone la barre
+          // defile horizontalement, et le 6e chapitre est hors champ.
+          if (on && opt.cadrer !== false && t.scrollIntoView)
+            try { t.scrollIntoView({ block:'nearest', inline:'nearest' }); } catch(e){}
+        });
+        if (compte) compte.textContent = (i+1) + ' / ' + idsBl.length;
+        // ON SE SOUVIENT DU CHAPITRE OUVERT.
+        // Aller verifier une valeur ailleurs et revenir ne doit pas
+        // ramener au premier chapitre : on perdrait sa place a chaque
+        // aller-retour, et c'est precisement ce qu'on faisait avec le
+        // rouleau -- en pire, puisqu'on ne se souvient pas non plus de
+        // la position de defilement.
+        try { localStorage.setItem('bbc_qgc_'+mountId, id); } catch(e){}
+        if (opt.focus){
+          var c = document.getElementById('qgc-card-'+id);
+          if (c) c.focus({ preventScroll:true });
+        }
+        if (opt.remonter){
+          var nv = m.querySelector('.qgc-nav');
+          var haut = nv ? nv.getBoundingClientRect().top + window.scrollY - 72 : 0;
+          if (window.scrollY > haut + 8)
+            window.scrollTo({ top:haut,
+              behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth' });
+        }
+      }
+
+      // Tout ce qui porte data-qgc-go ouvre un chapitre : les onglets du
+      // haut comme les deux boutons du pied. Un seul cablage, donc aucun
+      // risque que l'un des deux cesse de suivre l'autre.
+      m.querySelectorAll('[data-qgc-go]').forEach(function(b){
+        b.addEventListener('click', function(){
+          poser(b.getAttribute('data-qgc-go'), { remonter:true, focus:!b.classList.contains('qgc-chip') });
+        });
+      });
+
+      // Les fleches parcourent les chapitres, comme dans toute barre
+      // d'onglets : sans cela, la tabulation traverse les sept avant
+      // d'atteindre le premier champ.
+      m.querySelector('.qgc-nav-list').addEventListener('keydown', function(ev){
+        var i = idsBl.indexOf(document.activeElement.getAttribute('data-qgc-go'));
+        if (i < 0) return;
+        var j = null;
+        if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') j = (i+1) % idsBl.length;
+        else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') j = (i-1+idsBl.length) % idsBl.length;
+        else if (ev.key === 'Home') j = 0;
+        else if (ev.key === 'End') j = idsBl.length-1;
+        if (j === null) return;
+        ev.preventDefault();
+        poser(idsBl[j]);
+        var t = m.querySelector('[data-qgc-go="'+idsBl[j]+'"]'); if (t) t.focus();
+      });
+
+      // Le chapitre d'ouverture : celui qu'on lisait la derniere fois.
+      var memo = null;
+      try { memo = localStorage.getItem('bbc_qgc_'+mountId); } catch(e){}
+      poser(idsBl.indexOf(memo) >= 0 ? memo : idsBl[0], { cadrer:false });
+
+      // On s'inscrit pour que le tutoriel -- et n'importe quel raccourci
+      // qui vise un bloc -- puisse rouvrir le chapitre qui le contient.
+      // Sans cela, sa main irait designer un element cache : elle ne se
+      // poserait nulle part, et personne ne saurait pourquoi.
+      QGC_CHAPITRES[mountId] = { ids:idsBl, poser:poser };
     }
     m.querySelectorAll('.qgc-in').forEach(function(el){ el.addEventListener('input',function(){ var bl=qgcAll().filter(function(b){ return b.fields.some(function(f){return f.key===el.getAttribute('data-k');}); })[0]; if(bl) qgcPreview(bl); }); });
     m.querySelectorAll('input[data-kfile]').forEach(function(fe){ fe.addEventListener('change',function(){ var file=fe.files[0]; if(!file) return; var key=fe.getAttribute('data-kfile'); var kind=fe.getAttribute('data-kind')||'image'; var span=fe.parentNode.querySelector('span'); var libelle=span?span.textContent:''; if(span) span.textContent='Envoi…'; uploadFile(MEDIA_BUCKET,file).then(function(url){ var inp=document.querySelector('.qgc-in[data-k="'+key+'"]'); if(inp){ inp.value=url; inp.dispatchEvent(new Event('input',{bubbles:true})); } if(span) span.textContent=libelle; qgToast(kind==='video'?'Vidéo envoyée ✓':'Image envoyée ✓'); }).catch(function(){ if(span) span.textContent=libelle; qgToast('Échec de l\'envoi',true); }); }); });

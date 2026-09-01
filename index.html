@@ -3259,15 +3259,47 @@
     </div>
   </section>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    /* Les tuiles OpenStreetMap sont claires ; le site est sombre. On les
+       retourne, puis on remet les teintes a l'endroit (sans le
+       hue-rotate, la vegetation vire au violet et l'eau au brun). Un
+       soupcon de contraste en moins evite que les rues ne deviennent des
+       traits blancs sur du noir.
+       Ce filtre ne s'applique qu'a la couche des tuiles : le marqueur,
+       les commandes de zoom et l'attribution vivent dans d'autres
+       couches, et gardent leurs couleurs. */
+    #bb-map .leaflet-tile-pane{
+      filter:invert(1) hue-rotate(180deg) brightness(.70) contrast(1.02) saturate(.30);
+    }
+    /* Leaflet pose un fond blanc sous les tuiles : il traverse pendant le
+       chargement, et par un flash blanc en pleine page sombre. */
+    #bb-map,#bb-map .leaflet-container{background:#0A1B0D}
+    #bb-map .leaflet-control-attribution{background:rgba(10,27,13,.82);color:#B9C2BB}
+    #bb-map .leaflet-control-attribution a{color:#A8D93B}
+  </style>
   <script>
   (function(){
     var LAT=14.706918, LNG=-17.462701;
     function initMap(){
       var el=document.getElementById('bb-map'); if(!el||el._init||!window.L) return; el._init=true;
       var map=L.map(el,{scrollWheelZoom:false,attributionControl:true}).setView([LAT,LNG],16);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-        maxZoom:20, subdomains:'abcd',
-        attribution:'&copy; OpenStreetMap &copy; CARTO'
+      // LE FOND DE CARTE VIENT D'OPENSTREETMAP, ET IL EST ASSOMBRI ICI.
+      //
+      // Il venait de CARTO (fond « dark_all »), qui demande desormais une
+      // cle : les tuiles arrivaient bien, mais barrees en diagonale d'un
+      // « API KEY REQUIRED » repete sur toute la carte. Rien ne cassait,
+      // rien n'etait signale -- la salle du club s'affichait juste sur un
+      // filigrane publicitaire.
+      //
+      // OpenStreetMap ne demande pas de cle. Ses tuiles sont claires : ce
+      // sont elles qu'on retourne en CSS (voir .leaflet-tile-pane). Le
+      // filtre ne touche QUE le fond -- ni le marqueur vert, ni les
+      // boutons de zoom, ni l'attribution, qui sont dans d'autres
+      // couches. C'est aussi pourquoi il n'est pas pose sur la carte
+      // entiere : le marqueur ressortirait magenta.
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19,
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
       }).addTo(map);
       var icon=L.divIcon({className:'',html:'<div style="position:relative;width:34px;height:34px;transform:translate(-50%,-100%)"><div style="width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#A8D93B;border:2px solid #0A1B0D;box-shadow:0 6px 16px rgba(0,0,0,.5)"></div><div style="position:absolute;top:9px;left:11px;width:12px;height:12px;border-radius:50%;background:#0A1B0D"></div></div>',iconSize:[34,34],iconAnchor:[0,0]});
       var VENUE_DEF='Complexe Patrick Semedo', ADDR_DEF='Rue Aroun, Mermoz–Sacré-Cœur, Dakar';
