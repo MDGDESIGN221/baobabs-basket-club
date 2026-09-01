@@ -1890,7 +1890,19 @@
   .cd-kv span:last-child{color:var(--text);text-align:right;font-weight:500}
   .cd-prose{font-size:13px;line-height:1.65;color:#C9D2CB;white-space:pre-wrap;margin:0}
   .cd-status-grid{display:flex;flex-wrap:wrap;gap:6px}
-  .cd-st{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:7px 11px;border-radius:100px;cursor:pointer;transition:all .14s;background:transparent}
+  /* CHOISIR UN STATUT N'EST PAS PORTER UNE ÉTIQUETTE.
+     Sept pastilles rondes, chacune de sa couleur, faisaient un chapelet
+     de bonbons là où il y a une décision à prendre — et l'arrondi
+     complet est réservé, dans cette feuille, aux badges qui SE LISENT,
+     pas aux boutons qu'on CLIQUE. Angles resserrés, et la couleur ne
+     reste que sur celui qui est actif : les autres attendent en gris.
+     On voit alors d'un coup où en est le dossier, au lieu de chercher
+     lequel des sept est rempli. */
+  .cd-st{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.09em;
+    text-transform:uppercase;padding:8px 12px;border-radius:var(--r-sm);cursor:pointer;
+    transition:border-color .14s,color .14s,background .14s;background:transparent}
+  .cd-st:hover{border-color:var(--gold)!important}
+  .cd-st:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
   .cd-notes{width:100%;background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:11px;color:var(--text);font:inherit;font-size:13px;line-height:1.6;resize:vertical;min-height:88px}
   .cd-input{width:100%;background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:9px 11px;color:var(--text);font:inherit;font-size:13px}
   .cd-input:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:transparent}
@@ -2303,29 +2315,76 @@
      droit à sa propre grammaire visuelle. Un mois est une case — payée
      ou non. Douze cases se lisent d'un coup d'œil ; douze lignes de
      tableau, non. */
-  .in-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
-  .in-kpi{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:13px 15px}
-  .in-kpi b{display:block;font-family:var(--font-ui);font-weight:700;font-size:23px;line-height:1;color:var(--text);font-variant-numeric:tabular-nums}
-  .in-kpi span{display:block;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-top:6px}
+  /* MÊME GRAMMAIRE, AUTRE REGISTRE.
+     Le suivi était juste — un mois, une case — mais il s'habillait en
+     application grand public : des angles à 12 px partout, un aplat
+     teinté sur chaque état, des chiffres en gros dans des boîtes.
+     Empilé, cela donne un tableau de bord de téléphone, pas le registre
+     d'une école. C'est ce que voit quelqu'un qui doit y noter l'argent
+     de vraies familles.
+     On garde donc la structure et on change trois choses :
+       · les angles se resserrent (la feuille dit déjà qu'au-delà de
+         12 px une interface de gestion prend un air grand public — ici
+         on descend à 6 et 8) ;
+       · la couleur passe du fond au LISERÉ, comme dans le centre
+         d'attention où « le niveau se lit à la couleur du liseré » ;
+         un état se signale, il n'a pas besoin de repeindre son bloc ;
+       · les chiffres s'alignent en bandeau continu plutôt qu'en cartes
+         séparées — un relevé, pas six vignettes. */
+  .in-kpis{display:flex;flex-wrap:wrap;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:var(--r-md);margin-bottom:16px;overflow:hidden}
+  .in-kpi{flex:1 1 140px;padding:12px 16px;border-right:1px solid var(--line)}
+  .in-kpi:last-child{border-right:none}
+  .in-kpi b{display:block;font-family:var(--font-display);font-weight:var(--display-weight);
+    letter-spacing:var(--display-tracking);font-size:22px;line-height:1;color:var(--text);
+    font-variant-numeric:tabular-nums}
+  .in-kpi span{display:block;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--faint);margin-top:7px}
   .in-kpi.warn b{color:#E08A5B}
   .in-kpi.good b{color:#A8D93B}
-  .in-months{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:7px;margin-top:11px}
-  .in-month{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 6px;text-align:center;cursor:pointer;font:inherit;color:var(--muted);transition:border-color .18s,background .18s,color .18s}
+  @media(max-width:620px){ .in-kpi{flex:1 1 50%;border-bottom:1px solid var(--line)} }
+
+  /* Les mois : des cases plus serrées, l'état porté par un filet en
+     tête plutôt que par un aplat. Douze aplats verts et oranges côte à
+     côte faisaient un damier ; douze filets font une frise qu'on lit. */
+  .in-months{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-top:12px}
+  .in-month{position:relative;overflow:hidden;border:1px solid var(--line);background:var(--surface);
+    border-radius:var(--r-sm);padding:9px 5px 8px;text-align:center;cursor:pointer;font:inherit;
+    color:var(--muted);transition:border-color .16s,color .16s}
+  .in-month::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:transparent}
   .in-month:hover{border-color:var(--gold);color:var(--gold)}
-  .in-month b{display:block;font-family:var(--font-ui);font-weight:700;font-size:12.5px;line-height:1;text-transform:capitalize}
-  .in-month span{display:block;font-size:9.5px;margin-top:4px;color:var(--faint)}
-  .in-month.paid{border-color:#A8D93B66;background:rgba(168,217,59,.1);color:#A8D93B;cursor:default}
-  .in-month.paid span{color:#A8D93B99}
-  .in-month.due{border-color:#E08A5B77;background:rgba(224,138,91,.09);color:#E08A5B}
-  .in-month.future{opacity:.45}
-  .in-pay{background:var(--surface);border:1px solid var(--gold);border-radius:12px;padding:13px;margin-top:11px;display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:9px;align-items:end}
-  .in-pay label{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
-  .in-pay input,.in-pay select{width:100%;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 10px;color:var(--text);font:inherit;font-size:12.5px}
-  .in-line{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:12px 14px}
-  .in-line.paid{border-color:#A8D93B55;background:rgba(168,217,59,.07)}
+  .in-month b{display:block;font-family:var(--font-ui);font-weight:700;font-size:11.5px;
+    line-height:1;text-transform:uppercase;letter-spacing:.04em}
+  .in-month span{display:block;font-size:9px;margin-top:5px;color:var(--faint);
+    font-variant-numeric:tabular-nums}
+  .in-month.paid{color:#A8D93B;cursor:default;border-color:rgba(168,217,59,.28)}
+  .in-month.paid::before{background:#A8D93B}
+  .in-month.paid span{color:rgba(168,217,59,.62)}
+  .in-month.due{color:#E08A5B;border-color:rgba(224,138,91,.34)}
+  .in-month.due::before{background:#E08A5B}
+  .in-month.future{opacity:.38}
+
+  .in-pay{background:var(--surface);border:1px solid var(--line-strong);border-left:2px solid var(--gold);
+    border-radius:var(--r-md);padding:14px 15px;margin-top:12px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;align-items:end}
+  .in-pay label{display:block;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--faint);margin-bottom:6px}
+  .in-pay input,.in-pay select{width:100%;background:var(--surface-2);border:1px solid var(--line-strong);
+    border-radius:var(--r-sm);padding:9px 10px;color:var(--text);font:inherit;font-size:12.5px}
+
+  /* Une ligne d'argent : liseré à gauche, comme les alertes du tableau
+     de bord. Réglée, elle s'éteint plutôt qu'elle ne s'allume — c'est
+     ce qui RESTE à faire qu'on doit voir en parcourant la fiche. */
+  .in-line{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-strong);
+    border-radius:var(--r-md);padding:12px 15px}
+  .in-line.paid{border-left-color:#A8D93B;background:transparent}
+  .in-line.paid .in-line-t{color:var(--muted)}
   .in-line-t{font-size:13px;color:var(--text);font-weight:600}
   .in-line-s{font-size:11.5px;color:var(--faint);margin-top:2px}
-  .in-ref{font-family:var(--font-ui);font-weight:700;font-size:11.5px;letter-spacing:.09em;color:var(--gold);background:rgba(198,162,87,.12);border:1px solid rgba(198,162,87,.3);border-radius:6px;padding:3px 9px}
+  .in-ref{font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.1em;
+    color:var(--gold);background:rgba(198,162,87,.1);border:1px solid rgba(198,162,87,.26);
+    border-radius:var(--r-sm);padding:3px 9px}
 
   /* ===================== BILLETTERIE ===================== */
   .rec-item.tk-active{border-color:var(--gold);background:var(--surface-2)}
@@ -14706,7 +14765,7 @@
           '<div class="cd-sec od-noprint"><div class="cd-sec-h">Statut</div><div class="cd-sec-b">'+
             '<div class="cd-status-grid">'+ OD_ST.map(function(x){
               var on = x.key===s.key;
-              return '<button type="button" class="cd-st" data-od-st="'+x.key+'" style="color:'+(on?'#0A1B0D':x.color)+';background:'+(on?x.color:'transparent')+';border:1px solid '+x.color+(on?'':'55')+'">'+esc(x.label)+'</button>';
+              return '<button type="button" class="cd-st" data-od-st="'+x.key+'" style="color:'+(on?'#0A1B0D':x.color)+';background:'+(on?x.color:'transparent')+';border:1px solid '+(on?x.color:'var(--line-strong)')+'">'+esc(x.label)+'</button>';
             }).join('') +'</div>'+
             '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">'+
               '<button type="button" class="btn btn-ghost" id="od-print" style="padding:8px 13px;font-size:12px">Imprimer le bon</button>'+
@@ -15763,7 +15822,7 @@
           '<div class="cd-sec"><div class="cd-sec-h">Décision</div><div class="cd-sec-b">'+
             '<div class="cd-status-grid">'+ CD_ST.map(function(x){
               var on = x.key===(r.status||'nouvelle');
-              return '<button type="button" class="cd-st" data-st="'+x.key+'" style="color:'+(on?'#0A1B0D':x.color)+';background:'+(on?x.color:'transparent')+';border:1px solid '+x.color+(on?'':'55')+'">'+esc(x.label)+'</button>';
+              return '<button type="button" class="cd-st" data-st="'+x.key+'" style="color:'+(on?'#0A1B0D':x.color)+';background:'+(on?x.color:'transparent')+';border:1px solid '+(on?x.color:'var(--line-strong)')+'">'+esc(x.label)+'</button>';
             }).join('') +'</div>'+
             '<div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">'+
               '<span style="font-size:12px;color:var(--faint)">Note interne</span>'+
@@ -15947,6 +16006,12 @@
   }
   var IN_METHODES = [['especes','Espèces'],['wave','Wave'],['orange_money','Orange Money'],['free_money','Free Money'],['virement','Virement'],['autre','Autre']];
   var IN_MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  // Sur la frise des mensualités, dix mois écrits en toutes lettres
+  // imposent des cases larges : on obtient cinq colonnes de deux rangs
+  // au lieu d'une frise qui se lit d'un trait. Abrégés, les dix tiennent
+  // sur une ligne — et personne n'hésite entre « sept. » et « juin ».
+  // IN_MOIS garde ses noms entiers : ils servent au PDF et aux phrases.
+  var IN_MOIS_COURT = ['jan','fév','mar','avr','mai','juin','juil','août','sept','oct','nov','déc'];
   // Les quatre pièces d'un dossier de licence. L'ordre est celui dans
   // lequel on les demande à la famille, pas l'ordre alphabétique.
   var IN_PIECES = [
@@ -16280,8 +16345,9 @@
       var pay = paiementPar[p];
       var sous = paye ? (pay && pay.paid_on ? String(pay.paid_on).slice(8,10)+'/'+String(pay.paid_on).slice(5,7) : 'payé')
                       : (futur ? 'à venir' : (du ? 'dû' : '—'));
-      return '<button type="button" class="in-month '+cls+'" data-mois="'+esc(p)+'"'+(paye?' disabled':'')+'>'+
-        '<b>'+esc(IN_MOIS[parseInt(p.slice(5),10)-1])+'</b><span>'+esc(sous)+'</span></button>';
+      return '<button type="button" class="in-month '+cls+'" data-mois="'+esc(p)+'"'+(paye?' disabled':'')+
+        ' title="'+esc(inPeriodeLabel(p))+'">'+
+        '<b>'+esc(IN_MOIS_COURT[parseInt(p.slice(5),10)-1])+'</b><span>'+esc(sous)+'</span></button>';
     }).join('');
 
     var totalPaye = r.total_paye != null ? r.total_paye
@@ -16318,7 +16384,7 @@
           '<div class="cd-sec"><div class="cd-sec-h">Décision</div><div class="cd-sec-b">'+
             '<div class="cd-status-grid">'+ IN_ST.map(function(x){
               var on = x.key===(r.status||'nouvelle');
-              return '<button type="button" class="cd-st" data-inst="'+x.key+'" style="color:'+(on?'#0A1B0D':x.color)+';background:'+(on?x.color:'transparent')+';border:1px solid '+x.color+(on?'':'55')+'">'+esc(x.label)+'</button>';
+              return '<button type="button" class="cd-st" data-inst="'+x.key+'" style="color:'+(on?'#0A1B0D':x.color)+';background:'+(on?x.color:'transparent')+';border:1px solid '+(on?x.color:'var(--line-strong)')+'">'+esc(x.label)+'</button>';
             }).join('') +'</div>'+
           '</div></div>'+
 
