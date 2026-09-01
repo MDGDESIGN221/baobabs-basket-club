@@ -4430,12 +4430,30 @@
   // obtenir un lisible. Le jour ou ces fonctions seront redeployees
   // ainsi, il suffira de remettre les vrais noms ci-dessous.
   //
-  // Verifie a la mesure : bright-endpoint et hyper-processor repondent,
-  // envoi-newsletter et alerte-inscription rendent 404.
+  // COMMENT ON A IDENTIFIE CHAQUE SLUG, ET COMMENT REFAIRE LA MESURE.
+  // On envoie un POST avec un corps vide et la cle publique : chaque
+  // fonction repond par SON message d'erreur, qui la trahit. Aucune ne
+  // fait quoi que ce soit, le controle des arguments passe en premier.
+  //
+  //   bright-endpoint  -> « sujet manquant »                  newsletter
+  //   hyper-processor  -> « identifiant d'inscription... »    alerte
+  //   swift-api        -> « identifiant d'inscription... »    alerte, DOUBLON
+  //   generate-text    -> INVALID_CREDENTIALS                 aide redaction
+  //   send-order-...   -> invalid_webhook_secret              commandes
+  //
+  // swift-api et hyper-processor sont deux deploiements de la MEME
+  // fonction, a quinze jours et trois jours. Le plus ancien peut etre
+  // supprime -- mais verifier d'abord qu'aucun declencheur de la base ne
+  // l'appelle encore, sinon les alertes cesseraient sans un mot.
+  //
+  // confirmation-reservation n'existe sous AUCUN slug : l'e-mail de
+  // confirmation d'une reservation ne part donc pas. Le site le supporte
+  // (la reservation est acquise avant l'envoi, voir index.html) mais le
+  // supporter ne recoit rien.
   var FN = {
     newsletter:  'bright-endpoint',           // affichee « envoi-newsletter »
     alerte:      'hyper-processor',           // affichee « alerte-inscription »
-    reservation: 'confirmation-reservation'   // pas encore deployee
+    reservation: 'confirmation-reservation'   // absente : a deployer
   };
 
   // storageKey dédiée : sans ça, une session client (index.html) ouverte

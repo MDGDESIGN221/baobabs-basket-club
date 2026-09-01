@@ -23,27 +23,39 @@ LE PIÈGE, ET IL EXPLIQUE TOUT
 
 
 ÉTAT MESURÉ DU PROJET lmwbwasupqkvswukieav
-  Affiché                  Slug réel                  Répond
-  ------------------------------------------------------------------
-  envoi-newsletter         bright-endpoint            oui
-  alerte-inscription       hyper-processor            oui
-  generate-text            generate-text              oui
-  send-order-confirmation  send-order-confirmation    oui
-  swift-api                swift-api                  oui
-  confirmation-reservation  —                         NON (absente)
+
+  COMMENT ON L'A ÉTABLI — la méthode se refait en une minute. On envoie
+  à chaque slug un POST au corps vide, avec la clé publique du site :
+  chaque fonction répond par SON message d'erreur, qui la trahit. Aucune
+  ne fait quoi que ce soit — le contrôle des arguments passe avant tout.
+
+  Slug réel                Répond                            C'est donc
+  ---------------------------------------------------------------------
+  bright-endpoint          « sujet manquant »                newsletter
+  hyper-processor          « identifiant d'inscription… »    alerte inscr.
+  swift-api                « identifiant d'inscription… »    alerte, DOUBLON
+  generate-text            INVALID_CREDENTIALS               aide rédaction
+  send-order-confirmation  invalid_webhook_secret            commandes
+  confirmation-reservation 404                               ABSENTE
 
   L'admin appelle désormais les slugs réels : voir la table FN en tête
-  du script de admin-matchs.html. Une seule adresse à corriger le jour
-  où les fonctions seront redéployées sous un nom lisible.
+  du script de admin-matchs.html.
 
 
 CE QUI RESTE À FAIRE
-  1. confirmation-reservation n'existe sous aucun slug connu. C'est
-     l'e-mail envoyé au supporter quand il réserve un billet : le site
-     l'appelle (index.html) et n'obtient rien. Soit elle correspond à
-     « swift-api » — auquel cas dites-le, on ajustera la table FN —
-     soit elle n'a jamais été déployée.
-  2. Les secrets Brevo, sans lesquels une fonction déployée répond mais
+  1. CONFIRMATION-RESERVATION N'EXISTE NULLE PART. C'est l'e-mail envoyé
+     au supporter quand il réserve un billet. Le site l'appelle et
+     n'obtient rien — la réservation est bien enregistrée et la référence
+     s'affiche, seul l'e-mail manque. Le code est prêt dans
+     supabase/functions/confirmation-reservation/.
+
+  2. SWIFT-API ET HYPER-PROCESSOR SONT LA MÊME FONCTION, déployée deux
+     fois (à quinze jours et trois jours). La plus ancienne peut être
+     supprimée — mais vérifiez d'abord qu'aucun déclencheur de la base
+     ne l'appelle encore, sinon les alertes d'inscription cesseraient
+     sans un mot.
+
+  3. LES SECRETS BREVO, sans lesquels une fonction déployée répond mais
      n'envoie rien : BREVO_API_KEY, BBC_SENDER_EMAIL, et si l'on veut
      BBC_SENDER_NAME. Supabase → Edge Functions → Secrets.
      Ne les mettez jamais dans un fichier du dépôt.
