@@ -2157,6 +2157,34 @@
     return true;
   }
 
+  // CE QU'ON PEUT VRAIMENT ACTIONNER.
+  //
+  // Un bouton, un lien, un champ : des choses sur lesquelles un curseur
+  // a un sens. Pas un conteneur, pas une liste, pas un paragraphe.
+  //
+  // On accepte les champs de saisie autant que les boutons : cliquer
+  // dans un champ est un geste, et les demonstrations en font.
+  //
+  // Quand la cible EST une commande, c'est elle. Quand elle en CONTIENT,
+  // on prend la premiere : sur « cliquez une carte », designer la
+  // premiere carte, c'est designer le geste. Quand elle n'en contient
+  // aucune, on rend null — et la main s'efface.
+  var ACTIONNABLE = 'button,a[href],[role="button"],input:not([type="hidden"]),' +
+                    'select,textarea,summary,label,[contenteditable="true"],[data-cadre]';
+  function actionnable(el) {
+    if (!el || !el.matches) return null;
+    try {
+      if (el.matches(ACTIONNABLE) && estVisible(el)) return el;
+      var parent = el.closest(ACTIONNABLE);
+      if (parent && estVisible(parent)) return parent;
+      var dedans = el.querySelectorAll(ACTIONNABLE);
+      for (var i = 0; i < dedans.length; i++) {
+        if (estVisible(dedans[i])) return dedans[i];
+      }
+    } catch (e) {}
+    return null;
+  }
+
   function boiteUtile(el) {
     var n = el, garde = 0;
     while (n && garde++ < 6) {
@@ -2357,10 +2385,30 @@
     // trajet. Au tout premier affichage seulement, on la pose sans
     // transition a un point de depart plausible, puis on la lance a
     // l'image suivante.
-    var y = (r.top + Math.min(r.height * 0.55, 30));
-    var x = (r.left + Math.min(r.width * 0.42, 46));
+    // LA MAIN NE SE POSE QUE SUR CE QUI SE CLIQUE.
+    //
+    // C'est un curseur : le poser quelque part promet un geste. Il se
+    // posait jusqu'ici a un decalage fixe du coin de la cible, qu'il y
+    // ait un bouton dessous ou non — sur une liste, sur un bloc de
+    // texte, sur une carte sans commande. On promettait un clic qui
+    // n'existe pas, et la salle cherchait ce qu'il fallait cliquer.
+    //
+    // Deux cas, et un seul geste dans chacun :
+    //   · il y a une commande → la main se pose EN SON CENTRE, pas au
+    //     coin d'un conteneur qui la contient vaguement ;
+    //   · il n'y en a pas → pas de main. Le cadre suffit : il dit
+    //     « regardez ici » sans rien promettre.
+    var commande = actionnable(el);
+    if (!commande) {
+      doigt.classList.add('efface');
+      // Le fil et le halo restent : on montre toujours, on ne fait plus
+      // semblant de cliquer.
+    }
+    var rc = commande ? commande.getBoundingClientRect() : r;
+    var y = commande ? (rc.top + rc.height / 2) : (r.top + Math.min(r.height * 0.55, 30));
+    var x = commande ? (rc.left + Math.min(rc.width * 0.5, 60)) : (r.left + Math.min(r.width * 0.42, 46));
     var premiereFois = doigt.classList.contains('hide');
-    doigt.classList.remove('efface');
+    if (commande) doigt.classList.remove('efface');
 
     if (premiereFois) {
       // Point de depart : le bord de l'ecran du cote d'ou elle vient,
