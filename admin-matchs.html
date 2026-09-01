@@ -239,9 +239,26 @@
   .sb-tut svg{opacity:1}
   .sb-tut:hover{background:var(--gold-soft);color:var(--gold-bright)}
   .sb-tut:hover svg{opacity:1}
+  .sb-tut{position:relative;align-items:flex-start;padding-top:9px;padding-bottom:11px}
+  .sb-tut svg{margin-top:1px}
+  .sb-tut-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+  .sb-tut-txt b{font-weight:600}
+  /* La sous-ligne : ce qu'on a vu, ou ce qui attend. Discrète — c'est
+     une indication, pas une injonction. */
+  .sb-tut-sous{font-size:10.5px;font-weight:500;line-height:1.3;color:var(--faint);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sb-tut:hover .sb-tut-sous{color:var(--gold)}
+  .sb-tut-sous:empty{display:none}
+  /* Le trait de progression, collé au bas du bouton : il court sur toute
+     sa largeur, comme une barre de lecture. */
+  .sb-tut-jauge{position:absolute;left:10px;right:10px;bottom:5px;height:2px;
+    border-radius:2px;background:rgba(198,162,87,.16);overflow:hidden}
+  .sb-tut-jauge.hide{display:none}
+  .sb-tut-jauge i{display:block;height:100%;background:var(--gold);border-radius:2px;
+    transition:width .5s cubic-bezier(.16,.8,.3,1)}
   .sb-tut-neuf{margin-left:auto;flex:none;font-size:9px;font-weight:800;letter-spacing:.08em;
     text-transform:uppercase;padding:3px 7px;border-radius:999px;
-    background:var(--gold);color:#1A1206}
+    background:var(--gold);color:#1A1206;align-self:center}
   .sb-tut-neuf.hide{display:none}
   .sb-link-num{flex:none;font-family:var(--font-ui);font-weight:700;font-size:9.5px;color:var(--faint);opacity:.7;min-width:18px}
   .sb-link.active .sb-link-num{color:var(--sb-t,var(--gold));opacity:1}
@@ -2587,11 +2604,23 @@
            tutoriel construit en lisant les .sb-group, sans quoi il se
            visiterait lui-meme. Pas de data-section non plus : le cablage
            general des liens ignore les boutons qui n'en ont pas. -->
+      <!-- LE BOUTON DIT OU L'ON EN EST.
+           C'etait une entree de menu comme les autres, avec une pastille
+           « Nouveau » qui disparaissait a la premiere ouverture et ne
+           revenait jamais. Passe ce jour-la, plus rien ne distinguait le
+           tutoriel d'un ecran de plus -- et surtout, rien ne disait qu'on
+           l'avait commence et laisse en chemin. Il porte maintenant sa
+           propre progression : combien d'ecrans vus, et un trait qui
+           avance. On reprend une visite qu'on sait interrompue. -->
       <button class="sb-link sb-tut" type="button" id="sb-tutoriel" title="Le site vous explique lui-meme, ecran par ecran">
         <span class="sb-link-num"></span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg>
-        Tutoriel
+        <span class="sb-tut-txt">
+          <b>Tutoriel</b>
+          <span class="sb-tut-sous" id="sb-tut-sous"></span>
+        </span>
         <span class="sb-tut-neuf hide" id="sb-tut-neuf">Nouveau</span>
+        <span class="sb-tut-jauge hide" id="sb-tut-jauge"><i id="sb-tut-jauge-i"></i></span>
       </button>
 
       <div class="sb-group sb-pinned hide" id="sb-pinned">
@@ -5580,13 +5609,58 @@
       closeMobileNav();               // sur téléphone, le menu doit s'effacer
       tutorielOuvrir();
     });
-    // La pastille « Nouveau » disparaît dès la première ouverture, et ne
-    // revient jamais. Un badge permanent cesse d'être une information au
-    // bout de trois jours.
-    try {
-      if (localStorage.getItem('bbc_tut_vu') !== '1')
-        document.getElementById('sb-tut-neuf').classList.remove('hide');
-    } catch(e){}
+
+    // CE QUE LE BOUTON RACONTE, SELON L'ENDROIT OU L'ON EN EST.
+    //
+    // La pastille « Nouveau » disparaît dès la première ouverture et ne
+    // revient jamais — un badge permanent cesse d'être une information
+    // au bout de trois jours. Mais une fois disparue, plus rien ne
+    // distinguait le tutoriel d'un écran de plus, et surtout rien ne
+    // disait qu'on l'avait commencé et laissé en chemin.
+    //
+    // La progression est lue dans la clé que le tutoriel écrit lui-même
+    // (bbc_tut_progres) : on ne tient pas un second compteur qui
+    // finirait par diverger du premier.
+    function tutBoutonPeindre(){
+      var sous  = document.getElementById('sb-tut-sous');
+      var neuf  = document.getElementById('sb-tut-neuf');
+      var jauge = document.getElementById('sb-tut-jauge');
+      var barre = document.getElementById('sb-tut-jauge-i');
+      if (!sous) return;
+      var total = document.querySelectorAll('#sidebar .sb-group:not(.sb-pinned) .sb-link[data-section]:not(.hide)').length;
+      var vus = 0, ouvert = false;
+      try {
+        ouvert = localStorage.getItem('bbc_tut_vu') === '1';
+        var pr = JSON.parse(localStorage.getItem('bbc_tut_progres') || '{}');
+        vus = Object.keys(pr.vus || {}).filter(function(k){ return k.charAt(0) !== '_'; }).length;
+      } catch(e){}
+      if (neuf) neuf.classList.toggle('hide', ouvert);
+      // Jamais ouvert : on annonce ce que ça coûte, pas ce que ça vaut.
+      // « 44 écrans, 21 minutes » se décide ; « apprenez à tout faire »
+      // ne se décide pas.
+      if (!vus){
+        sous.textContent = total ? total + ' écrans · ~' + Math.max(1, Math.round(total/2)) + ' min' : '';
+        if (jauge) jauge.classList.add('hide');
+        return;
+      }
+      if (vus >= total && total){
+        sous.textContent = 'Revoir un écran';
+        if (jauge) jauge.classList.add('hide');
+        return;
+      }
+      sous.textContent = 'Reprendre — ' + vus + ' écran' + (vus>1?'s':'') + ' sur ' + total;
+      if (jauge && barre){
+        jauge.classList.remove('hide');
+        barre.style.width = Math.round(vus / Math.max(total,1) * 100) + '%';
+      }
+    }
+    tutBoutonPeindre();
+    // Le menu se filtre après coup selon le rôle : on repeint quand il a
+    // fini, sinon le total compte des écrans que la personne ne verra
+    // jamais. Et au retour du tutoriel, la progression a bougé.
+    window.addEventListener('focus', tutBoutonPeindre);
+    setTimeout(tutBoutonPeindre, 1500);
+    window.bbTutBoutonPeindre = tutBoutonPeindre;
   })();
 
 
@@ -6449,7 +6523,7 @@
     c_club: ["<b>Les textes de la page « Le Club »</b> : intro, cartes d'objectifs, camp de base, en-tête de l'organigramme.","<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom.","Aperçu réel à droite de chaque bloc."],
     c_tryouts: ["<b>La page de détection</b> : dates, lieu, contact, teaser vidéo et affiches.","<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom.","Le formulaire de candidature du site envoie vers l'écran Candidatures."],
     c_inscriptions: ["<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom.","<b>Deux blocs, deux endroits du site.</b> « Pré-saison » est la vidéo de reprise affichée sur l'accueil ; « Inscriptions » est la page complète de l'école de basket.","<b>Les tarifs se saisissent en chiffres seuls</b> (20000, pas « 20 000 F ») : le site met les espaces et ajoute FCFA tout seul.","Un tarif modifié ne change <b>que les futures inscriptions</b>. Les enfants déjà inscrits gardent le prix auquel ils se sont engagés — c'est voulu.","<b>Catégories</b> : une par ligne, sous la forme <code>U11 | Nés en 2016 et 2017</code>. La barre verticale sépare le nom des années.","Passer les inscriptions à « closes » affiche le message d'attente et retire le bouton d'envoi. La page reste lisible : tarifs, lieu et horaires continuent de s'afficher."],
-    inscriptions: ["<b>Un enfant = un dossier.</b> Cliquez une carte pour l'ouvrir : coordonnées du responsable, santé, et l'argent encaissé.","Faites glisser une carte d'une colonne à l'autre pour changer son statut — chaque changement est écrit dans le journal du dossier.","<b>Les paiements s'enregistrent dans la fiche</b> : frais d'inscription d'un côté, mensualités mois par mois de l'autre. Un mois déjà encaissé ne peut pas l'être deux fois.","La pastille rouge « retard » apparaît dès qu'un enfant inscrit n'a pas réglé le mois en cours.","Les inscriptions arrivent du formulaire de la page Inscriptions du site."],
+    inscriptions: ["<b>Un enfant = un dossier.</b> Cliquez une carte pour l'ouvrir : coordonnées du responsable, santé, et l'argent encaissé.","Faites glisser une carte d'une colonne à l'autre pour changer son statut — chaque changement est écrit dans le journal du dossier.","<b>Les paiements s'enregistrent dans la fiche</b> : frais d'inscription d'un côté, mensualités mois par mois de l'autre. Un mois déjà encaissé ne peut pas l'être deux fois.","La pastille rouge « retard » apparaît dès qu'un enfant inscrit n'a pas réglé le mois en cours.","Les inscriptions arrivent du formulaire de la page Inscriptions du site.","<b>Le dossier s’imprime.</b> <b>Dossier PDF</b>, en haut de la fiche, sort tout le dossier sur papier — avec ce qui manque en premier, juste sous le nom. Pour une réunion de bureau, un classeur, ou l’entraîneur qui n’a pas l’admin sur son téléphone.","<b>Chaque versement a son reçu.</b> Le lien <b>Reçu</b>, à côté d’un versement enregistré, sort une page en deux volets à découper : la famille garde le sien, le club classe l’autre."],
     c_app: ["<b>Le bloc « L'appli des Baobabs »</b> : textes, points forts, badges.","<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom.","Les écrans des téléphones affichent les vraies données du site (calendrier, classement, boutique, effectif, actus) — rien à gérer ici."],
     c_promo: ["<b>Newsletter et bandeau « Rejoins la tribu »</b>, avec leurs fenêtres d'abonnement et de contact.","<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom.","Contenu commun du bas de page, visible sur tout le site."],
     c_legal: ["<b>Le pied de page</b> : les trois colonnes de liens, les mentions légales, la confidentialité.","<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom."],
@@ -6517,7 +6591,7 @@
     founder:    ['#founder_preview_body', '#set_founder_name'],
 
     // -- A traiter -------------------------------------------------
-    inscriptions:  ['#in-board', '#in-board', null, '#in-filter-pay', null],
+    inscriptions:  ['#in-board', '#in-board', null, '#in-filter-pay', null, '#in-pdf-btn', null],
     applications:  ['#cd-list-view', '#cd-view-switch', null],
 
     // -- Boutique --------------------------------------------------

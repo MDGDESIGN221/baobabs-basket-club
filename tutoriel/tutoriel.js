@@ -407,27 +407,43 @@
       out.push({ ecran: e.cle, nom: e.nom, halo: false, html: a, cible: vise[i] || null });
     });
 
-    // LES BLOCS DE L'ECRAN, UN PAR UN.
-    // Sur « Page d'accueil », le tutoriel disait une phrase et passait.
-    // L'ecran contient pourtant cinq blocs distincts, chacun avec son
-    // titre et ses champs -- le hero, le Face-Off, le bandeau de
-    // chiffres, la boutique, les medias. On les parcourt.
+    // LES BLOCS DE L'ECRAN : UNE ETAPE, ET NON PLUS UNE PAR BLOC.
+    //
+    // Il y en avait une par bloc. Sur « Page d'accueil » cela faisait
+    // sept etapes qui se ressemblaient toutes -- meme phrase, meme forme,
+    // seul le nom changeait -- et depuis que ces ecrans s'ouvrent par
+    // chapitres, chacune faisait EN PLUS changer de chapitre. Vu de
+    // l'exterieur : la visite cliquait sept fois de suite au meme endroit
+    // sans qu'on comprenne ce qu'elle cherchait.
+    //
+    // Une seule etape nomme les chapitres et designe la barre qui les
+    // porte. On dit ce qu'il y a et ou c'est ; on ne fait pas defiler
+    // sept formulaires devant quelqu'un qui n'en remplira qu'un.
     //
     // Les intitules viennent du registre de l'hote : « Face-Off — Le
     // duel des leaders » est ecrit une seule fois, la ou le bloc est
     // defini. Le tutoriel ne peut pas le contredire.
     var blocs = (api.blocs && api.blocs(e.cle)) || [];
-    blocs.forEach(function (b, i) {
-      var n = b.champs;
+    if (blocs.length) {
+      var noms = blocs.map(function (b) { return echapper(b.label.split(' — ')[0]); });
+      var champs = blocs.reduce(function (t, b) { return t + b.champs; }, 0);
+      var liste = noms.length > 1
+        ? noms.slice(0, -1).join(', ') + ' et ' + noms[noms.length - 1]
+        : noms[0];
       out.push({
         ecran: e.cle, nom: e.nom, halo: false,
-        cible: '#qgc-card-' + b.id,
-        html: '<b>' + echapper(b.label) + '</b>' +
-              (b.page ? ' <span style="opacity:.7">· ' + echapper(b.page) + '</span>' : '') +
-              ' — ' + n + ' champ' + (n > 1 ? 's' : '') + ' à remplir.' +
-              (i === 0 ? ' L’aperçu de droite montre le rendu réel du site&nbsp;: ce que vous voyez est ce qui sera publié.' : '')
+        // La barre de chapitres si elle existe, sinon l'editeur entier.
+        // Reglages est monte ailleurs que les pages de contenu : son
+        // point de montage s'appelle qgs-mount, pas qgc-reglages.
+        cible: blocs.length > 1
+          ? (e.cle === 'reglages' ? '#qgs-mount .qgc-nav' : '#qgc-' + e.cle + ' .qgc-nav')
+          : '#qgc-card-' + blocs[0].id,
+        html: '<b>' + blocs.length + ' chapitre' + (blocs.length > 1 ? 's' : '') + '</b> sur cet écran&nbsp;: ' +
+              liste + '. ' + champs + ' champ' + (champs > 1 ? 's' : '') + ' en tout, ' +
+              'mais on n’en ouvre qu’un à la fois — les autres attendent sans rien perdre. ' +
+              'L’aperçu de droite montre le rendu réel du site&nbsp;: ce que vous voyez est ce qui sera publié.'
       });
-    });
+    }
 
     // Puis la demonstration, s'il y en a une pour cet ecran. Un geste =
     // une etape : c'est ce qui permet de mettre en pause dessus, de
@@ -1771,7 +1787,23 @@
         return;
       }
       if (Date.now() < fin) { setTimeout(essai, 90); return; }
-      retirerHalo();
+      // ON NE LAISSE PLUS L'ECRAN NU.
+      //
+      // Avant : on renoncait en silence. La phrase continuait de nommer
+      // un champ precis -- « le guichet retrouve une reservation » --
+      // pendant que rien n'etait designe nulle part. On cherchait ce
+      // qu'elle montrait, il n'y avait rien, et on finissait par se
+      // demander si le tutoriel etait casse. C'est le « ca pointe sur
+      // rien » : la main ne se trompait pas de cible, elle n'en avait
+      // aucune.
+      //
+      // Les cas sont connus et legitimes : « Soir de match » quand aucun
+      // match n'est au calendrier, une liste encore vide, un bloc qui
+      // n'existe qu'une fois l'ecran rempli. On recule alors d'un cran
+      // -- le halo sur l'ecran entier, « c'est ici que ca se passe » --
+      // au lieu de ne rien dire du tout.
+      if (e.ecran && document.getElementById('section-' + e.ecran)) poserHalo(e.ecran);
+      else retirerHalo();
     })();
   }
 
@@ -2002,10 +2034,28 @@
 
     // L'élément peut être sous la ligne de flottaison : personne ne
     // verra la main s'y poser si on ne l'amène pas d'abord.
+    //
+    // MAIS ON NE FAIT PAS DEFILER CE QUI EST DEJA SOUS LES YEUX.
+    // On défilait à chaque étape, puis on attendait 420 ms la fin d'un
+    // défilement qui n'avait souvent pas eu lieu — la cible était déjà à
+    // l'écran. Presque une demi-seconde perdue par étape, pendant
+    // laquelle la voix, elle, avait déjà commencé sa phrase : la main
+    // arrivait en retard sur ce qu'on entendait, et sur une phrase
+    // courte elle arrivait carrément après. C'est le « pas synchro ».
+    //
+    // Désormais : visible et de taille raisonnable, on pose tout de
+    // suite ; sinon on amène, et on n'attend que le temps du transport.
     var doux = !window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!sansDefilement) {
+    var h = window.innerHeight || 800;
+    var r0 = el.getBoundingClientRect();
+    var dejaVisible = r0.top >= 64 && r0.bottom <= h - 96 && r0.height <= h - 190;
+    var attente;
+    if (sansDefilement || dejaVisible) {
+      attente = 40;
+    } else {
       try { el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: doux ? 'smooth' : 'auto' }); }
       catch (e) { try { el.scrollIntoView(); } catch (_) {} }
+      attente = doux ? 300 : 40;
     }
 
     // On attend la fin du défilement avant de mesurer : mesurer pendant
@@ -2013,7 +2063,7 @@
     tPointe = setTimeout(function () {
       tPointe = null;
       poser(el);
-    }, sansDefilement ? 40 : 420);
+    }, attente);
   }
 
   // Une liste vide mesure 0 × 0. Elle EXISTE — donc rien ne signale un
