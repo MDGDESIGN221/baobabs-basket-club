@@ -15033,16 +15033,35 @@
     // sur() remplace les fautifs connus. Elle s'applique à TOUT texte
     // venu d'une saisie — une note d'entraîneur, un message de famille —
     // parce qu'on ne contrôle pas ce qui y est tapé.
+    //
+    // On teste code par code, et NON par une classe de caractères : une
+    // plage écrite avec des signes exotiques est illisible, et la
+    // première version était en plus invalide — « Range out of order »,
+    // une SyntaxError levée à chaque appel de pdfSocle. Une boucle
+    // explicite ne peut pas se tromper d'intervalle, et se relit.
+    var PDF_SUR = { 0x2013:1, 0x2014:1, 0x2018:1, 0x2019:1, 0x201A:1, 0x201E:1,
+                    0x2026:1, 0x00AB:1, 0x00BB:1, 0x2039:1, 0x203A:1,
+                    0x20AC:1, 0x00B7:1 };
     o.sur = function(t){
-      return String(t == null ? '' : t)
-        .replace(/[→⟶➔➜]/g, '»').replace(/[←⟵]/g, '«')
-        .replace(/✂/g, '').replace(/[✓✔]/g, 'OK').replace(/[✗✘]/g, 'X')
-        .replace(/°/g, 'o').replace(/[•●]/g, '·')
-        .replace(/[“”]/g, '"').replace(/[‘]/g, '’')
-        // Tout ce qui reste hors du latin étendu et de la ponctuation
-        // courante — émoji compris — deviendrait un blanc : autant le
-        // dire par un point d'interrogation, qui se voit.
-        .replace(/[^ -ɏ–—‘’‚„…«»‹›€]/g, '?');
+      var s = String(t == null ? '' : t)
+        .replace(/[\u2192\u27F6\u2794\u279C]/g, '\u00BB')  // fleches droites
+        .replace(/[\u2190\u27F5]/g, '\u00AB')                // fleches gauches
+        .replace(/\u2702/g, '')                              // ciseaux
+        .replace(/[\u2713\u2714]/g, 'OK')                    // coches
+        .replace(/[\u2717\u2718]/g, 'X')
+        .replace(/\u00B0/g, 'o')                             // degre
+        .replace(/[\u2022\u25CF]/g, '\u00B7')                // puces
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/\u2018/g, '\u2019');
+      var out = '';
+      for (var i = 0; i < s.length; i++){
+        var c = s.charCodeAt(i);
+        // Latin de base et etendu (0x20-0x24F) plus la ponctuation
+        // francaise listee ci-dessus. Le reste -- emoji compris --
+        // sortirait en blanc : autant le dire par un « ? », qui se voit.
+        out += ((c >= 0x20 && c <= 0x24F) || PDF_SUR[c]) ? s.charAt(i) : '?';
+      }
+      return out;
     };
 
     o.enTeteSuite = function(){
