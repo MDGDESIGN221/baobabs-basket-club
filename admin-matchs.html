@@ -1221,6 +1221,41 @@
   .dem-d:empty{ display:none }
   .dem-champs{ display:grid; gap:14px }
   .dem-champs .field{ margin:0 }
+  /* Un choix qui se voit : la vignette, le nom, un chevron. Le bouton a
+     la meme hauteur qu'un champ pour que la colonne reste alignee. */
+  .dem-choix{ display:flex; align-items:center; gap:11px; width:100%; min-height:46px;
+    background:var(--surface-2); border:1px solid var(--line-strong); border-radius:9px;
+    padding:7px 12px; color:var(--text); font:inherit; font-size:13.5px; cursor:pointer;
+    text-align:left; transition:border-color .14s }
+  .dem-choix:hover{ border-color:var(--gold) }
+  .dem-choix:focus-visible{ outline:2px solid var(--lime); outline-offset:2px }
+  .dem-choix-v{ width:30px; height:30px; border-radius:7px; flex:none; overflow:hidden;
+    background:#0A1710; display:grid; place-items:center }
+  .dem-choix-v img{ width:100%; height:100%; object-fit:contain }
+  .dem-choix-v.vide{ background:var(--surface); border:1px dashed var(--line-strong) }
+  .dem-choix-t{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .dem-choix-c{ flex:none; color:var(--faint); font-size:17px; line-height:1 }
+  /* L'apercu : ce que ca donnera, sous ce qu'on tape. */
+  .dem-apercu{ margin-top:18px; padding-top:16px; border-top:1px solid var(--line) }
+  .dem-apercu.hide{ display:none }
+  .dem-ap-l{ display:block; font-family:var(--font-ui); font-weight:700; font-size:9.5px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin-bottom:11px }
+  /* La carte du match, telle que l'admin la montrera. */
+  .dem-ap-match{ display:flex; align-items:center; gap:14px; background:linear-gradient(150deg,#0F2214,#071208);
+    border:1px solid rgba(198,162,87,.28); border-radius:var(--r-lg); padding:14px 16px }
+  .dem-ap-crest{ width:38px; height:38px; flex:none; border-radius:9px; overflow:hidden;
+    background:#0A1710; display:grid; place-items:center; font-family:var(--font-ui);
+    font-weight:700; font-size:14px; color:var(--gold) }
+  .dem-ap-crest img{ width:100%; height:100%; object-fit:contain }
+  .dem-ap-vs{ flex:none; font-family:var(--font-ui); font-weight:700; font-size:11px;
+    letter-spacing:.12em; color:var(--faint) }
+  /* display:block — ce sont des <span> : sans cela le nom du club et la
+     date coulent sur la même ligne, collés l'un à l'autre. */
+  .dem-ap-nom{ display:block; font-family:var(--font-display); font-weight:var(--display-weight);
+    letter-spacing:var(--display-tracking); font-size:16px; color:var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .dem-ap-meta{ display:block; font-size:11.5px; color:var(--faint); margin-top:3px; line-height:1.45 }
+  .dem-ap-manque{ color:var(--gold) }
   .dem-err{ margin:14px 0 0; font-size:12.5px; color:var(--danger) }
   .dem-pied{ display:flex; justify-content:flex-end; gap:10px; margin-top:20px }
   .dem-pied .btn{ min-height:44px; padding:11px 20px; width:auto; min-width:0 }
@@ -1255,6 +1290,10 @@
     background:#12211A; display:grid; place-items:center; overflow:hidden;
     font-family:var(--font-ui); font-weight:700; font-size:14px; color:var(--gold) }
   .jp-ph img{ width:100%; height:100%; object-fit:cover }
+  /* Un écusson se montre en entier : le recadrage « cover » lui couperait
+     les bords, et c'est justement là que vit le nom du club. */
+  .tp-ph{ background:#0A1710; padding:3px }
+  .tp-ph img{ object-fit:contain }
   .jp-txt{ min-width:0 }
   .jp-n{ display:block; font-weight:600; font-size:13.5px; line-height:1.25;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
@@ -2468,6 +2507,7 @@
       <h3 class="dem-t" id="dem-t"></h3>
       <p class="dem-d" id="dem-d"></p>
       <div class="dem-champs" id="dem-champs"></div>
+      <div class="dem-apercu hide" id="dem-apercu"></div>
       <p class="dem-err hide" id="dem-err"></p>
       <div class="dem-pied">
         <button type="button" class="btn btn-ghost" id="dem-annuler">Annuler</button>
@@ -2476,17 +2516,16 @@
     </form>
   </div>
 
-  <div id="jp" class="hide" role="dialog" aria-modal="true" aria-label="Choisir une joueuse">
+  <div id="jp" class="hide" role="dialog" aria-modal="true" aria-labelledby="jp-titre">
     <div class="jp-boite">
       <div class="jp-tete">
-        <h3>Choisir une joueuse</h3>
+        <h3 id="jp-titre">Choisir</h3>
         <span class="jp-pour" id="jp-pour"></span>
-        <input type="search" class="jp-q" id="jp-q" placeholder="Nom, numéro ou poste…">
+        <input type="search" class="jp-q" id="jp-q" placeholder="Rechercher…">
         <button type="button" class="btn btn-ghost" id="jp-fermer" style="padding:8px 13px;font-size:12.5px">Fermer</button>
       </div>
-      <div class="jp-grille" id="jp-grille"><div class="empty">Lecture de l’effectif…</div></div>
-      <p class="jp-pied">L’effectif est lu au moment où vous ouvrez cette fenêtre&nbsp;: une joueuse
-        ajoutée ce matin dans <b>Joueuses</b> est déjà ici, sans rien à reporter.</p>
+      <div class="jp-grille" id="jp-grille"></div>
+      <p class="jp-pied" id="jp-pied"></p>
     </div>
   </div>
 
@@ -13128,15 +13167,50 @@
       detail: 'La fiche s’ouvrira ensuite : feuille de match, billetterie, diffusion et médias y sont réunis.',
       ok: 'Créer le match',
       champs: [
-        { cle:'club', label:'Adversaire', requis:true, type:'select',
-          options: clubs.map(function(c){ return [String(c.id), c.name]; }) },
+        // Un club se reconnaît à son écusson avant son nom : la liste
+        // déroulante de trente lignes de texte est remplacée par la
+        // grille des adversaires enregistrés, avec leurs logos.
+        { cle:'club', label:'Adversaire', requis:true, type:'choix',
+          vide:'Choisir un club…', ouvrir: function(poser){
+            tpOuvrir(function(c){ poser(c.id, c.name, c.logo_url); });
+          } },
         { cle:'date', label:'Date (jj/mm/aaaa)', requis:true, exemple:'19/09/2026' },
         { cle:'heure', label:'Heure', exemple:'19:00' },
         { cle:'ou', label:'Domicile ou déplacement', type:'select', valeur:'1',
           options: [['1','À domicile'], ['0','En déplacement']] },
         { cle:'lieu', label:'Salle', exemple:'Stadium Marius Ndiaye (Dakar)', suggestions:lieux },
         { cle:'comp', label:'Compétition', exemple:'Championnat National D2', suggestions:comps }
-      ]
+      ],
+      // « Avoir un visuel de ce qu'on fait » : la carte du match se
+      // dessine pendant qu'on la remplit, avec les deux écussons et ce
+      // qui manque encore, en or.
+      apercu: function(v){
+        var c = clubs.filter(function(x){ return String(x.id) === String(v.club); })[0];
+        function crest(url, nom){
+          return '<span class="dem-ap-crest">' + (url
+            ? '<img src="' + esc(url) + '" alt="">'
+            : esc(String(nom || '?').trim().charAt(0).toUpperCase())) + '</span>';
+        }
+        function ou(t){ return '<span class="dem-ap-manque">' + t + '</span>'; }
+        var dom = v.ou !== '0';
+        var meta = [
+          v.date ? esc(v.date) : ou('date à venir'),
+          v.heure ? esc(v.heure) : null,
+          v.lieu ? esc(v.lieu) : ou('salle à préciser'),
+          dom ? 'À domicile' : 'En déplacement'
+        ].filter(Boolean).join(' · ');
+        return '<span class="dem-ap-l">Ce que ça donnera</span>' +
+          '<div class="dem-ap-match">' +
+            crest(LOGO_DEF, 'B') +
+            '<span class="dem-ap-vs">VS</span>' +
+            crest(c && c.logo_url, c && c.name) +
+            '<span style="min-width:0;flex:1">' +
+              '<span class="dem-ap-nom">' + (c ? esc(c.name) : ou('Adversaire à choisir')) + '</span>' +
+              '<span class="dem-ap-meta">' + meta +
+                (v.comp ? '<br>' + esc(v.comp) : '') + '</span>' +
+            '</span>' +
+          '</div>';
+      }
     }).then(function(v){
       if (!v) return;
       var club = clubs.filter(function(c){ return String(c.id) === String(v.club); })[0];
@@ -17528,7 +17602,7 @@
   (function jpCabler(){
     var b = document.getElementById('jp'); if (!b) return;
     document.getElementById('jp-fermer').addEventListener('click', jpFermer);
-    document.getElementById('jp-q').addEventListener('input', jpRendre);
+    document.getElementById('jp-q').addEventListener('input', chRendre);
     b.addEventListener('mousedown', function(ev){ if (ev.target === b) jpFermer(); });
     document.addEventListener('keydown', function(ev){
       if (ev.key === 'Escape' && !b.classList.contains('hide')) jpFermer();
@@ -18972,7 +19046,19 @@
   //
   // La boite vit hors de #app : position:fixed ne survit pas a un
   // ancetre en display:none. Meme raison que le selecteur d'images.
-  var demRendre = null;
+  var demRendre = null, demApercuFn = null;
+  function demValeurs(){
+    var v = {};
+    document.querySelectorAll('#dem [data-cle]').forEach(function(el){
+      v[el.getAttribute('data-cle')] = String(el.value || '').trim();
+    });
+    return v;
+  }
+  function demApercu(){
+    var z = document.getElementById('dem-apercu');
+    if (!z || !demApercuFn) return;
+    try { z.innerHTML = demApercuFn(demValeurs()) || ''; } catch(e){ z.innerHTML = ''; }
+  }
   function demander(opts){
     var b = document.getElementById('dem');
     // Repli honnete : si la boite manque, on ne fait pas semblant.
@@ -19001,6 +19087,23 @@
           (c.options||[]).map(function(o){
             return '<option value="' + esc(o[0]) + '"' + (String(c.valeur)===String(o[0])?' selected':'') +
                    '>' + esc(o[1]) + '</option>'; }).join('') + '</select></div>';
+      // UN CHOIX QUI SE VOIT.
+      // Un club se reconnait a son ecusson avant son nom. Une liste
+      // deroulante de trente lignes de texte oblige a lire trente noms
+      // pour trouver celui qu'on a en tete depuis le debut ; une grille
+      // d'ecussons se parcourt d'un coup d'oeil. Le champ garde sa
+      // valeur dans un input cache, pour que la collecte du formulaire
+      // ne connaisse qu'une seule facon de lire les reponses.
+      if (c.type === 'choix')
+        return '<div class="field"><label>' + esc(c.label) + opt + '</label>' +
+          '<button type="button" class="dem-choix" id="' + id + '-b" data-choix="' + i + '">' +
+            '<span class="dem-choix-v" id="' + id + '-v"></span>' +
+            '<span class="dem-choix-t" id="' + id + '-t">' + esc(c.vide || 'Choisir…') + '</span>' +
+            '<span class="dem-choix-c">›</span>' +
+          '</button>' +
+          '<input type="hidden" id="' + id + '" data-cle="' + esc(c.cle) + '"' +
+          ' value="' + esc(c.valeur == null ? '' : String(c.valeur)) + '"' +
+          ' data-requis="' + (c.requis ? '1' : '') + '"></div>';
       return '<div class="field"><label for="' + id + '">' + esc(c.label) + opt + '</label>' +
         '<input id="' + id + '" data-cle="' + esc(c.cle) + '" type="text"' +
         (c.mode ? ' inputmode="' + esc(c.mode) + '"' : '') +
@@ -19009,8 +19112,39 @@
         ' placeholder="' + esc(c.exemple || '') + '"' +
         ' data-requis="' + (c.requis ? '1' : '') + '"></div>' + liste;
     }).join('');
+    // Le cablage des champs « choix » : le bouton ouvre ce que le champ
+    // sait ouvrir, et la reponse revient poser la valeur ET son libelle.
+    champs.forEach(function(c, i){
+      if (c.type !== 'choix' || !c.ouvrir) return;
+      var id = 'dem-c-' + i;
+      var bt = document.getElementById(id + '-b');
+      bt.addEventListener('click', function(){
+        c.ouvrir(function(valeur, libelle, image){
+          document.getElementById(id).value = valeur == null ? '' : String(valeur);
+          document.getElementById(id + '-t').textContent = libelle || 'Choisir…';
+          var v = document.getElementById(id + '-v');
+          v.innerHTML = image ? '<img src="' + esc(image) + '" alt="">' : '';
+          v.classList.toggle('vide', !image);
+          demApercu();
+        });
+      });
+    });
+    // L'APERCU. « Avoir un visuel de ce qu'on fait » : le formulaire dit
+    // ce qu'on tape, l'apercu dit ce que ca donnera. Il se refait a
+    // chaque frappe -- c'est peu de calcul, et le decalage d'un
+    // rafraichissement differe se voit tout de suite.
+    demApercuFn = opts.apercu || null;
+    var zone = document.getElementById('dem-apercu');
+    zone.classList.toggle('hide', !demApercuFn);
+    if (demApercuFn){
+      b.querySelectorAll('[data-cle]').forEach(function(el){
+        el.addEventListener('input', demApercu);
+        el.addEventListener('change', demApercu);
+      });
+      demApercu();
+    }
     b.classList.remove('hide');
-    var premier = b.querySelector('input,select');
+    var premier = b.querySelector('input:not([type=hidden]),select,.dem-choix');
     if (premier) setTimeout(function(){ premier.focus(); premier.select && premier.select(); }, 50);
     return new Promise(function(res){ demRendre = res; });
   }
@@ -19061,59 +19195,116 @@
   // Les moyennes viennent de player_season_stats -- calculees depuis les
   // feuilles de match, jamais saisies. Les interceptions n'y sont pas
   // agregees : on les moyenne ici, sur les matchs joues.
-  var jpRows = [], jpRetour = null, jpCharge = false;
+  // LA FENETRE DE CHOIX EST UNE, ET SERT A TOUT.
+  // Une joueuse se reconnait a sa photo, un club a son ecusson : le
+  // besoin est le meme, seule la vignette change. Deux fenetres auraient
+  // diverge des la premiere retouche -- la recherche amelioree d'un
+  // cote, la fermeture au clavier de l'autre.
+  //
+  //   choisirOuvrir({ titre, pour, chercher, pied, vide,
+  //                   charger, filtre, carte, onChoisir })
+  //
+  // charger() rend une promesse de lignes ; filtre(ligne, q) dit si elle
+  // reste ; carte(ligne) rend son contenu. Le reste -- l'ouverture, la
+  // recherche, la fermeture, le cas vide -- est commun.
+  var chRows = [], chOpts = null;
 
-  function jpOuvrir(pour, onChoisir){
+  function choisirOuvrir(opts){
     var b = document.getElementById('jp'); if (!b) return;
-    jpRetour = onChoisir;
-    document.getElementById('jp-pour').textContent = pour || '';
-    document.getElementById('jp-q').value = '';
+    chOpts = opts || {};
+    document.getElementById('jp-titre').textContent = chOpts.titre || 'Choisir';
+    document.getElementById('jp-pour').textContent = chOpts.pour || '';
+    var q = document.getElementById('jp-q');
+    q.value = ''; q.placeholder = chOpts.chercher || 'Rechercher…';
+    document.getElementById('jp-pied').innerHTML = chOpts.pied || '';
     b.classList.remove('hide');
-    // On relit a chaque ouverture : l'effectif a pu changer depuis
+    // ON RELIT A CHAQUE OUVERTURE. La liste a pu changer depuis
     // l'ouverture de l'onglet, et une liste perimee ici est pire que pas
     // de liste du tout -- on remplirait des champs avec de l'ancien.
-    document.getElementById('jp-grille').innerHTML = '<div class="empty">Lecture de l’effectif…</div>';
-    sbGet('players?select=id,name,jersey_number,position,status,photo_url&order=jersey_number.asc')
-      .then(function(rows){ jpRows = rows || []; jpCharge = true; jpRendre(); })
+    document.getElementById('jp-grille').innerHTML = '<div class="empty">Lecture…</div>';
+    chOpts.charger()
+      .then(function(rows){ chRows = rows || []; chRendre(); })
       .catch(function(){ document.getElementById('jp-grille').innerHTML =
-        '<div class="empty">L’effectif n’a pas pu être lu.</div>'; });
-    setTimeout(function(){ document.getElementById('jp-q').focus(); }, 60);
+        '<div class="empty">La liste n’a pas pu être lue.</div>'; });
+    setTimeout(function(){ q.focus(); }, 60);
   }
   function jpFermer(){
     var b = document.getElementById('jp'); if (b) b.classList.add('hide');
-    jpRetour = null;
+    chOpts = null;
   }
-  function jpRendre(){
-    var g = document.getElementById('jp-grille'); if (!g) return;
+  function chRendre(){
+    var g = document.getElementById('jp-grille'); if (!g || !chOpts) return;
     var q = (document.getElementById('jp-q').value || '').trim().toLowerCase();
-    var vus = jpRows.filter(function(r){
-      if (!q) return true;
-      return [r.name, r.jersey_number, r.position].join(' ').toLowerCase().indexOf(q) >= 0;
-    });
+    var vus = q ? chRows.filter(function(r){ return chOpts.filtre(r, q); }) : chRows;
     if (!vus.length){
-      g.innerHTML = '<div class="empty">' + (jpRows.length
-        ? 'Aucune joueuse ne correspond.'
-        : 'Aucune joueuse enregistrée. Ajoutez-en dans l’écran Joueuses.') + '</div>';
+      g.innerHTML = '<div class="empty">' +
+        (chRows.length ? 'Aucun résultat.' : (chOpts.vide || 'Rien à choisir.')) + '</div>';
       return;
     }
-    g.innerHTML = vus.map(function(r){
-      var ini = String(r.name || '?').trim().charAt(0).toUpperCase();
-      return '<button type="button" class="jp-c" data-jp="' + esc(String(r.id)) + '">' +
-        '<span class="jp-ph">' + (r.photo_url
-          ? '<img src="' + esc(r.photo_url) + '" alt="" loading="lazy">' : esc(ini)) + '</span>' +
-        '<span class="jp-txt"><b class="jp-n">' + esc(r.name || '—') + '</b>' +
-          '<span class="jp-s">' + esc(r.position || 'Poste non renseigné') +
-          (r.status && r.status !== 'apte' ? ' · ' + esc(r.status) : '') + '</span></span>' +
-        (r.jersey_number != null ? '<span class="jp-num">' + esc(String(r.jersey_number)) + '</span>' : '') +
-      '</button>';
+    g.innerHTML = vus.map(function(r, i){
+      return '<button type="button" class="jp-c" data-ch="' + i + '">' + chOpts.carte(r) + '</button>';
     }).join('');
-    g.querySelectorAll('[data-jp]').forEach(function(btn){
+    g.querySelectorAll('[data-ch]').forEach(function(btn){
       btn.addEventListener('click', function(){
-        var r = jpRows.filter(function(x){ return String(x.id) === btn.getAttribute('data-jp'); })[0];
+        var r = vus[parseInt(btn.getAttribute('data-ch'), 10)];
         if (!r) return;
-        var rendre = jpRetour; jpFermer();
-        jpStats(r).then(function(v){ if (rendre) rendre(v); });
+        var f = chOpts.onChoisir; jpFermer(); f(r);
       });
+    });
+  }
+
+  // --- Les joueuses ---
+  function jpOuvrir(pour, onChoisir){
+    choisirOuvrir({
+      titre: 'Choisir une joueuse', pour: pour,
+      chercher: 'Nom, numéro ou poste…',
+      vide: 'Aucune joueuse enregistrée. Ajoutez-en dans l’écran Joueuses.',
+      pied: 'L’effectif est lu au moment où vous ouvrez cette fenêtre&nbsp;: une joueuse ' +
+            'ajoutée ce matin dans <b>Joueuses</b> est déjà ici, sans rien à reporter.',
+      charger: function(){
+        return sbGet('players?select=id,name,jersey_number,position,status,photo_url&order=jersey_number.asc');
+      },
+      filtre: function(r, q){
+        return [r.name, r.jersey_number, r.position].join(' ').toLowerCase().indexOf(q) >= 0;
+      },
+      carte: function(r){
+        var ini = String(r.name || '?').trim().charAt(0).toUpperCase();
+        return '<span class="jp-ph">' + (r.photo_url
+            ? '<img src="' + esc(r.photo_url) + '" alt="" loading="lazy">' : esc(ini)) + '</span>' +
+          '<span class="jp-txt"><b class="jp-n">' + esc(r.name || '—') + '</b>' +
+            '<span class="jp-s">' + esc(r.position || 'Poste non renseigné') +
+            (r.status && r.status !== 'apte' ? ' · ' + esc(r.status) : '') + '</span></span>' +
+          (r.jersey_number != null ? '<span class="jp-num">' + esc(String(r.jersey_number)) + '</span>' : '');
+      },
+      onChoisir: function(r){ jpStats(r).then(function(v){ if (onChoisir) onChoisir(v); }); }
+    });
+  }
+
+  // --- Les clubs adverses ---
+  // Le nombre de rencontres deja jouees se lit sur la carte : c'est ce
+  // qui distingue « ABC Academy » de « ABC Academy Dakar » quand les deux
+  // existent, et ce qui fait choisir le bon des deux.
+  function tpOuvrir(onChoisir){
+    choisirOuvrir({
+      titre: 'Choisir l’adversaire',
+      chercher: 'Nom du club…',
+      vide: 'Aucun club enregistré. Ajoutez-en dans l’écran Adversaires.',
+      pied: 'Les clubs viennent de l’écran <b>Adversaires</b>, qui porte leurs écussons. ' +
+            'Un club ajouté là-bas apparaît ici tout de suite.',
+      charger: function(){ return sbGet('teams?select=id,name,logo_url&order=name.asc'); },
+      filtre: function(r, q){ return String(r.name || '').toLowerCase().indexOf(q) >= 0; },
+      carte: function(r){
+        var ini = String(r.name || '?').trim().charAt(0).toUpperCase();
+        var joues = 0;
+        try { joues = (tmCounts && tmCounts[normName(r.name || '')]) || 0; } catch(e){}
+        return '<span class="jp-ph tp-ph">' + (r.logo_url
+            ? '<img src="' + esc(r.logo_url) + '" alt="" loading="lazy">' : esc(ini)) + '</span>' +
+          '<span class="jp-txt"><b class="jp-n">' + esc(r.name || '—') + '</b>' +
+            '<span class="jp-s">' + (joues
+              ? joues + ' rencontre' + (joues > 1 ? 's' : '')
+              : 'Jamais rencontré') + '</span></span>';
+      },
+      onChoisir: function(r){ if (onChoisir) onChoisir(r); }
     });
   }
   // La fiche complete : ce que la joueuse EST (table players) et ce
