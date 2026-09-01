@@ -1,67 +1,84 @@
 BAOBABS BASKET CLUB — Déployer les fonctions serveur
 ====================================================
 
-POURQUOI CE FICHIER
+CE QU'ON SAIT
   Les quatre fonctions serveur (newsletter, confirmation de réservation,
-  alerte d'inscription, aide à la rédaction) n'ont jamais été déployées.
-  Vérifié le jour de l'écriture : les quatre répondent 404 sur
+  alerte d'inscription, aide à la rédaction) ne sont pas déployées.
+  Vérifié : les quatre répondent 404 sur
   https://lmwbwasupqkvswukieav.supabase.co/functions/v1/…
 
-  NOTICE-NEWSLETTER.txt disait « Supabase → Edge Functions → Deploy a new
-  function ». Ce chemin n'existe plus dans le tableau de bord Supabase :
-  le dépôt d'une fonction se fait aujourd'hui par la ligne de commande.
-  C'est très probablement pour cela que « suivre les instructions » n'a
-  rien donné — il n'y avait rien à suivre.
+  Le code est prêt depuis le début. Il est maintenant rangé aussi dans
+  supabase/functions/, là où l'outil en ligne de commande va le chercher
+  tout seul.
 
-  Le code, lui, était prêt depuis le début. Il est maintenant rangé là où
-  l'outil de déploiement va le chercher tout seul : supabase/functions/.
+  DEUX CHEMINS EXISTENT, ils marchent tous les deux. Prenez celui que
+  vous voulez — mais lisez « SI RIEN NE SE PASSE » à la fin.
 
 
-CE QU'IL FAUT FAIRE — TROIS COMMANDES, UNE SEULE FOIS
-  Ouvrez un terminal DANS ce dossier, puis :
+CHEMIN A — LE TABLEAU DE BORD (sans rien installer)
+  1. supabase.com/dashboard → votre projet → menu de gauche,
+     Edge Functions.
+  2. Bouton « Deploy a new function » → choisir « Via Editor ».
+  3. Nom EXACT (tout en minuscules, avec les tirets) :
 
-  1. Se connecter à votre compte Supabase (ouvre le navigateur) :
+         envoi-newsletter
 
-         npx supabase login
+  4. Effacer tout le contenu de l'éditeur, coller tout le fichier
+     supabase/functions/envoi-newsletter/index.ts
+     (ou edge-function-newsletter.ts, c'est le même).
+  5. Cliquer sur DEPLOY — et attendre la fin. Tant qu'on n'a pas cliqué
+     Deploy, la fonction n'existe pas : elle est seulement écrite.
 
-  2. Rattacher ce dossier au projet du club :
+  Recommencer pour les trois autres si vous les voulez :
+     confirmation-reservation, alerte-inscription, aide-redaction
 
-         npx supabase link --project-ref lmwbwasupqkvswukieav
 
-     Le mot de passe demandé est celui de la BASE DE DONNÉES
-     (Supabase → Project Settings → Database). Pas celui de votre compte.
+CHEMIN B — LA LIGNE DE COMMANDE (plus sûr, tout d'un coup)
+  Un terminal ouvert DANS le dossier du site, puis :
 
-  3. Déployer les quatre fonctions :
+      npx supabase login
+      npx supabase link --project-ref lmwbwasupqkvswukieav
+      npx supabase functions deploy
 
-         npx supabase functions deploy
-
-     Pour n'en déployer qu'une :
-
-         npx supabase functions deploy envoi-newsletter
+  La troisième commande déploie les quatre fonctions d'un seul coup, en
+  lisant supabase/functions/. Le mot de passe demandé à l'étape 2 est
+  celui de la BASE DE DONNÉES (Project Settings → Database), pas celui
+  de votre compte.
 
 
 LES SECRETS — SANS EUX, RIEN NE PART
-  Les fonctions envoient les e-mails par Brevo. Elles ont besoin de :
+  Déployée ou non, une fonction sans ses secrets échoue à l'envoi. Les
+  e-mails passent par Brevo :
 
       BREVO_API_KEY       la clé d'API de votre compte Brevo
-      BBC_SENDER_EMAIL    l'adresse d'expédition (vérifiée chez Brevo)
+      BBC_SENDER_EMAIL    l'adresse d'expédition, VÉRIFIÉE chez Brevo
       BBC_SENDER_NAME     facultatif — « Baobabs Basket Club »
 
-  À poser une fois, dans le tableau de bord :
-      Supabase → Edge Functions → Secrets → Add new secret
+  Où : Supabase → Edge Functions → Secrets → Add new secret.
 
-  Ou en ligne de commande :
-      npx supabase secrets set BREVO_API_KEY=...  BBC_SENDER_EMAIL=...
-
-  ATTENTION : ne mettez jamais ces valeurs dans un fichier du dépôt.
-  Elles n'ont rien à faire sur GitHub.
+  Ne mettez jamais ces valeurs dans un fichier du dépôt : elles n'ont
+  rien à faire sur GitHub.
 
 
-VÉRIFIER QUE C'EST FAIT
-  L'écran Newsletter de l'administration sonde la fonction à chaque
-  ouverture. Tant qu'elle manque, il affiche un bandeau orange qui dit
-  quoi déployer. Le bandeau disparaît tout seul dès que la fonction
-  répond — c'est le signal le plus simple.
+SI RIEN NE SE PASSE — LES CINQ CAUSES, DANS L'ORDRE
+  1. DEPLOY N'A PAS ÉTÉ CLIQUÉ. Écrire la fonction dans l'éditeur ne la
+     déploie pas. C'est la cause la plus fréquente.
+  2. LE NOM N'EST PAS LE BON. « envoi-newsletter » exactement : pas
+     d'underscore, pas de majuscule, pas d'espace au bout. L'admin
+     appelle ce nom-là et aucun autre.
+  3. CE N'EST PAS LE BON PROJET. Vérifiez que la référence affichée dans
+     l'adresse du tableau de bord est bien lmwbwasupqkvswukieav.
+  4. LE DÉPLOIEMENT A ÉCHOUÉ À LA COMPILATION. Edge Functions → la
+     fonction → onglet Logs : l'erreur y est écrite.
+  5. LES SECRETS MANQUENT. La fonction répond alors, mais l'envoi
+     échoue. Le message d'erreur de l'admin le dit.
+
+
+VÉRIFIER SANS RIEN ENVOYER
+  L'écran Newsletter de l'administration interroge la fonction à chaque
+  ouverture. Tant qu'elle manque, un bandeau orange s'affiche ; il
+  disparaît tout seul dès qu'elle répond. C'est le signal le plus simple,
+  et il ne coûte pas un e-mail.
 
   En ligne de commande :
       npx supabase functions list
