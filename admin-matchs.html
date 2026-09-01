@@ -5665,7 +5665,7 @@
   //
   // Une version dans l'adresse change le fichier demandé : il n'y a
   // plus rien à revalider, ni rien à espérer du serveur.
-  var TUT_V = '2026-09-01-e';
+  var TUT_V = '2026-09-01-f';
 
   function tutorielCharger(){
     if (window.BaobabsTutoriel) return Promise.resolve();
@@ -6633,7 +6633,7 @@
     coherence: ["<b>Compare la page publique en ligne avec le contenu de l'admin</b> : écarts de texte, contenu codé en dur, réglages inutilisés.","Protégé par le mot de passe de l'historique — l'écran expose la structure interne du site.","« Adopter » récupère la valeur du site dans l'admin en un clic."],
     banners: ["<b>Les grandes bannières du bloc d'accueil</b> : visuel, titre, bouton, et période d'affichage.","Une bannière programmée s'affiche toute seule à sa date de début et disparaît à sa date de fin.","Sans bannière active, le site affiche l'image du hero classique — rien ne casse."],
     announce: ["<b>Le bandeau tout en haut du site</b> : report de match, ouverture de vente, information urgente.","Trois tons au choix : information (bleu), alerte (rouge), succès (vert).","Un visiteur peut fermer le bandeau ; il ne réapparaît pas pour lui tant que l'annonce ne change pas."],
-    squad: ["<b>Une fiche par joueuse</b> : portrait, poste, numéro, statut (apte, blessée, partie…), parcours et statistiques.","<b>Nouvelle fiche</b> demande le nom, le numéro et le poste — puis <b>ouvre la fiche</b> pour la suite. Le numéro proposé est le premier libre, et les postes proposés sont ceux déjà utilisés dans l’effectif : rien ne vous oblige à les suivre.","Le statut s'affiche sur le site dans la section Équipes.","<b>La photo : trois boutons sous le champ.</b> <b>Médiathèque</b> reprend une image déjà envoyée, <b>Téléverser</b> en envoie une depuis cet appareil — elle est allégée au passage — et <b>Cadrer la photo</b> choisit ce que le site garde du portrait. Le cadrage se sauve avec la fiche : pensez à enregistrer."],
+    squad: ["<b>Une fiche par joueuse</b> : portrait, poste, numéro, statut (apte, blessée, partie…), parcours et statistiques.","<b>Nouvelle fiche</b> demande le nom, le numéro et le poste — puis <b>ouvre la fiche</b> pour la suite. Le numéro proposé est le premier libre, et les postes proposés sont ceux déjà utilisés dans l’effectif : rien ne vous oblige à les suivre.","Le statut s'affiche sur le site dans la section Équipes.","<b>Ouvrez une fiche : sous le champ photo, trois boutons.</b> <b>Médiathèque</b> reprend une image déjà envoyée, <b>Téléverser</b> en envoie une depuis cet appareil — elle est allégée au passage — et <b>Cadrer la photo</b> choisit ce que le site garde du portrait. Le cadrage se sauve avec la fiche : pensez à enregistrer."],
     products: ["<b>Le catalogue de la boutique</b> : visuels, prix, description, tailles.","<b>Dupliquer</b> sur une fiche crée une copie suffixée « (copie) » — pratique pour décliner un maillot.","Le stock se gère par taille dans l'écran Stock voisin ; un produit épuisé reste visible mais non commandable."],
     stock: ["<b>L'état des réserves, par taille.</b> Saisie rapide des quantités, seuil d'alerte par produit.","« Épuisé » et « stock bas » se calculent tout seuls ; le site suit automatiquement.","Le rail de droite (grands écrans) et le tableau de bord remontent les produits à recommander."],
     articles: ["<b>La rédaction des actualités</b> : texte, chapô, image de couverture, catégorie, auteur, référencement.","Un article passe par des statuts : brouillon → publié. Seuls les publiés apparaissent sur le site.","Le chapô et la catégorie s'affichent sur les cartes d'actualité du site."],
@@ -6702,69 +6702,127 @@
     '</svg>');
 
   var TUT_CIBLES = {
+    // UNE CIBLE PEUT ETRE UNE LISTE, ESSAYEE DANS L'ORDRE.
+    // La commande precise d'abord, l'ancrage stable ensuite. Sur un club
+    // qui debute, le champ de score ou le bouton « Dossier PDF » n'existe
+    // pas encore : le tutoriel designe alors la liste vide, ce qui reste
+    // vrai, au lieu de nommer un bouton qu'on ne voit nulle part.
+
     // -- Pilotage --------------------------------------------------
-    dashboard:  ['#att-list', '#att-list', '#section-dashboard .db-nums', '#section-dashboard .db-num', '#db-cd', '#gs-open'],
-    analytics:  ['#an-kpis', '#an-recettes', '#an-kpis', '#an-audience', null],
+    dashboard:  ['#att-list',
+                 '#section-dashboard .db-two',
+                 '#section-dashboard .db-nums',
+                 '#section-dashboard .db-nums .db-num:first-child',
+                 '#section-dashboard .db-cta',
+                 '#gs-open'],
+    analytics:  ['#an-kpis', '#an-recettes',
+                 ['#an-kpi-recouvrees', '#an-kpis'],
+                 '#an-audience', null],
 
     // -- Match day -------------------------------------------------
     gameday:    ['#gd-main', '#gd-vers-console', '#gd-suit', '#gd-publish', '#gd-resa-search', '#gd-offers'],
-    matches2:   ['#mc-rows', '#mc-new', '#mc-rows', null],
-    calendar:   ['#cal-view-switch', '#cal-cells', '#cal-cells'],
-    results:    ['#rs-rows', '#rs-rows', '#rs-rows'],
-    standings:  ['#st-podium', '#st-podium', '#qgv-standings'],
-    teams:      ['#teams-list', '#kc-grid', '#teams-list', null],
+    matches2:   ['#mc-rows', '#mc-new', ['#mc-rows .cd-row', '#mc-rows'], null],
+    calendar:   ['#cal-view-switch', '#cal-cells', null],
+    results:    ['#rs-rows',
+                 ['#rs-rows .rs-save', '#rs-rows .rs-sb', '#rs-rows'],
+                 ['#rs-rows .rs-done', '#rs-count']],
+    standings:  ['#st-podium',
+                 ['#qgv-body-standings', '#qgv-standings'],
+                 ['#qgv-insp-standings', '#qgv-standings']],
+    teams:      ['#teams-list', '#kc-grid',
+                 ['#teams-list .tm-logo', '#teams-list .rec-item', '#teams-list'],
+                 null],
     live:       ['#set_yt_channel', '#set_live_mode', '#set_live_note'],
-    tickets:    ['#tk-offers-list', null, '#tk-offers-list', '#tk-copygrid', '#tickets-subtabs'],
+    tickets:    ['#tk-offers-list', null,
+                 ['#tk-offers-list .tk-offer', '#tk-offers-list'],
+                 ['#tk-copygrid', '#tk-presets', '#tk-offers-list'],
+                 '#tickets-subtabs'],
 
     // -- Le club ---------------------------------------------------
-    squad:      ['#ef-grid', '#ef-new', '#ef-filter', '#ef-photo'],
-    staff:      ['#qgv-staff', '#qgv-staff'],
+    squad:      ['#ef-grid', '#ef-new', '#ef-filter',
+                 ['#ef-photo', '#ef-grid .ef-card', '#ef-grid']],
+    staff:      [['#qgv-body-staff', '#qgv-staff'],
+                 ['#qgv-body-staff [data-qgv-id]', '#qgv-body-staff', '#qgv-staff']],
     bureau:     ['#set_bureau_holder', '#bureau_preview_body'],
     founder:    ['#founder_preview_body', '#set_founder_name'],
 
     // -- A traiter -------------------------------------------------
-    inscriptions:  ['#in-board', '#in-board', null, '#in-filter-pay', null, null, '#in-pdf-btn', null],
-    applications:  ['#cd-list-view', '#cd-view-switch', null],
+    inscriptions:  [['#in-board [data-id]', '#in-board .cd-col', '#in-board'],
+                    ['#in-board .cd-col-head', '#in-board'],
+                    null, '#in-filter-pay', null, null,
+                    ['#in-pdf-btn', '#in-board [data-id]', '#in-board'],
+                    null],
+    applications:  ['#cd-list-view',
+                    ['#cd-board .cd-col-head', '#cd-board', '#cd-view-switch'],
+                    null],
 
     // -- Boutique --------------------------------------------------
-    products:   ['#pr-list-view', '#pr-list-view', null],
-    stock:      ['#sk-rows', '#sk-rows', null],
-    orders2:    ['#od-list-view', '#od-board', null, null],
-    clients:    ['#cl-list-view', null, '#cl-list-view'],
-    promos:     ['#pm-code', '#pm-kind', null, null],
+    products:   ['#pr-list-view', ['#pr-list-view .cd-row', '#pr-list-view'], null],
+    stock:      ['#sk-rows', ['#sk-count', '#sk-rows'], null],
+    orders2:    ['#od-list-view',
+                 ['#od-board .cd-col-head', '#od-board', '#od-list-view'],
+                 null, null],
+    clients:    ['#cl-list-view', null, ['#cl-list-view .cd-row', '#cl-list-view']],
+    promos:     ['#pm-code', '#pm-kind', ['#pm-list', '#pm-max'], null],
 
     // -- Pages du site ---------------------------------------------
     // Ces ecrans sont bâtis a l'execution : seul leur point de montage
-    // existe dans le balisage. On designe donc l'editeur entier pour
-    // dire « c'est ici », et rien ensuite plutot que d'inventer un
-    // selecteur qui n'existera qu'a moitie du temps.
-    c_home:         ['#qgc-c_home', '#qgc-c_home .qgc-nav', null, '#qgc-card-club_faceoff .qgc-src'],
-    c_club:         ['#qgc-c_club', '#qgc-c_club .qgc-nav', null],
-    c_tryouts:      ['#qgc-c_tryouts', '#qgc-c_tryouts .qgc-nav', null],
-    c_inscriptions: ['#qgc-c_inscriptions .qgc-nav', '#qgc-c_inscriptions', null, null, null, null],
-    c_app:          ['#qgc-c_app', '#qgc-c_app .qgc-nav', null],
-    c_promo:        ['#qgc-c_promo', '#qgc-c_promo .qgc-nav', null],
-    c_legal:        ['#qgc-c_legal', '#qgc-c_legal .qgc-nav'],
+    // existe dans le balisage. Le premier conseil designe les champs du
+    // chapitre ouvert, le deuxieme la barre des chapitres -- pas deux
+    // fois le meme bloc, comme c'etait le cas.
+    c_home:         [['#qgc-c_home .qgc-block:not([hidden]) .qgc-fields', '#qgc-c_home'],
+                     '#qgc-c_home .qgc-nav',
+                     ['#qgc-c_home .qgc-block:not([hidden]) .qgc-preview', '#qgc-c_home'],
+                     '#qgc-card-club_faceoff .qgc-src'],
+    c_club:         [['#qgc-c_club .qgc-block:not([hidden]) .qgc-fields', '#qgc-c_club'],
+                     '#qgc-c_club .qgc-nav',
+                     ['#qgc-c_club .qgc-block:not([hidden]) .qgc-preview', '#qgc-c_club']],
+    c_tryouts:      [['#qgc-c_tryouts .qgc-block:not([hidden]) .qgc-fields', '#qgc-c_tryouts'],
+                     '#qgc-c_tryouts .qgc-nav', null],
+    c_inscriptions: ['#qgc-c_inscriptions .qgc-nav',
+                     ['#qgc-c_inscriptions .qgc-block:not([hidden]) .qgc-fields', '#qgc-c_inscriptions'],
+                     null, null, null, null],
+    c_app:          [['#qgc-c_app .qgc-block:not([hidden]) .qgc-fields', '#qgc-c_app'],
+                     '#qgc-c_app .qgc-nav', null],
+    c_promo:        [['#qgc-c_promo .qgc-block:not([hidden]) .qgc-fields', '#qgc-c_promo'],
+                     '#qgc-c_promo .qgc-nav', null],
+    c_legal:        [['#qgc-c_legal .qgc-block:not([hidden]) .qgc-fields', '#qgc-c_legal'],
+                     '#qgc-c_legal .qgc-nav'],
     home:           ['#hero_preview_body', null],
 
     // -- En haut du site, communication, images --------------------
-    banners:    ['#bn-rows', '#bn-rows', null],
+    banners:    ['#bn-rows', ['#bn-rows .bn-card', '#bn-rows'], null],
     announce:   ['#an-rows', '#an-new', null],
-    articles:   ['#ar-list-view', '#ar-filter', null],
-    categories: ['#ct-rows', '#ct-rows'],
-    galerie:    ['#gal-grille', '#gal-url', '#gal-grille', '#gal-grille', '#gal-video'],
-    media:      ['#md-search', '#md-grid', '#md-drop', '#md-prof'],
-    news:       ['#qgv-news', '#qgv-news'],
-    partners:   ['#qgv-partners', '#qgv-partners'],
-    timeline:   ['#qgv-timeline', '#qgv-timeline'],
+    articles:   [['#ar-list-view .cd-row', '#ar-list-view'], '#ar-filter', null],
+    categories: ['#ct-rows', ['#ct-rows .ct-col', '#ct-rows']],
+    galerie:    ['#gal-grille', '#gal-url',
+                 ['#gal-grille .gal-act', '#gal-grille'],
+                 ['#gal-grille .gal-leg', '#gal-grille'],
+                 '#gal-video'],
+    media:      [['#md-tree', '#md-search'], '#md-grid', '#md-drop', '#md-prof'],
+    // « Preferez l'ecran Articles » : on designe le lien qui y mene,
+    // plutot que de redesigner la liste dont on vient de parler.
+    news:       [['#qgv-body-news', '#qgv-news'],
+                 ['#sidebar .sb-link[data-section="articles"]', '#qgv-news']],
+    partners:   [['#qgv-body-partners', '#qgv-partners'],
+                 ['#qgv-insp-partners', '#qgv-body-partners [data-qgv-id]', '#qgv-partners']],
+    timeline:   [['#qgv-body-timeline', '#qgv-timeline'],
+                 ['#qgv-body-timeline [data-qgv-id]', '#qgv-timeline']],
 
     // -- A traiter (suite) -----------------------------------------
-    forms:      ['#forms-nav', '#forms-nav'],
-    newsl:      ['#nw-subject', '#nw-test', '#nw-send-btn', null, null],
+    forms:      ['#forms-nav',
+                 ['#sidebar .sb-link[data-section="applications"]', '#forms-nav']],
+    newsl:      ['#nw-subject', '#nw-test', '#nw-send-btn',
+                 ['.nw-hs', '#nw-send-btn'],
+                 ['#sidebar .sb-link[data-section="forms"]', '#nw-subject']],
 
     // -- Reglages & controle ---------------------------------------
-    reglages:   ['#qgs-mount', '#qgs-mount .qgc-nav', '#qgs-mount'],
-    comptes:    ['#cp-list', '#cp-demander', '#cp-list', null, '#cp-matrice', null],
+    reglages:   [['#qgs-mount .qgc-block:not([hidden]) .qgc-fields', '#qgs-mount'],
+                 '#qgs-mount .qgc-nav',
+                 ['#qgs-mount .qgc-block:not([hidden]) .qgc-preview', '#qgs-mount']],
+    comptes:    ['#cp-list', '#cp-demander',
+                 ['#cp-list .cp-protege', '#cp-list'],
+                 null, '#cp-matrice', null],
     coherence:  ['#co-content', '#co-lock-card', '#co-list'],
     audit:      ['#audit-lock-card', '#audit-pwd', null]
   };
@@ -6867,7 +6925,10 @@
     applications: [
       { cible:'#cd-board', geste:'montrer',
         dit:'Chaque carte est un dossier de recrutement. Les colonnes sont les étapes&nbsp;: nouvelle, à étudier, entretien, acceptée.' },
-      { cible:'#cd-board .rec-card, #cd-board [data-id], #cd-rows [data-id]', geste:'cliquer',
+      // Une LISTE, pas un selecteur CSS a virgules : querySelector rend
+      // le premier dans l'ordre du document, pas le premier de la liste.
+      // « .rec-card » n'existait nulle part -- c'etait un vestige.
+      { cible:['#cd-board [data-id]', '#cd-rows [data-id]', '#cd-board'], geste:'cliquer',
         dit:'On ouvre un dossier d’un clic.' },
       { cible:'#cd-doc', geste:'montrer',
         dit:'La fiche complète&nbsp;: profil, coordonnées, parcours, taille et poste, plus le journal de toutes les décisions déjà prises.' },
@@ -16994,7 +17055,9 @@
         '<div class="in-kpi"><b style="font-size:19px">'+esc(inFcfa(totalAn))+'</b><span>Encaissé au total</span></div>'+
         '<div class="in-kpi"><b style="font-size:19px">'+esc(inFcfa(duMois))+'</b><span>Ce mois-ci</span></div>'+
         '<div class="in-kpi good"><b>'+inscrits.length+'</b><span>Enfants inscrits</span></div>'+
-        '<div class="in-kpi'+(taux!=null&&taux<70?' warn':'')+'"><b>'+(taux==null?'—':taux+'%')+'</b><span>Mensualités recouvrées</span></div>'+
+        // Nomme : le tutoriel consacre un conseil entier a ce chiffre, et
+        // le designer par son rang le ferait glisser au premier ajout.
+        '<div class="in-kpi'+(taux!=null&&taux<70?' warn':'')+'" id="an-kpi-recouvrees"><b>'+(taux==null?'—':taux+'%')+'</b><span>Mensualités recouvrées</span></div>'+
         '<div class="in-kpi"><b>'+cmdOk.length+'</b><span>Commandes</span></div>'+
         '<div class="in-kpi"><b style="font-size:19px">'+esc(panier?inFcfa(panier):'—')+'</b><span>Panier moyen</span></div>';
 

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Banc d'essai — résolution des cibles du tutoriel</title>
+<link rel="stylesheet" href="/tutoriel/tutoriel.css">
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;background:#0B140F;color:#E8E4DA;margin:0;padding:24px}
+  h1{font-size:17px;margin:0 0 4px}
+  p.sous{color:#8A9A8F;margin:0 0 20px;font-size:13px}
+  #scene{position:absolute;left:-9999px;top:0}
+  table{border-collapse:collapse;width:100%;max-width:940px}
+  td,th{border-bottom:1px solid #24352B;padding:7px 9px;text-align:left;font-size:13px;vertical-align:top}
+  th{color:#8A9A8F;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em}
+  .ok{color:#A8D93B}
+  .ko{color:#E86A5E}
+  code{color:#C6A257;font-size:12.5px}
+  #bilan{margin:18px 0 0;font-size:15px;font-weight:600}
+</style>
+</head>
+<body>
+<h1>Banc d'essai — résolution des cibles</h1>
+<p class="sous">Vérifie que <code>trouver()</code> accepte une liste de replis, saute
+ce qui est absent ou invisible, et rend le premier présent. Ne demande aucune session.</p>
+
+<!-- La scène : hors du champ, mais bien dans le document. -->
+<div id="scene">
+  <div id="liste-vide"></div>
+  <div id="liste-pleine"><button class="ligne" data-id="1">Une ligne</button></div>
+  <div id="replie" style="display:none"><button id="dedans">Caché</button></div>
+  <div id="ancre">Ancrage stable, toujours là</div>
+</div>
+
+<table id="res">
+  <thead><tr><th>Cas</th><th>Cible</th><th>Attendu</th><th>Obtenu</th><th></th></tr></thead>
+  <tbody></tbody>
+</table>
+<p id="bilan">…</p>
+
+<div id="tut-racine"></div>
+
+<script>
+  // Un hôte minimal : le tutoriel ne lit que ces tables.
+  window.tutorielApi = function () {
+    return {
+      cibles: {
+        essai: [
+          ['#absent', '#liste-pleine .ligne'],
+          ['#replie #dedans', '#ancre'],
+          ['#absent-1', '#absent-2'],
+          '#ancre'
+        ]
+      },
+      aides:  { essai: ['un', 'deux', 'trois', 'quatre'] },
+      demos:  {},
+      metas:  { essai: { t: 'Essai' } },
+      aller:  function () {},
+      revele: function () {}
+    };
+  };
+</script>
+<script src="/tutoriel/tutoriel.js"></script>
+<script>
+(async function () {
+  // Le tutoriel s'attend à trouver sa coquille : on la charge comme
+  // l'admin le fait, sinon brancher() ne trouve pas ses commandes.
+  var racine = document.getElementById('tut-racine');
+  racine.innerHTML = await (await fetch('/tutoriel/tutoriel.html')).text();
+
+  var T = window.BaobabsTutoriel;
+  T.mount(racine, window.tutorielApi());
+
+  var cas = [
+    ['repli après un sélecteur absent',    ['#absent', '#liste-pleine .ligne'], 'BUTTON.ligne'],
+    ['repli après un bloc replié',         ['#replie #dedans', '#ancre'],       'DIV#ancre'],
+    ['aucun repli disponible',             ['#absent-1', '#absent-2'],          'rien'],
+    ['chaîne simple (comportement connu)', '#ancre',                            'DIV#ancre'],
+    ['chaîne simple absente',              '#absent',                           'rien'],
+    ['liste à un seul élément',            ['#ancre'],                          'DIV#ancre']
+  ];
+
+  var tb = document.querySelector('#res tbody'), bons = 0;
+  cas.forEach(function (c) {
+    var el = T.essaiTrouver(c[1]);
+    var got = !el ? 'rien'
+      : el.tagName + (el.id ? '#' + el.id : '') + (el.className ? '.' + el.className : '');
+    var ok = got === c[2];
+    if (ok) bons++;
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + c[0] + '</td><td><code>' + JSON.stringify(c[1]) + '</code></td>' +
+      '<td>' + c[2] + '</td><td>' + got + '</td>' +
+      '<td class="' + (ok ? 'ok' : 'ko') + '">' + (ok ? 'OK' : 'ÉCHEC') + '</td>';
+    tb.appendChild(tr);
+  });
+
+  // Le diagnostic doit voir UNE seule cible en défaut : celle dont aucun
+  // repli n'existe. Les deux premières ont un repli valable.
+  var diag = T.diagnostic();
+
+  document.getElementById('bilan').innerHTML =
+    bons + ' / ' + cas.length + ' cas passent — diagnostic : ' +
+    diag.problemes.length + ' défaut(s) signalé(s)';
+  window.__banc = { reussis: bons, total: cas.length, diagnostic: diag };
+  console.log('[banc] ' + bons + '/' + cas.length + ' — diagnostic ' + JSON.stringify(diag.problemes));
+})();
+</script>
+</body>
+</html>

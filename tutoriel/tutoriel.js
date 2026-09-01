@@ -30,6 +30,9 @@
   var chapCourant = null;   // clé du chapitre en cours, 'tout' si enchaînement
   var enLecture = false;
   var minuteur = null;
+  // Le dernier element designe : sert a distinguer « on change de
+  // cible » de « on reste sur la meme et on en dit autre chose ».
+  var dernierePose = null;
   var chien = null;         // chien de garde de la voix (voir dire())
   var tPointe = null;       // attente de fin de defilement avant de pointer
   var tArrivee = null;      // fin du voyage de la main
@@ -63,7 +66,7 @@
 
   // Un numero de version affiche : « je ne vois pas de difference » ne
   // doit pas rester une devinette entre un cache et un reglage systeme.
-  var VERSION = '26.08-u';
+  var VERSION = '26.09-a';
   var CLE_ANIM = 'bbc_tut_anim';
 
   // ===================================================================
@@ -571,8 +574,7 @@
       // Une commande absente ou masquee pour cette casquette n'est pas
       // annoncee : promettre un bouton qu'on n'a pas serait pire que
       // se taire.
-      var el = null;
-      try { el = document.querySelector(e.cible); } catch (err) {}
+      var el = premierPresent(e.cible);
       if (!el || !el.getClientRects().length) return;
       out.push({ special: true, nom: 'Le bandeau du haut', html: e.dit, cible: e.cible });
     });
@@ -940,8 +942,54 @@
   //      une demande de confirmation pour des valeurs qui n'étaient pas
   //      les siennes.
   // ===================================================================
+  // Ouvre le chapitre de CHAQUE repli : le bon peut etre le second.
+  function revelerTout(sel) {
+    if (!sel || !api.revele) return;
+    var l = Array.isArray(sel) ? sel : [sel];
+    for (var i = 0; i < l.length; i++) {
+      try { api.revele(l[i]); } catch (e) {}
+    }
+  }
+
+  // Le premier repli PRESENT dans la page, visible ou non : designer-
+  // QuandPret veut pouvoir attendre un element encore replie, et
+  // boiteUtile saura remonter jusqu'a ce qu'on voit.
+  function premierPresent(sel) {
+    if (!sel) return null;
+    var l = Array.isArray(sel) ? sel : [sel];
+    for (var i = 0; i < l.length; i++) {
+      try {
+        var el = document.querySelector(l[i]);
+        if (el) return el;
+      } catch (e) {}
+    }
+    return null;
+  }
+
   function trouver(sel) {
     if (!sel) return null;
+
+    // UNE CIBLE PEUT ETRE UNE LISTE, ESSAYEE DANS L'ORDRE.
+    //
+    // Beaucoup de commandes n'existent que si des donnees existent : le
+    // champ de score n'est la que s'il reste un match a saisir, le
+    // bouton « Dossier PDF » que si une fiche est ouverte. Sur un club
+    // qui debute, ou en debut de saison, ces cibles sont absentes — et
+    // le tutoriel se rabattait sur le halo de l'ecran entier, en
+    // continuant a nommer un bouton qu'on ne voit nulle part.
+    //
+    // On ecrit donc la cible precise d'abord, et l'ancrage stable
+    // ensuite : ['#rs-rows .rs-sb', '#rs-rows']. Quand la donnee est
+    // la, on designe le champ ; quand elle manque, on designe la liste
+    // vide — ce qui reste vrai, et se voit.
+    if (Array.isArray(sel)) {
+      for (var i = 0; i < sel.length; i++) {
+        var t = trouver(sel[i]);
+        if (t) return t;
+      }
+      return null;
+    }
+
     // Voir estVisible : une boite non nulle ne prouve pas qu'on voit
     // quelque chose. Les demonstrations visent des champs, qui peuvent
     // se trouver dans un bloc replie.
@@ -1819,11 +1867,10 @@
     // Meme raison que dans trouver() : on ouvre le chapitre AVANT
     // d'attendre que la cible apparaisse, sinon on l'attend pour rien
     // pendant deux secondes et demie, puis on renonce.
-    if (api.revele) { try { api.revele(sel); } catch (err) {} }
+    revelerTout(sel);
     (function essai() {
       if (g !== jeton || etapes[idx] !== e) return;
-      var el = null;
-      try { el = document.querySelector(sel); } catch (err) { el = null; }
+      var el = premierPresent(sel);
       // On attend qu'il soit VISIBLE, pas seulement qu'il ait une boite :
       // un bloc replie en a une, et on partait la designer dans le vide.
       // boiteUtile remontera ensuite jusqu'a ce qu'on voit vraiment.
@@ -2369,7 +2416,21 @@
       rect.style.transition = '';
       rect.style.strokeDashoffset = '0';
     }
-    spot.classList.remove('pose'); void spot.offsetWidth; spot.classList.add('pose');
+    // DEUX CONSEILS DE SUITE SUR LE MEME ELEMENT.
+    //
+    // Cela arrive vingt-six fois dans la visite, et c'est legitime : on
+    // parle d'une liste, puis de ce qu'on y fait. Mais le cadre se
+    // redessinait a l'identique, a la meme place et a la meme taille —
+    // vu de la salle, la visite avait l'air arretee. On ne sait plus si
+    // elle avance, si elle a plante, ou si l'on a rate quelque chose.
+    //
+    // On distingue donc le cas : meme element, un rappel — un battement
+    // franc qui dit « toujours ici, mais c'est autre chose que je
+    // raconte ». Different element, la pose habituelle.
+    var memeQueAvant = (dernierePose === el);
+    dernierePose = el;
+    spot.classList.remove('pose', 'rappel'); void spot.offsetWidth;
+    spot.classList.add(memeQueAvant ? 'rappel' : 'pose');
     relierAuNarrateur(r);
 
     // LA MAIN DOIT VOYAGER, PAS SE TELEPORTER.
@@ -2502,8 +2563,10 @@
     // Une etape qui joue deja un geste pilote la main elle-meme. Deux
     // scenarios sur le meme pointeur se disputeraient ses coordonnees.
     if (e.geste) return false;
+    // trouver() et non querySelector : une cible peut etre une liste de
+    // replis, et c'est le premier present a l'ecran qu'on enumere.
     var hote = null;
-    try { hote = document.querySelector(e.cible); } catch (err) { return false; }
+    try { hote = trouver(e.cible); } catch (err) { return false; }
     if (!hote) return false;
     var items = (typeof e.parcours === 'string')
       ? enfantsAParcourir(hote, e.parcours)
@@ -3145,11 +3208,20 @@
         liste.forEach(function (sel, i) {
           if (!sel) return;
           n++;
-          var t;
-          try { t = document.querySelectorAll(sel); }
-          catch (e) { pb.push(ecran + '[' + i + '] ' + sel + ' — selecteur invalide'); return; }
-          if (!t.length) pb.push(ecran + '[' + i + '] ' + sel + ' — INTROUVABLE');
-          else if (t.length > 1) pb.push(ecran + '[' + i + '] ' + sel + ' — ' + t.length + ' elements, seul le premier sera designe');
+          // Une cible peut etre une liste de replis. Elle n'est en faute
+          // que si AUCUN de ses replis n'existe : le premier absent est
+          // le cas normal quand la donnee manque, pas un defaut.
+          var repl = Array.isArray(sel) ? sel : [sel];
+          var vus = 0, ambigu = null, casse = null;
+          repl.forEach(function (s) {
+            var t;
+            try { t = document.querySelectorAll(s); }
+            catch (e) { casse = s; return; }
+            if (t.length) { if (!vus) ambigu = t.length > 1 ? (s + ' — ' + t.length + ' elements') : null; vus++; }
+          });
+          if (casse) pb.push(ecran + '[' + i + '] ' + casse + ' — selecteur invalide');
+          else if (!vus) pb.push(ecran + '[' + i + '] ' + repl.join(' | ') + ' — INTROUVABLE');
+          else if (ambigu) pb.push(ecran + '[' + i + '] ' + ambigu + ', seul le premier sera designe');
         });
       });
       var ecransSansTable = Object.keys(aides).filter(function (k) { return !cibles[k]; });
@@ -3160,6 +3232,11 @@
       else pb.forEach(function (l) { console.warn('  ' + l); });
       return { cibles: n, problemes: pb };
     },
+    // Le banc d'essai (tutoriel/banc.html) verifie la resolution des
+    // cibles sans avoir a ouvrir l'admin ni a s'y connecter : c'est le
+    // seul moyen de prouver le repli en liste sur une machine ou l'on
+    // n'a pas de session.
+    essaiTrouver: function (sel) { return trouver(sel); },
     // Pour le banc d'essai et la console : savoir où on en est.
     etat: function () {
       return { chapitres: plan.length, etapes: etapes.length, idx: idx, lecture: enLecture, voix: voixOn, voixFr: voixFr && voixFr.name };
