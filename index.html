@@ -640,6 +640,50 @@
   .bb-ins-list li{display:flex;gap:11px;align-items:flex-start;font-size:14px;line-height:1.55;color:#C7CFC8}
   .bb-ins-list li svg{flex:none;margin-top:3px;color:#A8D93B}
   .bb-ins-form{background:#0A150F;border:1px solid rgba(var(--bb-fil-rgb),.24);border-radius:20px;padding:clamp(22px,3.4vw,36px);display:flex;flex-direction:column;gap:15px}
+
+  /* ===== LE DÉPÔT DES PIÈCES, APRÈS L'ENVOI =====
+     Aligné à gauche alors que le reste du panneau est centré : on passe
+     de l'annonce (« c'est enregistré ») au travail (« voici ce qui
+     reste »), et une liste de tâches ne se lit pas centrée. */
+  .bb-pc-sep{height:1px;background:rgba(var(--bb-fil-rgb),.18);margin:26px 0 22px}
+  #bb-ins-pieces{text-align:left}
+  .bb-pc-h{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;
+    letter-spacing:-.01em;color:#F3EFE6;margin:0 0 6px}
+  .bb-pc-s{font-size:13px;line-height:1.6;color:#93A099;margin:0 0 16px}
+  .bb-pc-liste{display:flex;flex-direction:column;gap:9px}
+  .bb-pc{display:flex;align-items:center;gap:13px;background:rgba(243,239,230,.03);
+    border:1px solid rgba(var(--bb-fil-rgb),.16);border-left:3px solid rgba(var(--bb-fil-rgb),.3);
+    border-radius:10px;padding:12px 14px;transition:border-color .18s}
+  .bb-pc.ok{border-left-color:#A8D93B}
+  .bb-pc.occupe{opacity:.6}
+  .bb-pc-t{flex:1;min-width:0}
+  .bb-pc-t b{display:block;font-size:13.5px;font-weight:600;color:#F3EFE6;line-height:1.3}
+  .bb-pc-t span{display:block;font-size:11.5px;color:#7E8A82;margin-top:2px;line-height:1.45}
+  .bb-pc.ok .bb-pc-t span{color:#A8D93B}
+  /* Le <label> EST le bouton : l'input file reste caché derrière lui.
+     Un input file nu affiche « Aucun fichier sélectionné » dans la
+     langue du système et ne se met pas en forme. */
+  .bb-pc-b{flex:none;display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+    background:rgba(var(--bb-fil-rgb),.1);border:1px solid rgba(var(--bb-fil-rgb),.32);
+    border-radius:9px;padding:9px 14px;color:#F3EFE6;font-family:'Inter',sans-serif;
+    font-weight:600;font-size:12.5px;transition:border-color .18s,background .18s}
+  .bb-pc-b:hover{border-color:#A8D93B;background:rgba(168,217,59,.1)}
+  .bb-pc-b input{display:none}
+  .bb-pc-b svg{width:14px;height:14px}
+  .bb-pc-ok{flex:none;color:#A8D93B;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+  .bb-fiche-b{display:inline-flex;align-items:center;gap:9px;margin:18px auto 0;cursor:pointer;
+    background:rgba(var(--bb-or-rgb),.1);border:1px solid rgba(var(--bb-or-rgb),.4);
+    border-radius:11px;padding:12px 20px;color:#E4C179;font-family:'Inter',sans-serif;
+    font-weight:600;font-size:13.5px;transition:border-color .18s,background .18s,color .18s}
+  .bb-fiche-b:hover{border-color:#E4C179;background:rgba(var(--bb-or-rgb),.18);color:#F3EFE6}
+  .bb-fiche-b svg{width:16px;height:16px}
+  .bb-fiche-b[disabled]{opacity:.6;cursor:default}
+  .bb-pc-n{font-size:11.5px;line-height:1.55;color:#7E8A82;margin:16px 0 0}
+  .bb-pc-err{font-size:12px;color:#E8837A;margin:10px 0 0}
+  @media(max-width:560px){
+    .bb-pc{flex-wrap:wrap}
+    .bb-pc-b,.bb-pc-ok{width:100%;justify-content:center}
+  }
   .bb-ins-ref{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(24px,3.4vw,34px);letter-spacing:.06em;color:#A8D93B;background:rgba(168,217,59,.1);border:1px dashed rgba(168,217,59,.42);border-radius:12px;padding:14px 22px;display:inline-block;margin:6px 0 14px}
 
   /* Le menu se resserre par paliers au lieu de casser ses libellés en deux.
@@ -3129,6 +3173,35 @@
               <div style="font-family:'Inter',sans-serif;font-weight:600;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:#7E8A82;margin-top:14px">Votre référence</div>
               <div class="bb-ins-ref" id="bb-ins-ref">—</div>
               <p id="bb-ins-success-text" style="font-size:13.5px;line-height:1.62;color:#93A099;margin:0 auto;max-width:38ch">Gardez votre référence : elle vous sera demandée au bureau du club. Nous vous rappelons très vite.</p>
+
+              <!-- LA RÉFÉRENCE, SOUS UNE FORME QU'ON GARDE.
+                   Une suite de sept caractères recopiée à la main sur un
+                   bout de papier se perd avant le samedi. Une image reste
+                   dans la pellicule du téléphone, se retrouve à la date,
+                   et s'envoie au conjoint en deux gestes. -->
+              <button type="button" class="bb-fiche-b bb-hide" id="bb-ins-fiche">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>
+                <span>Enregistrer ma fiche</span>
+              </button>
+
+              <!-- ===== LES PIÈCES, TOUT DE SUITE =====
+                   Le dossier demande quatre papiers. Demandés au bureau,
+                   ils arrivent en six semaines — et le certificat
+                   médical manque le jour où un enfant fait un malaise.
+                   Demandés ici, tant que le téléphone est encore en
+                   main, la moitié part dans la minute.
+                   Rien n'est obligatoire : on peut fermer la page, le
+                   dossier existe déjà. C'est une facilité, pas une
+                   étape de plus. -->
+              <div id="bb-ins-pieces" class="bb-hide">
+                <div class="bb-pc-sep"></div>
+                <p class="bb-pc-h">Pendant que vous y êtes</p>
+                <p class="bb-pc-s">Le dossier de licence demande quatre pièces. Vous pouvez les photographier
+                  maintenant avec votre téléphone — ou les apporter au club plus tard, comme vous préférez.</p>
+                <div class="bb-pc-liste" id="bb-ins-pieces-liste"></div>
+                <p class="bb-pc-n">Ces documents ne sont visibles que par le bureau du club. Ils ne sont
+                  publiés nulle part.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -7591,6 +7664,339 @@ window.bbCloud = function(url, w){
     var form = document.getElementById('bb-ins-form');
     if (!form) return;
 
+    // ===================== LE DÉPÔT DES PIÈCES =====================
+    //
+    // Le navigateur n'a AUCUN accès au stockage : il envoie le fichier à
+    // la fonction serveur « depot-piece », qui vérifie la référence et
+    // le téléphone, puis écrit dans un bucket privé avec la clé de
+    // service. Des documents d'identité de mineurs ne peuvent pas vivre
+    // dans un espace ouvert en écriture — voir
+    // MIGRATION-inscriptions-3-depot-pieces.sql.
+    var BB_PIECES = [
+      ['photo',        'Photo d’identité',       'Une photo du visage, sur fond clair.'],
+      ['naissance',    'Extrait de naissance',   'Il justifie la catégorie d’âge.'],
+      ['medical',      'Certificat médical',     'Sans lui, l’enfant ne peut pas jouer.'],
+      ['autorisation', 'Autorisation parentale', 'Signée par le responsable légal.']
+    ];
+    var bbPcRef = null, bbPcTel = null;
+
+    // On allège avant d'envoyer. Une photo de téléphone fait 4 Mo ; la
+    // même, redimensionnée à 1600 px et passée en WebP, en fait 300 Ko —
+    // sans différence visible sur un document. Ça change tout sur une
+    // connexion mobile, et c'est ce qui rend le dépôt possible depuis le
+    // terrain. Les PDF passent intacts : on ne rastérise pas un document.
+    function bbPcAlleger(file){
+      if (!/^image\/(jpeg|png|webp)$/i.test(file.type || '')) return Promise.resolve(file);
+      if (file.size <= 320 * 1024) return Promise.resolve(file);
+      return new Promise(function(res){
+        var url = URL.createObjectURL(file), im = new Image();
+        im.onload = function(){
+          try {
+            var k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
+            var c = document.createElement('canvas');
+            c.width  = Math.max(1, Math.round(im.naturalWidth  * k));
+            c.height = Math.max(1, Math.round(im.naturalHeight * k));
+            var cx = c.getContext('2d');
+            cx.imageSmoothingQuality = 'high';
+            cx.drawImage(im, 0, 0, c.width, c.height);
+            c.toBlob(function(b){
+              URL.revokeObjectURL(url);
+              res(b && b.size < file.size ? b : file);
+            }, 'image/webp', 0.82);
+          } catch(e){ URL.revokeObjectURL(url); res(file); }
+        };
+        im.onerror = function(){ URL.revokeObjectURL(url); res(file); };
+        im.src = url;
+      });
+    }
+
+    function bbPcBase64(blob){
+      return new Promise(function(res, rej){
+        var fr = new FileReader();
+        fr.onload = function(){ res(String(fr.result).split(',')[1] || ''); };
+        fr.onerror = function(){ rej(new Error('lecture')); };
+        fr.readAsDataURL(blob);
+      });
+    }
+
+    // ===================== LA FICHE, EN IMAGE =====================
+    //
+    // Sept caractères recopiés sur un bout de papier se perdent avant le
+    // samedi. Une image reste dans la pellicule, se retrouve à la date,
+    // et s'envoie au conjoint en deux gestes. C'est aussi la seule chose
+    // que la famille emporte du club ce jour-là : elle mérite d'être
+    // dessinée, pas capturée à l'écran.
+    //
+    // Format 1080 × 1350 : le portrait des réseaux. Une capture d'écran
+    // de téléphone donne une image bavarde et illisible une fois
+    // partagée ; celle-ci ne porte que ce qui sert.
+    var bbFiche = null;   // { prenom, nom, reference, categorie }
+
+    // L'écusson, chargé une fois et gardé. Même origine que la page :
+    // la toile n'est pas « teintée » et toBlob continue de fonctionner —
+    // une image d'un autre domaine bloquerait l'export sans rien dire.
+    var bbFicheLogo = null;
+    function bbFicheLogoCharger(){
+      if (bbFicheLogo) return Promise.resolve(bbFicheLogo);
+      return new Promise(function(res){
+        var im = new Image();
+        im.onload  = function(){ bbFicheLogo = im; res(im); };
+        im.onerror = function(){ res(null); };
+        im.src = '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp';
+      });
+    }
+
+    function bbFicheDessiner(f){
+      var W = 1080, H = 1350;
+      var c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      var x = c.getContext('2d');
+
+      // Fond : le vert profond du club, éclairé dans un angle comme sur
+      // le site — un aplat plat aurait l'air d'un formulaire scanné.
+      var g = x.createRadialGradient(W * 0.24, 0, 60, W * 0.24, 0, H * 1.15);
+      g.addColorStop(0, '#123322'); g.addColorStop(0.46, '#081C13'); g.addColorStop(1, '#05130D');
+      x.fillStyle = g; x.fillRect(0, 0, W, H);
+
+      // Le sigle en très grand, en réserve : il occupe le fond sans le
+      // charger, et signe l'image même recadrée.
+      x.save();
+      x.font = '700 620px "Space Grotesk", sans-serif';
+      x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.lineWidth = 3; x.strokeStyle = 'rgba(198,162,87,.09)';
+      x.strokeText('BBC', W / 2, H * 0.52);
+      x.restore();
+
+      // Filet or en tête, pleine largeur.
+      x.fillStyle = '#C6A257'; x.fillRect(0, 0, W, 8);
+
+      var M = 84;
+      x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+
+      x.fillStyle = '#A8D93B';
+      x.font = '700 26px "Inter", sans-serif';
+      x.fillText('ÉCOLE DE BASKET · SAISON 2026–2027'.toUpperCase(), M, 148);
+
+      x.fillStyle = '#F3EFE6';
+      x.font = '700 46px "Space Grotesk", sans-serif';
+      x.fillText('BAOBABS BASKET CLUB', M, 208);
+
+      // L'écusson en tête, à droite : il tient l'angle vide et signe
+      // l'image partout où elle passera.
+      if (bbFicheLogo) {
+        var lh = 118, lw = lh * (bbFicheLogo.naturalWidth / bbFicheLogo.naturalHeight || 1);
+        x.drawImage(bbFicheLogo, W - M - lw, 108, lw, lh);
+      }
+
+      // Le nom de l'enfant : c'est lui qu'on cherche en ouvrant l'image.
+      // Deux corps possibles — un nom long ne doit pas déborder, et le
+      // couper serait pire que le réduire.
+      var nom = [f.prenom, f.nom].filter(Boolean).join(' ').trim() || 'Inscription';
+      var corps = 92;
+      x.font = '700 ' + corps + 'px "Space Grotesk", sans-serif';
+      while (corps > 46 && x.measureText(nom).width > W - 2 * M) {
+        corps -= 4; x.font = '700 ' + corps + 'px "Space Grotesk", sans-serif';
+      }
+      x.fillStyle = '#F3EFE6';
+      x.fillText(nom, M, 372);
+
+      if (f.categorie) {
+        x.font = '600 30px "Inter", sans-serif';
+        var w = x.measureText(f.categorie).width;
+        x.strokeStyle = 'rgba(168,217,59,.5)'; x.lineWidth = 2;
+        x.beginPath(); x.roundRect(M, 404, w + 44, 56, 28); x.stroke();
+        x.fillStyle = '#A8D93B';
+        x.fillText(f.categorie, M + 22, 441);
+      }
+
+      // LA RÉFÉRENCE, ET C'EST TOUT LE SUJET DE L'IMAGE.
+      // Encadrée, détachée, en or : elle doit se lire d'un coup d'œil
+      // sur un écran tenu à bout de bras, au guichet du club.
+      var by = 560, bh = 250;
+      x.fillStyle = 'rgba(198,162,87,.07)';
+      x.beginPath(); x.roundRect(M, by, W - 2 * M, bh, 22); x.fill();
+      x.strokeStyle = 'rgba(198,162,87,.42)'; x.lineWidth = 2;
+      x.setLineDash([12, 9]);
+      x.beginPath(); x.roundRect(M, by, W - 2 * M, bh, 22); x.stroke();
+      x.setLineDash([]);
+
+      x.fillStyle = '#7E8A82';
+      x.font = '700 24px "Inter", sans-serif';
+      x.fillText('VOTRE RÉFÉRENCE', M + 40, by + 62);
+
+      x.fillStyle = '#E4C179';
+      var ref = String(f.reference || '—');
+      var cr = 104;
+      x.font = '700 ' + cr + 'px "Space Grotesk", sans-serif';
+      while (cr > 54 && x.measureText(ref).width > W - 2 * M - 80) {
+        cr -= 4; x.font = '700 ' + cr + 'px "Space Grotesk", sans-serif';
+      }
+      x.fillText(ref, M + 40, by + 178);
+
+      // Ce qu'il faut en faire. Une référence sans mode d'emploi ne sert
+      // qu'à celui qui l'a déjà compris.
+      x.fillStyle = '#B9C2BB';
+      x.font = '400 30px "Inter", sans-serif';
+      x.fillText('Présentez cette référence au bureau du club.', M, 892);
+      x.fillStyle = '#7E8A82';
+      x.font = '400 27px "Inter", sans-serif';
+      x.fillText('Le règlement se fait sur place — espèces, Wave ou', M, 940);
+      x.fillText('Orange Money. Aucun paiement n’est demandé en ligne.', M, 980);
+
+      // Pied : filet, lieu et téléphone. Ce qu'on cherche le samedi
+      // matin. Il est calé sur le BAS de l'image, pas sur la fin du
+      // texte : sinon il flotte au milieu dès qu'une ligne manque.
+      var P = H - 84;
+      x.strokeStyle = 'rgba(243,239,230,.12)'; x.lineWidth = 2;
+      x.beginPath(); x.moveTo(M, P - 178); x.lineTo(W - M, P - 178); x.stroke();
+
+      x.fillStyle = '#7E8A82';
+      x.font = '700 22px "Inter", sans-serif';
+      x.fillText('OÙ', M, P - 126);
+      x.fillText('CONTACT', W / 2, P - 126);
+      x.fillStyle = '#F3EFE6';
+      x.font = '600 28px "Inter", sans-serif';
+      x.fillText('Terrain Sicap Baobabs, Dakar', M, P - 82);
+      x.fillText('+221 77 858 74 53', W / 2, P - 82);
+
+      x.fillStyle = 'rgba(243,239,230,.35)';
+      x.font = '400 22px "Inter", sans-serif';
+      x.fillText('baobabsbasketclub.com', M, P);
+
+      return c;
+    }
+
+    function bbFicheEnregistrer(){
+      var b = document.getElementById('bb-ins-fiche');
+      if (!b || !bbFiche) return;
+      var lbl = b.querySelector('span'), avant = lbl ? lbl.textContent : '';
+      b.disabled = true; if (lbl) lbl.textContent = 'Préparation…';
+      // On attend les polices : dessiner avant leur arrivée donne une
+      // fiche en Arial, et on ne s'en aperçoit qu'une fois l'image
+      // enregistrée.
+      Promise.all([
+        (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()),
+        bbFicheLogoCharger()
+      ])
+        .then(function(){
+          var c = bbFicheDessiner(bbFiche);
+          return new Promise(function(res){ c.toBlob(res, 'image/png'); });
+        })
+        .then(function(blob){
+          if (!blob) throw new Error('image');
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'baobabs-inscription-' + String(bbFiche.reference || '').toLowerCase() + '.png';
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+          if (lbl) lbl.textContent = 'Enregistrée ✓';
+          setTimeout(function(){ if (lbl) lbl.textContent = avant; b.disabled = false; }, 2600);
+        })
+        .catch(function(){
+          if (lbl) lbl.textContent = avant; b.disabled = false;
+        });
+    }
+
+    (function(){
+      var b = document.getElementById('bb-ins-fiche');
+      if (b) b.addEventListener('click', bbFicheEnregistrer);
+    })();
+
+    // Renseignée après un envoi réussi, et depuis « Suivre mon
+    // inscription » — un parent qui a perdu sa référence vient
+    // justement la rechercher, et repart cette fois avec l'image.
+    window.bbFicheDonner = function(infos){
+      bbFiche = infos || null;
+      var b = document.getElementById('bb-ins-fiche');
+      if (b) b.classList.toggle('bb-hide', !bbFiche);
+    };
+
+    // COMPARER DES LIBELLÉS, C'EST COMPARER DES APOSTROPHES.
+    // La base rend « Photo d'identité » avec une apostrophe droite ; le
+    // site l'écrit avec une apostrophe typographique. indexOf ne trouvait
+    // donc jamais la ligne, et la pièce s'affichait « Bien reçue » alors
+    // qu'elle manquait — une interface qui ment, sans la moindre erreur.
+    // On aplatit les deux côtés avant de comparer.
+    function bbPcClef(s){
+      return String(s || '').toLowerCase()
+        .replace(/[’‘`]/g, "'")
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z]/g, '');
+    }
+
+    function bbPcRendre(manquantes){
+      var box = document.getElementById('bb-ins-pieces-liste');
+      if (!box) return;
+      var creux = bbPcClef(manquantes);
+      box.innerHTML = BB_PIECES.map(function(p){
+        var faite = !!creux && creux.indexOf(bbPcClef(p[1])) < 0;
+        return '<div class="bb-pc' + (faite ? ' ok' : '') + '" data-pc="' + p[0] + '">' +
+          '<div class="bb-pc-t"><b>' + p[1] + '</b><span>' + (faite ? 'Bien reçue' : p[2]) + '</span></div>' +
+          (faite
+            ? '<span class="bb-pc-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Reçue</span>'
+            : '<label class="bb-pc-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>' +
+              '<span>Envoyer</span><input type="file" accept="image/*,application/pdf"></label>') +
+        '</div>';
+      }).join('');
+      box.querySelectorAll('.bb-pc input[type=file]').forEach(function(inp){
+        inp.addEventListener('change', function(){
+          var f = inp.files && inp.files[0];
+          if (f) bbPcEnvoyer(inp.closest('.bb-pc'), f);
+        });
+      });
+    }
+
+    function bbPcEnvoyer(ligne, file){
+      var kind = ligne.getAttribute('data-pc');
+      var lbl  = ligne.querySelector('.bb-pc-b span');
+      var sous = ligne.querySelector('.bb-pc-t span');
+      var vieux = lbl ? lbl.textContent : '';
+      ligne.classList.add('occupe');
+      if (lbl) lbl.textContent = 'Envoi…';
+      bbPcAlleger(file)
+        .then(function(blob){
+          return bbPcBase64(blob).then(function(b64){
+            return fetch(SB_URL + '/functions/v1/depot-piece', {
+              method: 'POST',
+              headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                reference: bbPcRef, phone: bbPcTel, kind: kind,
+                mime: blob.type || file.type || 'application/octet-stream',
+                data: b64
+              })
+            });
+          });
+        })
+        .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+        .then(function(x){
+          ligne.classList.remove('occupe');
+          if (!x.ok) throw new Error((x.j && x.j.error) || 'echec');
+          // On repeint depuis ce que le serveur dit qui manque, pas
+          // depuis ce qu'on croit avoir envoyé : c'est lui qui sait.
+          bbPcRendre(x.j.pieces_manquantes || '');
+        })
+        .catch(function(){
+          ligne.classList.remove('occupe');
+          if (lbl) lbl.textContent = vieux || 'Envoyer';
+          if (sous) sous.textContent = 'L’envoi n’a pas abouti — réessayez, ou apportez la pièce au club.';
+        });
+    }
+
+    // Appelée après un envoi réussi du formulaire, et depuis « Suivre
+    // mon inscription » quand le dossier est incomplet. Le troisième
+    // argument est la liste des pièces qui manquent, telle que la base
+    // la donne : sans lui on repartirait de zéro et on redemanderait
+    // des papiers déjà reçus.
+    window.bbPiecesOuvrir = function(reference, telephone, manquantes){
+      if (!reference || !telephone) return;
+      bbPcRef = reference; bbPcTel = telephone;
+      var zone = document.getElementById('bb-ins-pieces');
+      if (!zone) return;
+      bbPcRendre(manquantes == null ? '' : manquantes);
+      zone.classList.remove('bb-hide');
+    };
+
     // La catégorie se déduit de l'année de naissance : « U13 » veut dire
     // « moins de 13 ans au 31 décembre ». Un parent se trompe une fois sur
     // deux, et une catégorie fausse fait recommencer le dossier au bureau.
@@ -7658,6 +8064,15 @@ window.bbCloud = function(url, w){
         var ref = document.getElementById('bb-ins-ref');
         if (ref) ref.textContent = res.data || '—';
         document.getElementById('bb-ins-success').classList.remove('bb-hide');
+        // Le dépôt des pièces a besoin du couple référence + téléphone :
+        // c'est ce couple, et lui seul, qui prouve qu'on est la famille.
+        bbPiecesOuvrir(res.data, g('guardian_phone'));
+        // Et la fiche à garder : elle se dessine avec ce qu'on vient de
+        // saisir, sans rien redemander à la base.
+        window.bbFicheDonner({
+          prenom: g('child_first'), nom: g('child_last'),
+          reference: res.data, categorie: g('category')
+        });
         var anchor = document.getElementById('bb-ins-form-anchor');
         if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }).catch(function(ex){
@@ -7718,8 +8133,31 @@ window.bbCloud = function(url, w){
           ligne('Mensualités réglées', (x.mois_payes || 0) + (x.mois_payes > 1 ? ' mois' : ' mois'))+
           ligne('Pièces du dossier', x.dossier_complet ? 'Complet' : 'Il manque : ' + (x.pieces_manquantes || '—'),
                 x.dossier_complet ? '#A8D93B' : '#E8A93C')+
-          '<p style="font-size:12px;line-height:1.55;color:#7E8A82;margin:12px 0 0">Les pièces se déposent au bureau du club. Une question&nbsp;: appelez le numéro ci-dessus.</p>',
+          '<p style="font-size:12px;line-height:1.55;color:#7E8A82;margin:12px 0 0">Une question&nbsp;: appelez le numéro ci-dessus.</p>',
           true);
+        // C'EST ICI QUE LE DÉPÔT SERT LE PLUS.
+        // Un parent qui revient sur cette page a justement en tête le
+        // papier qui manque — il vient vérifier ça. Lui dire « il
+        // manque le certificat médical » puis « déposez-le au bureau »
+        // était un aller-retour de plus, à faire dans la semaine, avec
+        // le papier qu'on oublie. Le couple référence + téléphone vient
+        // d'être vérifié : on peut lui proposer de l'envoyer tout de
+        // suite. Rien n'est déplacé si le dossier est déjà complet.
+        // La fiche : c'est souvent pour la retrouver qu'on vient ici.
+        if (window.bbFicheDonner){
+          window.bbFicheDonner({ prenom: x.prenom, nom: '', reference: x.reference, categorie: x.categorie });
+          var bf = document.getElementById('bb-ins-fiche');
+          if (bf) document.getElementById('bb-suivi-res').appendChild(bf);
+        }
+        if (!x.dossier_complet && window.bbPiecesOuvrir){
+          window.bbPiecesOuvrir(x.reference,
+            document.getElementById('bb-suivi-tel').value, x.pieces_manquantes || '');
+          var zone = document.getElementById('bb-ins-pieces');
+          if (zone){
+            document.getElementById('bb-suivi-res').appendChild(zone);
+            zone.scrollIntoView({ behavior:'smooth', block:'nearest' });
+          }
+        }
       })
       .catch(function(ex){
         var m = String(ex && ex.message || '');
