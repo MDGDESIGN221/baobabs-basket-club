@@ -789,7 +789,7 @@
     bacCartes = CARTES_DEPART.map(function (c) { return { id:c.id, nom:c.nom, sous:c.sous, col:c.col }; });
     $('bt-bac-t').textContent = 'Faire glisser une candidature';
     $('bt-bac-s').innerHTML = 'Attrapez une carte et déposez-la dans une autre colonne — au doigt ou à la souris. ' +
-      'C’est exactement le geste des écrans <b>Candidatures</b>, <b>Commandes</b> et <b>École de basket</b>.';
+      'C’est exactement le geste des écrans <b>Candidatures</b>, <b>Commandes</b> et <b>Inscriptions</b>.';
     peindreColonnes();
     majScore('Déplacez au moins une carte.');
   }
