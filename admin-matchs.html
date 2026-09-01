@@ -1185,6 +1185,62 @@
   .imgp-b svg{ width:14px; height:14px; flex:none }
   .imgp-b:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
 
+  /* ===== CHOISIR UNE JOUEUSE =====
+     Une joueuse se reconnait a sa photo et a son numero avant son nom :
+     la grille montre les trois, et la recherche accepte les trois. */
+  #jp{ position:fixed; inset:0; z-index:470;
+    background:rgba(4,9,6,.74); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:24px; }
+  #jp.hide{ display:none }
+  .jp-boite{ width:min(760px,100%); max-height:min(80vh,680px); background:var(--surface);
+    border:1px solid var(--line-strong); border-radius:16px; display:flex; flex-direction:column;
+    overflow:hidden; box-shadow:0 24px 70px rgba(0,0,0,.55) }
+  .jp-tete{ display:flex; align-items:center; gap:11px; flex-wrap:wrap;
+    padding:15px 17px; border-bottom:1px solid var(--line); flex:none }
+  .jp-tete h3{ margin:0; font-family:var(--font-display); font-weight:var(--display-weight);
+    letter-spacing:var(--display-tracking); font-size:18px; color:var(--text) }
+  .jp-pour{ font-size:12px; color:var(--gold); font-weight:600 }
+  .jp-q{ flex:1; min-width:150px; background:var(--surface-2); border:1px solid var(--line-strong);
+    border-radius:9px; padding:9px 12px; color:var(--text); font:inherit; font-size:13px }
+  .jp-q:focus{ outline:none; border-color:var(--gold) }
+  .jp-grille{ overflow-y:auto; padding:12px; display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:9px; align-content:start }
+  .jp-c{ display:flex; align-items:center; gap:11px; text-align:left; background:var(--surface-2);
+    border:1px solid var(--line); border-radius:11px; padding:9px 11px; cursor:pointer;
+    font:inherit; color:var(--text); transition:border-color .14s,background .14s }
+  .jp-c:hover{ border-color:var(--gold); background:var(--surface) }
+  .jp-c:focus-visible{ outline:2px solid var(--lime); outline-offset:2px }
+  .jp-ph{ width:42px; height:42px; border-radius:10px; flex:none; object-fit:cover;
+    background:#12211A; display:grid; place-items:center; overflow:hidden;
+    font-family:var(--font-ui); font-weight:700; font-size:14px; color:var(--gold) }
+  .jp-ph img{ width:100%; height:100%; object-fit:cover }
+  .jp-txt{ min-width:0 }
+  .jp-n{ display:block; font-weight:600; font-size:13.5px; line-height:1.25;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .jp-s{ display:block; font-size:11px; color:var(--faint); margin-top:2px }
+  .jp-num{ flex:none; margin-left:auto; font-family:var(--font-ui); font-weight:800;
+    font-stretch:62%; font-size:19px; color:var(--gold-bright); font-variant-numeric:tabular-nums }
+  .jp-pied{ flex:none; margin:0; padding:12px 17px; border-top:1px solid var(--line);
+    font-size:12px; color:var(--faint); line-height:1.5 }
+  @media(max-width:520px){ .jp-grille{ grid-template-columns:1fr } }
+
+  /* La barre « remplir automatiquement », en tete d'un bloc qui declare
+     des sources. Elle n'apparait que la ou il y a quelque chose a
+     remplir : un bloc sans source n'en montre pas. */
+  .qgc-src{ display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+    margin:-6px 0 20px; padding:11px 13px; background:var(--gold-soft);
+    border:1px solid rgba(198,162,87,.24); border-radius:var(--r-lg) }
+  .qgc-src-l{ font-family:var(--font-ui); font-weight:700; font-size:9.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--gold); flex:none }
+  .qgc-src-b{ display:inline-flex; align-items:center; gap:7px; min-height:34px;
+    background:var(--surface); border:1px solid var(--line-strong); border-radius:100px;
+    padding:6px 14px; color:var(--text); font:600 12px var(--font-text); cursor:pointer;
+    transition:border-color .14s,color .14s }
+  .qgc-src-b:hover{ border-color:var(--gold); color:var(--gold-bright) }
+  .qgc-src-b:focus-visible{ outline:2px solid var(--lime); outline-offset:2px }
+  .qgc-src-b svg{ width:14px; height:14px; flex:none; color:var(--gold) }
+  .qgc-src-note{ flex-basis:100%; margin:0; font-size:11.5px; color:var(--muted); line-height:1.5 }
+
   #imgp{
     position:fixed; inset:0; z-index:460;
     background:rgba(4,9,6,.72); backdrop-filter:blur(3px);
@@ -2354,6 +2410,25 @@
   <!-- Le sélecteur d'images. Hors de #app, comme le Studio et le cadrage :
        une surcouche en position:fixed sous un ancêtre en display:none
        s'ouvre à 0×0, sans la moindre erreur. -->
+  <!-- ===== CHOISIR UNE JOUEUSE =====
+       Meme place que le selecteur d'images, et pour la meme raison :
+       position:fixed ne survit pas a un ancetre en display:none. Place
+       dans #app, cette boite s'ouvrirait a 0 x 0 sans la moindre erreur
+       des que l'ecran qui l'appelle est masque. -->
+  <div id="jp" class="hide" role="dialog" aria-modal="true" aria-label="Choisir une joueuse">
+    <div class="jp-boite">
+      <div class="jp-tete">
+        <h3>Choisir une joueuse</h3>
+        <span class="jp-pour" id="jp-pour"></span>
+        <input type="search" class="jp-q" id="jp-q" placeholder="Nom, numéro ou poste…">
+        <button type="button" class="btn btn-ghost" id="jp-fermer" style="padding:8px 13px;font-size:12.5px">Fermer</button>
+      </div>
+      <div class="jp-grille" id="jp-grille"><div class="empty">Lecture de l’effectif…</div></div>
+      <p class="jp-pied">L’effectif est lu au moment où vous ouvrez cette fenêtre&nbsp;: une joueuse
+        ajoutée ce matin dans <b>Joueuses</b> est déjà ici, sans rien à reporter.</p>
+    </div>
+  </div>
+
   <div id="imgp" class="hide" role="dialog" aria-modal="true" aria-label="Choisir une image">
     <div class="imgp-boite">
       <div class="imgp-tete">
@@ -6141,7 +6216,7 @@
     bureau: ["<b>L'organigramme du club.</b> La structure de l'arbre est fixe ; vous éditez le titulaire, la photo et la fiche de chaque poste.","S'affiche sur la page « Le Club » du site."],
     staff: ["<b>Les membres de l'encadrement</b> affichés dans le bloc « Le staff » du site.","Une carte par personne : photo, nom, rôle."],
     timeline: ["<b>La chronologie du club</b> affichée sur la page « Le Club ».","Une étape = une année ou un moment marquant. L'ordre suit les dates."],
-    c_home: ["<b>Les textes et visuels de la page d'accueil</b> : hero, Face-Off, galerie de la détection, bandeau de chiffres, section Médias.","<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom.","Chaque bloc a son aperçu réel à droite : ce que vous voyez est ce que le site affiche."],
+    c_home: ["<b>Les textes et visuels de la page d'accueil</b> : hero, Face-Off, galerie de la détection, bandeau de chiffres, section Médias.","<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom.","Chaque bloc a son aperçu réel à droite : ce que vous voyez est ce que le site affiche.","<b>Le Face-Off se remplit tout seul.</b> Deux boutons « Remplir depuis l’effectif » ouvrent la liste des joueuses du club : un clic pose le nom, le numéro, le poste et la photo, et les moyennes calculées depuis ses feuilles de match. Une joueuse qui n’a pas encore joué ne fait rien perdre : ses moyennes restent celles qui étaient là. Rien n’est enregistré avant que vous ne cliquiez Enregistrer."],
     c_club: ["<b>Les textes de la page « Le Club »</b> : intro, cartes d'objectifs, camp de base, en-tête de l'organigramme.","<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom.","Aperçu réel à droite de chaque bloc."],
     c_tryouts: ["<b>La page de détection</b> : dates, lieu, contact, teaser vidéo et affiches.","<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom.","Le formulaire de candidature du site envoie vers l'écran Candidatures."],
     c_inscriptions: ["<b>Un chapitre à la fois.</b> La barre du haut liste les blocs de cette page ; on en ouvre un, les autres attendent. Changer de chapitre ne perd rien — les champs gardent ce qu’on y a tapé — et chaque bouton <b>Enregistrer</b> n’envoie que son propre bloc. En bas, deux boutons mènent au chapitre précédent et au suivant, avec leur nom.","<b>Deux blocs, deux endroits du site.</b> « Pré-saison » est la vidéo de reprise affichée sur l'accueil ; « Inscriptions » est la page complète de l'école de basket.","<b>Les tarifs se saisissent en chiffres seuls</b> (20000, pas « 20 000 F ») : le site met les espaces et ajoute FCFA tout seul.","Un tarif modifié ne change <b>que les futures inscriptions</b>. Les enfants déjà inscrits gardent le prix auquel ils se sont engagés — c'est voulu.","<b>Catégories</b> : une par ligne, sous la forme <code>U11 | Nés en 2016 et 2017</code>. La barre verticale sépare le nom des années.","Passer les inscriptions à « closes » affiche le message d'attente et retire le bouton d'envoi. La page reste lisible : tarifs, lieu et horaires continuent de s'afficher."],
@@ -6228,7 +6303,7 @@
     // existe dans le balisage. On designe donc l'editeur entier pour
     // dire « c'est ici », et rien ensuite plutot que d'inventer un
     // selecteur qui n'existera qu'a moitie du temps.
-    c_home:         ['#qgc-c_home', '#qgc-c_home .qgc-nav', null],
+    c_home:         ['#qgc-c_home', '#qgc-c_home .qgc-nav', null, '#qgc-card-club_faceoff .qgc-src'],
     c_club:         ['#qgc-c_club', '#qgc-c_club .qgc-nav', null],
     c_tryouts:      ['#qgc-c_tryouts', '#qgc-c_tryouts .qgc-nav', null],
     c_inscriptions: ['#qgc-c_inscriptions .qgc-nav', '#qgc-c_inscriptions', null, null, null, null],
@@ -17025,6 +17100,18 @@
 
 
   // ===================== INIT =====================
+  // La fenetre de choix se ferme par les trois chemins qu'on essaie :
+  // le bouton, la touche Echap, et le clic a cote.
+  (function jpCabler(){
+    var b = document.getElementById('jp'); if (!b) return;
+    document.getElementById('jp-fermer').addEventListener('click', jpFermer);
+    document.getElementById('jp-q').addEventListener('input', jpRendre);
+    b.addEventListener('mousedown', function(ev){ if (ev.target === b) jpFermer(); });
+    document.addEventListener('keydown', function(ev){
+      if (ev.key === 'Escape' && !b.classList.contains('hide')) jpFermer();
+    });
+  })();
+
   function init(){
     updatePreview();
     loadedSections.matches=true; loadedSections.teams=true; loadedSections.dashboard=true;
@@ -17801,7 +17888,25 @@
           '</div>'+
         '</div><p class="pv-hint">Le <b>contenu</b> de ces écrans est désormais repris automatiquement du site : les 3 prochains matchs et la billetterie viennent de l\'onglet <b>Matchs</b>, le top 5 du <b>Classement</b>, les articles de la <b>Boutique</b>, la première joueuse de l\'<b>Effectif</b>, le score du dernier match joué et la dernière <b>Actualité</b>. On ne règle ici que les libellés de l\'interface. L\'écran « Mon espace » illustre un compte supporter : ses chiffres restent décoratifs.</p>';
       } },
-    { id:'club_faceoff', page:'Accueil · Face-Off', label:'Face-Off — Le duel des leaders', fields:[
+    { id:'club_faceoff', page:'Accueil · Face-Off', label:'Face-Off — Le duel des leaders',
+      // CE BLOC SAIT OU TROUVER SES DONNEES.
+      // Dix champs par joueuse, tapes a la main, dont quatre existent
+      // deja dans l'effectif et six sont calcules depuis les feuilles de
+      // match. On declare la correspondance ici, une fois : le bouton,
+      // la fenetre de choix et le remplissage en decoulent. Un autre bloc
+      // qui aurait besoin d'une joueuse declare la sienne, et herite de
+      // tout le reste sans une ligne de plus.
+      sources:[
+        { nom:'Joueuse 1', champs:{ name:'fo_p1_name', jersey_number:'fo_p1_number',
+            position:'fo_p1_position', photo_url:'fo_p1_photo_url', pts_moy:'fo_p1_points',
+            reb_moy:'fo_p1_rebounds', ast_moy:'fo_p1_assists', stl_moy:'fo_p1_steals',
+            pct_3pts:'fo_p1_threep', eval_moy:'fo_p1_eval' } },
+        { nom:'Joueuse 2', champs:{ name:'fo_p2_name', jersey_number:'fo_p2_number',
+            position:'fo_p2_position', photo_url:'fo_p2_photo_url', pts_moy:'fo_p2_points',
+            reb_moy:'fo_p2_rebounds', ast_moy:'fo_p2_assists', stl_moy:'fo_p2_steals',
+            pct_3pts:'fo_p2_threep', eval_moy:'fo_p2_eval' } }
+      ],
+      fields:[
         {key:'fo_subtitle', label:'Sous-titre (période)', type:'text', def:'Moyennes par match · 2026'},
         {key:'fo_p1_name', label:'Joueuse 1 · Nom', type:'text', def:'Aïda Diop'},
         {key:'fo_p1_number', label:'Joueuse 1 · Numéro', type:'text', def:'4'},
@@ -18427,6 +18532,127 @@
   // pour que le chapitre s'ouvre AVANT qu'on aille designer quoi que ce
   // soit dedans. C'est le seul endroit qui connait la correspondance
   // bloc -> chapitre, et il la tient de qgcRender lui-meme.
+  // ===================== CHOISIR UNE JOUEUSE =====================
+  // L'effectif est deja quelque part : dans la table players, tenue a
+  // jour par l'ecran Joueuses. Le retaper ailleurs -- nom, numero, poste,
+  // photo, moyennes -- c'est se garantir deux verites qui divergent des
+  // la premiere retouche, et une photo qui reste celle de la saison
+  // derniere longtemps apres tout le monde.
+  //
+  // Cette fenetre lit l'effectif AU MOMENT OU ON L'OUVRE. Une joueuse
+  // inscrite ce matin y est deja ; une joueuse partie n'y est plus. Rien
+  // n'est recopie nulle part : c'est la meme table, lue au bon moment.
+  //
+  // Les moyennes viennent de player_season_stats -- calculees depuis les
+  // feuilles de match, jamais saisies. Les interceptions n'y sont pas
+  // agregees : on les moyenne ici, sur les matchs joues.
+  var jpRows = [], jpRetour = null, jpCharge = false;
+
+  function jpOuvrir(pour, onChoisir){
+    var b = document.getElementById('jp'); if (!b) return;
+    jpRetour = onChoisir;
+    document.getElementById('jp-pour').textContent = pour || '';
+    document.getElementById('jp-q').value = '';
+    b.classList.remove('hide');
+    // On relit a chaque ouverture : l'effectif a pu changer depuis
+    // l'ouverture de l'onglet, et une liste perimee ici est pire que pas
+    // de liste du tout -- on remplirait des champs avec de l'ancien.
+    document.getElementById('jp-grille').innerHTML = '<div class="empty">Lecture de l’effectif…</div>';
+    sbGet('players?select=id,name,jersey_number,position,status,photo_url&order=jersey_number.asc')
+      .then(function(rows){ jpRows = rows || []; jpCharge = true; jpRendre(); })
+      .catch(function(){ document.getElementById('jp-grille').innerHTML =
+        '<div class="empty">L’effectif n’a pas pu être lu.</div>'; });
+    setTimeout(function(){ document.getElementById('jp-q').focus(); }, 60);
+  }
+  function jpFermer(){
+    var b = document.getElementById('jp'); if (b) b.classList.add('hide');
+    jpRetour = null;
+  }
+  function jpRendre(){
+    var g = document.getElementById('jp-grille'); if (!g) return;
+    var q = (document.getElementById('jp-q').value || '').trim().toLowerCase();
+    var vus = jpRows.filter(function(r){
+      if (!q) return true;
+      return [r.name, r.jersey_number, r.position].join(' ').toLowerCase().indexOf(q) >= 0;
+    });
+    if (!vus.length){
+      g.innerHTML = '<div class="empty">' + (jpRows.length
+        ? 'Aucune joueuse ne correspond.'
+        : 'Aucune joueuse enregistrée. Ajoutez-en dans l’écran Joueuses.') + '</div>';
+      return;
+    }
+    g.innerHTML = vus.map(function(r){
+      var ini = String(r.name || '?').trim().charAt(0).toUpperCase();
+      return '<button type="button" class="jp-c" data-jp="' + esc(String(r.id)) + '">' +
+        '<span class="jp-ph">' + (r.photo_url
+          ? '<img src="' + esc(r.photo_url) + '" alt="" loading="lazy">' : esc(ini)) + '</span>' +
+        '<span class="jp-txt"><b class="jp-n">' + esc(r.name || '—') + '</b>' +
+          '<span class="jp-s">' + esc(r.position || 'Poste non renseigné') +
+          (r.status && r.status !== 'apte' ? ' · ' + esc(r.status) : '') + '</span></span>' +
+        (r.jersey_number != null ? '<span class="jp-num">' + esc(String(r.jersey_number)) + '</span>' : '') +
+      '</button>';
+    }).join('');
+    g.querySelectorAll('[data-jp]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var r = jpRows.filter(function(x){ return String(x.id) === btn.getAttribute('data-jp'); })[0];
+        if (!r) return;
+        var rendre = jpRetour; jpFermer();
+        jpStats(r).then(function(v){ if (rendre) rendre(v); });
+      });
+    });
+  }
+  // La fiche complete : ce que la joueuse EST (table players) et ce
+  // qu'elle FAIT (moyennes calculees). Une seule forme, pour que les
+  // blocs qui s'en servent n'aient pas a savoir d'ou vient quoi.
+  function jpStats(r){
+    var v = { name:r.name, jersey_number:r.jersey_number, position:r.position,
+              photo_url:r.photo_url, status:r.status };
+    return Promise.all([
+      sbGet('player_season_stats?select=*&player_id=eq.' + encodeURIComponent(r.id)).catch(function(){ return []; }),
+      sbGet('match_stats?select=stl,played&player_id=eq.' + encodeURIComponent(r.id)).catch(function(){ return []; })
+    ]).then(function(res){
+      var st = (res[0] || [])[0];
+      // LES MOYENNES SONT UN LOT, PAS SIX VALEURS INDEPENDANTES.
+      //
+      // Premiere version : les interceptions etaient moyennees a part,
+      // depuis match_stats. Une joueuse sans ligne de saison recevait
+      // donc « 0 interception » a cote de points et de rebonds restes de
+      // l'annee derniere -- six chiffres dont un seul etait a jour, et
+      // rien pour distinguer lequel. Un chiffre faux est pire qu'un
+      // chiffre absent : celui-la, on le corrige.
+      //
+      // On ne pose donc les moyennes que si la saison en a : tout, ou
+      // rien. Les quatre champs d'identite, eux, viennent de la fiche et
+      // arrivent toujours.
+      if (st && st.matchs_joues){
+        v.pts_moy = st.pts_moy; v.reb_moy = st.reb_moy; v.ast_moy = st.ast_moy;
+        v.eval_moy = st.eval_moy; v.pct_3pts = st.pct_3pts; v.matchs_joues = st.matchs_joues;
+        var joues = (res[1] || []).filter(function(l){ return l.played; });
+        if (joues.length){
+          var t = joues.reduce(function(a, l){ return a + (l.stl || 0); }, 0);
+          v.stl_moy = Math.round(t / joues.length * 10) / 10;
+        }
+      }
+      return v;
+    }).catch(function(){ return v; });
+  }
+  // Poser les valeurs dans les champs, et prevenir l'apercu. Un champ
+  // dont la source est vide n'est PAS efface : une joueuse sans feuille
+  // de match ne doit pas remettre a zero des moyennes saisies a la main.
+  function qgcRemplir(map, v){
+    var mis = 0;
+    Object.keys(map).forEach(function(src){
+      var val = v[src];
+      if (val === undefined || val === null || val === '') return;
+      var el = document.querySelector('.qgc-in[data-k="' + map[src] + '"]');
+      if (!el) return;
+      el.value = String(val);
+      el.dispatchEvent(new Event('input', { bubbles:true }));
+      mis++;
+    });
+    return mis;
+  }
+
   var QGC_CHAPITRES = {};
   function qgcRevele(sel){
     if (!sel || typeof sel !== 'string') return;
@@ -18496,6 +18722,19 @@
       return '<article class="card qgc-block" id="qgc-card-'+esc(bl.id)+'"'+
         (multi ? ' role="tabpanel" aria-labelledby="qgc-tab-'+esc(bl.id)+'" tabindex="0"' : '')+'>'+
         '<header class="qgc-block-head"><span class="qgc-block-page">'+esc(bl.page)+'</span><h2 class="qgc-block-title">'+esc(bl.label)+'</h2></header>'+
+        // Le bloc declare-t-il d'ou viennent ses donnees ? Alors on
+        // propose de les y prendre, plutot que de les faire retaper.
+        ((bl.sources||[]).length ? '<div class="qgc-src">'+
+          '<span class="qgc-src-l">Remplir depuis l’effectif</span>'+
+          bl.sources.map(function(sr,iS){
+            return '<button type="button" class="qgc-src-b" data-qgc-src="'+iS+'" data-qgc-bl="'+esc(bl.id)+'">'+
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>'+
+              esc(sr.nom)+'</button>';
+          }).join('')+
+          '<p class="qgc-src-note">Le nom, le numéro, le poste et la photo viennent de la fiche de la joueuse ; '+
+          'les moyennes sont calculées depuis ses feuilles de match. Un champ dont la source est vide '+
+          'n’est pas effacé — vous pouvez toujours corriger à la main ensuite.</p>'+
+        '</div>' : '')+
         '<div class="qgc-block-body">'+
           '<div class="qgc-form"><div class="qgc-fields">'+fields+'</div>'+
             '<div class="qgc-actions"><button type="button" class="btn btn-primary qgc-save" data-block="'+bl.id+'">Enregistrer</button>'+
@@ -18606,6 +18845,25 @@
     m.querySelectorAll('.qgc-in').forEach(function(el){ el.addEventListener('input',function(){ var bl=qgcAll().filter(function(b){ return b.fields.some(function(f){return f.key===el.getAttribute('data-k');}); })[0]; if(bl) qgcPreview(bl); }); });
     m.querySelectorAll('input[data-kfile]').forEach(function(fe){ fe.addEventListener('change',function(){ var file=fe.files[0]; if(!file) return; var key=fe.getAttribute('data-kfile'); var kind=fe.getAttribute('data-kind')||'image'; var span=fe.parentNode.querySelector('span'); var libelle=span?span.textContent:''; if(span) span.textContent='Envoi…'; uploadFile(MEDIA_BUCKET,file).then(function(url){ var inp=document.querySelector('.qgc-in[data-k="'+key+'"]'); if(inp){ inp.value=url; inp.dispatchEvent(new Event('input',{bubbles:true})); } if(span) span.textContent=libelle; qgToast(kind==='video'?'Vidéo envoyée ✓':'Image envoyée ✓'); }).catch(function(){ if(span) span.textContent=libelle; qgToast('Échec de l\'envoi',true); }); }); });
     m.querySelectorAll('.qgc-save').forEach(function(btn){ btn.addEventListener('click',function(){ qgcSave(btn.getAttribute('data-block'),btn); }); });
+    m.querySelectorAll('[data-qgc-src]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var bl = blocks.filter(function(b){ return b.id === btn.getAttribute('data-qgc-bl'); })[0];
+        var sr = bl && (bl.sources||[])[parseInt(btn.getAttribute('data-qgc-src'),10)];
+        if (!sr) return;
+        jpOuvrir(sr.nom, function(v){
+          var mis = qgcRemplir(sr.champs, v);
+          // Le message dit ce qui a ete rempli ET ce qui ne l'a pas ete.
+          // « 5 champs remplis » sur un bloc qui en compte dix laisse
+          // croire a un demi-echec ; c'est une joueuse qui n'a pas
+          // encore joue, et ca se dit.
+          qgToast(v.name + ' — ' + mis + ' champ' + (mis>1?'s':'') + ' rempli' + (mis>1?'s':'') +
+            (v.matchs_joues
+              ? ' · moyennes sur ' + v.matchs_joues + ' match' + (v.matchs_joues>1?'s':'')
+              : ' · aucune feuille de match : les moyennes n’ont pas été touchées') +
+            '. Rien n’est encore enregistré.');
+        });
+      });
+    });
 
     // L'échantillon montre le texte réel, à la taille et à la couleur
     // choisies. Le mettre ici plutôt que dans l'aperçu du bloc évite de
