@@ -942,6 +942,9 @@
   // ===================================================================
   function trouver(sel) {
     if (!sel) return null;
+    // Voir estVisible : une boite non nulle ne prouve pas qu'on voit
+    // quelque chose. Les demonstrations visent des champs, qui peuvent
+    // se trouver dans un bloc replie.
     // UNE CIBLE PEUT ETRE DANS UN TIROIR FERME.
     // Les ecrans « Pages du site » ne montrent qu'un chapitre a la fois :
     // les six autres blocs existent, mais sont caches. getClientRects()
@@ -1821,7 +1824,10 @@
       if (g !== jeton || etapes[idx] !== e) return;
       var el = null;
       try { el = document.querySelector(sel); } catch (err) { el = null; }
-      if (el && el.getClientRects().length) {
+      // On attend qu'il soit VISIBLE, pas seulement qu'il ait une boite :
+      // un bloc replie en a une, et on partait la designer dans le vide.
+      // boiteUtile remontera ensuite jusqu'a ce qu'on voit vraiment.
+      if (el && (estVisible(el) || boiteUtile(el))) {
         designer(el);
         animerCible(e, g, el);
         return;
@@ -2113,11 +2119,52 @@
   // dans cet état. On remonte alors à l'ancêtre qui a une vraie surface,
   // en général la carte qui contient la liste : « c'est ici que ça
   // s'affiche » reste vrai, et reste visible.
+  // AVOIR UNE BOITE NE VEUT PAS DIRE ETRE VISIBLE.
+  //
+  // getBoundingClientRect() ignore le rognage des ancetres. Un bloc
+  // replie -- un accordeon a max-height:0 et overflow:hidden -- a une
+  // hauteur de zero, mais la grille qu'il contient continue d'annoncer
+  // 771 x 830. Le tutoriel amenait donc sa main sur un rectangle bien
+  // reel et entierement invisible : le cadre se posait dans le vide,
+  // souvent apres avoir fait defiler la page vers un endroit ou il n'y
+  // avait rien a voir. C'est le « ca pointe sur le vide ».
+  //
+  // Constate sur « Adversaires » : la phrase parle de « Clubs connus »,
+  // la main partait au-dessus du titre de la page.
+  //
+  // On verifie donc chaque ancetre qui rogne : s'il est ecrase, ou si la
+  // boite de l'element tombe hors de la sienne, l'element n'est pas
+  // visible -- quoi qu'en dise sa propre mesure.
+  function estVisible(el) {
+    if (!el || !el.getBoundingClientRect) return false;
+    var r = el.getBoundingClientRect();
+    if (r.width < 24 || r.height < 16) return false;
+    var n = el, garde = 0;
+    while (n && n !== document.body && garde++ < 14) {
+      var cs;
+      try { cs = getComputedStyle(n); } catch (e) { return false; }
+      if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false;
+      if (n !== el && /hidden|auto|scroll|clip/.test(cs.overflow + cs.overflowX + cs.overflowY)) {
+        var b = n.getBoundingClientRect();
+        // Un conteneur ecrase ne laisse rien passer.
+        if (b.width < 6 || b.height < 6) return false;
+        // Ni un element dont la boite tombe entierement hors de la sienne.
+        if (r.right <= b.left || r.left >= b.right ||
+            r.bottom <= b.top || r.top >= b.bottom) return false;
+      }
+      n = n.parentElement;
+    }
+    return true;
+  }
+
   function boiteUtile(el) {
     var n = el, garde = 0;
     while (n && garde++ < 6) {
-      var r = n.getBoundingClientRect();
-      if (r.width >= 24 && r.height >= 16) return n;
+      // Trop petit OU invisible : on remonte. Sur « Adversaires », cela
+      // fait remonter de la grille repliee a la carte « Clubs connus »
+      // elle-meme -- soit exactement ce que la phrase nomme, et ce sur
+      // quoi il faut cliquer pour la deplier.
+      if (estVisible(n)) return n;
       if (n.tagName === 'SECTION' || n.tagName === 'BODY') return null;
       n = n.parentElement;
     }
@@ -2157,9 +2204,9 @@
       var suivant = null;
       var enfants = n.children || [];
       for (var i = 0; i < enfants.length; i++) {
+        if (!estVisible(enfants[i])) continue;   // jamais vers un enfant rogne
         var b = enfants[i].getBoundingClientRect();
-        if (b.width >= 24 && b.height >= 16 &&
-            b.width * b.height > r.width * r.height * 0.04) { suivant = enfants[i]; break; }
+        if (b.width * b.height > r.width * r.height * 0.04) { suivant = enfants[i]; break; }
       }
       if (!suivant) break;
       n = suivant;
