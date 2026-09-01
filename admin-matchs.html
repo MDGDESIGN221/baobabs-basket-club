@@ -1222,6 +1222,11 @@
   .nw-hs code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;
     background:rgba(243,239,230,.07);border-radius:4px;padding:1px 5px;color:var(--text)}
   .nw-hs i{font-style:normal;color:var(--text)}
+  /* Les commandes à recopier : bloc à part, sélectionnable d'un geste. */
+  .nw-hs-cmd{display:block;margin:11px 0;padding:12px 14px;background:rgba(4,9,6,.55);
+    border:1px solid var(--line);border-radius:9px;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;line-height:1.85;
+    color:var(--lime);user-select:all;overflow-x:auto;white-space:nowrap}
 
   /* ===== DEMANDER QUELQUE CHOSE ===== */
   #dem{ position:fixed; inset:0; z-index:480;
@@ -7387,10 +7392,16 @@
       box.innerHTML =
         '<b>La fonction d’envoi n’est pas installée — rien ne peut partir.</b>' +
         '<span>Tout le reste est prêt : la liste des inscrits, le journal, la mise en forme. ' +
-        'Il manque la dernière pièce, à poser une seule fois dans Supabase → ' +
-        '<b>Edge Functions</b> → <i>Deploy a new function</i>, sous le nom exact ' +
-        '<code>envoi-newsletter</code>, avec le contenu de <code>edge-function-newsletter.ts</code>. ' +
-        'La marche à suivre complète est dans <code>NOTICE-NEWSLETTER.txt</code>.</span>';
+        'Il manque la dernière pièce, et elle ne se pose pas depuis le tableau de bord Supabase ' +
+        '— ce chemin n’existe plus. Elle se déploie en ligne de commande, une seule fois, ' +
+        'dans le dossier du site :</span>' +
+        '<code class="nw-hs-cmd">npx supabase login<br>' +
+        'npx supabase link --project-ref lmwbwasupqkvswukieav<br>' +
+        'npx supabase functions deploy</code>' +
+        '<span>Le code des quatre fonctions est déjà rangé dans <code>supabase/functions/</code>. ' +
+        'Il reste à renseigner les secrets Brevo. Tout est détaillé dans ' +
+        '<code>DEPLOIEMENT-FONCTIONS.txt</code>. Ce bandeau disparaîtra tout seul le jour où ' +
+        'la fonction répondra.</span>';
       // On n'éteint pas les boutons : quelqu'un peut déployer la fonction
       // pendant que l'écran est ouvert, et un bouton mort ne se rallume
       // pas tout seul. Ils diront simplement la même chose s'ils échouent.
@@ -15004,6 +15015,35 @@
                                 return [(n>>16)&255,(n>>8)&255,n&255]; };
     var fSGBold=o.fSGBold, fSGMed=o.fSGMed, fInter=o.fInter, fInterSb=o.fInterSb, col=o.col;
 
+    // ================= PDF_CARACTERES =================
+    // LES POLICES EMBARQUEES SONT UN SOUS-ENSEMBLE latin+FR (voir
+    // PDF_FONTS en tête de fichier) : tout ce qui n'y est pas sort EN
+    // BLANC, sans erreur, sans avertissement. Un trou dans la phrase.
+    //
+    // Constaté : « → », « ✂ », « ✓ », « ° » sont absents des quatre
+    // fontes. Le journal d'une candidature imprimait « Nouvelle  À
+    // étudier », et personne ne pouvait deviner qu'il manquait une
+    // flèche. On mesure pour savoir : un glyphe absent rend toujours la
+    // même largeur que les autres absents.
+    //
+    // Passent sans souci : les lettres accentuées, « » « · » « – » « — »
+    // « … » « ’ » « ‹ › », les chiffres et la ponctuation ASCII.
+    //
+    // sur() remplace les fautifs connus. Elle s'applique à TOUT texte
+    // venu d'une saisie — une note d'entraîneur, un message de famille —
+    // parce qu'on ne contrôle pas ce qui y est tapé.
+    o.sur = function(t){
+      return String(t == null ? '' : t)
+        .replace(/[→⟶➔➜]/g, '»').replace(/[←⟵]/g, '«')
+        .replace(/✂/g, '').replace(/[✓✔]/g, 'OK').replace(/[✗✘]/g, 'X')
+        .replace(/°/g, 'o').replace(/[•●]/g, '·')
+        .replace(/[“”]/g, '"').replace(/[‘]/g, '’')
+        // Tout ce qui reste hors du latin étendu et de la ponctuation
+        // courante — émoji compris — deviendrait un blanc : autant le
+        // dire par un point d'interrogation, qui se voit.
+        .replace(/[^ -ɏ–—‘’‚„…«»‹›€]/g, '?');
+    };
+
     o.enTeteSuite = function(){
       doc.setFillColor(COURT[0],COURT[1],COURT[2]);
       doc.rect(0, 0, PW, 15, 'F');
@@ -15407,8 +15447,11 @@
       cdEvents.forEach(function(e){ dateW = Math.max(dateW, doc.getTextWidth(fmtDateTime(e.created_at))); });
       var labelX = M + 9 + dateW + 7;
       cdEvents.forEach(function(e, ei){
+        // « » » et non « → » : la flèche n'est pas dans le sous-ensemble
+        // de polices embarqué et sortait en blanc — le journal disait
+        // « Nouvelle  À étudier », avec un trou au milieu.
         var label = e.kind==='statut'
-          ? (e.from_status?cdSt(e.from_status).label+' → ':'')+cdSt(e.to_status).label
+          ? (e.from_status?cdSt(e.from_status).label+' » ':'')+cdSt(e.to_status).label
           : (e.body||e.kind);
         checkPageBreak(8);
         // Le filet est tracé segment par segment : il reste continu et
@@ -16120,6 +16163,10 @@
             '<div class="cd-quick">'+
               (r.guardian_phone?'<a href="tel:'+esc(r.guardian_phone)+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.2-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.8 2Z"></path></svg>'+esc(r.guardian_phone)+'</a>':'')+
               (r.guardian_email?'<a href="mailto:'+esc(r.guardian_email)+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 6 10-6"></path></svg>'+esc(r.guardian_email)+'</a>':'')+
+              // Le dossier sur papier : pour une réunion de bureau, un
+              // classeur, ou le coach qui n'a pas l'admin sur son
+              // téléphone. Candidatures l'avait, Inscriptions non.
+              '<button type="button" class="btn btn-ghost" id="in-pdf-btn" style="padding:7px 12px;font-size:11.5px;flex:none;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5M4 21h16"/></svg>Dossier PDF</button>'+
             '</div>'+
           '</div>'+
         '</div>'+
@@ -16268,6 +16315,8 @@
         if (p) inRecuPdf(r, p);
       });
     });
+    var pdfBtn = document.getElementById('in-pdf-btn');
+    if (pdfBtn) pdfBtn.addEventListener('click', function(){ inFichePdf(r); });
 
     var ta = document.getElementById('in-notes'), dn = document.getElementById('in-draft-note');
     var dk = 'bbc-in-notes-draft-' + r.id;
@@ -16351,63 +16400,277 @@
   // Reçu de paiement. On encaisse en espèces : une famille qui donne
   // 5 000 F veut une preuve, et le club veut la même trace de son côté.
   // Deux exemplaires sur la page — un pour la famille, un pour le club.
+  // ===================== LE REÇU D'UN VERSEMENT =====================
+  //
+  // Il existait, et il fonctionnait — mais en Helvetica, sans logo et
+  // sans les couleurs du club : posé à côté d'une fiche de candidature,
+  // on n'aurait pas dit qu'ils sortaient de la même maison. Un reçu est
+  // pourtant la seule chose que la famille emporte.
+  //
+  // DEUX VOLETS SUR UNE PAGE, et c'est délibéré : on coupe au pointillé,
+  // la famille garde le sien, le club classe l'autre. Deux exemplaires
+  // identiques évitent la photocopie, et la photocopieuse est justement
+  // ce qu'on n'a pas au bord du terrain.
   function inRecuPdf(r, p){
-    var jsPDFLib = window.jspdf && window.jspdf.jsPDF;
-    if (!jsPDFLib){ showMsg(document.getElementById('in-msg'), 'Génération PDF indisponible.', false); return; }
-    var doc = new jsPDFLib({ unit:'mm', format:'a4' });
+    cdImgToDataUrl(LOGO_DEF, true).catch(function(){ return null; }).then(function(logo){
+      inRecuRendre(r, p, logo);
+    });
+  }
+  function inRecuRendre(r, p, logo){
+    var o = pdfSocle({ titre:'Reçu de paiement', mention:'À REMETTRE À LA FAMILLE', logo:logo });
+    if (!o) return;
+    var doc = o.doc, PW = o.PW, M = o.M;
     var lib = p.kind==='inscription' ? "Frais d'inscription"
             : (p.kind==='mensualite' ? 'Mensualité — ' + inPeriodeLabel(p.period) : 'Versement');
     var meth = (IN_METHODES.filter(function(m){ return m[0]===p.method; })[0]||['','—'])[1];
+    // Pas de « N° » : le ° ne fait pas partie du sous-ensemble embarqué
+    // (voir PDF_CARACTERES en tête de pdfSocle) et sortirait en blanc.
     var num  = 'REC-' + String(p.id||'').slice(0,8).toUpperCase();
 
-    function volet(y){
-      doc.setDrawColor(198,162,87); doc.setLineWidth(0.4);
-      doc.rect(15, y, 180, 118);
+    // Le volet se dessine à une hauteur donnée. On garde o.y en dehors :
+    // ce document ne coule pas, il est composé à des positions fixes.
+    function volet(y0, exemplaire){
+      doc.setDrawColor(o.HAIR[0],o.HAIR[1],o.HAIR[2]); doc.setLineWidth(0.4);
+      doc.roundedRect(M, y0, PW-2*M, 96, 2, 2, 'S');
 
-      doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(11,36,25);
-      doc.text('BAOBABS BASKET CLUB', 24, y+14);
-      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(120,130,122);
-      doc.text('École de basket — Terrain de basket Sicap Baobabs, Dakar', 24, y+20);
+      o.fSGBold(11); o.col(o.INK);
+      doc.text('REÇU DE PAIEMENT', M+8, y0+13);
+      o.fInter(7.4); o.col(o.FAINT);
+      doc.text(num, PW-M-8, y0+13, { align:'right' });
+      doc.text('École de basket · Terrain Sicap Baobabs, Dakar', M+8, y0+19.5);
 
-      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(198,162,87);
-      doc.text('REÇU DE PAIEMENT', 24, y+33);
-      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,100,94);
-      doc.text('N° ' + num, 150, y+33);
+      doc.setDrawColor(o.HAIR[0],o.HAIR[1],o.HAIR[2]); doc.setLineWidth(0.4);
+      doc.line(M+8, y0+24, PW-M-8, y0+24);
 
-      doc.setDrawColor(225,222,214); doc.line(24, y+38, 186, y+38);
-
-      var l = y + 50;
+      var l = y0 + 33;
       function ligne(k, v){
-        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(120,130,122);
-        doc.text(k, 24, l);
-        doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(20,30,24);
-        doc.text(String(v==null?'—':v), 78, l);
-        l += 9;
+        o.fInter(8.2); o.col(o.FAINT);
+        doc.text(k, M+8, l);
+        o.fSGMed(10); o.col(o.INK);
+        doc.text(String(v==null||v==='' ? '—' : v), M+52, l);
+        l += 8.4;
       }
-      ligne('Enfant',       r.full_name || '—');
-      ligne('Référence',    r.reference || '—');
-      ligne('Responsable',  r.guardian_name || '—');
-      ligne('Objet',        lib);
-      ligne('Moyen',        meth);
-      ligne('Date',         String(p.paid_on||'').split('-').reverse().join('/'));
+      ligne('Enfant',      r.full_name);
+      ligne('Référence',   r.reference);
+      ligne('Responsable', r.guardian_name);
+      ligne('Objet',       lib);
+      ligne('Moyen',       meth);
+      ligne('Date',        String(p.paid_on||'').split('-').reverse().join('/'));
 
-      doc.setFillColor(11,36,25); doc.rect(24, l+2, 162, 16, 'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(255,255,255);
-      doc.text('MONTANT REÇU', 30, l+13);
-      doc.text(inFcfa(p.amount_fcfa), 180, l+13, { align:'right' });
+      // Le montant sur fond vert club : c'est le seul chiffre qu'on
+      // cherche quand on ressort le papier six mois plus tard.
+      doc.setFillColor(o.COURT[0],o.COURT[1],o.COURT[2]);
+      doc.rect(M+8, l-1, PW-2*M-16, 15, 'F');
+      o.fInterSb(9); o.col([176,190,180]);
+      doc.text('MONTANT REÇU', M+14, l+8.5, { charSpace:0.4 });
+      o.fSGBold(13); o.col([243,239,230]);
+      doc.text(inFcfa(p.amount_fcfa), PW-M-14, l+8.7, { align:'right' });
 
-      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,158,150);
-      doc.text('Cachet et signature du club', 24, y+112);
+      o.fInter(7); o.col(o.FAINT);
+      doc.text('Cachet et signature du club', M+8, y0+90);
+      doc.text(exemplaire, PW-M-8, y0+90, { align:'right' });
     }
-    volet(12);
-    doc.setDrawColor(210,206,198); doc.setLineDashPattern([2,2],0);
-    doc.line(15, 140, 195, 140);
-    doc.setLineDashPattern([],0);
-    doc.setFontSize(7.5); doc.setTextColor(160,168,160);
-    doc.text('— exemplaire club —', 105, 144, { align:'center' });
-    volet(150);
 
-    doc.save('recu-' + (r.reference||'inscription') + '-' + (p.period || p.kind) + '.pdf');
+    volet(o.y, 'Exemplaire famille');
+    // Le pointillé de découpe, et il est franc : un trait plein se
+    // confondrait avec un filet de mise en page, et on plierait au
+    // mauvais endroit.
+    var mid = o.y + 104;
+    doc.setDrawColor(190,196,188); doc.setLineWidth(0.4);
+    doc.setLineDashPattern([2.4,2.2], 0);
+    doc.line(M-4, mid, PW-M+4, mid);
+    doc.setLineDashPattern([], 0);
+    o.fInter(7); o.col(o.FAINT);
+    doc.text('— découper ici —', PW/2, mid-2.4, { align:'center' });
+
+    volet(mid + 8, 'Exemplaire club');
+    o.pied('REÇU DE PAIEMENT');
+    doc.save(o.nomFichier('recu', (r.reference||'inscription') + '-' + (p.period || p.kind), 'versement'));
+  }
+
+  // ===================== LA FICHE D'UN DOSSIER =====================
+  //
+  // Ce que Candidatures avait et qu'Inscriptions n'avait pas : le
+  // dossier entier sur papier. On l'imprime pour une réunion de bureau,
+  // on le glisse dans un classeur, on le donne au coach qui n'a pas
+  // l'admin sur son téléphone.
+  //
+  // La photo vient de la pièce « Photo d'identité » quand elle a été
+  // déposée : c'est le seul portrait que le dossier possède.
+  function inFichePdf(r){
+    var btn = document.getElementById('in-pdf-btn');
+    var libelle = btn ? btn.innerHTML : '';
+    if (btn){ btn.disabled = true; btn.innerHTML = 'Génération…'; }
+    var dPhoto = inDocs.filter(function(d){ return d.kind === 'photo'; })[0];
+    Promise.all([
+      cdImgToDataUrl(LOGO_DEF, true).catch(function(){ return null; }),
+      dPhoto && dPhoto.url ? cdImgToDataUrl(dPhoto.url, false).catch(function(){ return null; })
+                           : Promise.resolve(null)
+    ]).then(function(res){
+      inFicheRendre(r, res[0], res[1]);
+    }).catch(function(){
+      inFicheRendre(r, null, null);
+    }).then(function(){
+      if (btn){ btn.disabled = false; btn.innerHTML = libelle; }
+    });
+  }
+
+  function inFicheRendre(r, logo, photo){
+    var o = pdfSocle({ titre:'Dossier d’inscription', logo:logo });
+    if (!o) return;
+    var doc = o.doc, PW = o.PW, M = o.M;
+    var s = inSt(r.status||'nouvelle');
+
+    // --- Bloc identité : portrait, nom, statut, référence ---
+    var cardY = o.y, pW = 30, pH = 38;
+    o.portrait(photo, M, cardY, pW, pH, r.full_name);
+
+    var tx = M + pW + 11;
+    var pillW = o.pill(s.label, 0, 0, o.hex(s.color), true);
+    o.pill(s.label, PW-M-pillW, cardY+5.5, o.hex(s.color));
+    o.fInter(7.2); o.col(o.FAINT);
+    doc.text('Reçue le ' + fmtDateTime(r.created_at), PW-M, cardY+12.5, { align:'right' });
+
+    o.fSGBold(19); o.col(o.INK);
+    doc.text(r.full_name || '—', tx, cardY+11.5);
+    o.fInter(9); o.col(o.FAINT);
+    doc.text(inSubline(r) || 'Dossier à compléter', tx, cardY+18.5);
+    if (r.reference){
+      o.fSGMed(10); o.col(o.GOLD);
+      doc.text(r.reference, tx, cardY+26);
+    }
+    // Le téléphone du responsable, en clair sous le nom : c'est le seul
+    // numéro qu'on cherche quand on tient la feuille à la main.
+    if (r.guardian_phone){
+      o.fInter(6.8); o.col(o.FAINT);
+      doc.text('RESPONSABLE À JOINDRE', tx, cardY+33.5, { charSpace:0.35 });
+      o.fSGMed(10.5); o.col(o.INK);
+      doc.text([r.guardian_name, r.guardian_phone].filter(Boolean).join(' · '), tx, cardY+39);
+    }
+    doc.setDrawColor(226,210,178); doc.setLineWidth(0.5);
+    doc.line(M, cardY+pH+8, PW-M, cardY+pH+8);
+    o.y = cardY + pH + 18;
+
+    // --- CE QUI MANQUE, EN PREMIER ---
+    // Un certificat médical absent chez un enfant qui s'entraîne déjà
+    // est le seul manque qui expose le club. Sur écran il est en haut de
+    // la fiche ; sur papier il ne peut pas être ailleurs.
+    var manques = [];
+    if ((r.status||'') === 'inscrite'){
+      IN_PIECES.forEach(function(pc){
+        if (!inDocs.some(function(d){ return d.kind === pc[0]; })) manques.push(pc[1]);
+      });
+      if (inEnRetard(r)) manques.push('Mensualité de ' + inPeriodeLabel(inPeriodeCourante()) + ' non réglée');
+    }
+    if (manques.length){
+      o.quote('À régulariser : ' + manques.join(' · '), [176,90,50]);
+      o.y += 2;
+    }
+
+    // --- L'enfant ---
+    o.sectionTitle('L’enfant');
+    o.fieldsGrid([
+      ['Date de naissance', r.birth_date ? String(r.birth_date).split('-').reverse().join('/') : ''],
+      ['Âge', r.age ? r.age + ' ans' : ''],
+      ['Catégorie', r.category],
+      ['Sexe', r.gender === 'M' ? 'Garçon' : (r.gender === 'F' ? 'Fille' : '')],
+      ['Établissement', r.school],
+      ['Quartier / Ville', r.district],
+      ['Niveau', r.experience]
+    ]);
+    o.y += 2;
+
+    // --- Le responsable légal ---
+    o.sectionTitle('Le responsable légal');
+    o.fieldsGrid([
+      ['Nom', r.guardian_name], ['Lien avec l’enfant', r.guardian_relation],
+      ['Téléphone', r.guardian_phone], ['Second numéro', r.guardian_phone2],
+      ['Email', r.guardian_email]
+    ]);
+    o.y += 2;
+
+    // --- L'argent ---
+    // Les tarifs sont ceux FIGÉS À L'INSCRIPTION, pas ceux d'aujourd'hui :
+    // un enfant garde le prix auquel il s'est engagé. Le papier doit dire
+    // la même chose que l'écran, sinon il devient un motif de litige.
+    var payees = inPayees(r);
+    var paiementPar = {};
+    inPayments.forEach(function(pm){ if (pm.kind==='mensualite' && pm.period) paiementPar[pm.period] = pm; });
+    if (!payees.length) payees = Object.keys(paiementPar);
+    var fraisPayes = r.inscription_payee === true ||
+      inPayments.some(function(pm){ return pm.kind === 'inscription'; });
+    var totalPaye = r.total_paye != null ? r.total_paye
+      : inPayments.reduce(function(t, pm){ return t + (parseInt(pm.amount_fcfa,10)||0); }, 0);
+
+    o.sectionTitle('L’argent — ' + inFcfa(totalPaye) + ' encaissés');
+    o.releve("Frais d'inscription — " + inFcfa(r.fee_registration_fcfa),
+             fraisPayes ? 'Réglés' : 'En attente');
+    var saison = inSaison(r), moisCourant = inPeriodeCourante();
+    var regles = saison.filter(function(pp){ return payees.indexOf(pp) >= 0; });
+    var dus    = saison.filter(function(pp){ return payees.indexOf(pp) < 0 && pp <= moisCourant; });
+    o.releve('Mensualité — ' + inFcfa(r.fee_monthly_fcfa) + ' par mois',
+             regles.length + ' réglée' + (regles.length>1?'s':'') + ' sur ' + saison.length);
+    if (dus.length)
+      o.releve('Mois dus', dus.map(function(pp){ return IN_MOIS[parseInt(pp.slice(5),10)-1]; }).join(', '));
+    o.releve('Total encaissé', inFcfa(totalPaye), true);
+    o.y += 4;
+
+    if (inPayments.length){
+      o.fInter(6.8); o.col(o.FAINT);
+      o.checkPageBreak(8);
+      doc.text('VERSEMENTS ENREGISTRÉS', M, o.y, { charSpace:0.35 }); o.y += 6;
+      o.journal(inPayments.map(function(pm){
+        var lib = pm.kind === 'inscription' ? "Frais d'inscription"
+                : (pm.kind === 'mensualite' ? inPeriodeLabel(pm.period) : 'Versement');
+        var meth = (IN_METHODES.filter(function(m){ return m[0]===pm.method; })[0]||['','—'])[1];
+        return [String(pm.paid_on||'').split('-').reverse().join('/'),
+                lib + ' — ' + inFcfa(pm.amount_fcfa) + ' · ' + meth];
+      }));
+      o.y += 3;
+    }
+
+    // --- Les pièces ---
+    var nbPieces = IN_PIECES.filter(function(pc){
+      return inDocs.some(function(d){ return d.kind === pc[0]; });
+    }).length;
+    o.sectionTitle('Pièces du dossier — ' + nbPieces + ' sur ' + IN_PIECES.length);
+    IN_PIECES.forEach(function(pc){
+      var d = inDocs.filter(function(x){ return x.kind === pc[0]; })[0];
+      o.releve(pc[1], d
+        ? 'Reçue le ' + String(d.received_on||'').split('-').reverse().join('/')
+        : 'Manquante');
+    });
+    o.y += 4;
+
+    // --- Santé et message ---
+    if (r.health_notes || r.message){
+      o.sectionTitle('Santé et message de la famille');
+      if (r.health_notes) o.quote('Santé : ' + r.health_notes, [176,90,50]);
+      if (r.message) o.quote(r.message);
+      o.y += 2;
+    }
+
+    // --- Notes internes ---
+    if (r.admin_notes){
+      o.sectionTitle('Notes internes — jamais visibles de la famille');
+      o.quote(r.admin_notes, null, true);
+      o.y += 2;
+    }
+
+    // --- Journal ---
+    if (inEvents && inEvents.length){
+      o.sectionTitle('Journal du dossier');
+      o.journal(inEvents.map(function(e){
+        // « » » et non « → » : voir PDF_CARACTERES.
+        var label = e.kind === 'statut'
+          ? (e.from_status ? inSt(e.from_status).label + ' » ' : '') + inSt(e.to_status).label
+          : (e.body || e.kind);
+        return [fmtDateTime(e.created_at), label];
+      }));
+    }
+
+    o.pied('CONFIDENTIEL');
+    doc.save(o.nomFichier('dossier-inscription', r.full_name, 'inscription'));
   }
 
   // ===================== ANALYTICS DU CLUB =====================

@@ -1,0 +1,78 @@
+BAOBABS BASKET CLUB — Déployer les fonctions serveur
+====================================================
+
+POURQUOI CE FICHIER
+  Les quatre fonctions serveur (newsletter, confirmation de réservation,
+  alerte d'inscription, aide à la rédaction) n'ont jamais été déployées.
+  Vérifié le jour de l'écriture : les quatre répondent 404 sur
+  https://lmwbwasupqkvswukieav.supabase.co/functions/v1/…
+
+  NOTICE-NEWSLETTER.txt disait « Supabase → Edge Functions → Deploy a new
+  function ». Ce chemin n'existe plus dans le tableau de bord Supabase :
+  le dépôt d'une fonction se fait aujourd'hui par la ligne de commande.
+  C'est très probablement pour cela que « suivre les instructions » n'a
+  rien donné — il n'y avait rien à suivre.
+
+  Le code, lui, était prêt depuis le début. Il est maintenant rangé là où
+  l'outil de déploiement va le chercher tout seul : supabase/functions/.
+
+
+CE QU'IL FAUT FAIRE — TROIS COMMANDES, UNE SEULE FOIS
+  Ouvrez un terminal DANS ce dossier, puis :
+
+  1. Se connecter à votre compte Supabase (ouvre le navigateur) :
+
+         npx supabase login
+
+  2. Rattacher ce dossier au projet du club :
+
+         npx supabase link --project-ref lmwbwasupqkvswukieav
+
+     Le mot de passe demandé est celui de la BASE DE DONNÉES
+     (Supabase → Project Settings → Database). Pas celui de votre compte.
+
+  3. Déployer les quatre fonctions :
+
+         npx supabase functions deploy
+
+     Pour n'en déployer qu'une :
+
+         npx supabase functions deploy envoi-newsletter
+
+
+LES SECRETS — SANS EUX, RIEN NE PART
+  Les fonctions envoient les e-mails par Brevo. Elles ont besoin de :
+
+      BREVO_API_KEY       la clé d'API de votre compte Brevo
+      BBC_SENDER_EMAIL    l'adresse d'expédition (vérifiée chez Brevo)
+      BBC_SENDER_NAME     facultatif — « Baobabs Basket Club »
+
+  À poser une fois, dans le tableau de bord :
+      Supabase → Edge Functions → Secrets → Add new secret
+
+  Ou en ligne de commande :
+      npx supabase secrets set BREVO_API_KEY=...  BBC_SENDER_EMAIL=...
+
+  ATTENTION : ne mettez jamais ces valeurs dans un fichier du dépôt.
+  Elles n'ont rien à faire sur GitHub.
+
+
+VÉRIFIER QUE C'EST FAIT
+  L'écran Newsletter de l'administration sonde la fonction à chaque
+  ouverture. Tant qu'elle manque, il affiche un bandeau orange qui dit
+  quoi déployer. Le bandeau disparaît tout seul dès que la fonction
+  répond — c'est le signal le plus simple.
+
+  En ligne de commande :
+      npx supabase functions list
+
+
+ENSUITE
+  Admin → Newsletter :
+    1. Écrivez un sujet et un message.
+    2. Mettez VOTRE adresse dans « M'envoyer un test » : seul vous
+       recevez, avec [TEST] devant le sujet.
+    3. Quand c'est bon : « Envoyer à tous ».
+
+  Brevo en offre gratuite = 300 e-mails par jour. Au-delà de 300
+  inscrits, l'envoi doit être étalé ou le compte passé en offre payante.
