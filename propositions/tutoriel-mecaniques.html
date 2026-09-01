@@ -1,0 +1,2828 @@
+<title>Le contenu prend la parole</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* =====================================================================
+   Palette : celle de l'administration Baobabs, reprise telle quelle.
+   Parti pris assumé : cette page est une simulation d'un panneau
+   d'administration sombre. Une version claire trahirait chaque
+   démonstration. Tout est donc peint explicitement, thème unique.
+
+   La couleur porte l'argument :
+     OR   = la surcouche du tutoriel (halo, main, onde) — ce qui existe
+     VERT = le contenu réel qui joue — ce qu'on propose
+   ===================================================================== */
+:root{
+  --sol:#070E0A;
+  --surf:#0E1811;
+  --surf2:#141F17;
+  --surf3:#1B2A20;
+  --line:rgba(243,239,230,.085);
+  --line2:rgba(243,239,230,.16);
+  --text:#F4F1E9;
+  --muted:#A9B2AB;
+  --faint:#7E8A81;
+  --or:#C6A257;
+  --or-vif:#E4C179;
+  --or-doux:rgba(198,162,87,.13);
+  --or-bord:rgba(198,162,87,.36);
+  --vert:#93CE43;
+  --vert-doux:rgba(147,206,67,.12);
+  --vert-bord:rgba(147,206,67,.38);
+  --rouge:#E86A5E;
+
+  --ui:'Archivo','Inter',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+
+  --r:10px;
+  --max:1180px;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--sol);
+  color:var(--text);
+  font-family:var(--ui);
+  font-variation-settings:'wdth' 100;
+  font-size:15.5px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+
+.wrap{max-width:var(--max);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+
+/* ---- typographie ------------------------------------------------- */
+h1,h2,h3,h4{margin:0;text-wrap:balance;font-weight:800;letter-spacing:-.015em;line-height:1.08}
+h1{font-size:clamp(34px,6.4vw,62px);font-variation-settings:'wdth' 112;letter-spacing:-.03em}
+h2{font-size:clamp(24px,3.4vw,36px);font-variation-settings:'wdth' 108;letter-spacing:-.022em}
+h3{font-size:clamp(19px,2.2vw,24px);font-variation-settings:'wdth' 105}
+p{margin:0}
+
+.kick{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.19em;text-transform:uppercase;color:var(--or);
+}
+.kick.v{color:var(--vert)}
+.lede{font-size:clamp(16.5px,2vw,19.5px);line-height:1.6;color:var(--muted);max-width:64ch}
+.lede b,.corps b{color:var(--text);font-weight:700}
+.corps{max-width:66ch;color:var(--muted)}
+.corps + .corps{margin-top:14px}
+code,.mono{font-family:var(--mono);font-size:.88em;color:var(--or-vif)}
+code{background:var(--or-doux);padding:1px 5px;border-radius:4px;white-space:nowrap}
+em{color:var(--text);font-style:italic}
+
+/* ---- rythme vertical --------------------------------------------- */
+section{padding:clamp(56px,8vw,104px) 0;border-top:1px solid var(--line)}
+section:first-of-type{border-top:none}
+.pile{display:flex;flex-direction:column;gap:clamp(20px,3vw,30px)}
+.pile-s{display:flex;flex-direction:column;gap:12px}
+
+/* ---- en-tête ------------------------------------------------------ */
+.hero{padding-top:clamp(48px,9vw,96px);padding-bottom:clamp(40px,6vw,72px)}
+.hero-grid{display:grid;gap:clamp(28px,5vw,54px);grid-template-columns:1fr}
+@media(min-width:1000px){.hero-grid{grid-template-columns:1.05fr .95fr;align-items:end}}
+.hero h1 .fade{color:var(--faint);font-weight:700}
+.meta{
+  display:flex;flex-wrap:wrap;gap:8px 22px;font-family:var(--mono);
+  font-size:11.5px;color:var(--faint);letter-spacing:.05em;
+  padding-top:18px;border-top:1px solid var(--line);
+}
+.meta b{color:var(--muted);font-weight:500}
+
+/* ---- comparaison A/B du bandeau ----------------------------------- */
+.ab{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:620px){.ab{grid-template-columns:1fr 1fr}}
+.ab-c{
+  background:var(--surf);border:1px solid var(--line);border-radius:var(--r);
+  padding:14px 14px 16px;display:flex;flex-direction:column;gap:11px;
+}
+.ab-c.neuf{border-color:var(--vert-bord);background:linear-gradient(180deg,rgba(147,206,67,.05),transparent 60%),var(--surf)}
+.ab-t{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.ab-c.neuf .ab-t{color:var(--vert)}
+.ab-scene{position:relative;height:104px;border-radius:7px;background:var(--sol);overflow:hidden;border:1px solid var(--line)}
+.ab-avis{
+  display:none;align-items:center;gap:12px;flex-wrap:wrap;
+  background:var(--or-doux);border:1px solid var(--or-bord);border-radius:8px;
+  padding:9px 12px;font-size:13px;color:var(--muted);line-height:1.5;
+}
+.ab-avis.on{display:flex}
+.ab-avis b{color:var(--text)}
+.ab-avis button{
+  font-family:var(--ui);font-size:12.5px;font-weight:700;flex:none;
+  background:var(--or);color:#12100A;border:none;border-radius:6px;padding:6px 13px;cursor:pointer;
+}
+.ab-avis button:hover{background:var(--or-vif)}
+.ab-avis button:focus-visible{outline:2px solid var(--vert);outline-offset:2px}
+
+/* ---- postes d'essai ----------------------------------------------- */
+.poste{display:grid;gap:clamp(22px,3.5vw,44px);grid-template-columns:1fr;align-items:start}
+@media(min-width:1000px){.poste{grid-template-columns:minmax(0,1fr) minmax(0,1.02fr)}}
+.poste-spec{order:2;min-width:0}
+.poste-banc{order:1;min-width:0;position:relative}
+@media(min-width:1000px){.poste-spec{order:1}.poste-banc{order:2;position:sticky;top:22px}}
+
+.rang{
+  display:flex;align-items:baseline;gap:14px;margin-bottom:6px;
+}
+.rang-n{
+  font-size:clamp(40px,6vw,58px);font-weight:800;line-height:.86;
+  font-variation-settings:'wdth' 120;color:var(--or);
+  font-variant-numeric:tabular-nums;
+}
+.rang-n.socle{color:var(--faint);font-size:clamp(20px,2.4vw,26px);font-variation-settings:'wdth' 78}
+
+/* fiche : les dix champs demandés */
+.fiche{margin:20px 0 0;display:grid;gap:0;grid-template-columns:1fr}
+.fiche-l{
+  display:grid;gap:4px 18px;grid-template-columns:1fr;
+  padding:13px 0;border-top:1px solid var(--line);
+}
+@media(min-width:560px){.fiche-l{grid-template-columns:132px minmax(0,1fr);gap:0 18px}}
+.fiche-k{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);padding-top:4px;
+}
+.fiche-v{color:var(--muted);font-size:14.5px;line-height:1.58;min-width:0}
+.fiche-v b{color:var(--text);font-weight:600}
+.fiche-v ul{margin:6px 0 0;padding-left:17px;display:flex;flex-direction:column;gap:4px}
+.fiche-v li::marker{color:var(--or)}
+.fiche-l.vert .fiche-k{color:var(--vert)}
+
+/* ---- le banc : une fausse administration --------------------------- */
+.banc{
+  border:1px solid var(--line2);border-radius:12px;overflow:hidden;
+  background:var(--surf);box-shadow:0 22px 48px -30px rgba(0,0,0,.9);
+}
+.banc-bar{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;
+  background:var(--surf2);border-bottom:1px solid var(--line);
+}
+.banc-pt{width:8px;height:8px;border-radius:50%;background:var(--surf3);flex:none}
+.banc-nom{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.06em;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.banc-scene{position:relative;padding:16px;min-height:224px;background:var(--sol)}
+.banc-pied{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:10px 12px;background:var(--surf2);border-top:1px solid var(--line);
+}
+.jouer{
+  font-family:var(--ui);font-size:13px;font-weight:700;letter-spacing:.01em;
+  background:var(--or);color:#12100A;border:none;border-radius:7px;
+  padding:8px 16px;cursor:pointer;transition:background .16s ease,transform .12s ease;
+}
+.jouer:hover{background:var(--or-vif)}
+.jouer:active{transform:translateY(1px)}
+.jouer:focus-visible{outline:2px solid var(--vert);outline-offset:2px}
+.jouer[disabled]{opacity:.42;cursor:default}
+.lu{
+  font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em;
+  flex:1;min-width:0;text-align:right;
+}
+.lu b{color:var(--vert);font-weight:500}
+.lu i{color:var(--or);font-style:normal}
+
+/* ---- les faux composants d'admin ---------------------------------- */
+.f-h{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+
+.f-rows{display:flex;flex-direction:column;gap:6px}
+.f-row{
+  display:flex;align-items:center;gap:11px;padding:9px 11px;
+  background:var(--surf);border:1px solid var(--line);border-radius:7px;font-size:13px;
+}
+.f-row .f-eq{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.f-row .f-dt{color:var(--faint);font-family:var(--mono);font-size:11px;flex:none}
+.f-row .f-sc{
+  font-family:var(--mono);font-size:12.5px;font-weight:500;color:var(--or-vif);
+  font-variant-numeric:tabular-nums;flex:none;min-width:52px;text-align:right;
+}
+
+.f-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+@media(min-width:520px){.f-kpis{grid-template-columns:repeat(4,1fr)}}
+.f-kpi{
+  background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:12px 11px;
+  display:flex;flex-direction:column;gap:3px;
+}
+.f-kpi .f-lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
+.f-kpi .f-val{font-size:26px;font-weight:800;line-height:1.06;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.f-kpi .f-ev{font-family:var(--mono);font-size:10.5px;color:var(--vert)}
+
+.f-tab{width:100%;border-collapse:collapse;font-size:13px}
+.f-tab th{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);font-weight:500;text-align:left;padding:0 8px 8px;border-bottom:1px solid var(--line);
+}
+.f-tab td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.f-tab td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;color:var(--muted)}
+.f-tab td.p{color:var(--or-vif);font-weight:600}
+.f-tab tr:last-child td{border-bottom:none}
+.f-club{display:flex;align-items:center;gap:8px;font-weight:600}
+.f-pas{width:17px;height:17px;border-radius:4px;background:var(--surf3);flex:none}
+
+.f-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+@media(min-width:520px){.f-cards{grid-template-columns:repeat(3,1fr)}}
+.f-card{
+  background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:11px;
+  display:flex;flex-direction:column;gap:7px;
+}
+.f-card .f-vig{height:44px;border-radius:5px;background:linear-gradient(135deg,var(--surf3),var(--surf2))}
+.f-card .f-nom{font-size:12.5px;font-weight:600;line-height:1.25}
+.f-card .f-pos{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+
+.f-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.f-jour{
+  aspect-ratio:1/.82;border-radius:5px;background:var(--surf);border:1px solid var(--line);
+  padding:4px 5px;font-family:var(--mono);font-size:9.5px;color:var(--faint);
+  display:flex;flex-direction:column;gap:3px;overflow:hidden;
+}
+.f-jour.hors{opacity:.3}
+.f-ev{
+  font-family:var(--ui);font-size:8.5px;font-weight:700;line-height:1.2;
+  background:var(--or-doux);color:var(--or-vif);border-radius:3px;padding:2px 3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.f-ev.dom{background:var(--vert-doux);color:var(--vert)}
+
+.f-form{display:flex;flex-direction:column;gap:11px}
+.f-champ{display:flex;flex-direction:column;gap:5px}
+.f-champ label{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
+.f-champ input,.f-champ select{
+  font-family:var(--ui);font-size:13px;color:var(--text);
+  background:var(--surf);border:1px solid var(--line2);border-radius:6px;padding:8px 10px;width:100%;
+}
+.f-champ input::placeholder{color:var(--faint)}
+.f-envoi{
+  align-self:flex-start;font-family:var(--ui);font-size:12.5px;font-weight:700;
+  background:var(--surf3);color:var(--text);border:1px solid var(--line2);border-radius:6px;padding:8px 15px;cursor:default;
+}
+
+.f-cause{display:flex;flex-direction:column;gap:13px}
+.f-ligne-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.f-badge{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 9px;border-radius:99px;border:1px solid var(--line2);color:var(--faint);
+}
+.f-badge.on{border-color:var(--vert-bord);color:var(--vert);background:var(--vert-doux)}
+.f-bouton{
+  font-family:var(--ui);font-size:12.5px;font-weight:700;background:var(--or);color:#12100A;
+  border:none;border-radius:6px;padding:8px 15px;cursor:pointer;
+}
+.f-encart{
+  background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:12px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.f-encart .f-t{font-size:13px;font-weight:700}
+.f-encart .f-d{font-size:12px;color:var(--faint);line-height:1.5}
+.f-cache{display:none}
+
+/* ---- le faux Studio ------------------------------------------------ */
+.st-wrap{display:grid;grid-template-columns:26px minmax(0,1fr) 128px;gap:9px;align-items:stretch}
+.st-outils{display:flex;flex-direction:column;gap:5px}
+.st-o{height:22px;border-radius:5px;background:var(--surf);border:1px solid var(--line)}
+.st-o.on{background:var(--or-doux);border-color:var(--or-bord)}
+.st-plan{
+  position:relative;aspect-ratio:4/5;border-radius:6px;overflow:hidden;
+  background:linear-gradient(160deg,#12211a,#0B1710);border:1px solid var(--line2);
+}
+.st-el{position:absolute;border:1.5px solid transparent;border-radius:3px}
+.st-el.sel{border-color:var(--vert);box-shadow:0 0 0 3px rgba(147,206,67,.16)}
+.st-titre{
+  left:7%;top:8%;right:7%;font-size:13px;font-weight:800;line-height:1.05;
+  letter-spacing:-.02em;color:var(--or-vif);text-align:center;padding:3px;
+}
+.st-photo{left:12%;top:34%;right:12%;height:31%;border-radius:4px;
+  background:linear-gradient(135deg,var(--surf3),#22382A)}
+.st-date{
+  left:10%;bottom:8%;right:10%;font-family:var(--mono);font-size:8px;letter-spacing:.09em;
+  color:var(--text);text-align:center;background:rgba(198,162,87,.18);padding:3px;border-radius:3px;
+}
+.st-cote{display:flex;flex-direction:column;min-width:0}
+.st-h{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.st-calques{display:flex;flex-direction:column;gap:3px}
+.st-c{
+  font-family:var(--ui);font-size:10.5px;text-align:left;color:var(--muted);
+  background:var(--surf);border:1px solid var(--line);border-radius:4px;padding:5px 6px;
+  cursor:pointer;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.st-c.actif{background:var(--or-doux);border-color:var(--or-bord);color:var(--text)}
+.st-props{
+  background:var(--surf);border:1px solid var(--line);border-radius:5px;padding:7px;
+  font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.65;min-height:56px;
+}
+.st-props b{color:var(--or-vif);font-weight:500}
+.st-vide{color:var(--faint);font-style:italic}
+
+/* ---- le graphique -------------------------------------------------- */
+#d-graphe svg{display:block;width:100%;height:auto}
+#d-graphe .gb{fill:var(--or)}
+#d-graphe .gx{stroke:var(--line2);stroke-width:1}
+#d-graphe .gl{fill:var(--faint);font-family:var(--mono);font-size:8px}
+
+/* ---- l'étiquette de tempo ------------------------------------------ */
+.tempo-eti{
+  position:absolute;left:12px;bottom:12px;display:flex;align-items:baseline;gap:8px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  background:var(--sol);border:1px solid var(--vert-bord);border-radius:99px;
+  padding:4px 11px;color:var(--vert);opacity:0;transition:opacity .22s ease;pointer-events:none;
+}
+.tempo-eti.on{opacity:1}
+.tempo-eti i{font-style:normal;color:var(--faint);letter-spacing:.04em}
+
+/* ---- la surcouche du tutoriel, rejouée à l'identique --------------- */
+.sur{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:0}
+.halo{
+  position:absolute;border-radius:9px;opacity:0;
+  border:1.5px solid var(--or-bord);background:rgba(198,162,87,.055);
+  box-shadow:0 0 0 3px rgba(198,162,87,.07);
+  transition:opacity .3s ease,top .42s cubic-bezier(.2,.8,.25,1),left .42s cubic-bezier(.2,.8,.25,1),
+             width .42s cubic-bezier(.2,.8,.25,1),height .42s cubic-bezier(.2,.8,.25,1);
+}
+.halo.on{opacity:1}
+.halo.pale{opacity:.34}
+.main{
+  position:absolute;width:19px;height:25px;opacity:0;margin:-3px 0 0 -3px;
+  transition:opacity .26s ease,transform .34s ease,left .84s cubic-bezier(.22,.72,.24,1),top .84s cubic-bezier(.22,.72,.24,1);
+  color:var(--or-vif);filter:drop-shadow(0 3px 7px rgba(0,0,0,.65));
+}
+.main.on{opacity:1}
+.main.tape{transform:scale(.78) translateY(2px)}
+.onde{
+  position:absolute;width:13px;height:13px;border-radius:50%;margin:-6px 0 0 -6px;
+  border:1.5px solid var(--or-vif);opacity:0;pointer-events:none;
+}
+.onde.part{animation:ondeGo .58s cubic-bezier(.2,.8,.3,1) 1}
+@keyframes ondeGo{0%{opacity:.95;transform:scale(.4)}100%{opacity:0;transform:scale(3.4)}}
+
+.etiq{
+  position:absolute;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  background:var(--vert);color:#0B1405;padding:2px 6px;border-radius:4px;font-weight:500;
+  opacity:0;transform:translateY(4px);transition:opacity .26s ease,transform .26s ease;white-space:nowrap;
+}
+.etiq.on{opacity:1;transform:none}
+.rail{
+  position:absolute;width:2px;border-radius:2px;background:var(--vert);opacity:0;
+  transition:opacity .3s ease,height .4s cubic-bezier(.2,.8,.3,1);
+}
+.rail.on{opacity:.85}
+.frappe{
+  position:absolute;font-family:var(--ui);font-size:13px;color:var(--text);
+  opacity:0;transition:opacity .18s ease;white-space:nowrap;pointer-events:none;
+}
+.frappe.on{opacity:1}
+.frappe::after{content:'';display:inline-block;width:1.5px;height:14px;background:var(--vert);
+  margin-left:1.5px;vertical-align:-2px;animation:bat 1s steps(2) infinite}
+@keyframes bat{50%{opacity:0}}
+
+/* ---- tableau de classement ---------------------------------------- */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surf)}
+table.cls{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+table.cls th{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);
+  font-weight:500;text-align:left;padding:11px 13px;border-bottom:1px solid var(--line2);white-space:nowrap;
+}
+table.cls td{padding:12px 13px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--muted)}
+table.cls tr:last-child td{border-bottom:none}
+table.cls td.nom{color:var(--text);font-weight:700;white-space:nowrap}
+table.cls td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:center;white-space:nowrap}
+.pts{display:inline-block;min-width:30px;font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+.jauge{display:inline-flex;gap:2px;vertical-align:middle}
+.jauge i{width:5px;height:12px;border-radius:1px;background:var(--surf3);display:block}
+.jauge i.plein{background:var(--or)}
+.jauge.v i.plein{background:var(--vert)}
+
+/* ---- correspondances ---------------------------------------------- */
+.corr{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.corr-l{display:grid;grid-template-columns:1fr;gap:2px;background:var(--surf);padding:12px 14px}
+@media(min-width:620px){.corr-l{grid-template-columns:180px 1fr;gap:14px;align-items:baseline}}
+.corr-d{font-weight:700;color:var(--text);font-size:14px}
+.corr-a{color:var(--muted);font-size:13.5px}
+.corr-a b{color:var(--or);font-weight:600}
+
+/* ---- encadrés ------------------------------------------------------ */
+.note{
+  border-left:2px solid var(--or);background:var(--or-doux);
+  padding:14px 16px;border-radius:0 8px 8px 0;color:var(--muted);font-size:14.5px;line-height:1.6;
+}
+.note.v{border-left-color:var(--vert);background:var(--vert-doux)}
+.note b{color:var(--text)}
+
+pre.code{
+  background:var(--surf);border:1px solid var(--line);border-radius:9px;
+  padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.62;
+  color:var(--muted);margin:0;
+}
+pre.code b{color:var(--vert);font-weight:500}
+pre.code i{color:var(--faint);font-style:normal}
+pre.code u{color:var(--or-vif);text-decoration:none}
+
+.plan{display:grid;gap:10px;grid-template-columns:1fr}
+@media(min-width:760px){.plan{grid-template-columns:repeat(3,1fr)}}
+.plan-c{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px;display:flex;flex-direction:column;gap:7px}
+.plan-n{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--or)}
+.plan-t{font-weight:700;font-size:15px;color:var(--text)}
+.plan-d{font-size:13.5px;color:var(--muted);line-height:1.55}
+
+footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);font-size:13px}
+
+/* prefers-reduced-motion ne vise QUE ce qui démarre sans qu'on l'ait
+   demandé : le comparatif du haut, qui tourne en boucle. Il est rendu
+   en état final par le script. Les mécaniques, elles, ne partent qu'au
+   clic — les figer ferait mentir le bouton « Jouer ». */
+@media (prefers-reduced-motion:reduce){
+  .ab-scene .halo,.ab-scene .main{transition-duration:.01ms !important}
+  .ab-scene .onde.part{animation:none}
+}
+</style>
+
+<div class="wrap">
+
+<!-- ================= EN-TÊTE ================= -->
+<section class="hero">
+  <div class="hero-grid">
+    <div class="pile-s">
+      <div class="kick">Tutoriel de l'administration — proposition de refonte</div>
+      <h1>Le contenu<br>prend la parole<span class="fade">.</span></h1>
+      <p class="lede" style="margin-top:6px">
+        Aujourd'hui le tutoriel dit <em>« regarde ici »</em>. Sept mécaniques pour qu'il dise
+        <em>« regarde ce qui se passe ici »</em> — <b>sans une seule animation écrite écran par écran</b>.
+        Chacune tourne réellement dans cette page, sur du contenu d'administration —
+        <b>onze bancs</b>, Studio et partition compris.
+      </p>
+    </div>
+
+    <div class="pile-s">
+      <div class="ab-avis" id="ab-avis">
+        <span>Votre système demande <b>moins d'animations</b> — le comparatif est donc figé sur son
+        état final.</span>
+        <button type="button">Le jouer quand même</button>
+      </div>
+      <div class="ab">
+        <div class="ab-c">
+          <div class="ab-t">Aujourd'hui · la signature</div>
+          <div class="ab-scene" id="ab-vieux"></div>
+          <div class="fiche-v" style="font-size:12.5px">main → cadre → onde → attente. Le contenu ne bouge pas.</div>
+        </div>
+        <div class="ab-c neuf">
+          <div class="ab-t">Proposé · le contenu d'abord</div>
+          <div class="ab-scene" id="ab-neuf"></div>
+          <div class="fiche-v" style="font-size:12.5px">Le contenu part <b>avant</b> la main. Elle arrive dans une scène déjà vivante.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meta">
+    <span><b>44</b> écrans</span>
+    <span><b>124</b> repères</span>
+    <span><b>0</b> dépendance ajoutée</span>
+    <span><b>ES5</b> · transform / opacity / filter</span>
+    <span><b>≈ 855</b> lignes de JS au total</span>
+  </div>
+</section>
+
+
+<!-- ================= LE SOCLE ================= -->
+<section>
+  <div class="pile">
+    <div class="pile-s">
+      <div class="kick">Le socle — trois pièces, avant toute mécanique</div>
+      <h2>Rien ne marche sans ces trois-là</h2>
+      <p class="corps">
+        Les sept mécaniques qui suivent ne sont pas sept effets posés côte à côte : elles partagent
+        <b>une lecture</b>, <b>un cadrage</b> et <b>une partition</b>. C'est ce socle qui répond aux
+        deux premiers problèmes — la précision du repère et le contrôle de ce que le spectateur voit —
+        et c'est lui qui garantit qu'on n'écrira jamais quarante-quatre cas particuliers.
+      </p>
+    </div>
+
+    <div class="plan">
+      <div class="plan-c">
+        <div class="plan-n">Socle A</div>
+        <div class="plan-t">La lecture — <span class="mono">lire()</span></div>
+        <div class="plan-d">
+          Une seule fonction inspecte la région désignée et rend <b>ce qu'elle est</b> :
+          série, indicateurs, tableau, grille, calendrier, formulaire, ou rien de reconnu.
+          Elle rend aussi <b>les protagonistes</b> — les éléments qui méritent d'être montrés,
+          pas le conteneur.
+        </div>
+      </div>
+      <div class="plan-c">
+        <div class="plan-n">Socle B</div>
+        <div class="plan-t">Le cadrage — <span class="mono">cadrer()</span></div>
+        <div class="plan-d">
+          Avant tout geste : la cible est-elle réellement lisible ? Sinon le tutoriel
+          <b>amène le spectateur</b>, avec sa propre courbe, dans le bon conteneur défilant,
+          et n'agit qu'une fois le mouvement terminé et la cible <b>re-mesurée</b>.
+        </div>
+      </div>
+      <div class="plan-c">
+        <div class="plan-n">Socle C</div>
+        <div class="plan-t">La partition — <span class="mono">tempo()</span></div>
+        <div class="plan-d">
+          Cinq tempos au lieu d'un. Une étape d'ouverture, une étape enchaînée, une étape
+          contemplative où <b>la main se retire</b>, une rafale, une chute. C'est ce qui casse
+          la signature.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= SOCLE A : LA LECTURE ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n socle">Socle A</span></div>
+      <h3>La lecture sémantique</h3>
+      <p class="corps" style="margin-top:12px">
+        Le cœur de la refonte, et la réponse au problème n°1. Une cible de <code>TUT_CIBLES</code>
+        n'est plus un rectangle à entourer : c'est une région à <b>interroger</b>.
+      </p>
+      <p class="corps">
+        La reconnaissance repose sur une seule mesure, qui vaut pour toutes les formes de
+        l'administration : <b>la signature de fratrie</b>. Si un conteneur a au moins trois enfants
+        qui partagent la même balise et la même première classe, c'est une répétition — et une
+        répétition, ça se met en scène. Le reste n'est que du tri sur la géométrie et le texte.
+      </p>
+
+      <pre class="code" style="margin-top:18px"><i>// La signature de fratrie : une mesure, huit natures.</i>
+<b>function</b> serieDe(hote) {
+  <b>var</b> k = [].slice.call(hote.children);
+  <i>// Un conteneur qui n'enveloppe qu'un seul bloc n'est pas la
+  // vraie cible : on descend jusqu'a la repetition.</i>
+  <b>if</b> (k.length === 1) <b>return</b> serieDe(k[0]);
+  <b>if</b> (k.length &lt; 3) <b>return</b> null;
+  <b>var</b> sig = <b>function</b> (e) {
+    <b>return</b> e.tagName + '.' + (e.className || '').split(/\s+/)[0];
+  };
+  <b>var</b> s0 = sig(k[0]);
+  <b>var</b> memes = k.filter(<b>function</b> (e) { <b>return</b> sig(e) === s0 &amp;&amp; visible(e); });
+  <i>// Une majorite franche, pas une coincidence.</i>
+  <b>return</b> memes.length &gt;= Math.max(3, k.length * 0.6) ? memes : null;
+}</pre>
+
+      <div class="fiche">
+        <div class="fiche-l"><div class="fiche-k">Les huit natures</div><div class="fiche-v">
+          <ul>
+            <li><b>indicateurs</b> — chaque enfant porte <em>un</em> nombre seul + un libellé court</li>
+            <li><b>graphique</b> — les éléments <em>partagent une base</em> et leurs hauteurs varient de ≥ 25 %</li>
+            <li><b>tableau</b> — ≥ 3 colonnes alignées en <code>x</code>, <em>dont au moins deux majoritairement chiffrées</em></li>
+            <li><b>grille</b> — les enfants occupent ≥ 2 lignes <em>et</em> ≥ 2 colonnes</li>
+            <li><b>calendrier</b> — une grille dont une minorité de cellules (≤ 40 %) porte <em>plus de structure</em> que le fond</li>
+            <li><b>série</b> — une répétition sur une seule colonne</li>
+            <li><b>formulaire</b> — ≥ 2 champs actifs, sans répétition dominante</li>
+            <li><b>unique</b> — rien de reconnu : on garde le comportement actuel</li>
+          </ul>
+          L'ordre des tests compte : <b>graphique</b> passe avant <b>grille</b>, sans quoi des barres
+          — tops et lefts tous différents — seraient prises pour une grille.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Deux descentes</div><div class="fiche-v">
+          <b>Par enfant unique</b> pour le cas courant. <b>En profondeur</b> quand elle échoue : on
+          relève <em>toutes</em> les fratries du sous-arbre, de la plus grande à la plus petite, et
+          c'est le test de nature qui tranche.<br>
+          <em>Le banc a imposé ce pluriel.</em> Un graphe a six barres <b>et</b> six libellés d'axe :
+          en ne rendant que la plus grande fratrie, on tombait sur les libellés, le test échouait,
+          et le graphique n'était pas reconnu du tout.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Ce que ça change</div><div class="fiche-v">
+          Le halo ne se pose plus sur le conteneur mais sur <b>le protagoniste</b> — un KPI, une ligne,
+          une colonne, une cellule. C'est exactement la demande : <em>« le cadre ne doit plus
+          systématiquement entourer le gros conteneur parent »</em>.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>≈ 155 lignes de JS</b>, zéro CSS, zéro ligne dans l'administration. Une fonction pure :
+          elle mesure, elle ne touche à rien.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">lire() — appuyez, la reconnaissance tourne pour de vrai</span></div>
+        <div class="banc-scene" id="sc-lire">
+          <div class="f-h">Panneau d'indicateurs</div>
+          <div class="f-kpis" id="d-kpi-a">
+            <div class="f-kpi"><span class="f-lab">Licenciées</span><span class="f-val">27</span><span class="f-ev">+3</span></div>
+            <div class="f-kpi"><span class="f-lab">Matchs joués</span><span class="f-val">12</span><span class="f-ev">sur 22</span></div>
+            <div class="f-kpi"><span class="f-lab">Présence</span><span class="f-val">84</span><span class="f-ev">%</span></div>
+            <div class="f-kpi"><span class="f-lab">Dossiers</span><span class="f-val">8</span><span class="f-ev">à traiter</span></div>
+          </div>
+          <div class="f-h" style="margin-top:16px">Derniers résultats</div>
+          <div class="f-rows" id="d-rows-a">
+            <div class="f-row"><span class="f-eq">Baobabs — UCAD SC</span><span class="f-dt">19/09</span><span class="f-sc">68–61</span></div>
+            <div class="f-row"><span class="f-eq">DUC — Baobabs</span><span class="f-dt">12/09</span><span class="f-sc">54–70</span></div>
+            <div class="f-row"><span class="f-eq">Baobabs — ASC Ville</span><span class="f-dt">05/09</span><span class="f-sc">72–66</span></div>
+          </div>
+          <div class="sur" id="sur-lire"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="lire">Interroger les deux régions</button>
+          <span class="lu" id="lu-lire">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= SOCLE B : LE CADRAGE ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n socle">Socle B</span></div>
+      <h3>Le cadrage pédagogique</h3>
+      <p class="corps" style="margin-top:12px">
+        La réponse au problème n°2, et le point où le code actuel est le plus faible : il appelle
+        <code>scrollIntoView({block:'center'})</code> puis attend <b>300 ms au jugé</b>. Trois défauts,
+        tous visibles à l'écran.
+      </p>
+
+      <div class="fiche">
+        <div class="fiche-l"><div class="fiche-k">Défaut 1</div><div class="fiche-v">
+          <b>Il fait défiler la fenêtre</b>, alors que la cible est souvent dans un panneau qui défile
+          tout seul. La page bouge, la cible non.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Défaut 2</div><div class="fiche-v">
+          <b><code>center</code> est faux pour les grands blocs.</b> Un tableau plus haut que l'écran
+          centré, c'est son milieu qu'on voit : ni l'en-tête, ni la première ligne. On veut commencer
+          à lire par le haut.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Défaut 3</div><div class="fiche-v">
+          <b>La zone confortable n'est pas la fenêtre.</b> Le narrateur occupe le bas de l'écran et il
+          se déplace. La zone de lecture, c'est la fenêtre <em>moins</em> le bandeau, <em>moins</em> le
+          narrateur, mesurés à l'instant.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">La règle</div><div class="fiche-v">
+          Cible visible à <b>≥ 85 %</b> dans la zone de lecture → on ne bouge pas.<br>
+          Sinon on trouve <b>le bon conteneur défilant</b> (le premier ancêtre qui déborde vraiment),
+          et on l'amène : <b>haut aligné</b> si la cible dépasse 70 % de la hauteur de la zone,
+          <b>centrée</b> sinon.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Le mouvement</div><div class="fiche-v">
+          Une interpolation maison en <code>requestAnimationFrame</code>, pas <code>behavior:'smooth'</code> :
+          durée <b>320 à 760 ms</b> selon la distance, courbe <em>ease-in-out</em> cubique. On <b>sait</b>
+          quand elle finit — donc on re-mesure, puis on joue. Plus jamais de main qui se pose sur une
+          coordonnée périmée.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>≈ 90 lignes de JS.</b> Remplace <code>designer()</code> dans son rôle de défilement.
+          Aucune ligne dans l'administration.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">cadrer() — la cible est hors zone, en bas du panneau</span></div>
+        <div class="banc-scene" id="sc-cadre" style="padding:0">
+          <div id="d-scroll" style="height:262px;overflow-y:auto;padding:16px;scrollbar-width:thin">
+            <div class="f-h">Calendrier de la saison</div>
+            <div class="f-rows" id="d-rows-b"></div>
+          </div>
+          <div class="sur" id="sur-cadre"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="cadre">Désigner le match du 19 septembre</button>
+          <span class="lu" id="lu-cadre">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= MÉCANIQUE 1 ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n">1</span><div class="kick v" style="padding-bottom:6px">Le rang 1 · la seule qui montre une conséquence</div></div>
+      <h3>La chaîne de cause</h3>
+      <p class="corps" style="margin-top:12px">
+        Toutes les autres mécaniques rendent le contenu vivant. Celle-ci rend l'administration
+        <b>compréhensible</b> : le tutoriel agit, puis <b>découvre tout seul ce qui a changé</b> et
+        le désigne. C'est la seule qui produit la phrase <em>« j'appuie ici → il se passe ça
+        là »</em> — et c'est aussi la réponse au Studio, sans une ligne écrite pour lui.
+      </p>
+
+      <div class="fiche">
+        <div class="fiche-l"><div class="fiche-k">Reconnaissance</div><div class="fiche-v">
+          L'étape porte déjà un geste <code>cliquer</code> (les 7 écrans à démonstration + le Studio),
+          <b>ou</b> la cible est un bouton dans une zone où l'écriture est verrouillée.
+          Aucune connaissance de l'écran n'est requise.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cible</div><div class="fiche-v">
+          <b>La cause</b> (le contrôle), puis <b>jusqu'à deux effets</b> que le tutoriel
+          <em>trouve</em>. Il photographie la section avant le clic — position, texte <b>et classe</b>
+          de chaque nœud visible — la re-photographie une image plus tard, et garde ce qui a bougé
+          de plus de 6 px, changé de texte, <b>ou changé de classe</b>.<br>
+          <em>Ces deux ajouts viennent du banc Studio</em>, et sont détaillés en 1 bis : sans la
+          classe, une sélection de calque est invisible ; sans le second effet, le panneau de
+          propriétés écrasait le plan de travail.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Mise en scène</div><div class="fiche-v">
+          La main appuie · le clic part · <b>le halo quitte la cause et glisse vers le premier
+          effet</b> — il ne se redessine pas, il <em>voyage</em>, ce qui fait la phrase visuellement ·
+          l'effet bat une fois en vert, étiqueté <em>« ce qui a changé »</em> · puis le halo repart
+          vers le second, étiqueté <em>« et aussi ceci »</em>.<br>
+          C'est aussi ce qui donne à l'étape sa <b>micro-séquence</b> : deux temps distincts au lieu
+          d'un seul.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
+          Deux fois : sur la cause avant le clic, puis <b>sur l'effet</b>, qui peut très bien être
+          hors écran — c'est même le cas intéressant. Socle B fait le travail.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Geste</div><div class="fiche-v">
+          La main appuie une fois, puis <b>se retire</b> (<code>.efface</code>) pendant que l'effet
+          se révèle. Elle a fait son travail : montrer qui a causé quoi.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Minutage</div><div class="fiche-v">
+          300 ms appui · 210 ms clic réel · +1 image pour mesurer · <b>la main se retire à 180 ms</b> ·
+          premier effet à 200 ms, second à 1 350 ms (battement 540 ms, étiquette à 260 ms) ·
+          fin à 3 300 ms. <b>≈ 3,8 s pour deux effets</b> — l'étape la plus longue des sept, et la
+          seule qui le mérite.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Remise en état</div><div class="fiche-v">
+          Le clic est <b>réel</b> — c'est le seul de la proposition. Il est déjà couvert par le
+          double verrou existant (les cinq fonctions d'accès + <code>fetch</code>), et par la
+          remise en état de <code>demoRemettre()</code>. La mécanique elle-même n'ajoute que des
+          styles en ligne, restitués par <code>Scene.fin()</code>. Les photos sont stockées sur les
+          nœuds (<code>n.__av</code>) et effacées à la fin.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Ce que le spectateur comprend</div><div class="fiche-v">
+          <b>La causalité</b> — la seule chose qu'un tutoriel de logiciel doit vraiment transmettre,
+          et la seule que le tutoriel actuel ne transmet jamais. Dans le Studio :
+          <em>« je sélectionne ce calque → c'est cet élément-là qui est encadré sur le plan de
+          travail »</em>. Aucune phrase ne remplace ça.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>≈ 128 lignes de JS</b>, ≈ 20 de CSS. <b>Aucune modification de l'administration.</b>
+          Le risque résiduel : plus de deux choses changent à la fois. On garde alors les deux plus
+          grandes, disjointes — et on ne montre rien du tout si aucun changement n'atteint 6 px,
+          plutôt que de désigner au hasard.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">Match day → publier la feuille de match</span></div>
+        <div class="banc-scene" id="sc-cause">
+          <div class="f-cause">
+            <div class="f-ligne-h">
+              <button class="f-bouton" id="d-publier">Publier</button>
+              <span class="f-badge" id="d-badge">brouillon</span>
+            </div>
+            <div class="f-h" style="margin:2px 0 0">Sur le site public</div>
+            <div class="f-encart" id="d-effet">
+              <span class="f-t">Baobabs — UCAD SC</span>
+              <span class="f-d" id="d-effet-d">Rien n'est encore visible par les supporters.</span>
+            </div>
+            <div class="f-encart f-cache" id="d-effet-2">
+              <span class="f-t">Feuille de match en ligne</span>
+              <span class="f-d">Cinq majeur, banc et encadrement visibles sur la page du match.</span>
+            </div>
+          </div>
+          <div class="sur" id="sur-cause"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="cause">Jouer la chaîne de cause</button>
+          <span class="lu" id="lu-cause">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= LE STUDIO ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n socle">1 bis</span><div class="kick v" style="padding-bottom:6px">Le point le plus mal traité de ma première version</div></div>
+      <h3>Le Studio, sans une ligne écrite pour lui</h3>
+      <p class="corps" style="margin-top:12px">
+        Vous aviez raison de le pointer : j'avais <em>affirmé</em> que la mécanique 1 couvrait le
+        Studio, sans l'y avoir jamais essayée. Le banc ci-contre monte un vrai plan de travail —
+        colonne d'outils, calques, propriétés — et y joue la chaîne de cause. <b>Elle a échoué du
+        premier coup</b>, et ce qu'elle a révélé a corrigé la mécanique pour tous les écrans.
+      </p>
+
+      <div class="fiche">
+        <div class="fiche-l vert"><div class="fiche-k">Ce qui a cassé</div><div class="fiche-v">
+          Sélectionner un calque <b>n'ajoute qu'un contour</b> à l'élément du plan de travail.
+          Ni sa position, ni sa taille, ni son texte ne changent — et mon relevé ne regardait que
+          ça. <b>L'effet le plus important de tout le Studio était invisible</b> pour la mécanique
+          censée le montrer.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Le correctif</div><div class="fiche-v">
+          La photographie relève désormais aussi <b>la classe</b> de chaque nœud. Dans une
+          administration écrite à la main, un changement d'état passe presque toujours par une
+          classe — c'est le signal le plus fiable qui soit, et il coûte une propriété de plus par
+          nœud.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">La seconde découverte</div><div class="fiche-v">
+          Un clic sur un calque change <b>deux</b> choses : l'élément sur le plan de travail
+          <em>et</em> le panneau de propriétés. Ma règle « on garde le plus grand » écrasait l'un
+          des deux — et le plus grand n'est pas le plus instructif.<br>
+          La mécanique en garde maintenant <b>deux, disjoints</b>, montrés l'un après l'autre, le
+          halo voyageant de l'un à l'autre : <em>« ceci a changé — et aussi cela »</em>.
+          C'est aussi ce qui donne enfin à une étape sa <b>micro-séquence</b>, au lieu d'un temps unique.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
+          Socle B sur chaque effet à son tour. Dans le vrai Studio le plan de travail défile et
+          zoome : c'est le cas où le recadrage compte le plus.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Remise en état</div><div class="fiche-v">
+          Le Studio du tutoriel ouvre déjà un document monté en mémoire, <code>project.id</code>
+          nul, jamais enregistré. Le clic est réel mais ne sort pas de ce document, et
+          <b>Enregistrer, Exporter et Publier restent désignés, jamais cliqués</b> — la mécanique
+          ne choisit sa cause que parmi les contrôles que l'étape lui donne.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Ce que le spectateur comprend</div><div class="fiche-v">
+          <b>Que le Studio est un outil à calques</b>, et pas une image. C'est le seul concept
+          difficile du logiciel, et aucune phrase ne le fait passer : il faut voir la sélection
+          d'une ligne allumer un objet ailleurs.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>+18 lignes</b> sur la mécanique 1 (la classe dans la photographie, les deux effets).
+          <b>Zéro ligne spécifique au Studio.</b> C'était l'objectif, et il tient.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">Studio — affiche du prochain match</span></div>
+        <div class="banc-scene" id="sc-studio" style="padding:12px">
+          <div class="st-wrap">
+            <div class="st-outils">
+              <span class="st-o on"></span><span class="st-o"></span><span class="st-o"></span>
+              <span class="st-o"></span><span class="st-o"></span>
+            </div>
+            <div class="st-plan" id="d-plan">
+              <div class="st-el st-titre" id="el-titre">BAOBABS<br>UCAD SC</div>
+              <div class="st-el st-photo" id="el-photo"></div>
+              <div class="st-el st-date" id="el-date">SAM 19 SEPT · 19H</div>
+            </div>
+            <div class="st-cote">
+              <div class="st-h">Calques</div>
+              <div class="st-calques" id="d-calques">
+                <button class="st-c" data-el="el-date">Date &amp; heure</button>
+                <button class="st-c" data-el="el-photo">Photo d'équipe</button>
+                <button class="st-c" data-el="el-titre">Titre du match</button>
+              </div>
+              <div class="st-h" style="margin-top:10px">Propriétés</div>
+              <div class="st-props" id="d-props"><span class="st-vide">Aucun calque sélectionné</span></div>
+            </div>
+          </div>
+          <div class="sur" id="sur-studio"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="studio">Sélectionner « Photo d'équipe »</button>
+          <span class="lu" id="lu-studio">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= MÉCANIQUE 2 ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n">2</span><div class="kick" style="padding-bottom:6px">Couvre la forme dominante de l'admin</div></div>
+      <h3>Le projecteur descend</h3>
+      <p class="corps" style="margin-top:12px">
+        Les listes de lignes sont la forme la plus répandue de l'administration —
+        <code>#rs-rows</code>, <code>#mc-rows</code>, <code>#teams-list</code>, <code>#att-list</code>.
+        Aujourd'hui elles reçoivent un balayage en trois temps sur un cadre immobile. C'est le repère
+        le plus fréquent, et le plus pauvre.
+      </p>
+
+      <div class="fiche">
+        <div class="fiche-l"><div class="fiche-k">Reconnaissance</div><div class="fiche-v">
+          Nature <b>série</b> : ≥ 3 frères de même signature, sur une seule colonne.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cible</div><div class="fiche-v">
+          <b>Une ligne à la fois</b>, jamais la liste. Au-delà de six lignes on en échantillonne trois
+          — la même règle que <code>groupeOuPas()</code>, pour la même raison : au-delà, on ne lit plus.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Mise en scène</div><div class="fiche-v">
+          Toutes les lignes tombent à <b>opacité .32</b>. Une seule revient à 1, avance de 7 px
+          (<code>translateX</code>) et reçoit le halo — qui <b>glisse</b> de l'une à l'autre au lieu de
+          se redessiner. Puis tout revient. Le regard n'a jamais le choix : il n'y a qu'une chose
+          lisible à l'écran.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
+          Socle B sur <b>la ligne courante</b>, pas sur la liste. Sur une liste plus haute que l'écran,
+          le conteneur suit le projecteur — le spectateur descend avec lui.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Geste</div><div class="fiche-v">
+          La main <b>chevauche</b> le projecteur : elle glisse de ligne en ligne sans appuyer.
+          Elle accompagne, elle ne commande pas.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Minutage</div><div class="fiche-v">
+          Départ 180 ms, pas de <code>clamp(320…620, 2600/n)</code>, retour groupé 260 ms après la
+          dernière. <b>Le contenu part avant la main</b> : les lignes s'éteignent dès la pose du cadre.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Remise en état</div><div class="fiche-v">
+          Deux propriétés en ligne (<code>opacity</code>, <code>transform</code>) sur n éléments.
+          <code>Scene.fin()</code> restitue l'attribut <code>style</code> exact d'origine — pas une
+          valeur reconstruite.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Ce que le spectateur comprend</div><div class="fiche-v">
+          <b>Qu'une ligne est une unité.</b> Sur un tableau de résultats, on voit qu'une ligne = un
+          match, avec sa date et son score — au lieu de voir un bloc gris uniforme.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>≈ 45 lignes de JS</b>, ≈ 8 de CSS. Aucune modification de l'administration.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">Résultats — #rs-rows</span></div>
+        <div class="banc-scene" id="sc-proj">
+          <div class="f-h">Derniers résultats</div>
+          <div class="f-rows" id="d-rows-c"></div>
+          <div class="sur" id="sur-proj"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="proj">Descendre la liste</button>
+          <span class="lu" id="lu-proj">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= MÉCANIQUE 3 ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n">3</span><div class="kick" style="padding-bottom:6px">Va plus loin que chiffresAnimer()</div></div>
+      <h3>Les indicateurs prennent la parole</h3>
+      <p class="corps" style="margin-top:12px">
+        <code>chiffresAnimer()</code> compte tous les nombres d'une région <b>en même temps</b>.
+        Résultat : quatre compteurs qui défilent ensemble, personne ne sait lequel regarder, et la
+        voix parle du troisième. C'est un effet, pas une explication.
+      </p>
+
+      <div class="fiche">
+        <div class="fiche-l"><div class="fiche-k">Reconnaissance</div><div class="fiche-v">
+          Nature <b>indicateurs</b> : chaque frère contient <em>exactement une</em> feuille dont le texte
+          est un nombre seul, <b>et</b> au moins une feuille de texte court (≤ 24 caractères).
+          Un tableau ne passe pas ce test — il a plusieurs nombres par ligne.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cible</div><div class="fiche-v">
+          <b>Un indicateur à la fois</b>, et à l'intérieur : sa valeur, son libellé, son évolution.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Mise en scène</div><div class="fiche-v">
+          Quatre temps par indicateur : ses voisins reculent à .28 · le bloc monte de 4 px et grandit
+          de 2 % · <b>le libellé arrive avant la valeur</b> (on nomme, puis on chiffre — l'ordre est
+          celui de la phrase) · la valeur compte depuis zéro en 560 ms. Puis le suivant.
+          Le dernier <b>reste allumé</b> pendant que les autres reviennent : on ne finit pas au milieu
+          d'un effet.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
+          Socle B sur le panneau entier une seule fois : les indicateurs tiennent ensemble à l'écran.
+          On ne recadre pas entre deux, ce serait le mal de mer.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Geste</div><div class="fiche-v">
+          Le halo <b>glisse</b> d'un indicateur à l'autre. La main ne vient pas du tout —
+          rien ne se clique dans un panneau d'indicateurs, et une main qui désigne un nombre
+          qui se compte tout seul est du bruit.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Minutage</div><div class="fiche-v">
+          150 ms de départ · <b>900 ms par indicateur</b> (libellé à 0, valeur à 120, palier à 680) ·
+          3 indicateurs au maximum, échantillonnés · retour 300 ms.
+          Total <b>≈ 3,2 s</b> — une étape contemplative, tempo <code>C</code>.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Remise en état</div><div class="fiche-v">
+          Même précaution que l'existant, généralisée : <b>on remet la forme d'origine telle quelle</b>
+          (« 20 000 FCFA », pas « 20000 »), y compris si l'étape est coupée en plein comptage —
+          le jeton est testé à chaque image.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Ce que le spectateur comprend</div><div class="fiche-v">
+          <b>Le rapport entre les chiffres.</b> « 27 licenciées » puis « 8 dossiers à traiter » lus
+          l'un après l'autre racontent une situation ; lus ensemble, ils font un décor.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>≈ 60 lignes de JS</b> dont 25 réécrites depuis <code>chiffresAnimer()</code>, ≈ 6 de CSS.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">Pilotage — .db-nums</span></div>
+        <div class="banc-scene" id="sc-kpi">
+          <div class="f-h">Vue d'ensemble du club</div>
+          <div class="f-kpis" id="d-kpi-b">
+            <div class="f-kpi"><span class="f-lab">Licenciées</span><span class="f-val">27</span><span class="f-ev">+3 ce mois</span></div>
+            <div class="f-kpi"><span class="f-lab">Matchs joués</span><span class="f-val">12</span><span class="f-ev">sur 22</span></div>
+            <div class="f-kpi"><span class="f-lab">Présence</span><span class="f-val">84</span><span class="f-ev">% aux séances</span></div>
+            <div class="f-kpi"><span class="f-lab">Dossiers</span><span class="f-val">8</span><span class="f-ev">à traiter</span></div>
+          </div>
+          <div class="sur" id="sur-kpi"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="kpi">Faire parler les indicateurs</button>
+          <span class="lu" id="lu-kpi">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= MÉCANIQUE 4 ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n">4</span><div class="kick" style="padding-bottom:6px">La seule qui explique une structure</div></div>
+      <h3>La colonne répond</h3>
+      <p class="corps" style="margin-top:12px">
+        Un tableau désigné en entier ne dit rien. Un tableau dont <b>les lignes arrivent</b> puis dont
+        <b>une colonne se détache</b> dit <em>« voici vos lignes, et voici la colonne qui porte la
+        réponse »</em>. C'est la mécanique qui demande le plus de mesure, et c'est celle qui apprend
+        le plus.
+      </p>
+
+      <div class="fiche">
+        <div class="fiche-l"><div class="fiche-k">Reconnaissance</div><div class="fiche-v">
+          Nature <b>tableau</b>. On relève le <code>left</code> de chaque cellule de chaque ligne et on
+          les regroupe : une colonne existe là où <b>≥ 60 % des lignes</b> ont une cellule qui
+          commence au même <code>x</code> (± 5 px). Ça marche sur un <code>&lt;table&gt;</code> comme
+          sur des lignes en <code>div</code> — et l'administration est pleine des secondes.<br>
+          <b>Mais l'alignement ne suffit pas</b>, et le banc l'a prouvé : une liste de matchs
+          (équipe / date / score) a elle aussi trois colonnes alignées. Un tableau est une
+          <em>matrice de données</em> — on exige donc <b>au moins deux colonnes majoritairement
+          chiffrées</b>. Un classement en a quatre ; une liste de matchs n'en a qu'une, et repart
+          vers la mécanique 2.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cible</div><div class="fiche-v">
+          <b>La colonne la plus chiffrée</b> : celle dont la plus grande part de cellules est un
+          nombre, un pourcentage, un montant ou une date. <b>À égalité, la plus à droite gagne</b> —
+          dans tous les tableaux de l'administration, la colonne qui répond (total, points, montant)
+          est la dernière. Sans cette règle, un classement désignait « matchs joués » au lieu de
+          « points ». Personne ne l'a déclaré.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Mise en scène</div><div class="fiche-v">
+          Deux mouvements. <b>Un</b> — les lignes arrivent en cascade de 52 ms, par le bas, comme si
+          le tableau se remplissait sous les yeux. <b>Deux</b> — tout retombe à .24 sauf une colonne,
+          qui monte de 3 px et passe au vert. La structure du tableau apparaît d'un coup, sans
+          qu'aucune phrase n'ait à l'expliquer.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
+          Socle B en mode <b>haut aligné</b> : un tableau dépasse presque toujours 70 % de la zone de
+          lecture. On veut voir l'en-tête et les premières lignes, pas le milieu.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Geste</div><div class="fiche-v">
+          Pendant la cascade : rien, le contenu suffit. Pendant la colonne : la main descend le long
+          de la colonne, une fois, sans appuyer.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Minutage</div><div class="fiche-v">
+          80 ms + 52 ms par ligne (plafonné à 10 lignes) · +300 ms · la colonne se détache en 380 ms ·
+          maintien 1 100 ms · retour 400 ms. Total <b>≈ 2,8 s</b> pour 6 lignes.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Remise en état</div><div class="fiche-v">
+          <code>opacity</code>, <code>transform</code> et <code>color</code> en ligne. <b>Attention
+          particulière</b> : la couleur d'origine peut venir d'une classe, donc on restitue
+          l'attribut <code>style</code>, jamais une couleur devinée.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Ce que le spectateur comprend</div><div class="fiche-v">
+          <b>Qu'un tableau se lit dans deux sens.</b> C'est l'obstacle réel des bénévoles devant un
+          classement ou une liste de commandes : ils lisent une ligne, jamais une colonne.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>≈ 95 lignes de JS</b> (dont 40 pour le regroupement en colonnes), ≈ 10 de CSS.
+          La plus chère des sept, et la seule dont la mesure peut échouer sur une mise en page
+          exotique — auquel cas elle retombe sur la mécanique 2, qui marche toujours.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">Classement — #qgv-body-standings</span></div>
+        <div class="banc-scene" id="sc-tab">
+          <table class="f-tab" id="d-tab">
+            <thead><tr><th>Club</th><th>J</th><th>G</th><th>P</th><th>Pts</th></tr></thead>
+            <tbody>
+              <tr><td><span class="f-club"><span class="f-pas"></span>Baobabs BC</span></td><td class="n">12</td><td class="n">9</td><td class="n">3</td><td class="n p">21</td></tr>
+              <tr><td><span class="f-club"><span class="f-pas"></span>UCAD SC</span></td><td class="n">12</td><td class="n">8</td><td class="n">4</td><td class="n p">20</td></tr>
+              <tr><td><span class="f-club"><span class="f-pas"></span>ASC Ville de Dakar</span></td><td class="n">12</td><td class="n">7</td><td class="n">5</td><td class="n p">19</td></tr>
+              <tr><td><span class="f-club"><span class="f-pas"></span>DUC</span></td><td class="n">12</td><td class="n">5</td><td class="n">7</td><td class="n p">17</td></tr>
+              <tr><td><span class="f-club"><span class="f-pas"></span>Jaraaf</span></td><td class="n">12</td><td class="n">3</td><td class="n">9</td><td class="n p">15</td></tr>
+              <tr><td><span class="f-club"><span class="f-pas"></span>ASFA</span></td><td class="n">12</td><td class="n">2</td><td class="n">10</td><td class="n p">14</td></tr>
+            </tbody>
+          </table>
+          <div class="sur" id="sur-tab"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="tab">Remplir puis détacher la colonne</button>
+          <span class="lu" id="lu-tab">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= MÉCANIQUE 5 ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n">5</span><div class="kick" style="padding-bottom:6px">Une mécanique, deux résultats opposés</div></div>
+      <h3>La grille se peuple</h3>
+      <p class="corps" style="margin-top:12px">
+        L'illustration la plus nette de ce qui est demandé : <em>une mécanique doit pouvoir donner
+        plusieurs résultats selon ce qu'elle trouve dans le DOM</em>. Ici, la même mesure produit deux
+        mises en scène qui n'ont rien à voir — et c'est le <b>taux de remplissage</b> qui tranche.
+      </p>
+
+      <div class="fiche">
+        <div class="fiche-l"><div class="fiche-k">Reconnaissance</div><div class="fiche-v">
+          Nature <b>grille</b> : les frères occupent ≥ 2 lignes et ≥ 2 colonnes (regroupement sur
+          <code>top</code> et <code>left</code>). Puis une seconde mesure, et c'est elle qui tranche :
+          <b>le nombre d'enfants le plus fréquent</b> — le fond de la grille — et combien de cellules
+          en portent davantage.<br>
+          <em>Le banc a corrigé cette règle.</em> J'avais d'abord écrit « peu de cellules ont du
+          contenu » : aucun calendrier n'était reconnu, parce que <b>toutes</b> les cases portent
+          leur numéro de jour. Ce n'est pas le vide qui distingue une case à événement, c'est
+          l'excès de structure.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Cas A — la grille homogène</div><div class="fiche-v">
+          Aucune cellule ne dépasse le fond : ce sont <b>des cartes</b>, toutes bâties pareil.
+          Elles arrivent en
+          <b>vague diagonale</b> — retard <code>(ligne + colonne) × 70 ms</code>, pas un défilé
+          linéaire. La vague traverse la grille en biais, ce qui se lit comme une découverte et non
+          comme une liste qui se charge. Une ligne de code pour la différence.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Cas B — la grille à porteuses</div><div class="fiche-v">
+          Une minorité de cellules porte plus que le fond : c'est <b>un calendrier</b>. Les cases
+          ordinaires ne bougent pas — elles deviennent la scène. Seules <b>les porteuses</b>
+          apparaissent, dans l'ordre du DOM (donc des dates), avec un petit rebond. Le mois se
+          remplit de ses matchs sous les yeux.
+          <b>Personne n'a écrit « calendrier » nulle part.</b>
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
+          Socle B sur la grille entière : une grille se comprend d'un seul regard, la découper la
+          détruit.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Geste</div><div class="fiche-v">
+          Aucun pendant la vague. La main revient seulement après, sur <b>une</b> cellule — celle qui
+          sera nommée par la voix.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Minutage</div><div class="fiche-v">
+          Cas A : 70 ms par diagonale, une grille de 3 × 3 se peuple en <b>≈ 700 ms</b>.
+          Cas B : 130 ms entre événements, rebond de 420 ms.
+          Les deux plafonnent à 12 éléments animés.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Remise en état</div><div class="fiche-v">
+          Les cellules partent à <code>opacity:0</code> — donc <b>si l'étape est coupée en plein
+          milieu, on doit tout remettre à 1</b>, sans quoi le tutoriel laisse un écran à moitié
+          effacé derrière lui. C'est le piège que partagent les mécaniques 5 et 7, et <code>Scene.fin()</code> le
+          couvre par construction.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Ce que le spectateur comprend</div><div class="fiche-v">
+          <b>Cas A</b> : que les cartes sont une collection homogène, chacune identique en structure.
+          <b>Cas B</b> : <em>« ces cases-là ont quelque chose, les autres sont vides »</em> —
+          c'est-à-dire ce qu'un calendrier <em>est</em>, et ce qu'un cadre autour de la grille ne
+          dit jamais.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>≈ 70 lignes de JS</b> pour les deux cas, ≈ 12 de CSS. Le regroupement géométrique est
+          partagé avec la mécanique 4.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">Même mécanique, deux régions</span></div>
+        <div class="banc-scene" id="sc-grille">
+          <div class="f-h">Effectif — #kc-grid</div>
+          <div class="f-cards" id="d-cards"></div>
+          <div class="f-h" style="margin-top:15px">Calendrier — #cal-cells</div>
+          <div class="f-cal" id="d-cal"></div>
+          <div class="sur" id="sur-grille"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="grille">Peupler les deux</button>
+          <span class="lu" id="lu-grille">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= MÉCANIQUE 6 ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n">6</span><div class="kick" style="padding-bottom:6px">Marche sur les 37 écrans sans démonstration</div></div>
+      <h3>Le formulaire se parcourt</h3>
+      <p class="corps" style="margin-top:12px">
+        Sept écrans ont une démonstration qui remplit de vrais champs. <b>Les trente-sept autres n'ont
+        rien</b> — parce qu'écrire une démonstration coûte du texte, et que c'est le vrai goulot.
+        Cette mécanique donne un parcours de formulaire à tous les écrans, <b>sans écrire une seule
+        valeur</b> et sans rien inventer.
+      </p>
+
+      <div class="fiche">
+        <div class="fiche-l"><div class="fiche-k">Reconnaissance</div><div class="fiche-v">
+          Nature <b>formulaire</b> : ≥ 2 <code>input</code> / <code>select</code> /
+          <code>textarea</code> visibles et actifs dans la région.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cible</div><div class="fiche-v">
+          <b>Un champ à la fois</b>, dans l'ordre du DOM, plafonné à quatre. Puis le bouton de
+          validation s'il existe.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Mise en scène</div><div class="fiche-v">
+          Un <b>anneau de mise au point fantôme</b> se pose sur le champ — dessiné par le tutoriel,
+          jamais un vrai <code>:focus</code>. Une <b>valeur fantôme</b> se tape par-dessus le champ,
+          dans la police de l'hôte, avec le curseur qui bat. <b>Elle n'entre jamais dans
+          <code>value</code>.</b><br>
+          Le texte vient de ce que l'administration déclare elle-même : le
+          <code>placeholder</code> du champ, ou sa première <code>&lt;option&gt;</code> non vide.
+          Si le champ ne déclare rien, l'anneau passe sans rien taper — <b>le tutoriel n'invente
+          jamais de donnée</b>.<br>
+          Un <b>rail vert</b> le long du formulaire se remplit à mesure. Sur le bouton final, la main
+          appuie — <code>doigtTape()</code>, qui n'émet aucun événement.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
+          Socle B sur <b>le champ courant</b>. Un formulaire long défile donc au rythme de la saisie,
+          exactement comme quelqu'un qui le remplirait.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Geste</div><div class="fiche-v">
+          La main suit l'anneau, se retire pendant la frappe (le clavier fantôme existant prend le
+          relais), revient pour l'appui final.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Minutage</div><div class="fiche-v">
+          320 ms l'anneau · 45 ms par caractère (plafonné à 18) · 260 ms de palier · champ suivant.
+          Le bouton final à +400 ms. <b>≈ 3,5 s pour quatre champs.</b>
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Remise en état</div><div class="fiche-v">
+          <b>Il n'y a rien à remettre</b> — et c'est tout l'intérêt. Aucun <code>value</code> touché,
+          aucun <code>focus</code> volé, aucun événement <code>input</code> émis. La surcouche
+          disparaît, le formulaire n'a jamais su qu'on parlait de lui. C'est la mécanique la plus
+          sûre des sept, à déployer sur les 44 écrans sans hésiter.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Ce que le spectateur comprend</div><div class="fiche-v">
+          <b>L'ordre des opérations.</b> Un formulaire encadré ne dit pas par où commencer ; un
+          formulaire parcouru le dit, et il dit aussi qu'il y a une fin, et où elle est.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>≈ 80 lignes de JS</b>, ≈ 25 de CSS (l'anneau, la valeur fantôme, le rail).
+          Réutilise le clavier fantôme existant.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">Nouveau match — aucune écriture, aucun focus</span></div>
+        <div class="banc-scene" id="sc-form">
+          <div class="f-form" id="d-form">
+            <div class="f-champ"><label>Adversaire</label><input type="text" placeholder="UCAD SC"></div>
+            <div class="f-champ"><label>Date</label><input type="text" placeholder="19/09/2026"></div>
+            <div class="f-champ"><label>Salle</label>
+              <select><option value="">Choisir…</option><option>Stadium Marius Ndiaye</option><option>Terrain municipal</option></select>
+            </div>
+            <div class="f-champ"><label>Heure</label><input type="text" placeholder="19h00"></div>
+            <button class="f-envoi" type="button">Enregistrer le match</button>
+          </div>
+          <div class="sur" id="sur-form"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="form">Parcourir le formulaire</button>
+          <span class="lu" id="lu-form">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= MÉCANIQUE 7 ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n">7</span><div class="kick v" style="padding-bottom:6px">Ajoutée après coup — je l'avais annoncée à tort comme déjà couverte</div></div>
+      <h3>Les barres poussent</h3>
+      <p class="corps" style="margin-top:12px">
+        Dans ma première version, j'affirmais que la vague diagonale traversait les barres d'un
+        graphe SVG <em>« sans code supplémentaire »</em>. <b>C'était faux, et je ne l'avais pas
+        testé.</b> Deux mesures au banc l'ont établi en trente secondes.
+      </p>
+
+      <div class="fiche">
+        <div class="fiche-l"><div class="fiche-k">Pourquoi c'était faux</div><div class="fiche-v">
+          Un graphique a <b>des axes <em>et</em> un groupe de barres</b> — donc deux enfants. Ma
+          descente ne traversait un <code>&lt;svg&gt;</code> que s'il n'en avait qu'un : elle
+          s'arrêtait, et rien n'était reconnu. Second défaut trouvé au passage : sur un élément SVG,
+          <code>className</code> est une <code>SVGAnimatedString</code> qui se stringifie en
+          <code>[object …]</code> — <b>toutes les classes SVG étaient identiques</b> et la signature
+          de fratrie ne distinguait plus rien. Corrigé par <code>getAttribute('class')</code>,
+          pour tout le monde.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Reconnaissance</div><div class="fiche-v">
+          <b>La fratrie profonde</b> : on cherche dans tout le sous-arbre le conteneur qui porte la
+          plus grande fratrie de même signature. Puis <b>deux tests, tous deux nécessaires</b> —
+          les éléments <b>partagent une base</b> (leurs bas s'alignent, ils reposent sur un axe) et
+          leurs <b>hauteurs varient</b> d'au moins 25 %.<br>
+          Une liste de lignes échoue au premier test, une grille de cartes au second. C'est ce qui
+          empêche cette mécanique de voler le travail des autres.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cible</div><div class="fiche-v">
+          Les barres, dans <b>l'ordre visuel</b> (trié sur <code>left</code>) — l'ordre du DOM ne le
+          garantit pas. Puis <b>la plus haute</b> : un graphique se lit par son maximum.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Mise en scène</div><div class="fiche-v">
+          Les barres <b>poussent depuis l'axe</b> — pas un fondu. <code>transform-box:fill-box</code>
+          + <code>transform-origin:bottom</code> + <code>scaleY</code> de .02 à 1.
+          <b>Vérifié au banc</b> : une barre de 70 px passe à 18 px avec son bas immobile — elle
+          pousse, elle ne rétrécit pas vers son centre.<br>
+          Puis toutes retombent à 30 % sauf la plus haute, qui reçoit le halo et l'étiquette
+          « le maximum ».
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
+          Socle B sur le graphique entier : une courbe se comprend d'un seul regard.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Geste</div><div class="fiche-v">
+          Aucun pendant la poussée. Le halo seul, à la fin, sur la barre maximale.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Minutage</div><div class="fiche-v">
+          120 ms de départ · <code>clamp(45…110, 620/n)</code> entre deux barres · poussée 520 ms ·
+          le maximum se détache à +560 ms · fin à +1 300 ms. <b>≈ 2,7 s pour 5 barres.</b>
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Remise en état</div><div class="fiche-v">
+          Trois propriétés en ligne, restituées par <code>Scene.fin()</code>. Les barres partent à
+          <code>scaleY(.02)</code> — <b>donc une interruption doit tout remettre</b>, exactement
+          comme la mécanique 5. Vérifié au banc d'interruption.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Ce que le spectateur comprend</div><div class="fiche-v">
+          <b>Que la hauteur est la mesure.</b> Un graphique déjà dessiné est un motif ; un graphique
+          qui se construit est une comparaison.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>≈ 55 lignes de JS</b> (dont 20 pour la fratrie profonde, partagées), ≈ 4 de CSS.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">Analytique — fréquentation par mois</span></div>
+        <div class="banc-scene" id="sc-graphe">
+          <div class="f-h">Affluence aux matchs à domicile</div>
+          <div id="d-graphe"></div>
+          <div class="sur" id="sur-graphe"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="graphe">Faire pousser les barres</button>
+          <span class="lu" id="lu-graphe">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= LA PARTITION ================= -->
+<section>
+  <div class="pile">
+    <div class="pile-s">
+      <div class="kick">Socle C — la réponse au problème n°3</div>
+      <h2>La partition</h2>
+      <p class="corps">
+        Sept mécaniques ne suffisent pas à tuer la monotonie : jouées toutes au même tempo, elles
+        deviendraient une nouvelle signature, plus riche mais tout aussi prévisible. Le rythme est
+        une pièce à part entière, et il tient en <b>une règle et cinq tempos</b>.
+      </p>
+    </div>
+
+    <div class="note v">
+      <b>La règle qui casse la signature, et elle est presque gratuite.</b>
+      Aujourd'hui la main se pose, puis <code>animerCible()</code> agit <b>1 150 ms plus tard</b>.
+      L'œil apprend l'ordre en trois étapes. On inverse : <b>le contenu part à T+0, avec la pose du
+      cadre ; la main arrive à T+400, dans une scène déjà en mouvement.</b> Le spectateur voit
+      quelque chose bouger <em>avant</em> de savoir où regarder — c'est très exactement la
+      différence entre une présentation et une démonstration.
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="cls">
+        <thead><tr><th>Tempo</th><th>Quand</th><th>Ce qui change</th><th>Durée</th></tr></thead>
+        <tbody>
+          <tr><td class="nom">Ouverture</td><td>Première étape d'un chapitre</td><td>Le cadre se dessine entièrement, la main vient de loin, le contenu attend la fin du tracé</td><td class="n">≈ 3,4 s</td></tr>
+          <tr><td class="nom">Enchaînée</td><td>Étape suivante sur le même écran</td><td><b>Le cadre ne se redessine pas : il glisse</b> de l'ancienne cible à la nouvelle. La main ne quitte pas l'écran. Durées à 60 %</td><td class="n">≈ 1,8 s</td></tr>
+          <tr><td class="nom">Contemplative</td><td>La mécanique de contenu dure &gt; 1,4 s</td><td><b>La main se retire</b> à 400 ms, le halo tombe à 34 %. Le contenu a la parole seul</td><td class="n">≈ 3,2 s</td></tr>
+          <tr><td class="nom">Rafale</td><td>Une énumération</td><td>3 à 6 temps courts, aucun re-tracé entre eux, la voix ne s'arrête pas</td><td class="n">≈ 2,6 s</td></tr>
+          <tr><td class="nom">Chute</td><td>Dernière étape d'un chapitre</td><td>Tout s'efface, <b>un temps de silence</b>, puis la carte du chapitre suivant</td><td class="n">≈ 1,2 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="corps">
+      Le tempo n'est jamais écrit dans une étape : il se déduit de la position de l'étape dans le
+      chapitre et de la durée annoncée par la mécanique qui vient d'être choisie. <b>Encore une
+      règle, pas une déclaration.</b> Coût : <b>≈ 55 lignes</b>, presque toutes dans
+      <code>montrer()</code>.
+    </p>
+
+    <div class="banc" style="margin-top:6px">
+      <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">Cinq étapes de suite, cinq tempos — le même écran, cinq sensations</span></div>
+      <div class="banc-scene" id="sc-tempo" style="min-height:250px">
+        <div class="f-h" id="d-tempo-t">Pilotage</div>
+        <div class="f-kpis" id="d-tempo-kpi">
+          <div class="f-kpi"><span class="f-lab">Licenciées</span><span class="f-val">27</span><span class="f-ev">+3</span></div>
+          <div class="f-kpi"><span class="f-lab">Matchs</span><span class="f-val">12</span><span class="f-ev">sur 22</span></div>
+          <div class="f-kpi"><span class="f-lab">Présence</span><span class="f-val">84</span><span class="f-ev">%</span></div>
+          <div class="f-kpi"><span class="f-lab">Dossiers</span><span class="f-val">8</span><span class="f-ev">à traiter</span></div>
+        </div>
+        <div class="f-h" style="margin-top:14px">Prochaines échéances</div>
+        <div class="f-rows" id="d-tempo-rows"></div>
+        <div class="sur" id="sur-tempo"></div>
+        <div class="tempo-eti" id="d-tempo-eti"></div>
+      </div>
+      <div class="banc-pied">
+        <button class="jouer" data-jeu="tempo">Jouer la partition</button>
+        <span class="lu" id="lu-tempo">en attente</span>
+      </div>
+    </div>
+
+    <div class="note v">
+      <b>Ce que ce banc rend audible et qu'aucun tableau ne rend.</b> Les cinq étapes désignent le
+      même écran. Ce qui change, c'est uniquement le tempo — et c'est suffisant pour qu'on cesse de
+      prévoir ce qui va se passer. L'étape 2 ne redessine pas son cadre, il <em>glisse</em> ;
+      l'étape 3 renvoie la main et laisse les chiffres parler seuls ; l'étape 5 se tait avant la
+      carte suivante. <b>La monotonie ne se corrige pas en ajoutant des effets, mais en cessant de
+      les jouer tous à la même vitesse.</b>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= CORRESPONDANCES ================= -->
+<section>
+  <div class="pile">
+    <div class="pile-s">
+      <div class="kick">Vérification</div>
+      <h2>Rien de ce qui était demandé n'est laissé de côté</h2>
+      <p class="corps">
+        Huit formes de contenu étaient nommées dans la commande. Elles sont couvertes par sept
+        mécaniques — parce que le calendrier et les cartes se rejoignent, et parce que le Studio
+        n'avait pas besoin d'une mécanique à lui. <b>Chaque ligne du tableau ci-dessous a son banc
+        dans cette page</b> : rien n'y est affirmé sans avoir été joué.
+      </p>
+    </div>
+
+    <div class="corr">
+      <div class="corr-l"><div class="corr-d">Une liste de lignes</div><div class="corr-a"><b>Mécanique 2</b> — le projecteur descend, les autres lignes reculent</div></div>
+      <div class="corr-l"><div class="corr-d">Un tableau</div><div class="corr-a"><b>Mécanique 4</b> — les lignes arrivent, puis la colonne la plus chiffrée se détache</div></div>
+      <div class="corr-l"><div class="corr-d">Une grille de cartes</div><div class="corr-a"><b>Mécanique 5, cas A</b> — vague diagonale, pas un défilé linéaire</div></div>
+      <div class="corr-l"><div class="corr-d">Un panneau de statistiques</div><div class="corr-a"><b>Mécanique 3</b> — libellé, puis valeur, puis évolution, un indicateur à la fois</div></div>
+      <div class="corr-l"><div class="corr-d">Un calendrier</div><div class="corr-a"><b>Mécanique 5, cas B</b> — seules les cases pleines apparaissent, dans l'ordre des dates</div></div>
+      <div class="corr-l"><div class="corr-d">Un formulaire</div><div class="corr-a"><b>Mécanique 6</b> — parcours complet sans une seule écriture</div></div>
+      <div class="corr-l"><div class="corr-d">Le Studio</div><div class="corr-a"><b>Mécanique 1</b>, démontrée en <b>1 bis</b> sur un vrai plan de travail : je sélectionne « Photo d'équipe », et le tutoriel trouve seul <em>le plan de travail</em> et <em>les propriétés</em>. <b>Zéro ligne écrite pour le Studio</b> — et son banc a corrigé la mécanique pour tous les autres écrans</div></div>
+      <div class="corr-l"><div class="corr-d">Un graphique / SVG</div><div class="corr-a"><b>Mécanique 7</b> — les barres poussent depuis l'axe, puis la plus haute se détache. <em>Ajoutée après coup</em> : je l'avais d'abord annoncée comme déjà couverte, ce qui était faux</div></div>
+    </div>
+
+    <div class="note">
+      <b>Une liste vide reste sans réponse, et il faut le dire.</b> C'est le cas le plus fréquent en
+      début de saison, il était signalé dans le brief, et aucune des sept mécaniques ne le traite :
+      il n'y a rien à mettre en scène quand il n'y a rien. La seule piste honnête serait de
+      reconnaître l'état vide et de faire jouer <em>ce que l'écran dira quand il sera rempli</em> —
+      ce qui suppose d'inventer des données. <b>Je ne le propose pas</b>, et je préfère le laisser
+      ouvert plutôt que de le compter comme résolu.
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= CLASSEMENT ================= -->
+<section>
+  <div class="pile">
+    <div class="pile-s">
+      <div class="kick">Le classement demandé</div>
+      <h2>Impact × effet, divisé par ce que ça coûte à tenir</h2>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="cls">
+        <thead>
+          <tr><th>Mécanique</th><th>Pédagogie</th><th>Effet</th><th>Complexité</th><th>Maintenance</th><th>Rapport</th><th>Couvre</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="nom">1 · La chaîne de cause</td>
+            <td class="n"><span class="jauge v"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i></span></td>
+            <td class="n"><span class="jauge"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i></span></td>
+            <td class="n">128 l.</td><td class="n">faible</td>
+            <td class="n"><b class="pts" style="color:var(--vert)">9,4</b></td>
+            <td>Studio + 7 écrans</td>
+          </tr>
+          <tr>
+            <td class="nom">6 · Le formulaire se parcourt</td>
+            <td class="n"><span class="jauge v"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i></span></td>
+            <td class="n"><span class="jauge"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i><i></i></span></td>
+            <td class="n">80 l.</td><td class="n"><b style="color:var(--vert)">nulle</b></td>
+            <td class="n"><b class="pts" style="color:var(--vert)">8,8</b></td>
+            <td>≈ 30 écrans</td>
+          </tr>
+          <tr>
+            <td class="nom">2 · Le projecteur descend</td>
+            <td class="n"><span class="jauge v"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i><i></i></span></td>
+            <td class="n"><span class="jauge"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i></span></td>
+            <td class="n">45 l.</td><td class="n">nulle</td>
+            <td class="n"><b class="pts" style="color:var(--vert)">8,6</b></td>
+            <td>La forme dominante</td>
+          </tr>
+          <tr>
+            <td class="nom">5 · La grille se peuple</td>
+            <td class="n"><span class="jauge v"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i></span></td>
+            <td class="n"><span class="jauge"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i></span></td>
+            <td class="n">70 l.</td><td class="n">faible</td>
+            <td class="n"><b class="pts" style="color:var(--vert)">8,1</b></td>
+            <td>Cartes, calendriers, SVG</td>
+          </tr>
+          <tr>
+            <td class="nom">7 · Les barres poussent</td>
+            <td class="n"><span class="jauge v"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i></span></td>
+            <td class="n"><span class="jauge"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i></span></td>
+            <td class="n">55 l.</td><td class="n">faible</td>
+            <td class="n"><b class="pts" style="color:var(--vert)">8,0</b></td>
+            <td>Analytique, SVG</td>
+          </tr>
+          <tr>
+            <td class="nom">3 · Les indicateurs parlent</td>
+            <td class="n"><span class="jauge v"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i></span></td>
+            <td class="n"><span class="jauge"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i><i></i></span></td>
+            <td class="n">60 l.</td><td class="n">nulle</td>
+            <td class="n"><b class="pts">7,5</b></td>
+            <td>Pilotage, Analytique</td>
+          </tr>
+          <tr>
+            <td class="nom">4 · La colonne répond</td>
+            <td class="n"><span class="jauge v"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i><i class="plein"></i></span></td>
+            <td class="n"><span class="jauge"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i><i></i></span></td>
+            <td class="n">95 l.</td><td class="n">moyenne</td>
+            <td class="n"><b class="pts">6,9</b></td>
+            <td>Classements, commandes</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="corps">
+      La 4 finit dernière malgré <b>la meilleure note pédagogique du lot</b> : c'est la seule dont
+      la mesure peut échouer sur une mise en page inattendue, et la seule qui demanderait à être
+      revérifiée quand l'administration change. Elle mérite d'être faite — en dernier, et avec un
+      repli propre sur la mécanique 2.
+    </p>
+  </div>
+</section>
+
+
+<!-- ================= ORDRE DE BATAILLE ================= -->
+<section>
+  <div class="pile">
+    <div class="pile-s">
+      <div class="kick">Si vous validez</div>
+      <h2>L'ordre de bataille</h2>
+      <p class="corps">
+        Trois livraisons, chacune testable au banc d'essai avant la suivante. Le socle d'abord :
+        il ne se voit pas, mais rien ne tient sans lui — et il corrige à lui seul les deux
+        premiers problèmes.
+      </p>
+    </div>
+
+    <div class="plan">
+      <div class="plan-c">
+        <div class="plan-n">Livraison 1 · le socle</div>
+        <div class="plan-t">≈ 300 lignes</div>
+        <div class="plan-d">
+          <code>lire()</code>, <code>cadrer()</code>, <code>Scene</code>. Aucune animation nouvelle,
+          mais <b>les repères deviennent justes et la vue se recadre</b>. Vérifiable au banc :
+          les 124 repères passent par <code>lire()</code>, on relève ce qui est reconnu et ce qui
+          ne l'est pas.
+        </div>
+      </div>
+      <div class="plan-c">
+        <div class="plan-n">Livraison 2 · le gros du rendement</div>
+        <div class="plan-t">≈ 305 lignes</div>
+        <div class="plan-d">
+          Mécaniques <b>2, 6, 5, 7</b> et la partition. Ce sont celles qui ne peuvent rien casser :
+          aucune n'écrit, aucune ne clique. C'est là que la monotonie tombe.
+        </div>
+      </div>
+      <div class="plan-c">
+        <div class="plan-n">Livraison 3 · la démonstration</div>
+        <div class="plan-t">≈ 250 lignes</div>
+        <div class="plan-d">
+          Mécaniques <b>1</b> (avec le Studio) et <b>3</b>, puis <b>4</b> avec son repli. La 1 en
+          dernier parce qu'elle clique pour de vrai : elle passe après que tout le reste a été
+          éprouvé.
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>Ce qui ne change pas.</b> Aucune dépendance ajoutée · ES5 · <code>transform</code>,
+      <code>opacity</code>, <code>filter</code> seulement · chaque règle CSS écrite deux fois pour le
+      mode animations forcées · aucune écriture en base · le double verrou reste armé · aucune
+      animation écrite écran par écran. <b>L'administration n'est pas touchée</b> — les sept
+      mécaniques vivent entièrement dans <code>tutoriel.js</code> et <code>tutoriel.css</code>.
+    </div>
+
+    <div class="note v">
+      <b>Ce que le banc a corrigé, et qu'aucune relecture n'aurait trouvé.</b> Six règles de cette
+      proposition étaient fausses à l'écriture : <em>tableau</em> prenait toute liste alignée ;
+      <em>calendrier</em> ne reconnaissait rien, parce que toutes les cases portent leur numéro de
+      jour ; la colonne désignée était « matchs joués » au lieu de « points » ; la signature de
+      fratrie ignorait toutes les classes SVG ; la fratrie profonde tombait sur les libellés d'axe
+      au lieu des barres ; et la photographie de la mécanique 1 ne voyait pas une sélection de
+      calque. <b>Chacune se lisait très bien sur le papier.</b> C'est la raison d'être des onze bancs.
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>Baobabs Basket Club — proposition de refonte des animations du tutoriel de l'administration.</div>
+  <div style="margin-top:6px">Toutes les démonstrations de cette page tournent en JavaScript ES5, sans dépendance, et n'utilisent que <span class="mono">transform</span>, <span class="mono">opacity</span> et <span class="mono">filter</span> — comme le code proposé.</div>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var VERT = '#93CE43';
+
+  // LE MOUVEMENT DEMANDÉ N'EST PAS LE MOUVEMENT SUBI.
+  //
+  // prefers-reduced-motion protège de ce qui bouge sans qu'on l'ait
+  // demandé. Un clic sur « Jouer » EST la demande : figer la
+  // démonstration à ce moment-là ferait mentir le bouton -- et c'est
+  // très exactement le défaut que l'administration a déjà rencontré
+  // (beaucoup de machines Windows ont « animations » désactivé sans
+  // que personne l'ait choisi, et ce sont celles qu'on branche au
+  // vidéoprojecteur).
+  //
+  // Donc : seule la boucle qui part toute seule -- le comparatif du
+  // haut -- respecte le réglage. Les mécaniques, elles, se jouent
+  // entières quand on les demande.
+  var doux = !window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* =================================================================
+     SOCLE — les outils partagés par toutes les mécaniques.
+     Tout ce qui suit est le code réellement proposé, en ES5.
+     ================================================================= */
+
+  function visible(el) {
+    if (!el || !el.getBoundingClientRect) return false;
+    if (!el.getClientRects().length) return false;
+    var r = el.getBoundingClientRect();
+    return r.width > 4 && r.height > 4;
+  }
+
+  // --- LA SIGNATURE DE FRATRIE ---------------------------------------
+  //
+  // getAttribute('class') et NON .className : sur un element SVG,
+  // className est une SVGAnimatedString, qui se stringifie en
+  // « [object SVGAnimatedString] ». Toutes les classes SVG devenaient
+  // donc identiques, et la signature ne distinguait plus rien --
+  // mesure au banc, le defaut ne se voyait pas en lisant le code.
+  function sig(e) {
+    return e.tagName + '.' + (e.getAttribute('class') || '').split(/\s+/)[0];
+  }
+  function serieDe(hote) {
+    if (!hote) return null;
+    var k = [].slice.call(hote.children);
+    if (k.length === 1) return serieDe(k[0]);
+    if (k.length < 3) return null;
+    var s0 = sig(k[0]);
+    var memes = k.filter(function (e) { return sig(e) === s0 && visible(e); });
+    return memes.length >= Math.max(3, k.length * 0.6) ? memes : null;
+  }
+
+  // LA FRATRIE PEUT ETRE PROFONDE -- ET IL PEUT Y EN AVOIR PLUSIEURS.
+  //
+  // serieDe() ne descend que par les enfants uniques. Un graphique a
+  // des axes ET un groupe de barres : deux enfants, la descente
+  // s'arrete, et plus rien n'est reconnu. On cherche donc dans TOUT le
+  // sous-arbre.
+  //
+  // MAIS ON NE PEUT PAS SE CONTENTER DE LA PLUS GRANDE. Mesure au
+  // banc : un graphe a six barres et six libelles d'axe -- deux
+  // fratries de meme taille. En n'en rendant qu'une, on tombait sur
+  // les libelles, le test de graphique echouait, et le graphique
+  // n'etait pas reconnu du tout. On rend donc TOUS les candidats, du
+  // plus grand au plus petit, et c'est le test de nature qui tranche.
+  function fratriesProfondes(hote) {
+    var out = [];
+    var vus = [hote].concat([].slice.call(hote.querySelectorAll('*')));
+    vus.forEach(function (n) {
+      var k = [].slice.call(n.children).filter(visible);
+      if (k.length < 3) return;
+      var s0 = sig(k[0]);
+      var memes = k.filter(function (e) { return sig(e) === s0; });
+      if (memes.length >= 3) out.push(memes);
+    });
+    out.sort(function (a, b) { return b.length - a.length; });
+    return out;
+  }
+
+  // UN GRAPHIQUE SE RECONNAIT A DEUX CHOSES, ET LES DEUX SONT NECESSAIRES.
+  //
+  //   · les elements PARTAGENT UNE BASE -- leurs bas s'alignent, parce
+  //     qu'ils reposent sur un axe ;
+  //   · leurs hauteurs VARIENT franchement -- sinon c'est une liste
+  //     posee sur une ligne, pas une mesure.
+  //
+  // Une liste de lignes echoue au premier test (memes hauteurs, bas
+  // differents). Une grille de cartes echoue au second.
+  function estGraphe(items) {
+    if (!items || items.length < 3) return false;
+    var bas = [], h = [];
+    items.forEach(function (e) {
+      var r = e.getBoundingClientRect();
+      bas.push(Math.round(r.bottom)); h.push(r.height);
+    });
+    if (grouper(bas, 3).length !== 1) return false;
+    var min = Math.min.apply(null, h), max = Math.max.apply(null, h);
+    return min > 0 && max > min * 1.25;
+  }
+
+  // --- GÉOMÉTRIE : regrouper des positions en lignes / colonnes -------
+  function grouper(vals, tol) {
+    var tri = vals.slice().sort(function (a, b) { return a - b; });
+    var g = [], cur = null;
+    for (var i = 0; i < tri.length; i++) {
+      if (cur === null || tri[i] - cur > tol) { g.push(tri[i]); cur = tri[i]; }
+    }
+    return g;
+  }
+  function geometrie(items) {
+    var tops = [], lefts = [];
+    items.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      tops.push(Math.round(r.top)); lefts.push(Math.round(r.left));
+    });
+    return { lignes: grouper(tops, 6).length, colonnes: grouper(lefts, 6).length };
+  }
+
+  // --- LES FEUILLES, ET CE QU'ELLES PORTENT ---------------------------
+  function feuilles(el) {
+    var out = [];
+    var tous = el.querySelectorAll('*');
+    for (var i = 0; i < tous.length; i++) {
+      if (!tous[i].children.length && (tous[i].textContent || '').trim()) out.push(tous[i]);
+    }
+    return out;
+  }
+  function estNombreSeul(t) { return /^\d[\d   ]*$/.test((t || '').trim()); }
+  function estChiffre(t) {
+    t = (t || '').trim();
+    return estNombreSeul(t) || /^[\d\s.,%]+$/.test(t) || /^\d{1,2}[\/.]\d{1,2}([\/.]\d{2,4})?$/.test(t);
+  }
+  // UNE CASE DE CALENDRIER N'EST PAS UNE CASE VIDE.
+  //
+  // Mesure au banc : dans un calendrier, TOUTES les cases portent leur
+  // numero de jour. La regle « peu de cellules ont du contenu » ne
+  // reconnaissait donc aucun calendrier. Ce qui distingue une case a
+  // evenement, c'est qu'elle porte PLUS DE STRUCTURE que les autres.
+  //
+  // On releve donc le nombre d'enfants le plus frequent -- le fond de
+  // la grille -- et on garde les cellules qui en ont davantage. C'est
+  // vrai d'un calendrier de matchs comme d'une grille de creneaux.
+  function porteuses(items) {
+    var freq = {}, mode = 0, best = -1;
+    items.forEach(function (el) {
+      var v = el.children.length;
+      freq[v] = (freq[v] || 0) + 1;
+      if (freq[v] > best) { best = freq[v]; mode = v; }
+    });
+    return items.filter(function (el) { return el.children.length > mode; });
+  }
+
+  // --- COLONNES D'UN TABLEAU, MESURÉES EN x ---------------------------
+  function colonnesDe(lignes) {
+    var xs = [];
+    lignes.forEach(function (l) {
+      [].slice.call(l.children).forEach(function (c) {
+        if (visible(c)) xs.push(Math.round(c.getBoundingClientRect().left));
+      });
+    });
+    var ancres = grouper(xs, 5);
+    var cols = ancres.map(function () { return []; });
+    lignes.forEach(function (l) {
+      [].slice.call(l.children).forEach(function (c) {
+        if (!visible(c)) return;
+        var x = Math.round(c.getBoundingClientRect().left);
+        for (var i = 0; i < ancres.length; i++) {
+          if (Math.abs(x - ancres[i]) <= 5) { cols[i].push(c); return; }
+        }
+      });
+    });
+    // Une colonne n'existe que si la majorité des lignes y participent.
+    return cols.filter(function (c) { return c.length >= lignes.length * 0.6; });
+  }
+  function densite(c) {
+    var n = 0;
+    c.forEach(function (cell) { if (estChiffre(cell.textContent)) n++; });
+    return n / c.length;
+  }
+  function colonnesChiffrees(cols) {
+    return cols.filter(function (c) { return densite(c) >= 0.6; }).length;
+  }
+  function colonneLaPlusChiffree(cols) {
+    var best = -1, score = -1;
+    cols.forEach(function (c, i) {
+      var s = densite(c);
+      // A egalite, LA PLUS A DROITE gagne. Dans tous les tableaux de
+      // l'administration la colonne qui repond -- total, points,
+      // montant -- est la derniere. Avec un « > » strict on designait
+      // « matchs joues » au lieu de « points ».
+      if (s >= score) { score = s; best = i; }
+    });
+    return score >= 0.6 ? best : -1;
+  }
+
+  // --- LA LECTURE : une région, huit natures --------------------------
+  function lire(hote) {
+    if (!hote) return { n: 'unique', items: [] };
+    var champs = [].slice.call(hote.querySelectorAll('input,select,textarea'))
+      .filter(function (c) { return visible(c) && !c.disabled; });
+
+    var items = serieDe(hote);
+    if (!items) {
+      // La descente par enfant unique a echoue : on cherche en profondeur.
+      // C'est le cas d'un graphique (axes + groupe de barres). On essaie
+      // TOUS les candidats : les libelles d'axe forment une fratrie de
+      // meme taille que les barres, et c'est le test qui doit trancher.
+      var profs = fratriesProfondes(hote);
+      for (var p = 0; p < profs.length; p++) {
+        if (estGraphe(profs[p])) return { n: 'graphique', items: profs[p] };
+      }
+      if (champs.length >= 2) return { n: 'formulaire', items: champs };
+      return { n: 'unique', items: [hote] };
+    }
+
+    // Indicateurs : un nombre seul + un libellé court, par élément.
+    var tousKpi = items.every(function (el) {
+      var f = feuilles(el);
+      var nb = f.filter(function (x) { return estNombreSeul(x.textContent); });
+      var lab = f.filter(function (x) { return (x.textContent || '').trim().length <= 24; });
+      return nb.length === 1 && lab.length >= 1;
+    });
+    if (tousKpi) return { n: 'indicateurs', items: items };
+
+    // AVANT la grille : des barres ont des tops et des lefts tous
+    // differents, donc la geometrie les prendrait pour une grille.
+    if (estGraphe(items)) return { n: 'graphique', items: items };
+
+    var g = geometrie(items);
+    if (g.colonnes >= 2 && g.lignes >= 2) {
+      var p = porteuses(items);
+      if (p.length && p.length <= items.length * 0.4) {
+        return { n: 'calendrier', items: p, tous: items, geo: g };
+      }
+      return { n: 'grille', items: items, geo: g };
+    }
+
+    // UN TABLEAU N'EST PAS UNE LISTE ALIGNEE.
+    //
+    // Mesure au banc : une liste de matchs (equipe / date / score) a
+    // elle aussi trois colonnes alignees, et passait pour un tableau --
+    // donc presque toutes les listes de l'administration seraient
+    // parties dans la mecanique 4. Ce qui fait un tableau, ce n'est pas
+    // l'alignement, c'est d'etre une MATRICE DE DONNEES : au moins deux
+    // colonnes majoritairement chiffrees. Un classement en a quatre ;
+    // une liste de matchs n'en a qu'une.
+    var cols = colonnesDe(items);
+    if (cols.length >= 3 && colonnesChiffrees(cols) >= 2) {
+      return { n: 'tableau', items: items, cols: cols };
+    }
+
+    if (champs.length >= 2) return { n: 'formulaire', items: champs };
+    return { n: 'serie', items: items };
+  }
+
+  // --- LA SCÈNE : tout ce qui est touché est restitué ------------------
+  function Scene() { this.t = []; this.m = []; this.mort = false; }
+  Scene.prototype.marquer = function (el) {
+    for (var i = 0; i < this.t.length; i++) if (this.t[i][0] === el) return;
+    this.t.push([el, el.getAttribute('style')]);
+  };
+  Scene.prototype.css = function (el, css) { this.marquer(el); el.style.cssText += ';' + css; };
+  Scene.prototype.tard = function (ms, f) {
+    var self = this;
+    var id = setTimeout(function () { if (!self.mort) f(); }, ms);
+    this.m.push(id); return id;
+  };
+  Scene.prototype.fin = function () {
+    this.mort = true;
+    this.m.forEach(clearTimeout); this.m = [];
+    this.t.forEach(function (p) {
+      if (p[1] === null) p[0].removeAttribute('style'); else p[0].setAttribute('style', p[1]);
+    });
+    this.t = [];
+  };
+
+  // --- LE CADRAGE ------------------------------------------------------
+  function conteneurDefilant(el) {
+    var n = el.parentNode, garde = 0;
+    while (n && n.nodeType === 1 && garde++ < 12) {
+      var cs = getComputedStyle(n);
+      if (/auto|scroll/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 4) return n;
+      n = n.parentNode;
+    }
+    return null;
+  }
+  function cadrer(el, quandFini) {
+    var sc = conteneurDefilant(el);
+    if (!sc) { quandFini && quandFini(); return; }
+    var rc = sc.getBoundingClientRect(), re = el.getBoundingClientRect();
+    var zoneH = rc.height - 24;
+    var dedans = re.top >= rc.top + 12 && re.bottom <= rc.bottom - 12;
+    if (dedans) { quandFini && quandFini(); return; }
+    // Grand bloc : on aligne le haut. Petit bloc : on centre.
+    var vise = (re.height > zoneH * 0.7)
+      ? sc.scrollTop + (re.top - rc.top) - 12
+      : sc.scrollTop + (re.top - rc.top) - (rc.height - re.height) / 2;
+    vise = Math.max(0, Math.min(vise, sc.scrollHeight - sc.clientHeight));
+    var d0 = sc.scrollTop, dist = vise - d0;
+    if (Math.abs(dist) < 3) { sc.scrollTop = vise; quandFini && quandFini(); return; }
+    var duree = Math.max(320, Math.min(760, Math.abs(dist) * 1.6));
+    var t0 = null;
+    function pas(ts) {
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / duree);
+      var k = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      sc.scrollTop = d0 + dist * k;
+      if (p < 1) requestAnimationFrame(pas);
+      else quandFini && quandFini();   // on re-mesure APRÈS, jamais avant
+    }
+    requestAnimationFrame(pas);
+  }
+
+  /* =================================================================
+     LA SURCOUCHE — halo, main, onde, étiquette. Recréée à l'identique
+     pour que la démonstration soit fidèle à ce que fait le tutoriel.
+     ================================================================= */
+  function Sur(id) {
+    this.r = document.getElementById(id);
+    this.r.innerHTML =
+      '<div class="halo"></div>' +
+      '<svg class="main" viewBox="0 0 19 25" fill="none" aria-hidden="true">' +
+        '<path d="M2 1.4 L2 16.5 L5.4 13.4 L8.1 20.6 L11 19.4 L8.4 12.6 L13.4 12.6 Z" ' +
+        'fill="currentColor" stroke="#0B140F" stroke-width="1.1" stroke-linejoin="round"/></svg>' +
+      '<div class="onde"></div><div class="etiq"></div><div class="rail"></div>' +
+      '<div class="frappe"></div>';
+    this.halo = this.r.querySelector('.halo');
+    this.main = this.r.querySelector('.main');
+    this.onde = this.r.querySelector('.onde');
+    this.etiq = this.r.querySelector('.etiq');
+    this.rail = this.r.querySelector('.rail');
+    this.frappe = this.r.querySelector('.frappe');
+  }
+  Sur.prototype.rel = function (el) {
+    var a = el.getBoundingClientRect(), b = this.r.getBoundingClientRect();
+    return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height };
+  };
+  Sur.prototype.poser = function (el, pale) {
+    var p = this.rel(el), m = 5;
+    this.halo.style.left = (p.x - m) + 'px'; this.halo.style.top = (p.y - m) + 'px';
+    this.halo.style.width = (p.w + m * 2) + 'px'; this.halo.style.height = (p.h + m * 2) + 'px';
+    this.halo.className = 'halo on' + (pale ? ' pale' : '');
+  };
+  Sur.prototype.mainVers = function (el, dx, dy) {
+    var p = this.rel(el);
+    this.main.style.left = (p.x + (dx === undefined ? Math.min(p.w * 0.42, 46) : dx)) + 'px';
+    this.main.style.top = (p.y + (dy === undefined ? Math.min(p.h * 0.58, 30) : dy)) + 'px';
+    this.main.classList.add('on');
+  };
+  Sur.prototype.tape = function (el) {
+    var self = this;
+    this.main.classList.add('tape');
+    setTimeout(function () { self.main.classList.remove('tape'); }, 300);
+    var p = this.rel(el);
+    this.onde.style.left = (p.x + Math.min(p.w * 0.42, 46)) + 'px';
+    this.onde.style.top = (p.y + Math.min(p.h * 0.58, 30)) + 'px';
+    this.onde.classList.remove('part'); void this.onde.offsetWidth; this.onde.classList.add('part');
+  };
+  Sur.prototype.etiquette = function (el, texte) {
+    var p = this.rel(el);
+    this.etiq.textContent = texte;
+    this.etiq.style.left = p.x + 'px';
+    this.etiq.style.top = Math.max(0, p.y - 20) + 'px';
+    this.etiq.classList.add('on');
+  };
+  Sur.prototype.vide = function () {
+    // setAttribute et non .className : la main est un SVG, et sur un
+    // element SVG className est une SVGAnimatedString en lecture seule.
+    // L'affectation directe leve une TypeError qui, dans un gestionnaire
+    // d'evenement, ne remonte pas -- la mecanique s'arretait en silence.
+    this.halo.setAttribute('class', 'halo');
+    this.main.setAttribute('class', 'main');
+    this.etiq.setAttribute('class', 'etiq');
+    this.rail.setAttribute('class', 'rail');
+    this.frappe.setAttribute('class', 'frappe');
+  };
+
+  /* =================================================================
+     LE COMPTEUR — généralisé, et qui remet la forme d'origine.
+     ================================================================= */
+  function compter(sc, noeud, duree, quandFini) {
+    var texte = (noeud.textContent || '').trim();
+    if (!estNombreSeul(texte)) { quandFini && quandFini(); return; }
+    var val = parseInt(texte.replace(/[^\d]/g, ''), 10);
+    if (isNaN(val) || val <= 0 || val > 9999) { quandFini && quandFini(); return; }
+    sc.marquer(noeud);
+    var orig = noeud.textContent, t0 = null;
+    noeud.textContent = '0';
+    function pas(ts) {
+      if (sc.mort) { noeud.textContent = orig; return; }
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / duree);
+      var k = 1 - Math.pow(1 - p, 3);
+      noeud.textContent = p < 1 ? String(Math.round(val * k)) : orig;
+      if (p < 1) requestAnimationFrame(pas); else quandFini && quandFini();
+    }
+    requestAnimationFrame(pas);
+  }
+
+  /* =================================================================
+     LES SIX MÉCANIQUES
+     ================================================================= */
+
+  // --- 2. LE PROJECTEUR DESCEND ---------------------------------------
+  function projecteur(sc, sur, items, fini) {
+    var vus = items.length > 6 ? [items[0], items[Math.floor(items.length / 2)], items[items.length - 1]] : items;
+    items.forEach(function (el) {
+      sc.css(el, 'transition:opacity .34s ease,transform .34s cubic-bezier(.2,.8,.3,1);opacity:.3');
+    });
+    var pas = Math.max(320, Math.min(620, 2600 / vus.length));
+    vus.forEach(function (el, i) {
+      sc.tard(180 + i * pas, function () {
+        vus.forEach(function (o) { o.style.opacity = '.3'; o.style.transform = 'none'; });
+        el.style.opacity = '1'; el.style.transform = 'translateX(7px)';
+        sur.poser(el);
+        sur.mainVers(el, -14, el.getBoundingClientRect().height / 2);
+      });
+    });
+    sc.tard(180 + vus.length * pas + 260, function () {
+      items.forEach(function (el) { el.style.opacity = '1'; el.style.transform = 'none'; });
+      sur.vide(); fini && fini();
+    });
+  }
+
+  // --- 3. LES INDICATEURS PRENNENT LA PAROLE ---------------------------
+  function indicateurs(sc, sur, items, fini) {
+    var choisis = items.length > 3 ? [items[0], items[1], items[2]] : items;
+    items.forEach(function (el) {
+      sc.css(el, 'transition:opacity .3s ease,transform .3s cubic-bezier(.2,.8,.3,1);opacity:.26');
+    });
+    var PAS = 900;
+    choisis.forEach(function (el, i) {
+      sc.tard(150 + i * PAS, function () {
+        items.forEach(function (o) { o.style.opacity = '.26'; o.style.transform = 'none'; });
+        el.style.opacity = '1'; el.style.transform = 'translateY(-4px) scale(1.02)';
+        sur.poser(el);
+        var f = feuilles(el);
+        var nb = null, lab = null;
+        f.forEach(function (x) {
+          if (!nb && estNombreSeul(x.textContent)) nb = x;
+          else if (!lab) lab = x;
+        });
+        // Le libellé arrive AVANT la valeur : on nomme, puis on chiffre.
+        if (lab) {
+          sc.css(lab, 'transition:opacity .26s ease,transform .26s cubic-bezier(.2,.9,.3,1);opacity:0;transform:translateX(-7px)');
+          sc.tard(20, function () { lab.style.opacity = '1'; lab.style.transform = 'none'; });
+        }
+        if (nb) sc.tard(120, function () { compter(sc, nb, 560); });
+      });
+    });
+    sc.tard(150 + choisis.length * PAS + 300, function () {
+      items.forEach(function (el) { el.style.opacity = '1'; el.style.transform = 'none'; });
+      sur.vide(); fini && fini();
+    });
+  }
+
+  // --- 4. LA COLONNE RÉPOND --------------------------------------------
+  function colonneRepond(sc, sur, lignes, cols, fini) {
+    lignes.forEach(function (l, i) {
+      sc.css(l, 'opacity:0;transform:translateY(10px)');
+      sc.tard(80 + i * 52, function () {
+        l.style.transition = 'opacity .34s ease,transform .34s cubic-bezier(.2,.85,.3,1)';
+        l.style.opacity = '1'; l.style.transform = 'none';
+      });
+    });
+    var t0 = 80 + lignes.length * 52 + 320;
+    sc.tard(t0, function () {
+      var k = colonneLaPlusChiffree(cols);
+      if (k < 0) { sc.tard(200, function () { sur.vide(); fini && fini(); }); return; }
+      cols.forEach(function (c, ci) {
+        c.forEach(function (cell) {
+          sc.css(cell, 'transition:opacity .38s ease,transform .38s cubic-bezier(.2,.8,.3,1),color .38s ease');
+          if (ci !== k) { cell.style.opacity = '.22'; }
+          else { cell.style.transform = 'translateY(-3px)'; cell.style.color = VERT; }
+        });
+      });
+      var prem = cols[k][0], der = cols[k][cols[k].length - 1];
+      sur.poser(prem);
+      sur.mainVers(prem, prem.getBoundingClientRect().width / 2, 10);
+      sc.tard(420, function () { sur.mainVers(der, der.getBoundingClientRect().width / 2, 10); });
+      sc.tard(220, function () { sur.etiquette(prem, 'la colonne qui répond'); });
+    });
+    sc.tard(t0 + 1600, function () {
+      lignes.forEach(function (l) { l.style.opacity = '1'; l.style.transform = 'none'; });
+      cols.forEach(function (c) { c.forEach(function (cell) { cell.style.opacity = '1'; cell.style.transform = 'none'; cell.style.color = ''; }); });
+      sur.vide(); fini && fini();
+    });
+  }
+
+  // --- 5. LA GRILLE SE PEUPLE (deux cas) --------------------------------
+  function grillePeuple(sc, sur, lu, fini) {
+    var items = lu.items;
+    if (lu.n === 'calendrier') {
+      // Cas B : les cases vides restent la scène, les événements arrivent.
+      items.forEach(function (el) { sc.css(el, 'opacity:0;transform:scale(.86)'); });
+      items.slice(0, 12).forEach(function (el, i) {
+        sc.tard(140 + i * 130, function () {
+          el.style.transition = 'opacity .3s ease,transform .42s cubic-bezier(.24,1.5,.4,1)';
+          el.style.opacity = '1'; el.style.transform = 'none';
+        });
+      });
+      sc.tard(140 + Math.min(items.length, 12) * 130 + 460, function () {
+        items.forEach(function (el) { el.style.opacity = '1'; el.style.transform = 'none'; });
+        fini && fini();
+      });
+      return;
+    }
+    // Cas A : vague diagonale sur la grille pleine.
+    var tops = [], lefts = [];
+    items.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      tops.push(Math.round(r.top)); lefts.push(Math.round(r.left));
+    });
+    var al = grouper(tops, 6), ac = grouper(lefts, 6);
+    function idx(anc, v) { var b = 0; for (var i = 0; i < anc.length; i++) if (Math.abs(anc[i] - v) < 7) b = i; return b; }
+    var maxd = 0;
+    items.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      var d = idx(al, Math.round(r.top)) + idx(ac, Math.round(r.left));
+      if (d > maxd) maxd = d;
+      sc.css(el, 'opacity:0;transform:translateY(11px) scale(.97)');
+      sc.tard(90 + d * 70, function () {
+        el.style.transition = 'opacity .34s ease,transform .44s cubic-bezier(.18,.9,.28,1)';
+        el.style.opacity = '1'; el.style.transform = 'none';
+      });
+    });
+    sc.tard(90 + maxd * 70 + 480, function () {
+      items.forEach(function (el) { el.style.opacity = '1'; el.style.transform = 'none'; });
+      fini && fini();
+    });
+  }
+
+  // --- 6. LE FORMULAIRE SE PARCOURT -------------------------------------
+  function valeurFantome(champ) {
+    if (champ.tagName === 'SELECT') {
+      for (var i = 0; i < champ.options.length; i++) {
+        var v = (champ.options[i].textContent || '').trim();
+        if (v && !/^choisir|^—|^\.\.\.|^…/i.test(v)) return v;
+      }
+      return '';
+    }
+    return (champ.getAttribute('placeholder') || '').trim();
+  }
+  function formulaire(sc, sur, champs, bouton, fini) {
+    var vus = champs.slice(0, 4);
+    var t = 0;
+    // Le rail : la progression, le long du formulaire.
+    var p0 = sur.rel(vus[0]);
+    var pN = sur.rel(vus[vus.length - 1]);
+    sur.rail.style.left = Math.max(0, p0.x - 11) + 'px';
+    sur.rail.style.top = p0.y + 'px';
+    sur.rail.style.height = '0px';
+    sc.tard(80, function () { sur.rail.classList.add('on'); });
+
+    vus.forEach(function (champ, i) {
+      sc.tard(t, function () {
+        var p = sur.rel(champ);
+        sur.poser(champ);
+        sur.mainVers(champ, p.w - 22, p.h / 2);
+        sur.rail.style.height = (p.y - p0.y + p.h) + 'px';
+        var txt = valeurFantome(champ);
+        if (!txt) { sur.frappe.classList.remove('on'); return; }
+        // La valeur se tape PAR-DESSUS le champ. On ne touche jamais value.
+        var cs = getComputedStyle(champ);
+        sur.frappe.style.left = (p.x + parseFloat(cs.paddingLeft || 10) + 1) + 'px';
+        sur.frappe.style.top = (p.y + (p.h - 17) / 2) + 'px';
+        sur.frappe.style.fontSize = cs.fontSize;
+        sur.frappe.textContent = '';
+        sur.frappe.classList.add('on');
+        var j = 0;
+        var iv = setInterval(function () {
+          if (sc.mort || j >= txt.length) { clearInterval(iv); return; }
+          sur.frappe.textContent = txt.slice(0, ++j);
+        }, 45);
+        sc.m.push(iv);
+      });
+      t += 320 + Math.min((valeurFantome(champ) || '').length, 18) * 45 + 300;
+    });
+
+    if (bouton) {
+      sc.tard(t + 200, function () {
+        sur.frappe.classList.remove('on');
+        sur.poser(bouton);
+        var p = sur.rel(bouton);
+        sur.mainVers(bouton, p.w / 2, p.h / 2);
+        sur.rail.style.height = (p.y - p0.y + p.h) + 'px';
+        sc.tard(360, function () { sur.tape(bouton); });   // aucun événement émis
+      });
+      t += 900;
+    }
+    sc.tard(t + 500, function () { sur.vide(); fini && fini(); });
+  }
+
+  // --- 7. LES BARRES POUSSENT -------------------------------------------
+  //
+  // Verifie au banc : transform-box:fill-box + transform-origin:bottom
+  // + scaleY fonctionne sur un <rect> SVG. Une barre a 70 px passe a
+  // 18 px avec son BAS IMMOBILE -- donc elle pousse depuis l'axe, elle
+  // ne retrecit pas vers son centre.
+  function barresPoussent(sc, sur, items, fini) {
+    // De gauche a droite : l'ordre du DOM peut ne pas etre l'ordre visuel.
+    var ord = items.slice().sort(function (a, b) {
+      return a.getBoundingClientRect().left - b.getBoundingClientRect().left;
+    });
+    ord.forEach(function (el) {
+      sc.css(el, 'transform-box:fill-box;transform-origin:bottom;transform:scaleY(.02);opacity:.55');
+    });
+    var PAS = Math.max(45, Math.min(110, 620 / ord.length));
+    ord.forEach(function (el, i) {
+      sc.tard(120 + i * PAS, function () {
+        el.style.transition = 'transform .52s cubic-bezier(.16,.9,.28,1),opacity .3s ease';
+        el.style.transform = 'scaleY(1)';
+        el.style.opacity = '1';
+      });
+    });
+    // Puis LA PLUS HAUTE se detache : un graphique se lit par son maximum.
+    var t = 120 + ord.length * PAS + 560;
+    var haute = ord[0], hmax = 0;
+    ord.forEach(function (e) {
+      var h = e.getBoundingClientRect().height;
+      if (h > hmax) { hmax = h; haute = e; }
+    });
+    sc.tard(t, function () {
+      ord.forEach(function (e) { if (e !== haute) e.style.opacity = '.3'; });
+      sur.poser(haute);
+      sur.etiquette(haute, 'le maximum');
+    });
+    sc.tard(t + 1300, function () {
+      ord.forEach(function (e) { e.style.opacity = '1'; e.style.transform = 'none'; });
+      sur.vide(); fini && fini();
+    });
+  }
+
+  // --- 1. LA CHAÎNE DE CAUSE --------------------------------------------
+  //
+  // LA PHOTOGRAPHIE RELEVE AUSSI LA CLASSE.
+  //
+  // Trouve en construisant le banc du Studio : selectionner un calque
+  // n'ajoute qu'un contour a l'element du plan de travail. Ni sa
+  // position ni son texte ne changent -- l'effet le plus important de
+  // tout le Studio etait INVISIBLE pour le releve. Or dans une
+  // administration ecrite a la main, un changement d'etat passe presque
+  // toujours par une classe.
+  function photographier(racine) {
+    var n = racine.querySelectorAll('*'), out = [];
+    for (var i = 0; i < n.length; i++) {
+      var el = n[i];
+      if (!el.getClientRects().length) { el.__av = null; continue; }
+      var r = el.getBoundingClientRect();
+      el.__av = {
+        x: r.left, y: r.top, w: r.width, h: r.height,
+        t: el.children.length ? '' : (el.textContent || ''),
+        c: el.getAttribute('class') || ''
+      };
+      out.push(el);
+    }
+    return out;
+  }
+  function cequiAChange(racine, cause) {
+    var n = racine.querySelectorAll('*'), chg = [];
+    for (var i = 0; i < n.length; i++) {
+      var el = n[i], av = el.__av;
+      var vu = el.getClientRects().length > 0;
+      if (!av) { if (vu) chg.push(el); continue; }
+      if (!vu) continue;
+      var r = el.getBoundingClientRect();
+      var bouge = Math.abs(r.left - av.x) > 6 || Math.abs(r.top - av.y) > 6 ||
+                  Math.abs(r.width - av.w) > 6 || Math.abs(r.height - av.h) > 6;
+      var dit = !el.children.length && (el.textContent || '') !== av.t;
+      var vetu = (el.getAttribute('class') || '') !== av.c;
+      if (bouge || dit || vetu) chg.push(el);
+    }
+    // Ni la cause, ni ce qu'elle contient, ni ce qui la contient.
+    chg = chg.filter(function (e) {
+      return e !== cause && !cause.contains(e) && !e.contains(cause);
+    });
+    chg.sort(function (a, b) {
+      var ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      return (rb.width * rb.height) - (ra.width * ra.height);
+    });
+    // DEUX EFFETS VALENT MIEUX QU'UN, ET C'EST UNE DECOUVERTE DU BANC.
+    //
+    // Selectionner un calque change DEUX choses : l'element sur le plan
+    // de travail, et le panneau de proprietes. Le plus grand des deux
+    // ecrasait l'autre -- et « le plus grand » n'est pas « le plus
+    // instructif ». On en garde donc deux, disjoints, montres l'un
+    // apres l'autre : c'est aussi ce qui donne a l'etape sa
+    // micro-sequence, au lieu d'un seul temps.
+    var gardes = [];
+    for (var j = 0; j < chg.length && gardes.length < 2; j++) {
+      var ok = true;
+      for (var m = 0; m < gardes.length; m++) {
+        if (gardes[m].contains(chg[j]) || chg[j].contains(gardes[m])) { ok = false; break; }
+      }
+      if (ok) gardes.push(chg[j]);
+    }
+    return gardes;
+  }
+  function oublier(racine) {
+    var n = racine.querySelectorAll('*');
+    for (var i = 0; i < n.length; i++) n[i].__av = null;
+  }
+  function chaineDeCause(sc, sur, cause, portee, fini) {
+    sur.poser(cause);
+    var pc = sur.rel(cause);
+    sur.mainVers(cause, pc.w / 2, pc.h / 2);
+    sc.tard(300, function () {
+      photographier(portee);
+      sur.tape(cause);
+      sc.tard(210, function () {
+        cause.click();                                  // le seul vrai clic
+        requestAnimationFrame(function () {
+          var effets = cequiAChange(portee, cause);
+          oublier(portee);
+          if (!effets.length) { sc.tard(600, function () { sur.vide(); fini && fini(); }); return; }
+          // La main se retire : le contenu a la parole.
+          sc.tard(180, function () { sur.main.classList.remove('on'); });
+          // Les effets se montrent l'un APRES l'autre : le halo voyage
+          // de l'un a l'autre, ce qui fait la phrase « ceci, et aussi cela ».
+          effets.forEach(function (effet, i) {
+            sc.tard(200 + i * 1150, function () {
+              cadrer(effet, function () {
+                if (sc.mort) return;
+                sur.poser(effet);                        // le halo VOYAGE
+                sc.css(effet, 'transition:transform .42s cubic-bezier(.2,1.3,.35,1),box-shadow .42s ease');
+                sc.tard(110, function () {
+                  effet.style.transform = 'scale(1.025)';
+                  effet.style.boxShadow = '0 0 0 1px rgba(147,206,67,.55)';
+                });
+                sc.tard(540, function () { effet.style.transform = 'none'; });
+                sc.tard(260, function () {
+                  sur.etiquette(effet, i === 0 ? 'ce qui a changé' : 'et aussi ceci');
+                });
+              });
+            });
+          });
+          sc.tard(200 + effets.length * 1150 + 800, function () { sur.vide(); fini && fini(); });
+        });
+      });
+    });
+  }
+
+  /* =================================================================
+     LE BANC — remplissage des scènes et branchement des boutons
+     ================================================================= */
+
+  var MATCHS = [
+    ['Baobabs — UCAD SC', '19/09', '68–61'],
+    ['DUC — Baobabs', '12/09', '54–70'],
+    ['Baobabs — ASC Ville de Dakar', '05/09', '72–66'],
+    ['Jaraaf — Baobabs', '29/08', '58–63'],
+    ['Baobabs — ASFA', '22/08', '81–49'],
+    ['UCAD SC — Baobabs', '15/08', '66–70']
+  ];
+  var JOUEUSES = [
+    ['Aïda Diop', 'Meneuse'], ['Ndèye Guèye', 'Arrière'], ['Fatou Sarr', 'Ailière'],
+    ['Mariama Bâ', 'Ailière-forte'], ['Khady Ndiaye', 'Pivot'], ['Sokhna Fall', 'Arrière']
+  ];
+
+  function remplirRows(hote, n, depart) {
+    var h = '';
+    for (var i = 0; i < n; i++) {
+      var m = MATCHS[(i + (depart || 0)) % MATCHS.length];
+      h += '<div class="f-row"><span class="f-eq">' + m[0] + '</span>' +
+           '<span class="f-dt">' + m[1] + '</span><span class="f-sc">' + m[2] + '</span></div>';
+    }
+    hote.innerHTML = h;
+  }
+  remplirRows(document.getElementById('d-rows-c'), 6, 0);
+
+  // La scène du cadrage : une longue liste, la cible tout en bas.
+  (function () {
+    var h = '';
+    for (var i = 0; i < 11; i++) {
+      var m = MATCHS[i % MATCHS.length];
+      h += '<div class="f-row"><span class="f-eq">' + m[0] + '</span>' +
+           '<span class="f-dt">' + m[1] + '</span><span class="f-sc">' + m[2] + '</span></div>';
+    }
+    h += '<div class="f-row" id="d-cible"><span class="f-eq">Baobabs — UCAD SC</span>' +
+         '<span class="f-dt">19/09</span><span class="f-sc">à jouer</span></div>';
+    document.getElementById('d-rows-b').innerHTML = h;
+  })();
+
+  // Les cartes.
+  (function () {
+    var h = '';
+    JOUEUSES.forEach(function (j) {
+      h += '<div class="f-card"><div class="f-vig"></div>' +
+           '<span class="f-nom">' + j[0] + '</span><span class="f-pos">' + j[1] + '</span></div>';
+    });
+    document.getElementById('d-cards').innerHTML = h;
+  })();
+
+  // Le calendrier : 28 cases, 4 seulement portent un événement.
+  (function () {
+    var evts = { 4: ['ASFA', 0], 9: ['UCAD', 1], 15: ['DUC', 0], 22: ['Jaraaf', 1] };
+    var h = '';
+    for (var i = 0; i < 28; i++) {
+      var e = evts[i];
+      h += '<div class="f-jour' + (i < 2 ? ' hors' : '') + '"><span>' + (i - 1 > 0 ? i - 1 : '') + '</span>' +
+           (e ? '<span class="f-ev' + (e[1] ? ' dom' : '') + '">' + e[0] + '</span>' : '') + '</div>';
+    }
+    document.getElementById('d-cal').innerHTML = h;
+  })();
+
+  // Le graphique : un vrai SVG, avec ses axes -- c'est justement ce qui
+  // faisait echouer la reconnaissance dans la premiere version.
+  (function () {
+    var v = [[ 'AOÛ', 62], ['SEP', 88], ['OCT', 47], ['NOV', 96], ['DÉC', 71], ['JAN', 58]];
+    var L = 320, H = 128, base = 104, larg = 30, ecart = 52, x0 = 14;
+    var s = '<svg viewBox="0 0 ' + L + ' ' + H + '" role="img" aria-label="Affluence par mois">';
+    s += '<line class="gx" x1="6" y1="' + base + '" x2="' + (L - 6) + '" y2="' + base + '"></line>';
+    s += '<g class="axe">';
+    v.forEach(function (d, i) {
+      s += '<text class="gl" x="' + (x0 + i * ecart + larg / 2) + '" y="' + (base + 14) +
+           '" text-anchor="middle">' + d[0] + '</text>';
+    });
+    s += '</g><g id="d-barres">';
+    v.forEach(function (d, i) {
+      var h = Math.round(d[1] * 0.86);
+      s += '<rect class="gb" x="' + (x0 + i * ecart) + '" y="' + (base - h) +
+           '" width="' + larg + '" height="' + h + '" rx="2"></rect>';
+    });
+    s += '</g></svg>';
+    document.getElementById('d-graphe').innerHTML = s;
+  })();
+
+  // La scene du tempo.
+  remplirRows(document.getElementById('d-tempo-rows'), 4, 2);
+
+  // Le Studio : les calques agissent VRAIMENT sur le plan de travail.
+  // La mecanique n'en sait rien -- elle le decouvre.
+  var PROPS = {
+    'el-titre': 'Texte<br>Archivo <b>800</b><br>26 pt · centré',
+    'el-photo': 'Image<br><b>1080 × 720</b><br>opacité 100 %',
+    'el-date':  'Texte<br>IBM Plex Mono<br>9 pt · <b>or</b>'
+  };
+  [].slice.call(document.querySelectorAll('#d-calques .st-c')).forEach(function (b) {
+    b.addEventListener('click', function () {
+      [].slice.call(document.querySelectorAll('#d-calques .st-c')).forEach(function (o) { o.classList.remove('actif'); });
+      [].slice.call(document.querySelectorAll('#d-plan .st-el')).forEach(function (o) { o.classList.remove('sel'); });
+      b.classList.add('actif');
+      var el = document.getElementById(b.getAttribute('data-el'));
+      if (el) el.classList.add('sel');
+      document.getElementById('d-props').innerHTML = PROPS[b.getAttribute('data-el')] || '';
+    });
+  });
+
+  // --- branchement ------------------------------------------------------
+  var enCours = null;
+  function lancer(bouton, id, luId, corps) {
+    var sc = new Scene(), sur = new Sur(id);
+    if (enCours) { enCours.sc.fin(); enCours.sur.vide(); enCours.b.disabled = false; }
+    enCours = { sc: sc, sur: sur, b: bouton };
+    bouton.disabled = true;
+    var lu = document.getElementById(luId);
+    corps(sc, sur, lu, function () {
+      sc.fin(); sur.vide(); bouton.disabled = false;
+      if (enCours && enCours.sc === sc) enCours = null;
+    });
+  }
+
+  function dit(lu, txt) { lu.innerHTML = txt; }
+
+  var jeux = {
+    lire: function (sc, sur, lu, fini) {
+      var a = document.getElementById('d-kpi-a');
+      var b = document.getElementById('d-rows-a');
+      var la = lire(a), lb = lire(b);
+      dit(lu, 'reconnu : <b>' + la.n + '</b> (' + la.items.length + ') <i>puis</i> <b>' + lb.n + '</b> (' + lb.items.length + ')');
+      la.items.forEach(function (el, i) {
+        sc.tard(120 + i * 210, function () {
+          sur.poser(el);
+          sc.css(el, 'transition:transform .3s cubic-bezier(.2,.9,.3,1);transform:translateY(-3px)');
+          sc.tard(240, function () { el.style.transform = 'none'; });
+        });
+      });
+      var t = 120 + la.items.length * 210 + 200;
+      lb.items.forEach(function (el, i) {
+        sc.tard(t + i * 210, function () {
+          sur.poser(el);
+          sc.css(el, 'transition:transform .3s cubic-bezier(.2,.9,.3,1);transform:translateX(6px)');
+          sc.tard(240, function () { el.style.transform = 'none'; });
+        });
+      });
+      sc.tard(t + lb.items.length * 210 + 400, fini);
+    },
+
+    cadre: function (sc, sur, lu, fini) {
+      var cible = document.getElementById('d-cible');
+      var box = document.getElementById('d-scroll');
+      box.scrollTop = 0;
+      dit(lu, 'cible hors zone → <b>recadrage</b> du bon conteneur');
+      sc.tard(420, function () {
+        cadrer(cible, function () {
+          dit(lu, 'mouvement fini → <b>re-mesure</b> → geste');
+          sur.poser(cible);
+          var p = sur.rel(cible);
+          sur.mainVers(cible, p.w - 30, p.h / 2);
+          sc.tard(420, function () { sur.tape(cible); });
+          sc.tard(1500, fini);
+        });
+      });
+    },
+
+    proj: function (sc, sur, lu, fini) {
+      var hote = document.getElementById('d-rows-c');
+      var l = lire(hote);
+      var n = l.items.length;
+      dit(lu, 'reconnu : <b>' + l.n + '</b> · ' + n + ' lignes · <i>' +
+        (n > 6 ? '3 échantillonnées' : 'toutes parcourues') + '</i>');
+      projecteur(sc, sur, l.items, fini);
+    },
+
+    kpi: function (sc, sur, lu, fini) {
+      var hote = document.getElementById('d-kpi-b');
+      var l = lire(hote);
+      dit(lu, 'reconnu : <b>' + l.n + '</b> · ' + l.items.length + ' blocs · <i>libellé puis valeur</i>');
+      indicateurs(sc, sur, l.items, fini);
+    },
+
+    tab: function (sc, sur, lu, fini) {
+      var corps = document.querySelector('#d-tab tbody');
+      var l = lire(corps);
+      if (l.n !== 'tableau') {
+        dit(lu, 'nature <b>' + l.n + '</b> → repli sur la mécanique 2');
+        projecteur(sc, sur, l.items, fini); return;
+      }
+      var k = colonneLaPlusChiffree(l.cols);
+      dit(lu, 'reconnu : <b>tableau</b> · ' + l.cols.length + ' colonnes · <i>colonne ' + (k + 1) + ' la plus chiffrée</i>');
+      colonneRepond(sc, sur, l.items, l.cols, fini);
+    },
+
+    grille: function (sc, sur, lu, fini) {
+      var cartes = lire(document.getElementById('d-cards'));
+      var cal = lire(document.getElementById('d-cal'));
+      dit(lu, 'reconnu : <b>' + cartes.n + '</b> (' + cartes.items.length + ') <i>puis</i> <b>' + cal.n + '</b> (' + cal.items.length + ' pleines sur ' + (cal.tous ? cal.tous.length : '?') + ')');
+      grillePeuple(sc, sur, cartes, function () {
+        sc.tard(260, function () { grillePeuple(sc, sur, cal, fini); });
+      });
+    },
+
+    form: function (sc, sur, lu, fini) {
+      var hote = document.getElementById('d-form');
+      var l = lire(hote);
+      dit(lu, 'reconnu : <b>' + l.n + '</b> · ' + l.items.length + ' champs · <i>aucune écriture</i>');
+      formulaire(sc, sur, l.items, hote.querySelector('.f-envoi'), fini);
+    },
+
+    studio: function (sc, sur, lu, fini) {
+      var calque = document.querySelector('#d-calques .st-c[data-el="el-photo"]');
+      var portee = document.getElementById('sc-studio');
+      // On remet le Studio dans son etat de depart.
+      [].slice.call(document.querySelectorAll('#d-calques .st-c')).forEach(function (o) { o.classList.remove('actif'); });
+      [].slice.call(document.querySelectorAll('#d-plan .st-el')).forEach(function (o) { o.classList.remove('sel'); });
+      document.getElementById('d-props').innerHTML = '<span class="st-vide">Aucun calque sélectionné</span>';
+      dit(lu, 'la mécanique ne sait rien du Studio · <i>elle cherche</i>');
+      chaineDeCause(sc, sur, calque, portee, function () {
+        dit(lu, 'trouvés : <b>le plan de travail</b> et <b>les propriétés</b>');
+        fini();
+      });
+    },
+
+    graphe: function (sc, sur, lu, fini) {
+      var hote = document.getElementById('d-graphe');
+      var l = lire(hote);
+      if (l.n !== 'graphique') {
+        dit(lu, 'nature <b>' + l.n + '</b> — non reconnu');
+        sc.tard(400, fini); return;
+      }
+      dit(lu, 'reconnu : <b>graphique</b> · ' + l.items.length + ' barres · <i>fratrie profonde</i>');
+      barresPoussent(sc, sur, l.items, fini);
+    },
+
+    tempo: function (sc, sur, lu, fini) {
+      var eti = document.getElementById('d-tempo-eti');
+      var kpis = lire(document.getElementById('d-tempo-kpi')).items;
+      var rows = lire(document.getElementById('d-tempo-rows')).items;
+      var titre = document.getElementById('d-tempo-t');
+      sc.marquer(eti);
+      function annonce(nom, note) {
+        eti.innerHTML = nom + ' <i>' + note + '</i>';
+        eti.classList.add('on');
+      }
+      dit(lu, 'cinq étapes, cinq tempos, <i>le même écran</i>');
+      var t = 0;
+
+      // 1. OUVERTURE — le cadre se dessine, la main vient de loin, on prend le temps.
+      sc.tard(t, function () {
+        annonce('Ouverture', 'lent · le cadre se dessine');
+        sur.main.style.transition = 'opacity .26s ease,transform .34s ease,left 1.15s cubic-bezier(.22,.72,.24,1),top 1.15s cubic-bezier(.22,.72,.24,1)';
+        sur.mainVers(titre, 240, 40);
+        sc.tard(60, function () { sur.poser(titre); sur.mainVers(titre, 30, 8); });
+      });
+      t += 1700;
+
+      // 2. ENCHAÎNÉE — le halo GLISSE, il ne se redessine pas. 60 % des durées.
+      sc.tard(t, function () {
+        annonce('Enchaînée', 'rapide · le cadre glisse');
+        sur.poser(kpis[0]);
+        sur.mainVers(kpis[0], 20, 20);
+      });
+      sc.tard(t + 620, function () { sur.poser(kpis[1]); sur.mainVers(kpis[1], 20, 20); });
+      t += 1300;
+
+      // 3. CONTEMPLATIVE — la main se retire, le halo pâlit, les chiffres parlent seuls.
+      sc.tard(t, function () {
+        annonce('Contemplative', 'la main se retire');
+        sur.main.classList.remove('on');
+        sur.poser(kpis[2], true);
+        var f = feuilles(kpis[2]);
+        for (var i = 0; i < f.length; i++) {
+          if (estNombreSeul(f[i].textContent)) { compter(sc, f[i], 620); break; }
+        }
+      });
+      t += 1600;
+
+      // 4. RAFALE — quatre temps courts, aucun re-tracé entre eux.
+      sc.tard(t, function () { annonce('Rafale', 'quatre temps courts'); });
+      rows.slice(0, 4).forEach(function (r, i) {
+        sc.tard(t + i * 330, function () {
+          sur.poser(r);
+          sc.css(r, 'transition:transform .22s cubic-bezier(.2,.9,.3,1);transform:translateX(6px)');
+          sc.tard(240, function () { r.style.transform = 'none'; });
+        });
+      });
+      t += 4 * 330 + 260;
+
+      // 5. CHUTE — tout s'efface, et il ne se passe rien. C'est le point.
+      sc.tard(t, function () {
+        annonce('Chute', 'un temps de silence');
+        sur.halo.setAttribute('class', 'halo');
+        sur.main.classList.remove('on');
+      });
+      sc.tard(t + 1150, function () { eti.classList.remove('on'); });
+      sc.tard(t + 1500, function () {
+        dit(lu, 'cinq tempos joués · <b>aucun effet nouveau</b>');
+        fini();
+      });
+    },
+
+    cause: function (sc, sur, lu, fini) {
+      var bt = document.getElementById('d-publier');
+      var portee = document.getElementById('sc-cause');
+      var badge = document.getElementById('d-badge');
+      var e1 = document.getElementById('d-effet-d');
+      var e2 = document.getElementById('d-effet-2');
+      // On remet l'écran dans son état de départ avant de jouer.
+      badge.className = 'f-badge'; badge.textContent = 'brouillon';
+      e1.textContent = "Rien n'est encore visible par les supporters.";
+      e2.classList.add('f-cache');
+      dit(lu, 'photographie · clic réel · <i>diff du DOM</i>');
+      chaineDeCause(sc, sur, bt, portee, function () {
+        dit(lu, "l'effet a été <b>trouvé</b>, pas déclaré");
+        fini();
+      });
+    }
+  };
+
+  // Le bouton « Publier » de la démonstration : un vrai changement d'état,
+  // que la mécanique doit découvrir seule.
+  document.getElementById('d-publier').addEventListener('click', function () {
+    var badge = document.getElementById('d-badge');
+    badge.className = 'f-badge on'; badge.textContent = 'en ligne';
+    document.getElementById('d-effet-d').textContent =
+      'Visible par les supporters depuis la page du match.';
+    document.getElementById('d-effet-2').classList.remove('f-cache');
+  });
+
+  [].slice.call(document.querySelectorAll('.jouer')).forEach(function (b) {
+    b.addEventListener('click', function () {
+      var n = b.getAttribute('data-jeu');
+      var ids = {
+        lire: ['sur-lire', 'lu-lire'], cadre: ['sur-cadre', 'lu-cadre'],
+        proj: ['sur-proj', 'lu-proj'], kpi: ['sur-kpi', 'lu-kpi'],
+        tab: ['sur-tab', 'lu-tab'], grille: ['sur-grille', 'lu-grille'],
+        form: ['sur-form', 'lu-form'], cause: ['sur-cause', 'lu-cause'],
+        studio: ['sur-studio', 'lu-studio'], graphe: ['sur-graphe', 'lu-graphe'],
+        tempo: ['sur-tempo', 'lu-tempo']
+      }[n];
+      lancer(b, ids[0], ids[1], jeux[n]);
+    });
+  });
+
+  /* =================================================================
+     LE BANDEAU A/B — la signature d'aujourd'hui contre celle proposée
+     ================================================================= */
+  (function () {
+    var vieux = document.getElementById('ab-vieux');
+    var neuf = document.getElementById('ab-neuf');
+    var FOND = '#223327', ACTIF = '#3A5A44';
+    var LIGNE = 'height:17px;border-radius:3px;background:' + FOND;
+    var bloc = '<div style="position:absolute;left:14px;top:19px;right:14px;display:flex;flex-direction:column;gap:6px">' +
+      '<div class="ab-l" style="' + LIGNE + '"></div>' +
+      '<div class="ab-l" style="' + LIGNE + '"></div>' +
+      '<div class="ab-l" style="' + LIGNE + '"></div>' +
+      '</div>';
+    vieux.innerHTML = bloc + '<div class="sur" id="sur-ab1"></div>';
+    neuf.innerHTML = bloc + '<div class="sur" id="sur-ab2"></div>';
+    var s1 = new Sur('sur-ab1'), s2 = new Sur('sur-ab2');
+    var l1 = [].slice.call(vieux.querySelectorAll('.ab-l'));
+    var l2 = [].slice.call(neuf.querySelectorAll('.ab-l'));
+    var mt = [];
+    function net() { mt.forEach(clearTimeout); mt = []; }
+    function tard(ms, f) { mt.push(setTimeout(f, ms)); }
+    function tour() {
+      net();
+      s1.vide(); s2.vide();
+      l1.forEach(function (e) { e.style.cssText = LIGNE; });
+      l2.forEach(function (e) { e.style.cssText = LIGNE + ';transition:opacity .34s ease,transform .34s cubic-bezier(.2,.8,.3,1),background .34s ease'; });
+
+      // Gauche : la main, puis le cadre, puis l'onde. Le contenu ne bouge pas.
+      tard(200, function () { s1.mainVers(l1[1], 30, 8); });
+      tard(1000, function () { s1.poser(l1[1]); });
+      tard(1450, function () { s1.tape(l1[1]); });
+
+      // Droite : le contenu part d'abord, la main arrive dans le mouvement.
+      tard(120, function () {
+        l2.forEach(function (e, i) { e.style.opacity = i === 1 ? '1' : '.2'; });
+        l2[1].style.transform = 'translateX(9px)';
+        l2[1].style.background = ACTIF;
+        s2.poser(l2[1]);
+      });
+      tard(560, function () { s2.mainVers(l2[1], -13, 9); });
+      tard(1400, function () {
+        l2.forEach(function (e, i) { e.style.opacity = i === 2 ? '1' : '.2'; e.style.transform = 'none'; e.style.background = FOND; });
+        l2[2].style.transform = 'translateX(9px)';
+        l2[2].style.background = ACTIF;
+        s2.poser(l2[2]); s2.mainVers(l2[2], -13, 9);
+      });
+
+      tard(2900, tour);
+    }
+
+    // L'INTERRUPTEUR VISIBLE -- la lecon que le tutoriel a deja payee.
+    //
+    // « mouvement reduit » active dans le systeme rendait tout plat sans
+    // que personne comprenne pourquoi. Ici c'est pire : la these de la
+    // page entiere se demontre dans ce comparatif. On respecte donc le
+    // reglage -- le comparatif s'affiche en etat final -- mais on DIT
+    // pourquoi, et on laisse le jouer d'un clic.
+    if (doux) { tour(); return; }
+
+    s1.poser(l1[1]); s2.poser(l2[1]);
+    l2.forEach(function (e, i) { if (i !== 1) e.style.opacity = '.22'; });
+    l2[1].style.background = ACTIF;
+    l2[1].style.transform = 'translateX(9px)';
+
+    var av = document.getElementById('ab-avis');
+    if (av) {
+      av.classList.add('on');
+      av.querySelector('button').addEventListener('click', function () {
+        av.classList.remove('on');
+        tour();
+      });
+    }
+  })();
+
+})();
+</script>
