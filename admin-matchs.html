@@ -1185,6 +1185,25 @@
   .imgp-b svg{ width:14px; height:14px; flex:none }
   .imgp-b:focus-visible{ outline:2px solid var(--gold); outline-offset:2px }
 
+  /* ===== DEMANDER QUELQUE CHOSE ===== */
+  #dem{ position:fixed; inset:0; z-index:480;
+    background:rgba(4,9,6,.74); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center; padding:24px }
+  #dem.hide{ display:none }
+  .dem-boite{ width:min(460px,100%); background:var(--surface);
+    border:1px solid var(--line-strong); border-radius:16px; padding:22px 24px 20px;
+    box-shadow:0 24px 70px rgba(0,0,0,.55) }
+  .dem-t{ margin:0 0 6px; font-family:var(--font-display); font-weight:var(--display-weight);
+    letter-spacing:var(--display-tracking); font-size:20px; color:var(--text) }
+  .dem-d{ margin:0 0 18px; font-size:13px; line-height:1.55; color:var(--muted) }
+  .dem-d:empty{ display:none }
+  .dem-champs{ display:grid; gap:14px }
+  .dem-champs .field{ margin:0 }
+  .dem-err{ margin:14px 0 0; font-size:12.5px; color:var(--danger) }
+  .dem-pied{ display:flex; justify-content:flex-end; gap:10px; margin-top:20px }
+  .dem-pied .btn{ min-height:44px; padding:11px 20px; width:auto; min-width:0 }
+  @media(max-width:520px){ .dem-pied{ flex-direction:column-reverse } .dem-pied .btn{ width:100% } }
+
   /* ===== CHOISIR UNE JOUEUSE =====
      Une joueuse se reconnait a sa photo et a son numero avant son nom :
      la grille montre les trois, et la recherche accepte les trois. */
@@ -2415,6 +2434,26 @@
        position:fixed ne survit pas a un ancetre en display:none. Place
        dans #app, cette boite s'ouvrirait a 0 x 0 sans la moindre erreur
        des que l'ecran qui l'appelle est masque. -->
+  <!-- ===== DEMANDER QUELQUE CHOSE =====
+       Remplace les prompt() du navigateur. Un prompt() natif sort du
+       produit : police du systeme, bouton « OK », aucune explication,
+       aucun second champ possible. Sur « Nouvelle fiche », il demandait
+       « Nom de la joueuse ? » au-dessus d'un ecran fige, sans dire ce
+       qui allait se passer ensuite -- on ne savait pas si l'on creait
+       une fiche ou si l'on cherchait quelqu'un. -->
+  <div id="dem" class="hide" role="dialog" aria-modal="true" aria-labelledby="dem-t">
+    <form class="dem-boite" id="dem-form">
+      <h3 class="dem-t" id="dem-t"></h3>
+      <p class="dem-d" id="dem-d"></p>
+      <div class="dem-champs" id="dem-champs"></div>
+      <p class="dem-err hide" id="dem-err"></p>
+      <div class="dem-pied">
+        <button type="button" class="btn btn-ghost" id="dem-annuler">Annuler</button>
+        <button type="submit" class="btn btn-primary" id="dem-ok">Créer</button>
+      </div>
+    </form>
+  </div>
+
   <div id="jp" class="hide" role="dialog" aria-modal="true" aria-label="Choisir une joueuse">
     <div class="jp-boite">
       <div class="jp-tete">
@@ -7511,12 +7550,25 @@
     document.getElementById('blk-'+scope+'-del').addEventListener('click', function(){
       var l = ids();
       if (!l.length) return;
-      var rep = prompt('Supprimer définitivement ' + l.length + ' ' + mot + (l.length>1?'s':'') +
-        ' ?\n\nCette action est irréversible. Tapez le nombre ' + l.length + ' pour confirmer.');
-      if (String(rep||'').trim() !== String(l.length)) { qgToast('Suppression annulée.'); return; }
-      this.disabled = true;
-      supprimer(l).then(function(){ qgToast(l.length + ' fiche' + (l.length>1?'s':'') + ' supprimée' + (l.length>1?'s':'')); })
-        .catch(function(){ qgToast('La suppression a échoué.', true); });
+      var bouton = this;
+      // LE VERROU RESTE UN VERROU. Recopier le nombre est le seul geste
+      // qu'on ne fait pas par reflexe : c'est justement pour cela qu'il
+      // est la, et la boite maison ne l'assouplit pas. Elle rend
+      // seulement lisible ce qui va disparaitre, et combien.
+      demander({
+        titre: 'Supprimer ' + l.length + ' ' + mot + (l.length>1?'s':'') + ' ?',
+        detail: 'Cette action est irréversible : ces fiches ne seront pas mises de côté, elles seront '
+              + 'effacées. Recopiez le nombre <b>' + l.length + '</b> pour confirmer.',
+        ok: 'Supprimer définitivement',
+        champs: [{ cle:'n', label:'Recopiez ' + l.length, requis:true, mode:'numeric', exemple:String(l.length) }]
+      }).then(function(v){
+        if (!v) { qgToast('Suppression annulée.'); return; }
+        if (String(v.n).trim() !== String(l.length)) { qgToast('Le nombre ne correspond pas — rien n’a été supprimé.', true); return; }
+        bouton.disabled = true;
+        return supprimer(l)
+          .then(function(){ qgToast(l.length + ' fiche' + (l.length>1?'s':'') + ' supprimée' + (l.length>1?'s':'')); })
+          .catch(function(){ qgToast('La suppression a échoué.', true); bouton.disabled = false; });
+      });
     });
 
     peindre();
@@ -10626,11 +10678,17 @@
     document.getElementById('pr-search').addEventListener('input', prRender);
     document.getElementById('pr-filter').addEventListener('change', prRender);
     document.getElementById('pr-new').addEventListener('click', function(){
-      var name = prompt('Nom du produit ?');
-      if (!name || !name.trim()) return;
-      sbInsert('products', { name: name.trim(), in_stock: true, sort: (prRows.length + 1) }, 'Produits')
-        .then(prLoad)
-        .catch(function(){ showMsg(document.getElementById('pr-msg'), 'La création a échoué.', false); });
+      demander({
+        titre: 'Nouveau produit',
+        detail: 'La fiche s’ouvrira ensuite pour le prix, les visuels, la description et les tailles.',
+        ok: 'Créer la fiche',
+        champs: [{ cle:'name', label:'Nom du produit', requis:true, exemple:'Maillot domicile 2026' }]
+      }).then(function(v){
+        if (!v) return;
+        return sbInsert('products', { name: v.name, in_stock: true, sort: (prRows.length + 1) }, 'Produits')
+          .then(function(){ qgToast(v.name + ' — fiche créée ✓'); return prLoad(); })
+          .catch(function(){ showMsg(document.getElementById('pr-msg'), 'La création a échoué.', false); });
+      });
     });
     document.getElementById('pr-back').addEventListener('click', function(){
       if (prDirty && !confirm('Des modifications ne sont pas enregistrées. Quitter quand même ?')) return;
@@ -11161,11 +11219,26 @@
     if (anStarted){ anLoad(); return; }
     anStarted = true;
     document.getElementById('an-new').addEventListener('click', function(){
-      var m = prompt('Message du bandeau ?');
-      if (!m || !m.trim()) return;
-      sbInsert('announcements', { message: m.trim(), tone: 'info', is_active: false }, 'Annonces')
-        .then(anLoad)
-        .catch(function(){ showMsg(document.getElementById('an-msg'), 'La création a échoué.', false); });
+      // Le ton se choisit ici : c'est lui qui decide de la couleur du
+      // bandeau en haut du site, et le poser apres coup demandait de
+      // rouvrir la ligne. L'annonce nait ETEINTE -- on ecrit d'abord, on
+      // publie ensuite, jamais l'inverse.
+      demander({
+        titre: 'Nouveau bandeau d’annonce',
+        detail: 'Il s’affichera tout en haut du site, sur toutes les pages. Il est créé éteint : vous l’allumez quand il est prêt.',
+        ok: 'Créer l’annonce',
+        champs: [
+          { cle:'message', label:'Message', requis:true, exemple:'Match reporté au samedi 26' },
+          { cle:'tone', label:'Ton', type:'select', valeur:'info', options:[
+            ['info','Information (bleu)'], ['warn','Alerte (rouge)'], ['ok','Succès (vert)']
+          ] }
+        ]
+      }).then(function(v){
+        if (!v) return;
+        return sbInsert('announcements', { message: v.message, tone: v.tone || 'info', is_active: false }, 'Annonces')
+          .then(function(){ qgToast('Annonce créée — elle est encore éteinte ✓'); return anLoad(); })
+          .catch(function(){ showMsg(document.getElementById('an-msg'), 'La création a échoué.', false); });
+      });
     });
     anLoad();
   }
@@ -11285,11 +11358,46 @@
     document.getElementById('ef-search').addEventListener('input', efRender);
     document.getElementById('ef-filter').addEventListener('change', efRender);
     document.getElementById('ef-new').addEventListener('click', function(){
-      var name = prompt('Nom de la joueuse ?');
-      if (!name || !name.trim()) return;
-      sbInsert('players', { name: name.trim(), status: 'active', sort: (efRows.length + 1) }, 'Joueuses')
-        .then(efLoad)
-        .catch(function(){ showMsg(document.getElementById('ef-msg'), 'La création a échoué.', false); });
+      // TROIS CHAMPS, PAS UN. Le nom seul creait une fiche vide qu'il
+      // fallait rouvrir aussitot pour y mettre le numero et le poste --
+      // deux allers-retours pour une joueuse. Le numero et le poste sont
+      // ce qu'on a sous la main au moment ou on l'inscrit ; on les prend
+      // pendant qu'on les a.
+      //
+      // Les postes proposes sont ceux DEJA UTILISES dans l'effectif : le
+      // club ecrit « Meneuse » ou « Meneur » comme il l'entend, et la
+      // liste apprend de lui au lieu de lui imposer un vocabulaire. Rien
+      // n'oblige a choisir dans la liste.
+      var postes = [];
+      efRows.forEach(function(r){
+        if (r.position && postes.indexOf(r.position) < 0) postes.push(r.position);
+      });
+      postes.sort();
+      // Le premier numero libre, propose et non impose : c'est presque
+      // toujours le bon, et le corriger coute un caractere.
+      var pris = efRows.map(function(r){ return parseInt(r.jersey_number, 10); })
+                       .filter(function(x){ return !isNaN(x); });
+      var libre = 4; while (pris.indexOf(libre) >= 0) libre++;
+      demander({
+        titre: 'Nouvelle joueuse',
+        detail: 'La fiche s’ouvrira ensuite pour la photo, les mensurations et le parcours. ' +
+                'Seul le nom est nécessaire maintenant.',
+        ok: 'Créer la fiche',
+        champs: [
+          { cle:'name', label:'Nom', requis:true, exemple:'Prénom et nom' },
+          { cle:'jersey_number', label:'Numéro de maillot', mode:'numeric', valeur:libre },
+          { cle:'position', label:'Poste', exemple:'Meneuse, Ailíere, Pivot…', suggestions:postes }
+        ]
+      }).then(function(v){
+        if (!v) return;
+        var corps = { name: v.name, status: 'active', sort: (efRows.length + 1) };
+        var num = parseInt(v.jersey_number, 10);
+        if (!isNaN(num)) corps.jersey_number = num;
+        if (v.position) corps.position = v.position;
+        return sbInsert('players', corps, 'Joueuses')
+          .then(function(){ qgToast(v.name + ' — fiche créée ✓'); return efLoad(); })
+          .catch(function(){ showMsg(document.getElementById('ef-msg'), 'La création a échoué.', false); });
+      });
     });
     document.getElementById('ef-back').addEventListener('click', function(){
       if (efDirty && !confirm('Des modifications ne sont pas enregistrées. Quitter quand même ?')) return;
@@ -11816,11 +11924,26 @@
     if (ctStarted){ ctLoad(); return; }
     ctStarted = true;
     document.getElementById('ct-new').addEventListener('click', function(){
-      var name = prompt('Nom de la nouvelle catégorie ?');
-      if (!name || !name.trim()) return;
-      sbInsert('news_categories', { name: name.trim(), color: '#C6A257', sort: (ctRows.length + 1) }, 'Catégories')
-        .then(ctLoad)
-        .catch(function(){ showMsg(document.getElementById('ct-msg'), 'La création a échoué.', false); });
+      // La couleur est demandee ici plutot que laissee a l'or par
+      // defaut : une categorie sert justement a distinguer, et deux
+      // categories de la meme couleur ne distinguent rien.
+      demander({
+        titre: 'Nouvelle catégorie',
+        detail: 'Les catégories étiquettent les actualités, sur le site comme dans l’admin.',
+        ok: 'Créer la catégorie',
+        champs: [
+          { cle:'name', label:'Nom de la catégorie', requis:true, exemple:'Résultats, Vie du club…' },
+          { cle:'color', label:'Couleur', type:'select', valeur:'#C6A257', options:[
+            ['#C6A257','Or du club'], ['#A8D93B','Vert citron'], ['#7CC1EC','Bleu'],
+            ['#E08A5B','Orange'], ['#C0271B','Rouge'], ['#B9C2BB','Gris']
+          ] }
+        ]
+      }).then(function(v){
+        if (!v) return;
+        return sbInsert('news_categories', { name: v.name, color: v.color || '#C6A257', sort: (ctRows.length + 1) }, 'Catégories')
+          .then(function(){ qgToast(v.name + ' — catégorie créée ✓'); return ctLoad(); })
+          .catch(function(){ showMsg(document.getElementById('ct-msg'), 'La création a échoué.', false); });
+      });
     });
     ctLoad();
   }
@@ -17598,7 +17721,7 @@
     el.innerHTML=html+'<input type="file" accept="image/*" multiple class="qg-gal-file" style="display:none"><input type="file" accept="image/*" class="qg-gal-repfile" style="display:none">';
     var fileAdd=el.querySelector('.qg-gal-file'), fileRep=el.querySelector('.qg-gal-repfile'), repIdx=-1;
     var addBtn=el.querySelector('.qg-gal-add'); if(addBtn) addBtn.addEventListener('click',function(){ fileAdd.click(); });
-    var urlBtn=el.querySelector('.qg-gal-url'); if(urlBtn) urlBtn.addEventListener('click',function(){ var u=prompt('Colle l\'adresse (URL) de l\'image :'); if(u&&u.trim()){ arr.push(u.trim()); cur[field]=arr; qgvGalleryRender(key,field); qgvRenderCards(key); } });
+    var urlBtn=el.querySelector('.qg-gal-url'); if(urlBtn) urlBtn.addEventListener('click',function(){ demander({ titre:'Ajouter une image par son adresse', ok:'Ajouter', detail:'Collez l’adresse d’une image déjà en ligne. Pour un fichier de votre ordinateur, utilisez plutôt Téléverser.', champs:[{ cle:'u', label:'Adresse de l’image', requis:true, exemple:'/media/img/photo.webp' }] }).then(function(v){ if(!v) return; arr.push(v.u); cur[field]=arr; qgvGalleryRender(key,field); qgvRenderCards(key); }); });
     fileAdd.addEventListener('change',function(){ var files=Array.prototype.slice.call(fileAdd.files); if(!files.length) return; files=files.slice(0,GALLERY_N-arr.length); qgToast('Envoi de '+files.length+' photo(s)…'); Promise.all(files.map(function(f){ return uploadFile(MEDIA_BUCKET,f); })).then(function(urls){ cur[field]=arr.concat(urls); qgvGalleryRender(key,field); qgvRenderCards(key); qgToast('Photo(s) ajoutée(s) ✓'); }).catch(function(){ qgToast('Échec de l\'envoi',true); }); });
     fileRep.addEventListener('change',function(){ var f=fileRep.files[0]; if(!f||repIdx<0) return; qgToast('Remplacement…'); uploadFile(MEDIA_BUCKET,f).then(function(url){ arr[repIdx]=url; cur[field]=arr; qgvGalleryRender(key,field); qgvRenderCards(key); qgToast('Photo remplacée ✓'); }).catch(function(){ qgToast('Échec',true); }); });
     el.querySelectorAll('.qg-gal-del').forEach(function(b){ b.addEventListener('click',function(){ arr.splice(+b.getAttribute('data-i'),1); cur[field]=arr; qgvGalleryRender(key,field); qgvRenderCards(key); }); });
@@ -18558,6 +18681,96 @@
   // pour que le chapitre s'ouvre AVANT qu'on aille designer quoi que ce
   // soit dedans. C'est le seul endroit qui connait la correspondance
   // bloc -> chapitre, et il la tient de qgcRender lui-meme.
+  // ===================== DEMANDER QUELQUE CHOSE =====================
+  //
+  // prompt() du navigateur sort du produit : police du systeme, bouton
+  // « OK », aucune explication, aucun second champ possible, et sur
+  // certains navigateurs une case « ne plus afficher » qui coupe la
+  // fonction pour de bon. « Nom de la joueuse ? » pose au-dessus d'un
+  // ecran fige ne dit pas ce qui va se passer ensuite : on ne sait pas
+  // si l'on cree une fiche ou si l'on cherche quelqu'un.
+  //
+  // demander() rend une promesse : elle donne un objet {cle: valeur}, ou
+  // null si l'on renonce. Un seul champ, ou cinq, sans changer d'appel.
+  //
+  //   demander({ titre:'Nouvelle joueuse', champs:[{cle:'name', ...}] })
+  //     .then(function(v){ if (!v) return; ... });
+  //
+  // La boite vit hors de #app : position:fixed ne survit pas a un
+  // ancetre en display:none. Meme raison que le selecteur d'images.
+  var demRendre = null;
+  function demander(opts){
+    var b = document.getElementById('dem');
+    // Repli honnete : si la boite manque, on ne fait pas semblant.
+    if (!b) return Promise.resolve(null);
+    opts = opts || {};
+    document.getElementById('dem-t').textContent = opts.titre || '';
+    // Le detail peut porter un <b> : il vient du code source de
+    // l'admin, jamais d'une saisie. Aucune valeur d'utilisateur n'y
+    // entre -- les valeurs vont dans les champs, echappees.
+    document.getElementById('dem-d').innerHTML = opts.detail || '';
+    document.getElementById('dem-ok').textContent = opts.ok || 'Valider';
+    var err = document.getElementById('dem-err');
+    err.classList.add('hide'); err.textContent = '';
+    var champs = opts.champs || [];
+    document.getElementById('dem-champs').innerHTML = champs.map(function(c, i){
+      var id = 'dem-c-' + i;
+      var liste = (c.suggestions && c.suggestions.length)
+        ? '<datalist id="' + id + '-l">' + c.suggestions.map(function(x){
+            return '<option value="' + esc(String(x)) + '">'; }).join('') + '</datalist>' : '';
+      var opt = c.requis ? '' : ' <span class="opt">(optionnel)</span>';
+      if (c.type === 'select')
+        return '<div class="field"><label for="' + id + '">' + esc(c.label) + opt + '</label>' +
+          '<select id="' + id + '" data-cle="' + esc(c.cle) + '">' +
+          (c.options||[]).map(function(o){
+            return '<option value="' + esc(o[0]) + '"' + (String(c.valeur)===String(o[0])?' selected':'') +
+                   '>' + esc(o[1]) + '</option>'; }).join('') + '</select></div>';
+      return '<div class="field"><label for="' + id + '">' + esc(c.label) + opt + '</label>' +
+        '<input id="' + id + '" data-cle="' + esc(c.cle) + '" type="text"' +
+        (c.mode ? ' inputmode="' + esc(c.mode) + '"' : '') +
+        (liste ? ' list="' + id + '-l"' : '') +
+        ' value="' + esc(c.valeur == null ? '' : String(c.valeur)) + '"' +
+        ' placeholder="' + esc(c.exemple || '') + '"' +
+        ' data-requis="' + (c.requis ? '1' : '') + '"></div>' + liste;
+    }).join('');
+    b.classList.remove('hide');
+    var premier = b.querySelector('input,select');
+    if (premier) setTimeout(function(){ premier.focus(); premier.select && premier.select(); }, 50);
+    return new Promise(function(res){ demRendre = res; });
+  }
+  function demFermer(valeurs){
+    var b = document.getElementById('dem'); if (b) b.classList.add('hide');
+    var r = demRendre; demRendre = null;
+    if (r) r(valeurs || null);
+  }
+  (function demCabler(){
+    var b = document.getElementById('dem'); if (!b) return;
+    document.getElementById('dem-annuler').addEventListener('click', function(){ demFermer(null); });
+    b.addEventListener('mousedown', function(ev){ if (ev.target === b) demFermer(null); });
+    document.addEventListener('keydown', function(ev){
+      if (ev.key === 'Escape' && !b.classList.contains('hide')) demFermer(null);
+    });
+    document.getElementById('dem-form').addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var v = {}, manque = null;
+      b.querySelectorAll('[data-cle]').forEach(function(el){
+        var val = String(el.value || '').trim();
+        if (!val && el.getAttribute('data-requis') && !manque) manque = el;
+        v[el.getAttribute('data-cle')] = val;
+      });
+      // On dit ce qui manque, et on y remet le curseur -- plutot que de
+      // refermer en silence comme le faisait prompt() sur un champ vide.
+      if (manque){
+        var err = document.getElementById('dem-err');
+        err.textContent = 'Ce champ est nécessaire pour continuer.';
+        err.classList.remove('hide');
+        manque.focus();
+        return;
+      }
+      demFermer(v);
+    });
+  })();
+
   // ===================== CHOISIR UNE JOUEUSE =====================
   // L'effectif est deja quelque part : dans la table players, tenue a
   // jour par l'ecran Joueuses. Le retaper ailleurs -- nom, numero, poste,
