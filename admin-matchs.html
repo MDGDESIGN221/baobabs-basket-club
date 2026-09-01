@@ -1207,6 +1207,22 @@
   .md-prof-b.on{background:var(--gold-soft);border-color:var(--gold);color:var(--gold-bright)}
   .md-prof-a{margin:10px 0 0;font-size:12px;line-height:1.55;color:var(--muted)}
 
+  /* Le bandeau « il manque la fonction d'envoi ». Orange plutôt que
+     rouge : rien n'est cassé, il manque une pièce à poser. */
+  .nw-hs{margin:0 0 18px;padding:15px 17px;border-radius:var(--r-lg);
+    background:rgba(224,138,91,.09);border:1px solid rgba(224,138,91,.3)}
+  .nw-hs.hide{display:none}
+  /* Seul le PREMIER b est le titre. Sans le :first-child, « Edge
+     Functions » au milieu de la phrase passait à la ligne et cassait
+     l'instruction en trois morceaux. */
+  .nw-hs > b:first-child{display:block;font-family:var(--font-display);font-weight:var(--display-weight);
+    letter-spacing:var(--display-tracking);font-size:15px;color:#E8A87C;margin-bottom:6px}
+  .nw-hs span{display:block;font-size:13px;line-height:1.6;color:var(--muted)}
+  .nw-hs span b{color:var(--text);font-weight:600}
+  .nw-hs code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;
+    background:rgba(243,239,230,.07);border-radius:4px;padding:1px 5px;color:var(--text)}
+  .nw-hs i{font-style:normal;color:var(--text)}
+
   /* ===== DEMANDER QUELQUE CHOSE ===== */
   #dem{ position:fixed; inset:0; z-index:480;
     background:rgba(4,9,6,.74); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
@@ -1264,7 +1280,14 @@
   /* ===== CHOISIR UNE JOUEUSE =====
      Une joueuse se reconnait a sa photo et a son numero avant son nom :
      la grille montre les trois, et la recherche accepte les trois. */
-  #jp{ position:fixed; inset:0; z-index:470;
+  /* AU-DESSUS DE #dem (480), ET C'EST L'ORDRE QUI COMPTE.
+     La fenêtre de choix s'ouvre DEPUIS un formulaire — « Nouveau match »
+     demande l'adversaire, « Face-Off » demande la joueuse. Posée en
+     dessous, elle s'ouvrait derrière le formulaire qui l'avait appelée :
+     on cliquait « Choisir un club… », l'écran s'assombrissait un peu
+     plus, et rien n'apparaissait. La règle : une fenêtre appelée par une
+     autre passe toujours au-dessus d'elle. */
+  #jp{ position:fixed; inset:0; z-index:500;
     background:rgba(4,9,6,.74); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
     display:flex; align-items:center; justify-content:center; padding:24px; }
   #jp.hide{ display:none }
@@ -3887,6 +3910,13 @@
     <section id="section-newsl" class="hide">
       <div class="mod-head"><span class="mod-count" id="nw-count">—</span></div>
       <div class="callout">Chaque inscrit reçoit <b>son propre e-mail</b> — personne ne voit la liste. Testez toujours sur votre adresse avant l'envoi général.</div>
+      <!-- ON LE DIT AVANT D'ECRIRE, PAS APRES.
+           L'ecran ne signalait rien tant qu'on n'avait pas clique
+           « Envoyer » : on redigeait un message entier pour apprendre a
+           la fin que la fonction d'envoi n'existe pas. Le bandeau
+           ci-dessous se peint des l'ouverture de l'ecran, et disparait
+           si tout est en place. -->
+      <div class="nw-hs hide" id="nw-hs"></div>
       <div class="grid-2" style="align-items:start"><div>
         <div class="card">
           <h2 class="card-title">Nouveau message</h2>
@@ -7332,7 +7362,49 @@
   // ===================== NEWSLETTER =====================
   var nwBusy = false;
 
+  // LA FONCTION D'ENVOI EST-ELLE LA ?
+  //
+  // Le code de la newsletter est complet, la base est prête — mais rien
+  // ne part tant que la fonction « envoi-newsletter » n'a pas été
+  // déployée dans Supabase. Tant qu'elle manque, l'écran se comportait
+  // normalement : on écrivait un sujet, un message, on cliquait, et on
+  // apprenait à la fin que ça ne marchait pas. Un travail perdu, et le
+  // doute installé — « est-ce que ça marche, ce truc ? ».
+  //
+  // On sonde donc au chargement. Une fonction absente répond 404 depuis
+  // la passerelle, sans en-tête CORS : le navigateur ne voit qu'un échec
+  // réseau. Les deux cas mènent au même message, qui dit quoi faire.
+  //
+  // La sonde est silencieuse quand tout va bien : un bandeau permanent
+  // « tout fonctionne » cesse d'être lu au bout de trois jours.
+  function nwSonder(){
+    var box = document.getElementById('nw-hs');
+    var envoi = document.getElementById('nw-send-btn');
+    var test  = document.getElementById('nw-test-btn');
+    if (!box) return;
+    function manque(){
+      box.classList.remove('hide');
+      box.innerHTML =
+        '<b>La fonction d’envoi n’est pas installée — rien ne peut partir.</b>' +
+        '<span>Tout le reste est prêt : la liste des inscrits, le journal, la mise en forme. ' +
+        'Il manque la dernière pièce, à poser une seule fois dans Supabase → ' +
+        '<b>Edge Functions</b> → <i>Deploy a new function</i>, sous le nom exact ' +
+        '<code>envoi-newsletter</code>, avec le contenu de <code>edge-function-newsletter.ts</code>. ' +
+        'La marche à suivre complète est dans <code>NOTICE-NEWSLETTER.txt</code>.</span>';
+      // On n'éteint pas les boutons : quelqu'un peut déployer la fonction
+      // pendant que l'écran est ouvert, et un bouton mort ne se rallume
+      // pas tout seul. Ils diront simplement la même chose s'ils échouent.
+      [envoi, test].forEach(function(b){ if (b) b.title = 'La fonction d’envoi n’est pas encore déployée.'; });
+    }
+    // OPTIONS plutôt que POST : on demande « es-tu là ? » sans rien
+    // envoyer. Une fonction déployée répond aux requêtes préliminaires.
+    fetch(SUPABASE_URL + '/functions/v1/envoi-newsletter', { method:'OPTIONS' })
+      .then(function(r){ if (r.status === 404) manque(); else box.classList.add('hide'); })
+      .catch(function(){ manque(); });
+  }
+
   function nwLoad(){
+    nwSonder();
     sbGet('newsletter_subscribers?select=id').then(function(rows){
       var n = (rows || []).length;
       document.getElementById('nw-count').textContent = n + ' inscrit' + (n > 1 ? 's' : '');
@@ -14879,33 +14951,60 @@
     });
   }
 
-  function cdRenderPdfDoc(r, logo, photo){
+  // ===================== LE SOCLE DES FICHES PDF =====================
+  //
+  // Une fiche de candidature et un dossier d'inscription ne disent pas la
+  // meme chose, mais ils s'impriment de la meme facon : bandeau vert,
+  // logo, portrait encadre d'or, sections a filet, grilles de champs,
+  // citations, journal, pied numerote. Ce socle porte tout cela une fois.
+  //
+  // POURQUOI PAS DEUX COPIES. La premiere retouche -- une marge, une
+  // couleur, la date du pied -- serait faite d'un cote et pas de
+  // l'autre, et deux documents du meme club sortiraient differents de la
+  // meme imprimante sans que rien ne le signale.
+  //
+  // « y » VIT SUR L'OBJET, ET NON DANS UNE VARIABLE LOCALE. Les aides
+  // avancent le curseur vertical ; l'appelant aussi. Une copie locale
+  // desynchroniserait les deux au premier saut de page.
+  function pdfSocle(opts){
     var jsPDFLib = window.jspdf && window.jspdf.jsPDF;
-    if (!jsPDFLib) { alert('Le module PDF n\'a pas pu se charger. Vérifiez votre connexion et réessayez.'); return; }
+    if (!jsPDFLib){
+      alert('Le module PDF n\'a pas pu se charger. Vérifiez votre connexion et réessayez.');
+      return null;
+    }
+    opts = opts || {};
     var doc = new jsPDFLib({ unit:'mm', format:'a4' });
     cdRegisterPdfFonts(doc);
 
-    var PW = 210, PH = 297, M = 18;
-    var y = M;
-    // Vraies couleurs du club (reprises de :root du site), pas des
-    // approximations : --court:#0F4030, --gold:#C6A257, --text:#F3EFE6.
-    var INK = [26,32,28], FAINT = [122,130,124], LINE = [226,229,222];
-    var GOLD = [198,162,87], COURT = [15,64,48], COURT_DEEP = [10,35,24];
-    // Papier : un blanc légèrement chaud plutôt qu'un gris froid — le gris
-    // neutre donnait un rendu « formulaire administratif » au dossier.
-    var PAPER = [250,249,245], HAIR = [236,238,232];
-    var HEADER_H = 32;
+    var o = {
+      doc: doc,
+      PW: 210, PH: 297, M: 18, HEADER_H: 32,
+      // Vraies couleurs du club (reprises de :root du site), pas des
+      // approximations : --court:#0F4030, --gold:#C6A257, --text:#F3EFE6.
+      INK:[26,32,28], FAINT:[122,130,124], LINE:[226,229,222],
+      GOLD:[198,162,87], COURT:[15,64,48], COURT_DEEP:[10,35,24],
+      // Papier : un blanc légèrement chaud plutôt qu'un gris froid — le
+      // gris neutre donnait un rendu « formulaire administratif ».
+      PAPER:[250,249,245], HAIR:[236,238,232],
+      y: 18
+    };
+    var PW=o.PW, PH=o.PH, M=o.M, HEADER_H=o.HEADER_H;
+    var INK=o.INK, FAINT=o.FAINT, LINE=o.LINE, GOLD=o.GOLD;
+    var COURT=o.COURT, COURT_DEEP=o.COURT_DEEP, PAPER=o.PAPER, HAIR=o.HAIR;
 
     // Polices : Space Grotesk pour toute la hiérarchie de titres/labels
     // (Bold/Medium), Inter pour le texte courant (Regular/SemiBold) —
     // même logique typographique que le site, appliquée au papier.
-    function fSGBold(sz){ doc.setFont('SpaceGrotesk','bold'); doc.setFontSize(sz); }
-    function fSGMed(sz){ doc.setFont('SpaceGroteskMd','normal'); doc.setFontSize(sz); }
-    function fInter(sz){ doc.setFont('Inter','normal'); doc.setFontSize(sz); }
-    function fInterSb(sz){ doc.setFont('InterSb','normal'); doc.setFontSize(sz); }
-    function col(c){ doc.setTextColor(c[0],c[1],c[2]); }
+    o.fSGBold  = function(sz){ doc.setFont('SpaceGrotesk','bold'); doc.setFontSize(sz); };
+    o.fSGMed   = function(sz){ doc.setFont('SpaceGroteskMd','normal'); doc.setFontSize(sz); };
+    o.fInter   = function(sz){ doc.setFont('Inter','normal'); doc.setFontSize(sz); };
+    o.fInterSb = function(sz){ doc.setFont('InterSb','normal'); doc.setFontSize(sz); };
+    o.col      = function(c){ doc.setTextColor(c[0],c[1],c[2]); };
+    o.hex      = function(str){ var n = parseInt(String(str).replace('#',''),16);
+                                return [(n>>16)&255,(n>>8)&255,n&255]; };
+    var fSGBold=o.fSGBold, fSGMed=o.fSGMed, fInter=o.fInter, fInterSb=o.fInterSb, col=o.col;
 
-    function cdPdfContinuationHeader(){
+    o.enTeteSuite = function(){
       doc.setFillColor(COURT[0],COURT[1],COURT[2]);
       doc.rect(0, 0, PW, 15, 'F');
       doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
@@ -14913,31 +15012,31 @@
       fSGMed(8.5); col([243,239,230]);
       doc.text('BAOBABS BASKET CLUB', M, 9.6);
       fInter(8); col([176,190,180]);
-      doc.text('Fiche de candidature — suite', PW-M, 9.6, { align:'right' });
-      y = 27;
-    }
-    function checkPageBreak(need){
-      if (y + need > PH - M){ doc.addPage(); cdPdfContinuationHeader(); }
-    }
-    function sectionTitle(t){
-      checkPageBreak(14);
-      // Petit carré or, titre, puis un filet clair qui court jusqu'à la
-      // marge droite : l'œil suit la ligne et le bloc respire, sans le trait
-      // pleine largeur qui écrasait la hiérarchie.
+      doc.text((opts.titre || 'Fiche') + ' — suite', PW-M, 9.6, { align:'right' });
+      o.y = 27;
+    };
+    o.checkPageBreak = function(need){
+      if (o.y + need > PH - M){ doc.addPage(); o.enTeteSuite(); }
+    };
+    // Petit carré or, titre, puis un filet clair qui court jusqu'à la
+    // marge droite : l'œil suit la ligne et le bloc respire, sans le
+    // trait pleine largeur qui écrasait la hiérarchie.
+    o.sectionTitle = function(t){
+      o.checkPageBreak(14);
       doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
-      doc.rect(M, y-2.1, 2, 2, 'F');
+      doc.rect(M, o.y-2.1, 2, 2, 'F');
       fSGBold(9.5); col(INK);
-      var label = t.toUpperCase();
-      doc.text(label, M+4.6, y);
+      var label = String(t).toUpperCase();
+      doc.text(label, M+4.6, o.y);
       var w = doc.getTextWidth(label);
       doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.4);
-      doc.line(M+4.6+w+4, y-1.1, PW-M, y-1.1);
-      y += 8.5;
-    }
+      doc.line(M+4.6+w+4, o.y-1.1, PW-M, o.y-1.1);
+      o.y += 8.5;
+    };
     // Grille de champs clé-valeur, 2 colonnes : label Inter petit/gris
     // au-dessus, valeur Space Grotesk Medium en dessous — empilé plutôt
-    // qu'aligné en ligne, pour un rendu "fiche" plutôt que "tableau brut".
-    function fieldsGrid(pairs){
+    // qu'aligné en ligne, pour un rendu « fiche » plutôt que « tableau ».
+    o.fieldsGrid = function(pairs){
       var visible = pairs.filter(function(p){ return !!p[1]; });
       if (!visible.length) return;
       var colW = (PW - 2*M - 10) / 2;
@@ -14948,93 +15047,78 @@
           return doc.splitTextToSize(String(p[1]), colW - 2);
         });
         var rowH = Math.max.apply(null, rowLines.map(function(l){ return l.length; })) * 5 + 9;
-        checkPageBreak(rowH);
-        // Filet vertical entre les deux colonnes : structure la grille sans
-        // la transformer en tableau à bordures.
+        o.checkPageBreak(rowH);
+        // Filet vertical entre les deux colonnes : structure la grille
+        // sans la transformer en tableau à bordures.
         if (row.length === 2){
           doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.4);
-          doc.line(M+colW+5, y-3.4, M+colW+5, y+rowH-7);
+          doc.line(M+colW+5, o.y-3.4, M+colW+5, o.y+rowH-7);
         }
-        row.forEach(function(p, idx){
+        row.forEach(function(pr, idx){
           var cx = M + idx*(colW+10);
           fInter(6.8); col(FAINT);
-          doc.text(String(p[0]).toUpperCase(), cx, y, { charSpace:0.35 });
+          doc.text(String(pr[0]).toUpperCase(), cx, o.y, { charSpace:0.35 });
           fSGMed(10.5); col(INK);
-          doc.text(rowLines[idx], cx, y+5.8);
+          doc.text(rowLines[idx], cx, o.y+5.8);
         });
-        y += rowH;
+        o.y += rowH;
       }
-      y += 2;
-    }
-    // Les mots du candidat, posés dans un panneau papier avec un filet or à
-    // gauche : on distingue d'un coup d'œil ce qu'il a écrit de nos données.
-    function quote(text, accent, neutral){
+      o.y += 2;
+    };
+    // Les mots de la personne, posés dans un panneau papier avec un
+    // filet or à gauche : on distingue d'un coup d'œil ce qu'elle a
+    // écrit de nos propres données.
+    o.quote = function(text, accent, neutral){
       var lines = doc.splitTextToSize(String(text), PW-2*M-14);
       var h = lines.length*5.2 + 9;
-      checkPageBreak(h+2);
+      o.checkPageBreak(h+2);
       doc.setFillColor(PAPER[0],PAPER[1],PAPER[2]);
-      doc.rect(M, y-4, PW-2*M, h, 'F');
-      // Filet gris pour nos propres notes, or pour la parole du candidat :
-      // on ne confond jamais les deux à la relecture.
+      doc.rect(M, o.y-4, PW-2*M, h, 'F');
       var a = accent || (neutral ? [188,194,186] : GOLD);
       doc.setFillColor(a[0],a[1],a[2]);
-      doc.rect(M, y-4, 1.4, h, 'F');
+      doc.rect(M, o.y-4, 1.4, h, 'F');
       fInter(9.8); col(accent ? accent : INK);
-      var ly = y + 1.4;
+      var ly = o.y + 1.4;
       lines.forEach(function(ln){ doc.text(ln, M+7, ly); ly += 5.2; });
-      y += h + 3;
-    }
-    // UNE ETOILE, PAS UNE PASTILLE.
-    //
-    // Le PDF dessinait cinq ronds. C'etait defendable sur le papier --
-    // un disque plein se lit de loin -- mais l'ecran, lui, montre des
-    // etoiles : on note une candidate avec cinq etoiles, on imprime la
-    // fiche, et on recoit cinq ronds. Le doute porte alors sur la note
-    // elle-meme : est-ce la meme chose qui est comptee ? Une fiche
-    // imprimee doit ressembler a l'ecran dont elle sort.
-    //
-    // jsPDF ne connait pas l'etoile : on la trace. Dix sommets alternes,
-    // le creux a 42 % du rayon -- en dessous l'etoile devient une roue,
-    // au-dessus une croix. doc.lines() attend des ECARTS depuis le point
-    // precedent, pas des coordonnees absolues.
-    function etoilePdf(cx, cy, r, style){
+      o.y += h + 3;
+    };
+    // UNE ETOILE, PAS UNE PASTILLE. On note avec cinq etoiles a l'ecran,
+    // on imprime, et on recevait cinq ronds : le doute portait alors sur
+    // la note elle-meme. jsPDF ne connait pas l'etoile, on la trace --
+    // dix sommets alternes, le creux a 42 % du rayon. doc.lines() attend
+    // des ECARTS depuis le point precedent, pas des coordonnees.
+    o.etoile = function(cx, cy, r, style){
       var pts = [], i, a, rr;
       for (i = 0; i < 10; i++){
         a  = -Math.PI/2 + i * Math.PI/5;
         rr = (i % 2 === 0) ? r : r * 0.42;
         pts.push([cx + Math.cos(a)*rr, cy + Math.sin(a)*rr]);
       }
-      var ecarts = [];
+      var ec = [];
       for (i = 1; i < pts.length; i++)
-        ecarts.push([pts[i][0] - pts[i-1][0], pts[i][1] - pts[i-1][1]]);
-      doc.lines(ecarts, pts[0][0], pts[0][1], [1,1], style, true);
-    }
-    // Notation : cinq etoiles, pleines jusqu'a la note, evidees ensuite.
-    // Les evidees comptent autant que les pleines -- « 3 sur 5 » se lit
-    // sans avoir a chercher le total ailleurs.
-    function ratingRow(n){
-      checkPageBreak(11);
+        ec.push([pts[i][0] - pts[i-1][0], pts[i][1] - pts[i-1][1]]);
+      doc.lines(ec, pts[0][0], pts[0][1], [1,1], style, true);
+    };
+    // Cinq étoiles, pleines jusqu'à la note, évidées ensuite : les
+    // évidées comptent autant que les pleines — « 3 sur 5 » se lit sans
+    // avoir à chercher le total ailleurs.
+    o.ratingRow = function(n, titre){
+      o.checkPageBreak(11);
       fInter(6.8); col(FAINT);
-      doc.text('APPRÉCIATION INTERNE', M, y, { charSpace:0.35 });
-      var cy = y + 4.6;
+      doc.text(String(titre || 'APPRÉCIATION INTERNE'), M, o.y, { charSpace:0.35 });
+      var cy = o.y + 4.6;
       for (var i=0; i<5; i++){
         var cx = M + 2.4 + i*5.8;
-        if (i < n){
-          doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
-          etoilePdf(cx, cy, 2.4, 'F');
-        } else {
-          doc.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); doc.setLineWidth(0.3);
-          etoilePdf(cx, cy, 2.4, 'S');
-        }
+        if (i < n){ doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]); o.etoile(cx, cy, 2.4, 'F'); }
+        else { doc.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); doc.setLineWidth(0.3); o.etoile(cx, cy, 2.4, 'S'); }
       }
       fSGMed(9.5); col(INK);
       doc.text(n+' sur 5', M + 2.4 + 5*5.8 + 1.5, cy+1.4);
-      y += 13;
-    }
+      o.y += 13;
+    };
     // Pastille de statut pleine (fond coloré), comme les status-pill du
-    // site. measureOnly=true calcule juste la largeur sans dessiner —
-    // utile pour positionner ce qui suit sans dessiner deux fois.
-    function pill(label, x, yBase, rgb, measureOnly){
+    // site. measureOnly=true calcule juste la largeur sans dessiner.
+    o.pill = function(label, x, yBase, rgb, measureOnly){
       fInterSb(8);
       var w = doc.getTextWidth(label) + 7;
       var h = 5.5;
@@ -15042,21 +15126,102 @@
         doc.setFillColor(rgb[0],rgb[1],rgb[2]);
         doc.roundedRect(x, yBase-h+1.3, w, h, h/2, h/2, 'F');
         // Texte en blanc ou en encre foncée selon la luminosité de la
-        // couleur, pour rester lisible sur des pastilles claires (ex.
-        // "À étudier" en or) comme sur des pastilles sombres.
+        // couleur, pour rester lisible sur des pastilles claires comme
+        // sur des pastilles sombres.
         var lum = 0.299*rgb[0] + 0.587*rgb[1] + 0.114*rgb[2];
         col(lum > 165 ? [26,32,28] : [255,255,255]);
         doc.text(label, x+3.5, yBase-0.35);
       }
       return w;
-    }
-    function hex(str){
-      var n = parseInt(str.replace('#',''), 16);
-      return [(n>>16)&255, (n>>8)&255, n&255];
-    }
+    };
+    // Le portrait, recadré « cover » et ancré en haut — comme
+    // object-position:top center sur le site : on ne coupe jamais le
+    // visage. Sans photo, l'initiale sur fond papier, jamais un vide.
+    o.portrait = function(photo, x, yy, w, h, initiale){
+      if (photo){
+        var tR = w/h, sR = photo.w/photo.h, sw, sh, sx, sy;
+        if (sR > tR){ sh = photo.h; sw = photo.h*tR; sx = (photo.w-sw)/2; sy = 0; }
+        else        { sw = photo.w; sh = photo.w/tR; sx = 0; sy = 0; }
+        var c = document.createElement('canvas'); c.width = 600; c.height = Math.round(600/tR);
+        c.getContext('2d').drawImage(photo.el, sx, sy, sw, sh, 0, 0, c.width, c.height);
+        doc.addImage(c.toDataURL('image/jpeg',0.92), 'JPEG', x, yy, w, h);
+      } else {
+        doc.setFillColor(PAPER[0],PAPER[1],PAPER[2]);
+        doc.rect(x, yy, w, h, 'F');
+        fSGBold(24); col([206,210,200]);
+        doc.text(String(initiale||'?').charAt(0).toUpperCase(), x+w/2, yy+h/2+4, { align:'center' });
+      }
+      doc.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); doc.setLineWidth(0.5);
+      doc.rect(x-1.1, yy-1.1, w+2.2, h+2.2, 'S');
+    };
+    // Le journal d'un dossier : filet vertical, pastille, date, phrase.
+    // Le filet est tracé segment par segment pour s'interrompre
+    // proprement à chaque saut de page.
+    o.journal = function(lignes){
+      if (!lignes || !lignes.length) return;
+      fInter(7.6);
+      var dateW = 0;
+      lignes.forEach(function(l){ dateW = Math.max(dateW, doc.getTextWidth(String(l[0]))); });
+      var labelX = M + 9 + dateW + 7;
+      lignes.forEach(function(l, i){
+        o.checkPageBreak(8);
+        doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.4);
+        doc.line(M+2, o.y-4, M+2, o.y+3);
+        var dot = i===0 ? GOLD : [206,211,202];
+        doc.setFillColor(dot[0],dot[1],dot[2]);
+        doc.circle(M+2, o.y-1.2, 1.5, 'F');
+        fInter(7.6); col(FAINT);
+        doc.text(String(l[0]), M+9, o.y);
+        fSGMed(9.2); col(INK);
+        doc.text(doc.splitTextToSize(String(l[1]), PW-M-labelX)[0], labelX, o.y);
+        o.y += 7;
+      });
+    };
+    // Une ligne « libellé …… valeur », comme un relevé. Le pointillé
+    // relie l'œil d'un bout à l'autre : sur une colonne de montants,
+    // c'est lui qui évite de lire la ligne du dessous.
+    o.releve = function(libelle, valeur, gras){
+      o.checkPageBreak(7);
+      fInter(9.5); col(FAINT);
+      doc.text(String(libelle), M+1, o.y);
+      var wl = doc.getTextWidth(String(libelle));
+      fSGMed(gras ? 11 : 10); col(INK);
+      var vw = doc.getTextWidth(String(valeur));
+      doc.text(String(valeur), PW-M, o.y, { align:'right' });
+      doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.3);
+      doc.setLineDashPattern([0.6,1.1], 0);
+      doc.line(M+1+wl+3, o.y-1, PW-M-vw-3, o.y-1);
+      doc.setLineDashPattern([], 0);
+      o.y += 6.6;
+    };
+    // Pied de page sur chaque page : numérotation + date de génération.
+    // Appelé en dernier, quand le nombre de pages est connu.
+    o.pied = function(mention){
+      var pageCount = doc.internal.getNumberOfPages();
+      for (var i=1; i<=pageCount; i++){
+        doc.setPage(i);
+        doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.3);
+        doc.line(M, PH-M+4, PW-M, PH-M+4);
+        // Pastille or en tête de pied de page : signature du club.
+        doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
+        doc.circle(M+1, PH-M+8, 1, 'F');
+        fInter(6.8); col(FAINT);
+        doc.text('BAOBABS BASKET CLUB · '+(mention||'CONFIDENTIEL')+' · '+new Date().toLocaleDateString('fr-FR'),
+                 M+4.5, PH-M+9, { charSpace:0.3 });
+        fSGMed(7.6); col(FAINT);
+        doc.text(i+' / '+pageCount, PW-M, PH-M+9, { align:'right' });
+      }
+    };
+    // Nom de fichier : sans accent, sans espace, en minuscules.
+    o.nomFichier = function(prefixe, nom, defaut){
+      var t = String(nom || defaut || 'document').normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-')
+        .replace(/^-+|-+$/g,'').toLowerCase();
+      return prefixe + '-' + (t || defaut || 'document') + '.pdf';
+    };
 
-    // === Bandeau d'en-tête : vert club plein, dégradé vers le vert profond
-    // à droite, et filet or en pied de bandeau qui tient toute la page. ===
+    // === Bandeau d'en-tête : vert club plein, dégradé vers le vert
+    // profond à droite, et filet or en pied de bandeau. ===
     doc.setFillColor(COURT[0],COURT[1],COURT[2]);
     doc.rect(0, 0, PW, HEADER_H, 'F');
     // Le dégradé n'existe pas en PDF simple : on le simule par bandes
@@ -15073,10 +15238,11 @@
     doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
     doc.rect(0, HEADER_H, PW, 0.9, 'F');
 
+    var logo = opts.logo;
     if (logo){
       var lh = 17, lw = lh * (logo.w/logo.h);
-      // Le logo source fait plusieurs centaines de kilo-octets : à 17 mm de
-      // haut, 200 px suffisent largement. Ces fiches circulent par e-mail au
+      // Le logo source fait plusieurs centaines de kilo-octets : à 17 mm
+      // de haut, 200 px suffisent. Ces fiches circulent par e-mail au
       // bureau, le poids du fichier compte.
       var logoData = logo.data;
       try {
@@ -15094,18 +15260,31 @@
     doc.text('DAKAR · CHAMPIONNAT D2', headerTx, HEADER_H/2 + 4.4, { charSpace:0.5 });
 
     fSGMed(9.5); col([243,239,230]);
-    doc.text('Fiche de candidature', PW-M, HEADER_H/2 - 1, { align:'right' });
+    doc.text(String(opts.titre||'Fiche'), PW-M, HEADER_H/2 - 1, { align:'right' });
     fInter(7); col([150,172,158]);
-    doc.text('USAGE INTERNE — CONFIDENTIEL', PW-M, HEADER_H/2 + 4.4, { align:'right', charSpace:0.4 });
+    doc.text(String(opts.mention||'USAGE INTERNE — CONFIDENTIEL'), PW-M, HEADER_H/2 + 4.4,
+             { align:'right', charSpace:0.4 });
 
-    y = HEADER_H + 16;
+    o.y = HEADER_H + 16;
+    return o;
+  }
+
+  function cdRenderPdfDoc(r, logo, photo){
+    var o = pdfSocle({ titre:'Fiche de candidature', logo:logo });
+    if (!o) return;
+    var doc = o.doc;
+    var PW=o.PW, PH=o.PH, M=o.M, HEADER_H=o.HEADER_H;
+    var INK=o.INK, FAINT=o.FAINT, LINE=o.LINE, GOLD=o.GOLD, PAPER=o.PAPER, HAIR=o.HAIR;
+    var fSGBold=o.fSGBold, fSGMed=o.fSGMed, fInter=o.fInter, fInterSb=o.fInterSb, col=o.col;
+    var hex=o.hex, pill=o.pill, sectionTitle=o.sectionTitle, fieldsGrid=o.fieldsGrid;
+    var quote=o.quote, ratingRow=o.ratingRow, checkPageBreak=o.checkPageBreak;
 
     // === Bloc identité ===
     // Un portrait rectangulaire, pas une vignette ronde : c'est un dossier de
     // recrutement, la photo doit se lire comme sur la fiche du site. Le cadre
     // or est posé en léger retrait (effet passe-partout) et le bloc se ferme
     // sur un filet, sans boîte grise — le blanc structure mieux que le gris.
-    var cardY = y;
+    var cardY = o.y;
     var pW = 30, pH = 38, pX = M, pY = cardY;
 
     if (photo){
@@ -15166,7 +15345,7 @@
     doc.setDrawColor(226,210,178); doc.setLineWidth(0.5);
     doc.line(M, cardY+pH+8, PW-M, cardY+pH+8);
 
-    y = cardY + pH + 18;
+    o.y = cardY + pH + 18;
 
     // --- Coordonnées ---
     sectionTitle('Coordonnées');
@@ -15175,7 +15354,7 @@
       ['Ville', r.city], ['Date de naissance', r.birth_date],
       ['Âge', r.age?r.age+' ans':'']
     ]);
-    y += 2;
+    o.y += 2;
 
     // --- Profil sportif ---
     sectionTitle('Profil sportif');
@@ -15185,14 +15364,14 @@
       ['Main forte', r.strong_hand], ['Expérience', r.experience],
       ['Clubs précédents', r.previous_clubs]
     ]);
-    y += 2;
+    o.y += 2;
 
     // --- Message du candidat ---
     if (r.message || r.health_notes){
       sectionTitle('Message du candidat');
       if (r.message) quote(r.message);
       if (r.health_notes) quote('Santé : '+r.health_notes, [176,90,50]);
-      y += 2;
+      o.y += 2;
     }
 
     // --- Décision & suivi (usage interne) ---
@@ -15206,16 +15385,16 @@
     if (r.decision_note){
       checkPageBreak(8);
       fInter(6.8); col(FAINT);
-      doc.text('MOTIF DE LA DÉCISION', M, y, { charSpace:0.35 }); y += 5.5;
+      doc.text('MOTIF DE LA DÉCISION', M, o.y, { charSpace:0.35 }); o.y += 5.5;
       quote(r.decision_note);
     }
-    y += 2;
+    o.y += 2;
 
     // --- Notes internes ---
     if (r.admin_notes){
       sectionTitle('Notes internes — jamais visibles du candidat');
       quote(r.admin_notes, null, true);
-      y += 2;
+      o.y += 2;
     }
 
     // --- Journal du dossier ---
@@ -15235,35 +15414,20 @@
         // Le filet est tracé segment par segment : il reste continu et
         // s'interrompt proprement à chaque saut de page.
         doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.4);
-        doc.line(M+2, y-4, M+2, y+3);
+        doc.line(M+2, o.y-4, M+2, o.y+3);
         var dot = ei===0 ? GOLD : [206,211,202];
         doc.setFillColor(dot[0],dot[1],dot[2]);
-        doc.circle(M+2, y-1.2, 1.5, 'F');
+        doc.circle(M+2, o.y-1.2, 1.5, 'F');
         fInter(7.6); col(FAINT);
-        doc.text(fmtDateTime(e.created_at), M+9, y);
+        doc.text(fmtDateTime(e.created_at), M+9, o.y);
         fSGMed(9.2); col(INK);
-        doc.text(doc.splitTextToSize(String(label), PW-M-labelX)[0], labelX, y);
-        y += 7;
+        doc.text(doc.splitTextToSize(String(label), PW-M-labelX)[0], labelX, o.y);
+        o.y += 7;
       });
     }
 
-    // --- Pied de page sur chaque page : numérotation + date de génération ---
-    var pageCount = doc.internal.getNumberOfPages();
-    for (var i=1; i<=pageCount; i++){
-      doc.setPage(i);
-      doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.3);
-      doc.line(M, PH-M+4, PW-M, PH-M+4);
-      // Pastille or en tête de pied de page : signature discrète du club.
-      doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
-      doc.circle(M+1, PH-M+8, 1, 'F');
-      fInter(6.8); col(FAINT);
-      doc.text('BAOBABS BASKET CLUB · CONFIDENTIEL · '+new Date().toLocaleDateString('fr-FR'), M+4.5, PH-M+9, { charSpace:0.3 });
-      fSGMed(7.6); col(FAINT);
-      doc.text(i+' / '+pageCount, PW-M, PH-M+9, { align:'right' });
-    }
-
-    var safeName = (r.full_name||'candidat').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase();
-    doc.save('fiche-candidature-'+(safeName||'candidat')+'.pdf');
+    o.pied('CONFIDENTIEL');
+    doc.save(o.nomFichier('fiche-candidature', r.full_name, 'candidat'));
   }
 
 
@@ -19158,6 +19322,13 @@
     document.getElementById('dem-annuler').addEventListener('click', function(){ demFermer(null); });
     b.addEventListener('mousedown', function(ev){ if (ev.target === b) demFermer(null); });
     document.addEventListener('keydown', function(ev){
+      // Échap ferme la fenêtre du DESSUS, et elle seule. Quand la
+      // fenêtre de choix est ouverte par-dessus ce formulaire, les deux
+      // écoutent la même touche : sans cette garde, un seul Échap
+      // refermait le choix ET le formulaire, avec tout ce qu'on venait
+      // d'y taper.
+      var choix = document.getElementById('jp');
+      if (choix && !choix.classList.contains('hide')) return;
       if (ev.key === 'Escape' && !b.classList.contains('hide')) demFermer(null);
     });
     document.getElementById('dem-form').addEventListener('submit', function(ev){
