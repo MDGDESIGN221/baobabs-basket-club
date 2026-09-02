@@ -651,9 +651,6 @@
   .qgc-preview-label::after{content:'';flex:1;height:1px;background:var(--line)}
 
   .card-title::after{content:'';display:block;width:26px;height:2px;border-radius:2px;background:var(--gold);margin-top:7px;opacity:.85}
-  .cl-stats{display:flex;flex-direction:column;align-items:flex-end;flex:none;min-width:104px}
-  .cl-stats b{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:19px;letter-spacing:.03em;color:var(--gold-bright);line-height:1.1}
-  .cl-stats span{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:2px}
 
   /* ===== V2 — soir de match : le tableau de marque ===== */
   .gd-board{position:relative;overflow:hidden;background:linear-gradient(160deg,#0F2214,#071208);border:1px solid rgba(198,162,87,.35);border-radius:var(--radius);padding:26px 22px;box-shadow:0 24px 60px -30px rgba(0,0,0,.7)}
@@ -1893,10 +1890,6 @@
   .od-money{font-family:var(--font-ui);font-weight:700;font-size:15px;color:var(--text)}
   .od-total{font-family:var(--font-ui);font-weight:700;letter-spacing:-.02em;font-size:26px;color:var(--gold)}
   .od-hero{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;padding:clamp(18px,2.6vw,26px);background:linear-gradient(140deg,#16231A,#0E1712);border-bottom:1px solid var(--line)}
-  .cl-avatar{width:46px;height:46px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--font-ui);font-weight:700;font-size:17px;color:#fff}
-  .cl-stat{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-  .cl-stat b{display:block;font-family:var(--font-ui);font-weight:700;letter-spacing:-.02em;font-size:23px;line-height:1;color:var(--gold)}
-  .cl-stat span{display:block;font-weight:600;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:6px}
   @media print{
     /* On ne masque JAMAIS par « body > * » : #print-root est imbriqué à sept
        niveaux (#app > .app-shell > .app-main > .wrap > section > #od-doc-view),
@@ -2752,6 +2745,9 @@
   .ds-doc .cd-kv{padding:8px 0;font-size:12.5px;border-bottom:1px solid var(--line)}
   .ds-doc .cd-kv span:last-child{font-variant-numeric:tabular-nums}
   .ds-doc .cd-jrnl{font-size:12.5px}
+  /* Une bande de chiffres posee DANS un dossier : son filet du haut
+     doublerait celui de l'en-tete. */
+  .ds-doc .ds-band{border-top:none;margin-bottom:0}
   .ds-mini{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
     margin:20px 0 9px;font-family:var(--font-ui);font-weight:700}
   @media(max-width:900px){
@@ -4361,22 +4357,22 @@
     <!-- ===== SECTION CLIENTS ===== -->
     <section id="section-clients" class="hide">
       <div id="cl-list-view">
-        <div class="mod-head">
-          
-          <span class="mod-count" id="cl-count">—</span>
-          <input type="search" class="mod-search" id="cl-search" placeholder="Nom, téléphone, email…">
-          <button type="button" class="btn btn-ghost" id="cl-export" style="padding:10px 14px;font-size:12.5px">Exporter CSV</button>
-          <select id="cl-sort" aria-label="Trier les clients" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px">
+        <div class="ds-band" id="cl-kpis"></div>
+        <div class="ds-head">
+          <span class="ds-count" id="cl-count">—</span>
+          <input type="search" class="ds-search" id="cl-search" placeholder="Nom, téléphone, email…">
+          <select id="cl-sort" class="ds-sel" aria-label="Trier les clients">
             <option value="spent">Trier : total dépensé</option>
             <option value="recent">Trier : commande récente</option>
             <option value="name">Trier : nom</option>
           </select>
+          <button type="button" class="ds-act" id="cl-export">Exporter CSV</button>
         </div>
-        <div class="callout">Les comptes clients existent depuis la mise en place de la connexion, mais l'espace de gestion ne les montrait pas. Vous voyez enfin qui sont vos supporters fidèles.</div>
-        <div id="cl-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div class="callout ds-note">Les comptes clients existent depuis la mise en place de la connexion, mais l'espace de gestion ne les montrait pas. Vous voyez enfin qui sont vos supporters fidèles.</div>
+        <div id="cl-rows"></div>
       </div>
       <div id="cl-doc-view" class="hide">
-        <button type="button" class="cd-back" id="cl-back">
+        <button type="button" class="cd-back ds-back" id="cl-back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Tous les clients
         </button>
@@ -15906,22 +15902,57 @@
     lv.classList.remove('hide'); dv.classList.add('hide');
 
     var rows = clVisible();
+    clKpis();
     document.getElementById('cl-count').textContent = rows.length + (rows.length>1?' clients':' client');
     var box = document.getElementById('cl-rows');
     if (!rows.length){ box.innerHTML = '<div class="empty">Aucun client pour ce filtre.</div>'; return; }
-    box.innerHTML = rows.map(function(c){
-      var nm = c.name || c.email || '—';
-      return '<div class="cd-row" data-id="'+c.id+'">'+
-        '<div class="cl-avatar" style="background:'+fallbackColor(nm)+'">'+esc(String(nm).charAt(0).toUpperCase())+'</div>'+
-        '<div style="flex:1;min-width:0"><div class="cd-card-name">'+esc(nm)+'</div>'+
-        '<div class="cd-card-meta">'+esc([c.phone, c.email].filter(Boolean).join(' · ')||'—')+'</div></div>'+
-        (Number(c.reservations_actives)>0?'<span class="status-pill" style="flex:none;color:#7DD3C0;border:1px solid #7DD3C055;background:#7DD3C014">'+c.reservations_actives+' billet(s)</span>':'')+
-        '<div class="cl-stats"><b>'+esc(odMoney(c.total_depense))+'</b><span>'+(c.nb_commandes||0)+' commande'+((c.nb_commandes||0)>1?'s':'')+'</span></div>'+
-      '</div>';
-    }).join('');
-    box.querySelectorAll('.cd-row').forEach(function(el){
+    // Une pastille d'initiale tiree au sort dans huit couleurs saturees,
+    // puis le total colle a droite de chaque carte : rien ne s'alignait
+    // d'une ligne a l'autre alors que c'est justement ce qu'on vient
+    // comparer ici — qui depense, qui commande souvent, qui a des billets
+    // en cours.
+    box.innerHTML =
+      '<div class="ds-scroll"><table class="ds-tbl">'+
+        '<thead><tr><th>Client</th><th class="r">Commandes</th><th class="r">Total dépensé</th>'+
+        '<th>Dernière commande</th><th>Billets en cours</th></tr></thead><tbody>'+
+      rows.map(function(c){
+        var nm = c.name || c.email || '—';
+        var billets = Number(c.reservations_actives)||0;
+        return '<tr class="ds-tr" data-id="'+c.id+'">'+
+          '<td><div class="n">'+esc(nm)+'</div>'+
+            '<div class="m">'+esc([c.phone, c.email].filter(Boolean).join(' · ')||'Aucune coordonnée')+'</div></td>'+
+          '<td class="r num">'+(c.nb_commandes||0)+'</td>'+
+          '<td class="r num">'+esc(odMoney(c.total_depense))+'</td>'+
+          '<td class="num">'+esc(c.derniere_commande?formatDateShort(String(c.derniere_commande).slice(0,10)):'—')+'</td>'+
+          '<td>'+(billets?'<span class="ds-st act"><i></i>'+billets+' billet'+(billets>1?'s':'')+'</span>':'<span class="m" style="margin-top:0">—</span>')+'</td>'+
+        '</tr>';
+      }).join('')+'</tbody></table></div>';
+    box.querySelectorAll('.ds-tr').forEach(function(el){
       el.addEventListener('click', function(){ clSel = el.getAttribute('data-id'); clRender(); });
     });
+  }
+
+  // Quatre chiffres que la liste ne donnait qu'en les additionnant a la
+  // main, ligne par ligne.
+  function clKpis(){
+    var band = document.getElementById('cl-kpis');
+    var total = 0, cmd = 0, billets = 0;
+    clRows.forEach(function(c){
+      total += Number(c.total_depense)||0;
+      cmd   += Number(c.nb_commandes)||0;
+      billets += Number(c.reservations_actives)||0;
+    });
+    var panier = cmd > 0 ? Math.round(total/cmd) : 0;
+    band.innerHTML =
+      '<div class="ds-fig"><i>Comptes</i><b>'+clRows.length+'</b>'+
+        '<small>'+(clRows.length>1?'supporters inscrits':'supporter inscrit')+'</small></div>'+
+      '<div class="ds-fig"><i>Encaissé au total</i><b>'+esc((total).toLocaleString('fr-FR'))+'</b>'+
+        '<small>FCFA, toutes commandes</small></div>'+
+      '<div class="ds-fig"><i>Panier moyen</i><b>'+esc((panier).toLocaleString('fr-FR'))+'</b>'+
+        '<small>FCFA par commande</small></div>'+
+      '<div class="ds-fig"><i>Billets en cours</i><b>'+billets+'</b>'+
+        '<small>réservations non retirées</small></div>';
+    band.classList.toggle('hide', !clRows.length);
   }
 
   function clRow(){ return clRows.filter(function(c){ return String(c.id)===String(clSel); })[0]; }
@@ -15936,36 +15967,44 @@
     function kv(k,v){ return v ? '<div class="cd-kv"><span>'+esc(k)+'</span><span>'+esc(v)+'</span></div>' : ''; }
 
     box.innerHTML =
-      '<div class="cd-doc">'+
-        '<div class="od-hero">'+
-          '<div class="cl-avatar" style="width:74px;height:74px;font-size:28px;background:'+fallbackColor(nm)+'">'+esc(String(nm).charAt(0).toUpperCase())+'</div>'+
-          '<div style="flex:1;min-width:220px">'+
-            '<h2 class="cd-doc-name">'+esc(nm)+'</h2>'+
-            '<div class="cd-doc-sub">'+esc([c.phone, c.email].filter(Boolean).join(' · ')||'Aucune coordonnée')+'<br>Compte créé le '+esc(fmtDateTime(c.created_at))+'</div>'+
-            '<div class="cd-quick">'+
-              (c.phone?'<a href="tel:'+esc(c.phone)+'">Appeler</a>':'')+
-              (c.email?'<a href="mailto:'+esc(c.email)+'">Écrire</a>':'')+
+      '<div class="ds-doc">'+
+        // Pas de pastille d'initiale : un client n'a pas de portrait, et
+        // une lettre sur un aplat tire au sort n'en tient pas lieu.
+        '<div class="ds-hero">'+
+          '<div class="ds-hero-b">'+
+            '<h2 class="ds-name">'+esc(nm)+'</h2>'+
+            '<div class="ds-sub">'+esc([c.phone, c.email].filter(Boolean).join(' · ')||'Aucune coordonnée')+
+              '<br>Compte créé le '+esc(fmtDateTime(c.created_at))+'</div>'+
+            '<div class="ds-quick">'+
+              (c.phone?'<a href="tel:'+esc(c.phone)+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.2-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.8 2Z"></path></svg>'+esc(c.phone)+'</a>':'')+
+              (c.email?'<a href="mailto:'+esc(c.email)+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 6 10-6"></path></svg>'+esc(c.email)+'</a>':'')+
             '</div>'+
+          '</div>'+
+          '<div class="ds-hero-x">'+
+            '<div class="ds-hx"><i>Total dépensé</i><b>'+esc((Number(c.total_depense)||0).toLocaleString('fr-FR'))+'</b><s>FCFA</s></div>'+
+            '<div class="ds-hx"><i>Panier moyen</i><b>'+esc((panier).toLocaleString('fr-FR'))+'</b>'+
+              '<s>sur '+(c.nb_commandes||0)+' commande'+((c.nb_commandes||0)>1?'s':'')+'</s></div>'+
           '</div>'+
         '</div>'+
 
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:clamp(16px,2.4vw,22px) clamp(16px,2.4vw,22px) 0">'+
-          '<div class="cl-stat"><b>'+esc(odMoney(c.total_depense))+'</b><span>Total dépensé</span></div>'+
-          '<div class="cl-stat"><b>'+(c.nb_commandes||0)+'</b><span>Commandes</span></div>'+
-          '<div class="cl-stat"><b>'+esc(odMoney(panier))+'</b><span>Panier moyen</span></div>'+
-          '<div class="cl-stat"><b>'+(c.nb_reservations||0)+'</b><span>Réservations</span></div>'+
-        '</div>'+
-
         '<div class="cd-sections">'+
-          '<div class="cd-sec"><div class="cd-sec-h">Commandes</div><div class="cd-sec-b" id="cl-orders">'+
-            '<p class="cd-prose" style="color:var(--faint)">Chargement…</p></div></div>'+
-          '<div class="cd-sec"><div class="cd-sec-h">Réservations</div><div class="cd-sec-b" id="cl-resa">'+
-            '<p class="cd-prose" style="color:var(--faint)">Chargement…</p></div></div>'+
+          // L'IDENTIFIANT NE PEUT PAS VIVRE SUR .cd-sec-b. accWire vide
+          // ce conteneur pour ranger son contenu dans le repli qu'il
+          // fabrique : l'id part avec, getElementById rend null, et le
+          // .then du chargement sort sans rien ecrire. L'historique des
+          // commandes et des reservations d'un client affichait donc
+          // « Chargement… » pour toujours. Defaut anterieur a la refonte,
+          // constate a l'ecran. On descend l'id d'un cran : un enfant
+          // survit au demenagement.
+          '<div class="cd-sec wide"><div class="cd-sec-h">Commandes</div><div class="cd-sec-b">'+
+            '<div id="cl-orders"><p class="cd-prose" style="color:var(--faint)">Chargement…</p></div></div></div>'+
+          '<div class="cd-sec"><div class="cd-sec-h">Réservations</div><div class="cd-sec-b">'+
+            '<div id="cl-resa"><p class="cd-prose" style="color:var(--faint)">Chargement…</p></div></div></div>'+
           '<div class="cd-sec"><div class="cd-sec-h">Notes internes</div><div class="cd-sec-b">'+
             '<textarea class="cd-notes" id="cl-notes" placeholder="Abonné, bénévole, parent de joueuse…">'+esc(c.internal_note||'')+'</textarea>'+
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:9px">'+
               '<span class="cd-draft" id="cl-draft-note"></span>'+
-              '<button type="button" class="btn btn-ghost" id="cl-save-notes" style="padding:9px 14px;font-size:12px">Enregistrer</button>'+
+              '<button type="button" class="ds-act" id="cl-save-notes">Enregistrer</button>'+
             '</div>'+
           '</div></div>'+
         '</div>'+
@@ -15982,7 +16021,7 @@
           return '<div class="cd-jrnl" style="cursor:pointer;align-items:center" data-cl-order="'+o.id+'">'+
             '<span class="cd-jrnl-t">'+esc(fmtDateTime(o.created_at))+'</span>'+
             '<span style="flex:1">'+esc(odNum(o))+'</span>'+
-            '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
+            '<span class="ds-st'+(s.key==='récupérée'?'':' act')+'"><i></i>'+esc(s.label)+'</span>'+
             '<span class="od-money" style="font-size:13px">'+esc(odMoney(o.total))+'</span></div>';
         }).join('') : '<p class="cd-prose" style="color:var(--faint)">Aucune commande.</p>';
         el.querySelectorAll('[data-cl-order]').forEach(function(x){
