@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>Banc d'essai — le projecteur</title>
+<style>
+ body{font:14px/1.6 system-ui,sans-serif;background:#0B140F;color:#E8E4DA;margin:0;padding:22px}
+ h1{font-size:17px;margin:0 0 4px} p.sous{color:#8A9A8F;margin:0 0 18px;font-size:13px;max-width:78ch}
+ table{border-collapse:collapse;width:100%;max-width:960px}
+ td,th{border-bottom:1px solid #24352B;padding:7px 9px;text-align:left;font-size:13px}
+ th{color:#8A9A8F;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em}
+ .ok{color:#A8D93B} .ko{color:#E86A5E} code{color:#C6A257;font-size:12.5px}
+ #bilan{margin:16px 0 0;font-size:15px;font-weight:600}
+ #scene{position:absolute;left:-9999px;top:0;width:520px}
+ .l{height:44px;background:#141F17;border-radius:6px;margin-bottom:6px;padding:8px}
+ #grille{display:flex;flex-wrap:wrap;width:520px}.c{width:160px;height:90px;background:#141F17;margin:4px}
+ #barres{display:flex;align-items:flex-end}.b{width:40px;background:#C6A257;margin-right:8px}
+</style></head><body>
+<h1>Banc d'essai — le projecteur</h1>
+<p class="sous"><code>signatureDe</code>, <code>serieDe</code> et <code>projecteur</code> sont
+<b>extraits de <code>tutoriel/tutoriel.js</code></b>. La reconnaissance doit accepter une liste de
+lignes et <b>refuser</b> ce qui n'en est pas une — une grille de cartes, des barres de graphe.
+Le vrai piège est la remise en état : la mécanique <b>éteint avant de rallumer</b>, donc une étape
+coupée en plein milieu laisserait une liste à demi effacée.</p>
+
+<table id="res"><thead><tr><th>Cas</th><th>Attendu</th><th>Obtenu</th><th></th></tr></thead><tbody></tbody></table>
+<p id="bilan">…</p>
+
+<div id="scene">
+  <div id="liste"><div class="l">Baobabs — adversaire 1</div><div class="l">Baobabs — adversaire 2</div><div class="l">Baobabs — adversaire 3</div><div class="l">Baobabs — adversaire 4</div><div class="l">Baobabs — adversaire 5</div><div class="l">Baobabs — adversaire 6</div></div>
+  <div id="grille"><div class="c">carte 1</div><div class="c">carte 2</div><div class="c">carte 3</div><div class="c">carte 4</div><div class="c">carte 5</div><div class="c">carte 6</div></div>
+  <div id="barres"><div class="b" style="height:40px"></div><div class="b" style="height:90px"></div><div class="b" style="height:55px"></div><div class="b" style="height:120px"></div><div class="b" style="height:70px"></div><div class="b" style="height:100px"></div></div>
+  <div id="deux"><div class="l">une</div><div class="l">deux</div></div>
+  <div id="enveloppe"><div><div class="l">a</div><div class="l">b</div><div class="l">c</div></div></div>
+  <div id="inegal"><div class="l" style="height:30px">x</div><div class="l" style="height:30px">x</div><div class="l" style="height:200px">x</div></div>
+</div>
+<script>
+
+function estVisible(el) { var b = boiteRognee(el); return !!b && b.width > 4 && b.height > 4; }
+var jeton = 1, idx = 0, etapes = [{}], plancherGeste = 0, projecteurRendre = null;
+var poses = [];
+function poser(el) { poses.push(el && el.id); }
+
+  function boiteRognee(el) {
+    if (!el || !el.getBoundingClientRect || !el.getClientRects().length) return null;
+    var r = el.getBoundingClientRect();
+    var haut = r.top, bas = r.bottom, g = r.left, d = r.right;
+    var n = el.parentNode, garde = 0;
+    while (n && n.nodeType === 1 && n !== document.body && garde++ < 16) {
+      var cs;
+      try { cs = getComputedStyle(n); } catch (e) { return null; }
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return null;
+      if (/hidden|auto|scroll|clip/.test(cs.overflow + cs.overflowX + cs.overflowY)) {
+        var b = n.getBoundingClientRect();
+        haut = Math.max(haut, b.top); bas = Math.min(bas, b.bottom);
+        g = Math.max(g, b.left);      d = Math.min(d, b.right);
+      }
+      n = n.parentNode;
+    }
+    if (bas - haut < 1 || d - g < 1) return null;
+    return { top: haut, bottom: bas, left: g, right: d, width: d - g, height: bas - haut };
+  }
+
+  function tempsDuGeste(budget, n, depart, queue) {
+    // n TEMPS, DONC n-1 INTERVALLES. Mesure au banc : en divisant par n,
+    // le geste finissait a 3 130 ms pour une voix de 3 800 -- il
+    // s'eloignait de la voix au lieu de s'en rapprocher.
+    var dispo = Math.min(budget || 3800, 11000) - depart - queue;
+    return Math.max(420, Math.min(1200, dispo / Math.max(1, n - 1)));
+  }
+
+  function signatureDe(e) {
+    return e.tagName + '.' + (e.getAttribute('class') || '').split(/\s+/)[0];
+  }
+
+  function serieDe(hote) {
+    if (!hote) return null;
+    var k = [].slice.call(hote.children);
+    // Un conteneur qui n'enveloppe qu'un seul bloc n'est pas la vraie
+    // cible : on descend jusqu'a la repetition.
+    if (k.length === 1) return serieDe(k[0]);
+    if (k.length < 3) return null;
+    var s0 = signatureDe(k[0]);
+    var memes = k.filter(function (x) { return signatureDe(x) === s0 && estVisible(x); });
+    // Une majorite franche, pas une coincidence.
+    if (memes.length < Math.max(3, k.length * 0.6)) return null;
+    // UNE SEULE COLONNE. Des cartes en grille ou des barres de graphe
+    // sont aussi une fratrie : ce n'est pas une liste, et le projecteur
+    // n'y veut rien dire. On exige que les lignes s'empilent.
+    var lefts = [], hauteurs = [];
+    memes.forEach(function (x) {
+      var r = x.getBoundingClientRect();
+      lefts.push(Math.round(r.left)); hauteurs.push(r.height);
+    });
+    var mini = Math.min.apply(null, lefts), maxi = Math.max.apply(null, lefts);
+    if (maxi - mini > 8) return null;                       // plusieurs colonnes
+    var hMin = Math.min.apply(null, hauteurs), hMax = Math.max.apply(null, hauteurs);
+    if (hMin <= 0 || hMax > hMin * 2.5) return null;        // hauteurs trop inegales
+    return memes;
+  }
+
+  function projecteur(items, g, e, budget) {
+    var vus = items.length > 6
+      ? [items[0], items[Math.floor(items.length / 2)], items[items.length - 1]]
+      : items;
+    // Ce qu'on touche est note pour etre rendu tel quel -- y compris si
+    // l'etape est coupee en plein milieu. Sans cela, le tutoriel
+    // laisserait derriere lui une liste a moitie effacee.
+    var avant = items.map(function (x) { return x.getAttribute('style'); });
+    // ON RETIRE CE QU'ON A POSE, ON NE DEVINE PAS L'ETAT D'ORIGINE.
+    //
+    // Remettre betement l'attribut capture suppose que personne d'autre
+    // n'y a touche entre-temps -- et laisse un style="" la ou il n'y
+    // avait rien. On efface donc NOS trois proprietes, et l'attribut
+    // lui-meme s'il ne reste plus rien dedans. Idempotent : appeler
+    // rendre() deux fois ne change rien.
+    function rendre() {
+      items.forEach(function (x, i) {
+        if (avant[i]) { x.setAttribute('style', avant[i]); return; }
+        x.style.opacity = '';
+        x.style.transform = '';
+        x.style.transition = '';
+        if (!x.getAttribute('style')) x.removeAttribute('style');
+      });
+    }
+    projecteurRendre = rendre;
+
+    // MOUVEMENT 1 — les lignes arrivent.
+    var ARRIV = Math.max(34, Math.min(70, 420 / items.length));
+    items.forEach(function (x, i) {
+      x.style.opacity = '0';
+      x.style.transform = 'translateY(9px)';
+      setTimeout(function () {
+        if (g !== jeton || etapes[idx] !== e) return;
+        x.style.transition = 'opacity .3s ease,transform .34s cubic-bezier(.2,.85,.3,1)';
+        x.style.opacity = '1'; x.style.transform = 'none';
+      }, 60 + i * ARRIV);
+    });
+    var t0 = 60 + items.length * ARRIV + 300;
+
+    // MOUVEMENT 2 — le projecteur descend, cale sur la phrase.
+    var pas = tempsDuGeste(budget, vus.length + 1, t0, 260);
+    setTimeout(function () {
+      if (g !== jeton || etapes[idx] !== e) return;
+      items.forEach(function (x) {
+        x.style.transition = 'opacity .34s ease,transform .34s cubic-bezier(.2,.8,.3,1)';
+        x.style.opacity = '.3';
+      });
+    }, t0 - 60);
+    vus.forEach(function (x, i) {
+      setTimeout(function () {
+        if (g !== jeton || etapes[idx] !== e) return;
+        vus.forEach(function (o) { o.style.opacity = '.3'; o.style.transform = 'none'; });
+        x.style.opacity = '1'; x.style.transform = 'translateX(7px)';
+        poser(x, true);
+      }, t0 + i * pas);
+    });
+    setTimeout(function () {
+      if (g !== jeton || etapes[idx] !== e) { rendre(); return; }
+      rendre();
+    }, t0 + vus.length * pas + 260);
+
+    plancherGeste = Math.max(plancherGeste, t0 + (vus.length - 1) * pas + 260);
+    return true;
+  }
+
+
+var T = [], ok = 0;
+function essai(cas, attendu, obtenu) {
+  var bon = String(attendu) === String(obtenu);
+  if (bon) ok++;
+  T.push([cas, attendu, obtenu, bon]);
+}
+function attendre(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function etat(sel) {
+  return [].slice.call(document.querySelectorAll(sel))
+    .map(function (x) { return (x.style.opacity || '1'); }).join(',');
+}
+// LE VRAI CRITERE : aucun residu visuel. Un style="" vide est identique
+// a pas d'attribut du tout -- comparer les attributs testait ma facon
+// de nettoyer, pas le resultat.
+function residu(hote) {
+  return [].slice.call(hote.children).filter(function (x) {
+    var cs = getComputedStyle(x);
+    return parseFloat(cs.opacity) < 0.99 ||
+           (cs.transform && cs.transform !== 'none') ||
+           x.style.opacity !== '' || x.style.transform !== '';
+  }).length;
+}
+
+(async function () {
+  // ---- LA RECONNAISSANCE ---------------------------------------------
+  essai('une liste de lignes est reconnue', 6, (serieDe(document.getElementById('liste')) || []).length);
+  essai('une grille de cartes n est PAS une liste', 'null', String(serieDe(document.getElementById('grille'))));
+  essai('des barres de graphe non plus', 'null', String(serieDe(document.getElementById('barres'))));
+  essai('deux lignes ne font pas une liste', 'null', String(serieDe(document.getElementById('deux'))));
+  essai('un conteneur enveloppant est traverse', 3, (serieDe(document.getElementById('enveloppe')) || []).length);
+  essai('des hauteurs trop inegales : refuse', 'null', String(serieDe(document.getElementById('inegal'))));
+
+  // ---- LA MISE EN SCENE ----------------------------------------------
+  var liste = document.getElementById('liste');
+  var items = serieDe(liste);
+  var styleAvant = [].slice.call(liste.children).map(function (x) { return x.getAttribute('style'); });
+
+  poses = []; plancherGeste = 0;
+  projecteur(items, jeton, etapes[0], 6900);
+
+  await attendre(120);
+  essai('les lignes ARRIVENT (elles partent a 0)', 'true',
+        String(etat('#liste .l').indexOf('0') >= 0));
+
+  await attendre(900);
+  var e1 = etat('#liste .l').split(',');
+  essai('puis une seule ligne est lisible', 1, e1.filter(function (v) { return v === '1'; }).length);
+  essai('les autres reculent a .3', 5, e1.filter(function (v) { return v === '0.3'; }).length);
+
+  await attendre(2600);
+  essai('le halo a suivi plusieurs lignes', 'true', String(poses.length >= 3));
+  // La sequence entiere dure ~6,9 s pour six lignes : on l'attend.
+  await attendre(4200);
+  essai('a la fin, aucun residu sur la liste', 0, residu(liste));
+
+  // ---- LE PIEGE : une etape coupee en plein milieu --------------------
+  // On reproduit exactement ce que fait montrer() : le jeton s'incremente
+  // D'ABORD -- ce qui perime les minuteurs en vol -- puis on rend.
+  poses = []; jeton++;
+  projecteur(items, jeton, etapes[0], 6900);
+  await attendre(900);
+  essai('en plein milieu, des lignes sont effacees', 'true',
+        String(etat('#liste .l').indexOf('0.3') >= 0));
+  jeton++;
+  if (projecteurRendre) { projecteurRendre(); projecteurRendre = null; }
+  essai('ETAPE COUPEE : aucun residu sur la liste', 0, residu(liste));
+  // Et rien ne doit revenir la salir apres coup.
+  await attendre(2500);
+  essai('et rien ne la resalit apres coup', 0, residu(liste));
+  essai('rendre() est idempotent', 0,
+        (function () { if (projecteurRendre) projecteurRendre(); return residu(liste); })());
+
+  document.querySelector('#res tbody').innerHTML = T.map(function (r) {
+    return '<tr><td>' + r[0] + '</td><td><code>' + r[1] + '</code></td><td><code>' + r[2] +
+      '</code></td><td class="' + (r[3] ? 'ok' : 'ko') + '">' + (r[3] ? 'OK' : 'ECHEC') + '</td></tr>';
+  }).join('');
+  document.getElementById('bilan').innerHTML = ok + ' / ' + T.length +
+    ' <span class="' + (ok === T.length ? 'ok' : 'ko') + '">' +
+    (ok === T.length ? '— tout passe' : '— il reste des echecs') + '</span>';
+  window.__bilan = { ok: ok, total: T.length,
+    echecs: T.filter(function (r) { return !r[3]; })
+             .map(function (r) { return r[0] + ' : attendu ' + r[1] + ', obtenu ' + r[2]; }) };
+})();
+
+</script></body></html>

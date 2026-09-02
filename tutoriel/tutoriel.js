@@ -51,7 +51,8 @@
   };
   var surcouche = null;     // '_connexion' | '_studio' | null
   var atelierOuvert = false;  // dans le Studio : accueil, ou plan de travail ?
-  var plancherGeste = 0;      // ms : duree du geste en cours, a respecter avant d'avancer
+  var plancherGeste = 0;
+  var projecteurRendre = null;   // rend ses lignes a la liste, si une etape est coupee      // ms : duree du geste en cours, a respecter avant d'avancer
   // LE JETON D'ETAPE. Sans lui, avancer a la main accelere la visite --
   // voir montrer(). Chaque etape prend un numero ; tout ce qui etait en
   // vol pour une etape plus ancienne se tait en le comparant.
@@ -1279,7 +1280,11 @@
     if (photoPrise && portee) {
       try {
         var chg = cequiAChange(portee, el);
-        if (chg.length) { designer(chg[0], true); return; }
+        // designer() SANS sansDefilement : l'effet peut tres bien etre
+        // sous la ligne de flottaison -- c'est meme le cas interessant,
+        // un clic qui fait apparaitre quelque chose plus bas. Le
+        // designer sans l'amener aurait mis le halo hors de l'ecran.
+        if (chg.length) { designer(chg[0]); return; }
       } catch (e) {}
     }
     // Rien de mesurable. On applique alors la regle deja posee plus
@@ -2092,6 +2097,11 @@
     // reconnait perime et se tait.
     var g = ++jeton;
     plancherGeste = 0;
+    // Le projecteur d'une étape précédente peut être en vol : on lui
+    // fait RENDRE ses lignes avant de bouger, sinon il les laisserait
+    // à demi effacées derrière lui. C'est le seul vrai piège de cette
+    // mécanique — elle éteint avant de rallumer.
+    if (projecteurRendre) { try { projecteurRendre(); } catch (e0) {} projecteurRendre = null; }
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
     var e = etapes[i]; if (!e) { terminer(); return; }
@@ -3117,6 +3127,126 @@
     requestAnimationFrame(pas);
   }
 
+  // ===================================================================
+  // LE PROJECTEUR — une liste se lit ligne par ligne
+  //
+  // Les trois quarts des reperes designent une zone d'affichage, et la
+  // forme la plus repandue de l'administration est la LISTE DE LIGNES :
+  // resultats, matchs, adversaires, dossiers. Elles recevaient un
+  // balayage sur un cadre immobile -- le repere le plus frequent, et le
+  // plus pauvre : rien ne distingue une ligne de la suivante.
+  //
+  // Deux mouvements :
+  //   1. les lignes ARRIVENT, du haut vers le bas. Une liste deja la ne
+  //      dit rien ; une liste qui se remplit dit « voici vos lignes ».
+  //   2. le projecteur DESCEND : tout tombe a .3, une seule ligne
+  //      revient a 1 et avance de 7 px. Le regard n'a plus le choix.
+  //
+  // Ne touche que opacity et transform, se remet seul, et n'emet aucun
+  // evenement. Si la cible n'est pas une liste, on ne fait rien et le
+  // balayage reprend la main.
+  // ===================================================================
+
+  // UNE LISTE SE RECONNAIT A LA SIGNATURE DE SES LIGNES.
+  //
+  // getAttribute('class') et NON .className : sur un element SVG,
+  // className est une SVGAnimatedString qui se stringifie toujours
+  // pareil -- toutes les classes deviendraient identiques.
+  function signatureDe(e) {
+    return e.tagName + '.' + (e.getAttribute('class') || '').split(/\s+/)[0];
+  }
+
+  function serieDe(hote) {
+    if (!hote) return null;
+    var k = [].slice.call(hote.children);
+    // Un conteneur qui n'enveloppe qu'un seul bloc n'est pas la vraie
+    // cible : on descend jusqu'a la repetition.
+    if (k.length === 1) return serieDe(k[0]);
+    if (k.length < 3) return null;
+    var s0 = signatureDe(k[0]);
+    var memes = k.filter(function (x) { return signatureDe(x) === s0 && estVisible(x); });
+    // Une majorite franche, pas une coincidence.
+    if (memes.length < Math.max(3, k.length * 0.6)) return null;
+    // UNE SEULE COLONNE. Des cartes en grille ou des barres de graphe
+    // sont aussi une fratrie : ce n'est pas une liste, et le projecteur
+    // n'y veut rien dire. On exige que les lignes s'empilent.
+    var lefts = [], hauteurs = [];
+    memes.forEach(function (x) {
+      var r = x.getBoundingClientRect();
+      lefts.push(Math.round(r.left)); hauteurs.push(r.height);
+    });
+    var mini = Math.min.apply(null, lefts), maxi = Math.max.apply(null, lefts);
+    if (maxi - mini > 8) return null;                       // plusieurs colonnes
+    var hMin = Math.min.apply(null, hauteurs), hMax = Math.max.apply(null, hauteurs);
+    if (hMin <= 0 || hMax > hMin * 2.5) return null;        // hauteurs trop inegales
+    return memes;
+  }
+
+  function projecteur(items, g, e, budget) {
+    var vus = items.length > 6
+      ? [items[0], items[Math.floor(items.length / 2)], items[items.length - 1]]
+      : items;
+    // Ce qu'on touche est note pour etre rendu tel quel -- y compris si
+    // l'etape est coupee en plein milieu. Sans cela, le tutoriel
+    // laisserait derriere lui une liste a moitie effacee.
+    var avant = items.map(function (x) { return x.getAttribute('style'); });
+    // ON RETIRE CE QU'ON A POSE, ON NE DEVINE PAS L'ETAT D'ORIGINE.
+    //
+    // Remettre betement l'attribut capture suppose que personne d'autre
+    // n'y a touche entre-temps -- et laisse un style="" la ou il n'y
+    // avait rien. On efface donc NOS trois proprietes, et l'attribut
+    // lui-meme s'il ne reste plus rien dedans. Idempotent : appeler
+    // rendre() deux fois ne change rien.
+    function rendre() {
+      items.forEach(function (x, i) {
+        if (avant[i]) { x.setAttribute('style', avant[i]); return; }
+        x.style.opacity = '';
+        x.style.transform = '';
+        x.style.transition = '';
+        if (!x.getAttribute('style')) x.removeAttribute('style');
+      });
+    }
+    projecteurRendre = rendre;
+
+    // MOUVEMENT 1 — les lignes arrivent.
+    var ARRIV = Math.max(34, Math.min(70, 420 / items.length));
+    items.forEach(function (x, i) {
+      x.style.opacity = '0';
+      x.style.transform = 'translateY(9px)';
+      setTimeout(function () {
+        if (g !== jeton || etapes[idx] !== e) return;
+        x.style.transition = 'opacity .3s ease,transform .34s cubic-bezier(.2,.85,.3,1)';
+        x.style.opacity = '1'; x.style.transform = 'none';
+      }, 60 + i * ARRIV);
+    });
+    var t0 = 60 + items.length * ARRIV + 300;
+
+    // MOUVEMENT 2 — le projecteur descend, cale sur la phrase.
+    var pas = tempsDuGeste(budget, vus.length + 1, t0, 260);
+    setTimeout(function () {
+      if (g !== jeton || etapes[idx] !== e) return;
+      items.forEach(function (x) {
+        x.style.transition = 'opacity .34s ease,transform .34s cubic-bezier(.2,.8,.3,1)';
+        x.style.opacity = '.3';
+      });
+    }, t0 - 60);
+    vus.forEach(function (x, i) {
+      setTimeout(function () {
+        if (g !== jeton || etapes[idx] !== e) return;
+        vus.forEach(function (o) { o.style.opacity = '.3'; o.style.transform = 'none'; });
+        x.style.opacity = '1'; x.style.transform = 'translateX(7px)';
+        poser(x, true);
+      }, t0 + i * pas);
+    });
+    setTimeout(function () {
+      if (g !== jeton || etapes[idx] !== e) { rendre(); return; }
+      rendre();
+    }, t0 + vus.length * pas + 260);
+
+    plancherGeste = Math.max(plancherGeste, t0 + (vus.length - 1) * pas + 260);
+    return true;
+  }
+
   function animerCible(e, g, el) {
     // La duree annoncee de la phrase : c'est elle qui donne le tempo
     // de tout ce qui suit.
@@ -3133,7 +3263,18 @@
     var appuyable = t === 'BUTTON' || t === 'A' ||
       (el.getAttribute && el.getAttribute('role') === 'button') ||
       (t === 'INPUT' && /^(submit|button|checkbox|radio)$/i.test(el.type || ''));
-    if (!appuyable) { balayer(el, g, e, budget); return; }
+    if (!appuyable) {
+      // LE PROJECTEUR PASSE AVANT LE BALAYAGE.
+      //
+      // Si la region est une liste de lignes, on la fait vivre ligne par
+      // ligne. Sinon serieDe() rend null et le balayage reprend la main,
+      // exactement comme avant -- c'est le repli, et il est total.
+      var lignes = null;
+      try { lignes = serieDe(el); } catch (err) { lignes = null; }
+      if (lignes && projecteur(lignes, g, e, budget)) return;
+      balayer(el, g, e, budget);
+      return;
+    }
     // Apres l'arrivee, pas pendant : voir la main appuyer alors qu'elle
     // vole encore ne se lit pas.
     // L'APPUI TOMBE DANS LA PHRASE, PAS A SON DEBUT.
