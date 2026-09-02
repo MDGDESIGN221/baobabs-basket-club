@@ -1660,20 +1660,35 @@
     if (t) t.addEventListener('click', lancerEssais);
   }
 
+  // LA DUREE SE CALCULE A UN SEUL ENDROIT.
+  // Elle etait comptee deux fois, differemment : le panneau ajoutait la
+  // description de chaque ecran aux conseils, la carte d'ouverture ne
+  // comptait que les conseils. La meme visite s'annoncait donc a 31
+  // minutes ici et 26 la. Deux calculs separes ne peuvent que diverger ;
+  // celui-ci compte ce que la visite LIT vraiment — la description, les
+  // conseils, et le texte de chaque geste de demonstration.
+  function volumeVisite() {
+    var nEcrans = 0, nMots = 0;
+    plan.forEach(function (c) {
+      (c.ecrans || []).forEach(function (e) {
+        nEcrans++;
+        nMots += mots(((api.metas && api.metas[e.cle]) || {}).d || '');
+        ((api.aides && api.aides[e.cle]) || []).forEach(function (a) { nMots += mots(a); });
+        ((api.demos && api.demos[e.cle]) || []).forEach(function (g) { nMots += mots(g.dit || ''); });
+      });
+    });
+    return { ecrans: nEcrans, mots: nMots };
+  }
+
   function rendreSommaire() {
     var totalE = 0, vusE = 0;
     plan.forEach(function (c) {
       c.ecrans.forEach(function (e) { totalE++; if (progres.vus[e.cle]) vusE++; });
     });
 
-    var nbEcrans = totalE;
-    var nbMots = 0;
-    plan.forEach(function (c) {
-      c.ecrans.forEach(function (e) {
-        nbMots += mots((api.metas[e.cle] || {}).d || '');
-        ((api.aides[e.cle]) || []).forEach(function (a) { nbMots += mots(a); });
-      });
-    });
+    var vol = volumeVisite();
+    var nbEcrans = vol.ecrans;
+    var nbMots = vol.mots;
 
     $('bt-sub').innerHTML =
       'Vous êtes connecté en <b>' + echapper(api.roleNom || api.role || '—') + '</b>. ' +
@@ -1703,7 +1718,7 @@
     // sentiment que le tutoriel ne suit pas.
     var cta = $('bt-tout');
     if (cta) cta.lastChild.textContent = (vusE >= totalE && totalE)
-      ? ' Revoir depuis le debut' : ' Tout me montrer';
+      ? ' Revoir depuis le début' : ' Tout me montrer';
 
     rendreEtat();
 
@@ -1801,13 +1816,9 @@
       // touche. Une promesse chiffree a la main devient fausse a la
       // premiere retouche, et c'est la seule chose que la salle peut
       // verifier tout de suite.
-      var nEcrans = 0, nMots = 0;
-      plan.forEach(function (c) {
-        nEcrans += (c.ecrans || []).length;
-        (c.ecrans || []).forEach(function (e) {
-          ((api.aides && api.aides[e.cle]) || []).forEach(function (a) { nMots += mots(a); });
-        });
-      });
+      // Meme calcul que le panneau : voir volumeVisite().
+      var vol = volumeVisite();
+      var nEcrans = vol.ecrans, nMots = vol.mots;
       etapes.push({
         carte: {
           n: 'Baobabs Basket Club',
