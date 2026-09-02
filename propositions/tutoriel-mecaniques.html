@@ -72,7 +72,7 @@ p{margin:0}
 .corps{max-width:66ch;color:var(--muted)}
 .corps + .corps{margin-top:14px}
 code,.mono{font-family:var(--mono);font-size:.88em;color:var(--or-vif)}
-code{background:var(--or-doux);padding:1px 5px;border-radius:4px;white-space:nowrap}
+code{background:var(--or-doux);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
 em{color:var(--text);font-style:italic}
 
 /* ---- rythme vertical --------------------------------------------- */
@@ -180,7 +180,7 @@ section:first-of-type{border-top:none}
 .jouer[disabled]{opacity:.42;cursor:default}
 .lu{
   font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em;
-  flex:1;min-width:0;text-align:right;
+  flex:1 1 auto;min-width:0;text-align:right;overflow-wrap:anywhere;
 }
 .lu b{color:var(--vert);font-weight:500}
 .lu i{color:var(--or);font-style:normal}
@@ -3257,7 +3257,75 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
     cadrer: cadrer, assezVisible: assezVisible, partVisible: partVisible,
     zoneDeLecture: zoneDeLecture, scrollersDe: scrollersDe,
     boiteVisible: boiteVisible, visible: visible,
-    Scene: Scene, Sur: Sur
+    Scene: Scene, Sur: Sur,
+
+    // LA PAGE S'AUDITE ELLE-MEME EN LARGEUR.
+    //
+    // On ne peut pas emuler une fenetre de telephone depuis l'exterieur :
+    // innerWidth reste celui du panneau. Mais un IFRAME, lui, impose sa
+    // largeur au document qu'il contient -- donc les vraies media queries
+    // se declenchent. La page se clone donc dans un iframe a chaque
+    // largeur et mesure ce qui deborde. Aucune copie a tenir a jour :
+    // c'est son propre outerHTML.
+    //
+    //   window.__socle.auditLargeurs().then(console.log)
+    auditLargeurs: function (largeurs) {
+      largeurs = largeurs || [360, 390, 600, 820, 1200];
+      var html = '<!doctype html>' + document.documentElement.outerHTML;
+      function une(L) {
+        return new Promise(function (res) {
+          var f = document.createElement('iframe');
+          f.width = L; f.height = 900;
+          f.style.cssText = 'position:fixed;left:-99999px;top:0;border:0';
+          f.srcdoc = html;
+          f.onload = function () {
+            setTimeout(function () {
+              var d = f.contentDocument, w = f.contentWindow, sort = [];
+              [].slice.call(d.querySelectorAll('.wrap *')).forEach(function (el) {
+                if (el.namespaceURI && el.namespaceURI.indexOf('svg') >= 0) return;  // scrollWidth n'y veut rien dire
+                var cs = w.getComputedStyle(el);
+                if (/auto|scroll|hidden/.test(cs.overflowX)) return;
+                // Clippe par un ancetre : ce n'est pas un debordement de page.
+                var a = el.parentNode, clippe = false, g = 0;
+                while (a && a.nodeType === 1 && g++ < 8) {
+                  var ca = w.getComputedStyle(a);
+                  if (/hidden|clip/.test(ca.overflowX)) { clippe = true; break; }
+                  a = a.parentNode;
+                }
+                if (clippe) return;
+                if (el.scrollWidth > el.clientWidth + 2 && el.clientWidth > 0) {
+                  sort.push((el.getAttribute('class') || el.tagName) + ' ' + el.scrollWidth + '>' + el.clientWidth);
+                }
+              });
+              function cols(sel) {
+                var e = d.querySelector(sel);
+                return e ? w.getComputedStyle(e).gridTemplateColumns.split(' ').length : 0;
+              }
+              var banc = d.querySelector('.poste-banc'), spec = d.querySelector('.poste-spec');
+              var r = {
+                largeur: w.innerWidth,
+                pageDeborde: d.documentElement.scrollWidth > w.innerWidth + 2 ? d.documentElement.scrollWidth : false,
+                elementsQuiDebordent: sort,
+                poste: cols('.poste'), ab: cols('.ab'), kpi: cols('.f-kpis'), cartes: cols('.f-cards'),
+                bancAvantFiche: (banc && spec)
+                  ? parseInt(w.getComputedStyle(banc).order, 10) < parseInt(w.getComputedStyle(spec).order, 10) : null
+              };
+              var etroit = r.largeur < 1000;
+              r.OK = !r.pageDeborde && sort.length === 0
+                && r.poste === (etroit ? 1 : 2)
+                && r.ab === (r.largeur < 620 ? 1 : 2)
+                && r.kpi === (r.largeur < 520 ? 2 : 4)
+                && (!etroit || r.bancAvantFiche === true);
+              f.remove(); res(r);
+            }, 650);
+          };
+          document.body.appendChild(f);
+        });
+      }
+      return largeurs.reduce(function (p, L) {
+        return p.then(function (acc) { return une(L).then(function (r) { acc.push(r); return acc; }); });
+      }, Promise.resolve([]));
+    }
   };
 
   /* =================================================================
