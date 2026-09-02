@@ -1208,15 +1208,27 @@
 
   /* ===================== PRODUITS & STOCK ===================== */
   .pr-sizes{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:9px}
-  .pr-size{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:9px 10px;text-align:center}
+  .pr-size{background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;text-align:center}
   .pr-size.zero{border-color:#C0271B66;background:#C0271B0f}
   .pr-size.low{border-color:#E08A5B66;background:#E08A5B0f}
   .pr-size label{display:block;font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.06em;color:var(--muted);margin-bottom:5px}
-  .pr-size input{width:100%;background:var(--surface);border:1px solid var(--line-strong);border-radius:7px;padding:7px;color:var(--text);font:inherit;font-weight:700;font-size:14px;text-align:center}
-  .pr-thumb{flex:none;width:56px;height:56px;border-radius:9px;object-fit:cover;border:1px solid var(--line);background:#11201a}
+  .pr-size input{width:100%;background:var(--surface-2);border:1px solid var(--line-strong);
+    border-radius:var(--r-sm);padding:7px;color:var(--text);font:inherit;font-weight:700;
+    font-size:14px;text-align:center;font-variant-numeric:tabular-nums}
+  .pr-thumb{flex:none;width:34px;height:34px;border-radius:var(--r-sm);object-fit:cover;
+    border:1px solid var(--line-strong);background:var(--surface-3)}
   /* Barre de stock : la couleur porte l'alerte, le chiffre la précise. */
-  .pr-gauge{flex:none;width:76px;height:6px;border-radius:4px;background:var(--surface-2);overflow:hidden}
-  .pr-gauge i{display:block;height:100%}
+  .pr-gauge{flex:none;width:76px;height:3px;border-radius:0;background:var(--surface-3);overflow:hidden}
+  .pr-gauge i{display:block;height:100%;background:var(--gold)}
+  /* Stock : un filet par produit, pas une carte de plus par produit. */
+  .sk-row{border-bottom:1px solid var(--line);padding:15px 2px 17px}
+  .sk-row-h{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:12px}
+  .sk-row-h .n{font-family:var(--font-ui);font-weight:600;font-size:13.5px;color:var(--text)}
+  .sk-row-h .m{font-size:11px;color:var(--faint);margin-top:3px}
+  /* Codes promo : meme regle. */
+  .pm-row{display:flex;align-items:center;gap:13px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding:13px 2px}
+  .pm-row .m{font-size:11.5px;color:var(--faint);margin-top:5px;line-height:1.5}
   .pr-field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}
   .pr-field label{font-weight:600;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
   .pr-field input,.pr-field select,.pr-field textarea{background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px;width:100%}
@@ -4100,23 +4112,25 @@
     <!-- ===== SECTION PRODUITS ===== -->
     <section id="section-products" class="hide">
       <div id="pr-list-view">
-        <div class="mod-head">
-          <h2 class="mod-head-title">Produits</h2>
-          <span class="mod-count" id="pr-count">—</span>
-          <input type="search" class="mod-search" id="pr-search" placeholder="Nom, catégorie, référence…">
-          <select id="pr-filter" aria-label="Filtrer les produits" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px">
+        <div class="ds-band" id="pr-kpis"></div>
+        <!-- Le titre « Produits » repetait celui de la page, deux lignes
+             plus haut et six fois plus gros. -->
+        <div class="ds-head">
+          <button type="button" class="ds-mini-btn" id="pr-new">Nouveau produit</button>
+          <span class="ds-count" id="pr-count">—</span>
+          <input type="search" class="ds-search" id="pr-search" placeholder="Nom, catégorie, référence…">
+          <select id="pr-filter" class="ds-sel" aria-label="Filtrer les produits">
             <option value="">Tous les produits</option>
             <option value="epuise">Épuisés</option>
             <option value="bas">Stock bas</option>
             <option value="non_suivi">Sans suivi de stock</option>
           </select>
-          <button type="button" class="btn btn-primary" id="pr-new" style="padding:10px 16px;font-size:13px">Nouveau produit</button>
         </div>
-        <div class="callout">Le stock se compte par taille. Un maillot peut donc être disponible en M et épuisé en L&nbsp;— ce que l'ancien bouton «&nbsp;Épuisé&nbsp;» ne savait pas dire.</div>
-        <div id="pr-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div class="callout ds-note">Le stock se compte par taille. Un maillot peut donc être disponible en M et épuisé en L&nbsp;— ce que l'ancien bouton «&nbsp;Épuisé&nbsp;» ne savait pas dire.</div>
+        <div id="pr-rows"></div>
       </div>
       <div id="pr-doc-view" class="hide">
-        <button type="button" class="cd-back" id="pr-back">
+        <button type="button" class="cd-back ds-back" id="pr-back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Tous les produits
         </button>
@@ -4127,13 +4141,12 @@
 
     <!-- ===== SECTION STOCK ===== -->
     <section id="section-stock" class="hide">
-      <div class="mod-head">
-        <h2 class="mod-head-title">Stock</h2>
-        <span class="mod-count" id="sk-count">—</span>
-        <button type="button" class="btn btn-ghost" id="sk-refresh" style="padding:10px 14px;font-size:13px">Rafraîchir</button>
+      <div class="ds-head">
+        <span class="ds-count" id="sk-count">—</span>
+        <button type="button" class="ds-act" id="sk-refresh">Rafraîchir</button>
       </div>
-      <div class="callout">L'état des réserves d'un coup d'œil, et la saisie des quantités sans ouvrir chaque fiche. Ce qui est en rupture ou proche du seuil remonte en haut.</div>
-      <div id="sk-rows" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div class="callout ds-note">L'état des réserves d'un coup d'œil, et la saisie des quantités sans ouvrir chaque fiche. Ce qui est en rupture ou proche du seuil remonte en haut.</div>
+      <div id="sk-rows"></div>
       <div class="msg" id="sk-msg"></div>
     </section>
 
@@ -4510,12 +4523,11 @@
 
     <!-- ===== SECTION CODES PROMO ===== -->
     <section id="section-promos" class="hide">
-      <div class="mod-head"><span class="mod-count" id="pm-count">—</span></div>
-      <div class="callout">Un code se partage partout et s'applique <b>dans le panier de la boutique</b>. Tant que la migration « codes promo » n'a pas été exécutée dans Supabase, cet écran ne peut rien enregistrer.</div>
+      <div class="ds-head"><span class="ds-count" id="pm-count">—</span></div>
+      <div class="callout ds-note">Un code se partage partout et s'applique <b>dans le panier de la boutique</b>. Tant que la migration « codes promo » n'a pas été exécutée dans Supabase, cet écran ne peut rien enregistrer.</div>
       <div class="grid-2" style="align-items:start"><div>
-        <div class="card">
-          <h2 class="card-title">Nouveau code</h2>
-          <p class="card-sub">Court et parlant : TRIBU10, MATCHDAY…</p>
+        <div class="tm-panel">
+          <div class="tm-panel-h"><b>Nouveau code</b><span>Court et parlant : TRIBU10, MATCHDAY…</span></div>
           <div class="field"><label for="pm-code">Code</label><input type="text" id="pm-code" placeholder="TRIBU10" style="text-transform:uppercase"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="field"><label for="pm-kind">Type</label><select id="pm-kind"><option value="percent">Pourcentage (%)</option><option value="amount">Montant (FCFA)</option></select></div>
@@ -4529,13 +4541,12 @@
             <div class="field"><label for="pm-start">Début <span class="opt">(optionnel)</span></label><input type="date" id="pm-start"></div>
             <div class="field"><label for="pm-end">Fin <span class="opt">(optionnel)</span></label><input type="date" id="pm-end"></div>
           </div>
-          <button type="button" class="btn btn-primary" id="pm-create">Créer le code</button>
+          <button type="button" class="ds-mini-btn" id="pm-create">Créer le code</button>
           <div class="msg" id="pm-form-msg"></div>
         </div>
       </div><div>
-        <div class="card">
-          <h2 class="card-title">Codes existants</h2>
-          <p class="card-sub">Le compteur avance à chaque commande.</p>
+        <div class="tm-panel">
+          <div class="tm-panel-h"><b>Codes existants</b><span>Le compteur avance à chaque commande.</span></div>
           <div id="pm-list"><div class="empty">Chargement…</div></div>
           <div class="msg" id="pm-msg"></div>
         </div>
@@ -8363,11 +8374,18 @@
         c.max_uses != null ? c.uses + ' / ' + c.max_uses + ' utilisés' : c.uses + ' utilisé' + (c.uses > 1 ? 's' : ''),
         (c.starts_at || c.ends_at) ? [c.starts_at ? 'du ' + formatDateShort(c.starts_at) : null, c.ends_at ? 'au ' + formatDateShort(c.ends_at) : null].filter(Boolean).join(' ') : null
       ].filter(Boolean).join(' · ');
-      return '<div class="rec-item">' +
-        '<div class="rec-main"><div class="rec-title" style="display:flex;align-items:center;gap:9px;flex-wrap:wrap"><span class="tk-ref" style="font-size:14px">' + esc(c.code) + '</span><span class="status-pill" style="color:' + st[1] + ';border:1px solid ' + st[1] + '55;background:' + st[1] + '14">' + st[0] + '</span></div>' +
-        '<div class="rec-meta">' + esc(det) + '</div></div>' +
+      // Cinq etats, cinq couleurs en style en ligne. Seul « Actif » veut
+      // dire que le code tourne en ce moment ; les quatre autres
+      // decrivent, ils ne signalent pas.
+      var marque = st[0] === 'Actif'
+        ? '<span class="ds-st act"><i></i>Actif</span>'
+        : '<span class="ds-st"><i></i>' + st[0] + '</span>';
+      return '<div class="pm-row">' +
+        '<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap">' +
+        '<span class="ds-ref">' + esc(c.code) + '</span>' + marque + '</div>' +
+        '<div class="m">' + esc(det) + '</div></div>' +
         '<div class="item-actions">' +
-        '<button class="btn btn-ghost pm-toggle" data-id="' + c.id + '" style="padding:8px 12px;font-size:12px">' + (c.is_active ? 'Désactiver' : 'Activer') + '</button>' +
+        '<button class="ds-act pm-toggle" data-id="' + c.id + '">' + (c.is_active ? 'Désactiver' : 'Activer') + '</button>' +
         '<button class="icon-btn danger pm-del" data-id="' + c.id + '" title="Supprimer" aria-label="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
         '</div></div>';
     }).join('');
@@ -11932,9 +11950,15 @@
     if (!r.track_stock) return 'non_suivi';
     return (r.in_stock === false) ? 'epuise' : 'ok';
   }
+  // Quatre etats, quatre couleurs, chacune posee en style en ligne :
+  // « En stock » criait aussi fort que « Epuise ». Seuls les deux qui
+  // demandent une commande au fournisseur gardent une teinte.
   function prPill(r){
-    var e = PR_ETAT[prEtat(r)] || PR_ETAT.non_suivi;
-    return '<span class="st-pill" style="color:' + e[1] + ';border:1px solid ' + e[1] + '55;background:' + e[1] + '18">' + esc(e[0]) + '</span>';
+    var k = prEtat(r);
+    var e = PR_ETAT[k] || PR_ETAT.non_suivi;
+    if (k === 'epuise') return '<span class="ds-tag cri">' + esc(e[0]) + '</span>';
+    if (k === 'bas')    return '<span class="ds-tag warn">' + esc(e[0]) + '</span>';
+    return '<span class="ds-st' + (k === 'ok' ? ' act' : '') + '"><i></i>' + esc(e[0]) + '</span>';
   }
   function prById(id){ return prRows.filter(function(r){ return String(r.id) === String(id); })[0]; }
   function prStock(r){
@@ -12011,27 +12035,58 @@
     });
 
     document.getElementById('pr-count').textContent = rows.length + (rows.length > 1 ? ' produits' : ' produit');
+    prKpis();
     var box = document.getElementById('pr-rows');
     if (!rows.length){ box.innerHTML = '<div class="empty">Aucun produit pour ce filtre.</div>'; return; }
 
-    box.innerHTML = rows.map(function(r){
-      var img = prImg(r);
-      var total = r.stock_total != null ? r.stock_total : prTotal(r);
-      var rupt = r.ruptures ? '<span class="cd-card-meta" style="flex:none;color:#C0271B">épuisé en ' + esc(r.ruptures) + '</span>' : '';
-      return '<div class="cd-row" data-id="' + r.id + '">' +
-        (img ? '<img class="pr-thumb" src="' + esc(img) + '" alt="" loading="lazy">' : '<div class="pr-thumb"></div>') +
-        '<div style="flex:1;min-width:0">' +
-          '<div class="cd-card-name">' + esc(r.name || 'Sans nom') + '</div>' +
-          '<div class="cd-card-meta">' + esc([r.category, (r.price != null ? Number(r.price).toLocaleString('fr-FR') + ' FCFA' : ''), r.sku].filter(Boolean).join(' · ') || '—') + '</div>' +
-        '</div>' + rupt +
-        (r.track_stock ? '<span class="cd-card-meta" style="flex:none">' + total + ' en stock</span>' : '') +
-        prPill(r) +
-      '</div>';
-    }).join('');
+    // Le prix et le stock etaient poses en fin de phrase, chacun a une
+    // abscisse differente selon la longueur du nom : impossible de
+    // comparer deux produits d'un coup d'oeil. Ils prennent leur colonne.
+    box.innerHTML =
+      '<div class="ds-scroll"><table class="ds-tbl">' +
+        '<thead><tr><th class="c"></th><th>Produit</th><th>Catégorie</th>' +
+        '<th class="r">Prix</th><th class="r">Stock</th><th>État</th></tr></thead><tbody>' +
+      rows.map(function(r){
+        var img = prImg(r);
+        var total = r.stock_total != null ? r.stock_total : prTotal(r);
+        return '<tr class="ds-tr" data-id="' + r.id + '">' +
+          '<td class="c">' + (img ? '<img class="pr-thumb" src="' + esc(img) + '" alt="" loading="lazy">' : '<div class="pr-thumb"></div>') + '</td>' +
+          '<td><div class="n">' + esc(r.name || 'Sans nom') + '</div>' +
+            (r.sku ? '<div class="m">' + esc(r.sku) + '</div>' : '') +
+            (r.ruptures ? '<div class="ds-tr-etat"><span class="ds-tag cri">épuisé en ' + esc(r.ruptures) + '</span></div>' : '') + '</td>' +
+          '<td class="num">' + esc(r.category || '—') + '</td>' +
+          '<td class="r num">' + (r.price != null ? esc(Number(r.price).toLocaleString('fr-FR')) + ' F' : '—') + '</td>' +
+          '<td class="r num">' + (r.track_stock ? total : '—') + '</td>' +
+          '<td>' + prPill(r) + '</td>' +
+        '</tr>';
+      }).join('') + '</tbody></table></div>';
 
-    box.querySelectorAll('.cd-row').forEach(function(el){
+    box.querySelectorAll('.ds-tr').forEach(function(el){
       el.addEventListener('click', function(){ prSel = el.getAttribute('data-id'); prDirty = false; prRender(); });
     });
+  }
+
+  // Ce que l'ecran doit dire avant qu'on lise une seule ligne : combien
+  // d'articles, et combien reclament une commande au fournisseur.
+  function prKpis(){
+    var band = document.getElementById('pr-kpis');
+    var epuise = 0, bas = 0, suivi = 0;
+    prRows.forEach(function(r){
+      var k = prEtat(r);
+      if (k === 'epuise') epuise++;
+      else if (k === 'bas') bas++;
+      if (r.track_stock) suivi++;
+    });
+    band.innerHTML =
+      '<div class="ds-fig"><i>Au catalogue</i><b>' + prRows.length + '</b>' +
+        '<small>' + (prRows.length > 1 ? 'produits en vente' : 'produit en vente') + '</small></div>' +
+      '<div class="ds-fig' + (epuise ? ' cri' : '') + '"><i>Épuisés</i><b>' + epuise + '</b>' +
+        '<small>plus rien a envoyer</small></div>' +
+      '<div class="ds-fig' + (bas ? ' sig' : '') + '"><i>Stock bas</i><b>' + bas + '</b>' +
+        '<small>sous le seuil d\'alerte</small></div>' +
+      '<div class="ds-fig"><i>Suivis par taille</i><b>' + suivi + ' / ' + prRows.length + '</b>' +
+        '<small>les autres ne se comptent pas</small></div>';
+    band.classList.toggle('hide', !prRows.length);
   }
 
   function prRenderDoc(){
@@ -12207,16 +12262,20 @@
           '<input id="sk-' + r.id + '-' + s + '" class="sk-q" data-id="' + r.id + '" data-size="' + s + '" type="number" min="0" value="' + q + '"></div>';
       }).join('');
 
-      return '<div style="border:1px solid var(--line);border-radius:13px;background:var(--surface);padding:13px">' +
-        '<div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:11px">' +
-          (img ? '<img class="pr-thumb" style="width:42px;height:42px" src="' + esc(img) + '" alt="" loading="lazy">' : '') +
+      // Une carte a 13px de rayon par produit, empilees : le catalogue
+      // entier devenait une colonne de boites. Un filet separe aussi
+      // bien, et la jauge n'a plus besoin de porter la couleur de
+      // l'etat — la marque a cote la dit deja.
+      return '<div class="sk-row">' +
+        '<div class="sk-row-h">' +
+          (img ? '<img class="pr-thumb" style="width:38px;height:38px" src="' + esc(img) + '" alt="" loading="lazy">' : '') +
           '<div style="flex:1;min-width:150px">' +
-            '<div class="cd-card-name">' + esc(r.name) + '</div>' +
-            '<div class="cd-card-meta">' + total + ' pièce(s) au total' + (r.ruptures ? ' · épuisé en ' + esc(r.ruptures) : '') + '</div>' +
+            '<div class="n">' + esc(r.name) + '</div>' +
+            '<div class="m">' + total + ' pièce(s) au total' + (r.ruptures ? ' · épuisé en ' + esc(r.ruptures) : '') + '</div>' +
           '</div>' +
-          '<div class="pr-gauge"><i style="width:' + Math.min(100, total ? Math.max(6, Math.round(total / Math.max(total, alert * 4) * 100)) : 0) + '%;background:' + e[1] + '"></i></div>' +
+          '<div class="pr-gauge"><i style="width:' + Math.min(100, total ? Math.max(6, Math.round(total / Math.max(total, alert * 4) * 100)) : 0) + '%"></i></div>' +
           prPill(r) +
-          '<button type="button" class="btn btn-primary sk-save" data-id="' + r.id + '" style="flex:none;padding:8px 14px;font-size:12px">Enregistrer</button>' +
+          '<button type="button" class="ds-mini-btn sk-save" data-id="' + r.id + '">Enregistrer</button>' +
         '</div>' +
         '<div class="pr-sizes">' + (cells || '<p class="cd-prose" style="color:var(--faint);font-size:12px;margin:0">Aucune taille renseignée — ouvrez la fiche produit.</p>') + '</div>' +
       '</div>';
