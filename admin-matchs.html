@@ -169,7 +169,17 @@
   .gs-hit:hover,.gs-hit.on{background:var(--surface-2);color:var(--text)}
   .gs-hit.on{box-shadow:inset 0 0 0 1px rgba(198,162,87,.45)}
   .gs-hit img{width:30px;height:30px;border-radius:50%;object-fit:contain;background:#0A1710;flex:none}
-  .gs-ic{width:30px;height:30px;border-radius:8px;background:var(--gold-soft);color:var(--gold);display:flex;align-items:center;justify-content:center;flex:none;font-family:var(--font-ui);font-weight:700;font-size:13px}
+  /* UNE COLONNE DE CARRES DORES. Chaque ligne portait la meme
+     pastille or sur fond or : trente resultats faisaient trente
+     taches de la couleur qui, partout ailleurs dans l'admin, veut
+     dire « ici ». La pastille devient un filet neutre, et l'or ne
+     reste que sur la ligne pointee -- celle qu'Entree ouvrira. */
+  .gs-ic{width:30px;height:30px;border-radius:var(--r-sm);background:transparent;
+    border:1px solid var(--line);color:var(--faint);display:flex;align-items:center;
+    justify-content:center;flex:none;font-family:var(--font-ui);font-weight:700;
+    font-size:11px;letter-spacing:.04em;transition:color .12s,border-color .12s}
+  .gs-ic svg{width:16px;height:16px}
+  .gs-hit:hover .gs-ic,.gs-hit.on .gs-ic{color:var(--gold);border-color:var(--gold-edge)}
   .gs-hit b{display:block;font-family:var(--font-ui);font-weight:600;font-size:13.5px;color:var(--text);line-height:1.3}
   .gs-hit span{display:block;font-size:11.5px;color:var(--faint);margin-top:2px}
   .gs-empty{padding:26px 14px;text-align:center;font-size:13px;color:var(--faint)}
@@ -191,7 +201,17 @@
   @media(min-width:940px){.grid-2{grid-template-columns:minmax(0,1fr) 372px}}
 
   /* ===================== APP SHELL / SIDEBAR ===================== */
-  .app-shell{display:flex;max-width:1400px;margin:0 auto}
+  /* PLUS DE PLAFOND. La coque etait bornee a 1400px, 1760 au-dela de
+     1560px de fenetre, et centree : sur un ecran de 1920 il restait
+     80px de vide de chaque cote, et bien davantage au-dela. Une
+     largeur de lecture confortable a un sens pour un article ; ici,
+     ce qui occupe l'ecran est un tableau, un board ou un dossier a
+     deux colonnes, et ils gagnent tous a la place. Les seuls textes
+     suivis gardent leur mesure par leur propre max-width.
+
+     Le bandeau du haut suit la meme regle : les deux grilles ont ete
+     mises d'accord, elles le restent. */
+  .app-shell{display:flex}
   /* L'ombre portee vers l'interieur ne servait qu'a rattraper une
      difference de fond qui ne se voyait pas. L'ecart de teinte porte
      maintenant la separation ; le filet la termine. */
@@ -434,20 +454,47 @@
   .live-step div{font-size:13.5px;color:var(--muted);line-height:1.55}
   .live-step strong{color:var(--text);font-family:var(--font-ui);font-size:13.5px;display:block}
 
-  /* ===== V2 — classement : le podium au-dessus de l'éditeur ===== */
-  .st-podium{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;align-items:end}
-  @media(min-width:641px){.st-podium .st-step:nth-child(1){order:2}.st-podium .st-step:nth-child(2){order:1}.st-podium .st-step:nth-child(3){order:3}.st-podium .st-us-strip{order:4}}
-  @media(max-width:640px){.st-podium{grid-template-columns:1fr;align-items:stretch}}
-  .st-step{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center}
-  .st-step .st-rank{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:38px;color:var(--faint);line-height:1}
-  .st-step.first{border-color:rgba(198,162,87,.55);background:linear-gradient(165deg,#15291A,#0B1810);padding:22px 14px}
-  .st-step.first .st-rank{color:var(--gold-bright);font-size:54px}
-  .st-step.us{border-color:rgba(168,217,59,.55)}
-  .st-step .st-name{font-family:var(--font-ui);font-weight:700;font-size:13.5px;margin-top:6px}
-  .st-step .st-line{font-size:11.5px;color:var(--faint);margin-top:3px}
-  .st-us-strip{grid-column:1/-1;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid rgba(168,217,59,.45);border-radius:12px;padding:11px 14px}
-  .st-us-strip b{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:22px;color:var(--lime);min-width:26px;text-align:center}
-  .st-us-strip span{font-size:13px;color:var(--text)}
+  /* ===== V2 — classement : le podium au-dessus de l'éditeur =====
+     Trois cartes arrondies dont une posee sur un degrade vert cerne
+     d'or : c'etait le dernier emballage de l'ecran, et il redisait en
+     couleur ce que le chiffre 1 dit deja. Le podium devient un releve —
+     filets entre les trois, le rang en petites capitales au-dessus du
+     nom, rien autour. Meme objet que la bande d'Inscriptions, a une
+     autre echelle.
+
+     L'ordre 2-1-3 tombe avec les marches : sans relief, il ne restait
+     qu'une liste qui commence par le deuxieme.
+
+     UN SEUL ACCENT, et il ne va pas au premier. Celui qui ouvre cet
+     ecran cherche OU EST SON CLUB, pas qui mene : le filet dore marque
+     donc les Baobabs. Le premier se reconnait a son rang. */
+  .st-podium{display:flex;flex-wrap:wrap;border-top:1px solid var(--line-strong);
+    border-bottom:1px solid var(--line-strong);margin-bottom:20px}
+  .st-step{position:relative;flex:1 1 0;min-width:0;padding:14px 16px 15px;
+    border-right:1px solid var(--line);text-align:left}
+  .st-step:last-child{border-right:none}
+  .st-step .st-rank{display:block;font-family:var(--font-ui);font-weight:700;font-size:9px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+  .st-step.first .st-rank{color:var(--text)}
+  .st-step .st-name{display:block;font-family:var(--font-ui);font-weight:800;
+    letter-spacing:-.015em;font-size:17px;line-height:1.15;color:var(--muted);
+    overflow:hidden;text-overflow:ellipsis}
+  .st-step .st-line{font-size:10.5px;color:var(--faint);margin-top:6px;
+    font-variant-numeric:tabular-nums}
+  .st-step.us .st-name{color:var(--text)}
+  .st-step.us::before{content:'';position:absolute;left:0;right:0;top:-1px;height:2px;
+    background:var(--gold)}
+  /* Le club hors du podium : meme bande, sur toute la largeur. */
+  .st-us-strip{position:relative;flex:1 1 100%;display:flex;align-items:baseline;gap:12px;
+    padding:13px 16px;border-top:1px solid var(--line)}
+  .st-us-strip::before{content:'';position:absolute;left:0;right:0;top:-1px;height:2px;
+    background:var(--gold)}
+  .st-us-strip b{font-family:var(--font-ui);font-weight:800;font-size:17px;color:var(--text);
+    letter-spacing:-.015em;font-variant-numeric:tabular-nums}
+  .st-us-strip span{font-size:12.5px;color:var(--muted)}
+  @media(max-width:640px){
+    .st-step{flex:1 1 100%;border-right:none;border-bottom:1px solid var(--line)}
+  }
 
   /* Les Épinglés restent visibles même quand on défile dans le menu. */
   /* Collant en haut : son fond masque ce qui defile dessous, il doit donc
@@ -796,7 +843,6 @@
      ailleurs. Ne pas le redescendre sans remesurer. */
   .ctx-rail{display:none}
   @media(min-width:1560px){
-    .app-shell{max-width:1760px}
     .ctx-rail{display:block;flex:none;width:308px;border-left:1px solid var(--line);padding:22px 18px 40px;position:sticky;top:65px;align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
   }
   .ctx-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:15px;margin-bottom:12px}
@@ -7834,12 +7880,16 @@
         return parts.join(' · ');
       };
       var cls = ['first','second','third'];
+      // Le rang devient un libelle en petites capitales, au-dessus du
+      // nom : c'est le club qu'on lit, le rang le situe. « 1 » seul en
+      // 54px ne disait pas de quoi il etait le premier.
+      var rangs = ['1ᵉʳ', '2ᵉ', '3ᵉ'];
       var html = rows.slice(0,3).map(function(r,i){
-        return '<div class="st-step '+cls[i]+(isUs(r)?' us':'')+'"><div class="st-rank">'+(i+1)+'</div><div class="st-name">'+esc(name(r))+'</div>'+(line(r)?'<div class="st-line">'+esc(line(r))+'</div>':'')+'</div>';
+        return '<div class="st-step '+cls[i]+(isUs(r)?' us':'')+'"><span class="st-rank">'+rangs[i]+'</span><span class="st-name">'+esc(name(r))+'</span>'+(line(r)?'<span class="st-line">'+esc(line(r))+'</span>':'')+'</div>';
       }).join('');
       var usIdx = -1;
       rows.forEach(function(r,i){ if (usIdx < 0 && isUs(r)) usIdx = i; });
-      if (usIdx > 2) html += '<div class="st-us-strip"><b>'+(usIdx+1)+'</b><span>Baobabs'+(line(rows[usIdx])?' — '+esc(line(rows[usIdx])):'')+'</span></div>';
+      if (usIdx > 2) html += '<div class="st-us-strip"><b>'+(usIdx+1)+'ᵉ</b><span>Baobabs'+(line(rows[usIdx])?' — '+esc(line(rows[usIdx])):'')+'</span></div>';
       box.innerHTML = html;
       box.classList.remove('hide');
     }).catch(function(){ box.classList.add('hide'); });
@@ -7927,42 +7977,67 @@
       });
     }
     var advers = prochain ? (prochain.opponent_name || 'adversaire') : null;
-    var pushAct = function(label, sub, act, mots){
+    // Les huit actions portaient toutes le glyphe ⌘ : un
+    // pictogramme identique repete huit fois ne distingue rien, il
+    // remplit une colonne. Chacune prend le dessin de ce qu'elle fait.
+    var gsIco = function(d){
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '+
+        'stroke-linecap="round" stroke-linejoin="round">'+d+'</svg>';
+    };
+    var ICO = {
+      score:   gsIco('<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/>'),
+      match:   gsIco('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>'),
+      billet:  gsIco('<path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6Z"/><path d="M13 5v14" stroke-dasharray="2 3"/>'),
+      direct:  gsIco('<path d="m10 8 6 4-6 4V8Z"/><rect x="2" y="4" width="20" height="16" rx="2"/>'),
+      plus:    gsIco('<path d="M12 5v14M5 12h14"/>'),
+      article: gsIco('<path d="M4 4h13l3 3v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M7 9h8M7 13h8M7 17h5"/>'),
+      joueuse: gsIco('<circle cx="12" cy="7" r="4"/><path d="M5 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/>'),
+      produit: gsIco('<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>'),
+      site:    gsIco('<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14 21 3"/>')
+    };
+    var pushAct = function(label, sub, act, mots, ico){
       if (t && !match(label, sub, mots||'')) return;
-      push('Actions', label, sub, act, null, '⌘');
+      push('Actions', label, sub, act, null, ico || ICO.plus);
     };
 
     if (aSaisir.length){
       pushAct('Saisir les scores manquants',
         aSaisir.length + (aSaisir.length>1?' rencontres jouées sans score':' rencontre jouée sans score'),
-        function(){ showSection('results'); }, 'score resultat saisir publier');
+        function(){ showSection('results'); }, 'score resultat saisir publier', ICO.score);
     }
     if (prochain){
       pushAct('Ouvrir la fiche du prochain match', 'Baobabs '+(prochain.is_home?'vs ':'chez ')+advers+' · '+formatDateShort(prochain.match_date),
         function(){ showSection('matches2'); if (typeof mcOpen === 'function') setTimeout(function(){ mcOpen(prochain.id); }, 160); },
-        'match fiche prochain '+advers);
+        'match fiche prochain '+advers, ICO.match);
       pushAct('Ouvrir la billetterie du prochain match', 'Tarifs, quotas, ouverture de la vente',
-        function(){ showSection('tickets'); }, 'billetterie billet vente place tarif');
+        function(){ showSection('tickets'); }, 'billetterie billet vente place tarif', ICO.billet);
     }
     pushAct('Lancer le soir de match', 'Tableau de marque et guichet',
-      function(){ showSection('gameday'); }, 'soir match direct score guichet marque');
+      function(){ showSection('gameday'); }, 'soir match direct score guichet marque', ICO.direct);
     pushAct('Ajouter un match', 'Nouvelle rencontre au calendrier',
-      function(){ showSection('matches2'); }, 'ajouter creer nouveau match rencontre');
+      function(){ showSection('matches2'); }, 'ajouter creer nouveau match rencontre', ICO.plus);
     pushAct('Publier une actualité', 'Rédiger un nouvel article',
-      function(){ showSection('articles'); }, 'article actualite publier ecrire news');
+      function(){ showSection('articles'); }, 'article actualite publier ecrire news', ICO.article);
     pushAct('Ajouter une joueuse', 'Nouvelle fiche dans l’effectif',
-      function(){ showSection('squad'); }, 'joueuse joueur effectif ajouter recruter');
+      function(){ showSection('squad'); }, 'joueuse joueur effectif ajouter recruter', ICO.joueuse);
     pushAct('Ajouter un produit', 'Nouvel article de la boutique',
-      function(){ showSection('products'); }, 'produit boutique maillot ajouter vendre');
+      function(){ showSection('products'); }, 'produit boutique maillot ajouter vendre', ICO.produit);
     pushAct('Voir le site public', 'Ouvre le site dans un nouvel onglet',
-      function(){ window.open('index.html', '_blank', 'noopener'); }, 'site public voir apercu ligne');
+      function(){ window.open('index.html', '_blank', 'noopener'); }, 'site public voir apercu ligne', ICO.site);
 
     // Les écrans ensuite : c'est l'usage le plus fréquent.
     ALL_SECTIONS.forEach(function(k){
       var m = SECTION_META[k]; if (!m) return;
       // La recherche ne propose pas ce que le rôle ne peut pas ouvrir.
       if (typeof canSection === 'function' && !canSection(k)) return;
-      if (!t || match(m.t, m.d, k)) push('Écrans', m.t, m.d, function(){ showSection(k); }, null, m.t.charAt(0));
+      // L'initiale du titre donnait « M » a Messages, Matchs, Medias
+      // et Match day, « C » a quatre autres. Le rail porte deja un
+      // dessin par ecran, et c'est celui sur lequel on clique le
+      // reste du temps : on le reprend, la reconnaissance est
+      // immediate et rien n'est a dessiner.
+      var lien = document.querySelector('#sidebar .sb-link[data-section="' + k + '"] svg');
+      if (!t || match(m.t, m.d, k)) push('Écrans', m.t, m.d, function(){ showSection(k); }, null,
+        lien ? lien.outerHTML : m.t.charAt(0));
     });
 
     if (t && t.length >= 2 && gsData){
@@ -8025,7 +8100,10 @@
     gsHits.forEach(function(h, i){
       if (h.group !== last){ last = h.group; html += '<div class="gs-group">' + esc(h.group) + '</div>'; }
       html += '<button type="button" class="gs-hit' + (i === 0 ? ' on' : '') + '" data-gs="' + i + '">' +
-        (h.img ? '<img src="' + esc(h.img) + '" alt="">' : '<span class="gs-ic">' + esc(h.ic || '?') + '</span>') +
+        // h.ic vient de nos propres constantes, jamais d'une saisie :
+        // un dessin y passe tel quel, un texte reste echappe.
+        (h.img ? '<img src="' + esc(h.img) + '" alt="">'
+               : '<span class="gs-ic">' + (/^<svg/.test(h.ic || '') ? h.ic : esc(h.ic || '?')) + '</span>') +
         '<span style="flex:1;min-width:0"><b>' + esc(h.label) + '</b>' + (h.sub ? '<span>' + esc(h.sub) + '</span>' : '') + '</span></button>';
     });
     box.innerHTML = html;
@@ -21291,12 +21369,28 @@
   @media(max-width:720px){ .hide-sm{display:none} }
 
   /* ===================== QG VISUEL — ÉFFECTIF ===================== */
-  .qg-tabbar{display:flex;gap:6px;margin:0 0 20px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:5px;width:fit-content;max-width:100%;flex-wrap:wrap}
-  .qg-tab{display:inline-flex;align-items:center;gap:8px;background:transparent;border:none;color:var(--muted);border-radius:8px;padding:9px 15px;font-family:var(--font-ui);font-weight:600;font-size:13px;min-height:40px}
-  .qg-tab svg{width:16px;height:16px}
-  .qg-tab.active{background:var(--gold);color:#0A1B0D;font-weight:700}
+  /* La barre d'onglets des cinq ecrans QGV : une carte arrondie a 12px
+     contenant deux pastilles a 8px, soit deux rayons emboites pour
+     designer deux vues. Elle devient le segment du systeme — un cadre,
+     un filet entre les deux, la couleur seulement sur l'onglet actif. */
+  .qg-tabbar{display:flex;gap:0;margin:0 0 20px;background:transparent;
+    border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:0;
+    width:fit-content;max-width:100%;overflow:hidden}
+  .qg-tab{display:inline-flex;align-items:center;gap:8px;background:transparent;border:none;
+    border-right:1px solid var(--line-strong);color:var(--faint);border-radius:0;
+    padding:0 15px;font-family:var(--font-ui);font-weight:700;font-size:10.5px;
+    letter-spacing:.1em;text-transform:uppercase;min-height:38px}
+  .qg-tab:last-child{border-right:none}
+  .qg-tab:hover{background:var(--surface-2);color:var(--text)}
+  .qg-tab svg{width:15px;height:15px}
+  .qg-tab.active{background:var(--gold);color:#0A1B0D}
   .qg-wrap{display:grid;grid-template-columns:minmax(0,1fr) 344px;gap:20px;align-items:start}
-  @media(max-width:980px){.qg-wrap{grid-template-columns:1fr}}
+  /* 980px se mesurait sur la FENETRE, et l'editeur vit a droite d'un
+     rail de 264px : a 1000px de fenetre il restait 336px a la toile
+     pour 344 a l'inspecteur, l'accessoire plus large que le sujet.
+     Le seuil monte a 1240 — en dessous, l'inspecteur passe SOUS la
+     toile, qui reprend toute la largeur. */
+  @media(max-width:1240px){.qg-wrap{grid-template-columns:1fr}}
   .qg-canvas-head{margin-bottom:16px}
   .qg-canvas-head .k{font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--lime);border-left:2px solid currentColor;padding-left:11px}
   .qg-canvas-head h3{font-family:var(--font-ui);font-weight:700;font-size:clamp(22px,3.4vw,30px);margin:11px 0 0;line-height:1}
@@ -21514,8 +21608,7 @@
      barre laterale et le rail contextuel supposent dans leur `top` et
      leur `max-height`. Ils s'appuyaient sur une valeur que le bandeau
      n'avait plus. */
-  .topbar-inner{max-width:1400px;padding:0 20px 0 0;gap:18px;height:64px}
-  @media(min-width:1560px){ .topbar-inner{max-width:1760px} }
+  .topbar-inner{max-width:none;padding:0 20px 0 0;gap:18px;height:64px}
 
   .brand{width:264px;flex:none;padding-left:25px;gap:11px}
   .brand-mark{width:34px;height:34px;border-radius:var(--r-md);padding:5px}
@@ -21749,16 +21842,18 @@
      pixel, beaucoup d'air vertical. La ligne du club se distingue
      par un lavis doré plutôt que par une bordure de plus.
      ============================================================ */
-  .stt{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--surface)}
+  /* Le classement est un tableau, pas une carte : ni cadre, ni aplat,
+     ni rayon de 12px. Des filets, et les colonnes s'alignent. */
+  .stt{border:none;border-radius:0;background:transparent;overflow:visible}
   .stt-head,.stt-row{display:grid;grid-template-columns:54px minmax(0,1fr) 46px 46px 46px 64px;align-items:center;gap:10px}
   .stt-head{
-    padding:15px 20px;border-bottom:1px solid var(--line-strong);
-    font-family:var(--font-ui);font-weight:700;font-size:10px;
-    letter-spacing:.18em;text-transform:uppercase;color:var(--faint);
+    padding:0 8px 10px;border-bottom:1px solid var(--line-strong);
+    font-family:var(--font-ui);font-weight:700;font-size:9px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
   }
   .stt-head span:nth-child(n+3){text-align:center}
   .stt-head span:last-child{text-align:right}
-  .stt-row{position:relative;padding:15px 20px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .14s}
+  .stt-row{position:relative;padding:14px 8px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .14s}
   .stt-row:last-of-type{border-bottom:0}
   .stt-row:hover{background:var(--surface-2)}
 
@@ -21767,28 +21862,58 @@
 
   .stt-team{display:flex;align-items:center;gap:12px;min-width:0}
   .stt-crest{width:32px;height:32px;border-radius:50%;object-fit:cover;flex:none;background:var(--surface-3)}
-  .stt-crest-none{display:flex;align-items:center;justify-content:center;border:1px solid var(--gold-edge);background:linear-gradient(150deg,var(--surface-3),var(--surface));font-family:var(--font-ui);font-weight:700;font-size:10.5px;color:var(--gold)}
+  /* Un ecusson absent n'est pas une couleur : c'est un emplacement vide.
+     L'initiale doree sur degrade faisait briller les clubs sans logo
+     plus que ceux qui en ont un. */
+  .stt-crest-none{display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--line-strong);background:var(--surface-3);
+    font-family:var(--font-ui);font-weight:600;font-size:10.5px;color:var(--faint)}
   .stt-name{font-family:var(--font-ui);font-weight:650;font-size:14.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .stt-warn{flex:none;width:7px;height:7px;border-radius:50%;background:var(--danger)}
 
   .stt-n{text-align:center;font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
-  .stt-n.w{color:var(--ok);font-weight:700}
-  .stt-n.l{color:var(--danger);font-weight:700}
+  /* V en vert et D en rouge : deux couleurs pour deux nombres deja
+     ranges en colonnes, sous des en-tetes qui les nomment. Une
+     victoire n'est pas un signal, c'est une donnee. */
+  .stt-n.w,.stt-n.l{color:var(--muted);font-weight:600}
   .stt-pts{text-align:right;font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:23px;line-height:1;color:var(--text);font-variant-numeric:tabular-nums}
 
-  /* Le club, repéré par la lumière — pas par un cadre de plus. */
-  .stt-row.is-us{background:linear-gradient(90deg,var(--gold-soft),transparent 74%)}
-  .stt-row.is-us:hover{background:linear-gradient(90deg,rgba(198,162,87,.17),transparent 74%)}
-  .stt-row.is-us .stt-rk,.stt-row.is-us .stt-name,.stt-row.is-us .stt-pts{color:var(--gold-bright)}
-  .stt-sel{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--lime)}
+  /* Le club, repere par un filet — pas par un degrade qui traverse la
+     ligne sur les trois quarts de sa largeur. Meme lisere que celui
+     qu'une ligne de tableau prend au survol, ailleurs dans l'admin. */
+  .stt-row.is-us::after{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
+    background:var(--gold)}
+  .stt-row.is-us .stt-name,.stt-row.is-us .stt-pts{color:var(--gold-bright)}
+  /* La selection etait vert citron, la seule de l'admin a l'etre. */
+  .stt-sel{position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--gold-lit)}
+  .stt-row.is-us .stt-sel{background:var(--gold-lit)}
 
-  .stt-add{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:15px;background:transparent;border:0;border-top:1px solid var(--line);color:var(--lime);font-family:var(--font-ui);font-weight:700;font-size:12.5px;cursor:pointer;transition:background .14s}
-  .stt-add:hover{background:var(--surface-2)}
+  .stt-add{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+    padding:14px;background:transparent;border:0;border-top:1px solid var(--line-strong);
+    color:var(--faint);font-family:var(--font-ui);font-weight:700;font-size:10.5px;
+    letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:color .14s,background .14s}
+  .stt-add:hover{background:var(--surface-2);color:var(--gold)}
 
   /* Sur téléphone, « J » se déduit de V+D : c'est la colonne qu'on
-     sacrifie en premier, jamais les points. */
+     sacrifie en premier, jamais les points.
+
+     LA MESURE PORTAIT SUR LA FENETRE, PAS SUR LE TABLEAU. Le
+     classement vit dans la colonne gauche de l'editeur visuel, large
+     de ~350px des que la fenetre descend a 1000 — la grille pleine
+     s'y appliquait quand meme, l'ecusson et « J » se chevauchaient et
+     le nom du club etait tronque a zero. Constate a l'ecran. La
+     largeur du conteneur decide desormais, la fenetre ne sert plus
+     que de repli pour les navigateurs sans @container. */
+  .qg-canvas{container-type:inline-size}
+  @container (max-width:640px){
+    .stt-head,.stt-row{grid-template-columns:38px minmax(0,1fr) 38px 38px 50px;gap:6px;padding:12px 4px}
+    .stt-head span:nth-child(3),.stt-row .stt-n:not(.w):not(.l){display:none}
+    .stt-rk{font-size:17px} .stt-pts{font-size:19px} .stt-name{font-size:13px}
+    .stt-crest,.stt-crest-none{width:26px;height:26px}
+    .stt-team{gap:9px}
+  }
   @media(max-width:620px){
-    .stt-head,.stt-row{grid-template-columns:42px minmax(0,1fr) 40px 40px 54px;gap:7px;padding:13px 14px}
+    .stt-head,.stt-row{grid-template-columns:42px minmax(0,1fr) 40px 40px 54px;gap:7px;padding:13px 4px}
     .stt-head span:nth-child(3),.stt-row .stt-n:not(.w):not(.l){display:none}
     .stt-rk{font-size:18px} .stt-pts{font-size:20px} .stt-name{font-size:13.5px}
   }
