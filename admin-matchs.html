@@ -372,17 +372,22 @@
   @media(prefers-reduced-motion:reduce){#dash-stats .dash-stat:hover{transform:none}}
 
   /* ===== V2 — résultats : des feuilles de score, pas des lignes ===== */
-  .rs-sheet{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
-  .rs-info{flex:1;min-width:150px}
-  .rs-board{display:flex;align-items:flex-end;gap:10px;flex:none;flex-wrap:wrap}
-  .rs-side{display:flex;flex-direction:column;gap:5px;align-items:center}
-  .rs-side span{font-family:var(--font-ui);font-weight:700;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .rs-score{width:92px;height:58px;background:#061109;border:1px solid var(--line-strong);border-radius:10px;color:var(--gold-bright);font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:27px;text-align:center;letter-spacing:.05em;transition:border-color .15s;-moz-appearance:textfield;appearance:textfield}
+  /* LA LISTE DES MATCHS N'EST PAS UNE LISTE : c'est une feuille de score
+     qu'on remplit sans ouvrir la fiche. Ce geste reste — il devient
+     seulement une cellule de tableau. Les cases passent de 92x58 a
+     56x36 : de quoi taper deux chiffres, pas de quoi occuper la ligne.
+     .rs-sheet, .rs-info et la disposition en colonne des actions ne
+     servaient qu'ici et disparaissent avec la carte. */
+  .rs-board{display:flex;align-items:center;gap:7px;justify-content:flex-end}
+  .rs-side{display:flex;flex-direction:column;gap:4px;align-items:center}
+  .rs-side span{font-family:var(--font-ui);font-weight:700;font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);max-width:58px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rs-score{width:56px;height:36px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:var(--r-sm);color:var(--gold-bright);font-family:var(--font-ui);font-weight:800;font-size:17px;text-align:center;font-variant-numeric:tabular-nums;transition:border-color .15s;-moz-appearance:textfield;appearance:textfield}
   .rs-score::-webkit-outer-spin-button,.rs-score::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-  .rs-score:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(198,162,87,.18)}
-  .rs-score::placeholder{color:#4A584E;font-size:15px;letter-spacing:0;font-family:'Inter',sans-serif}
-  .rs-dash{font-family:var(--font-ui);font-weight:800;font-stretch:62%;color:var(--faint);font-size:22px;padding-bottom:15px}
-  .rs-actions{display:flex;flex-direction:column;gap:7px;flex:none;justify-content:center}
+  .rs-score:focus{outline:none;border-color:var(--gold)}
+  .rs-score::placeholder{color:#4A584E;font-size:13px;font-family:'Inter',sans-serif}
+  .rs-dash{font-family:var(--font-ui);font-weight:800;color:var(--faint);font-size:14px;padding-top:11px}
+  .rs-actions{display:flex;gap:6px;flex:none;justify-content:flex-end}
+  .rs-actions .ds-act,.rs-actions .ds-mini-btn{padding:8px 12px;white-space:nowrap}
   .rs-done{display:flex;flex-direction:column;align-items:center;gap:10px;padding:44px 20px;text-align:center;border:1px dashed var(--line-strong);border-radius:14px}
   .rs-done svg{width:44px;height:44px;color:var(--lime)}
   .rs-done b{font-family:var(--font-ui);font-size:17px}
@@ -1774,11 +1779,26 @@
   .mc-tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font:inherit;font-weight:600;font-size:13px;padding:13px 14px;cursor:pointer;white-space:nowrap;margin-bottom:-1px}
   .mc-tab:hover{color:var(--text)}
   .mc-tab.on{color:var(--gold);border-bottom-color:var(--gold)}
-  .mc-tab-n{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:100px;background:var(--surface-2);color:var(--faint)}
+  .mc-tab-n{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:2px;background:var(--surface-2);color:var(--faint);font-variant-numeric:tabular-nums}
 
   /* Affiche : les deux écussons et le score, comme sur une feuille de match */
-  .mc-hero{display:flex;flex-wrap:wrap;align-items:center;gap:clamp(14px,2.4vw,28px);padding:clamp(20px,3vw,30px) clamp(16px,2.4vw,24px);background:linear-gradient(140deg,#16231A,#0E1712);border-bottom:1px solid var(--line)}
-  .mc-crest{width:64px;height:64px;border-radius:50%;object-fit:contain;background:#0c1913;border:1px solid var(--line-strong);flex:none}
+  /* Le degrade partait avec le reste : une fiche est un document, pas
+     une banniere. Le fond plat, et le filet dore en tete vient de
+     .ds-doc, qui enveloppe desormais l'ensemble. */
+  .mc-hero{display:flex;flex-wrap:wrap;align-items:center;gap:clamp(14px,2.4vw,28px);padding:clamp(20px,3vw,30px) clamp(16px,2.4vw,24px);background:transparent;border-bottom:1px solid var(--line-strong)}
+  .mc-crest{width:64px;height:64px;border-radius:var(--r-sm);object-fit:contain;background:var(--surface-3);border:1px solid var(--line-strong);flex:none}
+  /* Le repli d'un ecusson absent : un emplacement vide, pas une des huit
+     couleurs tirees du nom du club. Sert aussi a Calendrier et Resultats,
+     qui appellent le meme mcCrest. */
+  .ds-crest{background:var(--surface-3);color:var(--faint);font-weight:600;
+    border:1px solid var(--line-strong)}
+  /* L'ecusson au format tableau. On reconnait un club a son ecusson bien
+     avant d'en lire le nom : c'est la seule image qu'on garde dans une
+     liste, et elle est vraie — pas une initiale sur aplat colore. */
+  .mc-mini{width:28px;height:28px;border-radius:var(--r-sm);object-fit:contain;
+    background:var(--surface-3);border:1px solid var(--line);flex:none}
+  .mc-mini-none{width:28px;height:28px;border-radius:var(--r-sm);display:grid;
+    place-items:center;font-family:var(--font-ui);font-size:12px;flex:none}
   .mc-crest-none{width:64px;height:64px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--font-ui);font-weight:700;font-size:22px;color:#fff}
   .mc-score{font-family:var(--font-ui);font-weight:700;letter-spacing:-.03em;font-size:clamp(34px,5vw,52px);line-height:1;color:var(--text)}
   .mc-vs{font-family:var(--font-ui);font-weight:700;font-size:18px;color:var(--gold)}
@@ -1786,10 +1806,17 @@
   .mc-q input{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:9px;color:var(--text);font:inherit;font-size:14px;text-align:center;width:100%}
   .mc-q-lab{font-weight:600;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
   .mc-field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}
-  .mc-field label{font-weight:600;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
-  .mc-field input,.mc-field select,.mc-field textarea{background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px;width:100%}
+  .mc-field label{font-family:var(--font-ui);font-weight:700;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+  .mc-field input,.mc-field select,.mc-field textarea{background:var(--surface-2);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px;width:100%}
   .mc-field textarea{min-height:80px;resize:vertical;line-height:1.6}
   .mc-savebar{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px clamp(16px,2.4vw,24px);background:var(--surface-2);border-top:1px solid var(--gold);flex-wrap:wrap}
+  /* .btn-primary porte width:100% dans le systeme : dans une barre
+     d'enregistrement il s'etalait sur 733px, en degrade et avec un halo.
+     Un aplat dore a sa largeur naturelle suffit a dire « c'est ici ». */
+  .mc-savebar .btn{width:auto;min-width:0;min-height:0;border-radius:var(--r-sm);
+    padding:11px 20px;font-size:12.5px}
+  .mc-savebar .btn-primary{background:var(--gold);box-shadow:none}
+  .mc-savebar .btn-primary:hover{background:var(--gold-bright);transform:none}
 
   /* Calendrier */
   .cal-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
@@ -2562,6 +2589,10 @@
   .ds-st i{width:6px;height:6px;flex:none;background:var(--line-loud)}
   .ds-st.act{color:var(--text)}
   .ds-st.act i{background:var(--gold)}
+  /* Un resultat est une information, pas une alerte : le carre suffit a
+     dire l'issue, le texte reste gris. */
+  .ds-st.win i{background:var(--ok)}
+  .ds-st.loss i{background:var(--danger)}
 
   /* ---- Liste : un vrai tableau. Ni carte, ni arrondi, ni ombre. ---- */
   .ds-scroll{overflow-x:auto}
@@ -2585,9 +2616,18 @@
      manque vraiment de la place, c'est le tableau qui defile. */
   .ds-tbl{min-width:760px}
   .ds-tbl .n{font-family:var(--font-ui);font-weight:600;font-size:13.5px;color:var(--text);
-    letter-spacing:-.005em;white-space:nowrap}
-  .ds-tbl .m{font-size:11px;color:var(--faint);margin-top:3px;white-space:nowrap}
+    letter-spacing:-.005em;white-space:nowrap;max-width:300px;overflow:hidden;
+    text-overflow:ellipsis}
+  /* nowrap sans borne convenait a « Fatou Diallo · Ouakam » ; sur Matchs
+     la sous-ligne porte la salle ET la competition, et elle poussait la
+     colonne assez loin pour faire defiler tout le tableau. On borne et
+     on coupe proprement. */
+  .ds-tbl .m{font-size:11px;color:var(--faint);margin-top:3px;white-space:nowrap;
+    max-width:300px;overflow:hidden;text-overflow:ellipsis}
   .ds-tbl .num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;white-space:nowrap}
+  /* Matchs : l'etat et le lieu partagent la sous-ligne du nom. */
+  .ds-tr-etat{display:flex;align-items:center;gap:9px;margin-top:5px;min-width:0}
+  .ds-tr-etat .m{margin-top:0;max-width:230px}
   .ds-ref{font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.13em;
     color:var(--gold);font-variant-numeric:tabular-nums}
 
@@ -4083,7 +4123,7 @@
     <!-- ===== SECTION MATCHS ===== -->
     <section id="section-matches2" class="hide">
       <div id="mc-list-view">
-        <div class="mod-head">
+        <div class="ds-head">
           <!-- IL N'Y AVAIT AUCUN MOYEN D'AJOUTER UN MATCH.
                Le formulaire « Ajouter un match » existe toujours, mais
                dans #section-matches -- l'ancien ecran, retire du menu
@@ -4092,22 +4132,21 @@
                injoignable, et le raccourci « Ajouter un match » du
                tableau de bord ouvrait cet ecran-ci, ou il n'y a rien
                pour le faire. -->
-          <button type="button" class="btn btn-primary" id="mc-new"
-            style="padding:10px 16px;font-size:13px;flex:none;width:auto;min-width:0">Nouveau match</button>
-          <span class="mod-count" id="mc-count">—</span>
-          <input type="search" class="mod-search" id="mc-search" placeholder="Adversaire, salle, compétition…">
-          <select id="mc-filter" aria-label="Filtrer les matchs" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px">
+          <button type="button" class="ds-mini-btn" id="mc-new">Nouveau match</button>
+          <span class="ds-count" id="mc-count">—</span>
+          <input type="search" class="ds-search" id="mc-search" placeholder="Adversaire, salle, compétition…">
+          <select id="mc-filter" class="ds-sel" aria-label="Filtrer les matchs">
             <option value="">Tous les matchs</option>
             <option value="a_venir">À venir</option>
             <option value="a_saisir">Score à saisir</option>
             <option value="termine">Terminés</option>
           </select>
         </div>
-        <div class="callout">Tout ce qui concerne un match est dans sa fiche&nbsp;: la feuille, le résultat, la billetterie, la diffusion et les médias. Plus besoin de passer d'un menu à l'autre.</div>
-        <div id="mc-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div class="callout ds-note">Tout ce qui concerne un match est dans sa fiche&nbsp;: la feuille, le résultat, la billetterie, la diffusion et les médias. Plus besoin de passer d'un menu à l'autre.</div>
+        <div id="mc-rows"></div>
       </div>
       <div id="mc-doc-view" class="hide">
-        <button type="button" class="cd-back" id="mc-back">
+        <button type="button" class="cd-back ds-back" id="mc-back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Tous les matchs
         </button>
@@ -13754,9 +13793,13 @@
   }
   function mcLabel(m){ return 'Baobabs ' + (m.is_home ? 'vs ' : 'chez ') + (m.opponent_name || '?'); }
   function mcById(id){ return mcRows.filter(function(m){ return String(m.id)===String(id); })[0]; }
+  // L'ecusson du club quand il existe ; sinon un emplacement vide. Trois
+  // ecrans appellent cette fonction — Matchs, Calendrier, Resultats — et
+  // tous les trois cessent donc d'afficher des pastilles de couleur
+  // tirees au sort du nom de l'adversaire.
   function mcCrest(url, name, cls){
     return url ? '<img class="'+cls+'" src="'+esc(url)+'" alt="">'
-               : '<div class="'+cls+'-none" style="background:'+fallbackColor(name||'?')+'">'+esc(String(name||'?').charAt(0).toUpperCase())+'</div>';
+               : '<div class="'+cls+'-none ds-crest">'+esc(String(name||'?').charAt(0).toUpperCase())+'</div>';
   }
   function mcQuarters(m){
     var q; try{ q = Array.isArray(m.quarters)?m.quarters:JSON.parse(m.quarters||'[]'); }catch(e){ q=[]; }
@@ -13829,27 +13872,53 @@
     var box = document.getElementById('mc-rows');
     if (!rows.length){ box.innerHTML = '<div class="empty">Aucun match pour ce filtre.</div>'; return; }
 
-    box.innerHTML = rows.map(function(m){
-      var opp = String(m.opponent_name||'Adv.');
-      // Le score deja publie se relit dans la case : une case vide sur un
-      // match termine laisse croire qu'il reste a saisir.
-      var vb = m.score_baobabs == null ? '' : String(m.score_baobabs);
-      var vo = m.score_opponent == null ? '' : String(m.score_opponent);
-      return '<div class="rs-sheet" data-id="'+m.id+'">'+
-        mcCrest(m.opponent_logo_url, m.opponent_name, 'cd-avatar')+
-        '<div class="rs-info"><div class="cd-card-name">'+esc(mcLabel(m))+'</div>'+
-        '<div class="cd-card-meta">'+esc(formatDateShort(m.match_date))+(m.venue?' · '+esc(m.venue):'')+'</div></div>'+
-        '<div class="rs-board">'+
-          '<div class="rs-side"><span>Baobabs</span><input class="rs-sb rs-score" data-id="'+m.id+'" type="number" min="0" value="'+esc(vb)+'" placeholder="—" aria-label="Score Baobabs"></div>'+
-          '<div class="rs-dash">–</div>'+
-          '<div class="rs-side"><span>'+esc(opp)+'</span><input class="rs-so rs-score" data-id="'+m.id+'" type="number" min="0" value="'+esc(vo)+'" placeholder="—" aria-label="Score adversaire"></div>'+
-        '</div>'+
-        '<div class="rs-actions">'+
-          '<button type="button" class="btn btn-primary rs-save" data-id="'+m.id+'" style="padding:9px 16px;font-size:12.5px">Publier</button>'+
-          '<button type="button" class="btn btn-ghost rs-open" data-id="'+m.id+'" style="padding:8px 12px;font-size:12px">Fiche</button>'+
-        '</div>'+
-      '</div>';
-    }).join('');
+    // Des colonnes alignees se comparent d'un coup d'oeil ; une pile de
+    // cartes non. Le geste qui compte reste : les deux cases de score
+    // vivent dans une cellule, on publie sans ouvrir la fiche.
+    // Seul « score a saisir » sort du gris — c'est le seul etat qui
+    // demande quelque chose. « Aujourd'hui » prend l'accent : c'est le
+    // match du jour, pas une alerte.
+    box.innerHTML =
+      '<div class="ds-scroll"><table class="ds-tbl">'+
+        '<thead><tr><th class="c"></th><th>Match</th><th>Date</th>'+
+        '<th class="r">Score</th><th class="r"></th></tr></thead><tbody>'+
+      rows.map(function(m){
+        var opp = String(m.opponent_name||'Adv.');
+        // Le score deja publie se relit dans la case : une case vide sur un
+        // match termine laisse croire qu'il reste a saisir.
+        var vb = m.score_baobabs == null ? '' : String(m.score_baobabs);
+        var vo = m.score_opponent == null ? '' : String(m.score_opponent);
+        var k = mcStatut(m);
+        var st = MC_STATUT[k] || MC_STATUT.a_venir;
+        var etat = k === 'a_saisir'
+          ? '<span class="ds-tag warn">'+esc(st[0])+'</span>'
+          : '<span class="ds-st'+(k==='aujourdhui'?' act':'')+'"><i></i>'+esc(st[0])+'</span>';
+        // « Publier » en or sur chaque ligne, c'etait cinq accents d'affilee
+        // le long du bord droit. L'or ne reste que la ou il y a vraiment
+        // quelque chose a publier : un match joue dont le score manque.
+        var aFaire = (vb === '' || vo === '') && (k === 'a_saisir' || k === 'aujourdhui');
+        return '<tr class="ds-tr" data-id="'+m.id+'">'+
+          '<td class="c">'+mcCrest(m.opponent_logo_url, m.opponent_name, 'mc-mini')+'</td>'+
+          // L'etat descend sous le nom du match plutot que d'occuper une
+          // colonne : a six colonnes dont une porte deux champs de saisie,
+          // le tableau devait defiler lateralement sur un ecran ordinaire.
+          // Il reste aussi lisible en tete de cellule qu'en colonne, et la
+          // liste tient enfin sans barre horizontale.
+          '<td><div class="n">'+esc(mcLabel(m))+'</div>'+
+          '<div class="ds-tr-etat">'+etat+
+            '<span class="m">'+esc(m.venue||'—')+(m.competition?' · '+esc(m.competition):'')+'</span></div></td>'+
+          '<td class="num">'+esc(formatDateShort(m.match_date))+'</td>'+
+          '<td class="r"><div class="rs-board">'+
+            '<div class="rs-side"><span>Baobabs</span><input class="rs-sb rs-score" data-id="'+m.id+'" type="number" min="0" value="'+esc(vb)+'" placeholder="—" aria-label="Score Baobabs"></div>'+
+            '<div class="rs-dash">–</div>'+
+            '<div class="rs-side"><span>'+esc(opp)+'</span><input class="rs-so rs-score" data-id="'+m.id+'" type="number" min="0" value="'+esc(vo)+'" placeholder="—" aria-label="Score '+esc(opp)+'"></div>'+
+          '</div></td>'+
+          '<td class="r"><div class="rs-actions">'+
+            '<button type="button" class="'+(aFaire?'ds-mini-btn':'ds-act')+' rs-save" data-id="'+m.id+'">Publier</button>'+
+            '<button type="button" class="ds-act rs-open" data-id="'+m.id+'">Fiche</button>'+
+          '</div></td>'+
+        '</tr>';
+      }).join('')+'</tbody></table></div>';
 
     // ON CABLE CE QU'ON A DESSINE.
     //
@@ -13860,7 +13929,7 @@
     // Trois gestes sur une meme ligne : la ligne ouvre la fiche, la case
     // saisit un score, le bouton publie. Le clic sur un champ ou un
     // bouton ne doit donc pas ouvrir la fiche par-dessus.
-    box.querySelectorAll('.rs-sheet').forEach(function(el){
+    box.querySelectorAll('.ds-tr').forEach(function(el){
       el.addEventListener('click', function(e){
         if (e.target.closest('input, button, select, textarea')) return;
         mcOpen(el.getAttribute('data-id'), 'feuille');
@@ -14651,7 +14720,7 @@
     ];
 
     box.innerHTML =
-      '<div class="cd-doc">'+
+      '<div class="ds-doc">'+
         '<div class="mc-hero">'+
           mcCrest(leftLogo, leftName, 'mc-crest')+
           '<div style="text-align:center;flex:none">'+
@@ -14660,13 +14729,15 @@
           '</div>'+
           mcCrest(rightLogo, rightName, 'mc-crest')+
           '<div style="flex:1;min-width:210px">'+
-            '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">'+
-              '<span class="status-pill" style="color:'+st[1]+';border:1px solid '+st[1]+'55;background:'+st[1]+'14">'+esc(st[0])+'</span>'+
-              (m.issue==='V'?'<span class="status-pill status-win">Victoire</span>':'')+
-              (m.issue==='D'?'<span class="status-pill status-loss">Défaite</span>':'')+
+            '<div class="ds-marks">'+
+              (mcStatut(m)==='a_saisir'
+                ? '<span class="ds-tag warn">'+esc(st[0])+'</span>'
+                : '<span class="ds-st'+(mcStatut(m)==='aujourdhui'?' act':'')+'"><i></i>'+esc(st[0])+'</span>')+
+              (m.issue==='V'?'<span class="ds-st win"><i></i>Victoire</span>':'')+
+              (m.issue==='D'?'<span class="ds-st loss"><i></i>Défaite</span>':'')+
             '</div>'+
-            '<h2 class="cd-doc-name" style="font-size:clamp(20px,2.6vw,26px)">'+esc(mcLabel(m))+'</h2>'+
-            '<div class="cd-doc-sub">'+esc(formatDateLong(m.match_date))+(m.match_time?' · '+esc(String(m.match_time).slice(0,5)):'')+
+            '<h2 class="ds-name" style="font-size:clamp(20px,2.6vw,27px)">'+esc(mcLabel(m))+'</h2>'+
+            '<div class="ds-sub">'+esc(formatDateLong(m.match_date))+(m.match_time?' · '+esc(String(m.match_time).slice(0,5)):'')+
               (m.venue?'<br>'+esc(m.venue):'')+(m.competition?' — '+esc(m.competition):'')+'</div>'+
           '</div>'+
         '</div>'+
