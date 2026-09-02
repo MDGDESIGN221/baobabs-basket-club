@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>Banc d'essai — la chaîne de cause</title>
+<style>
+ body{font:14px/1.6 system-ui,sans-serif;background:#0B140F;color:#E8E4DA;margin:0;padding:22px}
+ h1{font-size:17px;margin:0 0 4px} p.sous{color:#8A9A8F;margin:0 0 18px;font-size:13px;max-width:78ch}
+ table{border-collapse:collapse;width:100%;max-width:980px}
+ td,th{border-bottom:1px solid #24352B;padding:7px 9px;text-align:left;font-size:13px}
+ th{color:#8A9A8F;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em}
+ .ok{color:#A8D93B} .ko{color:#E86A5E} code{color:#C6A257;font-size:12.5px}
+ #bilan{margin:16px 0 0;font-size:15px;font-weight:600}
+ #scene{position:absolute;left:-9999px;top:0}
+</style></head><body>
+<h1>Banc d'essai — la chaîne de cause</h1>
+<p class="sous"><code>porteeDe</code>, <code>photographier</code>, <code>cequiAChange</code> et
+<code>apresLeClic</code> sont <b>extraits de <code>tutoriel/tutoriel.js</code></b>.
+Scénario constaté sur <b>Candidatures, étape 12 sur 27</b> : la démonstration clique
+<code>#cd-back</code>, qui n'existe que dans la fiche. Le halo restait sur une pastille vide.
+Il suit désormais <b>la conséquence du clic</b> — la liste qui vient de réapparaître — au lieu de
+disparaître ou de rester sur du néant.</p>
+
+<table id="res"><thead><tr><th>Cas</th><th>Attendu</th><th>Obtenu</th><th></th></tr></thead><tbody></tbody></table>
+<p id="bilan">…</p>
+
+<div id="scene">
+  <section id="section-applications">
+    <div id="fiche" style="display:block">
+      <button id="cd-back" style="width:120px;height:34px">Retour à la liste</button>
+    </div>
+    <div id="liste" style="display:none;width:520px;height:260px">le tableau des candidatures</div>
+    <button id="reste" style="width:120px;height:34px">Toujours là</button>
+    <button id="autre" style="width:120px;height:34px">Une autre cible</button>
+  </section>
+  <section id="section-vide">
+    <button id="seul" style="width:120px;height:34px">Seul en scène</button>
+  </section>
+</div>
+<script>
+
+// estVisible du tutoriel, dans sa forme utile ici.
+function estVisible(el) {
+  var b = boiteRognee(el);
+  return !!b && b.width > 4 && b.height > 4;
+}
+var cibleCourante = null, haloPose = null;
+function retirerHalo() { haloPose = null; cibleCourante = null; }
+function designer(el) { haloPose = el; cibleCourante = el; }
+function poserHaloSur(el) { haloPose = el; cibleCourante = el; }
+var PHOTO_MAX = 2500;
+
+  function boiteRognee(el) {
+    if (!el || !el.getBoundingClientRect || !el.getClientRects().length) return null;
+    var r = el.getBoundingClientRect();
+    var haut = r.top, bas = r.bottom, g = r.left, d = r.right;
+    var n = el.parentNode, garde = 0;
+    while (n && n.nodeType === 1 && n !== document.body && garde++ < 16) {
+      var cs;
+      try { cs = getComputedStyle(n); } catch (e) { return null; }
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return null;
+      if (/hidden|auto|scroll|clip/.test(cs.overflow + cs.overflowX + cs.overflowY)) {
+        var b = n.getBoundingClientRect();
+        haut = Math.max(haut, b.top); bas = Math.min(bas, b.bottom);
+        g = Math.max(g, b.left);      d = Math.min(d, b.right);
+      }
+      n = n.parentNode;
+    }
+    if (bas - haut < 1 || d - g < 1) return null;
+    return { top: haut, bottom: bas, left: g, right: d, width: d - g, height: bas - haut };
+  }
+
+  function porteeDe(el) {
+    var n = el, garde = 0;
+    while (n && n.nodeType === 1 && garde++ < 20) {
+      if (n.tagName === 'SECTION' || n.id === 'app' || n.tagName === 'MAIN') return n;
+      n = n.parentNode;
+    }
+    return document.body;
+  }
+
+  function photographier(racine) {
+    if (!racine) return false;
+    var n = racine.querySelectorAll('*');
+    if (n.length > PHOTO_MAX) return false;
+    for (var i = 0; i < n.length; i++) {
+      var el = n[i];
+      if (!el.getClientRects().length) { el.__btAv = null; continue; }
+      var r = el.getBoundingClientRect();
+      el.__btAv = {
+        x: r.left, y: r.top, w: r.width, h: r.height,
+        t: el.children.length ? '' : (el.textContent || ''),
+        c: el.getAttribute('class') || ''
+      };
+    }
+    return true;
+  }
+
+  function cequiAChange(racine, cause) {
+    var n = racine.querySelectorAll('*'), chg = [];
+    for (var i = 0; i < n.length; i++) {
+      var el = n[i], av = el.__btAv;
+      var vu = el.getClientRects().length > 0;
+      if (!av) { if (vu) chg.push(el); continue; }
+      if (!vu) continue;
+      var r = el.getBoundingClientRect();
+      // La CLASSE compte autant que la position : une selection, un
+      // onglet actif, un panneau qui s'ouvre passent souvent par elle
+      // sans rien deplacer du tout.
+      if (Math.abs(r.left - av.x) > 6 || Math.abs(r.top - av.y) > 6 ||
+          Math.abs(r.width - av.w) > 6 || Math.abs(r.height - av.h) > 6 ||
+          (!el.children.length && (el.textContent || '') !== av.t) ||
+          (el.getAttribute('class') || '') !== av.c) chg.push(el);
+    }
+    for (var k = 0; k < n.length; k++) n[k].__btAv = null;   // on n'encombre pas le DOM
+    chg = chg.filter(function (e) {
+      if (e === cause || cause.contains(e) || e.contains(cause)) return false;
+      return estVisible(e);
+    });
+    chg.sort(function (a, b) {
+      var ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      return (rb.width * rb.height) - (ra.width * ra.height);
+    });
+    return chg;
+  }
+
+  function apresLeClic(el, portee, photoPrise) {
+    if (!el) return;
+    if (cibleCourante !== el) return;        // une autre etape a pris la main
+    if (estVisible(el)) return;              // toujours la : rien a faire
+
+    // La cible a disparu. Que s'est-il passe a sa place ?
+    if (photoPrise && portee) {
+      var chg = cequiAChange(portee, el);
+      if (chg.length) { designer(chg[0], true); return; }
+    }
+    // Rien de mesurable. On applique alors la regle deja posee plus
+    // haut : « PAS de cible, PAS de main. Designer approximativement
+    // pendant qu'on dit autre chose est pire que ne rien designer. »
+    retirerHalo();
+  }
+
+
+var T = [], ok = 0;
+function essai(cas, attendu, obtenu) {
+  var bon = String(attendu) === String(obtenu);
+  if (bon) ok++;
+  T.push([cas, attendu, obtenu, bon]);
+}
+
+// ---- LE SCENARIO DE LA CAPTURE -------------------------------------
+// Candidatures, etape 12 sur 27 : la demonstration clique #cd-back,
+// qui n'existe que dans la fiche. Le clic ramene la liste.
+var back  = document.getElementById('cd-back');
+var fiche = document.getElementById('fiche');
+var liste = document.getElementById('liste');
+
+var portee = porteeDe(back);
+essai('la portee remonte a la section', 'SECTION', portee.tagName);
+
+poserHaloSur(back);
+var photo = photographier(portee);
+essai('la photographie est prise', 'true', String(photo));
+essai('avant : le halo est sur le bouton', 'cd-back', haloPose && haloPose.id);
+
+// LE CLIC : la fiche se ferme, la liste revient.
+fiche.style.display = 'none';
+liste.style.display = 'block';
+essai('apres le clic : le bouton a disparu', 'false', String(estVisible(back)));
+
+apresLeClic(back, portee, photo);
+essai('LE HALO SUIT LA CONSEQUENCE : il se pose sur la liste', 'liste',
+      haloPose && haloPose.id);
+essai('il ne disparait donc PAS', 'true', String(haloPose !== null));
+
+// ---- les garde-fous -------------------------------------------------
+// Un bouton qui survit a son clic garde son halo.
+var reste = document.getElementById('reste');
+poserHaloSur(reste);
+apresLeClic(reste, porteeDe(reste), true);
+essai('un bouton qui survit garde son halo', 'reste', haloPose && haloPose.id);
+
+// Une autre etape a pris la main : on ne touche a rien.
+poserHaloSur(reste);
+cibleCourante = document.getElementById('autre');
+apresLeClic(back, portee, true);
+essai('une autre etape a pris la main : on ne touche a rien', 'reste', haloPose && haloPose.id);
+
+// La cible disparait mais RIEN d'autre ne change : on retire le halo
+// plutot que de designer au hasard.
+var seul = document.getElementById('seul');
+var p2 = porteeDe(seul);
+poserHaloSur(seul);
+var ph2 = photographier(p2);
+seul.style.display = 'none';
+apresLeClic(seul, p2, ph2);
+essai('rien de mesurable : le halo est retire', 'null', String(haloPose));
+
+// La cause elle-meme n'est jamais choisie comme effet.
+essai('la cause est exclue des effets', 'true',
+      String(cequiAChange(portee, back).indexOf(back) < 0));
+
+// Le DOM est rendu propre : plus aucune photographie accrochee.
+var restes = 0;
+[].slice.call(portee.querySelectorAll('*')).forEach(function (n) { if (n.__btAv) restes++; });
+essai('aucune photographie laissee sur le DOM', 0, restes);
+
+document.querySelector('#res tbody').innerHTML = T.map(function (r) {
+  return '<tr><td>' + r[0] + '</td><td><code>' + r[1] + '</code></td><td><code>' + r[2] +
+    '</code></td><td class="' + (r[3] ? 'ok' : 'ko') + '">' + (r[3] ? 'OK' : 'ECHEC') + '</td></tr>';
+}).join('');
+document.getElementById('bilan').innerHTML = ok + ' / ' + T.length +
+  ' <span class="' + (ok === T.length ? 'ok' : 'ko') + '">' +
+  (ok === T.length ? '— tout passe' : '— il reste des echecs') + '</span>';
+window.__bilan = { ok: ok, total: T.length,
+  echecs: T.filter(function (r) { return !r[3]; })
+           .map(function (r) { return r[0] + ' : attendu ' + r[1] + ', obtenu ' + r[2]; }) };
+
+</script></body></html>

@@ -1186,6 +1186,102 @@
     }
   }
 
+  // ===================================================================
+  // LE TUTORIEL SUIT LA CONSEQUENCE DE SON PROPRE CLIC
+  //
+  // « Et on revient a la liste » clique #cd-back, qui n'existe QUE dans
+  // la fiche : apres le clic il n'est plus la. Le halo restait pose a
+  // son emplacement -- une pastille vide au-dessus du tableau, pendant
+  // que la voix parlait de la liste. Constate sur Candidatures, etape
+  // 12 sur 27.
+  //
+  // Retirer le halo corrigerait le faux, mais laisserait l'ecran muet
+  // au moment precis ou l'on dit « on revient a la liste ». Un clic a
+  // toujours une consequence : c'est ELLE qu'il faut montrer.
+  //
+  // On photographie donc la section avant le clic -- position, texte et
+  // classe de chaque noeud visible -- on la re-photographie apres, et
+  // on garde ce qui a bouge. Le plus grand bloc modifie devient la
+  // nouvelle cible. Rien n'est declare par ecran : le tutoriel
+  // DECOUVRE ce que son geste a produit.
+  // ===================================================================
+
+  // La section ou l'on cherchera l'effet. On la prend AVANT le clic :
+  // apres, la cible peut ne plus avoir de parent.
+  function porteeDe(el) {
+    var n = el, garde = 0;
+    while (n && n.nodeType === 1 && garde++ < 20) {
+      if (n.tagName === 'SECTION' || n.id === 'app' || n.tagName === 'MAIN') return n;
+      n = n.parentNode;
+    }
+    return document.body;
+  }
+
+  // Au-dela de ce nombre de noeuds, on ne photographie pas : sur une
+  // machine modeste, parcourir tout un ecran deux fois se sentirait.
+  var PHOTO_MAX = 2500;
+
+  function photographier(racine) {
+    if (!racine) return false;
+    var n = racine.querySelectorAll('*');
+    if (n.length > PHOTO_MAX) return false;
+    for (var i = 0; i < n.length; i++) {
+      var el = n[i];
+      if (!el.getClientRects().length) { el.__btAv = null; continue; }
+      var r = el.getBoundingClientRect();
+      el.__btAv = {
+        x: r.left, y: r.top, w: r.width, h: r.height,
+        t: el.children.length ? '' : (el.textContent || ''),
+        c: el.getAttribute('class') || ''
+      };
+    }
+    return true;
+  }
+
+  function cequiAChange(racine, cause) {
+    var n = racine.querySelectorAll('*'), chg = [];
+    for (var i = 0; i < n.length; i++) {
+      var el = n[i], av = el.__btAv;
+      var vu = el.getClientRects().length > 0;
+      if (!av) { if (vu) chg.push(el); continue; }
+      if (!vu) continue;
+      var r = el.getBoundingClientRect();
+      // La CLASSE compte autant que la position : une selection, un
+      // onglet actif, un panneau qui s'ouvre passent souvent par elle
+      // sans rien deplacer du tout.
+      if (Math.abs(r.left - av.x) > 6 || Math.abs(r.top - av.y) > 6 ||
+          Math.abs(r.width - av.w) > 6 || Math.abs(r.height - av.h) > 6 ||
+          (!el.children.length && (el.textContent || '') !== av.t) ||
+          (el.getAttribute('class') || '') !== av.c) chg.push(el);
+    }
+    for (var k = 0; k < n.length; k++) n[k].__btAv = null;   // on n'encombre pas le DOM
+    chg = chg.filter(function (e) {
+      if (e === cause || cause.contains(e) || e.contains(cause)) return false;
+      return estVisible(e);
+    });
+    chg.sort(function (a, b) {
+      var ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      return (rb.width * rb.height) - (ra.width * ra.height);
+    });
+    return chg;
+  }
+
+  function apresLeClic(el, portee, photoPrise) {
+    if (!el) return;
+    if (cibleCourante !== el) return;        // une autre etape a pris la main
+    if (estVisible(el)) return;              // toujours la : rien a faire
+
+    // La cible a disparu. Que s'est-il passe a sa place ?
+    if (photoPrise && portee) {
+      var chg = cequiAChange(portee, el);
+      if (chg.length) { designer(chg[0], true); return; }
+    }
+    // Rien de mesurable. On applique alors la regle deja posee plus
+    // haut : « PAS de cible, PAS de main. Designer approximativement
+    // pendant qu'on dit autre chose est pire que ne rien designer. »
+    retirerHalo();
+  }
+
   function jouerGeste(g, el, sansAnimation) {
     if (!el) return;
     if (g.geste === 'montrer') {
@@ -1206,7 +1302,14 @@
       // change avant qu'on ait compris ou l'on avait clique.
       if (sansAnimation) { el.click(); return; }
       doigtTape(el);
-      setTimeout(function () { try { el.click(); } catch (e) {} }, 210);
+      // On photographie AVANT le clic, et la portee aussi : apres, la
+      // cible peut ne plus avoir de parent.
+      var portee = porteeDe(el);
+      var photoPrise = photographier(portee);
+      setTimeout(function () {
+        try { el.click(); } catch (e) {}
+        setTimeout(function () { apresLeClic(el, portee, photoPrise); }, 260);
+      }, 210);
       return;
     }
     if (g.geste === 'saisir') {
