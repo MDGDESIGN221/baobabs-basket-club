@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Inscriptions — banc d'essai visuel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Jetons repris tels quels de admin-matchs.html : les deux propositions
+   partagent exactement la même palette. Ce qui change n'est pas la
+   couleur, c'est ce qu'on en fait. */
+:root{
+  --bg:#070E0A;--surface:#0E1811;--surface-2:#141F17;--surface-3:#1B2A20;
+  --line:rgba(243,239,230,.07);--line-strong:rgba(243,239,230,.14);--line-loud:rgba(243,239,230,.22);
+  --text:#F4F1E9;--muted:#A9B2AB;--faint:#7E8A81;
+  --gold:#C6A257;--gold-bright:#E4C179;--gold-lit:#F0CE85;
+  --gold-soft:rgba(198,162,87,.12);--gold-edge:rgba(198,162,87,.34);
+  --ok:#93CE43;--warn:#E8A93C;--danger:#E5564A;--info:#7FA8E0;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;
+  --font-ui:'Archivo',sans-serif;
+  --font-text:'Inter',system-ui,sans-serif;
+  --font-display:'Archivo',sans-serif;--display-weight:700;--display-tracking:-.012em;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-text);
+  -webkit-font-smoothing:antialiased;line-height:1.5;
+  background-image:radial-gradient(ellipse 900px 500px at 10% -10%, rgba(198,162,87,.045), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(28,122,58,.06), transparent 55%);
+  background-attachment:fixed}
+.hide{display:none !important}
+
+/* ===== La barre du banc — n'appartient à aucune des deux propositions ===== */
+.banc{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:14px;align-items:center;
+  padding:10px 20px;background:rgba(7,14,10,.94);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line-strong)}
+.banc-t{font-family:var(--font-ui);font-weight:800;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--gold)}
+.banc-g{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:2px}
+.banc-g button{background:none;border:none;color:var(--muted);font-family:var(--font-ui);
+  font-weight:700;font-size:11px;letter-spacing:.04em;padding:7px 13px;border-radius:4px;cursor:pointer}
+.banc-g button.on{background:var(--gold);color:#0A1B0D}
+.banc-note{font-size:11.5px;color:var(--faint);margin-left:auto}
+.wrap{padding:26px 20px 90px;max-width:1260px;margin:0 auto}
+
+/* =====================================================================
+   A — ACTUEL. Copie fidèle de admin-matchs.html, rien de retouché.
+   ===================================================================== */
+.A .mod-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:18px}
+.A .mod-count{font-weight:700;font-size:11px;letter-spacing:.1em;color:var(--faint);
+  background:var(--surface-2);border:1px solid var(--line);border-radius:100px;padding:4px 10px}
+.A .mod-search{flex:1;min-width:180px;background:var(--surface-2);border:1px solid var(--line-strong);
+  border-radius:9px;padding:10px 13px;color:var(--text);font:inherit;font-size:13.5px}
+.A .mod-sel{background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;
+  padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px}
+.A .mod-view{display:flex;gap:3px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:9px;padding:3px}
+.A .mod-view button{background:none;border:none;color:var(--muted);font-family:inherit;font-weight:700;
+  font-size:11.5px;padding:7px 12px;border-radius:7px;cursor:pointer}
+.A .mod-view button.on{background:var(--gold);color:#0A1B0D}
+.A .callout{background:var(--gold-soft);border:1px solid rgba(198,162,87,.3);border-radius:10px;
+  padding:14px 16px;font-size:13px;color:#D8C79E;line-height:1.55;margin-bottom:20px}
+.A .status-pill{font-family:var(--font-ui);font-weight:700;font-size:9.5px;letter-spacing:.07em;
+  text-transform:uppercase;padding:5px 10px;border-radius:20px;flex:none;border:1px solid transparent;
+  display:inline-block}
+.A .rec-gender{font-family:var(--font-ui);font-weight:700;font-size:9.5px;letter-spacing:.06em;
+  text-transform:uppercase;padding:4px 9px;border-radius:20px;border:1px solid transparent;display:inline-block}
+.A .rec-gender.f{background:rgba(214,120,180,.14);color:#E58BC0;border-color:rgba(214,120,180,.4)}
+.A .rec-gender.m{background:rgba(90,168,217,.14);color:#7CC1EC;border-color:rgba(90,168,217,.4)}
+.A .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;
+  border-radius:11px;padding:14px 20px;font-family:var(--font-ui);font-weight:700;font-size:13.5px;
+  min-height:50px;cursor:pointer}
+.A .btn-sm{min-height:0;padding:8px 14px;font-size:12px;border-radius:11px}
+.A .btn-primary{background:linear-gradient(155deg,var(--gold-bright),var(--gold));color:#1A1305;
+  box-shadow:0 8px 20px -9px rgba(198,162,87,.55)}
+.A .btn-ghost{background:transparent;border:1px solid var(--line-strong);color:var(--text)}
+.A .in-kpis{display:flex;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:var(--r-md);margin-bottom:16px;overflow:hidden}
+.A .in-kpi{flex:1 1 140px;padding:12px 16px;border-right:1px solid var(--line)}
+.A .in-kpi:last-child{border-right:none}
+.A .in-kpi b{display:block;font-family:var(--font-display);font-weight:var(--display-weight);
+  letter-spacing:var(--display-tracking);font-size:22px;line-height:1;color:var(--text);
+  font-variant-numeric:tabular-nums}
+.A .in-kpi span{display:block;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--faint);margin-top:7px}
+.A .in-kpi.warn b{color:#E08A5B}
+.A .in-kpi.good b{color:#A8D93B}
+.A .cd-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;align-items:flex-start}
+.A .cd-col{flex:0 0 274px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  display:flex;flex-direction:column;max-height:68vh}
+.A .cd-col-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.A .cd-col-dot{width:8px;height:8px;border-radius:50%;flex:none}
+.A .cd-col-name{flex:1;font-weight:700;font-size:11px;letter-spacing:.11em;text-transform:uppercase}
+.A .cd-col-n{font-weight:700;font-size:11px;color:var(--faint)}
+.A .cd-col-body{padding:9px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+.A .cd-card{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:11px;
+  cursor:pointer;transition:border-color .14s,transform .14s;display:flex;gap:10px;align-items:flex-start}
+.A .cd-card:hover{border-color:var(--gold);transform:translateY(-1px)}
+.A .cd-avatar-none{width:40px;height:40px;border-radius:9px;flex:none;display:flex;align-items:center;
+  justify-content:center;font-family:var(--font-ui);font-weight:700;font-size:15px;color:#fff}
+.A .cd-card-name{font-weight:600;font-size:13px;color:var(--text);line-height:1.25}
+.A .cd-card-meta{font-size:11.5px;color:var(--faint);margin-top:3px;line-height:1.4}
+.A .cd-empty-col{font-size:11.5px;color:var(--faint);padding:14px 6px;text-align:center}
+.A .cd-row{display:flex;align-items:center;gap:13px;padding:12px 14px;background:var(--surface);
+  border:1px solid var(--line);border-radius:11px;cursor:pointer;margin-bottom:8px}
+.A .cd-row:hover{border-color:var(--gold)}
+.A .cd-doc{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.A .cd-doc-hero{display:flex;flex-wrap:wrap;gap:clamp(16px,2.4vw,26px);padding:clamp(18px,2.6vw,26px);
+  background:linear-gradient(140deg,#16231A,#0E1712);border-bottom:1px solid var(--line)}
+.A .cd-photo-none{width:132px;height:168px;border-radius:14px;flex:none;display:flex;align-items:center;
+  justify-content:center;font-family:var(--font-ui);font-weight:700;font-size:42px;color:#fff}
+.A .cd-doc-name{font-family:var(--font-ui);font-weight:700;letter-spacing:-.02em;
+  font-size:clamp(24px,3vw,32px);line-height:1.05;color:var(--text);margin:0}
+.A .cd-doc-sub{font-size:13.5px;color:var(--muted);margin-top:7px;line-height:1.6}
+.A .cd-quick{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+.A .cd-quick a,.A .cd-quick button{display:inline-flex;align-items:center;gap:6px;
+  background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:8px 12px;
+  font-size:12.5px;font-weight:600;color:var(--text);text-decoration:none;font-family:inherit;cursor:pointer}
+.A .cd-sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:14px;
+  padding:clamp(16px,2.4vw,22px)}
+.A .cd-sec{background:var(--surface-2);border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.A .cd-sec-h{display:flex;align-items:center;gap:8px;padding:12px 15px;border-bottom:1px solid var(--line);
+  font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.A .cd-sec-b{padding:13px 15px}
+.A .cd-kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:13px;
+  border-bottom:1px solid rgba(243,239,230,.05)}
+.A .cd-kv span:first-child{color:var(--faint);flex:none}
+.A .cd-kv span:last-child{color:var(--text);text-align:right;font-weight:500}
+.A .cd-status-grid{display:flex;flex-wrap:wrap;gap:6px}
+.A .cd-st{border-radius:var(--r-sm);padding:8px 12px;font-family:var(--font-ui);font-weight:700;
+  font-size:11.5px;cursor:pointer;background:transparent}
+.A .in-months{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-top:12px}
+.A .in-month{position:relative;overflow:hidden;border:1px solid var(--line);background:var(--surface);
+  border-radius:var(--r-sm);padding:9px 5px 8px;text-align:center;cursor:pointer;font:inherit;color:var(--muted)}
+.A .in-month::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:transparent}
+.A .in-month b{display:block;font-family:var(--font-ui);font-weight:700;font-size:11.5px;line-height:1;
+  text-transform:uppercase;letter-spacing:.04em}
+.A .in-month span{display:block;font-size:9px;margin-top:5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.A .in-month.paid{color:#A8D93B;border-color:rgba(168,217,59,.28)}
+.A .in-month.paid::before{background:#A8D93B}
+.A .in-month.paid span{color:rgba(168,217,59,.62)}
+.A .in-month.due{color:#E08A5B;border-color:rgba(224,138,91,.34)}
+.A .in-month.due::before{background:#E08A5B}
+.A .in-month.future{opacity:.38}
+.A .in-line{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--line-strong);
+  border-radius:var(--r-md);padding:12px 15px}
+.A .in-line.paid{border-left-color:#A8D93B;background:transparent}
+.A .in-line-t{font-size:13px;color:var(--text);font-weight:600}
+.A .in-line-s{font-size:11.5px;color:var(--faint);margin-top:2px}
+.A .in-ref{font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.1em;color:var(--gold);
+  background:rgba(198,162,87,.1);border:1px solid rgba(198,162,87,.26);border-radius:var(--r-sm);
+  padding:3px 9px;display:inline-block}
+.A .lbl{margin-top:16px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+
+/* =====================================================================
+   P — PROPOSÉ.
+
+   Trois principes, et rien d'autre :
+
+   1. UNE SEULE COULEUR D'ACCENT. L'or dit où porter la main. Deux
+      signaux seulement sortent du gris : l'argent en retard et le
+      certificat médical absent — les deux seules choses qui coûtent
+      au club. Un statut ne se peint pas, il s'écrit.
+   2. LE TRAIT PLUTÔT QUE LA BOÎTE. Un filet sépare aussi bien qu'un
+      cadre, et n'ajoute pas un rectangle de plus à l'écran. D'où :
+      pas de carte dans une carte, pas de dégradé, rayons ramenés à
+      l'échelle du fichier (6 / 8 / 12, jamais 14 ni 18).
+   3. LE CHIFFRE EST LE SUJET. Archivo tabulaire, aligné à droite,
+      grand. Le libellé passe au-dessus, petit et capitalé — on lit
+      la colonne, pas chaque case.
+   ===================================================================== */
+.P{--ins-hair:1px solid var(--line)}
+
+/* ---- Barre d'outils : rectangulaire, dense, alignée sur une ligne ---- */
+.P .ins-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:20px;
+  padding-bottom:14px;border-bottom:1px solid var(--line-strong)}
+.P .ins-count{font-family:var(--font-ui);font-weight:800;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--text);font-variant-numeric:tabular-nums;
+  border-left:2px solid var(--gold);padding-left:9px;margin-right:4px}
+.P .ins-search{flex:1;min-width:190px;background:transparent;border:1px solid var(--line-strong);
+  border-radius:var(--r-sm);padding:9px 12px;color:var(--text);font:inherit;font-size:13px}
+.P .ins-search::placeholder{color:var(--faint)}
+.P .ins-search:focus{outline:none;border-color:var(--gold-edge)}
+.P .ins-sel{background:transparent;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+  padding:9px 11px;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer}
+.P .ins-seg{display:flex;border:1px solid var(--line-strong);border-radius:var(--r-sm);overflow:hidden}
+.P .ins-seg button{background:transparent;border:none;border-right:1px solid var(--line-strong);
+  color:var(--faint);font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;padding:9px 14px;cursor:pointer}
+.P .ins-seg button:last-child{border-right:none}
+.P .ins-seg button.on{background:var(--gold);color:#0A1B0D}
+.P .ins-act{background:transparent;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+  color:var(--muted);font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;padding:9px 14px;cursor:pointer}
+.P .ins-act:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ---- Le relevé de chiffres : un bandeau, libellé d'abord ---- */
+.P .ins-band{display:flex;flex-wrap:wrap;border-top:1px solid var(--line-strong);
+  border-bottom:1px solid var(--line-strong);margin-bottom:22px}
+.P .ins-fig{flex:1 1 150px;padding:14px 18px 15px;border-right:1px solid var(--line);position:relative}
+.P .ins-fig:last-child{border-right:none}
+.P .ins-fig i{display:block;font-style:normal;font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:9px}
+.P .ins-fig b{display:block;font-family:var(--font-ui);font-weight:800;letter-spacing:-.02em;
+  font-size:27px;line-height:.9;color:var(--text);font-variant-numeric:tabular-nums}
+.P .ins-fig.sig b{color:var(--warn)}
+.P .ins-fig.cri b{color:var(--danger)}
+.P .ins-fig.sig::before,.P .ins-fig.cri::before{content:'';position:absolute;left:0;top:-1px;
+  width:100%;height:2px}
+.P .ins-fig.sig::before{background:var(--warn)}
+.P .ins-fig.cri::before{background:var(--danger)}
+.P .ins-fig small{display:block;font-size:10.5px;color:var(--faint);margin-top:6px}
+@media(max-width:640px){.P .ins-fig{flex:1 1 50%;border-bottom:1px solid var(--line)}}
+
+/* ---- Colonnes : des relevés côte à côte, pas des cartons à traîner ---- */
+.P .ins-board{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;align-items:flex-start}
+.P .ins-col{flex:0 0 262px;display:flex;flex-direction:column;max-height:66vh}
+.P .ins-col-h{display:flex;align-items:baseline;gap:8px;padding:0 2px 9px;
+  border-bottom:2px solid var(--line-loud)}
+.P .ins-col-h.on{border-bottom-color:var(--gold)}
+.P .ins-col-n{flex:1;font-family:var(--font-ui);font-weight:800;font-size:10px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--muted)}
+.P .ins-col-h.on .ins-col-n{color:var(--gold)}
+.P .ins-col-c{font-family:var(--font-ui);font-weight:800;font-size:13px;color:var(--text);
+  font-variant-numeric:tabular-nums}
+.P .ins-col-b{display:flex;flex-direction:column;overflow-y:auto;padding-top:2px}
+.P .ins-card{position:relative;display:block;width:100%;text-align:left;background:transparent;
+  border:none;border-bottom:1px solid var(--line);padding:12px 12px 12px 13px;cursor:pointer;
+  font:inherit;color:inherit;transition:background .12s}
+.P .ins-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent;
+  transition:background .12s}
+.P .ins-card:hover{background:var(--surface)}
+.P .ins-card:hover::before{background:var(--gold)}
+.P .ins-card-n{display:block;font-family:var(--font-ui);font-weight:600;font-size:13.5px;
+  color:var(--text);line-height:1.25;letter-spacing:-.005em}
+.P .ins-card-m{display:block;font-size:11px;color:var(--faint);margin-top:4px;line-height:1.4;
+  font-variant-numeric:tabular-nums}
+.P .ins-card-s{display:flex;gap:5px;margin-top:8px}
+.P .ins-empty{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+  padding:16px 2px;opacity:.5}
+
+/* ---- Les deux seules marques qui ont le droit d'exister ---- */
+.P .ins-tag{font-family:var(--font-ui);font-weight:700;font-size:9px;letter-spacing:.11em;
+  text-transform:uppercase;padding:3px 7px;border-radius:2px;border:1px solid;flex:none;
+  display:inline-block;line-height:1.35}
+.P .ins-tag.warn{color:var(--warn);border-color:rgba(232,169,60,.45);background:transparent}
+.P .ins-tag.cri{color:#FFF0EE;border-color:var(--danger);background:var(--danger)}
+/* Un statut n'est pas une alerte : il s'écrit en gris, avec un carré. */
+.P .ins-st{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-ui);font-weight:700;
+  font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
+.P .ins-st i{width:6px;height:6px;flex:none;background:var(--line-loud)}
+.P .ins-st.act i{background:var(--gold)}
+.P .ins-st.act{color:var(--text)}
+.P .ins-ref{font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.13em;
+  color:var(--gold);font-variant-numeric:tabular-nums}
+
+/* ---- Liste : un vrai tableau. Ni carte, ni arrondi, ni ombre. ---- */
+.P .ins-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.P .ins-tbl th{text-align:left;font-family:var(--font-ui);font-weight:700;font-size:9px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding:0 14px 10px;
+  border-bottom:1px solid var(--line-strong);white-space:nowrap}
+.P .ins-tbl th.r,.P .ins-tbl td.r{text-align:right}
+.P .ins-tbl td{padding:13px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+.P .ins-tbl tbody tr{cursor:pointer;transition:background .12s}
+.P .ins-tbl tbody tr:hover{background:var(--surface)}
+.P .ins-tbl tbody tr td:first-child{position:relative}
+.P .ins-tbl tbody tr td:first-child::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
+  background:transparent;transition:background .12s}
+.P .ins-tbl tbody tr:hover td:first-child::before{background:var(--gold)}
+.P .ins-tbl .n{font-family:var(--font-ui);font-weight:600;font-size:13.5px;color:var(--text);
+  letter-spacing:-.005em}
+.P .ins-tbl .m{font-size:11px;color:var(--faint);margin-top:3px}
+.P .ins-tbl .num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;white-space:nowrap}
+.P .ins-scroll{overflow-x:auto}
+
+/* ---- Dossier : un document, pas un tableau de bord ---- */
+.P .ins-back{display:inline-flex;align-items:center;gap:8px;background:none;border:none;
+  color:var(--faint);font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;cursor:pointer;padding:0 0 18px}
+.P .ins-back:hover{color:var(--gold)}
+.P .ins-doc{border-top:2px solid var(--gold);background:var(--surface)}
+.P .ins-hero{display:flex;flex-wrap:wrap;gap:26px;padding:26px 26px 24px;
+  border-bottom:1px solid var(--line-strong)}
+/* Une photo absente n'est pas une couleur : c'est un emplacement vide. */
+.P .ins-photo{width:118px;height:150px;flex:none;background:var(--surface-3);
+  border:1px solid var(--line-strong);display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-ui);font-weight:500;font-size:34px;letter-spacing:.04em;color:var(--faint)}
+.P .ins-hero-b{flex:1;min-width:250px}
+.P .ins-marks{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:12px}
+.P .ins-name{font-family:var(--font-ui);font-weight:800;letter-spacing:-.025em;
+  font-size:clamp(25px,3.2vw,33px);line-height:1;color:var(--text);margin:0}
+.P .ins-sub{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.7}
+.P .ins-sub b{color:var(--text);font-weight:600}
+.P .ins-quick{display:flex;flex-wrap:wrap;gap:0;margin-top:16px;border:1px solid var(--line-strong);
+  border-radius:var(--r-sm);overflow:hidden;width:fit-content;max-width:100%}
+.P .ins-quick a,.P .ins-quick button{display:inline-flex;align-items:center;gap:7px;background:transparent;
+  border:none;border-right:1px solid var(--line-strong);padding:9px 14px;font-family:var(--font-ui);
+  font-weight:600;font-size:12px;color:var(--muted);text-decoration:none;cursor:pointer;
+  font-variant-numeric:tabular-nums}
+.P .ins-quick a:last-child,.P .ins-quick button:last-child{border-right:none}
+.P .ins-quick a:hover,.P .ins-quick button:hover{color:var(--gold);background:var(--surface-2)}
+/* Le vide à droite du nom ne se décore pas : il se remplit avec les deux
+   seuls chiffres qu'on vient chercher en ouvrant un dossier. */
+.P .ins-hero-x{flex:none;min-width:172px;padding-left:24px;border-left:1px solid var(--line-strong);
+  display:flex;flex-direction:column;gap:18px;align-self:stretch;justify-content:center}
+.P .ins-hx i{display:block;font-style:normal;font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:7px}
+.P .ins-hx b{display:block;font-family:var(--font-ui);font-weight:800;font-size:20px;letter-spacing:-.02em;
+  line-height:1;color:var(--text);font-variant-numeric:tabular-nums}
+.P .ins-hx.due b{color:var(--warn)}
+.P .ins-hx s{display:block;text-decoration:none;font-size:10px;color:var(--faint);margin-top:5px}
+@media(max-width:700px){
+  .P .ins-hero-x{border-left:none;border-top:1px solid var(--line-strong);padding:18px 0 0;
+    flex-direction:row;gap:34px;width:100%}
+}
+
+/* Pas de carte dans une carte : des bandes séparées par un filet.
+   L'argent est le poste de travail — il prend la colonne large ;
+   les pièces et la famille se lisent, elles tiennent dans l'étroite. */
+.P .ins-secs{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
+.P .ins-sec{padding:22px 26px 24px;border-bottom:1px solid var(--line)}
+.P .ins-sec.l{border-right:1px solid var(--line)}
+.P .ins-sec.wide{grid-column:1/-1}
+@media(max-width:820px){
+  .P .ins-secs{grid-template-columns:1fr}
+  .P .ins-sec.l{border-right:none}
+}
+.P .ins-sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding-bottom:11px;margin-bottom:15px;border-bottom:1px solid var(--line-strong)}
+.P .ins-sec-t{font-family:var(--font-ui);font-weight:800;font-size:9.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--text)}
+.P .ins-sec-x{font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.06em;
+  color:var(--gold);font-variant-numeric:tabular-nums}
+.P .ins-kv{display:flex;justify-content:space-between;gap:14px;padding:8px 0;font-size:12.5px;
+  border-bottom:1px solid var(--line)}
+.P .ins-kv:last-child{border-bottom:none}
+.P .ins-kv>span:first-child{color:var(--faint);flex:none}
+.P .ins-kv>span:last-child{color:var(--text);text-align:right;font-weight:500;
+  font-variant-numeric:tabular-nums}
+.P .ins-mini{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+  margin:20px 0 9px;font-family:var(--font-ui);font-weight:700}
+
+/* Décision : un segment, pas sept bonbons. */
+.P .ins-dec{display:flex;flex-wrap:wrap;border:1px solid var(--line-strong);border-radius:var(--r-sm);
+  overflow:hidden}
+.P .ins-dec button{flex:1 1 auto;background:transparent;border:none;border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line);color:var(--muted);font-family:var(--font-ui);font-weight:700;
+  font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:11px 10px;cursor:pointer;
+  white-space:nowrap}
+.P .ins-dec button:hover{background:var(--surface-2);color:var(--text)}
+.P .ins-dec button.on{background:var(--gold);color:#0A1B0D}
+
+/* L'argent : ce qui reste dû s'allume, ce qui est réglé s'éteint. */
+.P .ins-money{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  padding:13px 0 14px;border-bottom:1px solid var(--line)}
+.P .ins-money-t{font-family:var(--font-ui);font-weight:600;font-size:13px;color:var(--text)}
+.P .ins-money-s{font-size:11px;color:var(--faint);margin-top:3px}
+.P .ins-money.done .ins-money-t{color:var(--muted);font-weight:500}
+.P .ins-mini-btn{background:var(--gold);border:none;color:#0A1B0D;font-family:var(--font-ui);
+  font-weight:700;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;padding:9px 15px;
+  border-radius:var(--r-sm);cursor:pointer;flex:none}
+.P .ins-done{font-family:var(--font-ui);font-weight:700;font-size:9.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--faint)}
+
+/* La frise des mois : dix cases, une seule qui crie. */
+.P .ins-months{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:0;
+  border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.P .ins-mo{position:relative;background:transparent;border:none;border-right:1px solid var(--line);
+  padding:11px 4px 10px;text-align:center;cursor:pointer;font:inherit;color:var(--faint)}
+.P .ins-mo:last-child{border-right:none}
+.P .ins-mo::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:transparent}
+.P .ins-mo b{display:block;font-family:var(--font-ui);font-weight:700;font-size:11px;line-height:1;
+  text-transform:uppercase;letter-spacing:.08em}
+.P .ins-mo span{display:block;font-size:9px;margin-top:6px;font-variant-numeric:tabular-nums;opacity:.8}
+.P .ins-mo:hover{background:var(--surface-2);color:var(--gold)}
+.P .ins-mo.paid{color:var(--muted);cursor:default}
+.P .ins-mo.paid::before{background:rgba(147,206,67,.5)}
+.P .ins-mo.paid:hover{background:transparent;color:var(--muted)}
+.P .ins-mo.due{color:var(--warn);background:rgba(232,169,60,.07)}
+.P .ins-mo.due::before{background:var(--warn)}
+.P .ins-mo.future{color:var(--faint);opacity:.35}
+</style>
+</head>
+<body>
+
+<div class="banc">
+  <span class="banc-t">Banc — Inscriptions</span>
+  <div class="banc-g" id="g-design">
+    <button data-d="A">Actuel</button>
+    <button data-d="P" class="on">Proposé</button>
+  </div>
+  <div class="banc-g" id="g-vue">
+    <button data-v="board" class="on">Colonnes</button>
+    <button data-v="list">Liste</button>
+    <button data-v="doc">Dossier</button>
+  </div>
+  <span class="banc-note">Données fictives. Aucune connexion à Supabase.</span>
+</div>
+
+<div class="wrap"><div id="stage"></div></div>
+
+<script>
+/* ------------------------------------------------------------------ */
+/* Données fictives — mêmes lignes pour les deux propositions, pour que
+   la comparaison porte sur le rendu et sur rien d'autre.              */
+/* ------------------------------------------------------------------ */
+var ST = [
+  { key:'nouvelle',  label:'Nouvelle',       color:'#9DB8E8' },
+  { key:'contactee', label:'Contactée',      color:'#C6A257' },
+  { key:'essai',     label:"Séance d'essai", color:'#7DD3C0' },
+  { key:'inscrite',  label:'Inscrite',       color:'#A8D93B' },
+  { key:'en_pause',  label:'En pause',       color:'#8F9A92' },
+  { key:'refusee',   label:'Refusée',        color:'#C0271B' },
+  { key:'archivee',  label:'Archivée',       color:'#5F6B63' }
+];
+var FALLBACK = ['#c0392b','#2457c5','#15803d','#d97706','#7c3aed','#0891b2','#be185d','#b45309'];
+var MOIS = ['jan','fév','mar','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
+var MOIS_L = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+
+var ROWS = [
+  { id:1,  ref:'INS-40271', nom:'Aïssatou Diallo',   cat:'U13', age:12, quartier:'Ouakam',              parent:'Fatou Diallo',    tel:'+221 77 412 08 55', mail:'fatou.diallo@example.sn', genre:'F', st:'inscrite',  recue:'2026-09-04', retard:true,  medical:false, pieces:3, payes:['2026-09','2026-10'] },
+  { id:2,  ref:'INS-40268', nom:'Mamadou Sy',        cat:'U15', age:14, quartier:'Grand Yoff',          parent:'Ousmane Sy',      tel:'+221 76 330 71 20', mail:'o.sy@example.sn',         genre:'M', st:'inscrite',  recue:'2026-09-02', retard:false, medical:true,  pieces:4, payes:['2026-09','2026-10','2026-11'] },
+  { id:3,  ref:'INS-40284', nom:'Khady Ndiaye',      cat:'U11', age:10, quartier:'Mermoz',              parent:'Awa Ndiaye',      tel:'+221 78 145 62 03', mail:'',                        genre:'F', st:'nouvelle',  recue:'2026-11-24', retard:false, medical:false, pieces:1, payes:[] },
+  { id:4,  ref:'INS-40279', nom:'Ibrahima Fall',     cat:'U17', age:16, quartier:'Parcelles Assainies', parent:'Cheikh Fall',     tel:'+221 77 908 14 47', mail:'c.fall@example.sn',       genre:'M', st:'essai',     recue:'2026-11-12', retard:false, medical:false, pieces:2, payes:[] },
+  { id:5,  ref:'INS-40255', nom:'Ndèye Coumba Gaye', cat:'U13', age:12, quartier:'Point E',             parent:'Mariama Gaye',    tel:'+221 70 622 39 18', mail:'m.gaye@example.sn',       genre:'F', st:'inscrite',  recue:'2026-09-01', retard:false, medical:true,  pieces:4, payes:['2026-09','2026-10','2026-11'] },
+  { id:6,  ref:'INS-40288', nom:'Cheikh Sarr',       cat:'U9',  age:8,  quartier:'Yoff',                parent:'Modou Sarr',      tel:'+221 77 234 55 90', mail:'',                        genre:'M', st:'nouvelle',  recue:'2026-11-26', retard:false, medical:false, pieces:0, payes:[] },
+  { id:7,  ref:'INS-40263', nom:'Astou Mbaye',       cat:'U15', age:14, quartier:'Sacré-Cœur',          parent:'Bineta Mbaye',    tel:'+221 76 771 02 34', mail:'b.mbaye@example.sn',      genre:'F', st:'contactee', recue:'2026-10-18', retard:false, medical:false, pieces:2, payes:[] },
+  { id:8,  ref:'INS-40241', nom:'Ousmane Diouf',     cat:'U17', age:17, quartier:'Médina',              parent:'Alioune Diouf',   tel:'+221 78 019 76 61', mail:'a.diouf@example.sn',      genre:'M', st:'inscrite',  recue:'2026-09-08', retard:true,  medical:true,  pieces:4, payes:['2026-09'] },
+  { id:9,  ref:'INS-40292', nom:'Mariama Bâ',        cat:'U11', age:10, quartier:'Almadies',            parent:'Seynabou Bâ',     tel:'+221 77 655 41 12', mail:'',                        genre:'F', st:'nouvelle',  recue:'2026-11-28', retard:false, medical:false, pieces:1, payes:[] },
+  { id:10, ref:'INS-40230', nom:'Abdoulaye Ndour',   cat:'U13', age:13, quartier:'Fann',                parent:'Rokhaya Ndour',   tel:'+221 70 388 27 05', mail:'r.ndour@example.sn',      genre:'M', st:'en_pause',  recue:'2026-09-15', retard:false, medical:true,  pieces:3, payes:['2026-09','2026-10'] },
+  { id:11, ref:'INS-40247', nom:'Sokhna Faye',       cat:'U15', age:15, quartier:'Ngor',                parent:'Ibrahima Faye',   tel:'+221 76 502 88 73', mail:'i.faye@example.sn',       genre:'F', st:'inscrite',  recue:'2026-09-06', retard:false, medical:true,  pieces:4, payes:['2026-09','2026-10','2026-11'] },
+  { id:12, ref:'INS-40214', nom:'Pape Malick Seck',  cat:'U17', age:16, quartier:'Plateau',             parent:'Adama Seck',      tel:'+221 77 140 93 26', mail:'',                        genre:'M', st:'refusee',   recue:'2026-08-29', retard:false, medical:false, pieces:1, payes:[] }
+];
+var PIECES = ['Photo d’identité','Extrait de naissance','Certificat médical','Autorisation parentale'];
+var VERSEMENTS = [
+  { date:'04/09/2026', lib:"Frais d'inscription", montant:20000, methode:'Wave' },
+  { date:'04/09/2026', lib:'Septembre 2026',      montant:5000,  methode:'Wave' },
+  { date:'07/10/2026', lib:'Octobre 2026',        montant:5000,  methode:'Espèces' }
+];
+var MOIS_COURANT = '2026-11';
+var DATE_PAIE = { '2026-09':'04/09', '2026-10':'07/10', '2026-11':'—' };
+var SAISON = ['2026-09','2026-10','2026-11','2026-12','2027-01','2027-02','2027-03','2027-04','2027-05','2027-06'];
+var FRAIS_INS = 20000, FRAIS_MOIS = 5000;
+var SEL = ROWS[0];   // le dossier montré : Aïssatou, en retard et sans certificat
+
+/* ------------------------------------------------------------------ */
+var design = 'P', vue = 'board';
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function fcfa(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ') + ' FCFA'; }
+function couleur(nom){ var h=0; for(var i=0;i<nom.length;i++) h=(h*31+nom.charCodeAt(i))>>>0;
+  return FALLBACK[h%FALLBACK.length]; }
+function st(k){ for(var i=0;i<ST.length;i++) if(ST[i].key===k) return ST[i]; return ST[0]; }
+function sous(r){ return [r.cat, r.age+' ans', r.quartier].join(' · '); }
+function dateFr(iso){ var p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function moisLabel(p){ return MOIS_L[parseInt(p.slice(5),10)-1] + ' ' + p.slice(0,4); }
+
+var STATS = (function(){
+  var ins = ROWS.filter(function(r){ return r.st==='inscrite'; });
+  return {
+    total: ROWS.length,
+    inscrits: ins.length,
+    nouvelles: ROWS.filter(function(r){ return r.st==='nouvelle'; }).length,
+    retards: ROWS.filter(function(r){ return r.retard; }).length,
+    sansMed: ins.filter(function(r){ return !r.medical; }).length,
+    encaisse: ins.reduce(function(t,r){ return t + (r.payes.indexOf(MOIS_COURANT)>=0 ? FRAIS_MOIS : 0); }, 0)
+  };
+})();
+
+/* ============================ A C T U E L ============================ */
+function A_pills(r){
+  var o = '';
+  if (r.retard) o += '<span class="status-pill" style="color:#E08A5B;border:1px solid #E08A5B55;background:#E08A5B14">Retard</span>';
+  if (r.st==='inscrite' && !r.medical) o += '<span class="status-pill" style="color:#fff;border:1px solid #C0271B;background:#C0271B">Médical</span>';
+  return o;
+}
+function A_avatar(r, cls){
+  return '<div class="'+cls+'-none" style="background:'+couleur(r.nom)+'">'+esc(r.nom.charAt(0))+'</div>';
+}
+function A_head(){
+  return '<div class="mod-head">'+
+    '<span class="mod-count">'+ROWS.length+' dossiers</span>'+
+    '<input type="search" class="mod-search" placeholder="Nom de l’enfant, du parent, téléphone, référence…">'+
+    '<select class="mod-sel"><option>Toutes catégories</option></select>'+
+    '<select class="mod-sel"><option>Tous les dossiers</option></select>'+
+    '<div class="mod-view"><button class="'+(vue==='board'?'on':'')+'">Colonnes</button>'+
+    '<button class="'+(vue==='list'?'on':'')+'">Liste</button></div>'+
+    '<button class="btn btn-ghost btn-sm">Exporter (CSV)</button>'+
+  '</div>';
+}
+function A_kpis(){
+  return '<div class="in-kpis">'+
+    '<div class="in-kpi"><b>'+STATS.total+'</b><span>Dossiers</span></div>'+
+    '<div class="in-kpi good"><b>'+STATS.inscrits+'</b><span>Enfants inscrits</span></div>'+
+    '<div class="in-kpi warn"><b>'+STATS.nouvelles+'</b><span>À traiter</span></div>'+
+    '<div class="in-kpi warn"><b>'+STATS.retards+'</b><span>Mensualité en retard</span></div>'+
+    '<div class="in-kpi warn"><b>'+STATS.sansMed+'</b><span>Sans certificat médical</span></div>'+
+    '<div class="in-kpi"><b style="font-size:17px">'+esc(fcfa(STATS.encaisse))+'</b><span>Encaissé — novembre 2026</span></div>'+
+  '</div>';
+}
+function A_board(){
+  return '<div class="cd-board">'+ ST.map(function(s){
+    var col = ROWS.filter(function(r){ return r.st===s.key; });
+    return '<div class="cd-col">'+
+      '<div class="cd-col-head"><i class="cd-col-dot" style="background:'+s.color+'"></i>'+
+      '<span class="cd-col-name" style="color:'+s.color+'">'+esc(s.label)+'</span>'+
+      '<span class="cd-col-n">'+col.length+'</span></div>'+
+      '<div class="cd-col-body">'+ (col.length ? col.map(function(r){
+        return '<div class="cd-card">'+A_avatar(r,'cd-avatar')+
+          '<div style="min-width:0"><div class="cd-card-name">'+esc(r.nom)+'</div>'+
+          '<div class="cd-card-meta">'+esc(sous(r))+'</div></div>'+A_pills(r)+'</div>';
+      }).join('') : '<div class="cd-empty-col">—</div>')+'</div></div>';
+  }).join('') +'</div>';
+}
+function A_list(){
+  return ROWS.map(function(r){
+    var s = st(r.st);
+    return '<div class="cd-row">'+A_avatar(r,'cd-avatar')+
+      '<div style="flex:1;min-width:0"><div class="cd-card-name">'+esc(r.nom)+'</div>'+
+      '<div class="cd-card-meta">'+esc(sous(r))+' — '+esc(r.parent)+'</div></div>'+
+      A_pills(r)+
+      '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
+      '<span class="cd-card-meta" style="flex:none;margin:0">'+esc(dateFr(r.recue))+'</span></div>';
+  }).join('');
+}
+function A_doc(){
+  var r = SEL, s = st(r.st);
+  var mois = SAISON.map(function(p){
+    var paye = r.payes.indexOf(p)>=0, futur = p > MOIS_COURANT;
+    var du = !paye && !futur && r.st==='inscrite';
+    var cls = paye ? 'paid' : (futur ? 'future' : (du ? 'due' : ''));
+    var sousT = paye ? (DATE_PAIE[p]||'payé') : (futur ? 'à venir' : (du ? 'dû' : '—'));
+    return '<button type="button" class="in-month '+cls+'"><b>'+MOIS[parseInt(p.slice(5),10)-1]+
+      '</b><span>'+sousT+'</span></button>';
+  }).join('');
+  return '<div class="cd-doc">'+
+    '<div class="cd-doc-hero">'+A_avatar(r,'cd-photo')+
+      '<div style="flex:1;min-width:240px">'+
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:9px">'+
+          '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
+          '<span class="rec-gender f">Fille</span>'+
+          '<span class="status-pill" style="color:#E08A5B;border:1px solid #E08A5B55;background:#E08A5B14">Mensualité de novembre 2026 non réglée</span>'+
+          '<span class="status-pill" style="color:#fff;border:1px solid #C0271B;background:#C0271B">Certificat médical manquant</span>'+
+          '<span class="in-ref">'+esc(r.ref)+'</span>'+
+        '</div>'+
+        '<h2 class="cd-doc-name">'+esc(r.nom)+'</h2>'+
+        '<div class="cd-doc-sub">'+esc(sous(r))+'<br>Reçue le '+esc(dateFr(r.recue))+'</div>'+
+        '<div class="cd-quick"><a href="#">'+esc(r.tel)+'</a><a href="#">'+esc(r.mail)+'</a>'+
+        '<button>Dossier PDF</button></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="cd-sections">'+
+      '<div class="cd-sec"><div class="cd-sec-h">Décision</div><div class="cd-sec-b">'+
+        '<div class="cd-status-grid">'+ ST.map(function(x){
+          var on = x.key===r.st;
+          return '<button class="cd-st" style="color:'+(on?'#0A1B0D':x.color)+';background:'+(on?x.color:'transparent')+
+            ';border:1px solid '+(on?x.color:'var(--line-strong)')+'">'+esc(x.label)+'</button>';
+        }).join('')+'</div></div></div>'+
+      '<div class="cd-sec"><div class="cd-sec-h">Argent — '+esc(fcfa(30000))+' encaissés</div><div class="cd-sec-b">'+
+        '<div class="in-line paid"><div><div class="in-line-t">Frais d’inscription — '+esc(fcfa(FRAIS_INS))+'</div>'+
+        '<div class="in-line-s">Encaissés · tarif figé à l’inscription</div></div>'+
+        '<span class="status-pill" style="color:#A8D93B;border:1px solid #A8D93B55;background:#A8D93B14">Réglés</span></div>'+
+        '<div class="lbl">Mensualités — '+esc(fcfa(FRAIS_MOIS))+' par mois</div>'+
+        '<div class="in-months">'+mois+'</div>'+
+        '<div class="lbl">Versements enregistrés</div>'+
+        VERSEMENTS.map(function(v){
+          return '<div class="cd-kv"><span>'+v.date+' — '+esc(v.lib)+'</span><span>'+esc(fcfa(v.montant))+' · '+esc(v.methode)+'</span></div>';
+        }).join('')+
+      '</div></div>'+
+      '<div class="cd-sec"><div class="cd-sec-h">Pièces du dossier — 3 sur 4</div><div class="cd-sec-b">'+
+        PIECES.map(function(p,i){
+          return '<div class="cd-kv"><span>'+esc(p)+'</span><span style="color:'+(i===2?'#C0271B':'#A8D93B')+'">'+(i===2?'Manquante':'Reçue')+'</span></div>';
+        }).join('')+
+      '</div></div>'+
+      '<div class="cd-sec"><div class="cd-sec-h">Famille</div><div class="cd-sec-b">'+
+        '<div class="cd-kv"><span>Parent</span><span>'+esc(r.parent)+'</span></div>'+
+        '<div class="cd-kv"><span>Téléphone</span><span>'+esc(r.tel)+'</span></div>'+
+        '<div class="cd-kv"><span>Courriel</span><span>'+esc(r.mail)+'</span></div>'+
+        '<div class="cd-kv"><span>Quartier</span><span>'+esc(r.quartier)+'</span></div>'+
+      '</div></div>'+
+    '</div></div>';
+}
+
+/* ============================ P R O P O S É ============================ */
+function P_marks(r){
+  var o = '';
+  if (r.retard) o += '<span class="ins-tag warn">Retard</span>';
+  if (r.st==='inscrite' && !r.medical) o += '<span class="ins-tag cri">Sans médical</span>';
+  return o;
+}
+function P_head(){
+  return '<div class="ins-head">'+
+    '<span class="ins-count">'+ROWS.length+' dossiers</span>'+
+    '<input type="search" class="ins-search" placeholder="Nom de l’enfant, du parent, téléphone, référence…">'+
+    '<select class="ins-sel"><option>Toutes catégories</option></select>'+
+    '<select class="ins-sel"><option>Tous les dossiers</option></select>'+
+    '<div class="ins-seg"><button class="'+(vue==='board'?'on':'')+'">Colonnes</button>'+
+    '<button class="'+(vue==='list'?'on':'')+'">Liste</button></div>'+
+    '<button class="ins-act">Exporter CSV</button>'+
+  '</div>';
+}
+function P_band(){
+  return '<div class="ins-band">'+
+    '<div class="ins-fig"><i>Dossiers</i><b>'+STATS.total+'</b></div>'+
+    '<div class="ins-fig"><i>Enfants inscrits</i><b>'+STATS.inscrits+'</b></div>'+
+    '<div class="ins-fig sig"><i>À traiter</i><b>'+STATS.nouvelles+'</b></div>'+
+    '<div class="ins-fig sig"><i>Mensualité en retard</i><b>'+STATS.retards+'</b></div>'+
+    '<div class="ins-fig cri"><i>Sans certificat médical</i><b>'+STATS.sansMed+'</b></div>'+
+    '<div class="ins-fig"><i>Encaissé — novembre</i><b>'+esc(String(STATS.encaisse).replace(/\B(?=(\d{3})+(?!\d))/g,' '))+
+      '</b><small>FCFA</small></div>'+
+  '</div>';
+}
+function P_board(){
+  return '<div class="ins-board">'+ ST.map(function(s){
+    var col = ROWS.filter(function(r){ return r.st===s.key; });
+    return '<div class="ins-col">'+
+      '<div class="ins-col-h'+(col.length?' on':'')+'">'+
+        '<span class="ins-col-n">'+esc(s.label)+'</span>'+
+        '<span class="ins-col-c">'+col.length+'</span></div>'+
+      '<div class="ins-col-b">'+ (col.length ? col.map(function(r){
+        var m = P_marks(r);
+        return '<button type="button" class="ins-card">'+
+          '<span class="ins-card-n">'+esc(r.nom)+'</span>'+
+          '<span class="ins-card-m">'+esc(sous(r))+'</span>'+
+          (m ? '<span class="ins-card-s">'+m+'</span>' : '')+
+        '</button>';
+      }).join('') : '<div class="ins-empty">Aucun</div>')+'</div></div>';
+  }).join('') +'</div>';
+}
+function P_list(){
+  return '<div class="ins-scroll"><table class="ins-tbl">'+
+    '<thead><tr><th>Enfant</th><th>Catégorie</th><th>Référence</th><th>Statut</th>'+
+    '<th>Signalement</th><th class="r">Reçue le</th></tr></thead><tbody>'+
+    ROWS.map(function(r){
+      var s = st(r.st), m = P_marks(r);
+      return '<tr>'+
+        '<td><div class="n">'+esc(r.nom)+'</div><div class="m">'+esc(r.parent)+' · '+esc(r.quartier)+'</div></td>'+
+        '<td class="num">'+esc(r.cat)+' · '+r.age+' ans</td>'+
+        '<td><span class="ins-ref">'+esc(r.ref)+'</span></td>'+
+        '<td><span class="ins-st'+(r.st==='inscrite'?' act':'')+'"><i></i>'+esc(s.label)+'</span></td>'+
+        '<td>'+(m||'<span class="m" style="opacity:.4">—</span>')+'</td>'+
+        '<td class="r num">'+esc(dateFr(r.recue))+'</td>'+
+      '</tr>';
+    }).join('')+
+  '</tbody></table></div>';
+}
+function P_doc(){
+  var r = SEL;
+  var mois = SAISON.map(function(p){
+    var paye = r.payes.indexOf(p)>=0, futur = p > MOIS_COURANT;
+    var du = !paye && !futur && r.st==='inscrite';
+    var cls = paye ? 'paid' : (futur ? 'future' : (du ? 'due' : ''));
+    var sousT = paye ? (DATE_PAIE[p]||'payé') : (futur ? '—' : (du ? 'dû' : '—'));
+    return '<button type="button" class="ins-mo '+cls+'" title="'+esc(moisLabel(p))+'">'+
+      '<b>'+MOIS[parseInt(p.slice(5),10)-1]+'</b><span>'+sousT+'</span></button>';
+  }).join('');
+  return '<button class="ins-back">← Toutes les inscriptions</button>'+
+  '<div class="ins-doc">'+
+    '<div class="ins-hero">'+
+      '<div class="ins-photo">'+esc(r.nom.charAt(0))+'</div>'+
+      '<div class="ins-hero-b">'+
+        '<div class="ins-marks">'+
+          '<span class="ins-st act"><i></i>Inscrite</span>'+
+          '<span class="ins-tag warn">Novembre non réglé</span>'+
+          '<span class="ins-tag cri">Certificat médical manquant</span>'+
+        '</div>'+
+        '<h2 class="ins-name">'+esc(r.nom)+'</h2>'+
+        '<div class="ins-sub"><b>'+esc(r.cat)+'</b> · '+r.age+' ans · '+esc(r.quartier)+
+          ' &nbsp;—&nbsp; dossier <span class="ins-ref">'+esc(r.ref)+'</span><br>'+
+          'Reçue le '+esc(dateFr(r.recue))+' · saison 2026–2027</div>'+
+        '<div class="ins-quick"><a href="#">'+esc(r.tel)+'</a><a href="#">'+esc(r.mail)+'</a>'+
+        '<button>Dossier PDF</button></div>'+
+      '</div>'+
+      '<div class="ins-hero-x">'+
+        '<div class="ins-hx"><i>Encaissé</i><b>30 000</b><s>FCFA · saison en cours</s></div>'+
+        '<div class="ins-hx due"><i>Dû à ce jour</i><b>5 000</b><s>FCFA · novembre</s></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="ins-secs">'+
+
+      '<div class="ins-sec wide">'+
+        '<div class="ins-sec-h"><span class="ins-sec-t">Décision</span>'+
+        '<span class="ins-sec-x">Inscrite depuis le 04/09/2026</span></div>'+
+        '<div class="ins-dec">'+ ST.map(function(x){
+          return '<button class="'+(x.key===r.st?'on':'')+'">'+esc(x.label)+'</button>';
+        }).join('')+'</div>'+
+      '</div>'+
+
+      '<div class="ins-sec l">'+
+        '<div class="ins-sec-h"><span class="ins-sec-t">Argent</span>'+
+        '<span class="ins-sec-x">'+esc(fcfa(30000))+' encaissés</span></div>'+
+        '<div class="ins-money done"><div><div class="ins-money-t">Frais d’inscription</div>'+
+          '<div class="ins-money-s">Tarif figé à l’inscription · '+esc(fcfa(FRAIS_INS))+'</div></div>'+
+          '<span class="ins-done">Réglés</span></div>'+
+        '<div class="ins-money"><div><div class="ins-money-t">Novembre 2026</div>'+
+          '<div class="ins-money-s">Mensualité · '+esc(fcfa(FRAIS_MOIS))+'</div></div>'+
+          '<button class="ins-mini-btn">Encaisser</button></div>'+
+        '<div class="ins-mini">Saison — septembre à juin</div>'+
+        '<div class="ins-months">'+mois+'</div>'+
+        '<div class="ins-mini">Versements enregistrés</div>'+
+        VERSEMENTS.map(function(v){
+          return '<div class="ins-kv"><span>'+v.date+' · '+esc(v.lib)+'</span>'+
+            '<span>'+esc(fcfa(v.montant))+' · '+esc(v.methode)+'</span></div>';
+        }).join('')+
+      '</div>'+
+
+      '<div class="ins-sec">'+
+        '<div class="ins-sec-h"><span class="ins-sec-t">Pièces du dossier</span>'+
+        '<span class="ins-sec-x">3 / 4</span></div>'+
+        PIECES.map(function(p,i){
+          return '<div class="ins-kv"><span>'+esc(p)+'</span>'+
+            (i===2 ? '<span class="ins-tag cri">Manquante</span>'
+                   : '<span style="color:var(--muted);font-weight:500">Reçue</span>')+'</div>';
+        }).join('')+
+        '<div class="ins-mini">Famille</div>'+
+        '<div class="ins-kv"><span>Parent</span><span>'+esc(r.parent)+'</span></div>'+
+        '<div class="ins-kv"><span>Téléphone</span><span>'+esc(r.tel)+'</span></div>'+
+        '<div class="ins-kv"><span>Courriel</span><span>'+esc(r.mail)+'</span></div>'+
+        '<div class="ins-kv"><span>Quartier</span><span>'+esc(r.quartier)+'</span></div>'+
+      '</div>'+
+
+    '</div></div>';
+}
+
+/* ------------------------------------------------------------------ */
+function rendre(){
+  var s = document.getElementById('stage'), h;
+  if (design === 'A'){
+    h = '<div class="A">' + (vue==='doc' ? A_doc() : (A_head() + A_kpis() +
+        '<div class="callout">Chaque enfant est un dossier : cliquez une carte pour l’ouvrir et y enregistrer les paiements. Faites glisser une carte d’une colonne à l’autre pour changer son statut.</div>' +
+        (vue==='board' ? A_board() : A_list()))) + '</div>';
+  } else {
+    h = '<div class="P">' + (vue==='doc' ? P_doc() : (P_head() + P_band() +
+        (vue==='board' ? P_board() : P_list()))) + '</div>';
+  }
+  s.innerHTML = h;
+}
+document.getElementById('g-design').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if(!b) return;
+  design = b.getAttribute('data-d');
+  this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+  rendre();
+});
+document.getElementById('g-vue').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if(!b) return;
+  vue = b.getAttribute('data-v');
+  this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+  rendre();
+});
+rendre();
+</script>
+</body>
+</html>
