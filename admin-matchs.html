@@ -2401,15 +2401,19 @@
   /* Le chrono : gros, lisible de loin, un seul bouton. */
   .gd-clock{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--surface-2);
     border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:18px}
-  .gd-clock-btn{min-width:118px;min-height:44px;border-radius:10px;border:none;cursor:pointer;
-    font:inherit;font-weight:700;font-size:14px;background:var(--lime,#A8D93B);color:#0A1B0D}
-  .gd-clock-btn.on{background:#C0271B;color:#fff}
+  /* Le seul bouton vert citron qui restait dans une administration doree.
+     Il passe a l'or ; « Arreter » garde le rouge, car arreter le chrono
+     pendant un match EST une interruption. */
+  .gd-clock-btn{min-width:118px;min-height:44px;border-radius:var(--r-sm);border:none;cursor:pointer;
+    font-family:var(--font-ui);font-weight:700;font-size:11.5px;letter-spacing:.1em;
+    text-transform:uppercase;background:var(--gold);color:#0A1B0D}
+  .gd-clock-btn.on{background:var(--danger);color:#fff}
   .gd-clock-t{font-family:var(--font-ui);font-weight:800;font-size:34px;line-height:1;
     color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:.01em}
   .gd-clock-t.run{color:var(--gold)}
   .gd-clock-h{font-size:12px;color:var(--faint);flex:1;min-width:170px}
-  .gd-file{font-size:12px;font-weight:700;color:#E08A5B;background:rgba(224,138,91,.12);
-    border:1px solid rgba(224,138,91,.35);border-radius:7px;padding:5px 10px}
+  .gd-file{font-size:12px;font-weight:700;color:var(--warn);background:var(--warn-wash);
+    border:1px solid rgba(232,169,60,.35);border-radius:var(--r-sm);padding:5px 10px}
   .gd-court-t{display:flex;align-items:center;justify-content:space-between;gap:12px;
     font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
     margin:0 0 9px;padding-top:4px}
@@ -2454,13 +2458,16 @@
   .gd-pad-group{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .gd-pad-t{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
     width:74px;flex:none}
-  .gd-act{min-height:46px;padding:0 18px;border-radius:10px;border:1.5px solid var(--line-strong);
+  .gd-act{min-height:46px;padding:0 18px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
     background:var(--surface);color:var(--text);font:inherit;font-weight:600;font-size:13.5px;cursor:pointer;
     transition:transform .08s,border-color .15s,background .15s}
   .gd-act:hover{border-color:var(--gold)}
   .gd-act:active{transform:scale(.96)}
-  .gd-act.score{border-color:rgba(168,217,59,.5);color:#A8D93B}
-  .gd-act.score:hover{background:rgba(168,217,59,.12)}
+  /* Marquer est le geste NORMAL de cet ecran, celui qu'on fait cent
+     fois : il n'a pas a se peindre. Rater et sanctionner sont les deux
+     qui sortent de l'ordinaire, et ils gardent leur teinte. */
+  .gd-act.score{border-color:var(--gold-edge);color:var(--gold-bright)}
+  .gd-act.score:hover{background:var(--gold-soft);border-color:var(--gold)}
   .gd-act.miss{color:var(--faint)}
   .gd-act.foul{border-color:rgba(192,39,27,.45);color:#E08A5B}
 
@@ -2502,18 +2509,9 @@
          un état se signale, il n'a pas besoin de repeindre son bloc ;
        · les chiffres s'alignent en bandeau continu plutôt qu'en cartes
          séparées — un relevé, pas six vignettes. */
-  .in-kpis{display:flex;flex-wrap:wrap;background:var(--surface-2);
-    border:1px solid var(--line);border-radius:var(--r-md);margin-bottom:16px;overflow:hidden}
-  .in-kpi{flex:1 1 140px;padding:12px 16px;border-right:1px solid var(--line)}
-  .in-kpi:last-child{border-right:none}
-  .in-kpi b{display:block;font-family:var(--font-display);font-weight:var(--display-weight);
-    letter-spacing:var(--display-tracking);font-size:22px;line-height:1;color:var(--text);
-    font-variant-numeric:tabular-nums}
-  .in-kpi span{display:block;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
-    color:var(--faint);margin-top:7px}
-  .in-kpi.warn b{color:#E08A5B}
-  .in-kpi.good b{color:#A8D93B}
-  @media(max-width:620px){ .in-kpi{flex:1 1 50%;border-bottom:1px solid var(--line)} }
+  /* .in-kpis / .in-kpi n'ont plus d'appelant : Inscriptions est passe a
+     .ds-band le 2 septembre, Analytics vient de suivre. Seul l'ID
+     #in-kpis subsiste, sur un .ds-band. */
 
   /* Les mois : des cases plus serrées, l'état porté par un filet en
      tête plutôt que par un aplat. Douze aplats verts et oranges côte à
@@ -4051,12 +4049,11 @@
 
     <!-- ===== SECTION COHÉRENCE ===== -->
     <section id="section-coherence" class="hide">
-      <div class="mod-head">
-        <h2 class="mod-head-title">Cohérence site ↔ admin</h2>
-        <span class="mod-count" id="co-count">—</span>
-        <button type="button" class="btn btn-ghost hide" id="co-scan" style="padding:10px 15px;font-size:13px">Analyser le site</button>
+      <div class="ds-head">
+        <span class="ds-count" id="co-count">—</span>
+        <button type="button" class="ds-act hide" id="co-scan">Analyser le site</button>
       </div>
-      <div class="card" id="co-lock-card" style="max-width:520px">
+      <div class="tm-panel" id="co-lock-card" style="max-width:520px">
         <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:18px 0">
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:38px;height:38px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <div style="font-family:var(--font-ui);font-weight:700;font-size:17px;color:var(--text)">Accès verrouillé</div>
@@ -4877,17 +4874,15 @@
 
     <!-- ===== ANALYTICS DU CLUB ===== -->
     <section id="section-analytics" class="hide">
-      <div class="callout">Ce que le club <b>possède</b> : son argent, ses adhérents, ses abonnés. Pas le trafic du site — un outil de mesure d'audience le fait mieux, et une adresse e-mail vaut mille pages vues.</div>
-      <div class="in-kpis" id="an-kpis"></div>
+      <div class="ds-band" id="an-kpis"></div>
+      <div class="callout ds-note">Ce que le club <b>possède</b> : son argent, ses adhérents, ses abonnés. Pas le trafic du site — un outil de mesure d'audience le fait mieux, et une adresse e-mail vaut mille pages vues.</div>
       <div class="grid-2" style="align-items:start">
-        <div class="card">
-          <h2 class="card-title">Recettes, mois par mois</h2>
-          <p class="card-sub">Boutique au jour de la commande, école au jour de l'encaissement réel.</p>
+        <div class="tm-panel">
+          <div class="tm-panel-h"><b>Recettes, mois par mois</b><span>Boutique au jour de la commande, école au jour de l'encaissement réel.</span></div>
           <div id="an-recettes"><div class="empty">Chargement…</div></div>
         </div>
-        <div class="card">
-          <h2 class="card-title">L'école de basket</h2>
-          <p class="card-sub">Où en sont les dossiers, et ce qui rentre chaque mois.</p>
+        <div class="tm-panel">
+          <div class="tm-panel-h"><b>L'école de basket</b><span>Où en sont les dossiers, et ce qui rentre chaque mois.</span></div>
           <div id="an-ecole"><div class="empty">Chargement…</div></div>
         </div>
       </div>
@@ -4909,18 +4904,18 @@
 
     <!-- ===== COMPTES & RÔLES ===== -->
     <section id="section-comptes" class="hide">
-      <div class="callout">Un compte, un rôle&nbsp;— et le rôle décide des écrans que la personne voit en se connectant.
+      <div class="callout ds-note">Un compte, un rôle&nbsp;— et le rôle décide des écrans que la personne voit en se connectant.
         <b>Consulter qui porte quelle casquette ne demande rien</b>&nbsp;: la question se pose souvent, y répondre ne présente aucun risque.
         Seul le <b>changement</b> d'un rôle demande le mot de passe.</div>
 
-      <div class="card">
+      <div class="tm-panel">
         <div class="cp-head">
           <div>
-            <h2 class="card-title">Les comptes de l'administration</h2>
+            <div class="tm-panel-h" style="border:none;margin:0;padding:0"><b>Les comptes de l'administration</b></div>
             <p class="card-sub" id="cp-sub">Chargement…</p>
           </div>
           <div style="display:flex;gap:9px;flex-wrap:wrap">
-            <button type="button" class="btn btn-ghost" id="cp-pdf">Exporter les rôles (PDF)</button>
+            <button type="button" class="ds-act" id="cp-pdf">Exporter les rôles (PDF)</button>
             <button type="button" class="btn btn-ghost hide" id="cp-demander">Changer un rôle</button>
           </div>
         </div>
@@ -5005,9 +5000,9 @@
     </section>
 
     <section id="section-audit" class="hide">
-      <div class="callout">Qui a modifié quoi dans l'espace gestion, et quand. Protégé par un mot de passe distinct de la connexion — utile pour retrouver un changement ou vérifier une modification.</div>
+      <div class="callout ds-note">Qui a modifié quoi dans l'espace gestion, et quand. Protégé par un mot de passe distinct de la connexion — utile pour retrouver un changement ou vérifier une modification.</div>
 
-      <div class="card" id="audit-lock-card">
+      <div class="tm-panel" id="audit-lock-card" style="max-width:520px">
         <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:18px 0">
           <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:38px;height:38px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <div style="font-family:var(--font-ui);font-weight:700;font-size:17px;color:var(--text)">Accès verrouillé</div>
@@ -5015,7 +5010,7 @@
           <div class="field" style="width:100%;max-width:280px;margin:6px 0 0">
             <input type="password" id="audit-pwd" placeholder="Mot de passe" autocomplete="off">
           </div>
-          <button type="button" class="btn btn-primary" id="audit-unlock-btn" style="max-width:280px">Déverrouiller</button>
+          <button type="button" class="ds-mini-btn" id="audit-unlock-btn">Déverrouiller</button>
           <div class="msg" id="audit-lock-msg"></div>
         </div>
       </div>
@@ -18320,14 +18315,18 @@
       var panier = cmdOk.length ? Math.round(cmdOk.reduce(function(a,o){ return a+(Number(o.total)||0); },0)/cmdOk.length) : 0;
 
       document.getElementById('an-kpis').innerHTML =
-        '<div class="in-kpi"><b style="font-size:19px">'+esc(inFcfa(totalAn))+'</b><span>Encaissé au total</span></div>'+
-        '<div class="in-kpi"><b style="font-size:19px">'+esc(inFcfa(duMois))+'</b><span>Ce mois-ci</span></div>'+
-        '<div class="in-kpi good"><b>'+inscrits.length+'</b><span>Enfants inscrits</span></div>'+
+        // Le releve passe a .ds-fig : le libelle AU-DESSUS du chiffre, comme
+        // sur les huit autres ecrans. .in-kpi le mettait dessous, et cet
+        // ecran etait le dernier a le faire.
+        '<div class="ds-fig"><i>Encaissé au total</i><b>'+esc(inFcfa(totalAn))+'</b></div>'+
+        '<div class="ds-fig"><i>Ce mois-ci</i><b>'+esc(inFcfa(duMois))+'</b></div>'+
+        '<div class="ds-fig"><i>Enfants inscrits</i><b>'+inscrits.length+'</b></div>'+
         // Nomme : le tutoriel consacre un conseil entier a ce chiffre, et
         // le designer par son rang le ferait glisser au premier ajout.
-        '<div class="in-kpi'+(taux!=null&&taux<70?' warn':'')+'" id="an-kpi-recouvrees"><b>'+(taux==null?'—':taux+'%')+'</b><span>Mensualités recouvrées</span></div>'+
-        '<div class="in-kpi"><b>'+cmdOk.length+'</b><span>Commandes</span></div>'+
-        '<div class="in-kpi"><b style="font-size:19px">'+esc(panier?inFcfa(panier):'—')+'</b><span>Panier moyen</span></div>';
+        '<div class="ds-fig'+(taux!=null&&taux<70?' sig':'')+'" id="an-kpi-recouvrees"><i>Mensualités recouvrées</i>'+
+          '<b>'+(taux==null?'—':taux+'%')+'</b>'+(taux!=null&&taux<70?'<small>sous les 70 % attendus</small>':'')+'</div>'+
+        '<div class="ds-fig"><i>Commandes</i><b>'+cmdOk.length+'</b></div>'+
+        '<div class="ds-fig"><i>Panier moyen</i><b>'+esc(panier?inFcfa(panier):'—')+'</b></div>';
 
       // --- Recettes ---
       var parSource = {};
