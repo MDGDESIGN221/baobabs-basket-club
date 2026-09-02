@@ -125,11 +125,34 @@ DÉPLOYER AVEC UN SLUG LISIBLE — LA LIGNE DE COMMANDE
   C'est la seule façon d'obtenir un slug qui soit le nom : déployée
   ainsi, la fonction prend le nom de son dossier.
 
+  DEUX PIÈGES, PAYÉS LE 2 SEPTEMBRE 2026.
+
+  · « deploy » SANS --project-ref propose une LISTE et déploie où vous
+    cliquez. Le dossier était lié à un autre projet (mdg-creative-studio) ;
+    les cinq fonctions y sont parties d'un coup. Sans dégât — elles y
+    cherchent des tables qui n'existent pas — mais à supprimer :
+        npx supabase functions delete <nom> --project-ref <le mauvais ref>
+    Mettez TOUJOURS --project-ref, même quand le lien semble bon.
+
+  · « 403 : your account does not have the necessary privileges » ne veut
+    pas dire que la commande est fausse. Il veut dire que le compte
+    connecté ne voit pas ce projet. Même « functions list », qui ne fait
+    que lire, échoue. Pour trancher en une commande :
+        npx supabase projects list
+    Baobabs absent de la liste = mauvais compte. Présent mais deploy
+    refusé = rôle en lecture seule sur l'organisation.
+    Le projet Baobabs appartient au compte du club, pas au compte studio.
+
   Un terminal ouvert DANS le dossier du site :
 
       npx supabase login
-      npx supabase link --project-ref lmwbwasupqkvswukieav
-      npx supabase functions deploy
+      npx supabase functions deploy depot-piece --project-ref lmwbwasupqkvswukieav
+
+  On nomme la fonction : « deploy » tout court enverrait AUSSI
+  envoi-newsletter et alerte-inscription, qui tournent déjà sous
+  bright-endpoint et hyper-processor. On se retrouverait avec des
+  doublons, et il faudrait mettre à jour la table FN de l'admin dans la
+  foulée. On répare ce qui est cassé, on ne touche pas à ce qui marche.
 
   La dernière commande envoie les quatre fonctions rangées dans
   supabase/functions/ (envoi-newsletter, confirmation-reservation,
