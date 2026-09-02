@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>Banc d'essai — le nom d'un écran</title>
+<style>
+ body{font:14px/1.6 system-ui,sans-serif;background:#0B140F;color:#E8E4DA;margin:0;padding:22px}
+ h1{font-size:17px;margin:0 0 4px} p.sous{color:#8A9A8F;margin:0 0 18px;font-size:13px;max-width:74ch}
+ table{border-collapse:collapse;width:100%;max-width:940px}
+ td,th{border-bottom:1px solid #24352B;padding:7px 9px;text-align:left;font-size:13px}
+ th{color:#8A9A8F;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em}
+ .ok{color:#A8D93B} .ko{color:#E86A5E} code{color:#C6A257;font-size:12.5px}
+ #bilan{margin:16px 0 0;font-size:15px;font-weight:600}
+ #sidebar{position:absolute;left:-9999px}
+</style></head><body>
+<h1>Banc d'essai — le nom d'un écran</h1>
+<p class="sous"><code>nomEcran()</code> est <b>extrait de <code>tutoriel/tutoriel.js</code></b>.
+La barre latérale ci-dessous reprend le balisage réel de l'administration : une icône SVG, le texte
+nu, et parfois un badge de compteur ou un numéro de rang. Le nom d'un écran est ce que la personne
+lit — pas ce qu'un registre parallèle en dit.</p>
+
+<table id="res"><thead><tr><th>Cas</th><th>Attendu</th><th>Obtenu</th><th></th></tr></thead><tbody></tbody></table>
+<p id="bilan">…</p>
+
+<div id="sidebar">
+  <button class="sb-link" data-section="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9"/></svg> Tableau de bord </button>
+  <button class="sb-link" data-section="results"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9"/></svg> Résultats </button>
+  <button class="sb-link" data-section="live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9"/></svg> Direct </button>
+  <button class="sb-link" data-section="matches2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9"/></svg> Matchs à venir </button>
+  <button class="sb-link" data-section="applications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9"/></svg> Candidatures <span class="sb-link-badge">2</span></button>
+  <button class="sb-link" data-section="inscriptions"><span class="sb-link-num">2.3</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9"/></svg> Inscriptions </button>
+  <button class="sb-link" data-section="galerie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9"/></svg> Galerie</button>
+  <button class="sb-link" data-section="comptes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9"/></svg>   Comptes &amp; rôles
+  </button>
+</div>
+<script>
+
+// L'hote, reduit a ce que nomEcran() lui demande : le lien du menu et
+// le registre de repli.
+var api = {
+  lien: function (cle) { return document.querySelector('#sidebar .sb-link[data-section="' + cle + '"]'); },
+  metas: {
+    results:  { t: 'Résultats à saisir' },
+    live:     { t: 'Diffusion en direct' },
+    matches2: { t: 'Matchs' },
+    orphelin: { t: 'Nom de repli' }
+  }
+};
+
+  function nomEcran(cle) {
+    var l = api.lien && api.lien(cle);
+    if (l) {
+      var t = '';
+      // Le numero, le badge de compteur et l'icone ne font pas partie
+      // du nom. Meme regle que propre() cote hote.
+      for (var i = 0; i < l.childNodes.length; i++) {
+        var n = l.childNodes[i];
+        if (n.nodeType === 3) { t += n.nodeValue; continue; }
+        if (n.nodeType !== 1) continue;
+        var cl = n.getAttribute && n.getAttribute('class') || '';
+        if (n.tagName === 'svg' || /sb-link-num|sb-link-badge/.test(cl)) continue;
+        t += n.textContent || '';
+      }
+      t = t.replace(/\s+/g, ' ').trim();
+      if (t) return t;
+    }
+    return (api.metas && api.metas[cle] && api.metas[cle].t) || cle;
+  }
+
+
+var T = [], ok = 0;
+function essai(cas, attendu, obtenu) {
+  var bon = String(attendu) === String(obtenu);
+  if (bon) ok++;
+  T.push([cas, attendu, obtenu, bon]);
+}
+
+// Le menu gagne, meme quand SECTION_META dit autre chose.
+essai('nom simple', 'Tableau de bord', nomEcran('dashboard'));
+essai('le menu gagne sur SECTION_META', 'Résultats', nomEcran('results'));
+essai('le menu gagne — cas Direct', 'Direct', nomEcran('live'));
+essai('le menu gagne — cas Matchs a venir', 'Matchs à venir', nomEcran('matches2'));
+
+// Ce qui n'est pas le nom doit disparaitre.
+essai('le badge de compteur est retire', 'Candidatures', nomEcran('applications'));
+essai('le numero de rang est retire', 'Inscriptions', nomEcran('inscriptions'));
+essai("l'icone SVG ne laisse rien", 'Galerie', nomEcran('galerie'));
+essai('les espaces sont normalises', 'Comptes & rôles', nomEcran('comptes'));
+
+// Le repli, quand l'ecran n'a pas d'entree de menu.
+essai('repli sur SECTION_META', 'Nom de repli', nomEcran('orphelin'));
+essai('repli ultime sur la cle', 'inconnu', nomEcran('inconnu'));
+
+document.querySelector('#res tbody').innerHTML = T.map(function (r) {
+  return '<tr><td>' + r[0] + '</td><td><code>' + r[1] + '</code></td><td><code>' + r[2] +
+    '</code></td><td class="' + (r[3] ? 'ok' : 'ko') + '">' + (r[3] ? 'OK' : 'ECHEC') + '</td></tr>';
+}).join('');
+document.getElementById('bilan').innerHTML = ok + ' / ' + T.length +
+  ' <span class="' + (ok === T.length ? 'ok' : 'ko') + '">' +
+  (ok === T.length ? '— tout passe' : '— il reste des echecs') + '</span>';
+window.__bilan = { ok: ok, total: T.length,
+  echecs: T.filter(function (r) { return !r[3]; })
+           .map(function (r) { return r[0] + ' : attendu ' + r[1] + ', obtenu ' + r[2]; }) };
+
+</script></body></html>

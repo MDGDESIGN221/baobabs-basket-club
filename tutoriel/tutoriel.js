@@ -369,6 +369,41 @@
   // ===================================================================
   // LE PLAN
   // ===================================================================
+
+  // UN ECRAN N'A QU'UN NOM : CELUI QUE LA PERSONNE A SOUS LES YEUX.
+  //
+  // Il y en avait deux. api.plan() lit le menu et rend « Matchs a
+  // venir », « Direct », « Bureau », « Tryouts », « Coherence » ; mais
+  // SECTION_META.t, un registre a cote, dit « Matchs », « Diffusion en
+  // direct », « Bureau / organigramme », « Page Tryouts », « Coherence
+  // site <-> admin ». Selon l'endroit du code, le tutoriel prenait l'un
+  // ou l'autre -- donc la voix nommait un ecran autrement que le menu
+  // qu'on regardait, sur une dizaine d'ecrans.
+  //
+  // C'est exactement la duplication que toute l'architecture evite
+  // ailleurs : « le tutoriel lit l'hote, il ne recopie rien ». On lit
+  // donc le lien du menu, et SECTION_META.t ne sert plus que de repli
+  // pour un ecran qui n'aurait pas d'entree.
+  function nomEcran(cle) {
+    var l = api.lien && api.lien(cle);
+    if (l) {
+      var t = '';
+      // Le numero, le badge de compteur et l'icone ne font pas partie
+      // du nom. Meme regle que propre() cote hote.
+      for (var i = 0; i < l.childNodes.length; i++) {
+        var n = l.childNodes[i];
+        if (n.nodeType === 3) { t += n.nodeValue; continue; }
+        if (n.nodeType !== 1) continue;
+        var cl = n.getAttribute && n.getAttribute('class') || '';
+        if (n.tagName === 'svg' || /sb-link-num|sb-link-badge/.test(cl)) continue;
+        t += n.textContent || '';
+      }
+      t = t.replace(/\s+/g, ' ').trim();
+      if (t) return t;
+    }
+    return (api.metas && api.metas[cle] && api.metas[cle].t) || cle;
+  }
+
   function construirePlan() {
     plan = [];
 
@@ -1226,7 +1261,7 @@
   function ouvrirContexte(cle) {
     ctxEcran = cle;
     var meta = (api.metas && api.metas[cle]) || {};
-    var nom = meta.t || cle;
+    var nom = nomEcran(cle);
 
     $('bt-ctx-t').textContent = nom;
     $('bt-ctx-s').textContent = meta.d || '';
@@ -1306,7 +1341,7 @@
     var mod = api.moduleDe(cle);
     var rep = $('bt-ctx-rep');
     rep.classList.remove('hide');
-    rep.innerHTML = '<h3>Qui a accès à « ' + echapper((api.metas[cle] || {}).t || cle) + ' »</h3>' +
+    rep.innerHTML = '<h3>Qui a accès à « ' + echapper(nomEcran(cle)) + ' »</h3>' +
       '<p>Cet écran dépend de <code>' + echapper(mod.nom) + '</code>. Voici ce que chaque casquette peut y faire.</p>' +
       '<div class="bt-perm"><p style="margin:0">Lecture des droits…</p></div>';
 
@@ -1336,7 +1371,7 @@
   // Une visite d'UN seul écran : celui où l'on est déjà. Pas de
   // chapitre, pas de sommaire, pas de détour.
   function visiteEcran(cle, avecGestes) {
-    var nom = (api.metas[cle] || {}).t || cle;
+    var nom = nomEcran(cle);
     etapes = etapesEcran({ cle: cle, nom: nom });
     if (!avecGestes) etapes = etapes.filter(function (e) { return !e.geste; });
     // On retire l'etape d'arrivee. Deux raisons : on est deja sur
@@ -1764,7 +1799,7 @@
       enonce = (esp > 110 ? coupe.slice(0, esp) : coupe) + '…';
     }
 
-    var bonNom = (api.metas[bon.cle] || {}).t || bon.nom;
+    var bonNom = nomEcran(bon.cle) || bon.nom;
     var options = melanger([
       { nom: bonNom, juste: true },
       { nom: leurres[0].nom, juste: false },
