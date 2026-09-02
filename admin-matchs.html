@@ -1070,7 +1070,7 @@
   .pv-standing-pts{font-family:var(--font-ui);font-weight:700;font-size:16px;color:var(--gold-bright);flex:none}
   .pv-standing-pts small{font-family:var(--font-ui);font-weight:700;font-size:9px;color:var(--faint);letter-spacing:.06em}
 
-  .pv-player-card{position:relative;background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;overflow:hidden}
+  .pv-player-card{position:relative;background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
   .pv-player-photo{width:100%;height:170px;object-fit:cover;object-position:top center;display:block}
   .pv-player-photo.pv-noimg{display:flex;align-items:center;justify-content:center;font-family:var(--font-ui);font-weight:700;font-size:30px;color:#0A1B0D}
   .pv-player-info{padding:14px 16px 16px;position:relative}
@@ -1096,7 +1096,7 @@
   .pv-partner-tile img{max-height:100%;max-width:100%;width:auto;object-fit:contain;filter:brightness(0) invert(1)}
   .pv-partner-name{font-family:var(--font-ui);font-weight:700;font-size:13px;color:#C7CFC8}
 
-  .pv-product-card{background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;overflow:hidden}
+  .pv-product-card{background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
   .pv-product-img{position:relative;aspect-ratio:4/5;background:var(--surface-2)}
   .pv-product-img img{width:100%;height:100%;object-fit:cover;display:block}
   .pv-product-noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--faint)}
@@ -1187,9 +1187,15 @@
   /* Carte façon fiche de joueuse : le portrait porte le numéro de maillot,
      comme sur un programme de match. */
   .ef-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:14px}
-  .ef-card{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);cursor:pointer;transition:border-color .16s,transform .16s}
-  .ef-card:hover{border-color:var(--gold);transform:translateY(-2px)}
-  .ef-photo{aspect-ratio:3/4;width:100%;object-fit:cover;object-position:top center;display:block;background:linear-gradient(160deg,#16231A,#0C1611)}
+  /* Une fiche de joueuse porte un portrait : la carte se justifie, comme
+     dans la galerie. Elle perd son aplat, son rayon de 14px et le petit
+     saut au survol — l'or de la bordure suffit a dire qu'on la vise. */
+  .ef-card{position:relative;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;
+    background:transparent;cursor:pointer;transition:border-color .16s}
+  .ef-card:hover{border-color:var(--gold)}
+  /* Un portrait manquant n'est pas un degrade vert : c'est un vide. */
+  .ef-photo{aspect-ratio:3/4;width:100%;object-fit:cover;object-position:top center;display:block;
+    background:var(--surface-3)}
   .ef-jersey{position:absolute;top:9px;left:11px;font-family:var(--font-ui);font-weight:700;font-size:26px;line-height:1;letter-spacing:-.04em;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.75)}
   .ef-st{position:absolute;top:11px;right:9px}
   .ef-b{padding:11px 12px 13px}
@@ -1198,10 +1204,12 @@
   .ef-stats{display:flex;gap:13px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
   .ef-stat b{display:block;font-family:var(--font-ui);font-weight:700;font-size:14px;color:var(--gold);line-height:1}
   .ef-stat span{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
-  .ef-hero{display:flex;flex-wrap:wrap;gap:clamp(16px,2.6vw,26px);padding:clamp(18px,2.6vw,26px);background:linear-gradient(140deg,#16231A,#0E1712);border-bottom:1px solid var(--line)}
-  .ef-hero-photo{flex:none;width:132px;aspect-ratio:3/4;border-radius:12px;object-fit:cover;object-position:top center;background:#11201a;border:1px solid var(--line-strong)}
+  .ef-hero{display:flex;flex-wrap:wrap;gap:clamp(16px,2.6vw,26px);padding:clamp(18px,2.6vw,26px);
+    background:var(--surface);border-top:2px solid var(--gold);border-bottom:1px solid var(--line-strong)}
+  .ef-hero-photo{flex:none;width:132px;aspect-ratio:3/4;border-radius:var(--r-sm);object-fit:cover;
+    object-position:top center;background:var(--surface-3);border:1px solid var(--line-strong)}
   .ef-statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:11px}
-  .ef-statbox{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:12px}
+  .ef-statbox{background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:12px}
   .ef-statbox input{background:transparent;border:none;color:var(--gold);font-family:var(--font-ui);font-weight:700;font-size:21px;letter-spacing:-.02em;width:100%;padding:0}
   .ef-statbox input:focus{outline:none;color:var(--gold-bright)}
   .ef-statbox label{display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:3px}
@@ -4124,24 +4132,24 @@
     <!-- ===== SECTION JOUEUSES ===== -->
     <section id="section-squad" class="hide">
       <div id="ef-list-view">
-        <div class="mod-head">
-          <h2 class="mod-head-title">Joueuses</h2>
-          <span class="mod-count" id="ef-count">—</span>
-          <input type="search" class="mod-search" id="ef-search" placeholder="Nom, poste, ville…">
-          <select id="ef-filter" aria-label="Filtrer l'effectif" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px">
+        <div class="ds-band" id="ef-kpis"></div>
+        <div class="ds-head">
+          <button type="button" class="ds-mini-btn" id="ef-new">Nouvelle fiche</button>
+          <span class="ds-count" id="ef-count">—</span>
+          <input type="search" class="ds-search" id="ef-search" placeholder="Nom, poste, ville…">
+          <select id="ef-filter" class="ds-sel" aria-label="Filtrer l'effectif">
             <option value="">Tout l'effectif</option>
             <option value="active">Actives</option>
             <option value="blessee">Blessées</option>
             <option value="pret">En prêt</option>
             <option value="partie">Parties</option>
           </select>
-          <button type="button" class="btn btn-primary" id="ef-new" style="padding:10px 16px;font-size:13px">Nouvelle fiche</button>
         </div>
-        <div class="callout">Une fiche par joueuse, avec son statut. Une joueuse blessée ou partie n'est plus affichée comme si de rien n'était&nbsp;: son statut apparaît sur sa carte et permet de filtrer.</div>
+        <div class="callout ds-note">Une fiche par joueuse, avec son statut. Une joueuse blessée ou partie n'est plus affichée comme si de rien n'était&nbsp;: son statut apparaît sur sa carte et permet de filtrer.</div>
         <div class="ef-grid" id="ef-grid"></div>
       </div>
       <div id="ef-doc-view" class="hide">
-        <button type="button" class="cd-back" id="ef-back">
+        <button type="button" class="cd-back ds-back" id="ef-back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Tout l'effectif
         </button>
@@ -4806,8 +4814,9 @@
     </section>
     <section id="section-bureau" class="hide">
       <div class="grid-2"><div>
-      <div class="card">
-        <div class="callout">Choisissez un poste de l'organigramme et remplissez sa fiche. La <b>structure de l'arbre reste fixe</b> ; vous éditez le titulaire, la photo et le texte de chaque fiche. Laissez vide pour garder le texte par défaut du site.</div>
+      <div class="tm-panel">
+        <div class="tm-panel-h"><b>Fiche du poste</b><span>La structure de l'arbre reste fixe ; vous éditez son titulaire.</span></div>
+        <div class="callout ds-note">Choisissez un poste de l'organigramme et remplissez sa fiche. La <b>structure de l'arbre reste fixe</b> ; vous éditez le titulaire, la photo et le texte de chaque fiche. Laissez vide pour garder le texte par défaut du site.</div>
         <div class="field">
           <label for="bureau_role">Poste</label>
           <select id="bureau_role"></select>
@@ -4820,14 +4829,14 @@
           </div>
           <input type="file" id="bureau_file" accept="image/*">
           <input type="text" id="bureau_url" placeholder="https://…" class="hide">
-          <img id="bureau_preview" alt="" class="logo-preview" style="width:88px;height:88px;border-radius:50%;object-fit:cover" alt="">
+          <img id="bureau_preview" alt="" class="logo-preview" style="width:88px;height:88px;border-radius:var(--r-sm);object-fit:cover">
         </div>
         <div class="field"><label for="set_bureau_holder">Nom du titulaire <span class="opt">(optionnel)</span></label><input type="text" id="set_bureau_holder" placeholder="Ex : Awa Sène"></div>
         <div class="field"><label for="set_bureau_intro">Intro de la fiche</label><textarea id="set_bureau_intro" placeholder="Rôle général du poste…"></textarea></div>
         <div class="field"><label for="set_bureau_resp">Responsabilités</label><textarea id="set_bureau_resp" style="min-height:120px" placeholder="Une par ligne…"></textarea><span class="hint">Une responsabilité par ligne.</span></div>
         <div class="field"><label for="set_bureau_powers">Pouvoirs <span class="opt">(optionnel)</span></label><textarea id="set_bureau_powers" placeholder="Un par ligne…"></textarea><span class="hint">Un par ligne.</span></div>
         <div class="field"><label for="set_bureau_limits">Limites <span class="opt">(optionnel)</span></label><textarea id="set_bureau_limits" placeholder="Une par ligne…"></textarea><span class="hint">Une par ligne.</span></div>
-        <button class="btn btn-primary" id="save-bureau-btn">Enregistrer ce poste</button>
+        <button class="ds-mini-btn" id="save-bureau-btn">Enregistrer ce poste</button>
         <div class="msg" id="bureau-msg"></div>
       </div>
       </div>
@@ -12739,9 +12748,16 @@
   ];
 
   function efSt(s){ return EF_STATUS[s || 'active'] || EF_STATUS.active; }
+  // « Active » est l'etat normal d'une joueuse : quatorze cartes
+  // portaient quatorze pastilles vertes, et l'oeil devait chercher
+  // celle qui n'en etait pas une. Seule l'indisponibilite se marque.
   function efPill(s){
-    var st = efSt(s);
-    return '<span class="st-pill" style="color:' + st[1] + ';border:1px solid ' + st[1] + '55;background:' + st[1] + '22">' + esc(st[0]) + '</span>';
+    var k = s || 'active';
+    var st = efSt(k);
+    if (k === 'blessee') return '<span class="ds-tag cri">' + esc(st[0]) + '</span>';
+    if (k === 'pret')    return '<span class="ds-tag warn">' + esc(st[0]) + '</span>';
+    if (k === 'partie')  return '<span class="ds-tag">' + esc(st[0]) + '</span>';
+    return '';
   }
   function efById(id){ return efRows.filter(function(r){ return String(r.id) === String(id); })[0]; }
   function efStats(r){
@@ -12841,6 +12857,7 @@
     });
 
     document.getElementById('ef-count').textContent = rows.length + (rows.length > 1 ? ' fiches' : ' fiche');
+    efKpis();
     var box = document.getElementById('ef-grid');
     if (!rows.length){ box.innerHTML = '<div class="empty" style="grid-column:1/-1">Aucune fiche pour ce filtre.</div>'; return; }
 
@@ -12852,9 +12869,10 @@
       var stats = EF_STATS.slice(0, 3).map(function(k){
         return '<div class="ef-stat"><b>' + esc(st[k[0]] != null && st[k[0]] !== '' ? st[k[0]] : '—') + '</b><span>' + esc(k[1].split('/')[0]) + '</span></div>';
       }).join('');
+      var marque = efPill(r.status);
       return '<div class="ef-card" data-id="' + r.id + '">' + photo +
         (r.jersey_number != null ? '<span class="ef-jersey">' + r.jersey_number + '</span>' : '') +
-        '<span class="ef-st">' + efPill(r.status) + '</span>' +
+        (marque ? '<span class="ef-st">' + marque + '</span>' : '') +
         '<div class="ef-b">' +
           '<div class="ef-name">' + esc(r.name || 'Sans nom') + '</div>' +
           '<div class="ef-meta">' + esc([r.position, r.height, (r.age ? r.age + ' ans' : '')].filter(Boolean).join(' · ') || '—') + '</div>' +
@@ -12865,6 +12883,30 @@
     box.querySelectorAll('.ef-card').forEach(function(el){
       el.addEventListener('click', function(){ efSel = el.getAttribute('data-id'); efDirty = false; efRender(); });
     });
+  }
+
+  // Ce qu'un entraineur vient verifier : combien il en a, combien sont
+  // disponibles, et combien de fiches le site affiche sans photo.
+  function efKpis(){
+    var band = document.getElementById('ef-kpis');
+    if (!band) return;
+    var actives = 0, blessees = 0, sansPhoto = 0;
+    efRows.forEach(function(r){
+      var k = r.status || 'active';
+      if (k === 'active') actives++;
+      if (k === 'blessee') blessees++;
+      if (k !== 'partie' && !r.photo_url) sansPhoto++;
+    });
+    band.innerHTML =
+      '<div class="ds-fig"><i>Effectif</i><b>' + efRows.length + '</b>' +
+        '<small>' + (efRows.length > 1 ? 'fiches enregistrées' : 'fiche enregistrée') + '</small></div>' +
+      '<div class="ds-fig"><i>Disponibles</i><b>' + actives + '</b>' +
+        '<small>joueuses actives</small></div>' +
+      '<div class="ds-fig' + (blessees ? ' cri' : '') + '"><i>Blessées</i><b>' + blessees + '</b>' +
+        '<small>' + (blessees ? 'hors du groupe' : 'personne à l\'infirmerie') + '</small></div>' +
+      '<div class="ds-fig' + (sansPhoto ? ' sig' : '') + '"><i>Sans photo</i><b>' + sansPhoto + '</b>' +
+        '<small>fiches incomplètes sur le site</small></div>';
+    band.classList.toggle('hide', !efRows.length);
   }
 
   function efRenderDoc(){
@@ -19942,10 +19984,10 @@
         var isFuture=n.published_at && daysUntil(n.published_at)>0;
         var futureBadge=isFuture?'<span style="display:inline-block;margin-top:6px;font-family:var(--font-ui);font-weight:700;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:20px;background:rgba(229,86,74,.12);color:#F0847A;border:1px solid rgba(229,86,74,.3)">Date future</span>':'';
         var excerpt=n.body?esc(String(n.body).slice(0,110))+(String(n.body).length>110?'\u2026':''):'';
-        return '<article data-qgv-id="'+esc(id)+'" style="position:relative;background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:16px;overflow:hidden;cursor:pointer'+(isSel?';box-shadow:0 0 0 2px #A8D93B,0 0 0 5px rgba(168,217,59,.2)':'')+'">'+img+'<div style="padding:15px 17px 19px">'+(date?'<div style="font-family:var(--font-ui);font-weight:600;font-size:11px;letter-spacing:.1em;color:#C6A257;text-transform:uppercase">'+esc(date)+'</div>':'')+'<h3 style="font-family:var(--font-ui);font-weight:700;font-size:18px;color:#F3EFE6;margin:6px 0 0;line-height:1.15">'+esc(n.title||'Nouvelle actualité')+'</h3>'+(excerpt?'<p style="font-size:13px;line-height:1.55;color:#B9C2BB;margin:8px 0 0">'+excerpt+'</p>':'')+futureBadge+'</div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;z-index:5;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid rgba(243,239,230,.14);border-radius:9px;padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</article>';
+        return '<article data-qgv-id="'+esc(id)+'" style="position:relative;background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;cursor:pointer'+(isSel?';box-shadow:0 0 0 1px var(--gold)':'')+'">'+img+'<div style="padding:15px 17px 19px">'+(date?'<div style="font-family:var(--font-ui);font-weight:600;font-size:11px;letter-spacing:.1em;color:#C6A257;text-transform:uppercase">'+esc(date)+'</div>':'')+'<h3 style="font-family:var(--font-ui);font-weight:700;font-size:18px;color:#F3EFE6;margin:6px 0 0;line-height:1.15">'+esc(n.title||'Nouvelle actualité')+'</h3>'+(excerpt?'<p style="font-size:13px;line-height:1.55;color:#B9C2BB;margin:8px 0 0">'+excerpt+'</p>':'')+futureBadge+'</div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;z-index:5;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</article>';
       }
       var out=''; rows.forEach(function(n){ out+=card(n,n.id); }); if(draft) out+=card(draft,'__new__');
-      out+='<button type="button" class="qgv-add" style="min-height:200px;border-radius:16px;border:1.5px dashed rgba(198,162,87,.5);background:radial-gradient(120% 130% at 80% 0%,#12402C,#0A2318 62%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#A8D93B;cursor:pointer"><span style="width:42px;height:42px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span style="font-weight:700;font-size:12.5px">Publier une actualité</span></button>';
+      out+='<button type="button" class="qgv-add" style="min-height:200px;border-radius:var(--r-md);border:1px dashed var(--line-loud);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--faint);cursor:pointer"><span style="width:42px;height:42px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span style="font-weight:700;font-size:12.5px">Publier une actualité</span></button>';
       return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px">'+out+'</div>';
     },
     partners:function(rows, draft, sel){
@@ -19962,31 +20004,31 @@
         if(featured) badges+='<span style="position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-ui);font-weight:700;font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:#0A1B0D;background:#C6A257;border-radius:20px;padding:3px 8px"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 6.9 7.5.6-5.7 4.9 1.8 7.3L12 18.3 5.4 21.7l1.8-7.3L1.5 9.5 9 8.9 12 2Z"/></svg>Principal</span>';
         if(hidden) badges+='<span style="position:absolute;bottom:8px;left:8px;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-ui);font-weight:700;font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:#B9C2BB;background:rgba(9,15,11,.75);border:1px solid rgba(243,239,230,.14);border-radius:20px;padding:3px 8px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.2A9.1 9.1 0 0 1 12 4c7 0 10 8 10 8a13 13 0 0 1-1.7 2.7M6.6 6.6A13 13 0 0 0 2 12s3 8 10 8a9 9 0 0 0 5.4-1.7M3 3l18 18"/></svg>Masqué</span>';
         var border=featured?'border:1px solid rgba(198,162,87,.55)':'border:1px solid rgba(243,239,230,.09)';
-        return '<div data-qgv-id="'+esc(id)+'" style="position:relative;aspect-ratio:3/2;background:#0D1A12;'+border+';border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;'+(hidden?'opacity:.5;':'')+(isSel?'box-shadow:0 0 0 2px #A8D93B,0 0 0 5px rgba(168,217,59,.2)':(featured?'box-shadow:0 0 0 3px rgba(198,162,87,.18)':''))+'">'+inner+badges+(isSel?'<div class="qgv-tb" style="position:absolute;top:8px;right:8px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid rgba(243,239,230,.14);border-radius:9px;padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
+        return '<div data-qgv-id="'+esc(id)+'" style="position:relative;aspect-ratio:3/2;background:#0D1A12;'+border+';border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;'+(hidden?'opacity:.5;':'')+(isSel?'box-shadow:0 0 0 1px var(--gold)':(featured?'box-shadow:0 0 0 3px rgba(198,162,87,.18)':''))+'">'+inner+badges+(isSel?'<div class="qgv-tb" style="position:absolute;top:8px;right:8px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
       }
       var sorted=rows.slice().sort(function(a,b){ var fa=(a.featured===true||a.featured==='true')?0:1, fb=(b.featured===true||b.featured==='true')?0:1; if(fa!==fb) return fa-fb; return (a.sort||0)-(b.sort||0); });
       var out=''; sorted.forEach(function(p){ out+=tile(p,p.id); }); if(draft) out+=tile(draft,'__new__');
-      out+='<button type="button" class="qgv-add" style="aspect-ratio:3/2;border-radius:14px;border:1.5px dashed rgba(198,162,87,.5);background:radial-gradient(120% 130% at 80% 0%,#12402C,#0A2318 62%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#A8D93B;cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12px">Ajouter</span></button>';
+      out+='<button type="button" class="qgv-add" style="aspect-ratio:3/2;border-radius:var(--r-md);border:1px dashed var(--line-loud);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12px">Ajouter</span></button>';
       return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px">'+out+'</div>';
     },
     staff:function(rows, draft, sel){
       function card(m,id){
         var isSel=sel!=null&&String(sel)===String(id);
-        var photo=m.photo_url?'<img src="'+esc(m.photo_url)+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none;background:#12211A;pointer-events:none">':'<span style="width:64px;height:64px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,#183024,#0d1b13);border:1px solid rgba(198,162,87,.3);font-family:var(--font-ui);font-weight:700;font-size:18px;color:#C6A257">'+esc(initials(m.name||'?'))+'</span>';
-        return '<div data-qgv-id="'+esc(id)+'" style="position:relative;display:flex;align-items:center;gap:14px;background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:16px;padding:16px 18px;cursor:pointer'+(isSel?';box-shadow:0 0 0 2px #A8D93B,0 0 0 5px rgba(168,217,59,.2)':'')+'">'+photo+'<div style="min-width:0"><div style="font-family:var(--font-ui);font-weight:700;font-size:16px;color:#F3EFE6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name||'Nouveau membre')+'</div><div style="font-family:var(--font-ui);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#A8D93B;margin-top:5px">'+esc(m.role||'Fonction')+'</div></div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid rgba(243,239,230,.14);border-radius:9px;padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
+        var photo=m.photo_url?'<img src="'+esc(m.photo_url)+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none;background:var(--surface-3);pointer-events:none">':'<span style="width:64px;height:64px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border:1px solid var(--line-strong);font-family:var(--font-ui);font-weight:700;font-size:18px;color:#C6A257">'+esc(initials(m.name||'?'))+'</span>';
+        return '<div data-qgv-id="'+esc(id)+'" style="position:relative;display:flex;align-items:center;gap:14px;background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:16px 18px;cursor:pointer'+(isSel?';box-shadow:0 0 0 1px var(--gold)':'')+'">'+photo+'<div style="min-width:0"><div style="font-family:var(--font-ui);font-weight:700;font-size:16px;color:#F3EFE6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name||'Nouveau membre')+'</div><div style="font-family:var(--font-ui);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-top:5px">'+esc(m.role||'Fonction')+'</div></div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
       }
       var out=''; rows.forEach(function(m){ out+=card(m,m.id); }); if(draft) out+=card(draft,'__new__');
-      out+='<button type="button" class="qgv-add" style="display:flex;align-items:center;justify-content:center;gap:9px;min-height:96px;border-radius:16px;border:1.5px dashed rgba(198,162,87,.5);background:radial-gradient(120% 130% at 80% 0%,#12402C,#0A2318 62%);color:#A8D93B;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12.5px">Ajouter un membre</span></button>';
+      out+='<button type="button" class="qgv-add" style="display:flex;align-items:center;justify-content:center;gap:9px;min-height:96px;border-radius:var(--r-md);border:1px dashed var(--line-loud);background:transparent;color:var(--faint);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12.5px">Ajouter un membre</span></button>';
       return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">'+out+'</div>';
     },
     timeline:function(rows, draft, sel){
       function item(t,id){
         var isSel=sel!=null&&String(sel)===String(id);
         var body=t.body?bbRichAdmin(t.body):'';
-        return '<div data-qgv-id="'+esc(id)+'" style="position:relative;display:flex;gap:20px;align-items:flex-start;background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:18px 20px;cursor:pointer'+(isSel?';box-shadow:0 0 0 2px #A8D93B,0 0 0 5px rgba(168,217,59,.2)':'')+'"><div style="flex:none;width:74px;font-family:var(--font-ui);font-weight:700;font-size:22px;color:#C6A257">'+esc(t.year||'—')+'</div><div style="min-width:0"><div style="font-family:var(--font-ui);font-weight:700;font-size:16px;color:#F3EFE6">'+esc(t.title||'Nouvelle étape')+'</div>'+(body?'<div style="font-size:13px;line-height:1.55;color:#B9C2BB;margin-top:6px">'+body+'</div>':'')+'</div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid rgba(243,239,230,.14);border-radius:9px;padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
+        return '<div data-qgv-id="'+esc(id)+'" style="position:relative;display:flex;gap:20px;align-items:flex-start;background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:18px 20px;cursor:pointer'+(isSel?';box-shadow:0 0 0 1px var(--gold)':'')+'"><div style="flex:none;width:74px;font-family:var(--font-ui);font-weight:700;font-size:22px;color:#C6A257">'+esc(t.year||'—')+'</div><div style="min-width:0"><div style="font-family:var(--font-ui);font-weight:700;font-size:16px;color:#F3EFE6">'+esc(t.title||'Nouvelle étape')+'</div>'+(body?'<div style="font-size:13px;line-height:1.55;color:#B9C2BB;margin-top:6px">'+body+'</div>':'')+'</div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
       }
       var out=''; rows.forEach(function(t){ out+=item(t,t.id); }); if(draft) out+=item(draft,'__new__');
-      out+='<button type="button" class="qgv-add" style="display:flex;align-items:center;justify-content:center;gap:9px;min-height:80px;border-radius:14px;border:1.5px dashed rgba(198,162,87,.5);background:radial-gradient(120% 130% at 80% 0%,#12402C,#0A2318 62%);color:#A8D93B;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12.5px">Ajouter une étape</span></button>';
+      out+='<button type="button" class="qgv-add" style="display:flex;align-items:center;justify-content:center;gap:9px;min-height:80px;border-radius:var(--r-md);border:1px dashed var(--line-loud);background:transparent;color:var(--faint);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12.5px">Ajouter une étape</span></button>';
       return '<div style="display:flex;flex-direction:column;gap:12px">'+out+'</div>';
     },
     shop:function(rows, draft, sel){
@@ -19996,10 +20038,10 @@
         var oos=(p.in_stock===false||p.in_stock==='false');
         var price=p.price?Number(p.price).toLocaleString('fr-FR')+' FCFA':'';
         var img=main?'<img src="'+esc(main)+'" alt="" style="width:100%;height:100%;object-fit:cover;pointer-events:none">':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#3f4a43;background:linear-gradient(135deg,#12331F,#0A1B12)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></div>';
-        return '<div data-qgv-id="'+esc(id)+'" style="position:relative;background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:16px;overflow:hidden;cursor:pointer'+(isSel?';box-shadow:0 0 0 2px #A8D93B,0 0 0 5px rgba(168,217,59,.2)':'')+'"><div style="position:relative;aspect-ratio:1/1;overflow:hidden">'+img+(oos?'<span style="position:absolute;top:10px;left:10px;font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#F3EFE6;background:rgba(229,86,74,.9);border-radius:7px;padding:4px 9px">Épuisé</span>':'')+'</div><div style="padding:13px 15px 16px"><div style="font-family:var(--font-ui);font-weight:700;font-size:14.5px;color:#F3EFE6">'+esc(p.name||'Nouveau produit')+'</div><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:5px"><span style="font-size:11.5px;color:#8b968e">'+esc(p.category||'')+'</span><span style="font-family:var(--font-ui);font-weight:700;font-size:13.5px;color:#C6A257">'+price+'</span></div></div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid rgba(243,239,230,.14);border-radius:9px;padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
+        return '<div data-qgv-id="'+esc(id)+'" style="position:relative;background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;cursor:pointer'+(isSel?';box-shadow:0 0 0 1px var(--gold)':'')+'"><div style="position:relative;aspect-ratio:1/1;overflow:hidden">'+img+(oos?'<span style="position:absolute;top:10px;left:10px;font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#F3EFE6;background:rgba(229,86,74,.9);border-radius:7px;padding:4px 9px">Épuisé</span>':'')+'</div><div style="padding:13px 15px 16px"><div style="font-family:var(--font-ui);font-weight:700;font-size:14.5px;color:#F3EFE6">'+esc(p.name||'Nouveau produit')+'</div><div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:5px"><span style="font-size:11.5px;color:#8b968e">'+esc(p.category||'')+'</span><span style="font-family:var(--font-ui);font-weight:700;font-size:13.5px;color:#C6A257">'+price+'</span></div></div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:6px;color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
       }
       var out=''; rows.forEach(function(p){ out+=card(p,p.id); }); if(draft) out+=card(draft,'__new__');
-      out+='<button type="button" class="qgv-add" style="min-height:230px;border-radius:16px;border:1.5px dashed rgba(198,162,87,.5);background:radial-gradient(120% 130% at 80% 0%,#12402C,#0A2318 62%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#A8D93B;cursor:pointer"><span style="width:42px;height:42px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span style="font-weight:700;font-size:12.5px">Ajouter un produit</span></button>';
+      out+='<button type="button" class="qgv-add" style="min-height:230px;border-radius:var(--r-md);border:1px dashed var(--line-loud);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--faint);cursor:pointer"><span style="width:42px;height:42px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span style="font-weight:700;font-size:12.5px">Ajouter un produit</span></button>';
       return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px">'+out+'</div>';
     }
   };
@@ -20953,14 +20995,14 @@
         // sur fond sombre — remettre le champ ET le brancher.
         {key:'favicon_url', label:'Favicon', type:'image', def:LOGO_DEF}
       ],
-      preview:function(v){ return '<div style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:20px;text-align:center"><img src="'+esc(v.logo_url||LOGO_DEF)+'" alt="" style="width:60px;height:60px;object-fit:contain;margin:0 auto 12px"><div style="font-family:var(--font-ui);font-weight:700;font-size:18px;color:#F3EFE6">'+esc(v.club_name)+'</div><div style="font-size:12.5px;color:#C6A257;margin-top:4px">'+esc(v.club_tagline)+'</div><div style="font-size:12px;color:#B9C2BB;margin-top:8px">'+esc(v.club_description)+'</div></div>'; } },
+      preview:function(v){ return '<div style="background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:20px;text-align:center"><img src="'+esc(v.logo_url||LOGO_DEF)+'" alt="" style="width:60px;height:60px;object-fit:contain;margin:0 auto 12px"><div style="font-family:var(--font-ui);font-weight:700;font-size:18px;color:#F3EFE6">'+esc(v.club_name)+'</div><div style="font-size:12.5px;color:#C6A257;margin-top:4px">'+esc(v.club_tagline)+'</div><div style="font-size:12px;color:#B9C2BB;margin-top:8px">'+esc(v.club_description)+'</div></div>'; } },
     { id:'set_contact', page:'Réglages · Coordonnées', label:'Coordonnées', fields:[
         {key:'club_phone', label:'Téléphone', type:'text', def:''},
         {key:'club_email', label:'Email', type:'text', def:''},
         {key:'club_address', label:'Adresse', type:'text', def:'Complexe Patrick Semedo, Dakar'},
         {key:'club_maps_url', label:'Lien Google Maps', type:'text', def:''}
       ],
-      preview:function(v){ function line(ic,t){ return t?'<div style="display:flex;gap:9px;align-items:center;font-size:13px;color:#C7CFC8;margin-top:8px"><span style="color:#C6A257">'+ic+'</span>'+esc(t)+'</div>':''; } return '<div style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:20px">'+line('✆',v.club_phone)+line('✉',v.club_email)+line('⌖',v.club_address)+(v.club_maps_url?'<div style="font-size:11.5px;color:#7E8A82;margin-top:10px">Maps : '+esc(v.club_maps_url)+'</div>':'')+'</div>'; } },
+      preview:function(v){ function line(ic,t){ return t?'<div style="display:flex;gap:9px;align-items:center;font-size:13px;color:#C7CFC8;margin-top:8px"><span style="color:#C6A257">'+ic+'</span>'+esc(t)+'</div>':''; } return '<div style="background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:20px">'+line('✆',v.club_phone)+line('✉',v.club_email)+line('⌖',v.club_address)+(v.club_maps_url?'<div style="font-size:11.5px;color:#7E8A82;margin-top:10px">Maps : '+esc(v.club_maps_url)+'</div>':'')+'</div>'; } },
     { id:'set_social', page:'Réglages · Réseaux', label:'Réseaux sociaux', fields:[
         {key:'social_facebook', label:'Facebook (URL)', type:'text', def:''},
         {key:'social_instagram', label:'Instagram (URL)', type:'text', def:''},
@@ -20969,7 +21011,7 @@
         {key:'social_linkedin', label:'LinkedIn (URL)', type:'text', def:''},
         {key:'social_whatsapp', label:'WhatsApp (URL/numéro)', type:'text', def:''}
       ],
-      preview:function(v){ var items=[['Facebook',v.social_facebook],['Instagram',v.social_instagram],['TikTok',v.social_tiktok],['YouTube',v.social_youtube],['LinkedIn',v.social_linkedin],['WhatsApp',v.social_whatsapp]].filter(function(x){return x[1];}); if(!items.length) return '<div class="pv-empty">Aucun réseau renseigné.</div>'; return '<div style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);border-radius:14px;padding:18px;display:flex;flex-wrap:wrap;gap:8px">'+items.map(function(x){ return '<span style="font-family:var(--font-ui);font-weight:700;font-size:11.5px;color:#0A1B0D;background:#C6A257;border-radius:20px;padding:5px 11px">'+esc(x[0])+'</span>'; }).join('')+'</div>'; } },
+      preview:function(v){ var items=[['Facebook',v.social_facebook],['Instagram',v.social_instagram],['TikTok',v.social_tiktok],['YouTube',v.social_youtube],['LinkedIn',v.social_linkedin],['WhatsApp',v.social_whatsapp]].filter(function(x){return x[1];}); if(!items.length) return '<div class="pv-empty">Aucun réseau renseigné.</div>'; return '<div style="background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:18px;display:flex;flex-wrap:wrap;gap:8px">'+items.map(function(x){ return '<span style="font-family:var(--font-ui);font-weight:700;font-size:11.5px;color:#0A1B0D;background:#C6A257;border-radius:20px;padding:5px 11px">'+esc(x[0])+'</span>'; }).join('')+'</div>'; } },
     { id:'set_footer', page:'Réglages · Pied de page', label:'Pied de page', fields:[
         {key:'footer_text', label:'Texte du footer', type:'textarea', def:'Club de basketball fondé à Dakar en 2026. Former, gagner, faire grandir une communauté autour du jeu.'},
         {key:'footer_copyright', label:'Copyright', type:'text', def:'© 2026 Baobabs Basket Club. Tous droits réservés.'}
