@@ -2122,6 +2122,9 @@
     // à demi effacées derrière lui. C'est le seul vrai piège de cette
     // mécanique — elle éteint avant de rallumer.
     if (projecteurRendre) { try { projecteurRendre(); } catch (e0) {} projecteurRendre = null; }
+    // Meme raison pour la cible avancee : une etape sans cible (une carte
+    // de chapitre) n'appelle pas poser(), et la precedente resterait grande.
+    if (zoomRendre) { try { zoomRendre(); } catch (e1) {} zoomRendre = null; zoomEl = null; zoomK = 1; }
     taire();
     if (minuteur) { clearTimeout(minuteur); minuteur = null; }
     var e = etapes[i]; if (!e) { terminer(); return; }
@@ -2767,12 +2770,149 @@
     if (etatAvant === etatApres) return;
   }
 
+  // ---------------------------------------------------------------------
+  // LA CIBLE S'AVANCE
+  //
+  // Dix-huit des dix-neuf jeux d'images-cles animent la surcouche du
+  // tutoriel. La chose DESIGNEE, elle, ne bougeait pas d'un pixel : vu de
+  // la salle, un contenu fige devant lequel passe un curseur tres bien
+  // eleve. C'est le reproche qui revient, et il est juste.
+  //
+  // On ne met pas la PAGE a l'echelle : ca casserait position:sticky,
+  // position:fixed et tout le pointage. On agrandit la seule chose dont on
+  // parle, et le cadre du projecteur grandit avec elle.
+  //
+  // La regle ne connait aucun ecran. Elle se deduit de ce que la cible EST
+  // au moment ou on la designe — comme groupeOuPas() deduit « enumeration »
+  // d'un nombre d'enfants, et non d'une liste d'ecrans tenue a la main.
+  // ---------------------------------------------------------------------
+  var zoomRendre = null;   // remet la cible en etat si l'etape est coupee
+  var zoomEl = null, zoomK = 1;
+
+  // On vise une croissance CONSTANTE EN PIXELS, pas un pourcentage fixe.
+  // Sur un tableau de 900 px, 8 % font 72 px qui debordent ; sur un bouton
+  // de 90 px, 3 % ne se voient pas au fond d'une salle. A 28 px sur le
+  // grand cote, le mouvement percu est le meme pour les deux.
+  var ZOOM_PX = 28, ZOOM_MAX = 1.09, ZOOM_MIN = 1.014;
+
+  function zoomVers(rr, k, cx, cy) {
+    var w = rr.width * k, h = rr.height * k;
+    var mx = cx + (rr.left + rr.width / 2 - cx) * k;
+    var my = cy + (rr.top + rr.height / 2 - cy) * k;
+    return { left: mx - w / 2, top: my - h / 2, width: w, height: h,
+             right: mx + w / 2, bottom: my + h / 2 };
+  }
+
+  function zoomFacteur(el, r) {
+    // Le reglage systeme est respecte — SAUF si l'on a demande les
+    // animations par le bouton. Beaucoup de machines Windows ont
+    // « animations » desactive sans que personne l'ait choisi, et ce sont
+    // exactement celles qu'on branche a un videoprojecteur.
+    var doux = !window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!doux && !animForcee()) return 1;
+    if (!el || !el.tagName) return 1;
+
+    // Les elements de tableau ne se mettent pas a l'echelle de facon
+    // fiable : un <tr> transforme sort de sa propre rangee.
+    if (/^(TR|TD|TH|THEAD|TBODY|TFOOT|COL|COLGROUP)$/.test(el.tagName)) return 1;
+
+    var vw = window.innerWidth, vh = window.innerHeight;
+    if (!vw || !vh || !r.width || !r.height) return 1;
+    // Agrandir ce qui remplit deja l'ecran n'agrandit rien : ca deborde.
+    if (r.width * r.height > vw * vh * 0.62) return 1;
+
+    var st = null;
+    try { st = window.getComputedStyle(el); } catch (e) { return 1; }
+    if (!st) return 1;
+    // On ne se bat pas avec une transformation qui existe deja — c'est le
+    // cas des lignes que le projecteur decale de 7 px — et on ne met pas a
+    // l'echelle un element colle ou fixe : le referentiel de ses
+    // descendants changerait sous eux.
+    if (st.transform && st.transform !== 'none') return 1;
+    if (st.position === 'fixed' || st.position === 'sticky') return 1;
+
+    var grand = Math.max(r.width, r.height);
+    if (grand < 40) return 1;
+    var k = 1 + ZOOM_PX / grand;
+
+    // Un ancetre qui coupe ce qui depasse rognerait l'agrandissement. On
+    // ne renonce pas pour autant : on se contente de moins.
+    var p = el.parentElement, n = 0;
+    while (p && n++ < 5) {
+      var ps = null;
+      try { ps = window.getComputedStyle(p); } catch (e2) { break; }
+      if (ps && ps.overflow && ps.overflow !== 'visible') { k = Math.min(k, 1.035); break; }
+      p = p.parentElement;
+    }
+
+    // Et jamais au-dela de ce que la fenetre peut montrer.
+    k = Math.min(k, (vw - 16) / r.width, (vh - 16) / r.height, ZOOM_MAX);
+    // En dessous du seuil, personne ne le voit : autant ne rien toucher.
+    return k > ZOOM_MIN ? k : 1;
+  }
+
+  // LE DEPART EST PLUS PETIT QUE LA TAILLE NORMALE.
+  //
+  // Premiere version : on allait de 1 a k. Mesure sur la visite reelle, k
+  // valait 1,035 presque partout — parce que presque tout, dans l'admin,
+  // vit dans un conteneur qui coupe ce qui depasse, et qu'on refuse de
+  // faire rogner la cible. Trois pour cent sur une ligne de tableau, ca
+  // n'existe pas au fond d'une salle. Le zoom etait la, et ne se voyait
+  // pas.
+  //
+  // En partant de k moins 7,5 %, la COURSE fait toujours 7,5 % — la meme
+  // pour un bouton et pour un tableau — tandis que l'ARRIVEE reste dans la
+  // place disponible. Et retrecir ne risque jamais de faire couper quoi
+  // que ce soit. C'est le geste d'une camera qui fait le point.
+  var ZOOM_COURSE = 0.075;
+
+  function zoomAppliquer(el, k) {
+    if (zoomRendre) { try { zoomRendre(); } catch (e) {} }
+    zoomRendre = null; zoomEl = null; zoomK = 1;
+    if (!(k > 1) || !el || !el.animate) return;
+    var depart = Math.max(0.93, Math.min(0.995, k - ZOOM_COURSE));
+    var a;
+    try {
+      a = el.animate(
+        [{ transform: 'scale(' + depart.toFixed(4) + ')' },
+         { transform: 'scale(' + k.toFixed(4) + ')' }],
+        { duration: 540, easing: 'cubic-bezier(.22,.9,.24,1)', fill: 'forwards' });
+    } catch (e2) { return; }
+    // ON N'ECRIT RIEN DANS L'ATTRIBUT style.
+    //
+    // L'administration est en production : une animation qui la touche
+    // doit etre reversible au caractere pres. En passant par l'API
+    // d'animation du navigateur, annuler suffit — la cible retrouve
+    // exactement l'etat ou l'admin l'avait laissee, y compris un style
+    // en ligne qu'on n'aura jamais lu ni reecrit.
+    zoomRendre = function () { try { a.cancel(); } catch (e3) {} };
+    zoomEl = el; zoomK = k;
+  }
+
   function poser(el, sansNarrateur) {
     var spot = $('bt-spot'), doigt = $('bt-doigt');
     el = boiteJuste(el);
     if (!el) { retirerHalo(); return; }
     var r = el.getBoundingClientRect();
     if (r.width < 24 || r.height < 16) { retirerHalo(); return; }
+
+    // LA CIBLE S'AVANCE. Le rect mesure sert ensuite a TOUT — le cadre, le
+    // narrateur qui s'ecarte, le fil, la main. Il doit donc etre celui de
+    // la cible AGRANDIE, sinon le cadre se poserait a l'ancienne taille et
+    // la cible en sortirait par les bords.
+    //
+    // Deja avancee ? On n'y retouche pas. Le recalage au defilement
+    // rappelle poser() sur la meme cible ; une cible mise a l'echelle a une
+    // transformation, zoomFacteur() renoncerait, et le cadre reviendrait a
+    // la taille d'avant en laissant la cible agrandie derriere lui.
+    var zDeja = (zoomEl === el && zoomK > 1);
+    var zx = r.left + r.width / 2, zy = r.top + r.height / 2;
+    var zk = zoomK, zAjuster = false;
+    if (!zDeja) {
+      zk = zoomFacteur(el, r);
+      zoomAppliquer(el, zk);
+      if (zk > 1) { r = zoomVers(r, zk, zx, zy); zAjuster = true; }
+    }
 
     // On decide AVANT de poser le halo : le fil et le clavier se
     // reglent ensuite sur la position reelle du narrateur.
@@ -2873,6 +3013,10 @@
       // semblant de cliquer.
     }
     var rc = commande ? commande.getBoundingClientRect() : r;
+    // La cible vient de grandir : la commande qu'elle contient a bougé avec
+    // elle, mais son rect se mesure encore au depart de la transition. On
+    // la suit par le calcul, sinon la main se pose a cote du bouton.
+    if (commande && zAjuster) rc = zoomVers(rc, zk, zx, zy);
     var y = commande ? (rc.top + rc.height / 2) : (r.top + Math.min(r.height * 0.55, 30));
     var x = commande ? (rc.left + Math.min(rc.width * 0.5, 60)) : (r.left + Math.min(r.width * 0.42, 46));
     var premiereFois = doigt.classList.contains('hide');
@@ -3483,6 +3627,9 @@
 
   function retirerHalo() {
     cibleCourante = null;
+    // La derniere cible avancee doit redescendre : sans ca elle resterait
+    // agrandie dans l'administration une fois le tutoriel ferme.
+    if (zoomRendre) { try { zoomRendre(); } catch (ez) {} zoomRendre = null; zoomEl = null; zoomK = 1; }
     // Plus de cible : le narrateur reprend sa place habituelle. Le
     // laisser en haut sans raison deroute -- on cherche ses commandes
     // la ou elles etaient.
