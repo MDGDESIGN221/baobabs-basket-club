@@ -3317,17 +3317,6 @@
                 <label for="venue">Salle / stade <span class="opt">(optionnel)</span></label>
                 <input type="text" id="venue" placeholder="Ex : Marius Ndiaye" list="venues" autocomplete="off">
                 <datalist id="venues">
-                  <option value="Stadium Marius Ndiaye (Dakar)"></option>
-                  <option value="Dakar Arena (Diamniadio)"></option>
-                  <option value="Salle IAM GBA (Guédiawaye)"></option>
-                  <option value="Salle de Thiès"></option>
-                  <option value="Salle de Mbour"></option>
-                  <option value="Salle de Louga"></option>
-                  <option value="Salle de l'Université Gaston Berger – UGB (Saint-Louis)"></option>
-                  <option value="Salle de Ziguinchor Sports"></option>
-                  <option value="Salle Flying Star (Dakar)"></option>
-                  <option value="Salle US EPT (Thiès)"></option>
-                  <option value="Salle UCAD (Dakar)"></option>
                 </datalist>
                 <span class="dym-hint hide" id="dym_venue"></span>
               </div>
@@ -9031,6 +9020,60 @@
   document.getElementById('sidebar-scrim').addEventListener('click', closeMobileNav);
   document.getElementById('preview-collapse').addEventListener('click', function(){ document.getElementById('preview-aside').classList.toggle('collapsed'); });
 
+  // Les salles et terrains du basket senegalais. Liste de reference :
+  // elle alimente l'autocompletion de « Salle / stade », le rattrapage
+  // de faute de frappe, ET les suggestions du dialogue « Nouveau match ».
+  // Une seule source : deux listes finiraient par diverger, et c'est
+  // exactement ce qui cree deux salles la ou il n'y en a qu'une.
+  //
+  // Sans elle, les suggestions ne contenaient que les lieux DEJA joues :
+  // un club qui debute, ou un debut de saison, n'avait aucune proposition.
+  var SALLES_CONNUES = [
+    "Stadium Marius Ndiaye",
+    "Dakar Arena",
+    "Stade Demba Diop",
+    "Stade Iba Mar Diop",
+    "Stade Léopold Sédar Senghor",
+    "Terrain de basket du Lycée Kennedy",
+    "Terrain de basket du Lycée Maurice Delafosse",
+    "Terrain de basket de la Piscine Olympique",
+    "Terrain de basket de Ouakam",
+    "Terrain de basket de Dieuppeul",
+    "Terrain de basket de Liberté 6",
+    "Terrain de basket de Mermoz",
+    "Terrain de basket de Sicap Karack",
+    "Terrain de basket de Sud Foire",
+    "Terrain de basket de HLM Grand Yoff",
+    "Terrain de basket de Ngor",
+    "Terrain de basket des Almadies",
+    "Terrain de basket de Ouagou Niayes",
+    "Terrain de basket des Maristes",
+    "Terrain de basket de Yoff",
+    "Terrain de basket de Thiaroye Azur",
+    "Terrain de basket Monument B",
+    "Terrain de basket JAON",
+    "Terrain de basket GBA",
+    "Terrain de basket de la Résidence de la Paix / Mixta",
+    "Terrain de basket de Corniche Ouest",
+    "Terrain de basket de l’Olympique Club",
+    "Terrain de basket de Rond-Point Maristes",
+    "Terrain de basket de Diofior",
+    "Terrain de basket de Joal-Fadiouth",
+    "Terrain de basket de Pire",
+    "Terrain de basket de Taïba Ndiaye",
+    "Terrain de basket de Kébémer",
+    "Terrain de basket de Diourbel",
+    "Salle IAM GBA (Guédiawaye)",
+    "Salle Flying Star (Dakar)",
+    "Salle UCAD (Dakar)",
+    "Salle US EPT (Thiès)",
+    "Salle de Thiès",
+    "Salle de Mbour",
+    "Salle de Louga",
+    "Salle de l'Université Gaston Berger – UGB (Saint-Louis)",
+    "Salle de Ziguinchor Sports",
+  ];
+
   // ===================== ADVERSAIRES =====================
   var teamsCache = [];
   var KNOWN_CLUBS = [
@@ -9261,6 +9304,16 @@
       .finally(function(){ btn.disabled=false; });
   });
 
+  // La datalist n'a plus d'options en dur : elle se remplit ici, depuis
+  // SALLES_CONNUES. wireDidYouMean lit ensuite le DOM, donc le rattrapage
+  // de faute de frappe profite de la meme liste sans rien savoir d'elle.
+  (function remplirSalles(){
+    var dl = document.getElementById('venues');
+    if (!dl || dl.children.length) return;
+    dl.innerHTML = SALLES_CONNUES.map(function(v){
+      return '<option value="' + esc(v) + '"></option>';
+    }).join('');
+  })();
   wireDidYouMean(document.getElementById('venue'), document.getElementById('dym_venue'), function(){ return datalistValues('venues'); });
   wireDidYouMean(document.getElementById('competition'), document.getElementById('dym_competition'), function(){ return datalistValues('competitions'); });
 
@@ -13512,6 +13565,9 @@
     // a chaque match, et une faute de frappe ne cree pas une salle de plus.
     var lieux = [];
     (mcRows||[]).forEach(function(m){ if (m.venue && lieux.indexOf(m.venue) < 0) lieux.push(m.venue); });
+    // Puis les salles connues qui n'ont pas encore servi. Les lieux
+    // deja joues restent en tete : ce sont les plus probables.
+    SALLES_CONNUES.forEach(function(v){ if (lieux.indexOf(v) < 0) lieux.push(v); });
     var comps = [];
     (mcRows||[]).forEach(function(m){ if (m.competition && comps.indexOf(m.competition) < 0) comps.push(m.competition); });
     demander({

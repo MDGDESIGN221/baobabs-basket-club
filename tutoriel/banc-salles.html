@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>Banc d'essai — salles et terrains</title>
+<style>
+ body{font:14px/1.6 system-ui,sans-serif;background:#0B140F;color:#E8E4DA;margin:0;padding:24px}
+ h1{font-size:17px;margin:0 0 4px} p.sous{color:#8A9A8F;margin:0 0 18px;font-size:13px;max-width:72ch}
+ table{border-collapse:collapse;width:100%;max-width:940px}
+ td,th{border-bottom:1px solid #24352B;padding:7px 9px;text-align:left;font-size:13px;vertical-align:top}
+ th{color:#8A9A8F;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em}
+ .ok{color:#A8D93B} .ko{color:#E86A5E} code{color:#C6A257;font-size:12.5px}
+ #bilan{margin:16px 0 0;font-size:15px;font-weight:600}
+</style></head><body>
+<h1>Banc d'essai — salles et terrains</h1>
+<p class="sous">Le code testé est <b>extrait de <code>admin-matchs.html</code></b>, jamais recopié :
+<code>SALLES_CONNUES</code>, le remplissage de la datalist, et la fusion des suggestions du dialogue
+« Nouveau match ». Ne demande aucune session.</p>
+<input type="text" id="venue" list="venues" autocomplete="off" style="position:absolute;left:-9999px">
+<datalist id="venues"></datalist>
+<table id="res"><thead><tr><th>Cas</th><th>Attendu</th><th>Obtenu</th><th></th></tr></thead><tbody></tbody></table>
+<p id="bilan">…</p>
+<script>
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function datalistValues(id){
+    return Array.prototype.map.call(document.querySelectorAll('#'+id+' option'),function(o){return o.value;});
+  }
+  var SALLES_CONNUES = [
+    "Stadium Marius Ndiaye",
+    "Dakar Arena",
+    "Stade Demba Diop",
+    "Stade Iba Mar Diop",
+    "Stade Léopold Sédar Senghor",
+    "Terrain de basket du Lycée Kennedy",
+    "Terrain de basket du Lycée Maurice Delafosse",
+    "Terrain de basket de la Piscine Olympique",
+    "Terrain de basket de Ouakam",
+    "Terrain de basket de Dieuppeul",
+    "Terrain de basket de Liberté 6",
+    "Terrain de basket de Mermoz",
+    "Terrain de basket de Sicap Karack",
+    "Terrain de basket de Sud Foire",
+    "Terrain de basket de HLM Grand Yoff",
+    "Terrain de basket de Ngor",
+    "Terrain de basket des Almadies",
+    "Terrain de basket de Ouagou Niayes",
+    "Terrain de basket des Maristes",
+    "Terrain de basket de Yoff",
+    "Terrain de basket de Thiaroye Azur",
+    "Terrain de basket Monument B",
+    "Terrain de basket JAON",
+    "Terrain de basket GBA",
+    "Terrain de basket de la Résidence de la Paix / Mixta",
+    "Terrain de basket de Corniche Ouest",
+    "Terrain de basket de l’Olympique Club",
+    "Terrain de basket de Rond-Point Maristes",
+    "Terrain de basket de Diofior",
+    "Terrain de basket de Joal-Fadiouth",
+    "Terrain de basket de Pire",
+    "Terrain de basket de Taïba Ndiaye",
+    "Terrain de basket de Kébémer",
+    "Terrain de basket de Diourbel",
+    "Salle IAM GBA (Guédiawaye)",
+    "Salle Flying Star (Dakar)",
+    "Salle UCAD (Dakar)",
+    "Salle US EPT (Thiès)",
+    "Salle de Thiès",
+    "Salle de Mbour",
+    "Salle de Louga",
+    "Salle de l'Université Gaston Berger – UGB (Saint-Louis)",
+    "Salle de Ziguinchor Sports",
+  ];
+  (function remplirSalles(){
+    var dl = document.getElementById('venues');
+    if (!dl || dl.children.length) return;
+    dl.innerHTML = SALLES_CONNUES.map(function(v){
+      return '<option value="' + esc(v) + '"></option>';
+    }).join('');
+  })();
+
+function suggestionsDialogue(mcRows){
+  var lieux = [];
+  (mcRows||[]).forEach(function(m){ if (m.venue && lieux.indexOf(m.venue) < 0) lieux.push(m.venue); });
+    SALLES_CONNUES.forEach(function(v){ if (lieux.indexOf(v) < 0) lieux.push(v); });
+
+  return lieux;
+}
+// Le garde-fou : rejouer le remplissage ne doit rien doubler.
+function remplirDeNouveau(){
+  var dl = document.getElementById('venues');
+  if (!dl || dl.children.length) return;
+  dl.innerHTML = SALLES_CONNUES.map(function(v){ return '<option value="' + esc(v) + '"></option>'; }).join('');
+}
+
+var T = [], ok = 0;
+function essai(cas, attendu, obtenu){
+  var bon = String(attendu) === String(obtenu);
+  if (bon) ok++;
+  T.push([cas, attendu, obtenu, bon]);
+}
+var vals = datalistValues('venues');
+
+essai("La datalist se remplit depuis la constante", SALLES_CONNUES.length, vals.length);
+essai("Les 34 terrains du club y sont", true, vals.indexOf('Terrain de basket du Lycée Kennedy')>=0 && vals.indexOf('Terrain de basket de Thiaroye Azur')>=0 && vals.indexOf('Terrain de basket de Diourbel')>=0);
+essai("Les salles de deplacement sont conservees", true, vals.indexOf('Salle de Ziguinchor Sports')>=0 && vals.indexOf('Salle de Mbour')>=0);
+essai("Apostrophe typographique intacte", 1, vals.filter(function(v){return v==='Terrain de basket de l’Olympique Club';}).length);
+essai("Apostrophe droite intacte", 1, vals.filter(function(v){return v.indexOf(String.fromCharCode(39)+'Université Gaston Berger')>=0;}).length);
+essai("Accents intacts", true, vals.indexOf('Stade Léopold Sédar Senghor')>=0 && vals.indexOf('Terrain de basket de Taïba Ndiaye')>=0 && vals.indexOf('Terrain de basket de Kébémer')>=0);
+essai("Aucun double echappement HTML", 0, vals.filter(function(v){return v.indexOf('&amp;')>=0||v.indexOf('&#39;')>=0||v.indexOf('&quot;')>=0;}).length);
+essai("Aucun doublon dans la reference", 0, vals.length - vals.filter(function(v,i){return vals.indexOf(v)===i;}).length);
+essai("Club qui debute : suggestions non vides", SALLES_CONNUES.length, suggestionsDialogue([]).length);
+essai("Un lieu deja joue passe en tete", 'Terrain de basket de Ngor', suggestionsDialogue([{venue:'Terrain de basket de Ngor'}])[0]);
+essai("Un lieu deja joue, pas de doublon", 1, suggestionsDialogue([{venue:'Terrain de basket de Ngor'}]).filter(function(v){return v==='Terrain de basket de Ngor';}).length);
+essai("Un lieu hors reference reste en tete", 0, suggestionsDialogue([{venue:'Salle inconnue X'}]).indexOf('Salle inconnue X'));
+essai("Le rattrapage de faute lit la meme liste", SALLES_CONNUES.length, datalistValues('venues').length);
+essai("Le remplissage ne tourne pas deux fois", SALLES_CONNUES.length, (function(){ remplirDeNouveau(); return document.getElementById('venues').children.length; })());
+
+var tb = document.querySelector('#res tbody');
+tb.innerHTML = T.map(function(r){
+  return '<tr><td>' + r[0] + '</td><td><code>' + r[1] + '</code></td><td><code>' + r[2] +
+    '</code></td><td class="' + (r[3] ? 'ok' : 'ko') + '">' + (r[3] ? 'OK' : 'ECHEC') + '</td></tr>';
+}).join('');
+document.getElementById('bilan').innerHTML = ok + ' / ' + T.length +
+  ' <span class="' + (ok === T.length ? 'ok' : 'ko') + '">' +
+  (ok === T.length ? '— tout passe' : '— il reste des echecs') + '</span>';
+window.__bilan = { ok: ok, total: T.length,
+  echecs: T.filter(function(r){ return !r[3]; }).map(function(r){ return r[0] + ' : attendu ' + r[1] + ', obtenu ' + r[2]; }) };
+
+</script></body></html>
