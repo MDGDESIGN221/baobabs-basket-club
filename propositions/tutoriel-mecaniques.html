@@ -446,7 +446,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
       <div class="kick">Tutoriel de l'administration — proposition de refonte</div>
       <h1>Le contenu<br>prend la parole<span class="fade">.</span></h1>
       <p class="lede" style="margin-top:6px">
-        Aujourd'hui le tutoriel dit <em>« regarde ici »</em>. Sept mécaniques pour qu'il dise
+        Aujourd'hui le tutoriel dit <em>« regarde ici »</em>. Huit mécaniques pour qu'il dise
         <em>« regarde ce qui se passe ici »</em> — <b>sans une seule animation écrite écran par écran</b>.
         Chacune tourne réellement dans cette page, sur du contenu d'administration —
         <b>onze bancs</b>, Studio et partition compris.
@@ -479,7 +479,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
     <span><b>124</b> repères</span>
     <span><b>0</b> dépendance ajoutée</span>
     <span><b>ES5</b> · transform / opacity / filter</span>
-    <span><b>≈ 855</b> lignes de JS au total</span>
+    <span><b>≈ 1 040</b> lignes de JS au total</span>
   </div>
 </section>
 
@@ -491,7 +491,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
       <div class="kick">Le socle — trois pièces, avant toute mécanique</div>
       <h2>Rien ne marche sans ces trois-là</h2>
       <p class="corps">
-        Les sept mécaniques qui suivent ne sont pas sept effets posés côte à côte : elles partagent
+        Les huit mécaniques qui suivent ne sont pas huit effets posés côte à côte : elles partagent
         <b>une lecture</b>, <b>un cadrage</b> et <b>une partition</b>. C'est ce socle qui répond aux
         deux premiers problèmes — la précision du repère et le contrôle de ce que le spectateur voit —
         et c'est lui qui garantit qu'on n'écrira jamais quarante-quatre cas particuliers.
@@ -566,19 +566,25 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
 }</pre>
 
       <div class="fiche">
-        <div class="fiche-l"><div class="fiche-k">Les huit natures</div><div class="fiche-v">
+        <div class="fiche-l"><div class="fiche-k">Les neuf natures</div><div class="fiche-v">
           <ul>
             <li><b>indicateurs</b> — chaque enfant porte <em>un</em> nombre seul + un libellé court</li>
             <li><b>graphique</b> — les éléments <em>partagent une base</em> et leurs hauteurs varient de ≥ 25 %</li>
             <li><b>tableau</b> — ≥ 3 colonnes alignées en <code>x</code>, <em>dont au moins deux majoritairement chiffrées</em></li>
             <li><b>grille</b> — les enfants occupent ≥ 2 lignes <em>et</em> ≥ 2 colonnes</li>
             <li><b>calendrier</b> — une grille dont une minorité de cellules (≤ 40 %) porte <em>plus de structure</em> que le fond</li>
+            <li><b>boutons</b> — 2 à 6 frères <em>tous</em> actionnables : un onglet n'est pas une ligne</li>
             <li><b>série</b> — une répétition sur une seule colonne</li>
             <li><b>formulaire</b> — ≥ 2 champs actifs, sans répétition dominante</li>
             <li><b>unique</b> — rien de reconnu : on garde le comportement actuel</li>
           </ul>
           L'ordre des tests compte : <b>graphique</b> passe avant <b>grille</b>, sans quoi des barres
-          — tops et lefts tous différents — seraient prises pour une grille.
+          — tops et lefts tous différents — seraient prises pour une grille. Et <b>boutons</b>
+          passe avant <b>série</b> : une barre d'onglets a la même fratrie qu'une liste, mais on
+          appuie dessus.<br>
+          Le point d'entrée unique est <code>révélerContenu(cible)</code> : il lit la nature,
+          <b>cadre</b>, puis confie la scène à la mécanique correspondante. Il ne joue aucun
+          effet lui-même — ajouter une nature, c'est une ligne de plus dans son aiguillage.
         </div></div>
         <div class="fiche-l"><div class="fiche-k">Deux descentes</div><div class="fiche-v">
           <b>Par enfant unique</b> pour le cas courant. <b>En profondeur</b> quand elle échoue : on
@@ -594,7 +600,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
           systématiquement entourer le gros conteneur parent »</em>.
         </div></div>
         <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
-          <b>≈ 155 lignes de JS</b>, zéro CSS, zéro ligne dans l'administration. Une fonction pure :
+          <b>≈ 175 lignes de JS</b> (dont le répartiteur), zéro CSS, zéro ligne dans l'administration. Une fonction pure :
           elle mesure, elle ne touche à rien.
         </div></div>
       </div>
@@ -658,9 +664,23 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
         </div></div>
         <div class="fiche-l vert"><div class="fiche-k">La règle</div><div class="fiche-v">
           Cible visible à <b>≥ 85 %</b> dans la zone de lecture → on ne bouge pas.<br>
-          Sinon on trouve <b>le bon conteneur défilant</b> (le premier ancêtre qui déborde vraiment),
-          et on l'amène : <b>haut aligné</b> si la cible dépasse 70 % de la hauteur de la zone,
-          <b>centrée</b> sinon.
+          Sinon on amène <b>toute la chaîne des conteneurs qui défilent</b>, du plus intérieur
+          <em>jusqu'à la fenêtre</em>, en re-testant à chaque étage — amener le panneau suffit
+          souvent, et il ne faut alors pas faire bouger la page en plus. Placement :
+          <b>haut aligné</b> si la cible dépasse 70 % de la hauteur de la zone, <b>centrée</b> sinon.
+          L'horizontal ne bouge <em>que</em> si la cible en sort.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Le défaut que j'avais laissé</div><div class="fiche-v">
+          Ma première version cherchait <b>un</b> conteneur défilant et, si elle n'en trouvait pas,
+          <b>ne faisait rien</b>. Or dans l'administration le cas le plus courant est celui où
+          <em>c'est la fenêtre qui défile</em> : une cible sous la ligne de flottaison n'était donc
+          jamais amenée — exactement le reproche « ça pointe des choses qui ne sont pas à l'écran ».
+          <br><br>
+          Trois autres manques du même passage, tous corrigés et éprouvés au banc :
+          <b>les ancêtres qui rognent</b> n'étaient pas vus (un accordéon replié annonce 200 px de
+          haut et ne montre rien) ; la visibilité était un <b>booléen d'inclusion</b> et non un
+          rapport ; et une <b>cible plus haute que la zone</b> ne pouvait jamais être « dedans »,
+          donc elle se faisait recadrer à chaque étape, en boucle.
         </div></div>
         <div class="fiche-l vert"><div class="fiche-k">Le mouvement</div><div class="fiche-v">
           Une interpolation maison en <code>requestAnimationFrame</code>, pas <code>behavior:'smooth'</code> :
@@ -669,7 +689,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
           coordonnée périmée.
         </div></div>
         <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
-          <b>≈ 90 lignes de JS.</b> Remplace <code>designer()</code> dans son rôle de défilement.
+          <b>≈ 165 lignes de JS</b> — la chaîne des conteneurs, la zone de lecture, la part visible et la boîte réellement visible. Remplace <code>designer()</code> dans son rôle de défilement.
           Aucune ligne dans l'administration.
         </div></div>
       </div>
@@ -742,7 +762,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
         <div class="fiche-l"><div class="fiche-k">Minutage</div><div class="fiche-v">
           300 ms appui · 210 ms clic réel · +1 image pour mesurer · <b>la main se retire à 180 ms</b> ·
           premier effet à 200 ms, second à 1 350 ms (battement 540 ms, étiquette à 260 ms) ·
-          fin à 3 300 ms. <b>≈ 3,8 s pour deux effets</b> — l'étape la plus longue des sept, et la
+          fin à 3 300 ms. <b>≈ 3,8 s pour deux effets</b> — l'étape la plus longue des huit, et la
           seule qui le mérite.
         </div></div>
         <div class="fiche-l vert"><div class="fiche-k">Remise en état</div><div class="fiche-v">
@@ -913,10 +933,15 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
           — la même règle que <code>groupeOuPas()</code>, pour la même raison : au-delà, on ne lit plus.
         </div></div>
         <div class="fiche-l vert"><div class="fiche-k">Mise en scène</div><div class="fiche-v">
-          Toutes les lignes tombent à <b>opacité .32</b>. Une seule revient à 1, avance de 7 px
-          (<code>translateX</code>) et reçoit le halo — qui <b>glisse</b> de l'une à l'autre au lieu de
-          se redessiner. Puis tout revient. Le regard n'a jamais le choix : il n'y a qu'une chose
-          lisible à l'écran.
+          <b>Deux mouvements, et le premier manquait.</b><br>
+          <b>Un — les lignes arrivent</b>, du haut vers le bas, en cascade de 34 à 70 ms selon leur
+          nombre. Une liste déjà là ne dit rien ; une liste qui <em>se remplit</em> dit « voici vos
+          lignes ».<br>
+          <b>Deux — le projecteur descend.</b> Toutes tombent à <b>opacité .3</b>, une seule revient
+          à 1, avance de 7 px (<code>translateX</code>) et reçoit le halo — qui <b>glisse</b> de
+          l'une à l'autre au lieu de se redessiner. Puis tout revient.<br>
+          Les cinq comportements demandés pour une liste y sont : apparition progressive, mise en
+          avant, parcours, déplacement léger, et perte de présence des autres.
         </div></div>
         <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
           Socle B sur <b>la ligne courante</b>, pas sur la liste. Sur une liste plus haute que l'écran,
@@ -985,11 +1010,17 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
           <b>Un indicateur à la fois</b>, et à l'intérieur : sa valeur, son libellé, son évolution.
         </div></div>
         <div class="fiche-l vert"><div class="fiche-k">Mise en scène</div><div class="fiche-v">
-          Quatre temps par indicateur : ses voisins reculent à .28 · le bloc monte de 4 px et grandit
-          de 2 % · <b>le libellé arrive avant la valeur</b> (on nomme, puis on chiffre — l'ordre est
-          celui de la phrase) · la valeur compte depuis zéro en 560 ms. Puis le suivant.
-          Le dernier <b>reste allumé</b> pendant que les autres reviennent : on ne finit pas au milieu
-          d'un effet.
+          Cinq temps par indicateur : les voisins <em>non encore lus</em> reculent à .26 · le bloc
+          monte de 4 px et grandit de 2 % · <b>le libellé arrive avant la valeur</b> (on nomme, puis
+          on chiffre — l'ordre est celui de la phrase) · la valeur compte depuis zéro en 560 ms ·
+          et <b>l'évolution monte en dernier</b>, à 690 ms : « +3 » ne veut rien dire tant qu'on ne
+          sait pas +3 de quoi.<br><br>
+          <b>La relation se montre en n'éteignant pas.</b> Ma première version rendait tous les
+          autres blocs à .26 — <em>y compris ceux qu'on venait de lire</em>. On ne voyait donc jamais
+          deux chiffres ensemble, et « 27 licenciées mais 8 dossiers en attente » ne se formait dans
+          aucune tête. Les indicateurs déjà lus restent maintenant à <b>.72</b>, et un dernier temps
+          les rallume tous : mesuré au banc,
+          <code>.26,.26,.26,.26 → 1,.26,.26,.26 → .72,1,.26,.26 → .72,.72,1,.26 → <b>1,1,1</b>,.26</code>.
         </div></div>
         <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
           Socle B sur le panneau entier une seule fois : les indicateurs tiennent ensemble à l'écran.
@@ -1076,10 +1107,17 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
           « points ». Personne ne l'a déclaré.
         </div></div>
         <div class="fiche-l vert"><div class="fiche-k">Mise en scène</div><div class="fiche-v">
-          Deux mouvements. <b>Un</b> — les lignes arrivent en cascade de 52 ms, par le bas, comme si
-          le tableau se remplissait sous les yeux. <b>Deux</b> — tout retombe à .24 sauf une colonne,
-          qui monte de 3 px et passe au vert. La structure du tableau apparaît d'un coup, sans
-          qu'aucune phrase n'ait à l'expliquer.
+          <b>Trois mouvements.</b><br>
+          <b>Un</b> — les lignes arrivent en cascade de 52 ms, comme si le tableau se remplissait
+          sous les yeux.<br>
+          <b>Deux</b> — tout retombe à .22 sauf une colonne, qui monte de 3 px et passe au vert :
+          « ces nombres vont ensemble ».<br>
+          <b>Trois — le regard progresse horizontalement.</b> Une colonne mise en évidence ne dit pas
+          encore ce que ses nombres <em>veulent dire</em>. On lit donc <b>une ligne de gauche à
+          droite</b> — son nom, puis ses chiffres — et l'on s'arrête sur <b>la cellule de
+          croisement</b>, qui grossit de 14 % et passe au vert. C'est là que « Baobabs » et
+          « points » se rencontrent. Mesuré au banc : la cellule désignée est <code>21</code>,
+          les points de Baobabs.
         </div></div>
         <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
           Socle B en mode <b>haut aligné</b> : un tableau dépasse presque toujours 70 % de la zone de
@@ -1104,7 +1142,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
         </div></div>
         <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
           <b>≈ 95 lignes de JS</b> (dont 40 pour le regroupement en colonnes), ≈ 10 de CSS.
-          La plus chère des sept, et la seule dont la mesure peut échouer sur une mise en page
+          La plus chère des huit, et la seule dont la mesure peut échouer sur une mise en page
           exotique — auquel cas elle retombe sur la mécanique 2, qui marche toujours.
         </div></div>
       </div>
@@ -1160,14 +1198,20 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
           leur numéro de jour. Ce n'est pas le vide qui distingue une case à événement, c'est
           l'excès de structure.
         </div></div>
-        <div class="fiche-l vert"><div class="fiche-k">Cas A — la grille homogène</div><div class="fiche-v">
+        <div class="fiche-l"><div class="fiche-k">Cible</div><div class="fiche-v">
+          <b>Cas A</b> : toutes les cellules, ensemble — une collection homogène se comprend comme un
+          tout. <b>Cas B</b> : <em>uniquement les porteuses</em>, jamais le fond. C'est le seul
+          endroit de la proposition où la nature reconnue change non pas le geste, mais
+          <b>qui est le protagoniste</b>.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Mise en scène · cas A — la grille homogène</div><div class="fiche-v">
           Aucune cellule ne dépasse le fond : ce sont <b>des cartes</b>, toutes bâties pareil.
           Elles arrivent en
           <b>vague diagonale</b> — retard <code>(ligne + colonne) × 70 ms</code>, pas un défilé
           linéaire. La vague traverse la grille en biais, ce qui se lit comme une découverte et non
           comme une liste qui se charge. Une ligne de code pour la différence.
         </div></div>
-        <div class="fiche-l vert"><div class="fiche-k">Cas B — la grille à porteuses</div><div class="fiche-v">
+        <div class="fiche-l vert"><div class="fiche-k">Mise en scène · cas B — la grille à porteuses</div><div class="fiche-v">
           Une minorité de cellules porte plus que le fond : c'est <b>un calendrier</b>. Les cases
           ordinaires ne bougent pas — elles deviennent la scène. Seules <b>les porteuses</b>
           apparaissent, dans l'ordre du DOM (donc des dates), avec un petit rebond. Le mois se
@@ -1276,7 +1320,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
           <b>Il n'y a rien à remettre</b> — et c'est tout l'intérêt. Aucun <code>value</code> touché,
           aucun <code>focus</code> volé, aucun événement <code>input</code> émis. La surcouche
           disparaît, le formulaire n'a jamais su qu'on parlait de lui. C'est la mécanique la plus
-          sûre des sept, à déployer sur les 44 écrans sans hésiter.
+          sûre des huit, à déployer sur les 44 écrans sans hésiter.
         </div></div>
         <div class="fiche-l"><div class="fiche-k">Ce que le spectateur comprend</div><div class="fiche-v">
           <b>L'ordre des opérations.</b> Un formulaire encadré ne dit pas par où commencer ; un
@@ -1399,6 +1443,91 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
 </section>
 
 
+<!-- ================= MÉCANIQUE 8 ================= -->
+<section>
+  <div class="poste">
+    <div class="poste-spec">
+      <div class="rang"><span class="rang-n">8</span><div class="kick v" style="padding-bottom:6px">La nature qui manquait à ma lecture</div></div>
+      <h3>Le groupe de boutons</h3>
+      <p class="corps" style="margin-top:12px">
+        Une barre d'onglets, un jeu de filtres, une colonne d'outils : la fratrie est là, la
+        géométrie aussi — et ma <code>lire()</code> les rendait comme des <b>séries</b>. Le
+        projecteur les éteignait donc pour les rallumer une par une, ce qui n'apprend rien.
+        <b>On n'éteint pas un bouton : on appuie dessus.</b>
+      </p>
+
+      <div class="fiche">
+        <div class="fiche-l"><div class="fiche-k">Reconnaissance</div><div class="fiche-v">
+          Une fratrie de <b>2 à 6</b> frères dont <em>tous</em> sont actionnables —
+          <code>button</code>, <code>a</code>, <code>role="button"</code>, ou un
+          <code>input</code> de type bouton, case ou radio.<br>
+          <b>Le « tous » est essentiel</b> : une liste avec un bouton par ligne a des frères
+          partiellement actionnables, et basculerait ici à tort. Vérifié au banc — la liste de
+          matchs reste <code>serie</code>.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cible</div><div class="fiche-v">
+          <b>Un bouton à la fois</b>, dans l'ordre du DOM, plafonné à six. Au-delà, ce n'est plus
+          une barre de commandes, c'est un défilé.
+        </div></div>
+        <div class="fiche-l vert"><div class="fiche-k">Mise en scène</div><div class="fiche-v">
+          Le groupe recule à <b>.35</b>. Chaque bouton revient à 1, monte de 2 px, reçoit le halo —
+          puis <b>l'appui</b> : <code>doigtTape()</code>, l'onde part du point touché.
+          Purement visuel, <b>aucun événement n'est émis</b> : c'est ce qui permet de le faire
+          sur n'importe quelle barre d'outils sans rien déclencher.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Cadrage</div><div class="fiche-v">
+          Socle B sur le groupe entier une seule fois : une barre d'onglets tient sur une ligne,
+          la découper n'aurait pas de sens.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Geste</div><div class="fiche-v">
+          <b>La main est ici l'actrice principale</b> — c'est la seule des huit où c'est vrai, et
+          c'est justifié : ce qu'il y a à comprendre, c'est qu'on <em>appuie</em>.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Minutage</div><div class="fiche-v">
+          160 ms de départ · <code>clamp(420…760, 3200/n)</code> entre deux boutons · l'appui à
+          +200 ms après l'arrivée du halo · retour 320 ms. <b>≈ 3,2 s pour quatre onglets.</b>
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Remise en état</div><div class="fiche-v">
+          Deux propriétés en ligne, restituées par <code>Scene.fin()</code>. Rien n'a été cliqué,
+          donc il n'y a aucun état applicatif à défaire.
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Ce que le spectateur comprend</div><div class="fiche-v">
+          <b>Que ces choses-là se pressent</b>, et combien il y en a. Sur une barre d'onglets, c'est
+          la différence entre « il y a quatre mots en haut » et « il y a quatre vues, et je peux
+          passer de l'une à l'autre ».
+        </div></div>
+        <div class="fiche-l"><div class="fiche-k">Coût</div><div class="fiche-v">
+          <b>≈ 30 lignes de JS</b>, zéro CSS — elle réutilise le halo, la main et l'onde qui
+          existent déjà. La moins chère des huit.
+        </div></div>
+      </div>
+    </div>
+
+    <div class="poste-banc">
+      <div class="banc">
+        <div class="banc-bar"><span class="banc-pt"></span><span class="banc-nom">Match day — la barre de filtres</span></div>
+        <div class="banc-scene" id="sc-boutons">
+          <div class="f-h">Filtrer les matchs</div>
+          <div id="d-onglets" style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="f-envoi" type="button">Tous</button>
+            <button class="f-envoi" type="button">À venir</button>
+            <button class="f-envoi" type="button">Joués</button>
+            <button class="f-envoi" type="button">Annulés</button>
+          </div>
+          <div class="f-h" style="margin-top:16px">Et la liste juste en dessous</div>
+          <div class="f-rows" id="d-rows-d"></div>
+          <div class="sur" id="sur-boutons"></div>
+        </div>
+        <div class="banc-pied">
+          <button class="jouer" data-jeu="boutons">Parcourir la barre</button>
+          <span class="lu" id="lu-boutons">en attente</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
 <!-- ================= LA PARTITION ================= -->
 <section>
   <div class="pile">
@@ -1406,7 +1535,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
       <div class="kick">Socle C — la réponse au problème n°3</div>
       <h2>La partition</h2>
       <p class="corps">
-        Sept mécaniques ne suffisent pas à tuer la monotonie : jouées toutes au même tempo, elles
+        Huit mécaniques ne suffisent pas à tuer la monotonie : jouées toutes au même tempo, elles
         deviendraient une nouvelle signature, plus riche mais tout aussi prévisible. Le rythme est
         une pièce à part entière, et il tient en <b>une règle et cinq tempos</b>.
       </p>
@@ -1427,7 +1556,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
         <tbody>
           <tr><td class="nom">Ouverture</td><td>Première étape d'un chapitre</td><td>Le cadre se dessine entièrement, la main vient de loin, le contenu attend la fin du tracé</td><td class="n">≈ 3,4 s</td></tr>
           <tr><td class="nom">Enchaînée</td><td>Étape suivante sur le même écran</td><td><b>Le cadre ne se redessine pas : il glisse</b> de l'ancienne cible à la nouvelle. La main ne quitte pas l'écran. Durées à 60 %</td><td class="n">≈ 1,8 s</td></tr>
-          <tr><td class="nom">Contemplative</td><td>La mécanique de contenu dure &gt; 1,4 s</td><td><b>La main se retire</b> à 400 ms, le halo tombe à 34 %. Le contenu a la parole seul</td><td class="n">≈ 3,2 s</td></tr>
+          <tr><td class="nom">Contemplative</td><td>La mécanique de contenu dure &gt; 1,4 s</td><td><b>La main se retire</b> à 400 ms, et <b>le halo s'efface</b> à 420 ms. Tant qu'un cadre reste, l'œil lui obéit plutôt qu'au chiffre qui monte</td><td class="n">≈ 3,2 s</td></tr>
           <tr><td class="nom">Rafale</td><td>Une énumération</td><td>3 à 6 temps courts, aucun re-tracé entre eux, la voix ne s'arrête pas</td><td class="n">≈ 2,6 s</td></tr>
           <tr><td class="nom">Chute</td><td>Dernière étape d'un chapitre</td><td>Tout s'efface, <b>un temps de silence</b>, puis la carte du chapitre suivant</td><td class="n">≈ 1,2 s</td></tr>
         </tbody>
@@ -1481,9 +1610,11 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
       <div class="kick">Vérification</div>
       <h2>Rien de ce qui était demandé n'est laissé de côté</h2>
       <p class="corps">
-        Huit formes de contenu étaient nommées dans la commande. Elles sont couvertes par sept
-        mécaniques — parce que le calendrier et les cartes se rejoignent, et parce que le Studio
-        n'avait pas besoin d'une mécanique à lui. <b>Chaque ligne du tableau ci-dessous a son banc
+        Neuf formes de contenu étaient nommées dans la commande — listes, tableaux, cartes,
+        calendriers, graphiques, statistiques, grilles, formulaires, Studio. Elles sont couvertes par
+        huit mécaniques, plus une neuvième forme que la commande ne nommait pas mais que le banc a
+        fait apparaître : <b>les barres d'onglets</b>. Le calendrier et les cartes se rejoignent, et
+        le Studio n'avait pas besoin d'une mécanique à lui. <b>Chaque ligne du tableau ci-dessous a son banc
         dans cette page</b> : rien n'y est affirmé sans avoir été joué.
       </p>
     </div>
@@ -1494,6 +1625,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
       <div class="corr-l"><div class="corr-d">Une grille de cartes</div><div class="corr-a"><b>Mécanique 5, cas A</b> — vague diagonale, pas un défilé linéaire</div></div>
       <div class="corr-l"><div class="corr-d">Un panneau de statistiques</div><div class="corr-a"><b>Mécanique 3</b> — libellé, puis valeur, puis évolution, un indicateur à la fois</div></div>
       <div class="corr-l"><div class="corr-d">Un calendrier</div><div class="corr-a"><b>Mécanique 5, cas B</b> — seules les cases pleines apparaissent, dans l'ordre des dates</div></div>
+      <div class="corr-l"><div class="corr-d">Une barre d'onglets, des filtres, des outils</div><div class="corr-a"><b>Mécanique 8</b> — chaque bouton reçoit un appui, jamais un fondu. <em>Ajoutée après coup</em> : ma lecture les rendait comme des listes</div></div>
       <div class="corr-l"><div class="corr-d">Un formulaire</div><div class="corr-a"><b>Mécanique 6</b> — parcours complet sans une seule écriture</div></div>
       <div class="corr-l"><div class="corr-d">Le Studio</div><div class="corr-a"><b>Mécanique 1</b>, démontrée en <b>1 bis</b> sur un vrai plan de travail : je sélectionne « Photo d'équipe », et le tutoriel trouve seul <em>le plan de travail</em> et <em>les propriétés</em>. <b>Zéro ligne écrite pour le Studio</b> — et son banc a corrigé la mécanique pour tous les autres écrans</div></div>
       <div class="corr-l"><div class="corr-d">Un graphique / SVG</div><div class="corr-a"><b>Mécanique 7</b> — les barres poussent depuis l'axe, puis la plus haute se détache. <em>Ajoutée après coup</em> : je l'avais d'abord annoncée comme déjà couverte, ce qui était faux</div></div>
@@ -1501,7 +1633,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
 
     <div class="note">
       <b>Une liste vide reste largement sans réponse — mais une porte s'est ouverte.</b>
-      C'est le cas le plus fréquent en début de saison, et aucune des sept mécaniques ne le traite :
+      C'est le cas le plus fréquent en début de saison, et aucune des huit mécaniques ne le traite :
       il n'y a rien à mettre en scène quand il n'y a rien. Faire jouer <em>ce que l'écran dira
       quand il sera rempli</em> supposerait d'inventer des données, et je ne le propose toujours pas.
       <br><br>
@@ -1549,6 +1681,14 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
             <td class="n">80 l.</td><td class="n"><b style="color:var(--vert)">nulle</b></td>
             <td class="n"><b class="pts" style="color:var(--vert)">8,8</b></td>
             <td>≈ 30 écrans</td>
+          </tr>
+          <tr>
+            <td class="nom">8 · Le groupe de boutons</td>
+            <td class="n"><span class="jauge v"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i><i></i></span></td>
+            <td class="n"><span class="jauge"><i class="plein"></i><i class="plein"></i><i class="plein"></i><i></i><i></i></span></td>
+            <td class="n">30 l.</td><td class="n"><b style="color:var(--vert)">nulle</b></td>
+            <td class="n"><b class="pts" style="color:var(--vert)">8,7</b></td>
+            <td>Onglets, filtres, outils</td>
           </tr>
           <tr>
             <td class="nom">2 · Le projecteur descend</td>
@@ -1620,7 +1760,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
     <div class="plan">
       <div class="plan-c">
         <div class="plan-n">Livraison 1 · le socle</div>
-        <div class="plan-t">≈ 300 lignes</div>
+        <div class="plan-t">≈ 400 lignes</div>
         <div class="plan-d">
           <code>lire()</code>, <code>cadrer()</code>, <code>Scene</code>. Aucune animation nouvelle,
           mais <b>les repères deviennent justes et la vue se recadre</b>. Vérifiable au banc :
@@ -1630,9 +1770,9 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
       </div>
       <div class="plan-c">
         <div class="plan-n">Livraison 2 · le gros du rendement</div>
-        <div class="plan-t">≈ 305 lignes</div>
+        <div class="plan-t">≈ 390 lignes</div>
         <div class="plan-d">
-          Mécaniques <b>2, 6, 5, 7</b> et la partition. Ce sont celles qui ne peuvent rien casser :
+          Mécaniques <b>2, 6, 5, 7, 8</b> et la partition. Ce sont celles qui ne peuvent rien casser :
           aucune n'écrit, aucune ne clique. C'est là que la monotonie tombe.
         </div>
       </div>
@@ -1651,7 +1791,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
       <b>Ce qui ne change pas.</b> Aucune dépendance ajoutée · ES5 · <code>transform</code>,
       <code>opacity</code>, <code>filter</code> seulement · chaque règle CSS écrite deux fois pour le
       mode animations forcées · aucune écriture en base · le double verrou reste armé · aucune
-      animation écrite écran par écran. <b>L'administration n'est pas touchée</b> — les sept
+      animation écrite écran par écran. <b>L'administration n'est pas touchée</b> — les huit
       mécaniques vivent entièrement dans <code>tutoriel.js</code> et <code>tutoriel.css</code>.
     </div>
 
@@ -1700,11 +1840,40 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
      Tout ce qui suit est le code réellement proposé, en ES5.
      ================================================================= */
 
-  function visible(el) {
-    if (!el || !el.getBoundingClientRect) return false;
-    if (!el.getClientRects().length) return false;
+  // AVOIR UNE BOITE NE VEUT PAS DIRE ETRE VISIBLE.
+  //
+  // getBoundingClientRect() ignore le rognage des ancetres. Un accordeon
+  // replie -- max-height:0, overflow:hidden -- laisse la grille qu'il
+  // contient annoncer 771 x 830. Sans ce calcul, lire() rend des
+  // protagonistes que personne ne voit, et le halo se pose dans le vide.
+  //
+  // On intersecte donc la boite de l'element avec celle de CHAQUE
+  // ancetre qui rogne, et on refuse tout ancetre efface.
+  function boiteVisible(el) {
+    if (!el || !el.getBoundingClientRect) return null;
+    if (!el.getClientRects().length) return null;
     var r = el.getBoundingClientRect();
-    return r.width > 4 && r.height > 4;
+    var haut = r.top, bas = r.bottom, gauche = r.left, droite = r.right;
+    var n = el.parentNode, garde = 0;
+    while (n && n.nodeType === 1 && n !== document.body && garde++ < 16) {
+      var cs;
+      try { cs = getComputedStyle(n); } catch (e) { return null; }
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return null;
+      if (/hidden|auto|scroll|clip/.test(cs.overflow + cs.overflowX + cs.overflowY)) {
+        var b = n.getBoundingClientRect();
+        haut = Math.max(haut, b.top);   bas = Math.min(bas, b.bottom);
+        gauche = Math.max(gauche, b.left); droite = Math.min(droite, b.right);
+      }
+      n = n.parentNode;
+    }
+    if (bas - haut < 1 || droite - gauche < 1) return null;
+    return { top: haut, bottom: bas, left: gauche, right: droite,
+             width: droite - gauche, height: bas - haut };
+  }
+
+  function visible(el) {
+    var b = boiteVisible(el);
+    return !!b && b.width > 4 && b.height > 4;
   }
 
   // --- LA SIGNATURE DE FRATRIE ---------------------------------------
@@ -1927,6 +2096,24 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
     }
 
     if (champs.length >= 2) return { n: 'formulaire', items: champs };
+
+    // UN ONGLET N'EST PAS UNE LIGNE.
+    //
+    // Une barre d'onglets, un jeu de filtres, une colonne d'outils : la
+    // fratrie est la, mais ce sont des choses sur lesquelles ON APPUIE.
+    // Les traiter comme une liste, c'est les eteindre et les rallumer --
+    // ce qui n'apprend rien. On exige que TOUS soient actionnables, sinon
+    // une liste avec un bouton par ligne basculerait ici a tort.
+    var actionnable = function (e) {
+      if (/^(BUTTON|A)$/.test(e.tagName)) return true;
+      if (e.getAttribute && e.getAttribute('role') === 'button') return true;
+      if (e.tagName === 'INPUT' && /^(submit|button|checkbox|radio)$/i.test(e.type || '')) return true;
+      return false;
+    };
+    if (items.length >= 2 && items.length <= 6 && items.every(actionnable)) {
+      return { n: 'boutons', items: items };
+    }
+
     return { n: 'serie', items: items };
   }
 
@@ -1952,40 +2139,162 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
   };
 
   // --- LE CADRAGE ------------------------------------------------------
-  function conteneurDefilant(el) {
-    var n = el.parentNode, garde = 0;
-    while (n && n.nodeType === 1 && garde++ < 12) {
-      var cs = getComputedStyle(n);
-      if (/auto|scroll/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 4) return n;
+  // ===================================================================
+  // LE CADRAGE PEDAGOGIQUE — les six etapes, dans l'ordre
+  //
+  //   1. le rectangle reel de la cible        -> boiteVisible()
+  //   2. la zone reellement lisible           -> zoneDeLecture()
+  //   3. la cible est-elle assez visible      -> partVisible() >= .85
+  //   4. sinon, amener -- TOUS les conteneurs -> scrollersDe() + amener()
+  //   5. attendre la fin du deplacement       -> chainage des callbacks
+  //   6. seulement ensuite, le geste          -> quandFini()
+  // ===================================================================
+
+  // LA ZONE DE LECTURE N'EST PAS LA FENETRE.
+  //
+  // Le bandeau mange le haut, et le narrateur mange le bas -- ou le
+  // haut, puisqu'il se replace tout seul. On le mesure a l'instant :
+  // une valeur en dur ne peut pas suivre un narrateur qui bouge.
+  function zoneDeLecture() {
+    var h = window.innerHeight || 800, w = window.innerWidth || 1200;
+    var haut = 64, bas = h;
+    var narr = document.getElementById('bt-narr');
+    if (narr && !narr.classList.contains('hide') && narr.getClientRects().length) {
+      var r = narr.getBoundingClientRect();
+      if (r.top > h / 2) bas = Math.min(bas, r.top - 12);
+      else haut = Math.max(haut, r.bottom + 12);
+    }
+    if (bas - haut < 120) { haut = 64; bas = h; }   // narrateur geant : on renonce
+    return { haut: haut, bas: bas, gauche: 0, droite: w, hauteur: bas - haut, largeur: w };
+  }
+
+  // LA PART DE LA CIBLE REELLEMENT LISIBLE, entre 0 et 1.
+  function partVisible(el) {
+    var r = el.getBoundingClientRect();
+    var aire = r.width * r.height;
+    if (aire <= 0) return 0;
+    var c = boiteVisible(el);
+    if (!c) return 0;
+    var z = zoneDeLecture();
+    var t = Math.max(c.top, z.haut), b = Math.min(c.bottom, z.bas);
+    var g = Math.max(c.left, z.gauche), d = Math.min(c.right, z.droite);
+    if (b <= t || d <= g) return 0;
+    return ((b - t) * (d - g)) / aire;
+  }
+
+  // UNE CIBLE PLUS HAUTE QUE LA ZONE NE PEUT JAMAIS ATTEINDRE 85 %.
+  // Sans ce cas, un grand tableau se faisait recadrer a chaque etape,
+  // meme deja bien place. Pour lui, la regle est : son haut est lisible.
+  function assezVisible(el) {
+    var z = zoneDeLecture(), r = el.getBoundingClientRect();
+    if (r.height > z.hauteur * 0.92) {
+      var c = boiteVisible(el);
+      return !!c && c.top >= z.haut - 4 && c.top <= z.bas - 80;
+    }
+    return partVisible(el) >= 0.85;
+  }
+
+  // TOUS LES CONTENEURS QUI DEFILENT, du plus interieur a la fenetre.
+  //
+  // C'est le defaut qui rendait le cadrage inutile dans la vraie
+  // administration : l'ancienne version cherchait UN conteneur et, si
+  // elle n'en trouvait pas, ne faisait rien. Or le cas le plus courant
+  // est celui ou c'est LA FENETRE qui defile -- donc une cible sous la
+  // ligne de flottaison n'etait jamais amenee.
+  function scrollersDe(el) {
+    var chaine = [], n = el.parentNode, garde = 0;
+    while (n && n.nodeType === 1 && n !== document.body && garde++ < 16) {
+      var cs;
+      try { cs = getComputedStyle(n); } catch (e) { break; }
+      var defileY = /auto|scroll/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 4;
+      var defileX = /auto|scroll/.test(cs.overflowX) && n.scrollWidth > n.clientWidth + 4;
+      if (defileY || defileX) chaine.push(n);
       n = n.parentNode;
     }
-    return null;
+    // La fenetre en dernier : on l'amene une fois que la cible a fini
+    // de bouger a l'interieur de ses conteneurs.
+    var doc = document.scrollingElement || document.documentElement;
+    if (doc && doc.scrollHeight > (window.innerHeight || 0) + 4) chaine.push(window);
+    return chaine;
   }
-  function cadrer(el, quandFini) {
-    var sc = conteneurDefilant(el);
-    if (!sc) { quandFini && quandFini(); return; }
-    var rc = sc.getBoundingClientRect(), re = el.getBoundingClientRect();
-    var zoneH = rc.height - 24;
-    var dedans = re.top >= rc.top + 12 && re.bottom <= rc.bottom - 12;
-    if (dedans) { quandFini && quandFini(); return; }
-    // Grand bloc : on aligne le haut. Petit bloc : on centre.
-    var vise = (re.height > zoneH * 0.7)
-      ? sc.scrollTop + (re.top - rc.top) - 12
-      : sc.scrollTop + (re.top - rc.top) - (rc.height - re.height) / 2;
-    vise = Math.max(0, Math.min(vise, sc.scrollHeight - sc.clientHeight));
-    var d0 = sc.scrollTop, dist = vise - d0;
-    if (Math.abs(dist) < 3) { sc.scrollTop = vise; quandFini && quandFini(); return; }
-    var duree = Math.max(320, Math.min(760, Math.abs(dist) * 1.6));
+
+  // Un adaptateur, pour traiter la fenetre et un panneau de la meme facon.
+  function pilote(sc) {
+    if (sc === window) {
+      var doc = document.scrollingElement || document.documentElement;
+      var z = zoneDeLecture();
+      return {
+        litY: function () { return window.pageYOffset || doc.scrollTop || 0; },
+        litX: function () { return window.pageXOffset || doc.scrollLeft || 0; },
+        ecrit: function (x, y) { window.scrollTo(x, y); },
+        maxY: Math.max(0, doc.scrollHeight - (window.innerHeight || 0)),
+        maxX: Math.max(0, doc.scrollWidth - (window.innerWidth || 0)),
+        zone: { top: z.haut, bottom: z.bas, left: z.gauche, right: z.droite,
+                hauteur: z.hauteur, largeur: z.largeur }
+      };
+    }
+    var b = sc.getBoundingClientRect(), z2 = zoneDeLecture();
+    // Le narrateur couvre aussi ce qui est dans un panneau : on croise.
+    var top = Math.max(b.top, z2.haut), bottom = Math.min(b.bottom, z2.bas);
+    if (bottom - top < 80) { top = b.top; bottom = b.bottom; }
+    return {
+      litY: function () { return sc.scrollTop; },
+      litX: function () { return sc.scrollLeft; },
+      ecrit: function (x, y) { sc.scrollLeft = x; sc.scrollTop = y; },
+      maxY: Math.max(0, sc.scrollHeight - sc.clientHeight),
+      maxX: Math.max(0, sc.scrollWidth - sc.clientWidth),
+      zone: { top: top, bottom: bottom, left: b.left, right: b.right,
+              hauteur: bottom - top, largeur: b.width }
+    };
+  }
+
+  // AMENER un conteneur, avec notre propre courbe : on SAIT quand elle
+  // finit, donc on peut re-mesurer. behavior:'smooth' ne le dit jamais.
+  function amener(sc, el, fini) {
+    var p = pilote(sc);
+    var re = el.getBoundingClientRect(), z = p.zone;
+    // Grand bloc : on aligne le haut, on ne centre pas -- centrer un
+    // tableau plus haut que l'ecran ne montre que son milieu.
+    var viseY = (re.height > z.hauteur * 0.7)
+      ? p.litY() + (re.top - z.top) - 12
+      : p.litY() + (re.top - z.top) - (z.hauteur - re.height) / 2;
+    var viseX = p.litX();
+    // L'horizontal ne bouge QUE si la cible en sort : personne n'aime
+    // une page qui glisse de cote sans raison.
+    if (re.left < z.left || re.right > z.right) {
+      viseX = (re.width > z.largeur * 0.7)
+        ? p.litX() + (re.left - z.left) - 12
+        : p.litX() + (re.left - z.left) - (z.largeur - re.width) / 2;
+    }
+    viseY = Math.max(0, Math.min(viseY, p.maxY));
+    viseX = Math.max(0, Math.min(viseX, p.maxX));
+    var y0 = p.litY(), x0 = p.litX(), dy = viseY - y0, dx = viseX - x0;
+    if (Math.abs(dy) < 3 && Math.abs(dx) < 3) { fini && fini(); return; }
+    var duree = Math.max(320, Math.min(760, Math.max(Math.abs(dy), Math.abs(dx)) * 1.6));
     var t0 = null;
     function pas(ts) {
       if (t0 === null) t0 = ts;
-      var p = Math.min(1, (ts - t0) / duree);
-      var k = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
-      sc.scrollTop = d0 + dist * k;
-      if (p < 1) requestAnimationFrame(pas);
-      else quandFini && quandFini();   // on re-mesure APRÈS, jamais avant
+      var q = Math.min(1, (ts - t0) / duree);
+      var k = q < 0.5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2;
+      p.ecrit(x0 + dx * k, y0 + dy * k);
+      if (q < 1) requestAnimationFrame(pas);
+      else fini && fini();
     }
     requestAnimationFrame(pas);
+  }
+
+  function cadrer(el, quandFini) {
+    if (!el) { quandFini && quandFini(); return; }
+    // Etape 3 : deja lisible, on ne bouge pas. Defiler ce qui est sous
+    // les yeux coute une demi-seconde et donne le mal de mer.
+    if (assezVisible(el)) { quandFini && quandFini(); return; }
+    var chaine = scrollersDe(el), i = 0;
+    (function suite() {
+      // On re-teste a chaque etage : amener le panneau suffit souvent,
+      // et il ne faut alors pas faire bouger la page en plus.
+      if (i >= chaine.length || assezVisible(el)) { quandFini && quandFini(); return; }
+      amener(chaine[i++], el, suite);
+    })();
   }
 
   /* =================================================================
@@ -2079,21 +2388,47 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
      ================================================================= */
 
   // --- 2. LE PROJECTEUR DESCEND ---------------------------------------
+  // DEUX MOUVEMENTS, PAS UN.
+  //
+  // La commande demande cinq choses pour une liste : que les lignes
+  // apparaissent progressivement, qu'une ligne soit mise en avant, que
+  // plusieurs soient parcourues, qu'une ligne se deplace legerement, et
+  // que les autres perdent de la presence. Le premier mouvement --
+  // l'arrivee -- manquait : la liste etait deja la, et une liste deja
+  // la ne dit rien. Une liste qui SE REMPLIT dit « voici vos lignes ».
   function projecteur(sc, sur, items, fini) {
-    var vus = items.length > 6 ? [items[0], items[Math.floor(items.length / 2)], items[items.length - 1]] : items;
-    items.forEach(function (el) {
-      sc.css(el, 'transition:opacity .34s ease,transform .34s cubic-bezier(.2,.8,.3,1);opacity:.3');
+    var vus = items.length > 6
+      ? [items[0], items[Math.floor(items.length / 2)], items[items.length - 1]]
+      : items;
+
+    // MOUVEMENT 1 — les lignes arrivent, du haut vers le bas.
+    var ARRIV = Math.max(34, Math.min(70, 420 / items.length));
+    items.forEach(function (el, i) {
+      sc.css(el, 'opacity:0;transform:translateY(9px)');
+      sc.tard(60 + i * ARRIV, function () {
+        el.style.transition = 'opacity .3s ease,transform .34s cubic-bezier(.2,.85,.3,1)';
+        el.style.opacity = '1'; el.style.transform = 'none';
+      });
+    });
+    var t0 = 60 + items.length * ARRIV + 300;
+
+    // MOUVEMENT 2 — le projecteur descend, une seule ligne lisible.
+    sc.tard(t0 - 60, function () {
+      items.forEach(function (el) {
+        el.style.transition = 'opacity .34s ease,transform .34s cubic-bezier(.2,.8,.3,1)';
+        el.style.opacity = '.3';
+      });
     });
     var pas = Math.max(320, Math.min(620, 2600 / vus.length));
     vus.forEach(function (el, i) {
-      sc.tard(180 + i * pas, function () {
+      sc.tard(t0 + i * pas, function () {
         vus.forEach(function (o) { o.style.opacity = '.3'; o.style.transform = 'none'; });
         el.style.opacity = '1'; el.style.transform = 'translateX(7px)';
         sur.poser(el);
         sur.mainVers(el, -14, el.getBoundingClientRect().height / 2);
       });
     });
-    sc.tard(180 + vus.length * pas + 260, function () {
+    sc.tard(t0 + vus.length * pas + 260, function () {
       items.forEach(function (el) { el.style.opacity = '1'; el.style.transform = 'none'; });
       sur.vide(); fini && fini();
     });
@@ -2108,24 +2443,56 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
     var PAS = 900;
     choisis.forEach(function (el, i) {
       sc.tard(150 + i * PAS, function () {
-        items.forEach(function (o) { o.style.opacity = '.26'; o.style.transform = 'none'; });
+        // LA RELATION ENTRE INDICATEURS SE MONTRE EN NE LES ETEIGNANT PAS.
+        //
+        // La version precedente rallumait un seul bloc et rendait tous
+        // les autres a .26 -- y compris ceux qu'on venait de lire. On ne
+        // voyait donc jamais deux chiffres ensemble, et « 27 licenciees
+        // mais 8 dossiers en attente » ne se formait dans aucune tete.
+        // Les indicateurs deja lus RESTENT lisibles : a la fin, les trois
+        // se regardent d'un coup, et c'est la que la relation apparait.
+        items.forEach(function (o) {
+          if (choisis.indexOf(o) < 0 || choisis.indexOf(o) > i) {
+            o.style.opacity = '.26'; o.style.transform = 'none';
+          }
+        });
+        choisis.slice(0, i).forEach(function (o) { o.style.opacity = '.72'; o.style.transform = 'none'; });
         el.style.opacity = '1'; el.style.transform = 'translateY(-4px) scale(1.02)';
         sur.poser(el);
+
+        // Les trois feuilles d'un indicateur, dans l'ordre ou on les lit :
+        // le libelle nomme, la valeur chiffre, l'evolution situe.
         var f = feuilles(el);
-        var nb = null, lab = null;
+        var nb = null, lab = null, evo = null;
         f.forEach(function (x) {
-          if (!nb && estNombreSeul(x.textContent)) nb = x;
-          else if (!lab) lab = x;
+          if (!nb && estNombreSeul(x.textContent)) { nb = x; return; }
+          if (!lab) { lab = x; return; }
+          if (!evo) evo = x;
         });
-        // Le libellé arrive AVANT la valeur : on nomme, puis on chiffre.
         if (lab) {
           sc.css(lab, 'transition:opacity .26s ease,transform .26s cubic-bezier(.2,.9,.3,1);opacity:0;transform:translateX(-7px)');
           sc.tard(20, function () { lab.style.opacity = '1'; lab.style.transform = 'none'; });
         }
         if (nb) sc.tard(120, function () { compter(sc, nb, 560); });
+        // L'EVOLUTION ARRIVE EN DERNIER, et c'est voulu : « +3 » ne veut
+        // rien dire tant qu'on ne sait pas +3 de quoi. Elle monte quand
+        // le compteur s'arrete.
+        if (evo) {
+          sc.css(evo, 'transition:opacity .3s ease,transform .34s cubic-bezier(.2,1.4,.35,1);opacity:0;transform:translateY(6px)');
+          sc.tard(690, function () { evo.style.opacity = '1'; evo.style.transform = 'none'; });
+        }
       });
     });
-    sc.tard(150 + choisis.length * PAS + 300, function () {
+    // LE TEMPS DE LA RELATION : les trois restent ensemble une seconde,
+    // le halo s'efface. C'est la seule etape ou l'on regarde un ENSEMBLE.
+    sc.tard(150 + choisis.length * PAS, function () {
+      choisis.forEach(function (o) {
+        o.style.opacity = '1'; o.style.transform = 'translateY(-2px)';
+      });
+      sur.halo.setAttribute('class', 'halo');
+      if (choisis.length > 1) sur.etiquette(choisis[choisis.length - 1], 'les trois ensemble');
+    });
+    sc.tard(150 + choisis.length * PAS + 1000, function () {
       items.forEach(function (el) { el.style.opacity = '1'; el.style.transform = 'none'; });
       sur.vide(); fini && fini();
     });
@@ -2156,8 +2523,46 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
       sur.mainVers(prem, prem.getBoundingClientRect().width / 2, 10);
       sc.tard(420, function () { sur.mainVers(der, der.getBoundingClientRect().width / 2, 10); });
       sc.tard(220, function () { sur.etiquette(prem, 'la colonne qui répond'); });
+
+      // MOUVEMENT 3 — LE REGARD PROGRESSE HORIZONTALEMENT, PUIS SE POSE
+      // SUR UNE CELLULE.
+      //
+      // Une colonne mise en evidence dit « ces nombres vont ensemble ».
+      // Elle ne dit pas encore ce qu'ils veulent dire. On lit donc UNE
+      // ligne de gauche a droite -- son nom, puis ses chiffres -- et l'on
+      // s'arrete sur l'intersection : c'est la que « Baobabs » et
+      // « points » se rencontrent, et c'est la seule facon de faire
+      // comprendre qu'un tableau se lit dans deux sens.
+      var ligne0 = lignes[0];
+      var cellules = [].slice.call(ligne0.children).filter(visible);
+      var croisement = null;
+      cols[k].forEach(function (cell) { if (ligne0.contains(cell)) croisement = cell; });
+      sc.tard(1150, function () {
+        // Tout revient a mi-presence : on quitte la lecture par colonne.
+        cols.forEach(function (c) { c.forEach(function (x) { x.style.opacity = '.3'; x.style.transform = 'none'; x.style.color = ''; }); });
+        ligne0.style.opacity = '1';
+        cellules.forEach(function (x) { x.style.opacity = '1'; });
+      });
+      cellules.forEach(function (cell, ci) {
+        sc.tard(1280 + ci * 190, function () {
+          var p = sur.rel(cell);
+          sur.mainVers(cell, p.w / 2, p.h / 2);
+        });
+      });
+      if (croisement) {
+        sc.tard(1280 + cellules.length * 190 + 120, function () {
+          sur.poser(croisement);
+          sc.css(croisement, 'transition:transform .36s cubic-bezier(.2,1.3,.35,1),color .3s ease');
+          croisement.style.transform = 'scale(1.14)';
+          croisement.style.color = VERT;
+          sur.etiquette(croisement, 'cette ligne, cette colonne');
+        });
+        sc.tard(1280 + cellules.length * 190 + 700, function () {
+          croisement.style.transform = 'none';
+        });
+      }
     });
-    sc.tard(t0 + 1600, function () {
+    sc.tard(t0 + 1280 + 5 * 190 + 1250, function () {
       lignes.forEach(function (l) { l.style.opacity = '1'; l.style.transform = 'none'; });
       cols.forEach(function (c) { c.forEach(function (cell) { cell.style.opacity = '1'; cell.style.transform = 'none'; cell.style.color = ''; }); });
       sur.vide(); fini && fini();
@@ -2266,6 +2671,67 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
       t += 900;
     }
     sc.tard(t + 500, function () { sur.vide(); fini && fini(); });
+  }
+
+  // ===================================================================
+  // revelerContenu(cible) — LE REPARTITEUR
+  //
+  // Le point d'entree unique. Il ne connait aucun ecran et ne joue aucun
+  // effet : il demande « qu'est-ce que cette cible EST ? » et confie la
+  // scene a la mecanique correspondante. C'est ici, et nulle part
+  // ailleurs, que se decide la mise en scene d'une etape.
+  //
+  // Ajouter une nature plus tard = une ligne de plus dans ce switch.
+  // ===================================================================
+  function revelerContenu(cible, sc, sur, fini) {
+    var hote = (typeof cible === 'string') ? document.querySelector(cible) : cible;
+    if (!hote) { fini && fini(); return null; }
+    var lu = lire(hote);
+    // Etape 6 de la commande : le geste ne part QU'APRES le cadrage.
+    cadrer(hote, function () {
+      if (sc.mort) return;
+      switch (lu.n) {
+        case 'indicateurs': indicateurs(sc, sur, lu.items, fini); break;
+        case 'graphique':   barresPoussent(sc, sur, lu.items, fini); break;
+        case 'tableau':     colonneRepond(sc, sur, lu.items, lu.cols, fini); break;
+        case 'grille':
+        case 'calendrier':  grillePeuple(sc, sur, lu, fini); break;
+        case 'formulaire':  formulaire(sc, sur, lu.items,
+                              hote.querySelector('button,[type="submit"],.f-envoi'), fini); break;
+        case 'boutons':     groupeDeBoutons(sc, sur, lu.items, fini); break;
+        case 'serie':       projecteur(sc, sur, lu.items, fini); break;
+        default:            fini && fini();
+      }
+    });
+    return lu;
+  }
+
+  // --- LE GROUPE DE BOUTONS ----------------------------------------------
+  //
+  // La nature qui manquait. Une barre d'onglets, un jeu de filtres, une
+  // colonne d'outils : ce ne sont pas des « lignes », ce sont des choses
+  // sur lesquelles ON APPUIE. Les eteindre puis les rallumer une par une
+  // n'apprend rien ; les voir recevoir un appui, si.
+  function groupeDeBoutons(sc, sur, items, fini) {
+    var vus = items.slice(0, 6);
+    items.forEach(function (el) {
+      sc.css(el, 'transition:opacity .28s ease,transform .28s cubic-bezier(.2,.8,.3,1);opacity:.35');
+    });
+    var PAS = Math.max(420, Math.min(760, 3200 / vus.length));
+    vus.forEach(function (el, i) {
+      sc.tard(160 + i * PAS, function () {
+        items.forEach(function (o) { o.style.opacity = '.35'; o.style.transform = 'none'; });
+        el.style.opacity = '1'; el.style.transform = 'translateY(-2px)';
+        sur.poser(el);
+        var p = sur.rel(el);
+        sur.mainVers(el, p.w / 2, p.h / 2);
+        sc.tard(200, function () { sur.tape(el); });   // l'appui, sans evenement
+      });
+    });
+    sc.tard(160 + vus.length * PAS + 320, function () {
+      items.forEach(function (el) { el.style.opacity = '1'; el.style.transform = 'none'; });
+      sur.vide(); fini && fini();
+    });
   }
 
   // --- 7. LES BARRES POUSSENT -------------------------------------------
@@ -2504,6 +2970,9 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
 
   // La scene du tempo.
   remplirRows(document.getElementById('d-tempo-rows'), 4, 2);
+  // La scene du groupe de boutons : une barre PUIS une liste, pour
+  // montrer que les deux natures cohabitent sans se voler.
+  remplirRows(document.getElementById('d-rows-d'), 3, 1);
 
   // Le Studio : les calques agissent VRAIMENT sur le plan de travail.
   // La mecanique n'en sait rien -- elle le decouvre.
@@ -2649,6 +3118,17 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
       barresPoussent(sc, sur, l.items, fini);
     },
 
+    boutons: function (sc, sur, lu, fini) {
+      // Deux regions cote a cote, même fratrie, natures DIFFERENTES :
+      // c'est la demonstration que « boutons » ne vole pas le travail
+      // de « serie ».
+      var barre = document.getElementById('d-onglets');
+      var liste = document.getElementById('d-rows-d');
+      var a = lire(barre), b = lire(liste);
+      dit(lu, 'la barre : <b>' + a.n + '</b> (' + a.items.length + ') · la liste : <b>' + b.n + '</b> (' + b.items.length + ')');
+      revelerContenu(barre, sc, sur, fini);
+    },
+
     tempo: function (sc, sur, lu, fini) {
       var eti = document.getElementById('d-tempo-eti');
       var kpis = lire(document.getElementById('d-tempo-kpi')).items;
@@ -2682,7 +3162,7 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
 
       // 3. CONTEMPLATIVE — la main se retire, le halo pâlit, les chiffres parlent seuls.
       sc.tard(t, function () {
-        annonce('Contemplative', 'la main se retire');
+        annonce('Contemplative', 'le repère s’efface');
         sur.main.classList.remove('on');
         sur.poser(kpis[2], true);
         var f = feuilles(kpis[2]);
@@ -2690,6 +3170,13 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
           if (estNombreSeul(f[i].textContent)) { compter(sc, f[i], 620); break; }
         }
       });
+      // LE REPERE DISPARAIT, IL NE PALIT PAS.
+      //
+      // Tant qu'un cadre reste a l'ecran, il continue de dire « regarde
+      // ici » -- et l'oeil obeit au cadre plutot qu'au chiffre qui monte.
+      // Un contenu qui parle de lui-meme n'a plus besoin qu'on le
+      // designe : le halo s'en va, et il ne reste que la donnee.
+      sc.tard(t + 420, function () { sur.halo.setAttribute('class', 'halo'); });
       t += 1600;
 
       // 4. RAFALE — quatre temps courts, aucun re-tracé entre eux.
@@ -2753,11 +3240,25 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
         tab: ['sur-tab', 'lu-tab'], grille: ['sur-grille', 'lu-grille'],
         form: ['sur-form', 'lu-form'], cause: ['sur-cause', 'lu-cause'],
         studio: ['sur-studio', 'lu-studio'], graphe: ['sur-graphe', 'lu-graphe'],
-        tempo: ['sur-tempo', 'lu-tempo']
+        tempo: ['sur-tempo', 'lu-tempo'], boutons: ['sur-boutons', 'lu-boutons']
       }[n];
       lancer(b, ids[0], ids[1], jeux[n]);
     });
   });
+
+  // LE SOCLE EST INSPECTABLE.
+  //
+  // Une proposition dont on ne peut pas pousser les fonctions dans une
+  // console est une proposition qu'on doit croire sur parole. Celle-ci
+  // s'ouvre : chaque regle de reconnaissance et de cadrage se rejoue a
+  // la main, sur n'importe quel element de la page.
+  window.__socle = {
+    lire: lire, revelerContenu: revelerContenu,
+    cadrer: cadrer, assezVisible: assezVisible, partVisible: partVisible,
+    zoneDeLecture: zoneDeLecture, scrollersDe: scrollersDe,
+    boiteVisible: boiteVisible, visible: visible,
+    Scene: Scene, Sur: Sur
+  };
 
   /* =================================================================
      LE BANDEAU A/B — la signature d'aujourd'hui contre celle proposée
