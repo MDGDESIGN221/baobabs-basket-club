@@ -618,27 +618,36 @@
   // Rien ici n'appartient a un ecran : ces boutons vivent au-dessus de
   // tout, et c'est justement pour ca qu'ils echappaient au tutoriel. Pas
   // de navigation -- on reste ou l'on est, et on designe.
+  // L'ORDRE SUIT LA BARRE, PAS L'IDEE QU'ON S'EN FAIT.
+  // Il partait du role — a l'extreme droite — passait a la recherche au
+  // milieu, revenait a la cloche a droite, repartait au Studio au
+  // milieu. La main dessinait un zigzag pour visiter une rangee. Depuis
+  // la refonte du bandeau, cette rangee se lit en trois temps : la
+  // recherche, ce qui emmene ailleurs, les outils. Le chapitre les suit
+  // dans cet ordre, de gauche a droite.
   var ENTETE = [
-    { cible:'#role-badge',
-      dit:'Votre <b>casquette</b> est écrite là, en permanence. Elle décide de ce que vous voyez : si un écran manque à votre menu, la réponse est ici.' },
     { cible:'#gs-open',
-      dit:'La <b>recherche</b>, ou <code>Ctrl+K</code>. Elle cherche partout d’un coup : un match, un club, une joueuse, une référence de billet, un écran. C’est le chemin le plus court vers n’importe quoi.' },
-    { cible:'#notif-bell',
-      dit:'La <b>cloche</b> ne signale pas l’activité : elle signale ce qui <b>demande une décision</b>. Une candidature à trancher, une commande à préparer, un score à publier. Si elle est éteinte, rien ne vous attend.' },
-    { cible:'#refresh-btn',
-      dit:'<b>Recharger</b> les données de l’écran. Utile un soir de match, quand quelqu’un d’autre saisit en même temps que vous.' },
+      dit:'La <b>recherche</b>, ou <code>Ctrl+K</code>. Elle cherche partout d’un coup : un match, un club, une joueuse, une référence de billet, un écran. C’est le chemin le plus court vers n’importe quoi — et c’est pour ça qu’elle a la place au milieu.' },
+    { cible:'#voir-site',
+      dit:'Les trois suivants sont sous un même cadre, et ce n’est pas un hasard : ils <b>emmènent ailleurs</b>. <b>Voir le site</b> ouvre le site public dans un nouvel onglet — pour vérifier de vos yeux ce qu’un changement a donné.' },
     { cible:'#studio-open',
-      dit:'Le <b>Studio</b> compose les affiches du club : annonce de match, résultat, portrait de joueuse. Il s’ouvre par-dessus l’administration et se referme sans rien changer.' },
+      dit:'Le <b>Studio</b> compose les affiches du club : annonce de match, résultat, portrait de joueuse. Il est vert parce qu’il n’est pas un écran de gestion — il s’ouvre par-dessus l’administration, et se referme sans rien changer.' },
     { cible:'#help-btn',
       dit:'Et ce bouton-ci ouvre <b>ce tutoriel</b> — mais à partir de l’écran où vous vous trouvez. « Je suis ici, qu’est-ce que je peux faire ici. »' },
+    { cible:'#notif-bell',
+      dit:'À droite, les <b>outils</b> : eux ne vous emmènent nulle part, ils agissent ici. La <b>cloche</b> ne signale pas l’activité, elle signale ce qui <b>demande une décision</b>. Une candidature à trancher, une commande à préparer, un score à publier. Éteinte, rien ne vous attend.' },
+    { cible:'#refresh-btn',
+      dit:'<b>Recharger</b> les données de l’écran. Utile un soir de match, quand quelqu’un d’autre saisit en même temps que vous.' },
     { cible:'#logout-btn',
-      dit:'<b>Se déconnecter.</b> À faire sur un ordinateur partagé, ou au club. En revenant, votre casquette et vos droits sont relus depuis la base : un rôle changé entre-temps s’applique à ce moment-là, pas avant.' }
+      dit:'<b>Se déconnecter.</b> À faire sur un ordinateur partagé, ou au club. En revenant, votre casquette et vos droits sont relus depuis la base : un rôle changé entre-temps s’applique à ce moment-là, pas avant.' },
+    { cible:'#role-badge',
+      dit:'Et tout au bout, votre <b>casquette</b>, écrite en permanence. Elle n’est pas un bouton — c’est une étiquette. Elle décide de ce que vous voyez : si un écran manque à votre menu, la réponse est ici.' }
   ];
 
   function etapesEntete() {
     var out = [{
       special: true, nom: 'Le bandeau du haut',
-      html: 'Ces commandes-là ne changent jamais&nbsp;: elles vous suivent d’un écran à l’autre. On les passe en revue une fois, et on n’y revient plus.'
+      html: 'Ces commandes-là ne changent jamais&nbsp;: elles vous suivent d’un écran à l’autre. Elles se lisent de gauche à droite en trois temps&nbsp;— la recherche, ce qui emmène ailleurs, puis les outils. On les passe en revue une fois, et on n’y revient plus.'
     }];
     ENTETE.forEach(function (e) {
       // Une commande absente ou masquee pour cette casquette n'est pas
