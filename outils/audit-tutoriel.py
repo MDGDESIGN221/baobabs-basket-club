@@ -30,6 +30,7 @@ import sys
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FICHIER = os.path.join(RACINE, "admin-matchs.html")
 BS = chr(92)          # antislash, jamais dans un litteral : il y casse tout
+LF = chr(10)
 
 
 def bloc(source, nom):
@@ -68,11 +69,36 @@ def compte_elements(corps, guillemet):
         return 0
     n, prof = 0, 0
     dedans = False
+    commentaire = False
     prec = ''
-    for ch in corps:
-        if dedans:
+    i = 0
+    while i < len(corps):
+        ch = corps[i]
+        # LES COMMENTAIRES SE SAUTENT, ET C'EST LE POINT DELICAT.
+        #
+        # Sans ce saut, deux choses arrivent. La virgule d'un commentaire
+        # (« Sans lui, on designe le releve ») compte comme un separateur
+        # et l'ecran est declare decale alors qu'il ne l'est pas. Pire :
+        # une apostrophe francaise (« n'existe ») ouvre une chaine
+        # imaginaire, tout ce qui suit passe pour du texte, et un VRAI
+        # decalage peut alors passer inapercu. Le garde-fou mentait dans
+        # les deux sens.
+        if commentaire:
+            if ch == LF:
+                commentaire = False
+        elif dedans:
             if ch == guillemet and prec != BS:
                 dedans = False
+        elif ch == '/' and corps[i + 1:i + 2] == '/':
+            commentaire = True
+            i += 2
+            prec = '/'
+            continue
+        elif ch == '/' and corps[i + 1:i + 2] == '*':
+            f = corps.find('*/', i)
+            i = len(corps) if f < 0 else f + 2
+            prec = '/'
+            continue
         elif ch == guillemet:
             dedans = True
         elif ch == '[':
@@ -82,6 +108,7 @@ def compte_elements(corps, guillemet):
         elif ch == ',' and prof == 0:
             n += 1
         prec = ch
+        i += 1
     return n + 1
 
 
