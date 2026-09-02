@@ -1,0 +1,63 @@
+BAOBABS BASKET CLUB — E-mail de confirmation de réservation
+============================================================
+Mise en place : une dizaine de minutes, une seule fois.
+
+POURQUOI CETTE MÉCANIQUE
+  L'e-mail part d'un petit programme hébergé chez Supabase, pas du site.
+  La raison est simple : une clé d'envoi placée dans le site serait
+  lisible par n'importe qui, et servirait à envoyer du courrier au nom
+  du club. Côté serveur, elle reste secrète.
+
+  Tant que ce n'est pas installé, RIEN NE CASSE : les réservations
+  aboutissent normalement, simplement sans e-mail.
+
+
+ÉTAPE 1 — CRÉER LE COMPTE D'ENVOI (Brevo, gratuit)
+  1. brevo.com → créez un compte (300 e-mails/jour gratuits, largement
+     assez ; pas besoin de toucher au DNS du domaine).
+  2. Réglages → Expéditeurs → ajoutez l'adresse qui signera les e-mails
+     (ex. billetterie@baobabsbasketclub.com ou le Gmail du club) et
+     validez-la via le lien reçu.
+  3. Réglages → Clés API (SMTP & API) → créez une clé, copiez-la.
+
+ÉTAPE 2 — DONNER LA CLÉ À SUPABASE
+  Supabase → Edge Functions → Secrets → ajoutez :
+    BREVO_API_KEY     = la clé copiée
+    BBC_SENDER_EMAIL  = l'adresse validée à l'étape 1
+    BBC_SENDER_NAME   = Baobabs Basket Club        (facultatif)
+
+ÉTAPE 3 — INSTALLER LA FONCTION
+  Supabase → Edge Functions → Deploy a new function
+    Nom EXACT :  confirmation-reservation
+    Collez tout le contenu de  supabase/functions/confirmation-reservation/index.ts  → Deploy.
+
+ÉTAPE 4 — LA BASE
+  Passez MIGRATION-email-expiration.sql (ou relancez le TOUT-EN-UN,
+  qui l'inclut désormais). Elle ajoute la trace d'envoi et planifie
+  l'expiration automatique.
+
+ÉTAPE 5 — TESTER
+  Sur le site, réservez une place en donnant VOTRE e-mail.
+  → L'écran de confirmation ajoute « Une confirmation vient de partir… »
+  → Dans l'admin, Billetterie → la réservation porte « e-mail envoyé »
+  → Le bouton « E-mail » sur une réservation renvoie la confirmation
+    (utile : adresse mal saisie corrigée, courrier en spam…)
+
+
+L'EXPIRATION AUTOMATIQUE
+  Toutes les heures, la base fait le ménage :
+   · Match passé : une réservation jamais retirée devient « Expirée ».
+     Les compteurs de vente ne bougent pas — c'est l'histoire du match.
+   · Délai de retrait (DÉSACTIVÉ par défaut) : si vous l'activez, une
+     réservation trop ancienne pour un match à venir expire et ses
+     places repartent en vente.
+       Activer (72 h) :   update site_settings set tk_hold_hours = 72;
+       Désactiver     :   update site_settings set tk_hold_hours = null;
+     C'est une décision de politique du club : ne l'activez que si vous
+     l'annoncez aux supporters.
+
+GARDE-FOUS INTÉGRÉS
+  · Pas plus d'un envoi toutes les 10 minutes par réservation.
+  · Une réservation annulée ou expirée ne peut plus recevoir d'e-mail.
+  · L'envoi se fait en arrière-plan : s'il échoue, la réservation reste
+    acquise et l'écran du client ne s'assombrit pas.

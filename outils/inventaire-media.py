@@ -15,7 +15,7 @@ QUAND LE RELANCER
 -----------------
 Après avoir ajouté ou retiré des fichiers dans media/ :
 
-    python outils-inventaire-media.py
+    python outils/inventaire-media.py
 
 Puis committer media/index.json avec les images.
 """
@@ -53,7 +53,7 @@ def main():
         return 1
     fichiers = inventorier()
     doc = {
-        "_lisez_moi": "Genere par outils-inventaire-media.py. Ne pas editer a la main.",
+        "_lisez_moi": "Genere par outils/inventaire-media.py. Ne pas editer a la main.",
         "total": len(fichiers),
         "octets": sum(f["octets"] for f in fichiers),
         "fichiers": fichiers,
