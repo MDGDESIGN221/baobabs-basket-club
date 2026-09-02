@@ -2801,7 +2801,42 @@
     return l.length <= 6 ? l : [l[0], l[1], l[2]];
   }
 
-  function parcourirEnumeration(e, g) {
+  // ===================================================================
+  // LE GESTE SE CALE SUR LA PHRASE, PAS SUR UNE CONSTANTE
+  //
+  // Le balayage d'une region durait 3 430 ms quoi que dise la voix.
+  // Sur une phrase de cinq mots, la main finissait bien apres elle ;
+  // sur une phrase de trente, elle avait fini depuis neuf secondes et
+  // plus rien ne bougeait pendant qu'on parlait. C'est le decalage.
+  //
+  // dureeEstimee() annonce deja la duree d'une phrase -- 150 mots par
+  // minute. On repartit donc les temps du geste sur cette duree.
+  //
+  // DEUX LEVIERS, ET LE SECOND COMPTE AUTANT QUE LE PREMIER :
+  //   . l'ecart entre deux temps, entre un minimum lisible et un
+  //     plafond ;
+  //   . LE NOMBRE de temps. Etirer trois temps jusqu'a remplir douze
+  //     secondes les rendrait glaciaux ; sur une longue phrase, on en
+  //     ajoute plutot que de les ralentir.
+  // ===================================================================
+  function tempsDuGeste(budget, n, depart, queue) {
+    // n TEMPS, DONC n-1 INTERVALLES. Mesure au banc : en divisant par n,
+    // le geste finissait a 3 130 ms pour une voix de 3 800 -- il
+    // s'eloignait de la voix au lieu de s'en rapprocher.
+    var dispo = Math.min(budget || 3800, 11000) - depart - queue;
+    return Math.max(420, Math.min(1200, dispo / Math.max(1, n - 1)));
+  }
+
+  // Combien de temps pour un balayage : trois sur une phrase courte,
+  // jusqu'a six sur une longue.
+  function nbTemps(budget) {
+    // Combien de temps faut-il pour couvrir la phrase sans depasser
+    // l'ecart maximum lisible (1 200 ms) ? n = 1 + duree / ecart.
+    var d = Math.min(budget || 3800, 11000) - 1790;
+    return Math.max(3, Math.min(7, Math.round(1 + d / 1200)));
+  }
+
+  function parcourirEnumeration(e, g, budget) {
     // Une etape qui joue deja un geste pilote la main elle-meme. Deux
     // scenarios sur le meme pointeur se disputeraient ses coordonnees.
     if (e.geste) return false;
@@ -2817,7 +2852,9 @@
     // Au-dela de six, ce n'est plus une enumeration mais un defile :
     // la main passerait trop vite pour qu'on lise quoi que ce soit.
     items = items.slice(0, 6);
-    var pas = Math.max(560, Math.min(1000, 3800 / items.length));
+    // L'ecart suit la phrase : on ne peut pas inventer des entrees,
+    // donc ici c'est le rythme qui s'adapte, pas le nombre.
+    var pas = tempsDuGeste(budget, items.length, 980, 620);
     items.forEach(function (el, i) {
       setTimeout(function () {
         if (g !== jeton || etapes[idx] !== e) return;
@@ -2842,14 +2879,18 @@
   // C'est le geste du regard qui balaie, et il dit « tout ceci » mieux
   // qu'un point immobile. Le halo, lui, reste sur la region entiere :
   // c'est bien d'elle qu'on parle.
-  function balayer(el, g, e) {
+  function balayer(el, g, e, budget) {
     // ON MESURE DANS LE RENDEZ-VOUS, PAS A L'APPEL.
     //
     // balayer() est appelee juste apres designer(), qui differe poser()
     // de 420 ms. C'est poser() qui retire .hide a la main : la tester
     // ici revenait a la tester avant qu'elle existe, et le balayage
     // renoncait en silence. La cible, elle, n'avait pas fini de defiler.
-    [0.2, 0.52, 0.84].forEach(function (i0, i) {
+    var nT = nbTemps(budget);
+    var pasT = tempsDuGeste(budget, nT, 1050, 740);
+    var points = [];
+    for (var k = 0; k < nT; k++) points.push((k + 0.5) / nT);
+    points.forEach(function (i0, i) {
       setTimeout(function () {
         if (g !== jeton || etapes[idx] !== e) return;
         var dd = $('bt-doigt');
@@ -2866,9 +2907,9 @@
         dd.style.top = Math.round(y) + 'px';
         dd.classList.add('vole');
         setTimeout(function () { if (g === jeton) dd.classList.remove('vole'); }, 720);
-      }, 1050 + i * 820);
+      }, 1050 + i * pasT);
     });
-    plancherGeste = Math.max(plancherGeste, 1050 + 2 * 820 + 740);
+    plancherGeste = Math.max(plancherGeste, 1050 + (nT - 1) * pasT + 740);
   }
 
   // LA MAIN NE SE CONTENTE PLUS DE MONTRER.
@@ -2942,26 +2983,36 @@
   }
 
   function animerCible(e, g, el) {
+    // La duree annoncee de la phrase : c'est elle qui donne le tempo
+    // de tout ce qui suit.
+    var budget = dureeEstimee(e && e.html ? e.html : '');
     // Les chiffres d'abord : ils partent avec la pose du cadre, pas
     // apres, sinon on regarde deux fois le meme endroit.
     chiffresAnimer(el, g);
     // Une demonstration pilote deja la main : deux scenarios sur le
     // meme pointeur se disputeraient ses coordonnees.
     if (e.geste) return;
-    if (e.parcours !== false && parcourirEnumeration(e, g)) return;
+    if (e.parcours !== false && parcourirEnumeration(e, g, budget)) return;
     if (!el) return;
     var t = el.tagName;
     var appuyable = t === 'BUTTON' || t === 'A' ||
       (el.getAttribute && el.getAttribute('role') === 'button') ||
       (t === 'INPUT' && /^(submit|button|checkbox|radio)$/i.test(el.type || ''));
-    if (!appuyable) { balayer(el, g, e); return; }
+    if (!appuyable) { balayer(el, g, e, budget); return; }
     // Apres l'arrivee, pas pendant : voir la main appuyer alors qu'elle
     // vole encore ne se lit pas.
+    // L'APPUI TOMBE DANS LA PHRASE, PAS A SON DEBUT.
+    //
+    // A 1 150 ms fixes, l'appui arrivait presque avec la premiere
+    // syllabe d'une longue phrase, puis plus rien ne bougeait pendant
+    // dix secondes. On le place au tiers de ce qui est dit : la main
+    // agit pendant qu'on explique, pas avant.
+    var quand = Math.max(900, Math.min(2600, budget * 0.35));
     setTimeout(function () {
       if (g !== jeton || etapes[idx] !== e) return;
       doigtTape(el);
-    }, 1150);
-    plancherGeste = Math.max(plancherGeste, 1150 + 500);
+    }, quand);
+    plancherGeste = Math.max(plancherGeste, quand + 500);
   }
 
   // LE FIL. Ce qu'on dit et ce qu'on montre vivent chacun de leur cote
