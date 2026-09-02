@@ -388,8 +388,8 @@
   .rs-dash{font-family:var(--font-ui);font-weight:800;color:var(--faint);font-size:14px;padding-top:11px}
   .rs-actions{display:flex;gap:6px;flex:none;justify-content:flex-end}
   .rs-actions .ds-act,.rs-actions .ds-mini-btn{padding:8px 12px;white-space:nowrap}
-  .rs-done{display:flex;flex-direction:column;align-items:center;gap:10px;padding:44px 20px;text-align:center;border:1px dashed var(--line-strong);border-radius:14px}
-  .rs-done svg{width:44px;height:44px;color:var(--lime)}
+  .rs-done{display:flex;flex-direction:column;align-items:center;gap:10px;padding:44px 20px;text-align:center;border:1px dashed var(--line-strong);border-radius:var(--r-sm)}
+  .rs-done svg{width:40px;height:40px;color:var(--ok)}
   .rs-done b{font-family:var(--font-ui);font-size:17px}
   .rs-done span{font-size:13px;color:var(--faint)}
 
@@ -1819,17 +1819,31 @@
   .mc-savebar .btn-primary:hover{background:var(--gold-bright);transform:none}
 
   /* Calendrier */
-  .cal-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-  .cal-dow{font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:center;padding:6px 0}
-  .cal-cell{min-height:82px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px;display:flex;flex-direction:column;gap:5px}
-  .cal-cell.out{opacity:.32}
-  .cal-cell.today{border-color:var(--gold)}
-  .cal-day{font-weight:700;font-size:11px;color:var(--faint)}
-  .cal-chip{background:var(--surface-2);border:1px solid var(--line-strong);border-left:3px solid var(--gold);border-radius:7px;padding:5px 7px;cursor:pointer;font-size:11px;line-height:1.3;color:var(--text)}
-  .cal-chip:hover{border-color:var(--gold)}
-  .cal-chip.won{border-left-color:var(--lime)}
-  .cal-chip.lost{border-left-color:#C0271B}
+  /* Un mois de calendrier est une grille : 42 cases a 10px de rayon
+     faisaient 42 petites cartes. Une seule grille, des filets entre les
+     jours, et le jour courant marque par un fond plutot que par un cadre
+     dore — un cadre parmi 42 se perd. */
+  .cal-head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .cal-label{font-family:var(--font-ui);font-weight:800;font-size:14px;letter-spacing:.02em;
+    color:var(--text);min-width:170px;text-align:center}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0}
+  .cal-dow{font-family:var(--font-ui);font-weight:700;font-size:9px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--faint);text-align:center;padding:0 0 9px;
+    border-bottom:1px solid var(--line-strong)}
+  .cal-cell{min-height:86px;background:transparent;border:none;border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);border-radius:0;padding:8px 7px;display:flex;
+    flex-direction:column;gap:5px}
+  .cal-cell:nth-child(7n){border-right:none}
+  .cal-cell.out{opacity:.28}
+  .cal-cell.today{background:var(--gold-soft)}
+  .cal-cell.today .cal-day{color:var(--gold);font-weight:800}
+  .cal-day{font-family:var(--font-ui);font-weight:700;font-size:11px;color:var(--faint);
+    font-variant-numeric:tabular-nums}
+  .cal-chip{background:var(--surface-2);border:none;border-left:2px solid var(--line-loud);
+    border-radius:0;padding:5px 7px;cursor:pointer;font-size:11px;line-height:1.3;color:var(--text)}
+  .cal-chip:hover{background:var(--surface-3);border-left-color:var(--gold)}
+  .cal-chip.won{border-left-color:var(--ok)}
+  .cal-chip.lost{border-left-color:var(--danger)}
 
   /* ===================== COMMANDES & CLIENTS ===================== */
   /* Bon de préparation : pensé pour être imprimé et suivi à la main pendant
@@ -1886,8 +1900,6 @@
   .cd-card{background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:11px;cursor:pointer;transition:border-color .14s,transform .14s;display:flex;gap:10px;align-items:flex-start}
   .cd-card:hover{border-color:var(--gold);transform:translateY(-1px)}
   .cd-card.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
-  .cd-avatar{width:40px;height:40px;border-radius:9px;object-fit:cover;flex:none;background:var(--surface)}
-  .cd-avatar-none{width:40px;height:40px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-family:var(--font-ui);font-weight:700;font-size:15px;color:#fff}
   .cd-card-name{font-weight:600;font-size:13px;color:var(--text);line-height:1.25}
   .cd-card-meta{font-size:11.5px;color:var(--faint);margin-top:3px;line-height:1.4}
   .cd-empty-col{font-size:11.5px;color:var(--faint);padding:14px 6px;text-align:center}
@@ -2609,6 +2621,10 @@
   .ds-tbl tbody tr td:first-child::before{content:'';position:absolute;left:0;top:0;bottom:0;
     width:2px;background:transparent;transition:background .12s}
   .ds-tbl tbody tr:hover td:first-child::before{background:var(--gold)}
+  /* Resultats : on tape dans la ligne, on ne l'ouvre pas. Le curseur et
+     le lisere de survol mentiraient. */
+  .ds-tbl tbody tr.ds-fixe{cursor:default}
+  .ds-tbl tbody tr.ds-fixe:hover td:first-child::before{background:transparent}
   .ds-tbl tr.blk-on{background:rgba(198,162,87,.08)}
   .ds-tbl tr.blk-on td:first-child::before{background:var(--gold)}
   /* Le nom ne se coupe jamais : « Ndeye Coumba Gaye » sur trois lignes
@@ -4098,26 +4114,25 @@
 
     <!-- ===== SECTION CALENDRIER ===== -->
     <section id="section-calendar" class="hide">
-      <div class="mod-head">
-        
-        <span class="mod-count" id="cal-count">—</span>
-        <div class="mod-view" id="cal-view-switch">
+      <div class="ds-head">
+        <span class="ds-count" id="cal-count">—</span>
+        <div class="ds-seg" id="cal-view-switch">
           <button type="button" class="on" data-calview="month">Mois</button>
           <button type="button" data-calview="list">Liste</button>
         </div>
       </div>
-      <div class="callout">Une vue d'ensemble de la saison, pour repérer les trous et les enchaînements. Rien ne se crée ici&nbsp;: cliquez un match pour ouvrir sa fiche.</div>
+      <div class="callout ds-note">Une vue d'ensemble de la saison, pour repérer les trous et les enchaînements. Rien ne se crée ici&nbsp;: cliquez un match pour ouvrir sa fiche.</div>
       <div id="cal-month">
         <div class="cal-head">
-          <button type="button" class="btn btn-ghost" id="cal-prev" style="padding:8px 13px">◀</button>
-          <strong id="cal-label" style="font-family:var(--font-ui);font-weight:700;font-size:17px;color:var(--text);min-width:180px;text-align:center"></strong>
-          <button type="button" class="btn btn-ghost" id="cal-next" style="padding:8px 13px">▶</button>
-          <button type="button" class="btn btn-ghost" id="cal-today" style="padding:8px 13px;font-size:12px">Aujourd'hui</button>
+          <button type="button" class="ds-act" id="cal-prev" aria-label="Mois précédent">◀</button>
+          <strong id="cal-label" class="cal-label"></strong>
+          <button type="button" class="ds-act" id="cal-next" aria-label="Mois suivant">▶</button>
+          <button type="button" class="ds-act" id="cal-today">Aujourd'hui</button>
         </div>
         <div class="cal-grid" id="cal-dows"></div>
         <div class="cal-grid" id="cal-cells" style="margin-top:6px"></div>
       </div>
-      <div id="cal-list" class="hide" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div id="cal-list" class="hide"></div>
     </section>
 
     <!-- ===== SECTION MATCHS ===== -->
@@ -4157,12 +4172,11 @@
 
     <!-- ===== SECTION RÉSULTATS ===== -->
     <section id="section-results" class="hide">
-      <div class="mod-head">
-        
-        <span class="mod-count" id="rs-count">—</span>
+      <div class="ds-head">
+        <span class="ds-count" id="rs-count">—</span>
       </div>
-      <div class="callout">Les rencontres déjà jouées dont le score manque encore. Saisissez-le directement dans la ligne&nbsp;: cet écran est là pour qu'aucun résultat ne reste oublié.</div>
-      <div id="rs-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="callout ds-note">Les rencontres déjà jouées dont le score manque encore. Saisissez-le directement dans la ligne&nbsp;: cet écran est là pour qu'aucun résultat ne reste oublié.</div>
+      <div id="rs-rows"></div>
       <div class="msg" id="rs-msg"></div>
     </section>
 
@@ -15034,20 +15048,34 @@
     if (!month) return;
     month.classList.toggle('hide', calView!=='month');
     list.classList.toggle('hide', calView!=='list');
-    list.style.display = calView==='list' ? 'flex' : 'none';
+    list.style.display = calView==='list' ? 'block' : 'none';
     document.getElementById('cal-count').textContent = mcRows.length + (mcRows.length>1?' rencontres':' rencontre');
 
     if (calView === 'list'){
       var byDate = mcRows.slice().sort(function(a,b){ return String(a.match_date||'').localeCompare(String(b.match_date||'')); });
-      list.innerHTML = byDate.length ? byDate.map(function(m){
-        var st = MC_STATUT[mcStatut(m)] || MC_STATUT.a_venir;
-        return '<div class="cd-row" data-id="'+m.id+'">'+
-          mcCrest(m.opponent_logo_url, m.opponent_name, 'cd-avatar')+
-          '<div style="flex:1;min-width:0"><div class="cd-card-name">'+esc(mcLabel(m))+'</div>'+
-          '<div class="cd-card-meta">'+esc(formatDateShort(m.match_date))+(m.venue?' · '+esc(m.venue):'')+'</div></div>'+
-          '<span class="status-pill" style="flex:none;color:'+st[1]+';border:1px solid '+st[1]+'55;background:'+st[1]+'14">'+esc(st[0])+'</span></div>';
-      }).join('') : '<div class="empty">Aucune rencontre enregistrée.</div>';
-      list.querySelectorAll('.cd-row').forEach(function(el){
+      // Meme tableau que Matchs, sans les cases de score : ici on ne
+      // saisit rien, on regarde la saison. « Rien ne se cree ici »,
+      // comme le dit la consigne de l'ecran.
+      list.innerHTML = byDate.length
+        ? '<div class="ds-scroll"><table class="ds-tbl">'+
+            '<thead><tr><th class="c"></th><th>Rencontre</th><th>Date</th>'+
+            '<th class="r">État</th></tr></thead><tbody>'+
+          byDate.map(function(m){
+            var k = mcStatut(m);
+            var st = MC_STATUT[k] || MC_STATUT.a_venir;
+            var etat = k === 'a_saisir'
+              ? '<span class="ds-tag warn">'+esc(st[0])+'</span>'
+              : '<span class="ds-st'+(k==='aujourdhui'?' act':'')+'"><i></i>'+esc(st[0])+'</span>';
+            return '<tr class="ds-tr" data-id="'+m.id+'">'+
+              '<td class="c">'+mcCrest(m.opponent_logo_url, m.opponent_name, 'mc-mini')+'</td>'+
+              '<td><div class="n">'+esc(mcLabel(m))+'</div>'+
+              '<div class="m">'+esc(m.venue||'—')+(m.competition?' · '+esc(m.competition):'')+'</div></td>'+
+              '<td class="num">'+esc(formatDateShort(m.match_date))+'</td>'+
+              '<td class="r">'+etat+'</td>'+
+            '</tr>';
+          }).join('')+'</tbody></table></div>'
+        : '<div class="empty">Aucune rencontre enregistrée.</div>';
+      list.querySelectorAll('.ds-tr').forEach(function(el){
         el.addEventListener('click', function(){ mcOpen(el.getAttribute('data-id')); });
       });
       return;
@@ -15102,20 +15130,31 @@
       box.innerHTML = '<div class="rs-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8.5 12.5 2.5 2.5 5-6"/></svg><b>Tout est à jour</b><span>Chaque match joué a son score publié.</span></div>';
       return;
     }
-    box.innerHTML = rows.map(function(m){
-      return '<div class="cd-row" style="cursor:default" data-id="'+m.id+'">'+
-        mcCrest(m.opponent_logo_url, m.opponent_name, 'cd-avatar')+
-        '<div style="flex:1;min-width:150px"><div class="cd-card-name">'+esc(mcLabel(m))+'</div>'+
-        '<div class="cd-card-meta">'+esc(formatDateShort(m.match_date))+(m.venue?' · '+esc(m.venue):'')+'</div></div>'+
-        '<div style="display:flex;align-items:center;gap:7px;flex:none">'+
-          '<input class="rs-sb" data-id="'+m.id+'" type="number" min="0" placeholder="Baobabs" aria-label="Score Baobabs" style="width:78px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px;color:var(--text);font:inherit;font-size:14px;text-align:center">'+
-          '<span style="color:var(--faint)">–</span>'+
-          '<input class="rs-so" data-id="'+m.id+'" type="number" min="0" placeholder="Adv." aria-label="Score adversaire" style="width:78px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px;color:var(--text);font:inherit;font-size:14px;text-align:center">'+
-          '<button type="button" class="btn btn-primary rs-save" data-id="'+m.id+'" style="padding:9px 14px;font-size:12px">Publier</button>'+
-          '<button type="button" class="btn btn-ghost rs-open" data-id="'+m.id+'" style="padding:9px 12px;font-size:12px">Fiche</button>'+
-        '</div>'+
-      '</div>';
-    }).join('');
+    // Meme tableau que Matchs. Ici chaque ligne attend un score — c'est
+    // le filtre meme de l'ecran — donc « Publier » est dore partout : il y
+    // a partout a faire. La ligne ne s'ouvre pas au clic, on y tape.
+    box.innerHTML =
+      '<div class="ds-scroll"><table class="ds-tbl">'+
+        '<thead><tr><th class="c"></th><th>Rencontre</th><th>Date</th>'+
+        '<th class="r">Score</th><th class="r"></th></tr></thead><tbody>'+
+      rows.map(function(m){
+        var opp = String(m.opponent_name||'Adv.');
+        return '<tr class="ds-tr ds-fixe" data-id="'+m.id+'">'+
+          '<td class="c">'+mcCrest(m.opponent_logo_url, m.opponent_name, 'mc-mini')+'</td>'+
+          '<td><div class="n">'+esc(mcLabel(m))+'</div>'+
+          '<div class="m">'+esc(m.venue||'—')+(m.competition?' · '+esc(m.competition):'')+'</div></td>'+
+          '<td class="num">'+esc(formatDateShort(m.match_date))+'</td>'+
+          '<td class="r"><div class="rs-board">'+
+            '<div class="rs-side"><span>Baobabs</span><input class="rs-sb rs-score" data-id="'+m.id+'" type="number" min="0" placeholder="—" aria-label="Score Baobabs"></div>'+
+            '<div class="rs-dash">–</div>'+
+            '<div class="rs-side"><span>'+esc(opp)+'</span><input class="rs-so rs-score" data-id="'+m.id+'" type="number" min="0" placeholder="—" aria-label="Score '+esc(opp)+'"></div>'+
+          '</div></td>'+
+          '<td class="r"><div class="rs-actions">'+
+            '<button type="button" class="ds-mini-btn rs-save" data-id="'+m.id+'">Publier</button>'+
+            '<button type="button" class="ds-act rs-open" data-id="'+m.id+'">Fiche</button>'+
+          '</div></td>'+
+        '</tr>';
+      }).join('')+'</tbody></table></div>';
 
     box.querySelectorAll('.rs-open').forEach(function(b){
       b.addEventListener('click', function(){ mcOpen(b.getAttribute('data-id'), 'resultat'); });
