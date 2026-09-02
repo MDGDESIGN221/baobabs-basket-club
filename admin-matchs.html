@@ -1817,6 +1817,31 @@
   .ar-serp-d{font-size:12px;line-height:1.5;color:#4d5156}
   .st-pill{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:100px}
 
+  /* ---- Articles & Categories ---- */
+  /* La vignette d'un article dans le tableau : elle repere une ligne,
+     elle n'illustre pas. 74x48 a 11px de rayon en faisaient une carte
+     postale posee dans un tableau. */
+  .ar-vig{flex:none;width:46px;height:30px;border-radius:var(--r-sm);object-fit:cover;
+    border:1px solid var(--line-strong);background:var(--surface-3);display:block}
+  /* La couleur de rubrique est la SEULE couleur libre de l'admin : elle
+     est choisie par l'utilisateur, dans Categories, precisement pour
+     servir de repere. Elle reste donc — mais rendue a un point, pas a
+     une etiquette arrondie posee sur un aplat de la meme teinte. */
+  .ar-cat{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-ui);
+    font-weight:600;font-size:11.5px;color:var(--muted);white-space:nowrap}
+  .ar-cat i{width:7px;height:7px;flex:none;border-radius:2px}
+  .ct-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding:12px 2px}
+  .ct-dot{flex:none;width:10px;height:10px;border-radius:2px}
+  .ct-name{flex:1;min-width:130px;background:transparent;border:1px solid var(--line-strong);
+    border-radius:var(--r-sm);padding:9px 11px;color:var(--text);font:inherit;font-size:13.5px}
+  .ct-name:focus{outline:none;border-color:var(--gold)}
+  .ct-cols{display:flex;gap:5px;flex:none}
+  .ct-col{width:18px;height:18px;border-radius:var(--r-sm);border:1px solid transparent;
+    cursor:pointer;padding:0}
+  .ct-col.on{box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--gold)}
+  .ct-used{flex:none;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+
   /* ===================== MATCH CENTER ===================== */
   .mc-tabs{display:flex;gap:3px;padding:0 clamp(16px,2.4vw,24px);border-bottom:1px solid var(--line);overflow-x:auto}
   .mc-tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font:inherit;font-weight:600;font-size:13px;padding:13px 14px;cursor:pointer;white-space:nowrap;margin-bottom:-1px}
@@ -4153,23 +4178,23 @@
     <!-- ===== SECTION ARTICLES ===== -->
     <section id="section-articles" class="hide">
       <div id="ar-list-view">
-        <div class="mod-head">
-          <h2 class="mod-head-title">Articles</h2>
-          <span class="mod-count" id="ar-count">—</span>
-          <input type="search" class="mod-search" id="ar-search" placeholder="Titre, chapô, auteur…">
-          <select id="ar-filter" aria-label="Filtrer les articles" style="background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px">
+        <div class="ds-band" id="ar-kpis"></div>
+        <div class="ds-head">
+          <button type="button" class="ds-mini-btn" id="ar-new">Nouvel article</button>
+          <span class="ds-count" id="ar-count">—</span>
+          <input type="search" class="ds-search" id="ar-search" placeholder="Titre, chapô, auteur…">
+          <select id="ar-filter" class="ds-sel" aria-label="Filtrer les articles">
             <option value="">Tous les articles</option>
             <option value="brouillon">Brouillons</option>
             <option value="publie">Publiés</option>
             <option value="archive">Archivés</option>
           </select>
-          <button type="button" class="btn btn-primary" id="ar-new" style="padding:10px 16px;font-size:13px">Nouvel article</button>
         </div>
-        <div class="callout">Enregistrer ne publie plus&nbsp;: un article reste en brouillon jusqu'à ce que vous cliquiez sur <b>Publier</b>. Vous pouvez donc préparer une annonce à l'avance.</div>
-        <div id="ar-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div class="callout ds-note">Enregistrer ne publie plus&nbsp;: un article reste en brouillon jusqu'à ce que vous cliquiez sur <b>Publier</b>. Vous pouvez donc préparer une annonce à l'avance.</div>
+        <div id="ar-rows"></div>
       </div>
       <div id="ar-doc-view" class="hide">
-        <button type="button" class="cd-back" id="ar-back">
+        <button type="button" class="cd-back ds-back" id="ar-back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Tous les articles
         </button>
@@ -4180,13 +4205,12 @@
 
     <!-- ===== SECTION CATÉGORIES ===== -->
     <section id="section-categories" class="hide">
-      <div class="mod-head">
-        <h2 class="mod-head-title">Catégories</h2>
-        <span class="mod-count" id="ct-count">—</span>
-        <button type="button" class="btn btn-primary" id="ct-new" style="padding:10px 16px;font-size:13px">Nouvelle catégorie</button>
+      <div class="ds-head">
+        <button type="button" class="ds-mini-btn" id="ct-new">Nouvelle catégorie</button>
+        <span class="ds-count" id="ct-count">—</span>
       </div>
-      <div class="callout">Une table plutôt qu'un texte libre&nbsp;: sans elle, «&nbsp;Match&nbsp;» et «&nbsp;match&nbsp;» créent deux rubriques différentes sur le site. La couleur sert de repère dans la liste des articles.</div>
-      <div id="ct-rows" style="display:flex;flex-direction:column;gap:8px;max-width:720px"></div>
+      <div class="callout ds-note">Une table plutôt qu'un texte libre&nbsp;: sans elle, «&nbsp;Match&nbsp;» et «&nbsp;match&nbsp;» créent deux rubriques différentes sur le site. La couleur sert de repère dans la liste des articles.</div>
+      <div id="ct-rows" style="max-width:760px"></div>
       <div class="msg" id="ct-msg"></div>
     </section>
 
@@ -13051,9 +13075,15 @@
 
   function arSt(s){ return AR_STATUS[s || 'publie'] || AR_STATUS.publie; }
   function arById(id){ return arRows.filter(function(r){ return String(r.id) === String(arSel); })[0]; }
+  // Trois etats, trois couleurs. « Publié » est l'etat normal d'un
+  // article : il n'a aucune raison de crier plus fort que les autres.
+  // Seul « Brouillon » appelle un geste — quelque chose attend d'etre
+  // publie.
   function arPill(s){
-    var st = arSt(s);
-    return '<span class="st-pill" style="color:' + st[1] + ';border:1px solid ' + st[1] + '55;background:' + st[1] + '14">' + esc(st[0]) + '</span>';
+    var k = s || 'publie';
+    var st = arSt(k);
+    if (k === 'brouillon') return '<span class="ds-tag warn">' + esc(st[0]) + '</span>';
+    return '<span class="ds-st' + (k === 'publie' ? ' act' : '') + '"><i></i>' + esc(st[0]) + '</span>';
   }
 
   function arInit(){
@@ -13121,30 +13151,73 @@
     lv.classList.remove('hide'); dv.classList.add('hide');
 
     var rows = arVisible();
+    arKpis();
     document.getElementById('ar-count').textContent = rows.length + (rows.length > 1 ? ' articles' : ' article');
     var box = document.getElementById('ar-rows');
     if (!rows.length){ box.innerHTML = '<div class="empty">Aucun article pour ce filtre.</div>'; return; }
 
-    box.innerHTML = rows.map(function(r){
-      var cover = r.image_url
-        ? '<img src="' + esc(r.image_url) + '" alt="" style="flex:none;width:74px;height:48px;border-radius:8px;object-fit:cover;border:1px solid var(--line)">'
-        : '<div style="flex:none;width:74px;height:48px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2)"></div>';
-      var cat = r.category
-        ? '<span class="st-pill" style="color:' + (r.category_color || '#C6A257') + ';border:1px solid ' + (r.category_color || '#C6A257') + '55;background:' + (r.category_color || '#C6A257') + '14">' + esc(r.category) + '</span>'
-        : '';
-      return '<div class="cd-row" data-id="' + r.id + '">' + cover +
-        '<div style="flex:1;min-width:0">' +
-          '<div class="cd-card-name">' + esc(r.title || 'Sans titre') + '</div>' +
-          '<div class="cd-card-meta">' + esc(formatDateShort(r.published_at)) +
-            (r.author ? ' · ' + esc(r.author) : '') +
-            (r.minutes_lecture ? ' · ' + r.minutes_lecture + ' min de lecture' : '') + '</div>' +
-        '</div>' + cat + arPill(r.status) +
-      '</div>';
-    }).join('');
+    // La date, l'auteur et le temps de lecture etaient enfiles en une
+    // phrase sous le titre : trois donnees qu'on compare et qui ne
+    // s'alignaient pas. La vignette tombe de 74 a 46px de large — dans
+    // un tableau, une image repere, elle n'illustre pas.
+    box.innerHTML =
+      '<div class="ds-scroll"><table class="ds-tbl">' +
+        '<thead><tr><th class="c"></th><th>Article</th><th>Rubrique</th>' +
+        '<th>Publié le</th><th class="r">Lecture</th><th>État</th></tr></thead><tbody>' +
+      rows.map(function(r){
+        var cover = r.image_url
+          ? '<img class="ar-vig" src="' + esc(r.image_url) + '" alt="" loading="lazy">'
+          : '<div class="ar-vig"></div>';
+        // La couleur de rubrique EST le repere voulu : c'est la seule
+        // couleur libre de l'admin, choisie par l'utilisateur lui-meme
+        // dans Categories. Elle reste — mais en pastille sobre, pas en
+        // etiquette arrondie sur un aplat teinte.
+        var col = r.category_color || 'var(--faint)';
+        var cat = r.category
+          ? '<span class="ar-cat"><i style="background:' + esc(col) + '"></i>' + esc(r.category) + '</span>'
+          : '<span class="m" style="margin-top:0">—</span>';
+        return '<tr class="ds-tr" data-id="' + r.id + '">' +
+          '<td class="c">' + cover + '</td>' +
+          '<td><div class="n">' + esc(r.title || 'Sans titre') + '</div>' +
+            (r.author ? '<div class="m">' + esc(r.author) + '</div>' : '') + '</td>' +
+          '<td>' + cat + '</td>' +
+          '<td class="num">' + esc(formatDateShort(r.published_at)) + '</td>' +
+          '<td class="r num">' + (r.minutes_lecture ? r.minutes_lecture + ' min' : '—') + '</td>' +
+          '<td>' + arPill(r.status) + '</td>' +
+        '</tr>';
+      }).join('') + '</tbody></table></div>';
 
-    box.querySelectorAll('.cd-row').forEach(function(el){
+    box.querySelectorAll('.ds-tr').forEach(function(el){
       el.addEventListener('click', function(){ arSel = el.getAttribute('data-id'); arDirty = false; arRender(); });
     });
+  }
+
+  // Ce qu'on vient verifier en ouvrant l'ecran : est-ce qu'il reste
+  // quelque chose a publier, et depuis quand le site n'a rien recu.
+  function arKpis(){
+    var band = document.getElementById('ar-kpis');
+    var brouillons = 0, publies = 0;
+    var dernier = null;
+    arRows.forEach(function(r){
+      var k = r.status || 'publie';
+      if (k === 'brouillon') brouillons++;
+      else if (k === 'publie'){
+        publies++;
+        if (r.published_at && (!dernier || r.published_at > dernier)) dernier = r.published_at;
+      }
+    });
+    var jours = dernier ? Math.floor(hoursSince(dernier) / 24) : null;
+    band.innerHTML =
+      '<div class="ds-fig"><i>En ligne</i><b>' + publies + '</b>' +
+        '<small>' + (publies > 1 ? 'articles publiés' : 'article publié') + '</small></div>' +
+      '<div class="ds-fig' + (brouillons ? ' sig' : '') + '"><i>Brouillons</i><b>' + brouillons + '</b>' +
+        '<small>' + (brouillons ? 'en attente de publication' : 'rien n\'attend') + '</small></div>' +
+      // 42 jours, soit les six semaines dont le panneau de notifications
+      // parle deja : les deux doivent s'allumer le meme jour.
+      '<div class="ds-fig' + (jours != null && jours >= 42 ? ' cri' : '') + '"><i>Dernière parution</i>' +
+        '<b>' + (jours != null ? (jours < 1 ? "aujourd'hui" : jours) : '—') + '</b>' +
+        '<small>' + (jours != null ? (jours < 1 ? '' : (jours > 1 ? 'jours' : 'jour') + ' sans nouvelle') : 'aucun article publié') + '</small></div>';
+    band.classList.toggle('hide', !arRows.length);
   }
 
   function arRenderDoc(){
@@ -13362,16 +13435,20 @@
 
     box.innerHTML = ctRows.map(function(c){
       var used = arRows.filter(function(r){ return r.category === c.name; }).length;
-      return '<div class="cd-row" style="cursor:default">' +
-        '<span style="flex:none;width:15px;height:15px;border-radius:50%;background:' + esc(c.color || '#C6A257') + '"></span>' +
-        '<input class="ct-name" data-id="' + c.id + '" type="text" aria-label="Nom de la categorie" value="' + esc(c.name) + '" style="flex:1;min-width:110px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:8px;padding:9px 11px;color:var(--text);font:inherit;font-size:13.5px">' +
-        '<div style="display:flex;gap:5px;flex:none">' +
+      // La ligne etait une carte a 11px de rayon ; le nuancier, sept
+      // ronds de 20px cercles de blanc sur le choisi. Un filet, des
+      // carres a l'echelle du fichier, et l'or pour marquer le choix —
+      // le blanc etait la seule bordure de ce genre dans l'admin.
+      return '<div class="ct-row">' +
+        '<span class="ct-dot" style="background:' + esc(c.color || '#C6A257') + '"></span>' +
+        '<input class="ct-name" data-id="' + c.id + '" type="text" aria-label="Nom de la categorie" value="' + esc(c.name) + '">' +
+        '<div class="ct-cols">' +
           CT_COLORS.map(function(col){
-            return '<button type="button" class="ct-col" data-id="' + c.id + '" data-col="' + col + '" title="' + col + '" style="width:20px;height:20px;border-radius:50%;background:' + col + ';border:2px solid ' + (c.color === col ? 'var(--text)' : 'transparent') + ';cursor:pointer;padding:0"></button>';
+            return '<button type="button" class="ct-col' + (c.color === col ? ' on' : '') + '" data-id="' + c.id + '" data-col="' + col + '" title="' + col + '" style="background:' + col + '"></button>';
           }).join('') +
         '</div>' +
-        '<span class="cd-card-meta" style="flex:none">' + used + ' article(s)</span>' +
-        '<button type="button" class="btn btn-ghost ct-del" data-id="' + c.id + '" data-name="' + esc(c.name) + '" style="flex:none;padding:8px 11px;font-size:12px;color:var(--danger)">Supprimer</button>' +
+        '<span class="ct-used">' + used + ' article' + (used > 1 ? 's' : '') + '</span>' +
+        '<button type="button" class="ds-act ct-del" data-id="' + c.id + '" data-name="' + esc(c.name) + '">Supprimer</button>' +
       '</div>';
     }).join('');
 
