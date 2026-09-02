@@ -1827,14 +1827,16 @@
        niveaux (#app > .app-shell > .app-main > .wrap > section > #od-doc-view),
        donc cette règle cachait l'ancêtre qui contient la cible et la feuille
        sortait vide. On masque le décor et les frères, pas les ancêtres. */
-    .sb, .topbar, .mod-head, .cd-back, .od-noprint, .callout, .msg{display:none!important}
+    /* .ds-head a remplace .mod-head sur cet ecran : sans elle dans cette
+       liste, la barre d'outils sortait sur le bon de preparation. */
+    .sb, .topbar, .mod-head, .ds-head, .ds-band, .cd-back, .od-noprint, .callout, .msg{display:none!important}
     #od-list-view{display:none!important}
     section[id^="section-"]:not(#section-orders2){display:none!important}
     #app, .app-shell, .app-main, .wrap{display:block!important;max-height:none!important;height:auto!important;overflow:visible!important;padding:0!important;margin:0!important;background:#fff!important}
     #print-root{border:none!important;background:#fff!important;color:#111!important}
-    #print-root .od-hero{background:#fff!important;border-bottom:1px solid #ccc!important}
+    #print-root .ds-hero{background:#fff!important;border-bottom:1px solid #ccc!important}
     #print-root .cd-sec{background:#fff!important;border:1px solid #ddd!important}
-    #print-root .cd-sec-h, #print-root .od-num, #print-root .od-total, #print-root .od-qty{color:#111!important}
+    #print-root .cd-sec-h, #print-root .ds-name, #print-root .ds-hx b, #print-root .od-qty{color:#111!important}
     #print-root .cd-kv span, #print-root .cd-prose, #print-root .cd-card-meta{color:#333!important}
   }
 
@@ -2757,6 +2759,18 @@
   .ds-doc .in-pay{background:var(--surface-2);border:1px solid var(--line-strong);
     border-left-width:1px;border-radius:var(--r-sm);margin-top:14px}
 
+
+  /* ---- Le bon de preparation : les lignes d'articles ramenees a
+         l'echelle du fichier. Une quantite en 19px doree et une case a
+         cocher vert citron faisaient deux accents de plus sur une liste
+         qu'on parcourt en emballant. Le seul reste l'or de la case
+         cochee : c'est le geste en cours. ---- */
+  .ds-doc .od-thumb,.ds-doc .od-noimg{width:44px;height:44px;border-radius:var(--r-sm);
+    border:1px solid var(--line-strong)}
+  .ds-doc .od-check{border-radius:3px}
+  .ds-doc .od-check.on{background:var(--gold);border-color:var(--gold)}
+  .ds-doc .od-qty{font-size:15px;color:var(--text);font-variant-numeric:tabular-nums}
+  .ds-doc .od-money{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 
   /* ===================== MESSAGES — LE COURRIER =====================
      Trois jeux de donnees, une seule barre. Ce qui change d'un onglet a
@@ -4193,22 +4207,28 @@
     <!-- ===== SECTION COMMANDES ===== -->
     <section id="section-orders2" class="hide">
       <div id="od-list-view">
-        <div class="mod-head">
-          
-          <span class="mod-count" id="od-count">—</span>
-          <input type="search" class="mod-search" id="od-search" placeholder="Numéro, nom, téléphone…">
-          <button type="button" class="btn btn-ghost" id="od-export" style="padding:10px 14px;font-size:12.5px">Exporter CSV</button>
-          <div class="mod-view" id="od-view-switch">
+        <div class="ds-band" id="od-kpis"></div>
+        <div class="ds-head">
+          <span class="ds-count" id="od-count">—</span>
+          <input type="search" class="ds-search" id="od-search" placeholder="Numéro, nom, téléphone…">
+          <select id="od-filter" class="ds-sel" aria-label="Filtrer les commandes">
+            <option value="">Toutes les commandes</option>
+            <option value="ouvertes">À préparer</option>
+            <option value="impayees">Non encaissées</option>
+            <option value="tard">En attente depuis plus d'un jour</option>
+          </select>
+          <div class="ds-seg" id="od-view-switch">
             <button type="button" class="on" data-odview="board">Colonnes</button>
             <button type="button" data-odview="list">Liste</button>
           </div>
+          <button type="button" class="ds-act" id="od-export">Exporter CSV</button>
         </div>
-        <div class="callout">Chaque commande est un bon de préparation&nbsp;: cliquez-la pour voir ce qu'il faut emballer, pour qui, et si c'est payé. Faites glisser une carte pour changer son statut.</div>
-        <div id="od-board" class="cd-board"></div>
+        <div class="callout ds-note">Chaque commande est un bon de préparation&nbsp;: cliquez-la pour voir ce qu'il faut emballer, pour qui, et si c'est payé. Faites glisser une carte d'une colonne à l'autre pour changer son statut.</div>
+        <div id="od-board" class="ds-board"></div>
         <div id="od-rows" class="hide" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
       <div id="od-doc-view" class="hide">
-        <button type="button" class="cd-back" id="od-back">
+        <button type="button" class="cd-back ds-back" id="od-back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           Toutes les commandes
         </button>
@@ -7160,7 +7180,7 @@
     products:   ['#pr-list-view', ['#pr-list-view .cd-row', '#pr-list-view'], null],
     stock:      ['#sk-rows', ['#sk-count', '#sk-rows'], null],
     orders2:    ['#od-list-view',
-                 ['#od-board .cd-col-head', '#od-board', '#od-list-view'],
+                 ['#od-board .ds-col-h', '#od-board', '#od-list-view'],
                  null, null],
     clients:    ['#cl-list-view', null, ['#cl-list-view .cd-row', '#cl-list-view']],
     promos:     ['#pm-code', '#pm-kind', ['#pm-list', '#pm-max'], null],
@@ -15307,6 +15327,7 @@
   function odInit(){
     if (odStarted) return; odStarted = true;
     document.getElementById('od-search').addEventListener('input', odRender);
+    document.getElementById('od-filter').addEventListener('change', odRender);
     document.getElementById('od-back').addEventListener('click', function(){ odSel = null; odRender(); });
     document.querySelectorAll('#od-view-switch button').forEach(function(b){
       b.addEventListener('click', function(){
@@ -15331,12 +15352,50 @@
       });
   }
 
+  // Une commande « ouverte » est celle qui reste a faire : ni retiree,
+  // ni annulee. C'est la seule question que pose cet ecran.
+  function odOuverte(r){
+    var s = normalizeOrderStatus(r.status);
+    return s !== 'récupérée' && s !== 'annulée';
+  }
+  function odTard(r){
+    var h = hoursSince(r.created_at);
+    return normalizeOrderStatus(r.status) === 'nouvelle' && h != null && h > 24;
+  }
   function odVisible(){
     var q = document.getElementById('od-search').value.trim().toLowerCase();
+    var f = document.getElementById('od-filter').value;
     return odRows.filter(function(r){
+      if (f === 'ouvertes'  && !odOuverte(r)) return false;
+      if (f === 'impayees'  && (r.paid || !odOuverte(r))) return false;
+      if (f === 'tard'      && !odTard(r)) return false;
       if (!q) return true;
       return [odNum(r), r.customer_name, r.customer_phone, r.customer_email].join(' ').toLowerCase().indexOf(q) >= 0;
     });
+  }
+
+  // Le releve : quatre chiffres, et deux seulement ont le droit de
+  // sortir de l'or — l'argent qui n'est pas rentre, et la commande
+  // qu'on laisse attendre. Ce sont les deux qui coutent au club.
+  function odKpis(){
+    var ouvertes = odRows.filter(odOuverte);
+    var du = ouvertes.filter(function(r){ return !r.paid; })
+                     .reduce(function(a,r){ return a + (Number(r.total)||0); }, 0);
+    var tard = odRows.filter(odTard).length;
+    var d = new Date(), moisDeb = new Date(d.getFullYear(), d.getMonth(), 1);
+    var mois = odRows.filter(function(r){
+      return r.created_at && new Date(r.created_at) >= moisDeb && normalizeOrderStatus(r.status) !== 'annulée';
+    }).reduce(function(a,r){ return a + (Number(r.total)||0); }, 0);
+    document.getElementById('od-kpis').innerHTML =
+      '<div class="ds-fig"><i>À préparer</i><b>'+ouvertes.length+'</b>'+
+        '<small>'+(ouvertes.length>1?'commandes ouvertes':(ouvertes.length?'commande ouverte':'tout est retiré'))+'</small></div>'+
+      '<div class="ds-fig'+(du?' sig':'')+'"><i>Non encaissé</i><b>'+esc(odMoney(du))+'</b>'+
+        '<small>sur les commandes ouvertes</small></div>'+
+      '<div class="ds-fig'+(tard?' cri':'')+'"><i>Laissées en attente</i><b>'+tard+'</b>'+
+        '<small>nouvelles depuis plus d\'un jour</small></div>'+
+      '<div class="ds-fig"><i>Ce mois-ci</i><b>'+esc(odMoney(mois))+'</b>'+
+        '<small>hors commandes annulées</small></div>';
+    document.getElementById('od-kpis').classList.toggle('hide', !odRows.length);
   }
 
   function odRender(){
@@ -15345,6 +15404,7 @@
     lv.classList.remove('hide'); dv.classList.add('hide');
 
     var rows = odVisible();
+    odKpis();
     document.getElementById('od-count').textContent = rows.length + (rows.length>1?' commandes':' commande');
     var board = document.getElementById('od-board'), list = document.getElementById('od-rows');
     board.style.display = odView==='board' ? 'flex' : 'none';
@@ -15353,45 +15413,67 @@
     list.classList.toggle('hide', odView!=='list');
 
     if (odView === 'board'){
+      // Cinq colonnes, cinq couleurs, chacune repetee sur un point ET
+      // sur son titre : la couleur ne disait rien que la colonne ne dise
+      // deja. Reste un filet en tete, dore quand la colonne porte
+      // quelque chose. Les deux seules teintes qui restent sur une carte
+      // sont l'argent qui n'est pas rentre et la commande qui attend.
       board.innerHTML = OD_ST.map(function(s){
         var col = rows.filter(function(r){ return normalizeOrderStatus(r.status)===s.key; });
-        return '<div class="cd-col" data-col="'+s.key+'">'+
-          '<div class="cd-col-head"><i class="cd-col-dot" style="background:'+s.color+'"></i>'+
-          '<span class="cd-col-name" style="color:'+s.color+'">'+esc(s.label)+'</span>'+
-          '<span class="cd-col-n">'+col.length+'</span></div>'+
-          '<div class="cd-col-body">'+ (col.length ? col.map(function(r){
+        return '<div class="ds-col" data-col="'+s.key+'">'+
+          '<div class="ds-col-h'+(col.length?' on':'')+'">'+
+          '<span class="ds-col-n">'+esc(s.label)+'</span>'+
+          '<span class="ds-col-c">'+col.length+'</span></div>'+
+          '<div class="ds-col-b">'+ (col.length ? col.map(function(r){
             var n = odItems(r).reduce(function(a,it){ return a + (it.qty||it.quantity||1); }, 0);
-            return '<div class="cd-card" draggable="true" data-id="'+r.id+'" style="flex-direction:column;gap:6px">'+
-              '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;width:100%">'+
-                '<span class="od-num" style="font-size:14px">'+esc(odNum(r))+'</span>'+
-                '<span class="od-money" style="font-size:13px">'+esc(odMoney(r.total))+'</span></div>'+
-              '<div class="cd-card-name" style="width:100%">'+esc(r.customer_name||'—')+'</div>'+
-              '<div class="cd-card-meta" style="margin:0;width:100%">'+n+' article(s)'+(r.pickup_location?' · '+esc(r.pickup_location):'')+'</div>'+
+            var marques = '';
+            if (!r.paid && odOuverte(r)) marques += '<span class="ds-tag warn">À encaisser</span>';
+            if (odTard(r)) marques += '<span class="ds-tag cri">'+Math.floor(hoursSince(r.created_at)/24)+' j d\'attente</span>';
+            return '<div class="ds-card" draggable="true" data-id="'+r.id+'">'+
+              '<span class="ds-card-n">'+esc(r.customer_name||'—')+'</span>'+
+              '<span class="ds-card-m">'+esc(odNum(r))+' · '+n+' article'+(n>1?'s':'')+' · '+esc(odMoney(r.total))+
+                (r.pickup_location?'<br>'+esc(r.pickup_location):'')+'</span>'+
+              (marques?'<span class="ds-card-s">'+marques+'</span>':'')+
             '</div>';
-          }).join('') : '<div class="cd-empty-col">—</div>') +'</div></div>';
+          }).join('') : '<div class="ds-empty">Aucune</div>') +'</div></div>';
       }).join('');
       odWireBoard();
     } else {
-      var sigOd = ['od-search'].map(function(id){
+      var sigOd = ['od-search','od-filter'].map(function(id){
         var e = document.getElementById(id); return e ? e.value : '';
       }).join('|');
       if (odPgn.sig !== sigOd){ odPgn.sig = sigOd; odPgn.page = 1; }
       var vuesOd = pgnPage(rows, odPgn);
-      list.innerHTML = rows.length ? vuesOd.map(function(r){
-        var s = odSt(r.status);
-        var n = odItems(r).reduce(function(a,it){ return a + (it.qty||it.quantity||1); }, 0);
-        return '<div class="cd-row" data-id="'+r.id+'">'+
-          '<span class="od-num" style="flex:none;min-width:84px">'+esc(odNum(r))+'</span>'+
-          '<div style="flex:1;min-width:0"><div class="cd-card-name">'+esc(r.customer_name||'—')+'</div>'+
-          '<div class="cd-card-meta">'+n+' article(s) · '+esc(fmtDateTime(r.created_at))+'</div></div>'+
-          '<span class="od-money" style="flex:none">'+esc(odMoney(r.total))+'</span>'+
-          '<span class="status-pill" style="flex:none;color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
-        '</div>';
-      }).join('') : '<div class="empty">Aucune commande pour ce filtre.</div>';
+      // Une pile de cartes ne se compare pas : six colonnes alignees si.
+      // Le total a droite, en chiffres tabulaires — c'est la colonne
+      // qu'on parcourt du regard.
+      list.innerHTML = rows.length ?
+        '<div class="ds-scroll"><table class="ds-tbl">'+
+          '<thead><tr><th>Commande</th><th>Articles</th><th class="r">Total</th>'+
+          '<th>État</th><th>Retrait</th><th class="r">Reçue le</th></tr></thead><tbody>'+
+        vuesOd.map(function(r){
+          var s = odSt(r.status);
+          var n = odItems(r).reduce(function(a,it){ return a + (it.qty||it.quantity||1); }, 0);
+          var marques = '';
+          if (!r.paid && odOuverte(r)) marques += '<span class="ds-tag warn">À encaisser</span>';
+          if (odTard(r)) marques += '<span class="ds-tag cri">'+Math.floor(hoursSince(r.created_at)/24)+' j</span>';
+          return '<tr class="ds-tr" data-id="'+r.id+'">'+
+            '<td><div class="ds-ref">'+esc(odNum(r))+'</div>'+
+              '<div class="m">'+esc(r.customer_name||'—')+
+              (r.customer_phone?' · '+esc(r.customer_phone):'')+'</div>'+
+              (marques?'<div class="ds-tr-etat">'+marques+'</div>':'')+'</td>'+
+            '<td class="num">'+n+' article'+(n>1?'s':'')+'</td>'+
+            '<td class="r num">'+esc(odMoney(r.total))+'</td>'+
+            '<td><span class="ds-st'+(s.key==='récupérée'?'':' act')+'"><i></i>'+esc(s.label)+'</span></td>'+
+            '<td class="num">'+esc(r.pickup_location||'—')+'</td>'+
+            '<td class="r num">'+esc(fmtDateTime(r.created_at))+'</td>'+
+          '</tr>';
+        }).join('')+'</tbody></table></div>'
+        : '<div class="empty">Aucune commande pour ce filtre.</div>';
       var hoteOd = document.createElement('div');
       list.appendChild(hoteOd);
       pgnBarre(hoteOd, rows, odPgn, odRender);
-      list.querySelectorAll('.cd-row').forEach(function(el){
+      list.querySelectorAll('.ds-tr').forEach(function(el){
         el.addEventListener('click', function(){ odSel = el.getAttribute('data-id'); odRender(); });
       });
     }
@@ -15399,16 +15481,18 @@
 
   function odWireBoard(){
     var board = document.getElementById('od-board');
-    board.querySelectorAll('.cd-card').forEach(function(el){
+    board.querySelectorAll('.ds-card').forEach(function(el){
       el.addEventListener('click', function(){ odSel = el.getAttribute('data-id'); odRender(); });
       el.addEventListener('dragstart', function(e){ e.dataTransfer.setData('text/plain', el.getAttribute('data-id')); el.style.opacity='.4'; });
       el.addEventListener('dragend', function(){ el.style.opacity='1'; });
     });
-    board.querySelectorAll('.cd-col').forEach(function(colEl){
-      colEl.addEventListener('dragover', function(e){ e.preventDefault(); colEl.style.borderColor='var(--gold)'; });
-      colEl.addEventListener('dragleave', function(){ colEl.style.borderColor=''; });
+    // La colonne n'a plus de cadre : le depot se signale sur son corps,
+    // par une classe, et non en peignant une bordure qui n'existe pas.
+    board.querySelectorAll('.ds-col').forEach(function(colEl){
+      colEl.addEventListener('dragover', function(e){ e.preventDefault(); colEl.classList.add('survol'); });
+      colEl.addEventListener('dragleave', function(){ colEl.classList.remove('survol'); });
       colEl.addEventListener('drop', function(e){
-        e.preventDefault(); colEl.style.borderColor='';
+        e.preventDefault(); colEl.classList.remove('survol');
         odSetStatus(e.dataTransfer.getData('text/plain'), colEl.getAttribute('data-col'));
       });
     });
@@ -15444,62 +15528,76 @@
 
     var hAge = hoursSince(r.created_at);
     var alerte = s.key==='nouvelle' && hAge!=null && hAge>24
-      ? '<span class="status-pill" style="color:#E08A5B;border:1px solid #E08A5B55;background:#E08A5B14">En attente depuis '+Math.floor(hAge/24)+' j</span>' : '';
+      ? '<span class="ds-tag cri">En attente depuis '+Math.floor(hAge/24)+' j</span>' : '';
+
+    var nArt = items.reduce(function(a,it){ return a + (it.qty||it.quantity||1); }, 0);
 
     box.innerHTML =
-      '<div class="cd-doc" id="print-root">'+
-        '<div class="od-hero">'+
-          '<div style="flex:1;min-width:230px">'+
-            '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:9px">'+
-              '<span class="status-pill" style="color:'+s.color+';border:1px solid '+s.color+'55;background:'+s.color+'14">'+esc(s.label)+'</span>'+
-              (r.paid?'<span class="status-pill" style="color:#A8D93B;border:1px solid #A8D93B55;background:#A8D93B14">Payée</span>':'<span class="status-pill" style="color:#C6A257;border:1px solid #C6A25755;background:#C6A25714">À encaisser</span>')+
+      '<div class="ds-doc" id="print-root">'+
+        '<div class="ds-hero">'+
+          '<div class="ds-hero-b">'+
+            // Le statut s'ecrit, il ne se peint plus : la pastille de
+            // couleur par statut faisait cinq bonbons pour cinq etats.
+            // Ne restent en teinte que l'argent non encaisse et
+            // l'attente — les deux qui appellent un geste.
+            '<div class="ds-marks">'+
+              '<span class="ds-st'+(s.key==='récupérée'?'':' act')+'"><i></i>'+esc(s.label)+'</span>'+
+              (r.paid?'<span class="ds-st"><i></i>Encaissée</span>'
+                     :'<span class="ds-tag warn">À encaisser</span>')+
               alerte+
             '</div>'+
-            '<div class="od-num" style="font-size:26px">'+esc(odNum(r))+'</div>'+
-            '<div class="cd-doc-sub">'+esc(fmtDateTime(r.created_at))+'</div>'+
+            '<h2 class="ds-name">'+esc(odNum(r))+'</h2>'+
+            '<div class="ds-sub"><b>'+esc(r.customer_name||'Client non renseigné')+'</b>'+
+              '<br>Reçue le '+esc(fmtDateTime(r.created_at))+
+              (r.pickup_location?' · retrait '+esc(r.pickup_location):'')+'</div>'+
+            '<div class="ds-quick od-noprint">'+
+              (r.customer_phone?'<a href="tel:'+esc(r.customer_phone)+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.2-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.8 2Z"></path></svg>'+esc(r.customer_phone)+'</a>':'')+
+              (r.customer_email?'<a href="mailto:'+esc(r.customer_email)+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 6 10-6"></path></svg>'+esc(r.customer_email)+'</a>':'')+
+              (r.customer_id?'<button type="button" id="od-goto-client" data-cid="'+r.customer_id+'">Fiche client</button>':'')+
+              '<button type="button" id="od-paid-toggle">'+(r.paid?'Marquer non encaissée':'Marquer encaissée')+'</button>'+
+              '<button type="button" id="od-print"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>Imprimer le bon</button>'+
+            '</div>'+
           '</div>'+
-          '<div style="text-align:right;flex:none">'+
-            '<div class="cl-stat" style="background:transparent;border:none;padding:0;text-align:right">'+
-              '<b class="od-total">'+esc(odMoney(r.total))+'</b>'+
-              '<span style="text-align:right">Total de la commande</span></div>'+
+          // Les deux chiffres qu'on vient chercher en ouvrant un bon :
+          // combien ca fait, et combien de pieces a sortir du carton.
+          '<div class="ds-hero-x">'+
+            '<div class="ds-hx'+(r.paid?'':' due')+'"><i>Total</i><b>'+esc(odMoney(r.total))+'</b>'+
+              '<s>'+(r.paid?'encaissé':'reste à encaisser')+'</s></div>'+
+            '<div class="ds-hx"><i>À sortir</i><b>'+nArt+'</b>'+
+              '<s>'+(nArt>1?'articles':'article')+' sur '+items.length+' ligne'+(items.length>1?'s':'')+'</s></div>'+
           '</div>'+
         '</div>'+
 
         '<div class="cd-sections">'+
-          '<div class="cd-sec" style="grid-column:1/-1"><div class="cd-sec-h">À emballer — '+items.length+' ligne(s)</div><div class="cd-sec-b">'+
+          '<div class="cd-sec wide"><div class="cd-sec-h">À emballer — '+items.length+' ligne(s)</div><div class="cd-sec-b">'+
             (lines || '<p class="cd-prose" style="color:var(--faint)">Aucun article enregistré sur cette commande.</p>')+
             '<p class="cd-prose od-noprint" style="color:var(--faint);margin-top:11px;font-size:12px">Cochez au fur et à mesure de l\'emballage. Les cases ne sont pas enregistrées : elles servent à ne rien oublier pendant la préparation.</p>'+
           '</div></div>'+
 
-          '<div class="cd-sec"><div class="cd-sec-h">Client</div><div class="cd-sec-b">'+
-            kv('Nom', r.customer_name)+kv('Téléphone', r.customer_phone)+kv('Email', r.customer_email)+
-            (r.customer_id?'<div style="margin-top:11px"><button type="button" class="btn btn-ghost od-noprint" id="od-goto-client" data-cid="'+r.customer_id+'" style="padding:8px 13px;font-size:12px">Voir la fiche client</button></div>'
-                          :'<p class="cd-prose" style="color:var(--faint);margin-top:9px;font-size:12px">Commande passée sans compte client.</p>')+
+          // La decision passe en segment : cinq bonbons colores
+          // obligeaient a chercher lequel etait rempli. .cd-st demeure —
+          // c'est par elle qu'on cable les clics — elle perd seulement
+          // son style en ligne.
+          '<div class="cd-sec od-noprint"><div class="cd-sec-h">Statut</div><div class="cd-sec-b">'+
+            '<div class="ds-dec">'+ OD_ST.map(function(x){
+              return '<button type="button" class="cd-st'+(x.key===s.key?' on':'')+'" data-od-st="'+x.key+'">'+esc(x.label)+'</button>';
+            }).join('') +'</div>'+
           '</div></div>'+
 
-          '<div class="cd-sec"><div class="cd-sec-h">Retrait &amp; paiement</div><div class="cd-sec-b">'+
+          '<div class="cd-sec"><div class="cd-sec-h">Client &amp; retrait</div><div class="cd-sec-b">'+
+            kv('Nom', r.customer_name)+kv('Téléphone', r.customer_phone)+kv('Email', r.customer_email)+
             kv('Lieu de retrait', r.pickup_location)+kv('Moyen de paiement', r.payment_method)+
             kv('Encaissé', r.paid?'Oui':'Non')+
-            '<div style="margin-top:12px" class="od-noprint"><button type="button" class="btn btn-ghost" id="od-paid-toggle" style="padding:8px 13px;font-size:12px">'+(r.paid?'Marquer non encaissée':'Marquer encaissée')+'</button></div>'+
+            (r.customer_id?'':'<p class="cd-prose" style="color:var(--faint);margin-top:9px;font-size:12px">Commande passée sans compte client.</p>')+
           '</div></div>'+
 
           (r.note ? '<div class="cd-sec"><div class="cd-sec-h">Remarque du client</div><div class="cd-sec-b"><p class="cd-prose">'+esc(r.note)+'</p></div></div>' : '')+
-
-          '<div class="cd-sec od-noprint"><div class="cd-sec-h">Statut</div><div class="cd-sec-b">'+
-            '<div class="cd-status-grid">'+ OD_ST.map(function(x){
-              var on = x.key===s.key;
-              return '<button type="button" class="cd-st" data-od-st="'+x.key+'" style="color:'+(on?'#0A1B0D':x.color)+';background:'+(on?x.color:'transparent')+';border:1px solid '+(on?x.color:'var(--line-strong)')+'">'+esc(x.label)+'</button>';
-            }).join('') +'</div>'+
-            '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">'+
-              '<button type="button" class="btn btn-ghost" id="od-print" style="padding:8px 13px;font-size:12px">Imprimer le bon</button>'+
-            '</div>'+
-          '</div></div>'+
 
           '<div class="cd-sec od-noprint"><div class="cd-sec-h">Notes internes</div><div class="cd-sec-b">'+
             '<textarea class="cd-notes" id="od-notes" placeholder="Article manquant, client rappelé, arrangement particulier…">'+esc(r.internal_note||'')+'</textarea>'+
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:9px">'+
               '<span class="cd-draft" id="od-draft-note"></span>'+
-              '<button type="button" class="btn btn-ghost" id="od-save-notes" style="padding:9px 14px;font-size:12px">Enregistrer</button>'+
+              '<button type="button" class="ds-act" id="od-save-notes">Enregistrer</button>'+
             '</div>'+
           '</div></div>'+
 
