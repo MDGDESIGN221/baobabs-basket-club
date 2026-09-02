@@ -5440,6 +5440,22 @@
       if (horsChamp && typeof qgToast === 'function' && !(Date.now() - _sbLastToast <= 1500)) qgToast(text, !ok);
     } catch(e){}
   }
+  // ---------------------------------------------------------------------
+  // LE MESSAGE QUI MOURAIT AVEC SON ELEMENT
+  //
+  // Quatre ecrans — Articles, Produits, Bannieres, Joueuses — ecrivaient
+  // « Enregistré. » dans leur note, PUIS redessinaient la fiche. Or le
+  // redessin recree cette note vide : le mot etait pose sur un noeud
+  // deja retire de la page. On cliquait « Enregistrer », la base recevait
+  // bien la modification, et l'ecran ne disait rien du tout.
+  //
+  // On ecrit donc APRES le redessin, et on retrouve l'element par son id
+  // plutot que de garder une reference qui ne vaut deja plus rien.
+  // ---------------------------------------------------------------------
+  function noteDire(id, texte){
+    var n = document.getElementById(id);
+    if (n) n.textContent = texte;
+  }
   function sbHeaders(extra){ var token = (currentSession && currentSession.access_token) || SUPABASE_KEY; var h = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token }; if (extra) for (var k in extra) h[k]=extra[k]; return h; }
   var FALLBACK_COLORS = ['#c0392b','#2457c5','#15803d','#d97706','#7c3aed','#0891b2','#be185d','#b45309'];
   function fallbackColor(name){ var h=0,s=String(name||'?'); for(var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return FALLBACK_COLORS[h%FALLBACK_COLORS.length]; }
@@ -12357,8 +12373,9 @@
       if (!tr.checked){ var ck = document.getElementById('pr-instock'); body.in_stock = ck ? ck.checked : true; }
 
       sbUpdate('products', r.id, body, 'Produits')
-        .then(function(){ prDirty = false; note.textContent = 'Enregistré.'; return prLoad(); })
-        .then(function(){ b.disabled = false; if (prSel) prRenderDoc(); })
+        .then(function(){ prDirty = false; return prLoad(); })
+        .then(function(){ b.disabled = false; if (prSel) prRenderDoc();
+                          noteDire('pr-note', 'Enregistré.'); })
         .catch(function(){ b.disabled = false; note.textContent = "L'enregistrement a échoué."; });
     });
 
@@ -12700,8 +12717,9 @@
         ends_at: v('bn-end') ? new Date(v('bn-end')).toISOString() : null,
         sort: num('bn-sort', null)
       }, 'Bannières')
-        .then(function(){ bnDirty = false; note.textContent = 'Enregistré.'; return bnLoad(); })
-        .then(function(){ b.disabled = false; if (bnSel) bnRenderDoc(); })
+        .then(function(){ bnDirty = false; return bnLoad(); })
+        .then(function(){ b.disabled = false; if (bnSel) bnRenderDoc();
+                          noteDire('bn-note', 'Enregistré.'); })
         .catch(function(){ b.disabled = false; note.textContent = "L'enregistrement a échoué."; });
     });
 
@@ -13131,8 +13149,9 @@
         bio: v('ef-bio').trim() || null,
         stats: stats
       }, 'Joueuses')
-        .then(function(){ efDirty = false; note.textContent = 'Enregistré.'; return efLoad(); })
-        .then(function(){ b.disabled = false; if (efSel) efRenderDoc(); })
+        .then(function(){ efDirty = false; return efLoad(); })
+        .then(function(){ b.disabled = false; if (efSel) efRenderDoc();
+                          noteDire('ef-note', 'Enregistré.'); })
         .catch(function(){ b.disabled = false; note.textContent = "L'enregistrement a échoué."; });
     });
 
@@ -13510,8 +13529,9 @@
       if (extra) Object.keys(extra).forEach(function(k){ body[k] = extra[k]; });
       note.textContent = 'Enregistrement…';
       return sbUpdate('news', r.id, body, 'Articles')
-        .then(function(){ arDirty = false; note.textContent = label || 'Enregistré.'; return arLoad(); })
-        .then(function(){ if (arSel) arRenderDoc(); })
+        .then(function(){ arDirty = false; return arLoad(); })
+        .then(function(){ if (arSel) arRenderDoc();
+                          noteDire('ar-note', label || 'Enregistré.'); })
         .catch(function(){ note.textContent = "L'enregistrement a échoué."; });
     }
 
