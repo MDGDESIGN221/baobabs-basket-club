@@ -252,16 +252,25 @@
 
   function majNoteVoix() {
     var note = $('bt-voix-note'), liste = $('bt-voix-liste'), essai = $('bt-voix-essai');
+    var aide = $('bt-note');
     if (!note) return;
 
+    // Un message court s'affiche tel quel ; la marche a suivre Windows,
+    // elle, vit repliee dans <details> et n'est jamais fabriquee ici.
+    function court(txt) {
+      note.textContent = txt;
+      note.classList.toggle('hide', !txt);
+      if (aide) aide.classList.add('hide');
+    }
+
     if (!voixDispo()) {
-      note.textContent = 'Ce navigateur ne sait pas lire à voix haute — le texte reste affiché.';
+      court('Ce navigateur ne sait pas lire à voix haute — le texte reste affiché.');
       if (liste) liste.classList.add('hide'); if (essai) essai.classList.add('hide');
       return;
     }
     var fr = voixFrancaises();
     if (!fr.length) {
-      note.textContent = 'Aucune voix française installée sur cet appareil — le texte reste affiché.';
+      court('Aucune voix française installée sur cet appareil — le texte reste affiché.');
       if (liste) liste.classList.add('hide'); if (essai) essai.classList.add('hide');
       return;
     }
@@ -281,11 +290,8 @@
     }
     if (essai) essai.classList.remove('hide');
 
-    note.innerHTML = (voixFr && noteVoix(voixFr) >= 50)
-      ? ''
-      : 'Cette voix est de l’ancienne génération, elle sonne mécanique. ' +
-        'Sur Windows&nbsp;: <b>Paramètres → Heure et langue → Voix → Ajouter des voix</b>, ' +
-        'installez une voix française <b>« Naturel »</b>, puis rouvrez le navigateur.';
+    court('');
+    if (aide) aide.classList.toggle('hide', !!(voixFr && noteVoix(voixFr) >= 50));
   }
 
   function taire() {
@@ -1680,6 +1686,11 @@
     return { ecrans: nEcrans, mots: nMots };
   }
 
+  function unFait(valeur, libelle) {
+    return '<li class="bt-fait"><span class="bt-fait-v">' + valeur + '</span>' +
+           '<span class="bt-fait-l">' + libelle + '</span></li>';
+  }
+
   function rendreSommaire() {
     var totalE = 0, vusE = 0;
     plan.forEach(function (c) {
@@ -1690,12 +1701,25 @@
     var nbEcrans = vol.ecrans;
     var nbMots = vol.mots;
 
+    // LES CHIFFRES SORTENT DE LA PHRASE.
+    //
+    // Le sous-titre portait quatre lignes et trois fragments en gras :
+    // le role, le nombre d'ecrans, la duree. Trois chiffres emmanches
+    // dans un paragraphe se lisent moins bien qu'une ligne de trois
+    // faits -- c'est la regle du socle de l'admin, et elle vaut ici.
+    //
+    // Reste dans la phrase ce qui rassure, et qui n'est pas un chiffre :
+    // que rien ne sera enregistre, et qu'on peut s'arreter.
     $('bt-sub').innerHTML =
-      'Vous êtes connecté en <b>' + echapper(api.roleNom || api.role || '—') + '</b>. ' +
-      'Ce tutoriel ne montre que les <b>' + nbEcrans + ' écrans</b> que votre rôle peut ouvrir, ' +
-      'sur les vrais écrans du site — rien n’est enregistré, rien n’est modifié. ' +
-      'Comptez <b>' + minutes(nbMots) + ' minutes</b> en tout, et vous pouvez vous arrêter à tout moment : ' +
+      'La visite se déroule sur les <b>vrais écrans du site</b> — rien n’est ' +
+      'enregistré, rien n’est modifié. Vous pouvez vous arrêter à tout moment : ' +
       'la reprise se fait là où vous en êtes.';
+
+    var faits = $('bt-faits');
+    if (faits) faits.innerHTML =
+      unFait(nbEcrans, 'écrans à visiter') +
+      unFait(minutes(nbMots), 'minutes en tout') +
+      unFait(echapper(api.roleNom || api.role || '—'), 'votre rôle');
 
     var pc = totalE ? Math.round(vusE / totalE * 100) : 0;
     $('bt-jauge').style.width = pc + '%';
@@ -1774,7 +1798,14 @@
             '" data-ecran="' + echapper(e.cle) + '" title="Ouvrir directement ce tutoriel">' +
             (e.num ? '<i>' + echapper(e.num) + '</i>' : '') + echapper(e.nom) + '</button>';
         }).join('') + '</div>' : '') +
-        (n ? '<div class="bt-chap-j"><i style="width:' + Math.round(vus / n * 100) + '%"></i></div>' : '') +
+        // LA JAUGE NE PARAIT QUE QUAND ELLE APPREND QUELQUE CHOSE.
+        // A zero c'est un trait gris qui ne dit rien ; a cent c'est une
+        // barre verte pleine qui redit ce que la pastille cochee dit
+        // deja, dix-sept fois de suite. Elle n'est utile qu'entre les
+        // deux -- la ou l'on veut savoir combien il reste.
+        (n && vus > 0 && vus < n
+          ? '<div class="bt-chap-j"><i style="width:' + Math.round(vus / n * 100) + '%"></i></div>'
+          : '') +
       '</div>';
     }).join('');
 

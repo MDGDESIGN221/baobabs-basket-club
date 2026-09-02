@@ -26,6 +26,11 @@
   --bt-ok:      var(--ok,          #93CE43);
   --bt-ui:      var(--font-ui, 'Archivo', 'Inter', system-ui, sans-serif);
 
+  /* UNE SEULE HAUTEUR POUR TOUT CE QUI SE CLIQUE. La rangee d'accueil
+     en alignait quatre differentes ; c'est le genre de detail qu'on ne
+     nomme pas et qui fait « pas fini ». */
+  --bt-h: 42px;
+
   /* Au-dessus de TOUT : l'admin monte a 130, le Studio a 400. A 90, le
      narrateur passait sous le Studio des qu'on l'ouvrait -- on
      entendait un guide qu'on ne voyait plus. */
@@ -67,9 +72,34 @@
 #btut .bt-x svg{width:17px;height:17px}
 
 /* La rangée de commandes */
-#btut .bt-cmds{display:flex;flex-wrap:wrap;gap:11px;align-items:center;margin-bottom:22px}
+/* LES ACTIONS, PUIS LES REGLAGES, SEPARES PAR UN FILET. */
+#btut .bt-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:15px}
+#btut .bt-reglages{
+  display:flex;flex-wrap:wrap;gap:9px;align-items:center;
+  padding-top:15px;border-top:1px solid var(--bt-line);margin-bottom:14px
+}
+#btut .bt-voix-reglages{display:inline-flex;flex-wrap:wrap;gap:9px;align-items:center}
+
+/* LES CHIFFRES SORTENT DE LA PHRASE.
+   Ils y etaient noyes : trois fragments en gras au milieu de quatre
+   lignes se lisent moins bien qu'une ligne de trois faits. C'est la
+   regle du socle de l'admin -- le chiffre est le sujet, le libelle le
+   commente. */
+#btut .bt-faits{
+  list-style:none;display:flex;flex-wrap:wrap;gap:0;margin:18px 0 0;padding:0
+}
+#btut .bt-fait{
+  display:grid;gap:2px;padding:0 22px;border-left:1px solid var(--bt-line)
+}
+#btut .bt-fait:first-child{padding-left:0;border-left:0}
+#btut .bt-fait-v{
+  font-size:21px;font-weight:800;color:var(--bt-text);line-height:1.1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em
+}
+#btut .bt-fait-l{font-size:11.5px;color:var(--bt-faint);letter-spacing:.02em}
 #btut .bt-cta{
-  display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:12px;
+  display:inline-flex;align-items:center;gap:10px;padding:0 20px;height:var(--bt-h);
+  border-radius:10px;white-space:nowrap;
   background:var(--bt-gold);color:#1A1206;font-weight:800;font-size:14px;
   transition:filter .15s,transform .15s
 }
@@ -82,21 +112,34 @@
    liste deroulante sur aplat. Cinq facons de dire « je suis un reglage ».
    Ils prennent la meme forme ; seul ce qui EST allume se teinte d'or. */
 #btut .bt-ghost{
-  display:inline-flex;align-items:center;gap:9px;padding:11px 15px;border-radius:10px;
+  display:inline-flex;align-items:center;gap:9px;padding:0 15px;height:var(--bt-h);
+  border-radius:10px;white-space:nowrap;
   border:1px solid var(--bt-line2);color:var(--bt-muted);font-weight:600;font-size:13px;
   background:transparent;transition:border-color .15s,background .15s,color .15s
 }
 #btut .bt-ghost:hover{border-color:var(--bt-edge);background:var(--bt-soft);color:var(--bt-text)}
 #btut .bt-ghost.hide{display:none}
+/* L'ICONE N'AVAIT AUCUNE TAILLE.
+   C'est elle, la rangee en escalier : un <svg> sans width ni height
+   prend sa taille intrinseque, ici 300x150 ramenee par le flex a une
+   trentaine de pixels. « Mode presentation » mesurait donc 60 px de
+   haut quand ses voisins en faisaient 43, et son libelle passait a la
+   ligne. On la dimensionne, comme celle du bouton d'action. */
+#btut .bt-ghost svg{width:15px;height:15px;flex:none}
 
 /* L'interrupteur de la voix */
 #btut .bt-voix{
-  display:inline-flex;align-items:center;gap:9px;padding:11px 15px;border-radius:10px;
+  display:inline-flex;align-items:center;gap:9px;padding:0 15px;height:var(--bt-h);
+  border-radius:10px;white-space:nowrap;
   border:1px solid var(--bt-line2);font-size:13px;font-weight:600;color:var(--bt-muted);
   cursor:pointer;user-select:none;transition:border-color .15s,color .15s,background .15s
 }
 #btut .bt-voix:hover{border-color:var(--bt-edge);color:var(--bt-text)}
-#btut .bt-voix.on{border-color:var(--bt-edge);background:var(--bt-soft);color:var(--bt-gold-br)}
+/* ALLUME NE VEUT PAS DIRE DORE. L'or dit ou porter la main : le mettre
+   sur un reglage actif le met en concurrence avec la seule action de
+   l'ecran. L'etat s'ECRIT de toute facon -- le libelle passe de « Lire a
+   voix haute » a « Voix activee ». Il n'a pas besoin d'etre peint. */
+#btut .bt-voix.on{border-color:var(--bt-edge);background:var(--bt-soft);color:var(--bt-text)}
 #btut .bt-voix input{position:absolute;opacity:0;width:0;height:0}
 #btut .bt-voix svg{width:16px;height:16px;flex:none}
 /* LE REGLAGE DES ANIMATIONS N'EST PAS UN REGLAGE CACHE.
@@ -105,7 +148,8 @@
    systeme bride les animations, le bouton se met AVEC les commandes,
    a cote de la voix, et se voit. */
 #btut .bt-anim-cmd{
-  display:inline-flex;align-items:center;gap:9px;padding:11px 15px;border-radius:10px;
+  display:inline-flex;align-items:center;gap:9px;padding:0 15px;height:var(--bt-h);
+  border-radius:10px;white-space:nowrap;
   border:1px solid rgba(232,169,60,.45);background:rgba(232,169,60,.12);
   color:var(--warn,#E8A93C);font-weight:700;font-size:13px;
   transition:filter .15s,transform .12s
@@ -122,31 +166,50 @@
 }
 #btut .bt-anim-cmd.on::before{animation:none;background:var(--bt-ok)}
 
-/* Les trois reglages de voix passent a la ligne ENSEMBLE, et la note
-   se range sous eux plutot que de barrer toute la largeur. */
-#btut .bt-voix-reglages{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:9px}
-#btut .bt-voix-reglages:empty{display:none}
-#btut .bt-voix-note{font-size:12.5px;color:var(--bt-faint);flex-basis:100%;margin:2px 0 0;
+#btut .bt-voix-note{font-size:12.5px;color:var(--bt-faint);margin:0 0 14px;
   line-height:1.55;max-width:78ch}
-#btut .bt-voix-note b{color:var(--bt-muted)}
+#btut .bt-voix-note.hide{display:none}
+
+/* LA NOTE REPLIEE. Une marche a suivre Windows n'est pas du contenu
+   d'accueil : c'est une reponse, et elle attend la question. */
+#btut .bt-note{margin:0 0 14px;max-width:78ch}
+#btut .bt-note.hide{display:none}
+#btut .bt-note summary{
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;list-style:none;
+  font-size:12.5px;color:var(--bt-faint);padding:4px 0;
+  transition:color .15s
+}
+#btut .bt-note summary::-webkit-details-marker{display:none}
+#btut .bt-note summary::before{
+  content:'';width:6px;height:6px;flex:none;border-right:1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;transform:rotate(-45deg);margin-left:2px;
+  transition:transform .18s
+}
+#btut .bt-note[open] summary::before{transform:rotate(45deg)}
+#btut .bt-note summary:hover{color:var(--bt-muted)}
+#btut .bt-note-c{
+  font-size:12.5px;color:var(--bt-faint);line-height:1.6;
+  padding:9px 0 2px 14px;border-left:1px solid var(--bt-line);margin-top:4px
+}
+#btut .bt-note-c b{color:var(--bt-muted);font-weight:700}
 /* Le choix de la voix : la qualite depend de ce qui est installe sur la
    machine, pas de reglages. Autant laisser choisir, et faire entendre. */
 #btut .bt-voix-liste{
-  padding:11px 13px;border-radius:10px;border:1px solid var(--bt-line2);
+  padding:0 11px;height:var(--bt-h);border-radius:10px;border:1px solid var(--bt-line2);
   background:transparent;color:var(--bt-muted);font:600 13px var(--bt-ui);
   max-width:min(240px,100%);cursor:pointer
 }
 #btut .bt-voix-liste.hide,#btut .bt-voix-essai.hide{display:none}
 #btut .bt-voix-liste:hover{border-color:var(--bt-edge)}
 #btut .bt-voix-essai{
-  padding:11px 15px;border-radius:10px;border:1px solid var(--bt-line2);
+  padding:0 15px;height:var(--bt-h);border-radius:10px;border:1px solid var(--bt-line2);
   color:var(--bt-muted);font-weight:600;font-size:13px;
   transition:border-color .15s,color .15s,background .15s
 }
 #btut .bt-voix-essai:hover{border-color:var(--bt-edge);color:var(--bt-gold-br);background:var(--bt-soft)}
 
 /* Progression d'ensemble */
-#btut .bt-jauge{height:5px;border-radius:99px;background:var(--bt-line);overflow:hidden;margin-bottom:9px}
+#btut .bt-jauge{height:3px;border-radius:99px;background:var(--bt-line);overflow:hidden;margin-bottom:9px}
 #btut .bt-jauge i{display:block;height:100%;background:var(--bt-gold);border-radius:99px;transition:width .4s ease}
 #btut .bt-jauge-txt{margin:0 0 26px;font-size:13px;color:var(--bt-faint)}
 
@@ -157,14 +220,22 @@
    dans l'autre des que la place manquait. Sur grand ecran ca tenait par
    chance, sous 520 px ca se chevauchait. Tout est en grille maintenant,
    et chaque enfant occupe sa propre ligne quoi qu'il arrive. */
-#btut .bt-chaps{display:grid;gap:10px}
-#btut .bt-chap{
-  padding:14px 16px 13px;border-radius:14px;
-  border:1px solid var(--bt-line);background:var(--bt-surf);
-  transition:border-color .18s,background .18s
+/* LE TRAIT PLUTOT QUE LA BOITE.
+   Dix-sept cartes bordees ET remplies, empilees a 10 px d'ecart, font
+   dix-sept rectangles a traverser avant d'arriver au titre qu'on
+   cherche. Une seule boite, des filets entre les lignes : la liste
+   redevient une liste. Et le rayon repasse a 12 -- 14 n'existe pas
+   dans ce socle. */
+#btut .bt-chaps{
+  display:grid;gap:0;border:1px solid var(--bt-line);border-radius:12px;
+  background:var(--bt-surf);overflow:hidden
 }
-#btut .bt-chap:hover{border-color:var(--bt-edge);background:var(--bt-surf2)}
-#btut .bt-chap.fait{border-color:rgba(147,206,67,.26)}
+#btut .bt-chap{
+  padding:14px 16px 13px;border-top:1px solid var(--bt-line);
+  transition:background .18s
+}
+#btut .bt-chap:first-child{border-top:0}
+#btut .bt-chap:hover{background:var(--bt-surf2)}
 /* L'en-tete lance le chapitre entier ; les pastilles en dessous ouvrent
    un ecran precis. Deux boutons distincts, pas un bouton dans un bouton. */
 #btut .bt-chap-h{
@@ -204,7 +275,11 @@
 #btut .bt-puce:hover{border-color:var(--bt-edge);color:var(--bt-gold-br);background:var(--bt-soft)}
 #btut .bt-puce:active{transform:translateY(1px)}
 #btut .bt-puce i{font-style:normal;font-weight:800;font-size:9.5px;opacity:.6;letter-spacing:.02em}
-#btut .bt-puce.vu{border-color:rgba(147,206,67,.3);color:var(--bt-ok)}
+/* VU, PAS ALERTE. Quarante-quatre pastilles en vert plein faisaient du
+   sommaire un sapin : c'est une information de second plan -- la
+   pastille cochee du chapitre dit deja l'essentiel. On garde la
+   distinction, on baisse le volume. */
+#btut .bt-puce.vu{border-color:rgba(147,206,67,.24);color:rgba(147,206,67,.72)}
 #btut .bt-puce.vu i{opacity:.75}
 
 #btut .bt-chap-j{height:3px;border-radius:99px;background:var(--bt-line);overflow:hidden;margin:11px 0 0 47px}
@@ -949,6 +1024,13 @@ html.bt-anim section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) 
   #btut .bt-esp{flex-basis:100%;height:0}
   #btut .bt-chap{padding:14px 15px;gap:12px}
   #btut .bt-cta,#btut .bt-ghost,#btut .bt-voix{flex:1;justify-content:center}
+  /* LES FILETS TOMBENT QUAND LA LIGNE SE CASSE.
+     Les trois faits ne tiennent pas cote a cote sous 400 px : le
+     troisieme passe a la ligne et emporte son filet de gauche, qui se
+     retrouve a separer du vide. Sur deux lignes, c'est l'ecart qui
+     separe. */
+  #btut .bt-faits{gap:14px 26px}
+  #btut .bt-fait{padding:0;border-left:0}
 }
 
 /* Qui a demandé moins d'animations garde les transitions courtes et
