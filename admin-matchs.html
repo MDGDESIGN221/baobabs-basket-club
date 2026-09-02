@@ -1116,14 +1116,22 @@
   input[type=file]::file-selector-button{font-family:var(--font-ui);font-weight:600;font-size:12.5px;background:var(--surface-2);color:var(--text);border:1px solid var(--line-strong);border-radius:8px;padding:9px 13px;margin-right:12px;cursor:pointer}
 
   .team-item span{flex:1;font-size:14.5px;min-width:0}
-  .kc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:transparent;border:none;color:var(--text);text-align:left;padding:0}
-  .kc-head-left b{display:block;font-family:var(--font-ui);font-weight:700;font-size:19px}
-  .kc-head-left span{display:block;color:var(--faint);font-size:12px;margin-top:2px}
-  .kc-chevron{width:22px;height:22px;flex:none;transition:transform .2s;color:var(--gold)}
-  #known-clubs.open .kc-chevron{transform:rotate(180deg)}
+  /* Les deux panneaux d'Adversaires : ils ne s'ouvrent que si on les
+     demande, et ils prennent la peau du systeme — un filet dore en tete,
+     pas un cadre a 12px de rayon sur un aplat. */
+  .tm-panel{border-top:2px solid var(--gold);background:var(--surface);
+    padding:18px 20px 20px;margin-bottom:20px}
+  .tm-panel-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:16px;
+    padding-bottom:11px;border-bottom:1px solid var(--line-strong)}
+  .tm-panel-h b{font-family:var(--font-ui);font-weight:800;font-size:9.5px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--text)}
+  .tm-panel-h span{font-size:11.5px;color:var(--faint)}
+  .tm-panel-f{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  /* Le repli garde son max-height anime : c'est ce que le bouton pilote. */
   .kc-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
-  #known-clubs.open .kc-body{max-height:3600px}
-  .kc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px;margin-top:16px}
+  #known-clubs.open .kc-body{max-height:3600px;border-top:2px solid var(--gold);
+    background:var(--surface);padding:18px 20px 20px;margin-bottom:20px}
+  .kc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px}
   .kc-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:11px;padding:12px 6px;text-align:center;transition:border-color .15s,opacity .15s;min-height:92px;justify-content:center}
   .kc-tile:hover{border-color:rgba(198,162,87,.55)}
   .kc-tile img{width:38px;height:38px;border-radius:50%;object-fit:contain;background:var(--surface);border:1px solid var(--line-strong)}
@@ -3490,21 +3498,28 @@
 
     <!-- ===== SECTION ADVERSAIRES ===== -->
     <section id="section-teams" class="hide">
-        <div class="callout">Ces équipes alimentent la liste déroulante des adversaires dans l'onglet Matchs. Le plus rapide : ouvrez <b>Clubs connus</b> ci-dessous et ajoutez-les en un clic (logo compris).</div>
-        <div class="card" id="known-clubs">
-          <button type="button" class="kc-head" id="kc-toggle" aria-expanded="false">
-            <div class="kc-head-left"><b>Clubs connus</b><span id="kc-count">Chargement…</span></div>
-            <svg class="kc-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
+        <!-- Trois cartes empilees, dont deux formulaires toujours ouverts
+             au-dessus de la liste qu'on vient consulter : on descendait
+             pour voir ses adversaires. La barre porte les deux gestes, et
+             les panneaux ne s'ouvrent que si on les demande. -->
+        <div class="ds-head">
+          <span class="ds-count" id="teams-count">—</span>
+          <input type="search" class="ds-search" id="tm-search" placeholder="Nom du club…">
+          <button type="button" class="ds-act" id="kc-toggle" aria-expanded="false">Clubs connus</button>
+          <button type="button" class="ds-mini-btn" id="tm-open-add">Ajouter un adversaire</button>
+        </div>
+        <div class="callout ds-note">Ces équipes alimentent la liste déroulante des adversaires dans l'onglet Matchs. Le plus rapide&nbsp;: ouvrez <b>Clubs connus</b> et ajoutez-les en un clic, logo compris.</div>
+
+        <div id="known-clubs">
           <div class="kc-body">
-            <p class="hint" style="margin-top:14px">Un clic ajoute directement le club à votre liste, logo compris. Les clubs sans logo affichent leurs initiales — vous pourrez ajouter le logo plus tard.</p>
+            <div class="tm-panel-h"><b>Clubs connus</b><span id="kc-count">Chargement…</span></div>
             <div class="kc-grid" id="kc-grid"></div>
             <div class="msg" id="kc-msg"></div>
           </div>
         </div>
-        <div class="card">
-          <h2 class="card-title">Ajouter un adversaire</h2>
-          <p class="card-sub">Pour un club absent de la liste ci-dessus.</p>
+
+        <div class="tm-panel hide" id="tm-add">
+          <div class="tm-panel-h"><b>Ajouter un adversaire</b><span>Pour un club absent de « Clubs connus ».</span></div>
           <div class="field"><label for="team_name">Nom de l'équipe</label><input type="text" id="team_name" placeholder="Ex : Louga BC" autocomplete="off"><span class="dym-hint hide" id="dym_team_name"></span></div>
           <div class="field">
             <label>Logo <span class="opt">(optionnel)</span></label>
@@ -3514,16 +3529,19 @@
             </div>
             <input type="file" id="team_logo_file" accept="image/*">
             <input type="text" id="team_logo_url" placeholder="https://…" class="hide">
-            <img id="team_logo_preview" alt="" class="logo-preview" style="border-radius:50%;object-fit:contain;width:52px;height:52px" alt="">
+            <img id="team_logo_preview" alt="" class="logo-preview" style="border-radius:var(--r-sm);object-fit:contain;width:52px;height:52px">
           </div>
-          <button class="btn btn-primary" id="save-team-btn">Ajouter l'équipe</button>
+          <div class="tm-panel-f">
+            <button class="ds-mini-btn" id="save-team-btn">Ajouter l'équipe</button>
+            <button type="button" class="ds-act" id="tm-add-cancel">Annuler</button>
+          </div>
           <div class="msg" id="team-form-msg"></div>
         </div>
+
         <div class="list">
-          <div class="list-head"><h2>Adversaires enregistrés</h2><span class="list-count" id="teams-count">—</span></div>
-          <div id="tm-logo-editor" class="hide" style="border:1px solid rgba(198,162,87,.4);border-radius:12px;padding:15px;margin-bottom:14px;background:var(--surface-2)">
+          <div id="tm-logo-editor" class="tm-panel hide">
             <div style="display:flex;align-items:center;gap:11px;margin-bottom:12px">
-              <img id="tm-ed-preview" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:contain;background:#0A1710;border:1px solid var(--line-strong)">
+              <img id="tm-ed-preview" alt="" style="width:44px;height:44px;border-radius:var(--r-sm);object-fit:contain;background:var(--surface-3);border:1px solid var(--line-strong)">
               <div><div style="font-family:var(--font-ui);font-weight:700;font-size:14px" id="tm-ed-name"></div><div style="font-size:11.5px;color:var(--faint)">Nouveau logo pour ce club</div></div>
             </div>
             <div class="logo-choice">
@@ -3532,9 +3550,9 @@
             </div>
             <input type="file" id="tm-ed-file" accept="image/*">
             <input type="text" id="tm-ed-url" placeholder="https://…" class="hide">
-            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-              <button type="button" class="btn btn-primary" id="tm-ed-save">Enregistrer le logo</button>
-              <button type="button" class="btn btn-ghost" id="tm-ed-cancel">Annuler</button>
+            <div class="tm-panel-f">
+              <button type="button" class="ds-mini-btn" id="tm-ed-save">Enregistrer le logo</button>
+              <button type="button" class="ds-act" id="tm-ed-cancel">Annuler</button>
             </div>
             <div class="msg" id="tm-ed-msg"></div>
           </div>
@@ -7218,7 +7236,7 @@
                  ['#qgv-body-standings', '#qgv-standings'],
                  ['#qgv-insp-standings', '#qgv-standings']],
     teams:      ['#teams-list', '#kc-grid',
-                 ['#teams-list .tm-logo', '#teams-list .rec-item', '#teams-list'],
+                 ['#teams-list .tm-logo', '#teams-list .ds-tr', '#teams-list'],
                  null],
     live:       ['#set_yt_channel', '#set_live_mode', '#set_live_note'],
     tickets:    ['#tk-offers-list', null,
@@ -9666,20 +9684,46 @@
     });
   }
   var tmCounts = {};
+  // Un ecusson tire au sort dans huit couleurs saturees faisait de la
+  // colonne des clubs un damier — et les clubs SANS logo y brillaient
+  // plus que ceux qui en ont un. On reprend l'ecusson de l'ecran Matchs :
+  // le logo quand il existe, une initiale posee sur un aplat neutre
+  // sinon. Et la liste devient un tableau : le nombre de confrontations
+  // se compare en colonne, pas en fin de phrase.
+  function tmVisible(){
+    var q=(document.getElementById('tm-search').value||'').trim().toLowerCase();
+    if(!q) return teamsCache;
+    return teamsCache.filter(function(t){ return String(t.name||'').toLowerCase().indexOf(q)>=0; });
+  }
   function renderTeamsList(){
-    var list=document.getElementById('teams-list'); document.getElementById('teams-count').textContent=teamsCache.length;
-    if(!teamsCache.length){ list.innerHTML='<div class="empty">Aucun adversaire enregistré. Ouvrez «\u00a0Clubs connus\u00a0» ci-dessus : un clic suffit.</div>'; return; }
-    list.innerHTML=teamsCache.map(function(t){
-      var logo=t.logo_url?'<img class="rec-thumb circle" src="'+esc(t.logo_url)+'" alt="">':'<div class="rec-noimg circle" style="background:'+fallbackColor(t.name)+'">'+esc(initials(t.name))+'</div>';
-      var n=tmCounts[normName(t.name)]||0;
-      var meta=n?n+' confrontation'+(n>1?'s':'')+' enregistrée'+(n>1?'s':''):'Aucun match enregistré';
-      return '<div class="rec-item">'+logo+'<div class="rec-main"><div class="rec-title">'+esc(t.name)+'</div><div class="rec-meta">'+meta+'</div></div>'+
-        '<div class="item-actions">'+
-        '<button class="icon-btn tm-logo" data-id="'+t.id+'" title="Changer le logo" aria-label="Changer le logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></button>'+
-        '<button class="icon-btn danger" data-id="'+t.id+'" title="Supprimer" aria-label="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'+
-        '</div></div>';
-    }).join('');
-    list.querySelectorAll('.icon-btn.danger').forEach(function(b){ b.addEventListener('click',function(){ deleteTeam(b.getAttribute('data-id')); }); });
+    var list=document.getElementById('teams-list');
+    var rows=tmVisible();
+    document.getElementById('teams-count').textContent=rows.length+(rows.length>1?' adversaires':' adversaire');
+    if(!rows.length){
+      list.innerHTML='<div class="empty">'+(teamsCache.length
+        ? 'Aucun club ne correspond à cette recherche.'
+        : 'Aucun adversaire enregistré. Ouvrez «\u00a0Clubs connus\u00a0» dans la barre : un clic suffit.')+'</div>';
+      return;
+    }
+    list.innerHTML=
+      '<div class="ds-scroll"><table class="ds-tbl">'+
+        '<thead><tr><th class="c"></th><th>Club</th><th>Confrontations</th>'+
+        '<th>Logo</th><th class="r"></th></tr></thead><tbody>'+
+      rows.map(function(t){
+        var n=tmCounts[normName(t.name)]||0;
+        return '<tr class="ds-tr ds-fixe" data-id="'+t.id+'">'+
+          '<td class="c">'+mcCrest(t.logo_url, t.name, 'mc-mini')+'</td>'+
+          '<td><div class="n">'+esc(t.name)+'</div></td>'+
+          '<td class="num">'+(n?n+(n>1?' matchs':' match'):'—')+'</td>'+
+          '<td>'+(t.logo_url?'<span class="ds-st"><i></i>En place</span>'
+                            :'<span class="ds-tag warn">Manquant</span>')+'</td>'+
+          '<td class="r"><div class="rs-actions">'+
+            '<button type="button" class="ds-act tm-logo" data-id="'+t.id+'">'+(t.logo_url?'Changer le logo':'Ajouter un logo')+'</button>'+
+            '<button class="icon-btn danger tm-del" data-id="'+t.id+'" title="Supprimer" aria-label="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'+
+          '</div></td>'+
+        '</tr>';
+      }).join('')+'</tbody></table></div>';
+    list.querySelectorAll('.tm-del').forEach(function(b){ b.addEventListener('click',function(){ deleteTeam(b.getAttribute('data-id')); }); });
     list.querySelectorAll('.tm-logo').forEach(function(b){ b.addEventListener('click',function(){ tmOpenEditor(b.getAttribute('data-id')); }); });
   }
   function renderOpponentSelect(){
@@ -9756,7 +9800,25 @@
   });
 
   var kcWrap=document.getElementById('known-clubs'), kcToggle=document.getElementById('kc-toggle');
-  kcToggle.addEventListener('click',function(){ var o=kcWrap.classList.toggle('open'); kcToggle.setAttribute('aria-expanded',o?'true':'false'); });
+  var tmAdd=document.getElementById('tm-add');
+  // Deux panneaux pour deux facons d'ajouter la meme chose : ouvrir l'un
+  // ferme l'autre, sinon la liste qu'on est venu consulter part a deux
+  // ecrans de defilement.
+  kcToggle.addEventListener('click',function(){
+    var o=kcWrap.classList.toggle('open');
+    kcToggle.setAttribute('aria-expanded',o?'true':'false');
+    kcToggle.classList.toggle('on', o);
+    if(o) tmAdd.classList.add('hide');
+  });
+  document.getElementById('tm-open-add').addEventListener('click',function(){
+    var ferme=tmAdd.classList.toggle('hide');
+    if(!ferme){
+      kcWrap.classList.remove('open'); kcToggle.setAttribute('aria-expanded','false'); kcToggle.classList.remove('on');
+      document.getElementById('team_name').focus();
+    }
+  });
+  document.getElementById('tm-add-cancel').addEventListener('click',function(){ tmAdd.classList.add('hide'); });
+  document.getElementById('tm-search').addEventListener('input', renderTeamsList);
   function normName(s){ return String(s).trim().toLowerCase(); }
 
   // ===================== VOULIEZ-VOUS DIRE (fuzzy matching) =====================
@@ -22052,8 +22114,10 @@
   .qg-canvas-head h3,
   .mc-compo-h h3,
   .live-title,
-  .wc-name,
-  .kc-head-left b{
+  /* .kc-head-left b est retire : l'en-tete « Clubs connus » etait un
+     titre de 19px dans une carte ; c'est maintenant une micro-
+     etiquette de panneau, en Archivo capitales comme les autres. */
+  .wc-name{
     font-family:var(--font-display);
     font-style:var(--display-style);
     font-weight:var(--display-weight);
