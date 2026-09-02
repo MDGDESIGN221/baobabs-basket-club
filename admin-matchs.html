@@ -197,9 +197,11 @@
 
   /* ===================== APP SHELL / SIDEBAR ===================== */
   .app-shell{display:flex;max-width:1400px;margin:0 auto}
+  /* L'ombre portee vers l'interieur ne servait qu'a rattraper une
+     difference de fond qui ne se voyait pas. L'ecart de teinte porte
+     maintenant la separation ; le filet la termine. */
   .sidebar{flex:none;width:264px;background:var(--sb-bg);
     border-right:1px solid var(--line-strong);
-    box-shadow:inset -18px 0 26px -24px rgba(0,0,0,.95);
     min-height:calc(100vh - 65px);padding:20px 14px 40px;position:sticky;top:65px;
     align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
   /* ── LES TEINTES DE GROUPE ──────────────────────────────────────
@@ -210,11 +212,22 @@
      groupe Epingles n'en a pas et garde donc l'or. */
   #sidebar{
     /* LE FOND DU RAIL. La barre partageait --bg avec le contenu : seul un
-       filet les separait, et l'oeil ne voyait qu'une seule surface. Elle
-       descend d'un cran sous le contenu et gagne une arete. Pas de vert :
-       --court-deep habille deja l'affiche du tableau de bord, et deux
-       objets de la meme couleur a l'ecran cessent de se distinguer. */
-    --sb-bg:#040A07;
+       filet les separait, et l'oeil ne voyait qu'une seule surface.
+
+       Premiere tentative : la faire DESCENDRE sous le contenu, #040A07
+       contre #070E0A. Trois points d'ecart par canal sur du quasi-noir —
+       la mesure disait « deux surfaces », l'oeil disait « la meme chose ».
+       On ne separe pas en assombrissant quand il n'y a plus de place
+       dessous.
+
+       Elle monte donc AU-DESSUS : --surface-2, treize points plus clair
+       que le contenu. Le rail devient la seule surface pleine de l'ecran,
+       ce que la bascule vers .ds- a rendu possible — les fiches et les
+       tableaux ont perdu leurs aplats au profit des filets, il ne reste
+       donc rien avec quoi le confondre. Pas de vert : --court-deep
+       habille deja l'affiche du tableau de bord, et deux objets de la
+       meme couleur cessent de se distinguer l'un de l'autre. */
+    --sb-bg:var(--surface-2);
     --sb-h1:#D9BC79;  /* Pilotage — l'or du club */
     --sb-h2:#E0A07C;  /* À traiter */
     --sb-h3:#D897A6;  /* Match day */
@@ -232,7 +245,7 @@
      tout ne tient pas à l'écran et l'ascenseur interne de la barre est
      facile à manquer. Replier rend la navigation entière visible. */
   .sb-group-label{display:flex;align-items:center;gap:7px;width:100%;background:none;border:none;font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding:5px 10px;margin-bottom:5px;cursor:pointer;text-align:left;border-radius:7px;transition:color .14s,background .14s}
-  .sb-group-label:hover{color:var(--text);background:var(--surface-2)}
+  .sb-group-label:hover{color:var(--text);background:var(--surface-3)}
   .sb-group-num{flex:none;font-size:9.5px;letter-spacing:0;color:var(--sb-t,var(--gold));opacity:.9;min-width:11px}
   .sb-group-cv{flex:none;width:11px;height:11px;margin-left:auto;opacity:.55;transition:transform .2s cubic-bezier(.22,1,.36,1)}
   .sb-group.folded .sb-group-cv{transform:rotate(-90deg)}
@@ -275,12 +288,15 @@
   @media (prefers-reduced-motion:reduce){ .sb-group-items{transition:none} }
   .sb-link{position:relative;display:flex;align-items:center;gap:12px;width:100%;background:transparent;border:none;color:var(--muted);border-radius:var(--r-sm);padding:11px 12px 11px 16px;font-family:var(--font-ui);font-weight:600;font-size:13.5px;text-align:left;margin-bottom:3px;transition:background .15s,color .15s}
   .sb-link svg{width:18px;height:18px;flex:none;opacity:.62;color:var(--sb-t,var(--muted));transition:opacity .15s,color .15s}
-  .sb-link:hover{background:var(--surface-2);color:var(--text)}
+  /* --surface-2 est devenu le fond du rail : le survol s'y confondait.
+     Il monte d'un cran encore. */
+  .sb-link:hover{background:var(--surface-3);color:var(--text)}
   .sb-link:hover svg{opacity:.95}
-  /* Le degrade horizontal etait le dernier du rail : un aplat neutre, et
-     c'est le lisere de gauche — teinte du groupe — qui dit quel ecran est
-     ouvert. La teinte cesse de se diluer sur toute la ligne. */
-  .sb-link.active{background:rgba(243,239,230,.05);color:var(--sb-t,var(--gold-bright));font-weight:700}
+  /* Cette declaration ne gagne pas : le bloc « SOCLE — barre laterale »,
+     bien plus bas, redeclare .sb-link.active a specificite egale. C'est
+     lui qui pose l'aplat teinte du groupe. On garde la couleur du texte,
+     qui n'y est pas redite. */
+  .sb-link.active{color:var(--sb-t,var(--gold-bright));font-weight:700}
   .sb-link.active svg{opacity:1;color:var(--sb-t,var(--gold))}
   .sb-link.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;border-radius:0;background:var(--sb-t,var(--gold))}
   .sb-link-badge{margin-left:auto;flex:none;background:var(--danger);color:#fff;font-family:var(--font-ui);font-weight:700;font-size:10px;line-height:1;border-radius:20px;padding:4px 7px;min-width:18px;text-align:center}
@@ -291,7 +307,8 @@
   .sb-pin{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:7px;color:var(--faint);cursor:pointer;opacity:0;transition:opacity .15s,color .15s,background .15s}
   .sb-pin svg{width:13px;height:13px;opacity:1}
   .sb-link:hover .sb-pin{opacity:1}
-  .sb-pin:hover{background:var(--surface);color:var(--gold-bright)}
+  /* --surface est plus SOMBRE que le rail : la punaise y creusait un trou. */
+  .sb-pin:hover{background:var(--surface-3);color:var(--gold-bright)}
   .sb-pin.on{opacity:1;color:var(--gold)}
   .sb-link:has(.sb-link-badge) .sb-pin{right:34px}
   .sb-pinned-empty{font-size:11.5px;line-height:1.55;color:var(--faint);padding:2px 12px 4px;margin:0}
@@ -21285,8 +21302,15 @@
      change, c'est le ton — barre pleine et carrée plutôt que
      dégradée, fond plat, densité un cran plus haute.
      ============================================================ */
-  .sb-link{border-radius:var(--r-sm);padding:9px 12px 9px 15px;margin-bottom:1px;font-weight:550;font-size:13px}
-  .sb-link svg{width:16px;height:16px;opacity:.6}
+  .sb-link{border-radius:var(--r-sm);padding:9px 12px 9px 15px;margin-bottom:1px;font-weight:550;font-size:13px;color:var(--text)}
+  /* LISIBILITE SUR LE NOUVEAU FOND. Le rail est passe de #070E0A a
+     --surface-2 : un fond plus clair fait PERDRE du contraste aux gris
+     moyens, et les reperes sont devenus trop discrets. Mesure sur le
+     fond du rail — icone a 4,15:1 et numero a 2,35:1, l'un sous le
+     seuil AA, l'autre tres loin dessous. Remontes a 7:1 et au-dela.
+     Les valeurs ci-dessous sont celles qui s'appliquent : declarer
+     l'opacite plus haut dans le fichier n'aurait rien change. */
+  .sb-link svg{width:16px;height:16px;opacity:.85}
   /* LA TEINTE DE GROUPE PASSE AUSSI ICI.
      Ce bloc de refonte redeclare la barre laterale plus bas dans le
      fichier : a specificite egale, c est lui qui gagne. Poser la teinte
@@ -21296,9 +21320,11 @@
   .sb-link.active{background:color-mix(in srgb,var(--sb-t,var(--gold)) 15%,transparent);color:var(--sb-t,var(--gold-bright));font-weight:700}
   .sb-link.active::before{top:0;bottom:0;width:2px;border-radius:0;background:var(--sb-t,var(--gold))}
   .sb-group{margin-bottom:var(--s4)}
-  .sb-group-label{font-size:9.5px;letter-spacing:.16em;padding:6px 10px;margin-bottom:2px;border-radius:var(--r-sm)}
+  .sb-group-label{font-size:9.5px;letter-spacing:.16em;padding:6px 10px;margin-bottom:2px;border-radius:var(--r-sm);color:var(--muted)}
   .sb-group-num{color:var(--sb-t,var(--faint));opacity:1}
-  .sb-link-num{font-size:9px;opacity:.55}
+  /* 9px capitales a 2,35:1 etaient illisibles. Un texte aussi petit
+     demande plus de contraste, pas moins. */
+  .sb-link-num{font-size:9px;opacity:1;color:var(--muted)}
   .sb-link-badge{border-radius:4px;padding:3px 6px;font-size:9.5px}
   .sidebar{padding:16px 10px 40px}
   .card{border-radius:var(--r-lg)}
