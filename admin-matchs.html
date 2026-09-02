@@ -542,8 +542,11 @@
   .aud-item.is-create .aud-avatar{background:var(--ok-wash);color:var(--ok)}
 
   /* ===== V2 — billetterie : la jauge dit le remplissage ===== */
-  .tk-gauge{height:5px;border-radius:99px;background:var(--surface-2);margin:8px 0 5px;overflow:hidden}
-  .tk-gauge i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--lime));border-radius:99px;transition:width .3s ease}
+  /* Le degrade or -> vert citron laissait croire que la couleur portait
+     un sens, alors qu'elle ne disait que « rempli ». Meme correction
+     que sur la jauge du tableau de bord. */
+  .tk-gauge{height:3px;border-radius:0;background:var(--surface-3);margin:9px 0 6px;overflow:hidden}
+  .tk-gauge i{display:block;height:100%;background:var(--gold);transition:width .3s ease}
   @media(prefers-reduced-motion:reduce){.tk-gauge i{transition:none}}
   .tk-resa-qty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;min-width:44px}
   .tk-resa-qty b{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:24px;color:var(--gold-bright);line-height:1}
@@ -1144,8 +1147,18 @@
   .callout{background:var(--gold-soft);border:1px solid rgba(198,162,87,.3);border-radius:10px;padding:14px 16px;font-size:13px;color:#D8C79E;line-height:1.55;margin-bottom:20px;text-wrap:pretty}
   .callout b{color:var(--gold-bright)}
 
-  .subtabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:5px;margin-bottom:20px;width:fit-content;max-width:100%;overflow-x:auto}
-  .subtab{display:inline-flex;align-items:center;gap:7px;background:transparent;border:none;color:var(--muted);border-radius:8px;padding:9px 16px;font-family:var(--font-ui);font-weight:700;font-size:12.5px;white-space:nowrap;transition:.15s}
+  /* Une carte a 12px de rayon contenant des pastilles a 8px : deux
+     rayons emboites pour designer trois vues. Comme la barre d'onglets
+     de l'editeur visuel, elle devient le segment du systeme. */
+  .subtabs{display:flex;gap:0;background:transparent;border:1px solid var(--line-strong);
+    border-radius:var(--r-sm);padding:0;margin-bottom:20px;width:fit-content;max-width:100%;
+    overflow:hidden}
+  .subtab{display:inline-flex;align-items:center;gap:7px;background:transparent;border:none;
+    border-right:1px solid var(--line-strong);color:var(--faint);border-radius:0;padding:0 15px;
+    min-height:38px;font-family:var(--font-ui);font-weight:700;font-size:10.5px;
+    letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;transition:.15s}
+  .subtab:last-child{border-right:none}
+  .subtab:hover{background:var(--surface-2);color:var(--text)}
   .subtab svg{width:15px;height:15px;flex:none;opacity:.85}
   .subtab:hover{color:var(--text)}
   .subtab.active{background:linear-gradient(155deg,var(--gold-bright),var(--gold));color:#1A1305}
@@ -2886,7 +2899,8 @@
     padding:6px 8px;color:var(--muted);font:inherit;font-size:11.5px;cursor:pointer;max-width:130px}
   .ms-st-sel:hover{border-color:var(--gold);color:var(--text)}
   /* ===================== BILLETTERIE ===================== */
-  .rec-item.tk-active{border-color:var(--gold);background:var(--surface-2)}
+  /* .rec-item.tk-active n'a plus d'appelant : la liste des matchs de la
+     billetterie a ses propres lignes. */
   /* Quatre colonnes figées (88+94+80+106 + 3 gouttières) réclamaient
      392px. La carte qui les accueille est la colonne droite de .grid-2,
      large de 372px fixes, soit 320px utiles : la ligne débordait donc
@@ -2894,18 +2908,39 @@
      « Supprimer » sortait de la carte. Avec auto-fit, les quatre champs
      se rangent sur deux lignes quand la place manque et reprennent une
      seule ligne dès qu'elle revient. */
-  .tk-offer{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px;margin-bottom:9px}
-  .tk-offer input,.tk-offer select{background:var(--surface);border:1px solid var(--line-strong);color:var(--text);border-radius:8px;padding:9px 10px;font:inherit;font-size:13px;width:100%}
+  /* La categorie de billet etait une carte a 11px de rayon sur un aplat,
+     repetee quatre fois : quatre boites dans une boite. Un filet suffit
+     a les separer. */
+  .tk-offer{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;
+    align-items:center;background:transparent;border:none;border-bottom:1px solid var(--line);
+    border-radius:0;padding:14px 0;margin-bottom:0}
+  .tk-offer-new{border-bottom:none;padding-top:16px}
+  /* La colonne : ni carte ni aplat, un filet dore en tete comme les
+     panneaux d'Adversaires. */
+  .tk-col{border-top:2px solid var(--gold);background:var(--surface);padding:18px 20px 20px}
+  .tk-match{display:flex;align-items:flex-start;gap:12px;position:relative;padding:14px 12px 15px;
+    border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
+  .tk-match::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
+    background:transparent;transition:background .12s}
+  .tk-match:hover{background:var(--surface-2)}
+  .tk-match:hover::before{background:var(--gold-edge)}
+  .tk-match.tk-active::before{background:var(--gold)}
+  .tk-match.tk-active .tk-match-n{color:var(--gold-bright)}
+  .tk-match-b{flex:1;min-width:0}
+  .tk-match-n{font-family:var(--font-ui);font-weight:600;font-size:13.5px;color:var(--text)}
+  .tk-match-m{font-size:11px;color:var(--faint);margin-top:4px;line-height:1.45}
+  .tk-match-s{margin-top:7px}
+  .tk-offer input,.tk-offer select{background:transparent;border:1px solid var(--line-strong);
+    color:var(--text);border-radius:var(--r-sm);padding:9px 10px;font:inherit;font-size:13px;width:100%}
   .tk-offer-foot{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
   .tk-offer .btn{padding:9px 14px;font-size:12px}
   .tk-sold{font-size:11.5px;color:var(--faint)}
   .tk-presets{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 12px}
-  .tk-preset{background:var(--surface-2);border:1px solid var(--line-strong);color:var(--muted);border-radius:20px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
+  .tk-preset{background:transparent;border:1px solid var(--line-strong);color:var(--muted);
+    border-radius:var(--r-sm);padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
   .tk-preset:hover{border-color:var(--gold);color:var(--gold)}
-  .tk-filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
-  .tk-filters select,.tk-filters input{background:var(--surface);border:1px solid var(--line-strong);color:var(--text);border-radius:9px;padding:11px 12px;font:inherit;font-size:13.5px}
-  .tk-filters input{flex:1;min-width:170px}
-  .tk-ref{font-family:var(--font-ui);font-weight:700;color:var(--gold-bright);letter-spacing:.04em}
+  .tk-ref{font-family:var(--font-ui);font-weight:700;color:var(--gold);letter-spacing:.13em;
+    font-variant-numeric:tabular-nums}
 
   #gate{max-width:380px;margin:0 auto;padding:14vh 20px 0}
   /* Le tutoriel montre l'ecran de connexion a quelqu'un qui est DEJA
@@ -4427,29 +4462,28 @@
       </div>
 
       <div id="tk-sub-offers">
-        <div class="callout">Une ligne par catégorie de place, avec son tarif et son quota. <b>Le paiement se fait sur place</b> : le site enregistre la réservation et donne une référence à présenter au guichet. Tant qu'aucune catégorie n'est <b>ouverte</b>, rien n'apparaît sur le site public.</div>
+        <div class="ds-band" id="tk-kpis"></div>
+        <div class="callout ds-note">Une ligne par catégorie de place, avec son tarif et son quota. <b>Le paiement se fait sur place</b>&nbsp;: le site enregistre la réservation et donne une référence à présenter au guichet. Tant qu'aucune catégorie n'est <b>ouverte</b>, rien n'apparaît sur le site public.</div>
         <div class="grid-2"><div>
-          <div class="card">
-            <h2 class="card-title">Matchs à venir</h2>
-            <p class="card-sub">Choisissez un match pour gérer ses billets.</p>
+          <div class="tk-col">
+            <div class="tm-panel-h"><b>Matchs à venir</b><span>Choisissez un match pour gérer ses billets.</span></div>
             <div id="tk-match-list"><div class="empty">Chargement…</div></div>
           </div>
         </div><div>
-          <div class="card">
-            <h2 class="card-title" id="tk-offers-title">Billets</h2>
-            <p class="card-sub" id="tk-offers-sub">Sélectionnez un match à gauche.</p>
+          <div class="tk-col">
+            <div class="tm-panel-h"><b id="tk-offers-title">Billets</b><span id="tk-offers-sub">Sélectionnez un match à gauche.</span></div>
             <div id="tk-offers-list"></div>
             <div id="tk-offers-add" class="hide">
               <div class="tk-presets" id="tk-preset-row"></div>
-              <div class="tk-offer">
+              <div class="tk-offer tk-offer-new">
                 <input id="tk-new-cat" type="text" placeholder="Catégorie" aria-label="Catégorie">
                 <input id="tk-new-price" type="number" min="0" step="500" placeholder="Tarif" aria-label="Tarif en FCFA">
                 <input id="tk-new-quota" type="number" min="0" placeholder="Places" aria-label="Nombre de places">
-                <button type="button" class="btn btn-ghost" id="tk-new-add">Ajouter</button>
+                <button type="button" class="ds-mini-btn" id="tk-new-add">Ajouter</button>
               </div>
               <div class="tk-copygrid hide" id="tk-copygrid">
                 <select id="tk-copy-src" aria-label="Match source"><option value="">Copier la grille d'un autre match…</option></select>
-                <button type="button" class="btn btn-ghost" id="tk-copy-btn">Copier</button>
+                <button type="button" class="ds-act" id="tk-copy-btn">Copier</button>
               </div>
             </div>
             <div class="msg" id="tk-offers-msg"></div>
@@ -4458,22 +4492,21 @@
       </div>
 
       <div id="tk-sub-resa" class="hide">
-        <div class="callout">Les réservations enregistrées depuis le site. <b>Retirer</b> se fait au guichet le jour du match ; <b>Annuler</b> remet les places dans le quota.</div>
-        <div class="card">
-          <div class="tk-filters">
-            <select id="tk-resa-match"><option value="">Tous les matchs</option></select>
-            <select id="tk-resa-status">
-              <option value="">Tous les statuts</option>
-              <option value="reservee">Réservées</option>
-              <option value="retiree">Retirées</option>
-              <option value="annulee">Annulées</option>
-            </select>
-            <input id="tk-resa-search" type="search" placeholder="Nom, téléphone ou référence…">
-            <button type="button" class="btn btn-ghost" id="tk-resa-export" style="padding:10px 14px;font-size:12.5px;flex:none">Exporter CSV</button>
-          </div>
-          <div id="tk-resa-list"><div class="empty">Chargement…</div></div>
-          <div class="msg" id="tk-resa-msg"></div>
+        <div class="ds-head">
+          <span class="ds-count" id="tk-resa-count">—</span>
+          <input id="tk-resa-search" type="search" class="ds-search" placeholder="Nom, téléphone ou référence…">
+          <select id="tk-resa-match" class="ds-sel" aria-label="Filtrer par match"><option value="">Tous les matchs</option></select>
+          <select id="tk-resa-status" class="ds-sel" aria-label="Filtrer par statut">
+            <option value="">Tous les statuts</option>
+            <option value="reservee">Réservées</option>
+            <option value="retiree">Retirées</option>
+            <option value="annulee">Annulées</option>
+          </select>
+          <button type="button" class="ds-act" id="tk-resa-export">Exporter CSV</button>
         </div>
+        <div class="callout ds-note">Les réservations enregistrées depuis le site. <b>Retirer</b> se fait au guichet le jour du match&nbsp;; <b>Annuler</b> remet les places dans le quota.</div>
+        <div id="tk-resa-list"><div class="empty">Chargement…</div></div>
+        <div class="msg" id="tk-resa-msg"></div>
       </div>
 
       <div id="tk-sub-texts" class="hide"><div id="qgc-tk-texts"></div></div>
@@ -18683,28 +18716,53 @@
       offs.forEach(function(o){
         if(o.is_open){ nbOuvertes++; quota+=o.quota||0; sold+=o.sold||0; }
       });
-      var pill = !offs.length ? '<span class="status-pill status-upcoming">À configurer</span>'
-               : !nbOuvertes ? '<span class="status-pill status-off">Vente fermée</span>'
-               : nbOuvertes===offs.length ? '<span class="status-pill status-win">Vente ouverte</span>'
-                      : '<span class="status-pill status-upcoming">'+nbOuvertes+' catégorie(s) sur '+offs.length+' en vente</span>';
-      var logo=m.opponent_logo_url
-        ? '<img class="rec-thumb circle" src="'+esc(m.opponent_logo_url)+'" alt="">'
-        : '<div class="rec-noimg circle" style="background:'+fallbackColor(m.opponent_name)+'">'+esc(String(m.opponent_name||'?').charAt(0))+'</div>';
+      // « A configurer » est le seul de ces quatre etats qui appelle un
+      // geste : c'est le seul qui garde une teinte. Les trois autres
+      // decrivent une situation, ils s'ecrivent.
+      var pill = !offs.length ? '<span class="ds-tag warn">À configurer</span>'
+               : !nbOuvertes ? '<span class="ds-st"><i></i>Vente fermée</span>'
+               : nbOuvertes===offs.length ? '<span class="ds-st act"><i></i>Vente ouverte</span>'
+                      : '<span class="ds-st act"><i></i>'+nbOuvertes+' catégorie(s) sur '+offs.length+' en vente</span>';
+      // L'ecusson tire au sort dans huit couleurs saturees faisait de la
+      // colonne un damier. On reprend celui de l'ecran Matchs.
       var pct = quota>0 ? Math.min(Math.round(sold/quota*100),100) : 0;
-      return '<div class="rec-item tk-match'+(String(tkSel)===String(m.id)?' tk-active':'')+'" data-id="'+m.id+'">'+logo+
-        '<div class="rec-main"><div class="rec-title">'+esc(tkLabel(m))+' '+pill+'</div>'+
-        '<div class="rec-meta">'+esc(formatDateShort(m.match_date))+(m.venue?' · '+esc(m.venue):'')+'</div>'+
+      return '<div class="tk-match'+(String(tkSel)===String(m.id)?' tk-active':'')+'" data-id="'+m.id+'">'+
+        mcCrest(m.opponent_logo_url, m.opponent_name, 'mc-mini')+
+        '<div class="tk-match-b"><div class="tk-match-n">'+esc(tkLabel(m))+'</div>'+
+        '<div class="tk-match-m">'+esc(formatDateShort(m.match_date))+(m.venue?' · '+esc(m.venue):'')+'</div>'+
+        '<div class="tk-match-s">'+pill+'</div>'+
         (!offs.length
-          ? '<div class="rec-meta" style="margin-top:5px">Aucune catégorie de billet</div>'
+          ? '<div class="tk-match-m">Aucune catégorie de billet</div>'
           : !nbOuvertes
-            ? '<div class="rec-meta" style="margin-top:5px">'+offs.length+' catégorie(s) prête(s), aucune en vente — rien n\'apparaît sur le site</div>'
-            : '<div class="tk-gauge"><i style="width:'+pct+'%"></i></div><div class="rec-meta">'+sold+' / '+quota+' places réservées'+
+            ? '<div class="tk-match-m">'+offs.length+' catégorie(s) prête(s), aucune en vente — rien n\'apparaît sur le site</div>'
+            : '<div class="tk-gauge"><i style="width:'+pct+'%"></i></div><div class="tk-match-m">'+sold+' / '+quota+' places réservées'+
               (nbOuvertes<offs.length ? ' · '+(offs.length-nbOuvertes)+' catégorie(s) fermée(s), invisible(s) sur le site' : '')+'</div>')+
         '</div></div>';
     }).join('');
     box.querySelectorAll('.tk-match').forEach(function(el){
       el.addEventListener('click',function(){ tkSel=el.getAttribute('data-id'); tkRenderMatches(); tkRenderOffers(tkSel); });
     });
+  }
+
+  // Le releve du match choisi : quatre chiffres qu'il fallait jusqu'ici
+  // additionner de tete en lisant les lignes de categories.
+  function tkKpis(offs){
+    var band=document.getElementById('tk-kpis');
+    if(!offs){ band.innerHTML=''; band.classList.add('hide'); return; }
+    var vendus=0, quota=0, recette=0, ouvertes=0;
+    offs.forEach(function(o){
+      var s=o.sold||0;
+      vendus+=s; recette+=s*(o.price_fcfa||0);
+      if(o.is_open){ ouvertes++; quota+=o.quota||0; }
+    });
+    var reste=Math.max(quota-vendus,0);
+    band.innerHTML=
+      '<div class="ds-fig"><i>Places réservées</i><b>'+vendus+'</b><small>toutes catégories</small></div>'+
+      '<div class="ds-fig"><i>Recette attendue</i><b>'+esc((recette).toLocaleString('fr-FR'))+'</b><small>FCFA, payables au guichet</small></div>'+
+      '<div class="ds-fig"><i>Restantes</i><b>'+reste+'</b><small>sur les catégories en vente</small></div>'+
+      '<div class="ds-fig'+(ouvertes?'':' cri')+'"><i>En vente</i><b>'+ouvertes+' / '+offs.length+'</b>'+
+        '<small>'+(ouvertes?'catégories visibles sur le site':'rien n\'est visible sur le site')+'</small></div>';
+    band.classList.remove('hide');
   }
 
   function tkRenderOffers(matchId){
@@ -18721,6 +18779,7 @@
       }).join('');
     }
     var offs=tkOffers[matchId]||[];
+    tkKpis(offs);
     var list=document.getElementById('tk-offers-list');
     list.innerHTML = offs.length ? offs.map(function(o){
       return '<div class="tk-offer" data-id="'+o.id+'">'+
@@ -18730,8 +18789,8 @@
         '<select class="tk-open" aria-label="État de la vente"><option value="1"'+(o.is_open?' selected':'')+'>Ouverte</option><option value="0"'+(o.is_open?'':' selected')+'>Fermée</option></select>'+
         ((o.quota||0)>0?'<div class="tk-gauge" style="grid-column:1/-1;margin:2px 0 0"><i style="width:'+Math.min(Math.round((o.sold||0)/(o.quota||1)*100),100)+'%"></i></div>':'')+
         '<div class="tk-offer-foot"><span class="tk-sold">'+(o.sold||0)+' réservée(s) · '+esc(tkFcfa(o.price_fcfa))+'</span>'+
-        '<span style="display:flex;gap:7px"><button type="button" class="btn btn-ghost tk-save">Enregistrer</button>'+
-        '<button type="button" class="btn btn-ghost tk-del">Supprimer</button></span></div>'+
+        '<span style="display:flex;gap:7px"><button type="button" class="ds-act tk-save">Enregistrer</button>'+
+        '<button type="button" class="ds-act tk-del">Supprimer</button></span></div>'+
       '</div>';
     }).join('') : '<div class="empty">Aucune catégorie de billet. Ajoutez-en une ci-dessous.</div>';
 
@@ -18791,11 +18850,14 @@
       .catch(function(){ document.getElementById('tk-resa-list').innerHTML='<div class="empty">Réservations indisponibles — la migration SQL a-t-elle été exécutée ?</div>'; });
   }
 
+  // Quatre etats, quatre couleurs : l'oeil cherchait laquelle voulait
+  // dire quoi. Seule « Réservée » appelle un geste au guichet, c'est la
+  // seule qui garde l'accent.
   function tkResaPill(s){
-    if(s==='retiree') return '<span class="status-pill status-win">Retirée</span>';
-    if(s==='annulee') return '<span class="status-pill status-off">Annulée</span>';
-    if(s==='expiree') return '<span class="status-pill status-off">Expirée</span>';
-    return '<span class="status-pill status-upcoming">Réservée</span>';
+    if(s==='retiree') return '<span class="ds-st"><i></i>Retirée</span>';
+    if(s==='annulee') return '<span class="ds-st"><i></i>Annulée</span>';
+    if(s==='expiree') return '<span class="ds-st"><i></i>Expirée</span>';
+    return '<span class="ds-st act"><i></i>Réservée</span>';
   }
 
   function tkRenderResa(){
@@ -18812,24 +18874,39 @@
       }
       return true;
     });
+    document.getElementById('tk-resa-count').textContent=rows.length+(rows.length>1?' réservations':' réservation');
     if(!rows.length){ box.innerHTML='<div class="empty">Aucune réservation pour ce filtre.</div>'; return; }
-    box.innerHTML=rows.map(function(r){
-      var m=tkMatchById(r.match_id);
-      var cat=(r.ticket_offers&&r.ticket_offers.category)||'—';
-      var actions='';
-      if(r.status==='reservee'){
-        actions='<span style="display:flex;gap:7px;flex:none">'+
-          (r.buyer_email?'<button type="button" class="btn btn-ghost tk-mail" data-id="'+r.id+'" title="Renvoyer l\'e-mail de confirmation" style="padding:9px 13px;font-size:12px">E-mail</button>':'')+
-          '<button type="button" class="btn btn-ghost tk-checkin" data-id="'+r.id+'" style="padding:9px 13px;font-size:12px">Retirer</button>'+
-          '<button type="button" class="btn btn-ghost tk-cancel" data-id="'+r.id+'" style="padding:9px 13px;font-size:12px">Annuler</button></span>';
-      }
-      return '<div class="rec-item tk-resa-row">'+
-        '<div class="tk-resa-qty"><b>'+r.quantity+'</b><span>'+(r.quantity>1?'billets':'billet')+'</span></div>'+
-        '<div class="rec-main">'+
-        '<div class="rec-title">'+esc(r.buyer_name||'Client')+' '+tkResaPill(r.status)+'</div>'+
-        '<div class="rec-meta"><span class="tk-ref">'+esc(r.reference)+'</span> · '+esc(m?tkLabel(m):'Match supprimé')+' · '+esc(cat)+' · <b style="color:var(--text)">'+esc(tkFcfa(r.total_fcfa))+'</b>'+(r.buyer_phone?' · '+esc(r.buyer_phone):'')+(r.confirmation_email_sent?' · <span style="color:#A8D93B">e-mail envoyé</span>':'')+'</div>'+
-        '</div>'+actions+'</div>';
-    }).join('');
+    // Sept informations par ligne, ecrites en phrase et separees par des
+    // points medians : rien ne s'alignait d'une ligne a l'autre. Le
+    // guichet cherche une reference et un nom, il les lit maintenant en
+    // colonne.
+    box.innerHTML=
+      '<div class="ds-scroll"><table class="ds-tbl">'+
+        '<thead><tr><th>Référence</th><th>Client</th><th>Match</th>'+
+        '<th class="r">Billets</th><th class="r">Total</th><th>État</th><th class="r"></th></tr></thead><tbody>'+
+      rows.map(function(r){
+        var m=tkMatchById(r.match_id);
+        var cat=(r.ticket_offers&&r.ticket_offers.category)||'—';
+        var actions='';
+        if(r.status==='reservee'){
+          actions='<div class="rs-actions">'+
+            (r.buyer_email?'<button type="button" class="ds-act tk-mail" data-id="'+r.id+'" title="Renvoyer l\'e-mail de confirmation">E-mail</button>':'')+
+            '<button type="button" class="ds-mini-btn tk-checkin" data-id="'+r.id+'">Retirer</button>'+
+            '<button type="button" class="ds-act tk-cancel" data-id="'+r.id+'">Annuler</button></div>';
+        }
+        return '<tr class="ds-tr ds-fixe">'+
+          '<td><div class="ds-ref">'+esc(r.reference)+'</div>'+
+            (r.confirmation_email_sent?'<div class="m">e-mail envoyé</div>':'')+'</td>'+
+          '<td><div class="n">'+esc(r.buyer_name||'Client')+'</div>'+
+            (r.buyer_phone?'<div class="m">'+esc(r.buyer_phone)+'</div>':'')+'</td>'+
+          '<td><div class="m" style="margin-top:0">'+esc(m?tkLabel(m):'Match supprimé')+'</div>'+
+            '<div class="m">'+esc(cat)+'</div></td>'+
+          '<td class="r num">'+r.quantity+'</td>'+
+          '<td class="r num">'+esc(tkFcfa(r.total_fcfa))+'</td>'+
+          '<td>'+tkResaPill(r.status)+'</td>'+
+          '<td class="r">'+actions+'</td>'+
+        '</tr>';
+      }).join('')+'</tbody></table></div>';
     var msg=document.getElementById('tk-resa-msg');
     box.querySelectorAll('.tk-checkin').forEach(function(b){
       b.addEventListener('click',function(){
