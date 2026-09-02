@@ -67,48 +67,85 @@ Les trois règles appliquées, héritées du socle `.ds-` :
 
 ## 2. Ce qui reste — par ordre de risque
 
-### a) Les écritures — **aucune n'a été testée**
+*Mise a jour du 2 septembre au soir. Les trois chantiers de la section
+precedente ont ete traites ; ce qui suit est ce qui reste vraiment.*
 
-C'est le seul trou dont l'échec serait **visible pendant la présentation**.
+### a) Les ecritures — le tour du navigateur est fait, pas celui de la base
 
-Pas un « Enregistrer », pas un « Publier », pas un changement de statut. Toutes
-les écritures ont été interceptées pendant les essais. On ne sait donc pas si
-enregistrer une fiche joueuse ou encaisser une mensualité fonctionne encore.
+**Ce qui est prouve.** Quatre ecrans ont ete menes de bout en bout :
+adversaire « ZZ Test », code promo « ZZTEST », brouillon d'article, fiche
+joueuse. Pour chacun : la charge utile part avec les bons champs, la liste se
+relit, la ligne s'affiche, le journal d'audit recoit son entree, et la
+suppression — par le bouton ou par le repentir « Annuler » — la retire et
+rafraichit l'ecran. Rien n'est reste.
 
-**Le propriétaire a choisi la méthode** : créer un enregistrement jetable par
-écran, vérifier qu'il s'écrit *et se relit*, puis le supprimer. Rien d'existant
-n'est modifié.
+**Ce que ca a trouve, et qui est corrige** (`760a010`) : sur **Articles,
+Produits, Bannieres et Joueuses**, « Enregistrer » ecrivait bien dans la base
+et **ne disait rien**. Le message « Enregistre. » etait pose sur la note, puis
+le redessin de la fiche recreait cette note vide — le mot atterrissait sur un
+noeud deja retire du document. C'est exactement ce qui se serait vu pendant la
+presentation.
+
+**Ce qui n'est pas prouve, et qu'il faut faire.** Tout ceci a ete mesure sur un
+banc : une copie jetable de l'admin ou la session est fausse et la base vit en
+memoire dans l'onglet. Le code teste est le vrai code de l'administration — ce
+sont les boutons, les formulaires et les charges utiles qui ont ete verifies.
+Mais **la vraie base n'a jamais repondu** : les droits RLS, les contraintes et
+les valeurs par defaut ne se testent que connecte.
+
+Deux fois pendant l'essai, un « bug » s'est revele venir du banc et non de
+l'ecran — une reponse 204 mal formee, puis une vue SQL absente du magasin en
+memoire. **Ne pas conclure d'un banc a la base.**
+
+> **Pour lever ce point, il faut une session.** L'extension qui donne acces au
+> Chrome de l'auteur n'etait pas connectee. Le plus simple : ouvrir
+> `http://localhost:8899/admin-matchs.html` dans le panneau d'apercu, s'y
+> connecter a la main, puis refaire les quatre creations. Une heure au plus.
+
+### b) L'animation du tutoriel — faite
+
+`2e11c10`. **La cible s'avance** : elle grandit quand on la montre, et le cadre
+du projecteur grandit avec elle. La regle ne connait aucun ecran, elle se
+deduit de ce que la cible EST — voir le commit et le brief.
+
+Le point qui a demande une deuxieme version : le facteur d'agrandissement
+plafonnait a 1,035 presque partout, parce que presque tout dans l'admin vit
+dans un conteneur qui coupe les debordements. Trois pour cent n'existent pas au
+fond d'une salle. **Le depart est donc plus petit que la taille normale** : la
+course fait toujours 7,5 %, l'arrivee tient dans la place disponible.
+
+Mesure : **19 cibles sur 22 recoivent le zoom (86 %)**, echelles finales 1,024
+a 1,09 ; cadre et cible alignes a 6 px sur les quatre cotes ; apres fermeture,
+zero echelle residuelle et zero animation en vol.
+
+**Ce qui reste ouvert** : le brief `docs/briefs/BAOBABS-TUTORIEL-ANIMATIONS-brief.md`
+demandait cinq a huit mecaniques. Une seule est posee. Les deux manques les
+plus criants du §10 tiennent toujours — **les listes vides** en debut de
+saison, et **le Studio**, ou l'on ouvre un vrai plan de travail et ou le
+tutoriel se contente de designer la colonne d'outils.
+
+### c) Les cinq ecrans a seconde vue — vus, cette fois
+
+Ils etaient inferes. Ils sont maintenant **observes en direct pendant la visite
+complete**, mouchard pose sur la classe `active` des onglets :
 
 ```
-Adversaires   créer « ZZ Test »   vérifier   supprimer
-Codes promo   créer « ZZTEST »    vérifier   supprimer
-Articles      brouillon jetable   vérifier   supprimer
-Joueuses      fiche jetable       vérifier   supprimer
+standings → form → visual
+staff     → form → visual
+timeline  → form → visual
+news      → form → visual
+partners  → form → visual
 ```
 
-### b) L'animation du tutoriel
+Verifie aussi hors tutoriel : la bascule change reellement le contenu — sur
+Classement, 27 noeuds et 1 champ deviennent 58 noeuds et 6 champs — et **revient
+exactement a l'etat de depart**. Les cinq ecrans sont laisses sur « Editeur
+visuel », la vue ou on les a trouves.
 
-Demande de l'auteur, formulée deux fois : *« de la vraie animation, pas de la 3D,
-genre comme zoomé… pour pas rendre le tuto ennuyeux »*.
-
-**Lire d'abord `docs/briefs/BAOBABS-TUTORIEL-ANIMATIONS-brief.md`** (1ᵉʳ sept.) :
-il pose exactement ce problème et le documente mieux que ce paragraphe.
-
-État mesuré : le tutoriel a **17 keyframes** (pose, onde, fil, frappe, clic,
-cartes…) et un projecteur qui cadre la cible en or en éteignant le reste. Ce qui
-manque : **la cible ne grandit pas**. C'est l'effet de capture d'écran attendu.
-
-Piste la moins risquée : agrandir le **cadre du projecteur** et la cible
-(`transform: scale(1.03)`), pas la page. Mettre `#app` à l'échelle casserait
-`position: sticky`, `position: fixed` et le pointage.
-
-### c) Cinq écrans non observés
-
-Les bascules de sous-vue de `standings`, `staff`, `timeline`, `news`, `partners`
-sont **inférées, pas vues** — elles sont plus loin dans la visite que les 80
-étapes parcourues. Même mécanisme, mêmes cibles vérifiées.
-
----
+Visite complete du meme passage : **338 etapes, jauge a 100 %, 0 erreur, 0
+avertissement**. Aucune ecriture : les dix requetes POST relevees vont toutes a
+`/storage/v1/object/list/site-media`, qui est une LECTURE — Supabase liste le
+stockage par POST. Le double verrou a tenu.
 
 ## 3. Les pièges — à lire avant de toucher au tutoriel
 
