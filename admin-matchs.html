@@ -1234,7 +1234,8 @@
   .pr-field input,.pr-field select,.pr-field textarea{background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px;width:100%}
 
   /* ===================== MÉDIATHÈQUE ===================== */
-  .md-split{display:grid;grid-template-columns:236px minmax(0,1fr);gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+  .md-split{display:grid;grid-template-columns:236px minmax(0,1fr);gap:0;border:none;
+    border-top:2px solid var(--gold);border-radius:0;overflow:hidden;background:var(--surface)}
   @media (max-width:820px){ .md-split{grid-template-columns:1fr} }
   /* ── LE SELECTEUR D'IMAGES ──────────────────────────────────────
      Il vit hors de #app : une surcouche en position:fixed sous un
@@ -1259,16 +1260,16 @@
   .imgp-b.occupe{ opacity:.6; pointer-events:none }
 
   /* Le profil de traitement des images, sous la zone de dépôt. */
-  .md-prof{margin:14px 0 18px;padding:13px 15px;background:var(--surface-2);
-    border:1px solid var(--line);border-radius:var(--r-lg)}
+  .md-prof{margin:14px 0 18px;padding:14px 0 16px;background:transparent;
+    border:none;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0}
   .md-prof-l{display:block;font-family:var(--font-ui);font-weight:700;font-size:9.5px;
     letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
   .md-prof-ch{display:flex;gap:8px;flex-wrap:wrap}
-  .md-prof-b{background:var(--surface);border:1px solid var(--line-strong);border-radius:100px;
+  .md-prof-b{background:transparent;border:1px solid var(--line-strong);border-radius:var(--r-sm);
     padding:8px 15px;color:var(--muted);font:600 12px var(--font-text);cursor:pointer;min-height:36px;
     transition:border-color .14s,color .14s,background .14s}
   .md-prof-b:hover{border-color:var(--gold);color:var(--text)}
-  .md-prof-b:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  .md-prof-b:focus-visible{outline:2px solid var(--gold-lit);outline-offset:2px}
   .md-prof-b.on{background:var(--gold-soft);border-color:var(--gold);color:var(--gold-bright)}
   .md-prof-a{margin:10px 0 0;font-size:12px;line-height:1.55;color:var(--muted)}
 
@@ -1704,8 +1705,8 @@
   .gal-ajout{
     display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1.6fr) minmax(0,1fr) auto;
     gap:10px; align-items:end;
-    padding:14px; margin-bottom:18px;
-    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md);
+    padding:16px 0 18px; margin-bottom:18px;
+    background:transparent; border:none; border-bottom:1px solid var(--line-strong); border-radius:0;
   }
   .gal-ajout .field{ margin:0 }
   @media (max-width:900px){ .gal-ajout{ grid-template-columns:1fr } }
@@ -1713,29 +1714,40 @@
   .gal-grille{
     display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px;
   }
+  /* Une galerie est l'un des rares endroits ou une grille d'images se
+     justifie : ce qu'on regarde EST une image. La carte reste donc, elle
+     perd seulement son aplat — le fond du site suffit, et la vignette
+     ressort mieux sur du sombre. */
   .gal-c{
-    position:relative; border:1px solid var(--line); border-radius:var(--r-md);
-    overflow:hidden; background:var(--surface-2);
+    position:relative; border:1px solid var(--line); border-radius:var(--r-sm);
+    overflow:hidden; background:transparent;
     transition:border-color .15s, opacity .15s;
   }
+  .gal-c:hover{ border-color:var(--line-loud) }
   .gal-c.cachee{ opacity:.45 }
   .gal-c.cachee:hover{ opacity:.75 }
+  /* Le fond d'une vignette vide etait un degrade vert en diagonale :
+     une photo manquante n'est pas un decor, c'est un emplacement. */
   .gal-vis{
     position:relative; display:block; width:100%; aspect-ratio:4/3;
-    overflow:hidden; background:linear-gradient(168deg,#16281D,#0B1610);
+    overflow:hidden; background:var(--surface-3);
   }
   .gal-vis img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block }
   .gal-rang{
     position:absolute; z-index:2; top:6px; left:6px;
-    min-width:22px; height:22px; padding:0 6px; border-radius:5px; display:grid; place-items:center;
-    font-family:var(--font-ui); font-weight:700; font-size:11px;
+    min-width:22px; height:22px; padding:0 6px; border-radius:var(--r-sm); display:grid; place-items:center;
+    font-family:var(--font-ui); font-weight:700; font-size:11px; font-variant-numeric:tabular-nums;
     background:var(--gold); color:#0A1B0D;
   }
+  /* « Film » etait en vert citron a cote d'un rang en or : deux
+     etiquettes pleines, deux couleurs, sur la meme vignette. Le rang
+     garde l'or — il compte — et le film s'ecrit en clair sur fond
+     sombre : c'est une nature, pas une alerte. */
   .gal-film{
     position:absolute; z-index:2; top:6px; right:6px;
-    font-family:var(--font-ui); font-weight:700; font-size:9px; letter-spacing:.1em;
-    text-transform:uppercase; padding:3px 7px; border-radius:4px;
-    background:var(--lime); color:#0A1B0D;
+    font-family:var(--font-ui); font-weight:700; font-size:9px; letter-spacing:.12em;
+    text-transform:uppercase; padding:3px 7px; border-radius:var(--r-sm);
+    background:rgba(6,13,9,.82); border:1px solid var(--line-loud); color:var(--text);
   }
   .gal-txt{ padding:9px 10px 4px }
   .gal-leg{
@@ -1776,7 +1788,9 @@
   /* Arborescence : l'indentation est portée par un padding calculé, et le
      trait vertical matérialise le niveau — c'est lui qui rend la
      hiérarchie lisible sans compter les pixels. */
-  .md-node{position:relative;display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;border-radius:8px;color:var(--muted);font:inherit;font-weight:600;font-size:12.5px;padding:8px 9px;cursor:pointer;text-align:left;transition:background .14s,color .14s}
+  .md-node{position:relative;display:flex;align-items:center;gap:8px;width:100%;background:none;
+    border:none;border-radius:var(--r-sm);color:var(--muted);font:inherit;font-weight:600;
+    font-size:12.5px;padding:8px 9px;cursor:pointer;text-align:left;transition:background .14s,color .14s}
   .md-node:hover{background:var(--surface);color:var(--text)}
   .md-node.on{background:var(--gold-soft);color:var(--gold-bright)}
   .md-node svg{width:15px;height:15px;flex:none;opacity:.8}
@@ -1788,14 +1802,16 @@
   .md-crumb{font-family:var(--font-ui);font-weight:700;font-size:13px;color:var(--text)}
   .md-crumb i{color:var(--faint);font-style:normal;margin:0 5px}
   .md-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:11px}
-  .md-item{position:relative;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--surface-2);cursor:pointer;transition:border-color .15s}
+  .md-item{position:relative;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;
+    background:transparent;cursor:pointer;transition:border-color .15s}
   .md-item:hover{border-color:var(--gold)}
   .md-item.sel{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-soft)}
   /* Damier : sans lui, un PNG transparent paraît vide ou blanc. */
-  .md-thumb{aspect-ratio:1;display:block;width:100%;object-fit:cover;background-color:#11201a;background-image:linear-gradient(45deg,rgba(255,255,255,.03) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.03) 75%),linear-gradient(45deg,rgba(255,255,255,.03) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.03) 75%);background-size:14px 14px;background-position:0 0,7px 7px}
+  .md-thumb{aspect-ratio:1;display:block;width:100%;object-fit:cover;background-color:var(--surface-3);background-image:linear-gradient(45deg,rgba(255,255,255,.03) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.03) 75%),linear-gradient(45deg,rgba(255,255,255,.03) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.03) 75%);background-size:14px 14px;background-position:0 0,7px 7px}
   .md-name{font-size:11px;line-height:1.4;color:var(--muted);padding:7px 8px;word-break:break-all}
   .md-size{font-size:10px;color:var(--faint);padding:0 8px 7px}
-  .md-drop{border:1.5px dashed var(--line-strong);border-radius:12px;padding:20px;text-align:center;color:var(--faint);font-size:12.5px;margin-bottom:13px;transition:border-color .15s,background .15s}
+  .md-drop{border:1px dashed var(--line-loud);border-radius:var(--r-sm);padding:20px;text-align:center;
+    color:var(--faint);font-size:12.5px;margin-bottom:13px;transition:border-color .15s,background .15s}
   .md-drop.hot{border-color:var(--gold);background:var(--gold-soft);color:var(--gold-bright)}
 
   /* ===================== ARTICLES ===================== */
@@ -4216,16 +4232,17 @@
 
     <!-- ===== SECTION MÉDIATHÈQUE ===== -->
     <section id="section-galerie" class="hide">
-      <div class="mod-head">
-        <h2 class="mod-head-title">Galerie</h2>
-        <span class="mod-count" id="gal-count">—</span>
-        <button type="button" class="btn btn-ghost" id="gal-refresh" style="padding:10px 14px;font-size:13px">Rafraîchir</button>
+      <div class="ds-head">
+        <span class="ds-count" id="gal-count">—</span>
+        <button type="button" class="ds-act" id="gal-refresh">Rafraîchir</button>
       </div>
-      <div style="padding:clamp(16px,2.4vw,24px)">
+      <!-- Le contenu vivait dans un bloc a padding calcule, seul de son
+           espece : l'ecran commencait 24px plus a droite que ses voisins. -->
+      <div>
         <div class="gal-note hide" id="gal-note"></div>
-        <p class="hint" style="margin:0 0 14px">Les photos que le site affiche dans la galerie, dans cet ordre.
+        <div class="callout ds-note">Les photos que le site affiche dans la galerie, dans cet ordre.
           Le bouton <b>Publiée</b> retire une photo du site sans la supprimer. Le champ <b>Film</b> ne sert que
-          pour une vidéo&nbsp;: l’image devient alors son affiche.</p>
+          pour une vidéo&nbsp;: l’image devient alors son affiche.</div>
 
         <div class="gal-ajout">
           <div class="field">
@@ -4240,7 +4257,7 @@
             <label for="gal-album">Album</label>
             <input type="text" id="gal-album" placeholder="Journée de détection">
           </div>
-          <button type="button" class="btn btn-primary" id="gal-add" style="padding:12px 20px">Ajouter</button>
+          <button type="button" class="ds-mini-btn" id="gal-add">Ajouter</button>
         </div>
         <div class="field" style="max-width:420px;margin:-6px 0 20px">
           <label for="gal-video">Film <span class="opt">(optionnel — l’image ci-dessus devient son affiche)</span></label>
@@ -4252,13 +4269,12 @@
     </section>
 
     <section id="section-media" class="hide">
-      <div class="mod-head">
-        <h2 class="mod-head-title">Médiathèque</h2>
-        <span class="mod-count" id="md-count">—</span>
-        <input type="search" class="mod-search" id="md-search" placeholder="Nom de fichier…">
-        <button type="button" class="btn btn-ghost" id="md-refresh" style="padding:10px 14px;font-size:13px">Rafraîchir</button>
+      <div class="ds-head">
+        <span class="ds-count" id="md-count">—</span>
+        <input type="search" class="ds-search" id="md-search" placeholder="Nom de fichier…">
+        <button type="button" class="ds-act" id="md-refresh">Rafraîchir</button>
       </div>
-      <div class="callout">Vos images viennent de quatre endroits, et la colonne de gauche les sépare.
+      <div class="callout ds-note">Vos images viennent de quatre endroits, et la colonne de gauche les sépare.
         <b>Vos envois</b>&nbsp;: ce que vous déposez ici — visible sur le site seulement si vous collez son adresse quelque part.
         <b>Utilisées par les fiches</b>&nbsp;: les logos, portraits et visuels enregistrés dans les fiches adversaires, joueuses, produits.
         <b>Sur le site</b>&nbsp;: ce que la page d'accueil affiche réellement, relevé sur la page elle-même à chaque ouverture.
@@ -4269,7 +4285,7 @@
           <div class="md-bar">
             <span class="md-crumb" id="md-crumb">Tous les médias</span>
             <span style="flex:1"></span>
-            <label class="btn btn-ghost" style="padding:9px 14px;font-size:12.5px;cursor:pointer;margin:0">
+            <label class="ds-mini-btn" style="cursor:pointer;margin:0">
               Envoyer des fichiers
               <input type="file" id="md-file" accept="image/*,video/*" multiple hidden>
             </label>
