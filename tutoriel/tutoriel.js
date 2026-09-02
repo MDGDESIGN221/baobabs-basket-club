@@ -1272,9 +1272,15 @@
     if (estVisible(el)) return;              // toujours la : rien a faire
 
     // La cible a disparu. Que s'est-il passe a sa place ?
+    //
+    // Enferme dans un try : parcourir un ecran entier peut lever sur un
+    // noeud exotique, et une demonstration qui casse en pleine visite
+    // coute plus cher que l'effet qu'on cherche ici.
     if (photoPrise && portee) {
-      var chg = cequiAChange(portee, el);
-      if (chg.length) { designer(chg[0], true); return; }
+      try {
+        var chg = cequiAChange(portee, el);
+        if (chg.length) { designer(chg[0], true); return; }
+      } catch (e) {}
     }
     // Rien de mesurable. On applique alors la regle deja posee plus
     // haut : « PAS de cible, PAS de main. Designer approximativement
@@ -1304,8 +1310,8 @@
       doigtTape(el);
       // On photographie AVANT le clic, et la portee aussi : apres, la
       // cible peut ne plus avoir de parent.
-      var portee = porteeDe(el);
-      var photoPrise = photographier(portee);
+      var portee = null, photoPrise = false;
+      try { portee = porteeDe(el); photoPrise = photographier(portee); } catch (e) {}
       setTimeout(function () {
         try { el.click(); } catch (e) {}
         setTimeout(function () { apresLeClic(el, portee, photoPrise); }, 260);
@@ -2493,15 +2499,41 @@
     // mouvement est REELLEMENT fini, pas 300 ms plus tard au hasard --
     // c'est ce qui faisait se poser la main sur des coordonnees
     // perimees quand le defilement durait plus longtemps que prevu.
-    if (sansDefilement || assezVisible(el)) {
+    // LE FILET DU CADRAGE.
+    //
+    // designer() est appelee par CHAQUE etape. Si le cadrage echoue --
+    // une mesure qui leve, un conteneur qui n'atteint jamais sa cible,
+    // une image perdue -- la suite n'est jamais rappelee : la main ne
+    // se pose plus et la visite se fige. Un tutoriel fige devant une
+    // salle est pire que tous les defauts qu'on vient de corriger.
+    //
+    // Deux protections, et la seconde est la vraie :
+    //   . ce qui mesure est enferme dans un try ;
+    //   . un chien de garde pose la main au bout de 1,2 s, que le
+    //     cadrage ait rendu la main ou non. Il ne peut pas la poser
+    //     deux fois -- le premier arrive gagne.
+    var pose = false;
+    function poserUneFois() {
+      if (pose) return;
+      pose = true;
       tPointe = setTimeout(function () { tPointe = null; poser(el); }, 40);
-      return;
     }
-    // On ne mesure QU'APRES la fin du mouvement : mesurer pendant donne
-    // des coordonnées périmées, et la main se pose à côté.
-    cadrer(el, function () {
-      tPointe = setTimeout(function () { tPointe = null; poser(el); }, 40);
-    });
+
+    var deja;
+    try { deja = sansDefilement || assezVisible(el); }
+    catch (e) { deja = true; }                 // on ne sait pas mesurer : on pose, au moins
+    if (deja) { poserUneFois(); return; }
+
+    // Le chien de garde part AVANT le cadrage : si cadrer() leve avant
+    // meme d'avoir commence, la main se posera quand meme.
+    var garde = setTimeout(poserUneFois, 1200);
+    try {
+      // On ne mesure QU'APRES la fin du mouvement : mesurer pendant
+      // donne des coordonnées périmées, et la main se pose à côté.
+      cadrer(el, function () { clearTimeout(garde); poserUneFois(); });
+    } catch (e) {
+      clearTimeout(garde); poserUneFois();
+    }
   }
 
   // Une liste vide mesure 0 × 0. Elle EXISTE — donc rien ne signale un

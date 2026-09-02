@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>Banc d'essai — le filet du cadrage</title>
+<style>
+ body{font:14px/1.6 system-ui,sans-serif;background:#0B140F;color:#E8E4DA;margin:0;padding:22px}
+ h1{font-size:17px;margin:0 0 4px} p.sous{color:#8A9A8F;margin:0 0 18px;font-size:13px;max-width:78ch}
+ table{border-collapse:collapse;width:100%;max-width:960px}
+ td,th{border-bottom:1px solid #24352B;padding:7px 9px;text-align:left;font-size:13px}
+ th{color:#8A9A8F;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em}
+ .ok{color:#A8D93B} .ko{color:#E86A5E} code{color:#C6A257;font-size:12.5px}
+ #bilan{margin:16px 0 0;font-size:15px;font-weight:600}
+ #cible{position:absolute;left:-9999px;width:200px;height:60px}
+</style></head><body>
+<h1>Banc d'essai — le filet du cadrage</h1>
+<p class="sous">Le corps du filet est <b>extrait de <code>designer()</code> dans
+<code>tutoriel/tutoriel.js</code></b> — ce n'est pas une réécriture. <code>designer()</code> est
+appelée par <b>chaque étape</b> : si le cadrage ne rend jamais la main, la main ne se pose plus et
+la visite se fige. On casse donc le cadrage de quatre façons et on vérifie que la main se pose
+quand même — <b>et jamais deux fois</b>.</p>
+
+<table id="res"><thead><tr><th>Cas</th><th>Attendu</th><th>Obtenu</th><th></th></tr></thead><tbody></tbody></table>
+<p id="bilan">…</p>
+<div id="cible">cible</div>
+<script>
+
+// Les pieces que le filet appelle, remplacables pour chaque scenario.
+var pose = 0, tPointe = null;
+function poser(el) { pose++; }
+var MODE = 'normal';
+function assezVisible(el) {
+  if (MODE === 'mesure-leve') throw new Error('mesure impossible');
+  return false;                       // on force le chemin du cadrage
+}
+function cadrer(el, fini) {
+  if (MODE === 'cadrer-leve') throw new Error('cadrage casse');
+  if (MODE === 'cadrer-muet') return;                 // ne rappelle JAMAIS
+  if (MODE === 'cadrer-lent') { setTimeout(fini, 3000); return; }
+  setTimeout(fini, 120);
+}
+
+function designer(el, sansDefilement) {
+// LE FILET DU CADRAGE.
+    //
+    // designer() est appelee par CHAQUE etape. Si le cadrage echoue --
+    // une mesure qui leve, un conteneur qui n'atteint jamais sa cible,
+    // une image perdue -- la suite n'est jamais rappelee : la main ne
+    // se pose plus et la visite se fige. Un tutoriel fige devant une
+    // salle est pire que tous les defauts qu'on vient de corriger.
+    //
+    // Deux protections, et la seconde est la vraie :
+    //   . ce qui mesure est enferme dans un try ;
+    //   . un chien de garde pose la main au bout de 1,2 s, que le
+    //     cadrage ait rendu la main ou non. Il ne peut pas la poser
+    //     deux fois -- le premier arrive gagne.
+    var pose = false;
+    function poserUneFois() {
+      if (pose) return;
+      pose = true;
+      tPointe = setTimeout(function () { tPointe = null; poser(el); }, 40);
+    }
+
+    var deja;
+    try { deja = sansDefilement || assezVisible(el); }
+    catch (e) { deja = true; }                 // on ne sait pas mesurer : on pose, au moins
+    if (deja) { poserUneFois(); return; }
+
+    // Le chien de garde part AVANT le cadrage : si cadrer() leve avant
+    // meme d'avoir commence, la main se posera quand meme.
+    var garde = setTimeout(poserUneFois, 1200);
+    try {
+      // On ne mesure QU'APRES la fin du mouvement : mesurer pendant
+      // donne des coordonnées périmées, et la main se pose à côté.
+      cadrer(el, function () { clearTimeout(garde); poserUneFois(); });
+    } catch (e) {
+      clearTimeout(garde); poserUneFois();
+    }
+}
+
+var T = [], ok = 0;
+function essai(cas, attendu, obtenu) {
+  var bon = String(attendu) === String(obtenu);
+  if (bon) ok++;
+  T.push([cas, attendu, obtenu, bon]);
+}
+function attendre(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+(async function () {
+  var el = document.getElementById('cible');
+
+  // 1. Le cas normal : le cadrage rend la main, on pose une fois.
+  MODE = 'normal'; pose = 0; designer(el);
+  await attendre(400);
+  essai('cadrage normal : la main se pose', 1, pose);
+
+  // 2. Le cadrage NE RAPPELLE JAMAIS. C'est le scenario qui figeait
+  //    la visite : sans chien de garde, pose resterait a 0.
+  MODE = 'cadrer-muet'; pose = 0; designer(el);
+  await attendre(700);
+  essai('cadrage muet : rien encore a 700 ms', 0, pose);
+  await attendre(900);
+  essai('CADRAGE MUET : le chien de garde pose la main', 1, pose);
+
+  // 3. Le cadrage leve avant meme de commencer.
+  MODE = 'cadrer-leve'; pose = 0; designer(el);
+  await attendre(300);
+  essai('cadrage qui leve : la main se pose quand meme', 1, pose);
+
+  // 4. La mesure elle-meme leve.
+  MODE = 'mesure-leve'; pose = 0; designer(el);
+  await attendre(300);
+  essai('mesure qui leve : la main se pose quand meme', 1, pose);
+
+  // 5. Un cadrage LENT : le chien de garde pose, et le retour tardif
+  //    ne doit PAS poser une seconde fois.
+  MODE = 'cadrer-lent'; pose = 0; designer(el);
+  await attendre(1500);
+  essai('cadrage lent : la main est posee par le garde', 1, pose);
+  await attendre(2200);
+  essai('et le retour tardif ne pose PAS une seconde fois', 1, pose);
+
+  // 6. sansDefilement : chemin direct, une seule pose.
+  MODE = 'normal'; pose = 0; designer(el, true);
+  await attendre(300);
+  essai('sansDefilement : une seule pose', 1, pose);
+
+  document.querySelector('#res tbody').innerHTML = T.map(function (r) {
+    return '<tr><td>' + r[0] + '</td><td><code>' + r[1] + '</code></td><td><code>' + r[2] +
+      '</code></td><td class="' + (r[3] ? 'ok' : 'ko') + '">' + (r[3] ? 'OK' : 'ECHEC') + '</td></tr>';
+  }).join('');
+  document.getElementById('bilan').innerHTML = ok + ' / ' + T.length +
+    ' <span class="' + (ok === T.length ? 'ok' : 'ko') + '">' +
+    (ok === T.length ? '— tout passe' : '— il reste des echecs') + '</span>';
+  window.__bilan = { ok: ok, total: T.length,
+    echecs: T.filter(function (r) { return !r[3]; })
+             .map(function (r) { return r[0] + ' : attendu ' + r[1] + ', obtenu ' + r[2]; }) };
+})();
+
+</script></body></html>
