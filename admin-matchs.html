@@ -98,6 +98,17 @@
     /* — Espacement : une seule échelle, plus de valeurs au jugé — */
     --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
 
+    /* — La hauteur du bandeau du haut —
+       Elle etait ecrite en dur a six endroits qui ne s'accordaient pas :
+       0, 64, 65, 80, 92 et 98. Le rail se collait a 65, la barre de
+       chapitres a 64, et cette barre recouvrait donc le filet du bandeau
+       — mesure faite : 0,8px de chevauchement. Le trait qui separe les
+       deux surfaces disparaissait exactement au moment ou on defile,
+       c'est-a-dire quand on en a le plus besoin.
+       64px de contenu plus 1px de filet. Ce qui se colle dessous part
+       d'ici, et ce qui se colle sous CA s'y ajoute. */
+    --h-bandeau:65px;
+
     /* — Rayons — Resserrés volontairement : au-delà de ~12px, une
          interface de gestion prend un air d'application grand public.
          L'arrondi complet est réservé aux badges, où il se lit comme
@@ -225,8 +236,9 @@
      maintenant la separation ; le filet la termine. */
   .sidebar{flex:none;width:264px;background:var(--sb-bg);
     border-right:1px solid var(--line-strong);
-    min-height:calc(100vh - 65px);padding:20px 14px 40px;position:sticky;top:65px;
-    align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
+    min-height:calc(100vh - var(--h-bandeau));padding:20px 14px 40px;position:sticky;
+    top:var(--h-bandeau);align-self:flex-start;max-height:calc(100vh - var(--h-bandeau));
+    overflow-y:auto}
   /* ── LES TEINTES DE GROUPE ──────────────────────────────────────
      Onze teintes desaturees, a clarte egale : aucune ne domine. Elles
      ne touchent QUE les reperes -- numeros, icone, etat actif. Le texte
@@ -559,7 +571,7 @@
      l'aperçu ne montrait plus rien d'utile. */
   .qgc-page{max-width:1120px}
 
-  .qgc-nav{position:sticky;top:64px;z-index:5;display:flex;align-items:center;gap:13px;background:var(--bg);padding:12px 0 13px;margin:0 0 24px;border-bottom:1px solid var(--line)}
+  .qgc-nav{position:sticky;top:var(--h-bandeau);z-index:5;display:flex;align-items:center;gap:13px;background:var(--bg);padding:12px 0 13px;margin:0 0 24px;border-bottom:1px solid var(--line)}
   .qgc-nav-label{flex:none;font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
   .qgc-nav-list{display:flex;flex-wrap:wrap;gap:7px;min-width:0}
   .qgc-chip{display:inline-flex;align-items:center;min-height:36px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:100px;padding:7px 14px;color:var(--muted);font:600 12px var(--font-text);cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s,background .15s}
@@ -616,7 +628,8 @@
   .qgc-block-body{display:grid;grid-template-columns:minmax(0,1fr);gap:30px;align-items:start}
   @media(min-width:1200px){
     .qgc-block-body{grid-template-columns:minmax(0,1.08fr) minmax(300px,.92fr);gap:40px}
-    .qgc-preview{position:sticky;top:98px}
+    /* Sous la barre de chapitres, qui fait 33px. */
+    .qgc-preview{position:sticky;top:calc(var(--h-bandeau) + 33px)}
   }
 
   /* Une seule colonne de champs pleine largeur allongeait la page sans
@@ -670,7 +683,7 @@
      pendant qu'on tient l'ecran a bout de bras.
      Le z-index reste sous celui de la barre du haut (20) et au-dessus
      des cartes. */
-  .gd-suit{position:sticky;top:64px;z-index:6;display:flex;align-items:center;
+  .gd-suit{position:sticky;top:var(--h-bandeau);z-index:6;display:flex;align-items:center;
     gap:12px;flex-wrap:wrap;margin:12px 0 0;padding:10px 16px;
     background:rgba(9,15,11,.94);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
     border:1px solid var(--line-strong);border-radius:var(--r-lg);box-shadow:var(--e2)}
@@ -796,7 +809,7 @@
 
   /* aperçu */
   .preview-aside{position:relative}
-  @media(min-width:940px){.preview-aside{position:sticky;top:92px}}
+  @media(min-width:940px){.preview-aside{position:sticky;top:calc(var(--h-bandeau) + 27px)}}
   .preview-shell{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
   .preview-bar{display:flex;align-items:center;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line)}
   .preview-bar .dot{width:7px;height:7px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 3px rgba(168,217,59,.16);flex:none}
@@ -851,7 +864,7 @@
      ailleurs. Ne pas le redescendre sans remesurer. */
   .ctx-rail{display:none}
   @media(min-width:1560px){
-    .ctx-rail{display:block;flex:none;width:308px;border-left:1px solid var(--line);padding:22px 18px 40px;position:sticky;top:65px;align-self:flex-start;max-height:calc(100vh - 65px);overflow-y:auto}
+    .ctx-rail{display:block;flex:none;width:308px;border-left:1px solid var(--line);padding:22px 18px 40px;position:sticky;top:var(--h-bandeau);align-self:flex-start;max-height:calc(100vh - var(--h-bandeau));overflow-y:auto}
   }
   .ctx-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:15px;margin-bottom:12px}
   .ctx-h{font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 11px}
@@ -1830,7 +1843,8 @@
   .ar-field input,.ar-field select,.ar-field textarea{background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:10px 12px;color:var(--text);font:inherit;font-size:13.5px;width:100%}
   .ar-title-in{font-family:var(--font-ui)!important;font-weight:700!important;font-size:clamp(19px,2.4vw,25px)!important;letter-spacing:-.02em}
   .ar-body-in{min-height:340px;resize:vertical;line-height:1.75;font-size:14.5px!important}
-  .ar-side{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:15px;position:sticky;top:80px}
+  .ar-side{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);
+    padding:15px;position:sticky;top:calc(var(--h-bandeau) + 15px)}
   .ar-side-h{font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);margin:0 0 11px}
   .ar-cover{aspect-ratio:16/9;border-radius:9px;object-fit:cover;width:100%;display:block;border:1px solid var(--line);background:#11201a}
   .ar-count{font-size:11px;color:var(--faint);text-align:right;margin-top:-8px;margin-bottom:12px}
@@ -2108,7 +2122,7 @@
   .blk-case{display:flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;cursor:pointer}
   .blk-case input{width:17px;height:17px;accent-color:var(--gold);cursor:pointer}
   .cd-row.blk-on{border-color:var(--gold);background:rgba(198,162,87,.08)}
-  .blk-barre{display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:64px;z-index:5;
+  .blk-barre{display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:var(--h-bandeau);z-index:5;
     background:var(--surface);border:1px solid var(--gold);border-radius:11px;padding:10px 12px;margin-bottom:10px;
     box-shadow:0 8px 22px rgba(0,0,0,.35)}
   .blk-n{font-size:13px;font-weight:700;color:var(--gold);white-space:nowrap}
@@ -2148,7 +2162,7 @@
   .notif-row.attention .att-niv{color:var(--gold)}
   .notif-row.info .att-niv{color:var(--faint)}
   .notif-vide{padding:22px 16px;text-align:center;font-size:13.5px;color:var(--faint)}
-  @media(max-width:600px){#notif-pop{position:fixed;top:64px;right:8px;left:8px;width:auto}}
+  @media(max-width:600px){#notif-pop{position:fixed;top:var(--h-bandeau);right:8px;left:8px;width:auto}}
 
   /* --- Joueuse du match : une proposition, pas un palmarès --- */
   .mc-mvp{background:linear-gradient(150deg,rgba(198,162,87,.16),rgba(198,162,87,.05));
@@ -21821,7 +21835,7 @@
   .qg-tb button.d{color:var(--danger)}
   .qg-tb button:hover{background:rgba(243,239,230,.1);color:#fff}
   .qg-tb button.d:hover{background:rgba(229,86,74,.15);color:var(--danger)}
-  .qg-inspector{position:sticky;top:80px;background:var(--surface);border:none;
+  .qg-inspector{position:sticky;top:calc(var(--h-bandeau) + 15px);background:var(--surface);border:none;
     border-top:2px solid var(--gold);border-radius:0;overflow:hidden}
   @media(max-width:980px){.qg-inspector{position:static}}
   .qg-insp-head{display:flex;align-items:center;gap:11px;padding:15px 17px;border-bottom:1px solid var(--line)}
@@ -22041,7 +22055,11 @@
      barre laterale et le rail contextuel supposent dans leur `top` et
      leur `max-height`. Ils s'appuyaient sur une valeur que le bandeau
      n'avait plus. */
-  .topbar-inner{max-width:none;padding:0 20px 0 0;gap:18px;height:64px}
+  /* 64 + le filet du bas = --h-bandeau. Changer la hauteur du bandeau
+     se fait donc a un seul endroit, et tout ce qui se colle dessous
+     suit. */
+  .topbar-inner{max-width:none;padding:0 20px 0 0;gap:18px;
+    height:calc(var(--h-bandeau) - 1px)}
 
   .brand{width:264px;flex:none;padding-left:25px;gap:11px}
   .brand-mark{width:34px;height:34px;border-radius:var(--r-md);padding:5px}
@@ -22268,7 +22286,7 @@
      (left:-50vw) faisait le travail visuellement mais gonflait la
      largeur défilable de 720px sur un écran de 1440 — invisible
      derrière overflow-x:hidden, bien réel dans les mesures. */
-  .qg-tabbar,.subtabs,.mod-head{position:sticky;top:64px;z-index:6;background:var(--bg)}
+  .qg-tabbar,.subtabs,.mod-head{position:sticky;top:var(--h-bandeau);z-index:6;background:var(--bg)}
   .mod-head{padding:12px 0 13px;margin-bottom:8px;border-bottom:1px solid var(--line)}
   .subtabs{padding:10px 0;margin-bottom:14px}
   /* À largeur ajustée, le contenu défilait juste à côté de la barre :
