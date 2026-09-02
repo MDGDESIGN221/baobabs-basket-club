@@ -261,6 +261,9 @@
       note.textContent = txt;
       note.classList.toggle('hide', !txt);
       if (aide) aide.classList.add('hide');
+      // La silhouette se choisit sur le prenom de la voix : elle doit
+      // donc etre refaite chaque fois que la voix change.
+      visageMaj();
     }
 
     if (!voixDispo()) {
@@ -294,9 +297,249 @@
     if (aide) aide.classList.toggle('hide', !!(voixFr && noteVoix(voixFr) >= 50));
   }
 
+  // ===================================================================
+  // LE VISAGE QUI ARTICULE
+  // ===================================================================
+  //
+  // CE QU'ON NE PEUT PAS FAIRE, ET POURQUOI.
+  // Aucun navigateur n'expose le son de la synthese vocale au moteur
+  // audio : impossible d'en lire l'amplitude, donc impossible de faire
+  // une vraie synchronisation labiale sur le signal. Ce qu'on PEUT
+  // faire, mesure : l'utterance emet un evenement par MOT pendant
+  // qu'elle parle, avec l'index du caractere. On sait donc, a l'instant
+  // ou elle le dit, quel mot sort de la bouche — et on articule ses
+  // lettres. Ce n'est pas du signal, c'est du texte ; a l'oeil, la
+  // difference ne se voit pas.
+  //
+  // POURQUOI UN VISAGE. Le tutoriel parle a des benevoles qui n'ont pas
+  // demande a apprendre un logiciel. Une voix sans personne est une
+  // machine qui recite ; un visage dit qu'on s'adresse a quelqu'un. Il
+  // reste donc PETIT et SOURD — jamais dore, jamais anime au-dela de sa
+  // bouche : l'or dit ou porter la main, et c'est l'ecran qu'il faut
+  // regarder, pas le guide.
+  //
+  // LE GENRE VIENT DU PRENOM DE LA VOIX. L'API n'a pas de champ pour ca.
+  // « Microsoft Julie - French (France) » suffit, et quand le prenom est
+  // inconnu on ne parie pas : un visage neutre.
+  var VISAGE_F = ['hortense', 'julie', 'nathalie', 'caroline', 'denise', 'amelie',
+                  'audrey', 'virginie', 'marie', 'sylvie', 'celine', 'elise',
+                  'lea', 'manon', 'chantal', 'charlotte', 'eloise', 'jacqueline'];
+  var VISAGE_M = ['paul', 'claude', 'guillaume', 'thomas', 'henri', 'nicolas',
+                  'jean', 'antoine', 'alain', 'bruno', 'yannick', 'mathieu',
+                  'olivier', 'pierre', 'remy', 'sebastien', 'laurent'];
+
+  function sansAccent(s) {
+    s = String(s || '').toLowerCase();
+    // Les marques combinantes s'ecrivent en \u : collees telles quelles,
+    // elles sont invisibles a la relecture et se perdent au premier
+    // copier-coller.
+    return s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : s;
+  }
+
+  function visageGenre(v) {
+    var n = sansAccent(v && v.name).replace(/^(microsoft|google|apple)\s+/, '');
+    var prenom = (n.split(/[\s\-(,]/)[0] || '').replace(/[^a-z]/g, '');
+    if (VISAGE_F.indexOf(prenom) >= 0) return 'f';
+    if (VISAGE_M.indexOf(prenom) >= 0) return 'm';
+    return 'n';
+  }
+
+  // TROIS SILHOUETTES, DISTINGUEES PAR LA SEULE COIFFURE.
+  //
+  // Pas de teinte de peau, pas de trait de caractere : ce serait une
+  // representation, et ce club en merite une vraie, pas une devinette de
+  // ma part. Deux formes geometriques suffisent a dire « quelqu'un ».
+  //
+  // L'ORDRE DE DESSIN EST TOUT. Premiere version : la courbe de cheveux
+  // etait tracee AVANT la tete, donc recouverte par elle — il n'en restait
+  // que deux pointes, et les trois silhouettes se ressemblaient toutes,
+  // vu sur la planche d'essai a 150 px. On pose donc la MASSE de cheveux
+  // d'abord, plus grande que la tete, et la tete par-dessus, plus petite
+  // et plus basse : ce qui depasse EST la coiffure. C'est ainsi qu'on
+  // dessine une tete, et ca tient encore a 48 px.
+  var VISAGE_CHEVEUX = {
+    // Longs : la masse deborde en haut, et deux meches descendent le long
+    // du visage jusque sous la machoire.
+    f: '<ellipse cx="32" cy="32" rx="18.4" ry="17.6"/>' +
+       '<rect x="12.2" y="30" width="5.4" height="20" rx="2.7"/>' +
+       '<rect x="46.4" y="30" width="5.4" height="20" rx="2.7"/>',
+    // Courts : la masse s'arrete au-dessus des oreilles.
+    m: '<ellipse cx="32" cy="30.5" rx="17.4" ry="14.6"/>',
+    // Inconnu : une calotte discrete, qui ne prend parti pour personne.
+    n: '<ellipse cx="32" cy="28" rx="15" ry="11"/>'
+  };
+
+  // LES GROUPES NE SONT PAS DECORATIFS, ILS PORTENT CHACUN UN MOUVEMENT.
+  //   .v-pivot   la tete entiere s'incline vers ce qu'on montre
+  //   .v-regard  les yeux s'y tournent
+  //   .v-yeux    le clignement — d'ou le groupe SEPARE du regard : une
+  //              animation CSS et une transformation en ligne sur le meme
+  //              element s'ecrasent l'une l'autre, et l'oeil se fige.
+  //   .v-bouche  l'articulation
+  function visageSvg(genre) {
+    return '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">' +
+      '<circle class="v-disque" cx="32" cy="32" r="30.2"/>' +
+      '<g class="v-pivot">' +
+        '<g class="v-cheveux">' + (VISAGE_CHEVEUX[genre] || VISAGE_CHEVEUX.n) + '</g>' +
+        '<circle class="v-tete" cx="32" cy="35" r="14.6"/>' +
+        '<g class="v-regard"><g class="v-yeux">' +
+          '<ellipse cx="26.6" cy="33" rx="1.9" ry="2.4"/>' +
+          '<ellipse cx="37.4" cy="33" rx="1.9" ry="2.4"/>' +
+        '</g></g>' +
+        '<g class="v-bouche"><ellipse cx="32" cy="42.6" rx="5.4" ry="3.9"/></g>' +
+      '</g>' +
+    '</svg>';
+  }
+
+  // ------------------------------------------------------------------
+  // LE VISAGE REGARDE CE QU'ON MONTRE
+  //
+  // Un guide qui parle en fixant le vide ne guide personne : le premier
+  // geste d'un humain qui explique, c'est de tourner la tete vers la
+  // chose. poser() connait deja le rectangle vise — celui du cadre, donc
+  // celui de la cible AGRANDIE — et le visage connait sa propre place a
+  // l'ecran. La direction se calcule, elle ne se devine pas.
+  //
+  // On borne fort : 2,4 unites pour les yeux, 4 degres pour la tete. Un
+  // regard qui traverse l'orbite ou une tete qui bascule attirent l'oeil
+  // SUR LE GUIDE, alors que tout le travail consiste a l'envoyer sur
+  // l'ecran. Le mouvement doit se sentir, pas se remarquer.
+  // ------------------------------------------------------------------
+  function visageRegarde(r) {
+    var b = visageBoite();
+    if (!b || b.classList.contains('hide')) return;
+    var reg = b.querySelector('.v-regard'), piv = b.querySelector('.v-pivot');
+    if (!reg) return;
+    if (!r || !visageBouge()) {
+      reg.removeAttribute('style');
+      if (piv) piv.removeAttribute('style');
+      return;
+    }
+    var vb = b.getBoundingClientRect();
+    if (!vb.width) return;
+    var dx = (r.left + r.width / 2) - (vb.left + vb.width / 2);
+    var dy = (r.top + r.height / 2) - (vb.top + vb.height / 2);
+    var d = Math.sqrt(dx * dx + dy * dy) || 1;
+    // Les unites sont celles du viewBox (64), pas des pixels d'ecran.
+    reg.style.transform = 'translate(' + (dx / d * 2.4).toFixed(2) + 'px,' +
+                                         (dy / d * 1.7).toFixed(2) + 'px)';
+    if (piv) piv.style.transform = 'rotate(' + (dx / d * 4).toFixed(2) + 'deg)';
+  }
+
+  function visageBoite() { return $('bt-visage'); }
+
+  function visageActif() {
+    var b = visageBoite();
+    return !!(b && voixOn && !b.classList.contains('hide'));
+  }
+
+  // Le reglage systeme est respecte, sauf demande explicite par le bouton
+  // — meme regle que partout ailleurs ici.
+  function visageBouge() {
+    var doux = !window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return doux || animForcee();
+  }
+
+  function visageMaj() {
+    var b = visageBoite();
+    if (!b) return;
+    if (!voixOn || !voixDispo()) { b.classList.add('hide'); visageFin(); return; }
+    var g = visageGenre(voixFr);
+    if (b.getAttribute('data-genre') !== g) {
+      b.setAttribute('data-genre', g);
+      b.innerHTML = visageSvg(g);
+    }
+    b.classList.remove('hide');
+    visPoser('repos');
+    // Le dessin vient d'etre refait : le regard reprend au centre, et
+    // se replacera a la prochaine pose.
+    visageRegarde(null);
+  }
+
+  // LES POSITIONS DE BOUCHE. Six suffisent : au-dela, on ne les distingue
+  // plus a 48 px, et sur un videoprojecteur encore moins.
+  //   a        -> grande ouverte      o, u  -> arrondie
+  //   i, y     -> etiree fine         e     -> demi-ouverte
+  //   m, b, p  -> fermee              f, v  -> levre sur les dents
+  function visemes(mot) {
+    var s = sansAccent(mot).replace(/[^a-z]/g, '');
+    var out = [], prec = null;
+    for (var i = 0; i < s.length && out.length < 7; i++) {
+      var c = s.charAt(i), v;
+      if (c === 'a') v = 'ouvert';
+      else if (c === 'o' || c === 'u') v = 'rond';
+      else if (c === 'i' || c === 'y') v = 'fin';
+      else if (c === 'e') v = 'demi';
+      else if (c === 'm' || c === 'b' || c === 'p') v = 'ferme';
+      else if (c === 'f' || c === 'v') v = 'dents';
+      else v = 'demi';
+      // Deux positions identiques d'affilee, c'est une bouche arretee.
+      if (v === prec) v = (v === 'demi') ? 'fin' : 'demi';
+      out.push(v); prec = v;
+    }
+    return out;
+  }
+
+  var visPas = null, visSecours = null, visAttente = null;
+
+  function visPoser(p) {
+    var b = visageBoite();
+    if (b) b.setAttribute('data-v', p);
+  }
+
+  function visStop() {
+    if (visPas) { clearInterval(visPas); visPas = null; }
+    if (visSecours) { clearInterval(visSecours); visSecours = null; }
+    if (visAttente) { clearTimeout(visAttente); visAttente = null; }
+  }
+
+  function visageMot(mot) {
+    if (!visageActif() || !visageBouge()) return;
+    if (visAttente) { clearTimeout(visAttente); visAttente = null; }
+    if (visSecours) { clearInterval(visSecours); visSecours = null; }
+    var file = visemes(mot);
+    if (!file.length) return;
+    if (visPas) clearInterval(visPas);
+    var i = 0;
+    visPoser(file[i++]);
+    visPas = setInterval(function () {
+      if (i >= file.length) { clearInterval(visPas); visPas = null; visPoser('repos'); return; }
+      visPoser(file[i++]);
+    }, 84);
+  }
+
+  function visageDebut() {
+    if (!visageActif() || !visageBouge()) return;
+    var b = visageBoite();
+    if (b) b.classList.add('parle');
+    visStop();
+    // SI AUCUN EVENEMENT DE MOT N'ARRIVE.
+    // Certains moteurs n'en emettent pas — Safari, historiquement. Un
+    // visage fige pendant qu'une voix parle a l'air casse, ce qui est
+    // pire que pas de visage du tout. On articule alors au rythme moyen
+    // du francais : ce n'est plus de la synchronisation, c'est de
+    // l'articulation, et a l'oeil ca ne se distingue pas.
+    visAttente = setTimeout(function () {
+      visAttente = null;
+      var suite = ['ouvert', 'demi', 'rond', 'fin', 'demi', 'ferme'];
+      var k = 0;
+      visSecours = setInterval(function () {
+        visPoser(suite[k++ % suite.length]);
+      }, 128);
+    }, 700);
+  }
+
+  function visageFin() {
+    visStop();
+    var b = visageBoite();
+    if (b) b.classList.remove('parle');
+    visPoser('repos');
+  }
+
   function taire() {
     if (voixDispo()) { try { window.speechSynthesis.cancel(); } catch (e) {} }
     if (chien) { clearTimeout(chien); chien = null; }
+    visageFin();
   }
 
   // Rend true si la voix a pris le relai, false s'il faut un minuteur.
@@ -334,7 +577,21 @@
         // Un peu sous la vitesse par défaut : à 1,0 les voix françaises
         // avalent les liaisons. 0,97 laisse le mot finir.
         u.rate = 0.97; u.pitch = 1.02; u.volume = 1;
-        if (i === morceaux.length - 1) { u.onend = unefois; u.onerror = unefois; }
+        // LE VISAGE SUIT LES MOTS, PAS UNE HORLOGE.
+        // L'evenement arrive a l'instant ou le moteur attaque le mot,
+        // et donne l'index du caractere : on articule les lettres de
+        // CE mot-la. C'est la seule synchronisation possible — le son
+        // de la synthese n'est expose par aucun navigateur.
+        u.onboundary = function (ev) {
+          if (ev && ev.name && ev.name !== 'word') return;
+          var reste = String(m).slice((ev && ev.charIndex) || 0);
+          visageMot(reste.split(/[\s,;:.!?()]/)[0]);
+        };
+        if (i === 0) u.onstart = visageDebut;
+        if (i === morceaux.length - 1) {
+          u.onend = function () { visageFin(); unefois(); };
+          u.onerror = function () { visageFin(); unefois(); };
+        }
         window.speechSynthesis.speak(u);   // la file du navigateur enchaîne
       });
     } catch (e) { return false; }
@@ -371,6 +628,7 @@
     if (t) t.textContent = voixOn ? 'Voix activée' : 'Lire à voix haute';
     if (b2) b2.classList.toggle('on', voixOn);
     if (!voixOn) taire();
+    visageMaj();
   }
 
   // ===================================================================
@@ -3005,6 +3263,11 @@
     // On distingue donc le cas : meme element, un rappel — un battement
     // franc qui dit « toujours ici, mais c'est autre chose que je
     // raconte ». Different element, la pose habituelle.
+    // Le guide tourne les yeux vers ce qu'il montre. On passe le rect
+    // DEJA agrandi : c'est la boite que la personne voit, pas celle que
+    // la cible avait avant de s'avancer.
+    visageRegarde(r);
+
     var memeQueAvant = (dernierePose === el);
     dernierePose = el;
     spot.classList.remove('pose', 'rappel'); void spot.offsetWidth;
@@ -3665,6 +3928,7 @@
     // laisser en haut sans raison deroute -- on cherche ses commandes
     // la ou elles etaient.
     var nr = $('bt-narr'); if (nr) nr.classList.remove('haut');
+    visageRegarde(null);
     if (tPointe) { clearTimeout(tPointe); tPointe = null; }
     $('bt-spot').classList.add('hide');
     // La main s'efface sans quitter l'ecran : la reprendre en

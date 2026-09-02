@@ -918,7 +918,75 @@ html.bt-anim section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) 
 #btut.anim .bt-narr{transition:top .42s cubic-bezier(.3,.86,.26,1), bottom .42s cubic-bezier(.3,.86,.26,1) !important}
 #btut .bt-narr-j{height:3px;background:var(--bt-line)}
 #btut .bt-narr-j i{display:block;height:100%;background:var(--bt-gold);transition:width .3s linear}
-#btut .bt-narr-in{padding:15px 17px}
+#btut .bt-narr-in{padding:15px 17px;position:relative}
+
+/* ---------------------------------------------------------------------
+   LE VISAGE QUI ARTICULE
+
+   Petit, sourd, et JAMAIS dore : l'or dit ou porter la main, et ce n'est
+   pas ici — c'est l'ecran qu'il faut regarder, pas le guide. Il occupe le
+   coin du narrateur, pousse le texte, et laisse la barre de commandes sur
+   toute sa largeur.
+   --------------------------------------------------------------------- */
+#btut .bt-visage{
+  position:absolute;left:17px;top:14px;width:54px;height:54px;
+  pointer-events:none;opacity:.9;transition:opacity .3s ease
+}
+#btut .bt-visage.hide{display:none}
+#btut .bt-visage svg{width:100%;height:100%;display:block}
+#btut .bt-visage .v-disque{fill:var(--bt-surf2);stroke:var(--bt-line2);stroke-width:1.2}
+/* LA COIFFURE DOIT TRANCHER SUR LE VISAGE, PAS LE FROLER.
+   En --bt-faint elle n'avait qu'un demi-ton d'ecart avec --bt-muted du
+   visage : lisible a 150 px sur la planche, melangee a 48 px dans la
+   barre. Ce vert-gris sombre tranche des deux cotes — sur le visage
+   clair comme sur le disque du fond. */
+#btut .bt-visage .v-cheveux ellipse,#btut .bt-visage .v-cheveux rect{fill:#56635B}
+/* Le regard et l'inclinaison. Le pivot est au bas du groupe — a la
+   place du cou : une tete qui tourne autour de son centre flotte. */
+#btut .bt-visage .v-pivot{
+  transform-box:fill-box;transform-origin:50% 100%;
+  transition:transform .52s cubic-bezier(.2,.9,.3,1)
+}
+#btut .bt-visage .v-regard{transition:transform .3s cubic-bezier(.2,.9,.3,1)}
+#btut .bt-visage .v-tete{fill:var(--bt-muted)}
+#btut .bt-visage .v-yeux ellipse,#btut .bt-visage .v-bouche ellipse{fill:var(--bt-surf)}
+/* Quand elle parle, le visage se detache un peu : on sait qui a la parole
+   sans avoir a le chercher. Un liseré, pas un projecteur. */
+#btut .bt-visage.parle{opacity:1}
+#btut .bt-visage.parle .v-disque{stroke:var(--bt-edge)}
+
+/* LA BOUCHE — six positions, pas plus. Au-dela on ne les distingue plus a
+   48 px, et sur un videoprojecteur encore moins. transform-box:fill-box
+   met l'origine au centre DE LA BOUCHE et non a celui du SVG : sans lui,
+   la bouche s'ecrase vers le haut du visage. */
+#btut .bt-visage .v-bouche{
+  transform-box:fill-box;transform-origin:center;transform:scaleY(.16);
+  transition:transform .07s linear
+}
+#btut .bt-visage[data-v="ferme"]  .v-bouche{transform:scaleY(.12)}
+#btut .bt-visage[data-v="repos"]  .v-bouche{transform:scaleY(.16)}
+#btut .bt-visage[data-v="dents"]  .v-bouche{transform:scale(1.06,.22)}
+#btut .bt-visage[data-v="fin"]    .v-bouche{transform:scale(1.14,.32)}
+#btut .bt-visage[data-v="demi"]   .v-bouche{transform:scaleY(.58)}
+#btut .bt-visage[data-v="rond"]   .v-bouche{transform:scale(.62,.9)}
+#btut .bt-visage[data-v="ouvert"] .v-bouche{transform:scaleY(1)}
+
+/* Le clignement ne dit rien — mais son absence dit « image fixe ». */
+#btut .bt-visage .v-yeux{transform-box:fill-box;transform-origin:center;
+  animation:btClin 5.4s ease-in-out infinite}
+@keyframes btClin{0%,95.5%,100%{transform:scaleY(1)}97.5%{transform:scaleY(.08)}}
+#btut.anim .bt-visage .v-yeux{animation:btClin 5.4s ease-in-out infinite !important}
+@media (prefers-reduced-motion:reduce){
+  #btut .bt-visage .v-yeux{animation:none}
+  #btut .bt-visage .v-bouche,#btut .bt-visage .v-pivot,
+  #btut .bt-visage .v-regard{transition:none}
+}
+
+/* Le texte se pousse pour lui ; la barre de commandes garde sa largeur. */
+#btut .bt-visage:not(.hide) ~ .bt-ou,
+#btut .bt-visage:not(.hide) ~ .bt-dit,
+#btut .bt-visage:not(.hide) ~ .bt-pause,
+#btut.demo .bt-visage:not(.hide) ~ .bt-demo{padding-left:68px}
 /* Pendant la démonstration. Sans ce bandeau, on voit un champ se
    remplir et on croit que c'est enregistré — ou pire, on croit que le
    tutoriel vient de casser un réglage. */
@@ -1015,6 +1083,11 @@ html.bt-anim section.bt-entre{animation:btEntre .5s cubic-bezier(.22,.95,.28,1) 
   #btut .bt-narr{width:calc(100vw - 16px);bottom:8px;border-radius:14px}
   #btut .bt-narr.haut{bottom:auto;top:8px}
   #btut .bt-narr-in{padding:13px 14px}
+  #btut .bt-visage{left:14px;top:13px;width:40px;height:40px}
+  #btut .bt-visage:not(.hide) ~ .bt-ou,
+  #btut .bt-visage:not(.hide) ~ .bt-dit,
+  #btut .bt-visage:not(.hide) ~ .bt-pause,
+  #btut.demo .bt-visage:not(.hide) ~ .bt-demo{padding-left:52px}
   #btut .bt-dit{font-size:14.5px;margin-bottom:12px}
   /* 44 px : le doigt n'a pas la précision de la souris, et cette barre
      s'utilise debout au bord d'un terrain. */
