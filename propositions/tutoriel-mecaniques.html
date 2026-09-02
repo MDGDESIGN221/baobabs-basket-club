@@ -2161,8 +2161,18 @@ footer{padding:44px 0 64px;border-top:1px solid var(--line);color:var(--faint);f
     var narr = document.getElementById('bt-narr');
     if (narr && !narr.classList.contains('hide') && narr.getClientRects().length) {
       var r = narr.getBoundingClientRect();
-      if (r.top > h / 2) bas = Math.min(bas, r.top - 12);
-      else haut = Math.max(haut, r.bottom + 12);
+      // ON GARDE LE PLUS GRAND DES DEUX COTES, PAS CELUI QU'ON DEVINE.
+      //
+      // Comparer r.top a la moitie de l'ecran se trompe des que le
+      // narrateur est haut : mesure au banc, fenetre de 311 px et
+      // narrateur de 152 px ancre EN BAS -- son haut tombe a 140, donc
+      // sous la moitie, donc il passait pour un narrateur du haut. La
+      // zone devenait inutilisable, le garde-fou la rendait a la
+      // fenetre entiere, et le narrateur pouvait couvrir la cible sans
+      // que rien ne le signale.
+      var dessus = r.top - haut, dessous = bas - r.bottom;
+      if (dessus >= dessous) bas = Math.max(haut, r.top - 12);
+      else haut = Math.min(bas, r.bottom + 12);
     }
     if (bas - haut < 120) { haut = 64; bas = h; }   // narrateur geant : on renonce
     return { haut: haut, bas: bas, gauche: 0, droite: w, hauteur: bas - haut, largeur: w };

@@ -2145,6 +2145,185 @@
     designer(lien, true);
   }
 
+
+  // ===================================================================
+  // LE CADRAGE PEDAGOGIQUE
+  //
+  // Avant, designer() appelait scrollIntoView({block:'center'}) puis
+  // attendait 300 ms AU JUGE avant de poser la main. Quatre defauts,
+  // tous visibles a l'ecran :
+  //
+  //   . on ne sait pas quand un defilement « smooth » se termine, donc
+  //     la main se posait parfois sur des coordonnees perimees ;
+  //   . « center » est faux pour un bloc plus haut que l'ecran : on en
+  //     voit le milieu, ni l'en-tete ni la premiere ligne ;
+  //   . la zone confortable n'est pas la fenetre -- le narrateur occupe
+  //     le bas, et il SE DEPLACE, donc une marge en dur ne peut pas
+  //     suivre ;
+  //   . « deja visible » exigeait la cible ENTIERE dans la zone : une
+  //     cible visible a 90 % se faisait quand meme defiler.
+  //
+  // On mesure donc, on amene avec notre propre courbe -- dont on connait
+  // la fin -- puis on re-mesure. Aucune logique par ecran.
+  // ===================================================================
+
+  // La zone de lecture : la fenetre, moins le bandeau, moins le narrateur.
+  function zoneDeLecture() {
+    var h = window.innerHeight || 800, w = window.innerWidth || 1200;
+    var haut = 64, bas = h;
+    var narr = $('bt-narr');
+    if (narr && !narr.classList.contains('hide') && !narr.classList.contains('efface')
+        && narr.getClientRects().length) {
+      var r = narr.getBoundingClientRect();
+      // ON GARDE LE PLUS GRAND DES DEUX COTES, PAS CELUI QU'ON DEVINE.
+      //
+      // Comparer r.top a la moitie de l'ecran se trompe des que le
+      // narrateur est haut : mesure au banc, fenetre de 311 px et
+      // narrateur de 152 px ancre EN BAS -- son haut tombe a 140, donc
+      // sous la moitie, donc il passait pour un narrateur du haut. La
+      // zone devenait inutilisable, le garde-fou la rendait a la
+      // fenetre entiere, et le narrateur pouvait couvrir la cible sans
+      // que rien ne le signale.
+      var dessus = r.top - haut, dessous = bas - r.bottom;
+      if (dessus >= dessous) bas = Math.max(haut, r.top - 12);
+      else haut = Math.min(bas, r.bottom + 12);
+    }
+    if (bas - haut < 120) { haut = 64; bas = h; }
+    return { haut: haut, bas: bas, gauche: 0, droite: w, hauteur: bas - haut, largeur: w };
+  }
+
+  // La boite REELLEMENT visible. estVisible() dit oui ou non ; ici on a
+  // besoin du rectangle, pour en calculer la part lisible.
+  function boiteRognee(el) {
+    if (!el || !el.getBoundingClientRect || !el.getClientRects().length) return null;
+    var r = el.getBoundingClientRect();
+    var haut = r.top, bas = r.bottom, g = r.left, d = r.right;
+    var n = el.parentNode, garde = 0;
+    while (n && n.nodeType === 1 && n !== document.body && garde++ < 16) {
+      var cs;
+      try { cs = getComputedStyle(n); } catch (e) { return null; }
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return null;
+      if (/hidden|auto|scroll|clip/.test(cs.overflow + cs.overflowX + cs.overflowY)) {
+        var b = n.getBoundingClientRect();
+        haut = Math.max(haut, b.top); bas = Math.min(bas, b.bottom);
+        g = Math.max(g, b.left);      d = Math.min(d, b.right);
+      }
+      n = n.parentNode;
+    }
+    if (bas - haut < 1 || d - g < 1) return null;
+    return { top: haut, bottom: bas, left: g, right: d, width: d - g, height: bas - haut };
+  }
+
+  function partVisible(el) {
+    var r = el.getBoundingClientRect(), aire = r.width * r.height;
+    if (aire <= 0) return 0;
+    var c = boiteRognee(el); if (!c) return 0;
+    var z = zoneDeLecture();
+    var t = Math.max(c.top, z.haut), b = Math.min(c.bottom, z.bas);
+    var g = Math.max(c.left, z.gauche), d = Math.min(c.right, z.droite);
+    if (b <= t || d <= g) return 0;
+    return ((b - t) * (d - g)) / aire;
+  }
+
+  // Une cible plus haute que la zone ne peut JAMAIS atteindre 85 % :
+  // sans ce cas, un grand tableau se ferait recadrer a chaque etape.
+  function assezVisible(el) {
+    var z = zoneDeLecture(), r = el.getBoundingClientRect();
+    if (r.height > z.hauteur * 0.92) {
+      var c = boiteRognee(el);
+      return !!c && c.top >= z.haut - 4 && c.top <= z.bas - 80;
+    }
+    return partVisible(el) >= 0.85;
+  }
+
+  // TOUS les conteneurs qui defilent, du plus interieur a la fenetre.
+  // La fenetre est le cas le plus courant, et c'est celui qu'un
+  // « premier ancetre qui deborde » manque toujours.
+  function scrollersDe(el) {
+    var chaine = [], n = el.parentNode, garde = 0;
+    while (n && n.nodeType === 1 && n !== document.body && garde++ < 16) {
+      var cs;
+      try { cs = getComputedStyle(n); } catch (e) { break; }
+      if ((/auto|scroll/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 4) ||
+          (/auto|scroll/.test(cs.overflowX) && n.scrollWidth > n.clientWidth + 4)) chaine.push(n);
+      n = n.parentNode;
+    }
+    var doc = document.scrollingElement || document.documentElement;
+    if (doc && doc.scrollHeight > (window.innerHeight || 0) + 4) chaine.push(window);
+    return chaine;
+  }
+
+  function piloteDe(sc) {
+    var z = zoneDeLecture();
+    if (sc === window) {
+      var doc = document.scrollingElement || document.documentElement;
+      return {
+        litY: function () { return window.pageYOffset || doc.scrollTop || 0; },
+        litX: function () { return window.pageXOffset || doc.scrollLeft || 0; },
+        ecrit: function (x, y) { window.scrollTo(x, y); },
+        maxY: Math.max(0, doc.scrollHeight - (window.innerHeight || 0)),
+        maxX: Math.max(0, doc.scrollWidth - (window.innerWidth || 0)),
+        zone: { top: z.haut, bottom: z.bas, left: z.gauche, right: z.droite,
+                hauteur: z.hauteur, largeur: z.largeur }
+      };
+    }
+    var b = sc.getBoundingClientRect();
+    var top = Math.max(b.top, z.haut), bottom = Math.min(b.bottom, z.bas);
+    if (bottom - top < 80) { top = b.top; bottom = b.bottom; }
+    return {
+      litY: function () { return sc.scrollTop; },
+      litX: function () { return sc.scrollLeft; },
+      ecrit: function (x, y) { sc.scrollLeft = x; sc.scrollTop = y; },
+      maxY: Math.max(0, sc.scrollHeight - sc.clientHeight),
+      maxX: Math.max(0, sc.scrollWidth - sc.clientWidth),
+      zone: { top: top, bottom: bottom, left: b.left, right: b.right,
+              hauteur: bottom - top, largeur: b.width }
+    };
+  }
+
+  function amenerUn(sc, el, fini) {
+    var p = piloteDe(sc), re = el.getBoundingClientRect(), z = p.zone;
+    // Grand bloc : on aligne le haut. Petit bloc : on centre.
+    var viseY = (re.height > z.hauteur * 0.7)
+      ? p.litY() + (re.top - z.top) - 12
+      : p.litY() + (re.top - z.top) - (z.hauteur - re.height) / 2;
+    // L'horizontal ne bouge QUE si la cible en sort.
+    var viseX = p.litX();
+    if (re.left < z.left || re.right > z.right) {
+      viseX = (re.width > z.largeur * 0.7)
+        ? p.litX() + (re.left - z.left) - 12
+        : p.litX() + (re.left - z.left) - (z.largeur - re.width) / 2;
+    }
+    viseY = Math.max(0, Math.min(viseY, p.maxY));
+    viseX = Math.max(0, Math.min(viseX, p.maxX));
+    var y0 = p.litY(), x0 = p.litX(), dy = viseY - y0, dx = viseX - x0;
+    if (Math.abs(dy) < 3 && Math.abs(dx) < 3) { fini(); return; }
+    var doux = !window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!doux && !animForcee()) { p.ecrit(viseX, viseY); fini(); return; }
+    var duree = Math.max(320, Math.min(760, Math.max(Math.abs(dy), Math.abs(dx)) * 1.6));
+    var t0 = null;
+    function pas(ts) {
+      if (t0 === null) t0 = ts;
+      var q = Math.min(1, (ts - t0) / duree);
+      var k = q < 0.5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2;
+      p.ecrit(x0 + dx * k, y0 + dy * k);
+      if (q < 1) requestAnimationFrame(pas); else fini();
+    }
+    requestAnimationFrame(pas);
+  }
+
+  // On amene etage par etage, en re-testant : amener le panneau suffit
+  // souvent, et il ne faut alors pas faire bouger la page en plus.
+  function cadrer(el, quandFini) {
+    if (!el) { quandFini(); return; }
+    if (assezVisible(el)) { quandFini(); return; }
+    var chaine = scrollersDe(el), i = 0;
+    (function suite() {
+      if (i >= chaine.length || assezVisible(el)) { quandFini(); return; }
+      amenerUn(chaine[i++], el, suite);
+    })();
+  }
+
   // ---- LA MAIN ----
   // designer() est le seul chemin : entrée de menu ou champ au milieu
   // d'un écran, c'est le même geste — on amène la chose à l'écran, la
@@ -2172,25 +2351,19 @@
     //
     // Désormais : visible et de taille raisonnable, on pose tout de
     // suite ; sinon on amène, et on n'attend que le temps du transport.
-    var doux = !window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var h = window.innerHeight || 800;
-    var r0 = el.getBoundingClientRect();
-    var dejaVisible = r0.top >= 64 && r0.bottom <= h - 96 && r0.height <= h - 190;
-    var attente;
-    if (sansDefilement || dejaVisible) {
-      attente = 40;
-    } else {
-      try { el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: doux ? 'smooth' : 'auto' }); }
-      catch (e) { try { el.scrollIntoView(); } catch (_) {} }
-      attente = doux ? 300 : 40;
+    // ON N'ATTEND PLUS AU JUGE. cadrer() rend la main quand le
+    // mouvement est REELLEMENT fini, pas 300 ms plus tard au hasard --
+    // c'est ce qui faisait se poser la main sur des coordonnees
+    // perimees quand le defilement durait plus longtemps que prevu.
+    if (sansDefilement || assezVisible(el)) {
+      tPointe = setTimeout(function () { tPointe = null; poser(el); }, 40);
+      return;
     }
-
-    // On attend la fin du défilement avant de mesurer : mesurer pendant
-    // donne des coordonnées périmées, et la main se pose à côté.
-    tPointe = setTimeout(function () {
-      tPointe = null;
-      poser(el);
-    }, attente);
+    // On ne mesure QU'APRES la fin du mouvement : mesurer pendant donne
+    // des coordonnées périmées, et la main se pose à côté.
+    cadrer(el, function () {
+      tPointe = setTimeout(function () { tPointe = null; poser(el); }, 40);
+    });
   }
 
   // Une liste vide mesure 0 × 0. Elle EXISTE — donc rien ne signale un
@@ -3302,6 +3475,13 @@
     // carte de chapitre a pu rester muette sans que rien ne le dise.
     essai: {
       trouver: function (sel) { return trouver(sel); },
+      // Le socle de cadrage, pour le banc d'essai et la console.
+      cadrer: function (el, fini) { return cadrer(el, fini || function () {}); },
+      assezVisible: function (el) { return assezVisible(el); },
+      partVisible: function (el) { return partVisible(el); },
+      zoneDeLecture: function () { return zoneDeLecture(); },
+      scrollersDe: function (el) { return scrollersDe(el); },
+      boiteRognee: function (el) { return boiteRognee(el); },
       // Rend true si la voix a pris le relai — c'est le contrat de dire().
       parle:   function (texte, fini) { return dire(texte, fini || function () {}); },
       voix:    function (on) { reglerVoix(on); return { voixOn: voixOn, voixFr: voixFr && voixFr.name }; },

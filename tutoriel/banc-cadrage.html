@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>Banc d'essai — cadrage pédagogique</title>
+<style>
+ body{font:14px/1.6 system-ui,sans-serif;background:#0B140F;color:#E8E4DA;margin:0;padding:22px}
+ h1{font-size:17px;margin:0 0 4px} p.sous{color:#8A9A8F;margin:0 0 18px;font-size:13px;max-width:74ch}
+ table{border-collapse:collapse;width:100%;max-width:940px}
+ td,th{border-bottom:1px solid #24352B;padding:7px 9px;text-align:left;font-size:13px;vertical-align:top}
+ th{color:#8A9A8F;font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em}
+ .ok{color:#A8D93B} .ko{color:#E86A5E} code{color:#C6A257;font-size:12.5px}
+ #bilan{margin:16px 0 0;font-size:15px;font-weight:600}
+ #page{margin-top:24px}
+ .bloc{background:#141F17;border:1px solid #24352B;border-radius:8px;padding:14px;margin:14px 0}
+ #panneau{height:220px;overflow-y:auto;background:#0E1811;border:1px solid #24352B;border-radius:8px;padding:10px}
+ .ligne{height:52px;background:#141F17;border-radius:6px;margin-bottom:8px}
+ #replie{max-height:0;overflow:hidden}
+ #bt-narr{display:none;position:fixed;left:20px;right:20px;bottom:20px;height:150px;
+   background:#141F17;border:1px solid #24352B;border-radius:10px}
+ .esp{height:900px}
+</style></head><body>
+<h1>Banc d'essai — cadrage pédagogique</h1>
+<p class="sous">Le socle testé est <b>extrait de <code>tutoriel/tutoriel.js</code></b>, jamais recopié :
+<code>zoneDeLecture</code>, <code>boiteRognee</code>, <code>partVisible</code>,
+<code>assezVisible</code>, <code>scrollersDe</code>, <code>piloteDe</code>, <code>amenerUn</code>,
+<code>cadrer</code>. Ne demande aucune session.</p>
+
+<table id="res"><thead><tr><th>Cas</th><th>Attendu</th><th>Obtenu</th><th></th></tr></thead><tbody></tbody></table>
+<p id="bilan">…</p>
+
+<div id="page">
+  <div class="bloc"><div id="replie"><div id="dans-replie" style="height:200px">rogné</div></div></div>
+  <div class="esp"></div>
+  <div class="bloc">
+    <div id="panneau">
+      <div class="ligne"></div><div class="ligne"></div><div class="ligne"></div>
+      <div class="ligne"></div><div class="ligne"></div><div class="ligne"></div>
+      <div class="ligne" id="cible-panneau" style="background:#2C4433"></div>
+    </div>
+  </div>
+  <div class="esp"></div>
+  <div class="bloc" id="geant" style="height:1400px">plus haut que la zone de lecture</div>
+  <div class="esp"></div>
+  <div class="bloc" id="cible-bas" style="height:90px">cible tout en bas</div>
+  <div class="esp"></div>
+</div>
+<div id="bt-narr"></div>
+<script>
+
+// Les deux seules dependances du socle, fournies telles que le tutoriel
+// les definit : $ cherche dans la racine, animForcee lit le reglage.
+var racine = document;
+function $(id) { return racine.querySelector('#' + id); }
+function animForcee() { return false; }
+
+  function zoneDeLecture() {
+    var h = window.innerHeight || 800, w = window.innerWidth || 1200;
+    var haut = 64, bas = h;
+    var narr = $('bt-narr');
+    if (narr && !narr.classList.contains('hide') && !narr.classList.contains('efface')
+        && narr.getClientRects().length) {
+      var r = narr.getBoundingClientRect();
+      // ON GARDE LE PLUS GRAND DES DEUX COTES, PAS CELUI QU'ON DEVINE.
+      //
+      // Comparer r.top a la moitie de l'ecran se trompe des que le
+      // narrateur est haut : mesure au banc, fenetre de 311 px et
+      // narrateur de 152 px ancre EN BAS -- son haut tombe a 140, donc
+      // sous la moitie, donc il passait pour un narrateur du haut. La
+      // zone devenait inutilisable, le garde-fou la rendait a la
+      // fenetre entiere, et le narrateur pouvait couvrir la cible sans
+      // que rien ne le signale.
+      var dessus = r.top - haut, dessous = bas - r.bottom;
+      if (dessus >= dessous) bas = Math.max(haut, r.top - 12);
+      else haut = Math.min(bas, r.bottom + 12);
+    }
+    if (bas - haut < 120) { haut = 64; bas = h; }
+    return { haut: haut, bas: bas, gauche: 0, droite: w, hauteur: bas - haut, largeur: w };
+  }
+
+  function boiteRognee(el) {
+    if (!el || !el.getBoundingClientRect || !el.getClientRects().length) return null;
+    var r = el.getBoundingClientRect();
+    var haut = r.top, bas = r.bottom, g = r.left, d = r.right;
+    var n = el.parentNode, garde = 0;
+    while (n && n.nodeType === 1 && n !== document.body && garde++ < 16) {
+      var cs;
+      try { cs = getComputedStyle(n); } catch (e) { return null; }
+      if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return null;
+      if (/hidden|auto|scroll|clip/.test(cs.overflow + cs.overflowX + cs.overflowY)) {
+        var b = n.getBoundingClientRect();
+        haut = Math.max(haut, b.top); bas = Math.min(bas, b.bottom);
+        g = Math.max(g, b.left);      d = Math.min(d, b.right);
+      }
+      n = n.parentNode;
+    }
+    if (bas - haut < 1 || d - g < 1) return null;
+    return { top: haut, bottom: bas, left: g, right: d, width: d - g, height: bas - haut };
+  }
+
+  function partVisible(el) {
+    var r = el.getBoundingClientRect(), aire = r.width * r.height;
+    if (aire <= 0) return 0;
+    var c = boiteRognee(el); if (!c) return 0;
+    var z = zoneDeLecture();
+    var t = Math.max(c.top, z.haut), b = Math.min(c.bottom, z.bas);
+    var g = Math.max(c.left, z.gauche), d = Math.min(c.right, z.droite);
+    if (b <= t || d <= g) return 0;
+    return ((b - t) * (d - g)) / aire;
+  }
+
+  function assezVisible(el) {
+    var z = zoneDeLecture(), r = el.getBoundingClientRect();
+    if (r.height > z.hauteur * 0.92) {
+      var c = boiteRognee(el);
+      return !!c && c.top >= z.haut - 4 && c.top <= z.bas - 80;
+    }
+    return partVisible(el) >= 0.85;
+  }
+
+  function scrollersDe(el) {
+    var chaine = [], n = el.parentNode, garde = 0;
+    while (n && n.nodeType === 1 && n !== document.body && garde++ < 16) {
+      var cs;
+      try { cs = getComputedStyle(n); } catch (e) { break; }
+      if ((/auto|scroll/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 4) ||
+          (/auto|scroll/.test(cs.overflowX) && n.scrollWidth > n.clientWidth + 4)) chaine.push(n);
+      n = n.parentNode;
+    }
+    var doc = document.scrollingElement || document.documentElement;
+    if (doc && doc.scrollHeight > (window.innerHeight || 0) + 4) chaine.push(window);
+    return chaine;
+  }
+
+  function piloteDe(sc) {
+    var z = zoneDeLecture();
+    if (sc === window) {
+      var doc = document.scrollingElement || document.documentElement;
+      return {
+        litY: function () { return window.pageYOffset || doc.scrollTop || 0; },
+        litX: function () { return window.pageXOffset || doc.scrollLeft || 0; },
+        ecrit: function (x, y) { window.scrollTo(x, y); },
+        maxY: Math.max(0, doc.scrollHeight - (window.innerHeight || 0)),
+        maxX: Math.max(0, doc.scrollWidth - (window.innerWidth || 0)),
+        zone: { top: z.haut, bottom: z.bas, left: z.gauche, right: z.droite,
+                hauteur: z.hauteur, largeur: z.largeur }
+      };
+    }
+    var b = sc.getBoundingClientRect();
+    var top = Math.max(b.top, z.haut), bottom = Math.min(b.bottom, z.bas);
+    if (bottom - top < 80) { top = b.top; bottom = b.bottom; }
+    return {
+      litY: function () { return sc.scrollTop; },
+      litX: function () { return sc.scrollLeft; },
+      ecrit: function (x, y) { sc.scrollLeft = x; sc.scrollTop = y; },
+      maxY: Math.max(0, sc.scrollHeight - sc.clientHeight),
+      maxX: Math.max(0, sc.scrollWidth - sc.clientWidth),
+      zone: { top: top, bottom: bottom, left: b.left, right: b.right,
+              hauteur: bottom - top, largeur: b.width }
+    };
+  }
+
+  function amenerUn(sc, el, fini) {
+    var p = piloteDe(sc), re = el.getBoundingClientRect(), z = p.zone;
+    // Grand bloc : on aligne le haut. Petit bloc : on centre.
+    var viseY = (re.height > z.hauteur * 0.7)
+      ? p.litY() + (re.top - z.top) - 12
+      : p.litY() + (re.top - z.top) - (z.hauteur - re.height) / 2;
+    // L'horizontal ne bouge QUE si la cible en sort.
+    var viseX = p.litX();
+    if (re.left < z.left || re.right > z.right) {
+      viseX = (re.width > z.largeur * 0.7)
+        ? p.litX() + (re.left - z.left) - 12
+        : p.litX() + (re.left - z.left) - (z.largeur - re.width) / 2;
+    }
+    viseY = Math.max(0, Math.min(viseY, p.maxY));
+    viseX = Math.max(0, Math.min(viseX, p.maxX));
+    var y0 = p.litY(), x0 = p.litX(), dy = viseY - y0, dx = viseX - x0;
+    if (Math.abs(dy) < 3 && Math.abs(dx) < 3) { fini(); return; }
+    var doux = !window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!doux && !animForcee()) { p.ecrit(viseX, viseY); fini(); return; }
+    var duree = Math.max(320, Math.min(760, Math.max(Math.abs(dy), Math.abs(dx)) * 1.6));
+    var t0 = null;
+    function pas(ts) {
+      if (t0 === null) t0 = ts;
+      var q = Math.min(1, (ts - t0) / duree);
+      var k = q < 0.5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2;
+      p.ecrit(x0 + dx * k, y0 + dy * k);
+      if (q < 1) requestAnimationFrame(pas); else fini();
+    }
+    requestAnimationFrame(pas);
+  }
+
+  function cadrer(el, quandFini) {
+    if (!el) { quandFini(); return; }
+    if (assezVisible(el)) { quandFini(); return; }
+    var chaine = scrollersDe(el), i = 0;
+    (function suite() {
+      if (i >= chaine.length || assezVisible(el)) { quandFini(); return; }
+      amenerUn(chaine[i++], el, suite);
+    })();
+  }
+
+
+// ---- le banc -------------------------------------------------------
+var T = [], ok = 0;
+function essai(cas, attendu, obtenu) {
+  var bon = String(attendu) === String(obtenu);
+  if (bon) ok++;
+  T.push([cas, attendu, obtenu, bon]);
+}
+function attendre(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function cadrerP(el) { return new Promise(function (r) { cadrer(el, r); }); }
+
+(async function () {
+  var page = document.getElementById('page');
+
+  // CAS 1 — la cible est sous la ligne de flottaison DE LA PAGE.
+  // C'est ce que l'ancien code ne traitait pas : il cherchait un
+  // conteneur defilant et, faute d'en trouver, ne faisait rien.
+  window.scrollTo(0, 0); await attendre(150);
+  var bas = document.getElementById('cible-bas');
+  essai('1. cible en bas de page : invisible au depart', 0, Math.round(partVisible(bas) * 100) / 100);
+  essai('1. la FENETRE est trouvee comme conteneur', 'true',
+        String(scrollersDe(bas).indexOf(window) >= 0));
+  var avant1 = Math.round(window.pageYOffset);
+  await cadrerP(bas);
+  essai('1. la fenetre a defile', 'true', String(Math.round(window.pageYOffset) > avant1 + 50));
+  essai('1. la cible est devenue lisible', 'true', String(assezVisible(bas)));
+
+  // CAS 2 — deja lisible : on ne bouge pas.
+  var avant2 = Math.round(window.pageYOffset);
+  await cadrerP(bas);
+  essai('2. aucun defilement inutile', avant2, Math.round(window.pageYOffset));
+
+  // CAS 3 — un ancetre qui rogne : la boite existe, rien ne se voit.
+  var replie = document.getElementById('dans-replie');
+  essai('3. accordeon replie : hauteur annoncee', 200, Math.round(replie.getBoundingClientRect().height));
+  essai('3. mais la boite rognee est nulle', 'null', String(boiteRognee(replie)));
+  essai('3. donc part visible nulle', 0, partVisible(replie));
+
+  // CAS 4 — panneau defilant ET fenetre, les deux en meme temps.
+  window.scrollTo(0, 0);
+  var pan = document.getElementById('panneau'); pan.scrollTop = 0;
+  await attendre(150);
+  var dedans = document.getElementById('cible-panneau');
+  var chaine = scrollersDe(dedans);
+  essai('4. la chaine contient le panneau ET la fenetre', 'true',
+        String(chaine.length >= 2 && chaine[0] === pan && chaine[chaine.length - 1] === window));
+  await cadrerP(dedans);
+  essai('4. le panneau a defile', 'true', String(pan.scrollTop > 20));
+  essai('4. la page a defile', 'true', String(window.pageYOffset > 20));
+  essai('4. la cible est lisible', 'true', String(assezVisible(dedans)));
+
+  // CAS 5 — cible plus haute que la zone : haut aligne, pas de boucle.
+  window.scrollTo(0, 0); await attendre(150);
+  var geant = document.getElementById('geant');
+  await cadrerP(geant);
+  var z = zoneDeLecture(), rg = geant.getBoundingClientRect();
+  essai('5. haut aligne sur la zone de lecture', 'true',
+        String(rg.top >= z.haut - 8 && rg.top <= z.haut + 44));
+  var avant5 = Math.round(window.pageYOffset);
+  await cadrerP(geant);
+  essai('5. pas de recadrage en boucle', avant5, Math.round(window.pageYOffset));
+
+  // CAS 6 — le narrateur mange le cote ou il est, quel que soit
+  // l'endroit. On le dimensionne par rapport a la fenetre : un
+  // narrateur en dur ne tiendrait pas sur un petit ecran.
+  var narr = document.getElementById('bt-narr');
+  var h = window.innerHeight;
+  narr.style.height = Math.round(h * 0.18) + 'px';
+
+  var z0 = zoneDeLecture();
+  narr.style.top = 'auto'; narr.style.bottom = '12px';
+  narr.style.display = 'block';
+  var zBas = zoneDeLecture();
+  essai('6. narrateur EN BAS : la zone recule par le bas', 'true',
+        String(zBas.bas < z0.bas && zBas.haut === z0.haut));
+
+  narr.style.bottom = 'auto'; narr.style.top = '12px';
+  var zHaut = zoneDeLecture();
+  essai('6. narrateur EN HAUT : la zone recule par le haut', 'true',
+        String(zHaut.haut > z0.haut && zHaut.bas === z0.bas));
+
+  narr.style.display = 'none'; narr.style.top = 'auto'; narr.style.bottom = '20px';
+  essai('6. la zone reste utilisable dans les deux cas', 'true',
+        String(zBas.hauteur > 120 && zHaut.hauteur > 120));
+
+  // ---- rendu --------------------------------------------------------
+  document.querySelector('#res tbody').innerHTML = T.map(function (r) {
+    return '<tr><td>' + r[0] + '</td><td><code>' + r[1] + '</code></td><td><code>' + r[2] +
+      '</code></td><td class="' + (r[3] ? 'ok' : 'ko') + '">' + (r[3] ? 'OK' : 'ECHEC') + '</td></tr>';
+  }).join('');
+  document.getElementById('bilan').innerHTML = ok + ' / ' + T.length +
+    ' <span class="' + (ok === T.length ? 'ok' : 'ko') + '">' +
+    (ok === T.length ? '— tout passe' : '— il reste des echecs') + '</span>';
+  window.__bilan = { ok: ok, total: T.length,
+    echecs: T.filter(function (r) { return !r[3]; })
+             .map(function (r) { return r[0] + ' : attendu ' + r[1] + ', obtenu ' + r[2]; }) };
+})();
+
+</script></body></html>
