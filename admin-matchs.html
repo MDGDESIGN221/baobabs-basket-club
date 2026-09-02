@@ -334,8 +334,8 @@
 
   .dash-section-title{font-family:var(--font-ui);font-weight:700;font-size:16px;margin:28px 0 12px}
   .dash-quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
-  .dash-quick-btn{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:13px 14px;font-family:var(--font-ui);font-weight:600;font-size:13px;color:var(--text);text-align:left;transition:border-color .15s}
-  .dash-quick-btn:hover{border-color:rgba(198,162,87,.5)}
+  .dash-quick-btn{display:flex;align-items:center;gap:10px;background:transparent;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:12px 14px;font-family:var(--font-ui);font-weight:600;font-size:12.5px;color:var(--muted);text-align:left;transition:border-color .15s,color .15s}
+  .dash-quick-btn:hover{border-color:var(--gold);color:var(--gold)}
   .dash-quick-btn svg{width:17px;height:17px;color:var(--gold);flex:none}
 
   .live-strip{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--faint);font-family:var(--font-ui);letter-spacing:.02em;font-weight:600}
@@ -2012,12 +2012,12 @@
   .notif-row.urgent{border-left-color:#C0271B}
   .notif-row.important{border-left-color:#E08A5B}
   .notif-row.attention{border-left-color:var(--gold)}
-  .notif-row.info{border-left-color:#7CC1EC}
+  .notif-row.info{border-left-color:var(--line-loud)}
   .notif-row .att-niv{width:auto;min-width:64px;padding-top:2px}
-  .notif-row.urgent .att-niv{color:#E8837A}
-  .notif-row.important .att-niv{color:#E08A5B}
+  .notif-row.urgent .att-niv{color:var(--danger)}
+  .notif-row.important .att-niv{color:var(--warn)}
   .notif-row.attention .att-niv{color:var(--gold)}
-  .notif-row.info .att-niv{color:#7CC1EC}
+  .notif-row.info .att-niv{color:var(--faint)}
   .notif-vide{padding:22px 16px;text-align:center;font-size:13.5px;color:var(--faint)}
   @media(max-width:600px){#notif-pop{position:fixed;top:64px;right:8px;left:8px;width:auto}}
 
@@ -2057,9 +2057,14 @@
   .db{display:grid;gap:var(--s5)}
 
   /* --- L'affiche. Plein cadre, comme une affiche de match placardée --- */
-  .db-hero{position:relative;overflow:hidden;border-radius:var(--r-lg);min-height:320px;
-    background:linear-gradient(148deg,#12452F 0%,#0B2A1C 52%,#071711 100%);
-    border:1px solid var(--gold-edge);isolation:isolate}
+  /* Le degrade a trois arrets etait le dernier de l'admin, et un cadre
+     dore tout autour disait « regardez-moi » a un bloc qui occupe deja
+     le tiers de l'ecran. Un vert unique, et le meme filet dore en tete
+     que porte une fiche : l'affiche appartient au meme systeme que le
+     reste, elle est seulement plus grande. */
+  .db-hero{position:relative;overflow:hidden;border-radius:0;min-height:0;
+    background:var(--court-deep);border:none;border-top:2px solid var(--gold);
+    isolation:isolate}
   /* Le numéro de journée en filigrane géant : il donne l'échelle et
      remplit le vide à droite sans ajouter d'information à lire. */
   /* La photo deborde du bloc et se fond dans le vert : elle donne la
@@ -2079,7 +2084,9 @@
 
   .db-kick{display:flex;align-items:center;gap:9px;font-family:var(--font-ui);font-weight:700;
     font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright)}
-  .db-kick i{width:6px;height:6px;border-radius:50%;background:var(--lime);flex:none}
+  /* Le point vert citron etait le seul de l'ecran : un carre dore,
+     comme le marqueur de statut des dossiers. */
+  .db-kick i{width:6px;height:6px;background:var(--gold);flex:none}
 
   /* L'affiche proprement dite : deux écussons face à face. On reconnaît
      un club à son écusson bien avant d'en lire le nom. */
@@ -2102,50 +2109,72 @@
 
   /* Le compte à rebours : trois cases, chiffres en chasse fixe. Un
      nombre qui bouge se lit d'un coup d'œil, une phrase se déchiffre. */
-  .db-cd{display:flex;gap:8px;margin-top:20px}
-  .db-cd div{min-width:66px;text-align:center;background:rgba(4,12,8,.55);
-    border:1px solid var(--line-strong);border-radius:var(--r-md);padding:10px 12px}
-  .db-cd b{display:block;font-family:var(--font-ui);font-weight:800;font-size:26px;line-height:1;
-    color:var(--gold-lit);font-variant-numeric:tabular-nums}
-  .db-cd span{display:block;font-size:9px;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--faint);margin-top:6px}
+  /* Trois cases encadrees faisaient trois petites cartes de plus dans
+     un bloc qui en portait deja. Un releve : des filets entre les
+     nombres, rien autour. Le libelle passe au-dessus, comme partout
+     ailleurs — on lit la ligne, pas chaque case. */
+  .db-cd{display:flex;margin-top:22px;border-top:1px solid rgba(243,239,230,.16);
+    border-bottom:1px solid rgba(243,239,230,.16);width:fit-content;max-width:100%}
+  /* En colonne : sans cela, `order` sur les enfants n'a aucun effet et
+     le libelle restait sous le nombre. */
+  .db-cd div{display:flex;flex-direction:column;min-width:74px;padding:11px 18px 12px;
+    border-right:1px solid rgba(243,239,230,.10)}
+  .db-cd div:last-child{border-right:none}
+  .db-cd b{display:block;font-family:var(--font-ui);font-weight:800;font-size:26px;line-height:.95;
+    color:var(--text);font-variant-numeric:tabular-nums;order:2}
+  .db-cd span{display:block;font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--faint);margin-bottom:8px;order:1}
 
   .db-cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
 
   /* Le panneau de droite : la billetterie du match, seule information
      qui mérite d'être là — c'est la seule qui rapporte de l'argent et
      la seule qu'on peut encore changer avant le coup d'envoi. */
-  .db-tick{background:rgba(4,12,8,.72);backdrop-filter:blur(6px);border:1px solid var(--line-strong);
-    border-radius:var(--r-lg);padding:20px 22px;min-width:230px}
+  /* Le flou d'arriere-plan (backdrop-filter) est une mode datee et il
+     coute cher a peindre : un aplat sombre franc separe aussi bien. */
+  .db-tick{background:rgba(4,12,8,.78);border:1px solid var(--line-strong);
+    border-radius:var(--r-sm);padding:20px 22px;min-width:230px}
   .db-tick-h{font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.16em;
     text-transform:uppercase;color:var(--faint);margin-bottom:14px}
   .db-tick-n{font-family:var(--font-ui);font-weight:800;font-size:38px;line-height:1;
     color:var(--text);font-variant-numeric:tabular-nums}
   .db-tick-n em{font-style:normal;font-size:15px;color:var(--faint);font-weight:600}
-  .db-gauge{height:6px;border-radius:99px;background:rgba(243,239,230,.09);overflow:hidden;margin:14px 0 8px}
-  .db-gauge i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--lime))}
+  /* Une jauge en degrade or -> vert citron laisse croire que la couleur
+     porte un sens (bon / mauvais) alors qu'elle ne dit que « rempli ».
+     Un aplat dore, une barre, pas de pilule. */
+  .db-gauge{height:4px;border-radius:0;background:rgba(243,239,230,.10);overflow:hidden;margin:14px 0 8px}
+  .db-gauge i{display:block;height:100%;background:var(--gold)}
   .db-tick-s{font-size:12px;color:var(--muted)}
 
   /* --- La colonne de travail : ce qui attend, puis les compteurs --- */
   .db-two{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:var(--s5);align-items:start}
   @media(max-width:1040px){.db-two{grid-template-columns:1fr}}
 
-  .db-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
-  .db-h h2{font-family:var(--font-ui);font-weight:700;font-size:17px;margin:0;letter-spacing:-.01em}
-  .db-h span{font-size:12.5px;color:var(--faint)}
+  /* Le meme dispositif que l'en-tete d'une section de dossier : un titre
+     et un filet dessous. L'echelle change, pas la grammaire. */
+  .db-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line-strong)}
+  .db-h h2{font-family:var(--font-ui);font-weight:800;font-size:15px;margin:0;letter-spacing:-.015em}
+  .db-h span{font-size:11.5px;color:var(--faint)}
 
   /* Les compteurs deviennent une liste dense plutôt que six cartes qui
      se disputent l'attention. Un compteur n'est pas une destination :
      c'est une ligne qu'on lit et sur laquelle on clique parfois. */
-  .db-nums{display:flex;flex-direction:column;background:var(--surface);
-    border:1px solid var(--line-strong);border-radius:var(--r-lg);overflow:hidden}
+  /* La carte autour de six lignes deja separees par des filets faisait
+     un cadre de plus pour rien. Un filet en tete et en pied suffit. */
+  .db-nums{display:flex;flex-direction:column;background:transparent;
+    border:none;border-bottom:1px solid var(--line-strong);border-radius:0}
+  .db-num:first-child{border-top:1px solid var(--line)}
   .db-num{display:flex;align-items:center;gap:14px;padding:13px 16px;background:none;border:none;
     border-bottom:1px solid var(--line);cursor:pointer;font:inherit;color:var(--text);text-align:left;
     transition:background .15s}
   .db-num:last-child{border-bottom:none}
   .db-num:hover{background:var(--surface-2)}
-  .db-num-i{width:30px;height:30px;border-radius:var(--r-sm);display:grid;place-items:center;flex:none;
-    background:var(--gold-soft);color:var(--gold)}
+  /* La pastille doree derriere chaque icone repetait six fois la meme
+     couleur sur six lignes : l'icone seule suffit a nommer la ligne. */
+  .db-num-i{width:22px;height:22px;display:grid;place-items:center;flex:none;
+    background:transparent;color:var(--faint)}
+  .db-num:hover .db-num-i{color:var(--gold)}
   .db-num-i svg{width:15px;height:15px}
   .db-num b{font-family:var(--font-ui);font-weight:800;font-size:20px;min-width:2.2ch;
     font-variant-numeric:tabular-nums;flex:none}
@@ -2159,6 +2188,11 @@
      heritait flex:1 et s'etirait. On qualifie, on ne surenchtrit pas
      avec !important. */
   .db-cta .btn{width:auto;min-width:0}
+  /* Le bouton principal perd son degrade et son halo : sur un fond vert
+     sombre, un aplat dore franc se detache mieux qu'une lueur. */
+  .db-cta .btn-primary{background:var(--gold);box-shadow:none}
+  .db-cta .btn-primary:hover{background:var(--gold-bright);transform:none}
+  .db-cta .btn{border-radius:var(--r-sm)}
   .db-num .db-num-i{flex:0 0 30px;width:30px}
   .db-num .chev{flex:none}
   .db-num .db-num-lab{flex:1;font-size:13.5px;color:var(--muted)}
@@ -2170,28 +2204,36 @@
   .att-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
   .att-title{font-family:var(--font-ui);font-size:17px;font-weight:700;color:var(--text);margin:0}
   .att-sub{font-size:12.5px;color:var(--faint)}
+  /* Trois alertes de suite, chacune de sa couleur, faisaient une echelle
+     arc-en-ciel ou l'oeil ne savait plus laquelle etait la plus grave.
+     Le cadre a 11px de rayon disparait au profit d'un filet ; ne reste
+     que le lisere de gauche, qui garde son role : c'est lui qui dit le
+     niveau. Et « information » n'est pas un signal, c'est du contexte :
+     il repasse en gris. Restent trois teintes, dans l'ordre — rouge,
+     ambre, or. */
   .att-row{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
-    background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--line-strong);
-    border-radius:11px;padding:13px 16px;margin-bottom:8px;cursor:pointer;font:inherit;color:var(--text);
-    transition:border-color .15s,background .15s}
-  .att-row:hover{background:var(--surface);border-color:var(--line-strong)}
-  .att-row.urgent{border-left-color:#C0271B}
-  .att-row.important{border-left-color:#E08A5B}
+    background:transparent;border:none;border-bottom:1px solid var(--line);
+    border-left:2px solid var(--line-strong);border-radius:0;padding:13px 16px;
+    margin-bottom:0;cursor:pointer;font:inherit;color:var(--text);transition:background .15s}
+  .att-row:hover{background:var(--surface)}
+  .att-row.urgent{border-left-color:var(--danger)}
+  .att-row.important{border-left-color:var(--warn)}
   .att-row.attention{border-left-color:var(--gold)}
-  .att-row.info{border-left-color:#7CC1EC}
-  .att-niv{font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;
-    flex:none;width:76px}
-  .att-row.urgent .att-niv{color:#E8837A}
-  .att-row.important .att-niv{color:#E08A5B}
+  .att-row.info{border-left-color:var(--line-loud)}
+  .att-niv{font-family:var(--font-ui);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+    font-weight:700;flex:none;width:76px;color:var(--faint)}
+  .att-row.urgent .att-niv{color:var(--danger)}
+  .att-row.important .att-niv{color:var(--warn)}
   .att-row.attention .att-niv{color:var(--gold)}
-  .att-row.info .att-niv{color:#7CC1EC}
+  .att-row.info .att-niv{color:var(--faint)}
   .att-txt{flex:1;min-width:0}
   .att-txt b{display:block;font-size:14px;font-weight:600;line-height:1.35}
   .att-txt span{display:block;font-size:12.5px;color:var(--faint);margin-top:2px}
   .att-go{flex:none;color:var(--faint);font-size:18px;line-height:1}
   .att-row:hover .att-go{color:var(--gold)}
-  .att-vide{display:flex;align-items:center;gap:12px;background:rgba(28,122,58,.09);
-    border:1px solid rgba(28,122,58,.28);border-radius:11px;padding:16px 18px;font-size:14px;color:var(--text)}
+  .att-vide{display:flex;align-items:center;gap:12px;background:transparent;
+    border:none;border-left:2px solid rgba(147,206,67,.45);border-radius:0;
+    padding:14px 0 14px 16px;font-size:14px;color:var(--text)}
   .att-vide b{color:var(--lime,#A8D93B)}
   .att-vide.att-attente{background:var(--surface-2);border-color:var(--line);color:var(--faint)}
 
