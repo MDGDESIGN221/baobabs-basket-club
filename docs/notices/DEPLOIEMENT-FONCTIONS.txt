@@ -37,6 +37,11 @@ LE PIÈGE, ET IL EXPLIQUE TOUT
   generate-text            INVALID_CREDENTIALS               aide rédaction
   send-order-confirmation  invalid_webhook_secret            commandes
   confirmation-reservation 404                               ABSENTE
+  depot-piece              404                               ABSENTE
+
+  Remesuré le 2 septembre 2026 : rien n'a bougé, et depot-piece s'ajoute
+  à la liste des absentes. Elle, c'est plus grave que les autres — voir
+  le point 4 ci-dessous.
 
   L'admin appelle désormais les slugs réels : voir la table FN en tête
   du script de admin-matchs.html.
@@ -59,6 +64,61 @@ CE QUI RESTE À FAIRE
      n'envoie rien : BREVO_API_KEY, BBC_SENDER_EMAIL, et si l'on veut
      BBC_SENDER_NAME. Supabase → Edge Functions → Secrets.
      Ne les mettez jamais dans un fichier du dépôt.
+
+  4. DEPOT-PIECE EST APPELÉE PAR LE SITE ET N'EXISTE PAS. C'est la
+     fonction qui reçoit les papiers que la famille photographie depuis
+     « Suivre mon inscription ». index.html l'appelle en dur ; elle
+     répond 404. La page encaisse proprement — « L'envoi n'a pas abouti
+     — réessayez, ou apportez la pièce au club » — mais l'envoi
+     n'aboutira jamais. Et le tutoriel promet la fonctionnalité :
+     « Les pièces peuvent arriver toutes seules. »
+     Le code est prêt dans supabase/functions/depot-piece/.
+
+  5. RIEN NE DÉCLENCHE L'ALERTE D'INSCRIPTION. La fonction est déployée
+     et vivante (hyper-processor), mais personne ne l'appelle : ni la
+     base, ni le site, ni l'admin. Une inscription attend donc qu'on
+     pense à ouvrir l'admin — alors que la page promet un rappel sous
+     48 h. Voir la section suivante.
+
+
+QUE LES INSCRIPTIONS ARRIVENT DANS LA BOÎTE DU CLUB
+  Tout est écrit et déployé. Il manque UNIQUEMENT le déclencheur : un
+  webhook de base de données. Trois minutes, aucun code.
+
+  1. LE SECRET DE DESTINATION
+     Supabase → Edge Functions → Secrets → Add new secret
+       Nom   : BBC_ALERT_EMAIL
+       Valeur: l'adresse du club. Plusieurs adresses possibles,
+               séparées par des virgules.
+     Sans lui, l'alerte part sur BBC_SENDER_EMAIL — ce qui marche
+     aussi, mais mélange l'expéditeur et le destinataire.
+
+  2. LE WEBHOOK
+     Supabase → Database → Webhooks → Create a new hook
+       Name       : alerte-inscription
+       Table      : academy_registrations
+       Events     : Insert  (Update et Delete décochés)
+       Type       : Supabase Edge Functions
+       Edge Function : celle dont le slug est hyper-processor
+       Method     : POST
+     Laissez les en-têtes par défaut : Supabase y met sa clé de
+     service, et c'est ce que la fonction attend.
+
+  3. L'ESSAI
+     Déposez une inscription depuis le site avec un nom d'essai. Elle
+     doit arriver par e-mail en quelques secondes, avec la référence et
+     le téléphone dans l'objet. Puis supprimez le dossier d'essai dans
+     l'admin.
+     Si rien n'arrive : Database → Webhooks → la colonne des envois
+     récents dit le code de réponse. Un 500 « BREVO_API_KEY manquant »
+     veut dire que le point 1 des secrets n'est pas fait.
+
+  POURQUOI UN WEBHOOK ET PAS UN APPEL DEPUIS LE SITE
+  La fonction relit la ligne dans la base à partir du seul identifiant :
+  ce qui part par e-mail vient toujours de la base, jamais du corps de
+  la requête. Appelée depuis le site, elle resterait sûre — mais
+  n'importe qui pourrait faire renvoyer l'alerte en boucle. Le webhook
+  part du serveur : personne d'autre ne peut le déclencher.
 
 
 DÉPLOYER AVEC UN SLUG LISIBLE — LA LIGNE DE COMMANDE
