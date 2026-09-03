@@ -36,23 +36,33 @@ LE PIÈGE, ET IL EXPLIQUE TOUT
   swift-api                « identifiant d'inscription… »    alerte, DOUBLON
   generate-text            INVALID_CREDENTIALS               aide rédaction
   send-order-confirmation  invalid_webhook_secret            commandes
-  confirmation-reservation 404                               ABSENTE
-  depot-piece              404                               ABSENTE
+  confirmation-reservation « reservation_id manquant »        DÉPLOYÉE
+  depot-piece              « reference_ou_telephone_manquant » DÉPLOYÉE
 
-  Remesuré le 2 septembre 2026 : rien n'a bougé, et depot-piece s'ajoute
-  à la liste des absentes. Elle, c'est plus grave que les autres — voir
-  le point 4 ci-dessous.
+  Remesuré le 3 septembre 2026, APRÈS déploiement en ligne de commande :
+  les deux qui manquaient répondent. Et depot-piece répond 400, pas 401 :
+  la requête a atteint le code de la fonction, donc verify_jwt = false a
+  bien été pris en compte — c'est ce qui permet à une famille non
+  connectée de déposer une pièce.
+
+  Le côté SQL suit : bbc_piece_deposer existe. Comment on l'établit sans
+  rien écrire — un POST au corps vide sur /rest/v1/rpc/<nom>, avec DEUX
+  témoins. Un nom inventé reçoit un indice « Perhaps you meant… » ; un
+  nom qui existe avec une autre signature n'en reçoit aucun.
+  bbc_piece_deposer se comporte comme bbc_inscription, dont on sait
+  qu'elle existe. Sans les deux témoins, la réponse ne prouve rien : les
+  trois renvoient le même 404 PGRST202.
 
   L'admin appelle désormais les slugs réels : voir la table FN en tête
   du script de admin-matchs.html.
 
 
 CE QUI RESTE À FAIRE
-  1. CONFIRMATION-RESERVATION N'EXISTE NULLE PART. C'est l'e-mail envoyé
-     au supporter quand il réserve un billet. Le site l'appelle et
-     n'obtient rien — la réservation est bien enregistrée et la référence
-     s'affiche, seul l'e-mail manque. Le code est prêt dans
-     supabase/functions/confirmation-reservation/.
+  1. FAIT le 3 septembre : confirmation-reservation et depot-piece sont
+     déployées. Reste à vérifier qu'elles ENVOIENT — une fonction
+     déployée sans les secrets Brevo répond mais n'envoie rien. Le seul
+     essai qui tranche : une vraie réservation, et un vrai dépôt de
+     pièce depuis « Suivre mon inscription ».
 
   2. SWIFT-API ET HYPER-PROCESSOR SONT LA MÊME FONCTION, déployée deux
      fois (à quinze jours et trois jours). La plus ancienne peut être
@@ -65,20 +75,19 @@ CE QUI RESTE À FAIRE
      BBC_SENDER_NAME. Supabase → Edge Functions → Secrets.
      Ne les mettez jamais dans un fichier du dépôt.
 
-  4. DEPOT-PIECE EST APPELÉE PAR LE SITE ET N'EXISTE PAS. C'est la
-     fonction qui reçoit les papiers que la famille photographie depuis
-     « Suivre mon inscription ». index.html l'appelle en dur ; elle
-     répond 404. La page encaisse proprement — « L'envoi n'a pas abouti
-     — réessayez, ou apportez la pièce au club » — mais l'envoi
-     n'aboutira jamais. Et le tutoriel promet la fonctionnalité :
-     « Les pièces peuvent arriver toutes seules. »
-     Le code est prêt dans supabase/functions/depot-piece/.
-
-  5. RIEN NE DÉCLENCHE L'ALERTE D'INSCRIPTION. La fonction est déployée
+  4. RIEN NE DÉCLENCHE L'ALERTE D'INSCRIPTION. La fonction est déployée
      et vivante (hyper-processor), mais personne ne l'appelle : ni la
      base, ni le site, ni l'admin. Une inscription attend donc qu'on
      pense à ouvrir l'admin — alors que la page promet un rappel sous
      48 h. Voir la section suivante.
+
+  5. LE MÉNAGE DANS L'AUTRE PROJET. Le 2 septembre, un « deploy » sans
+     --project-ref a envoyé les cinq fonctions dans mdg-creative-studio
+     (ref fasdabfisaswvphgbhbn). Elles n'y font rien — les tables
+     qu'elles cherchent n'y existent pas — mais elles encombrent :
+         npx supabase functions delete <nom> --project-ref fasdabfisaswvphgbhbn
+     pour aide-redaction, alerte-inscription, confirmation-reservation,
+     depot-piece et envoi-newsletter.
 
 
 QUE LES INSCRIPTIONS ARRIVENT DANS LA BOÎTE DU CLUB
