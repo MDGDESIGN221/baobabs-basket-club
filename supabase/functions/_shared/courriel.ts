@@ -18,10 +18,20 @@
 //                        un domaine VÉRIFIÉ dans Resend, sinon l'envoi
 //                        est refusé. C'est la seule chose à ajouter.
 //    BBC_SENDER_NAME   — facultatif, « Baobabs Basket Club » par défaut
+//    BBC_REPLY_TO      — facultatif, voir REPONDRE_A_PAR_DEFAUT ci-dessous
 //
 //  CE QUI CHANGE ENTRE LES DEUX FOURNISSEURS, et c'est tout :
 //    Brevo   sender:{email,name}   to:[{email}]   htmlContent
 //    Resend  from:"Nom <adresse>"  to:["adresse"] html
+//
+//  L'ADRESSE D'ENVOI N'EST PAS FORCÉMENT UNE BOÎTE QU'ON LIT.
+//  Resend exige un domaine vérifié pour le champ « from » — une adresse
+//  du genre club@baobabsbasketclub.com convient très bien, même si
+//  personne n'ouvre cette boîte. Mais confirmation-reservation promet au
+//  client « Répondez simplement à cet e-mail », et la newsletter invite
+//  à répondre STOP pour se désinscrire : une réponse à une adresse que
+//  personne ne lit part dans le vide. D'où repondreA() plus bas, posée
+//  sur TOUT envoi par défaut, sans réglage à ajouter dans Supabase.
 // =====================================================================
 
 export interface Courriel {
@@ -57,12 +67,24 @@ export function destinataire(email: string, nom?: string | null): string {
   return nom && nom.trim() ? `${nom.trim()} <${email}>` : email;
 }
 
+// LA BOÎTE OÙ ATTERRIT UNE RÉPONSE, PAR DÉFAUT.
+// C'est l'adresse déjà connue du reste de l'admin — voir AUDIT_NAMES
+// dans admin-matchs.html, où 'baobabsbasketclub@gmail.com' est déjà
+// identifiée comme « Le gérant ». Rien de secret ici : c'est une adresse
+// de contact publique, pas une clé. BBC_REPLY_TO permet de la remplacer
+// sans toucher au code, si le club change un jour de boîte de réception.
+const REPONDRE_A_PAR_DEFAUT = "baobabsbasketclub@gmail.com";
+function repondreA(): string {
+  return Deno.env.get("BBC_REPLY_TO") || REPONDRE_A_PAR_DEFAUT;
+}
+
 function corps(m: Courriel) {
   const o: Record<string, unknown> = {
     from: expediteur(),
     to: m.to,
     subject: m.subject,
     html: m.html,
+    reply_to: repondreA(),
   };
   if (m.text) o.text = m.text;
   return o;
