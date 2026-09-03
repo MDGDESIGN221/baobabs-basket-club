@@ -12,19 +12,23 @@ POURQUOI CETTE MÉCANIQUE
   aboutissent normalement, simplement sans e-mail.
 
 
-ÉTAPE 1 — CRÉER LE COMPTE D'ENVOI (Brevo, gratuit)
-  1. brevo.com → créez un compte (300 e-mails/jour gratuits, largement
-     assez ; pas besoin de toucher au DNS du domaine).
-  2. Réglages → Expéditeurs → ajoutez l'adresse qui signera les e-mails
-     (ex. billetterie@baobabsbasketclub.com ou le Gmail du club) et
-     validez-la via le lien reçu.
-  3. Réglages → Clés API (SMTP & API) → créez une clé, copiez-la.
+ÉTAPE 1 — LE COMPTE D'ENVOI (Resend, déjà en place)
+  Constaté le 3 septembre 2026 dans les secrets du projet : RESEND_API_KEY
+  existe déjà — c'est la même clé que pour toutes les autres fonctions du
+  club, il n'y a rien à recréer.
+  1. resend.com → Domains → vérifiez qu'un domaine y est validé (les
+     enregistrements DNS confirmés en vert).
+  2. Choisissez l'adresse d'envoi sur ce domaine — celle qui signera les
+     e-mails (ex. billetterie@baobabsbasketclub.com).
 
-ÉTAPE 2 — DONNER LA CLÉ À SUPABASE
+  RESEND REFUSE D'ENVOYER DEPUIS UN DOMAINE NON VÉRIFIÉ : c'est le seul
+  point qui peut bloquer tout le reste, même avec une clé API valide.
+
+ÉTAPE 2 — DONNER L'ADRESSE À SUPABASE
   Supabase → Edge Functions → Secrets → ajoutez :
-    BREVO_API_KEY     = la clé copiée
-    BBC_SENDER_EMAIL  = l'adresse validée à l'étape 1
+    BBC_SENDER_EMAIL  = l'adresse choisie à l'étape 1
     BBC_SENDER_NAME   = Baobabs Basket Club        (facultatif)
+  RESEND_API_KEY est déjà présente, ne la retouchez pas.
 
 ÉTAPE 3 — INSTALLER LA FONCTION
   Supabase → Edge Functions → Deploy a new function

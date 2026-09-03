@@ -60,7 +60,7 @@ LE PIÈGE, ET IL EXPLIQUE TOUT
 CE QUI RESTE À FAIRE
   1. FAIT le 3 septembre : confirmation-reservation et depot-piece sont
      déployées. Reste à vérifier qu'elles ENVOIENT — une fonction
-     déployée sans les secrets Brevo répond mais n'envoie rien. Le seul
+     déployée sans son secret d'envoi répond mais n'envoie rien. Le seul
      essai qui tranche : une vraie réservation, et un vrai dépôt de
      pièce depuis « Suivre mon inscription ».
 
@@ -70,10 +70,19 @@ CE QUI RESTE À FAIRE
      ne l'appelle encore, sinon les alertes d'inscription cesseraient
      sans un mot.
 
-  3. LES SECRETS BREVO, sans lesquels une fonction déployée répond mais
-     n'envoie rien : BREVO_API_KEY, BBC_SENDER_EMAIL, et si l'on veut
-     BBC_SENDER_NAME. Supabase → Edge Functions → Secrets.
-     Ne les mettez jamais dans un fichier du dépôt.
+  3. LE PROJET ENVOIE PAR RESEND, PAS PAR BREVO. Constaté le 3 septembre
+     2026 sur les secrets du projet : il y a RESEND_API_KEY et
+     WEBHOOK_SECRET, et aucune trace de Brevo. Or les trois fonctions
+     e-mail avaient été écrites pour Brevo — déployées, elles
+     répondaient 500 sans rien envoyer. Elles sont portées sur Resend
+     depuis, via supabase/functions/_shared/courriel.ts : changer de
+     fournisseur se fait désormais à un seul endroit.
+
+     IL RESTE UN SECRET À AJOUTER : BBC_SENDER_EMAIL, l'adresse
+     d'expéditeur. Resend REFUSE d'envoyer depuis un domaine qui n'est
+     pas vérifié chez lui — c'est le seul point qui peut encore bloquer
+     tout le reste. Supabase → Edge Functions → Secrets.
+     Ne mettez jamais ces valeurs dans un fichier du dépôt.
 
   4. RIEN NE DÉCLENCHE L'ALERTE D'INSCRIPTION. La fonction est déployée
      et vivante (hyper-processor), mais personne ne l'appelle : ni la
@@ -94,13 +103,20 @@ QUE LES INSCRIPTIONS ARRIVENT DANS LA BOÎTE DU CLUB
   Tout est écrit et déployé. Il manque UNIQUEMENT le déclencheur : un
   webhook de base de données. Trois minutes, aucun code.
 
-  1. LE SECRET DE DESTINATION
+  1. LES DEUX SECRETS
      Supabase → Edge Functions → Secrets → Add new secret
-       Nom   : BBC_ALERT_EMAIL
-       Valeur: l'adresse du club. Plusieurs adresses possibles,
-               séparées par des virgules.
-     Sans lui, l'alerte part sur BBC_SENDER_EMAIL — ce qui marche
-     aussi, mais mélange l'expéditeur et le destinataire.
+
+       BBC_SENDER_EMAIL  l'adresse D'EXPÉDITEUR. Elle doit être sur un
+                         domaine vérifié dans Resend, sinon tout est
+                         refusé. C'est le secret indispensable.
+
+       BBC_ALERT_EMAIL   l'adresse qui REÇOIT l'alerte. Plusieurs
+                         possibles, séparées par des virgules. Sans
+                         elle, l'alerte part sur BBC_SENDER_EMAIL — ce
+                         qui marche, mais mélange l'expéditeur et le
+                         destinataire.
+
+     RESEND_API_KEY est déjà là : c'est celle de l'e-mail de commande.
 
   2. LE WEBHOOK
      Supabase → Database → Webhooks → Create a new hook
@@ -119,8 +135,10 @@ QUE LES INSCRIPTIONS ARRIVENT DANS LA BOÎTE DU CLUB
      le téléphone dans l'objet. Puis supprimez le dossier d'essai dans
      l'admin.
      Si rien n'arrive : Database → Webhooks → la colonne des envois
-     récents dit le code de réponse. Un 500 « BREVO_API_KEY manquant »
-     veut dire que le point 1 des secrets n'est pas fait.
+     récents dit le code de réponse. Un 500 « BBC_SENDER_EMAIL manquant »
+     veut dire que le point 1 des secrets n'est pas fait. Un refus de
+     Resend en 403 veut dire que le domaine de l'expéditeur n'est pas
+     vérifié chez eux.
 
   POURQUOI UN WEBHOOK ET PAS UN APPEL DEPUIS LE SITE
   La fonction relit la ligne dans la base à partir du seul identifiant :
@@ -190,5 +208,9 @@ ENSUITE
        recevez, avec [TEST] devant le sujet.
     3. Quand c'est bon : « Envoyer à tous ».
 
-  Brevo en offre gratuite = 300 e-mails par jour. Au-delà de 300
-  inscrits, l'envoi doit être étalé ou le compte passé en offre payante.
+  Resend en offre gratuite = 100 e-mails par jour, 3 000 par mois. Pour
+  les alertes d'inscription et les confirmations de billet, c'est très
+  large. Pour la newsletter, c'est la limite à surveiller : au-delà de
+  100 inscrits, l'envoi doit être étalé sur plusieurs jours ou le compte
+  passé en offre payante. L'écran Newsletter dit combien d'inscrits il y
+  a avant d'envoyer.

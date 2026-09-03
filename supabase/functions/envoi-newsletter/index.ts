@@ -5,9 +5,10 @@
 //    Nom EXACT : envoi-newsletter
 //    Collez tout ce fichier, puis Deploy.
 //
-//  SECRETS : les mêmes que l'e-mail de confirmation (déjà en place si
-//  vous avez suivi NOTICE-EMAIL.txt) :
-//    BREVO_API_KEY, BBC_SENDER_EMAIL, BBC_SENDER_NAME (facultatif)
+//  SECRETS : les mêmes que les autres envois du club —
+//    RESEND_API_KEY (existe déjà), BBC_SENDER_EMAIL,
+//    BBC_SENDER_NAME (facultatif). L'envoi vit dans
+//    ../_shared/courriel.ts.
 //
 //  SÉCURITÉ : seul un compte administrateur (table admin_users) peut
 //  déclencher un envoi — la fonction vérifie le jeton de session de
@@ -15,6 +16,7 @@
 //  entre eux : un message par personne, pas de liste apparente.
 // =====================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { envoyer, envoyerLot, destinataire, LOT_MAX, CourrielNonConfigure } from "../_shared/courriel.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -62,27 +64,20 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await caller.rpc("is_admin");
     if (!isAdmin) return reply(403, { error: "réservé aux administrateurs" });
 
-    const key = Deno.env.get("BREVO_API_KEY");
-    const senderEmail = Deno.env.get("BBC_SENDER_EMAIL");
-    const senderName = Deno.env.get("BBC_SENDER_NAME") || "Baobabs Basket Club";
-    if (!key || !senderEmail) return reply(500, { error: "BREVO_API_KEY ou BBC_SENDER_EMAIL non configuré" });
+    // La configuration de l'envoi est vérifiée par _shared/courriel.ts,
+    // qui lève CourrielNonConfigure — attrapé plus bas.
 
     const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const html = buildHtml(String(subject), String(body));
 
     // --- Mode test : un seul destinataire, rien n'est journalisé ---
     if (test_email) {
-      const r = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: { "api-key": key, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sender: { email: senderEmail, name: senderName },
-          to: [{ email: String(test_email) }],
-          subject: `[TEST] ${subject}`,
-          htmlContent: html,
-        }),
+      const t = await envoyer({
+        to: [String(test_email)],
+        subject: `[TEST] ${subject}`,
+        html,
       });
-      if (!r.ok) return reply(502, { error: "l'envoi du test a échoué", detail: await r.text() });
+      if (!t.ok) return reply(502, { error: "l'envoi du test a échoué", detail: t.detail });
       return reply(200, { test: true, to: test_email });
     }
 
@@ -104,21 +99,24 @@ Deno.serve(async (req) => {
     const list = (subs || []).filter((s) => s.email && /@/.test(s.email));
     if (!list.length) return reply(200, { sent: 0, failed: 0, note: "aucun inscrit" });
 
-    // --- Envoi par paquets : une version par personne, jamais de liste visible ---
+    // --- Envoi par paquets : UN MESSAGE PAR PERSONNE, jamais de liste
+    // visible. Brevo le faisait avec messageVersions et acceptait mille
+    // versions par appel ; Resend prend un objet complet par
+    // destinataire, cent au maximum. Le paquet passe donc de 400 à 100 —
+    // c'est la seule chose que le changement de fournisseur impose ici.
+    //
+    // Le prénom de l'abonné part avec l'adresse (destinataire()), comme
+    // avec Brevo : sans lui, le message arrive adressé à une adresse nue
+    // dans le client de messagerie plutôt qu'à une personne.
     let sent = 0, failed = 0;
-    for (let i = 0; i < list.length; i += 400) {
-      const batch = list.slice(i, i + 400);
-      const r = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: { "api-key": key, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sender: { email: senderEmail, name: senderName },
-          subject: String(subject),
-          htmlContent: html,
-          messageVersions: batch.map((s) => ({ to: [{ email: s.email, name: s.name || undefined }] })),
-        }),
-      });
-      if (r.ok) sent += batch.length; else failed += batch.length;
+    for (let i = 0; i < list.length; i += LOT_MAX) {
+      const batch = list.slice(i, i + LOT_MAX);
+      const env = await envoyerLot(batch.map((s) => ({
+        to: [destinataire(s.email as string, s.name as string | undefined)],
+        subject: String(subject),
+        html,
+      })));
+      if (env.ok) sent += batch.length; else failed += batch.length;
     }
 
     await db.from("newsletter_sends").insert({
@@ -131,6 +129,7 @@ Deno.serve(async (req) => {
 
     return reply(200, { sent, failed, recipients: list.length });
   } catch (e) {
+    if (e instanceof CourrielNonConfigure) return reply(500, { error: String(e.message) });
     return reply(500, { error: String(e) });
   }
 });

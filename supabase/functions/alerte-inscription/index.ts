@@ -5,15 +5,18 @@
 //    Nom EXACT : alerte-inscription
 //    Collez tout ce fichier, puis Deploy.
 //
-//  SECRETS (Edge Functions → Secrets) — les trois premiers existent déjà
-//  pour l'e-mail de commande, il n'y a rien à recréer :
-//    BREVO_API_KEY     — clé API Brevo
-//    BBC_SENDER_EMAIL  — adresse d'expéditeur validée dans Brevo
+//  SECRETS (Edge Functions → Secrets)
+//    RESEND_API_KEY    — existe déjà : c'est celle de l'e-mail de commande
+//    BBC_SENDER_EMAIL  — À AJOUTER : l'adresse d'expéditeur, sur un
+//                        domaine vérifié dans Resend
 //    BBC_SENDER_NAME   — facultatif
 //    BBC_ALERT_EMAIL   — À AJOUTER : l'adresse qui reçoit l'alerte.
 //                        Plusieurs adresses possibles, séparées par des
 //                        virgules. Si absent, l'alerte part sur
 //                        BBC_SENDER_EMAIL.
+//
+//  L'envoi lui-même vit dans ../_shared/courriel.ts — un seul endroit
+//  pour les trois fonctions qui écrivent au club ou aux familles.
 //
 //  CE QU'ELLE FAIT
 //  À chaque inscription déposée sur le site, elle envoie un e-mail au
@@ -29,6 +32,7 @@
 //  pourrait pas s'en servir pour faire envoyer un texte de son choix.
 // =====================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { envoyer, CourrielNonConfigure } from "../_shared/courriel.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -63,13 +67,11 @@ Deno.serve(async (req) => {
       .single();
     if (error || !r) return reply(404, { error: "inscription introuvable" });
 
-    const key = Deno.env.get("BREVO_API_KEY");
     const senderEmail = Deno.env.get("BBC_SENDER_EMAIL");
-    const senderName = Deno.env.get("BBC_SENDER_NAME") || "Baobabs Basket Club";
-    if (!key || !senderEmail) return reply(500, { error: "BREVO_API_KEY ou BBC_SENDER_EMAIL manquant" });
+    if (!senderEmail) return reply(500, { error: "BBC_SENDER_EMAIL manquant" });
 
     const destinataires = (Deno.env.get("BBC_ALERT_EMAIL") || senderEmail)
-      .split(",").map((e) => e.trim()).filter(Boolean).map((email) => ({ email }));
+      .split(",").map((e) => e.trim()).filter(Boolean);
 
     const enfant = `${r.child_first_name ?? ""} ${r.child_last_name ?? ""}`.trim();
     const age = r.birth_date
@@ -114,22 +116,18 @@ Deno.serve(async (req) => {
     l'admin, menu Recrutement → Inscriptions.</p>
 </div>`;
 
-    const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: { "api-key": key, "Content-Type": "application/json", accept: "application/json" },
-      body: JSON.stringify({
-        sender: { email: senderEmail, name: senderName },
-        to: destinataires,
-        // Le téléphone dans l'objet : sur un écran de téléphone, on peut
-        // rappeler la famille sans même ouvrir le message.
-        subject: `Inscription ${r.reference} — ${enfant}${r.guardian_phone ? " · " + r.guardian_phone : ""}`,
-        htmlContent: html,
-      }),
+    const env = await envoyer({
+      to: destinataires,
+      // Le téléphone dans l'objet : sur un écran de téléphone, on peut
+      // rappeler la famille sans même ouvrir le message.
+      subject: `Inscription ${r.reference} — ${enfant}${r.guardian_phone ? " · " + r.guardian_phone : ""}`,
+      html,
     });
 
-    if (!resp.ok) return reply(502, { error: "envoi refusé par Brevo", detail: await resp.text() });
+    if (!env.ok) return reply(502, { error: "envoi refusé", detail: env.detail });
     return reply(200, { sent: true, reference: r.reference, to: destinataires.length });
   } catch (e) {
+    if (e instanceof CourrielNonConfigure) return reply(500, { error: String(e.message) });
     return reply(500, { error: String(e) });
   }
 });

@@ -6,9 +6,12 @@
 //    Collez tout ce fichier, puis Deploy.
 //
 //  SECRETS À RENSEIGNER (Edge Functions → Secrets) :
-//    BREVO_API_KEY     — la clé API de votre compte Brevo
-//    BBC_SENDER_EMAIL  — l'adresse d'expéditeur validée dans Brevo
+//    RESEND_API_KEY    — existe déjà : c'est celle de l'e-mail de commande
+//    BBC_SENDER_EMAIL  — l'adresse d'expéditeur, sur un domaine vérifié
+//                        dans Resend
 //    BBC_SENDER_NAME   — facultatif, « Baobabs Basket Club » par défaut
+//
+//  L'envoi vit dans ../_shared/courriel.ts.
 //
 //  POURQUOI UNE FONCTION SERVEUR : la clé d'envoi ne doit jamais être
 //  dans le site — n'importe qui pourrait la lire et envoyer des e-mails
@@ -17,6 +20,7 @@
 //  autre chose que la confirmation d'une réservation existante.
 // =====================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { envoyer, destinataire, CourrielNonConfigure } from "../_shared/courriel.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -44,15 +48,13 @@ Deno.serve(async (req) => {
     if (r.status === "annulee" || r.status === "expiree") return reply(409, { error: "réservation " + r.status });
 
     // Garde anti-rafale : un envoi au plus toutes les 10 minutes par
-    // réservation. Protège la boîte du client et le quota Brevo.
+    // réservation. Protège la boîte du client et le quota d'envoi.
     if (r.confirmation_email_sent && Date.now() - new Date(r.confirmation_email_sent).getTime() < 10 * 60 * 1000) {
       return reply(429, { error: "un e-mail vient déjà de partir pour cette réservation" });
     }
 
-    const key = Deno.env.get("BREVO_API_KEY");
-    const senderEmail = Deno.env.get("BBC_SENDER_EMAIL");
-    const senderName = Deno.env.get("BBC_SENDER_NAME") || "Baobabs Basket Club";
-    if (!key || !senderEmail) return reply(500, { error: "BREVO_API_KEY ou BBC_SENDER_EMAIL non configuré" });
+    // La configuration de l'envoi est vérifiée par _shared/courriel.ts,
+    // qui lève CourrielNonConfigure — attrapé plus bas.
 
     const m = r.matches || {};
     const affiche = m.is_home
@@ -99,26 +101,22 @@ Deno.serve(async (req) => {
 </table>
 </td></tr></table></body></html>`;
 
-    const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: { "api-key": key, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sender: { email: senderEmail, name: senderName },
-        to: [{ email: r.buyer_email, name: r.buyer_name || undefined }],
-        subject: `Réservation ${r.reference} — ${affiche}`,
-        htmlContent: html,
-        textContent:
-          `Votre réservation est enregistrée.\n\nRéférence à présenter au guichet : ${r.reference}\n` +
-          `Match : ${affiche}\nDate : ${dateStr}${heure ? " · " + heure : ""}\n` +
-          (m.venue ? `Lieu : ${m.venue}\n` : "") +
-          `Places : ${r.quantity}\nÀ régler sur place : ${total}\n\nBaobabs Basket Club · Dakar`,
-      }),
+    const env = await envoyer({
+      to: [destinataire(r.buyer_email, r.buyer_name)],
+      subject: `Réservation ${r.reference} — ${affiche}`,
+      html,
+      text:
+        `Votre réservation est enregistrée.\n\nRéférence à présenter au guichet : ${r.reference}\n` +
+        `Match : ${affiche}\nDate : ${dateStr}${heure ? " · " + heure : ""}\n` +
+        (m.venue ? `Lieu : ${m.venue}\n` : "") +
+        `Places : ${r.quantity}\nÀ régler sur place : ${total}\n\nBaobabs Basket Club · Dakar`,
     });
-    if (!resp.ok) return reply(502, { error: "envoi refusé par Brevo", detail: await resp.text() });
+    if (!env.ok) return reply(502, { error: "envoi refusé", detail: env.detail });
 
     await db.from("reservations").update({ confirmation_email_sent: new Date().toISOString() }).eq("id", r.id);
     return reply(200, { sent: true, to: r.buyer_email });
   } catch (e) {
+    if (e instanceof CourrielNonConfigure) return reply(500, { error: String(e.message) });
     return reply(500, { error: String(e) });
   }
 });
