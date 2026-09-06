@@ -250,6 +250,61 @@ window.BaobabsStudio = (function () {
   }
   function color(hex, a) { return { hex: hex, a: a == null ? 1 : a }; }
 
+  /* TEINTE, SATURATION, VALEUR.
+     Le fichier ne connaissait que l'hexadecimal : parfait pour
+     enregistrer, inutilisable pour CHOISIR. Personne ne dit « je veux
+     du #7DFF4F » ; on dit « ce vert, mais plus sombre » -- et c'est un
+     seul curseur en TSV, trois nombres a recalculer en hexadecimal.
+     D'ou ces conversions : elles ne changent aucune donnee enregistree,
+     elles ouvrent seulement une autre porte sur la meme couleur. */
+  function rgbToHsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h = 0;
+    if (d) {
+      if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
+      else if (mx === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+    }
+    return { h: h, s: mx ? d / mx * 100 : 0, v: mx * 100 };
+  }
+  function hsvToRgb(h, s, v) {
+    h = ((h % 360) + 360) % 360 / 60;
+    s = clamp(s, 0, 100) / 100;
+    v = clamp(v, 0, 100) / 100;
+    var i = Math.floor(h), f = h - i;
+    var p = v * (1 - s), q = v * (1 - s * f), t = v * (1 - s * (1 - f));
+    var tbl = [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]];
+    var m = tbl[i % 6];
+    return { r: Math.round(m[0] * 255), g: Math.round(m[1] * 255), b: Math.round(m[2] * 255) };
+  }
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    var l = (mx + mn) / 2, h = 0, sa = 0;
+    if (d) {
+      sa = d / (1 - Math.abs(2 * l - 1));
+      if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
+      else if (mx === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+    }
+    return { h: h, s: sa * 100, l: l * 100 };
+  }
+  function hslToRgb(h, sa, l) {
+    h = ((h % 360) + 360) % 360; sa = clamp(sa, 0, 100) / 100; l = clamp(l, 0, 100) / 100;
+    var c = (1 - Math.abs(2 * l - 1)) * sa;
+    var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    var m = l - c / 2, r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
+  }
+
   function lum(hex) {
     var c = hexToRgb(hex);
     return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255;
@@ -3092,10 +3147,15 @@ window.BaobabsStudio = (function () {
     h += B('al-right', 'Aligner à droite', ALIGN_ICONS.right, st.align === 'right');
 
     h += '<span class="bs-float-sep"></span>';
-    h += '<button type="button" class="bs-float-col" data-fact="color" title="' +
+    /* Pas de data-fact ici. La pastille porte son propre gestionnaire ;
+       avec l'attribut, la boucle des boutons nommes la reprenait AUSSI --
+       deux ecouteurs sur le meme element, le second finissant sur un
+       runAction('color') qui n'existe pas. La console le disait a chaque
+       clic (« Action color non reconnue ») sans que rien ne casse a
+       l'ecran : une erreur qu'on apprend a ne plus lire. */
+    h += '<button type="button" class="bs-float-col" title="' +
       (surSel ? 'Couleur de ces lettres seulement' : 'Couleur du texte') + '">' +
-      '<i style="background:' + css(st.color) + '"></i></button>' +
-      '<input type="color" class="bs-hidden-color" data-fcol="1" value="' + esc((st.color && st.color.hex) || '#ffffff') + '">';
+      '<i style="background:' + css(st.color) + '"></i></button>';
     [doc.palette.accent, doc.palette.fg, doc.palette.fg2, doc.palette.bg].forEach(function (c) {
       h += '<button type="button" class="bs-float-sw" data-fswatch="' + c + '" style="background:' + c + '" title="' + c + '"></button>';
     });
@@ -3132,16 +3192,29 @@ window.BaobabsStudio = (function () {
       maj(function () { applyTextProp('size', v); }, 'Corps du texte');
     });
 
-    var col = els.float.querySelector('[data-fcol]');
+    /* Le meme selecteur qu'au panneau, et pour la meme raison : la barre
+       flottante sert surtout quand quelques lettres sont selectionnees,
+       et c'est precisement la qu'une fenetre du systeme posee par-dessus
+       le texte empechait de voir l'effet. L'opacite arrive avec. */
     var pastille = els.float.querySelector('.bs-float-col');
-    if (pastille && col) {
-      pastille.addEventListener('click', function (e) { e.stopPropagation(); col.click(); });
-      col.addEventListener('input', function () {
-        beginChange('Couleur du texte');
-        applyTextProp('color', color(col.value, 1));
-        requestDraw();
+    if (pastille) {
+      pastille.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var c0 = st().color || color('#ffffff', 1);
+        ouvrirCP(pastille, c0, {
+          alpha: true,
+          titre: 'Texte',
+          reancrer: function () { return els.float.querySelector('.bs-float-col'); },
+          onDebut: function () { beginChange('Couleur du texte'); },
+          onLive: function (hex, a) {
+            applyTextProp('color', color(hex, a));
+            var i2 = els.float.querySelector('.bs-float-col i');
+            if (i2) i2.style.background = css(color(hex, a));
+            requestDraw();
+          },
+          onFin: function () { endChange('Couleur du texte'); refreshAll(); renderFloat(); }
+        });
       });
-      col.addEventListener('change', function () { endChange('Couleur du texte'); refreshAll(); renderFloat(); });
     }
     $$('[data-fswatch]', els.float).forEach(function (b) {
       b.addEventListener('click', function (e) {
@@ -5036,8 +5109,6 @@ window.BaobabsStudio = (function () {
       var sw = wrap.querySelector('.bs-sw');
       var hexIn = wrap.querySelector('input[type=text]');
       var alphaIn = wrap.querySelector('.bs-color-alpha input');
-      var picker = wrap.querySelector('input[type=color]');
-
       function push(hex, a, live) {
         var v = color(hex, a);
         if (!live) beginChange(nomReglage(path));
@@ -5046,13 +5117,32 @@ window.BaobabsStudio = (function () {
         sw.querySelector('i').style.background = css(v);
         requestDraw();
       }
-      if (sw && picker) {
-        sw.addEventListener('click', function () { picker.click(); });
-        picker.addEventListener('input', function () {
-          beginChange(nomReglage(path));
-          push(picker.value, alphaIn ? num(alphaIn.value, 100) / 100 : 1, true);
+      /* LA PASTILLE OUVRE LE SELECTEUR DU STUDIO.
+         Elle declenchait un <input type=color>, c'est-a-dire la fenetre
+         du systeme : une boite grise posee par-dessus l'affiche, sans
+         opacite, sans pipette, differente sur chaque machine -- et qui
+         cachait justement ce qu'on etait en train de colorer. */
+      if (sw) {
+        var etiq = wrap.querySelector('label');
+        sw.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var hx = hexIn ? String(hexIn.value || '').trim() : '#ffffff';
+          if (hx.charAt(0) !== '#') hx = '#' + hx;
+          ouvrirCP(sw, color(hx, alphaIn ? clamp(num(alphaIn.value, 100), 0, 100) / 100 : 1), {
+            alpha: !!alphaIn,
+            titre: etiq ? etiq.textContent : '',
+            onDebut: function () { beginChange(nomReglage(path)); },
+            onLive: function (hex, a) {
+              push(hex, a, true);
+              /* les champs du panneau suivent le selecteur : deux
+                 affichages de la meme couleur qui divergent, c'est un
+                 doute de plus a lever a chaque geste */
+              if (hexIn) hexIn.value = hex.toUpperCase();
+              if (alphaIn) alphaIn.value = Math.round(a * 100);
+            },
+            onFin: function () { endChange(nomReglage(path)); refreshAll(); }
+          });
         });
-        picker.addEventListener('change', function () { endChange(nomReglage(path)); refreshAll(); });
       }
       if (hexIn) hexIn.addEventListener('change', function () {
         var v = hexIn.value.trim();
@@ -5394,7 +5484,6 @@ window.BaobabsStudio = (function () {
       '<label>' + esc(label) + '</label>' +
       '<div class="bs-color">' +
       '<button type="button" class="bs-sw"><i style="background:' + css(col) + '"></i></button>' +
-      '<input type="color" class="bs-hidden-color" value="' + esc(col.hex || '#ffffff') + '">' +
       '<input type="text" value="' + esc((col.hex || '#ffffff').toUpperCase()) + '" spellcheck="false">' +
       /* Une couleur d'ambiance n'a pas d'opacite : elle est recopiee dans des
          calques qui, eux, ont la leur. Afficher un % qui ne ferait rien serait
@@ -10810,6 +10899,10 @@ window.BaobabsStudio = (function () {
 
   function onKeyDown(e) {
     if (!opened) return;
+    /* Le selecteur est la surcouche la plus haute : Echap lui revient
+       d'abord, sinon on fermerait l'ecran qui est dessous en croyant
+       fermer le petit panneau. */
+    if (cp && e.key === 'Escape') { e.preventDefault(); cpFermer(); return; }
     if (atHome) {
       if (e.key === 'Escape' && !els.modal.classList.contains('is-on')) { e.preventDefault(); close(); }
       if (els.modal.classList.contains('is-on') && e.key === 'Escape') { e.preventDefault(); closeModal(); }
@@ -13883,6 +13976,432 @@ window.BaobabsStudio = (function () {
       FORMATS.length + ' formats · ' + ICONS_LIB.length + ' icônes</span>' +
       '</div></div>',
       '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Fermer</button>');
+  }
+
+  /* ===================================================================
+     55. LE SELECTEUR DE COULEUR
+     ---------------------------------------------------------------
+     Jusqu'ici, cliquer une pastille ouvrait le selecteur du NAVIGATEUR :
+     une fenetre du systeme, differente sur chaque machine, posee par-
+     dessus le Studio, sans opacite, sans pipette, sans memoire. On y
+     choisissait une couleur sans jamais voir l'affiche qu'elle allait
+     colorer -- et sur un degrade, sans voir les autres arrets.
+
+     Photoshop et Figma montrent tous deux la meme chose, et dans le meme
+     ordre : un carre ou l'on promene un point (a droite, plus sature ; en
+     haut, plus clair), un curseur de teinte, un curseur d'opacite, puis
+     seulement les nombres. Le geste d'abord, la valeur ensuite. On copie
+     cet ordre, pas par imitation, mais parce qu'il correspond a la facon
+     dont on cherche une couleur : on la reconnait avant de la nommer.
+
+     Trois choses en plus, prises a Figma :
+       . le MODELE se change (Hex, RVB, TSL, TSV, CSS) sans quitter le
+         panneau -- une maquette donnee en RVB n'a plus a etre traduite ;
+       . la PIPETTE est ici, pas seulement dans la barre d'outils, parce
+         que c'est ici qu'on se demande « quelle est cette couleur ? » ;
+       . les COULEURS DU DOCUMENT sont listees : sur une affiche, la
+         bonne couleur est presque toujours une couleur deja posee
+         ailleurs, et la retrouver a l'oeil produit des #7DFF4E.
+     =================================================================== */
+
+  var cp = null;              /* le selecteur ouvert, ou rien */
+  var cpModele = 'hex';       /* retenu d'une ouverture a l'autre */
+  var cpRecentes = [];        /* les dernieres choisies, les plus recentes en tete */
+
+  function cpHex() { var c = hsvToRgb(cp.h, cp.s, cp.v); return rgbToHex(c.r, c.g, c.b); }
+
+  /* Les couleurs deja posees dans le document. On lit l'objet, pas une
+     liste tenue a part : une liste se desynchronise, la lecture non. */
+  function couleursDuDoc() {
+    var out = [], vus = {};
+    function add(c) {
+      if (!c) return;
+      var hx = typeof c === 'string' ? c : c.hex;
+      if (!hx) return;
+      hx = String(hx).toUpperCase();
+      if (!/^#[0-9A-F]{6}$/.test(hx) || vus[hx]) return;
+      vus[hx] = 1; out.push(hx);
+    }
+    function peint(p) {
+      if (!p) return;
+      add(p.color); add(p.from); add(p.to);
+      if (p.stops) for (var q = 0; q < p.stops.length; q++) add(p.stops[q].c);
+    }
+    if (!doc) return out;
+    add(doc.palette && doc.palette.accent); add(doc.palette && doc.palette.fg);
+    add(doc.palette && doc.palette.fg2); add(doc.palette && doc.palette.bg);
+    peint(doc.bg);
+    (function marcher(list) {
+      for (var i = 0; i < (list || []).length; i++) {
+        var l = list[i];
+        peint(l.fill); peint(l.stroke);
+        if (l.ts) add(l.ts.color);
+        if (l.runs) for (var r = 0; r < l.runs.length; r++) if (l.runs[r].s) add(l.runs[r].s.color);
+        if (l.children) marcher(l.children);
+      }
+    })(doc.layers);
+    return out.slice(0, 30);
+  }
+
+  /* L'ANCRE PEUT MOURIR PENDANT QU'ON S'EN SERT.
+     draw() rappelle renderFloat() a chaque image : la barre flottante
+     est reconstruite entierement, et la pastille sur laquelle on a
+     clique n'est plus dans la page des la premiere goutte de couleur.
+     Le selecteur restait ouvert -- mais il se croyait accroche a un
+     fantome : recliquer la pastille rouvrait au lieu de refermer, et
+     l'apercu de la pastille ne suivait plus.
+     Une ancre peut donc etre RETROUVEE plutot que retenue : opts.
+     reancrer rend l'element courant, et tout le reste passe par ici. */
+  function cpAncre() {
+    if (!cp) return null;
+    if (cp.opts.reancrer) {
+      var vif = cp.opts.reancrer();
+      if (vif) return vif;
+    }
+    return cp.anchor;
+  }
+
+  function cpFermer() {
+    if (!cp) return;
+    var c = cp; cp = null;
+    document.removeEventListener('pointerdown', cpDehors, true);
+    window.removeEventListener('resize', cpPlacer);
+    if (c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el);
+    /* la couleur retenue passe en tete des recentes ; on ne garde que
+       huit places, au-dela la rangee deviendrait un mur */
+    if (c.hexFinal) {
+      var hx = c.hexFinal.toUpperCase();
+      cpRecentes = [hx].concat(cpRecentes.filter(function (v) { return v !== hx; })).slice(0, 8);
+    }
+    if (c.opts.onFin) c.opts.onFin();
+  }
+
+  function cpDehors(e) {
+    if (!cp || cp.pioche) return;
+    if (cp.el.contains(e.target)) return;
+    var anc = cpAncre();
+    if (anc && anc.contains && anc.contains(e.target)) return;
+    cpFermer();
+  }
+
+  /* Le panneau se pose sous la pastille, et remonte s'il depasserait le
+     bas de l'ecran : un selecteur a moitie hors du cadre n'a pas de
+     curseur d'opacite, et l'on croit qu'il n'en existe pas. */
+  function cpPlacer() {
+    var anc = cpAncre();
+    if (!anc || !anc.getBoundingClientRect) return;
+    var r = anc.getBoundingClientRect();
+    var w = cp.el.offsetWidth || 248, h = cp.el.offsetHeight || 340;
+    /* Une ancre peut avoir disparu de la mise en page -- panneau
+       reconstruit, onglet referme. Son rectangle vaut alors zero, et le
+       calcul honnete envoie le selecteur dans le coin haut-gauche de
+       l'ecran, loin de tout. Mieux vaut le laisser ou il est. */
+    if (!r.width && !r.height) { if (cp.el.style.left) return; r = { left: window.innerWidth / 2 - w / 2, bottom: window.innerHeight / 2 - h / 2, top: 0 }; }
+    var x = r.left, y = r.bottom + 6;
+    if (y + h > window.innerHeight - 8) y = Math.max(8, r.top - h - 6);
+    if (x + w > window.innerWidth - 8) x = Math.max(8, window.innerWidth - w - 8);
+    cp.el.style.left = Math.round(x) + 'px';
+    cp.el.style.top = Math.round(y) + 'px';
+  }
+
+  function ouvrirCP(anchor, col, opts) {
+    opts = opts || {};
+    /* recliquer la meme pastille referme : c'est le geste attendu d'un
+       panneau volant, et sans lui on ne saurait plus comment le fermer
+       quand il recouvre justement ce qu'on voulait cliquer */
+    var meme = cp && (cp.anchor === anchor || cpAncre() === anchor);
+    cpFermer();
+    if (meme) return;
+    col = col || color('#ffffff', 1);
+    var rgb = hexToRgb(col.hex || '#ffffff');
+    var t = rgbToHsv(rgb.r, rgb.g, rgb.b);
+    cp = {
+      anchor: anchor, opts: opts, pioche: false,
+      h: t.h, s: t.s, v: t.v,
+      a: col.a == null ? 1 : col.a,
+      hexFinal: null, debut: false
+    };
+    var el = document.createElement('div');
+    el.className = 'bs-cp';
+    el.setAttribute('role', 'dialog');
+    (root || document.body).appendChild(el);
+    cp.el = el;
+    cpBatir();
+    cpPlacer();
+    document.addEventListener('pointerdown', cpDehors, true);
+    window.addEventListener('resize', cpPlacer);
+  }
+
+  /* --- les champs, selon le modele choisi -------------------------- */
+  function cpChamps() {
+    var hex = cpHex(), c = hexToRgb(hex), h;
+    function ch(cle, lab, val, mx) {
+      return '<div class="bs-cp-ch"><span>' + esc(lab) + '</span>' +
+             '<input type="text" data-cpf="' + cle + '" value="' + esc(String(val)) +
+             '" spellcheck="false" inputmode="numeric"></div>';
+    }
+    if (cpModele === 'rgb') {
+      h = ch('r', 'R', c.r) + ch('g', 'V', c.g) + ch('b', 'B', c.b);
+    } else if (cpModele === 'hsl') {
+      var q = rgbToHsl(c.r, c.g, c.b);
+      h = ch('hh', 'T', Math.round(q.h)) + ch('sl', 'S', Math.round(q.s)) + ch('ll', 'L', Math.round(q.l));
+    } else if (cpModele === 'hsb') {
+      h = ch('hh', 'T', Math.round(cp.h)) + ch('sv', 'S', Math.round(cp.s)) + ch('vv', 'V', Math.round(cp.v));
+    } else if (cpModele === 'css') {
+      h = '<div class="bs-cp-ch is-large"><input type="text" data-cpf="css" value="rgba(' + c.r + ', ' + c.g + ', ' + c.b + ', ' +
+          (Math.round(cp.a * 100) / 100) + ')" spellcheck="false"></div>';
+    } else {
+      h = '<div class="bs-cp-ch is-large"><input type="text" data-cpf="hex" value="' + hex.toUpperCase() + '" spellcheck="false"></div>';
+    }
+    if (cp.opts.alpha !== false && cpModele !== 'css') {
+      h += '<div class="bs-cp-ch is-a"><input type="text" data-cpf="a" value="' + Math.round(cp.a * 100) + '" spellcheck="false" inputmode="numeric"><span>%</span></div>';
+    }
+    return h;
+  }
+
+  function cpBatir() {
+    var h = '';
+    h += '<div class="bs-cp-tete">';
+    h += '<select class="bs-cp-mod">';
+    [['hex', 'Hex'], ['rgb', 'RVB'], ['hsl', 'TSL'], ['hsb', 'TSV'], ['css', 'CSS']].forEach(function (o) {
+      h += '<option value="' + o[0] + '"' + (cpModele === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+    });
+    h += '</select>';
+    h += '<span class="bs-cp-titre">' + esc(cp.opts.titre || '') + '</span>';
+    h += '<button type="button" class="bs-cp-pip" title="Pipette : piocher une couleur">' +
+         '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+         '<path d="m18.5 2.5 3 3-8 8-3-3 8-8Z"/><path d="M11 8 3.5 15.5V20.5h5L16 13"/></svg></button>';
+    h += '<button type="button" class="bs-cp-x" title="Fermer">&#215;</button>';
+    h += '</div>';
+    h += '<div class="bs-cp-sv"><i class="bs-cp-dot"></i></div>';
+    h += '<div class="bs-cp-rangee">';
+    h += '<button type="button" class="bs-cp-vue"><i></i></button>';
+    h += '<div class="bs-cp-cur">';
+    h += '<div class="bs-cp-h"><i></i></div>';
+    if (cp.opts.alpha !== false) h += '<div class="bs-cp-a"><span></span><i></i></div>';
+    h += '</div></div>';
+    h += '<div class="bs-cp-champs">' + cpChamps() + '</div>';
+    h += '<div class="bs-cp-lots"></div>';
+    cp.el.innerHTML = h;
+    cpLots();
+    cpBrancher();
+    cpMaj(true);
+  }
+
+  /* Les rangees du bas : ce qu'on vient d'utiliser, puis ce que porte
+     l'affiche. Deux titres, parce qu'une rangee de pastilles sans
+     legende ne dit pas d'ou elles sortent. */
+  function cpLots() {
+    var box = cp.el.querySelector('.bs-cp-lots');
+    var h = '', doc2 = couleursDuDoc();
+    function rangee(titre, liste) {
+      if (!liste.length) return '';
+      var r = '<div class="bs-cp-lot-t">' + titre + '</div><div class="bs-cp-lot">';
+      for (var i = 0; i < liste.length; i++) {
+        r += '<button type="button" data-cpsw="' + liste[i] + '" style="background:' + liste[i] + '" title="' + liste[i] + '"></button>';
+      }
+      return r + '</div>';
+    }
+    h += rangee('Récentes', cpRecentes);
+    h += rangee('Couleurs du document', doc2);
+    box.innerHTML = h;
+  }
+
+  function cpMaj(refaireChamps) {
+    if (!cp) return;
+    var hex = cpHex();
+    var pur = 'hsl(' + Math.round(cp.h) + ',100%,50%)';
+    var sv = cp.el.querySelector('.bs-cp-sv');
+    sv.style.background = 'linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, rgba(255,255,255,0)), ' + pur;
+    var dot = cp.el.querySelector('.bs-cp-dot');
+    dot.style.left = cp.s + '%';
+    dot.style.top = (100 - cp.v) + '%';
+    dot.style.background = hex;
+    cp.el.querySelector('.bs-cp-h i').style.left = (cp.h / 360 * 100) + '%';
+    var ba = cp.el.querySelector('.bs-cp-a');
+    if (ba) {
+      ba.querySelector('span').style.background = 'linear-gradient(to right, rgba(0,0,0,0), ' + hex + ')';
+      ba.querySelector('i').style.left = (cp.a * 100) + '%';
+    }
+    var vue = cp.el.querySelector('.bs-cp-vue i');
+    if (vue) vue.style.background = css(color(hex, cp.a));
+    if (refaireChamps) return;
+    /* on ne reecrit PAS le champ que l'on est en train de taper : sinon
+       le curseur saute a la fin des qu'on frappe la deuxieme lettre */
+    var actif = document.activeElement;
+    var c = hexToRgb(hex), q;
+    $$('[data-cpf]', cp.el).forEach(function (inp) {
+      if (inp === actif) return;
+      var k = inp.getAttribute('data-cpf');
+      if (k === 'hex') inp.value = hex.toUpperCase();
+      else if (k === 'r') inp.value = c.r;
+      else if (k === 'g') inp.value = c.g;
+      else if (k === 'b') inp.value = c.b;
+      else if (k === 'hh') inp.value = Math.round(cp.h);
+      else if (k === 'sv') inp.value = Math.round(cp.s);
+      else if (k === 'vv') inp.value = Math.round(cp.v);
+      else if (k === 'sl') { q = rgbToHsl(c.r, c.g, c.b); inp.value = Math.round(q.s); }
+      else if (k === 'll') { q = rgbToHsl(c.r, c.g, c.b); inp.value = Math.round(q.l); }
+      else if (k === 'a') inp.value = Math.round(cp.a * 100);
+      else if (k === 'css') inp.value = 'rgba(' + c.r + ', ' + c.g + ', ' + c.b + ', ' + (Math.round(cp.a * 100) / 100) + ')';
+    });
+  }
+
+  function cpEmettre() {
+    if (!cp) return;
+    var hex = cpHex();
+    cp.hexFinal = hex;
+    if (!cp.debut) { cp.debut = true; if (cp.opts.onDebut) cp.opts.onDebut(); }
+    if (cp.opts.onLive) cp.opts.onLive(hex, cp.a);
+  }
+
+  /* Un curseur qu'il faut relacher pour voir l'effet n'est pas un
+     curseur : on suit le pointeur, on peint a chaque image. Le meme
+     branchement sert au carre et aux deux barres -- ils ne different que
+     par ce qu'ils lisent de la position. */
+  function cpTirer(zone, lire) {
+    if (!zone) return;
+    zone.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      var r = zone.getBoundingClientRect();
+      function mv(e2) {
+        lire(clamp((e2.clientX - r.left) / r.width, 0, 1), clamp((e2.clientY - r.top) / r.height, 0, 1));
+        cpMaj();
+        cpEmettre();
+      }
+      function up() {
+        document.removeEventListener('pointermove', mv);
+        document.removeEventListener('pointerup', up);
+      }
+      document.addEventListener('pointermove', mv);
+      document.addEventListener('pointerup', up);
+      mv(e);
+    });
+  }
+
+  function cpBrancher() {
+    var el = cp.el;
+    cpTirer(el.querySelector('.bs-cp-sv'), function (x, y) { cp.s = x * 100; cp.v = (1 - y) * 100; });
+    cpTirer(el.querySelector('.bs-cp-h'), function (x) { cp.h = x * 360; });
+    cpTirer(el.querySelector('.bs-cp-a'), function (x) { cp.a = Math.round(x * 100) / 100; });
+
+    el.querySelector('.bs-cp-x').addEventListener('click', function () { cpFermer(); });
+    el.querySelector('.bs-cp-pip').addEventListener('click', cpPipette);
+
+    var mod = el.querySelector('.bs-cp-mod');
+    mod.addEventListener('change', function () {
+      cpModele = mod.value;
+      el.querySelector('.bs-cp-champs').innerHTML = cpChamps();
+      cpChampsBrancher();
+    });
+    cpChampsBrancher();
+
+    $$('[data-cpsw]', el).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var c2 = hexToRgb(b.getAttribute('data-cpsw'));
+        var t = rgbToHsv(c2.r, c2.g, c2.b);
+        cp.h = t.h; cp.s = t.s; cp.v = t.v;
+        cpMaj(); cpEmettre();
+      });
+    });
+  }
+
+  function cpChampsBrancher() {
+    $$('[data-cpf]', cp.el).forEach(function (inp) {
+      inp.addEventListener('change', cpLireChamp);
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); cpLireChamp.call(inp); inp.blur(); }
+        /* les fleches, comme partout ailleurs dans le Studio */
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          var n = parseFloat(inp.value);
+          if (!isFinite(n)) return;
+          e.preventDefault();
+          inp.value = n + (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 10 : 1);
+          cpLireChamp.call(inp);
+        }
+      });
+    });
+  }
+
+  function cpLireChamp() {
+    if (!cp) return;
+    var k = this.getAttribute('data-cpf'), v = String(this.value || '').trim();
+    var c = hexToRgb(cpHex()), t;
+    if (k === 'a') { cp.a = clamp(num(v, 100), 0, 100) / 100; }
+    else if (k === 'hex') {
+      var x = v.replace('#', '');
+      if (!/^([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(x)) { cpMaj(); return; }
+      t = rgbToHsv2('#' + x); cp.h = t.h; cp.s = t.s; cp.v = t.v;
+    } else if (k === 'css') {
+      var m = v.match(/(-?[\d.]+)/g);
+      if (!m || m.length < 3) { cpMaj(); return; }
+      t = rgbToHsv(clamp(num(m[0], 0), 0, 255), clamp(num(m[1], 0), 0, 255), clamp(num(m[2], 0), 0, 255));
+      cp.h = t.h; cp.s = t.s; cp.v = t.v;
+      if (m.length > 3) cp.a = clamp(num(m[3], 1), 0, 1);
+    } else if (k === 'r' || k === 'g' || k === 'b') {
+      c[k] = clamp(Math.round(num(v, 0)), 0, 255);
+      t = rgbToHsv(c.r, c.g, c.b); cp.h = t.h; cp.s = t.s; cp.v = t.v;
+    } else if (k === 'hh') { cp.h = ((num(v, 0) % 360) + 360) % 360; }
+    else if (k === 'sv') { cp.s = clamp(num(v, 0), 0, 100); }
+    else if (k === 'vv') { cp.v = clamp(num(v, 0), 0, 100); }
+    else if (k === 'sl' || k === 'll') {
+      var q = rgbToHsl(c.r, c.g, c.b);
+      if (k === 'sl') q.s = clamp(num(v, 0), 0, 100); else q.l = clamp(num(v, 0), 0, 100);
+      var rr = hslToRgb(q.h, q.s, q.l);
+      t = rgbToHsv(rr.r, rr.g, rr.b); cp.h = t.h; cp.s = t.s; cp.v = t.v;
+    }
+    cpMaj();
+    cpEmettre();
+  }
+
+  function rgbToHsv2(hex) { var c = hexToRgb(hex); return rgbToHsv(c.r, c.g, c.b); }
+
+  /* LA PIPETTE.
+     Le navigateur en offre une vraie depuis EyeDropper : elle lit TOUT
+     l'ecran, y compris une photo ouverte a cote, et c'est exactement ce
+     qu'on veut quand on recopie la couleur d'un maillot. Quand elle
+     manque -- Firefox, Safari -- on retombe sur le canevas du Studio,
+     qui couvre le cas le plus frequent : reprendre une couleur deja
+     posee sur l'affiche. */
+  function cpPipette() {
+    if (!cp) return;
+    function pris(hex) {
+      if (!cp) return;
+      var t = rgbToHsv2(hex);
+      cp.h = t.h; cp.s = t.s; cp.v = t.v;
+      cpMaj(); cpEmettre();
+    }
+    if (window.EyeDropper) {
+      cp.pioche = true;
+      var ed = new window.EyeDropper();
+      ed.open().then(function (r) { cp.pioche = false; pris(r.sRGBHex); })
+               .catch(function () { if (cp) cp.pioche = false; });
+      return;
+    }
+    var cvs = els.canvas;
+    if (!cvs) return;
+    cp.pioche = true;
+    cp.el.classList.add('is-pioche');
+    toast('Cliquez sur l’affiche pour piocher une couleur');
+    var av = cvs.style.cursor;
+    cvs.style.cursor = 'crosshair';
+    function une(e) {
+      e.preventDefault(); e.stopPropagation();
+      cvs.removeEventListener('pointerdown', une, true);
+      cvs.style.cursor = av;
+      if (!cp) return;
+      cp.pioche = false;
+      cp.el.classList.remove('is-pioche');
+      var r = cvs.getBoundingClientRect();
+      try {
+        var g = cvs.getContext('2d', { willReadFrequently: true });
+        var d = g.getImageData(Math.round((e.clientX - r.left) * dpr), Math.round((e.clientY - r.top) * dpr), 1, 1).data;
+        pris(rgbToHex(d[0], d[1], d[2]));
+      } catch (err) {
+        toast('Pipette bloquée : une image distante empêche la lecture du canevas', true);
+      }
+    }
+    cvs.addEventListener('pointerdown', une, true);
   }
 
   /* ===================================================================
