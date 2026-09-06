@@ -1010,16 +1010,38 @@ window.BaobabsStudio = (function () {
      7. CHEMINS DE FORMES
      =================================================================== */
 
+  /* QUATRE COINS, PAS UN SEUL.
+     Le rayon etait un nombre unique : impossible d'arrondir seulement le
+     haut d'une carte, ou de faire une pastille a un coin carre -- deux
+     gestes que Photoshop et Figma donnent tous les deux. r accepte
+     desormais AUSSI un tableau [haut-gauche, haut-droit, bas-droit,
+     bas-gauche] ; un nombre continue de marcher partout ou il etait deja
+     passe, donc rien de ce qui existe ne bouge.
+
+     Chaque rayon est borne separement a la moitie du cote : deux coins
+     voisins trop grands se chevaucheraient et le trace se replierait sur
+     lui-meme. */
+  function quatreRayons(r, w, h) {
+    var m = Math.min(Math.abs(w), Math.abs(h)) / 2;
+    var a = Array.isArray(r) ? r : [r, r, r, r];
+    return a.map(function (v) { return Math.max(0, Math.min(num(v, 0), m)); });
+  }
   function roundRectPath(ctx, x, y, w, h, r) {
-    r = Math.max(0, Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2));
+    var q = quatreRayons(r, w, h);
     ctx.beginPath();
-    if (!r) { ctx.rect(x, y, w, h); return; }
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
-    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-    ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
-    ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r);
+    if (!q[0] && !q[1] && !q[2] && !q[3]) { ctx.rect(x, y, w, h); return; }
+    ctx.moveTo(x + q[0], y);
+    ctx.lineTo(x + w - q[1], y); if (q[1]) ctx.arcTo(x + w, y, x + w, y + q[1], q[1]);
+    ctx.lineTo(x + w, y + h - q[2]); if (q[2]) ctx.arcTo(x + w, y + h, x + w - q[2], y + h, q[2]);
+    ctx.lineTo(x + q[3], y + h); if (q[3]) ctx.arcTo(x, y + h, x, y + h - q[3], q[3]);
+    ctx.lineTo(x, y + q[0]); if (q[0]) ctx.arcTo(x, y, x + q[0], y, q[0]);
     ctx.closePath();
+  }
+
+  /* Ce qu'il faut passer a roundRectPath pour un calque : le tableau
+     quand il a ete regle coin par coin, le nombre sinon. */
+  function rayonsDe(l) {
+    return (l.radii && l.radii.length === 4) ? l.radii : (l.radius || 0);
   }
 
   function maskPath(ctx, kind, w, h, radius) {
@@ -1133,7 +1155,7 @@ window.BaobabsStudio = (function () {
         break;
       }
       default:
-        roundRectPath(ctx, 0, 0, w, h, l.radius || 0);
+        roundRectPath(ctx, 0, 0, w, h, rayonsDe(l));
     }
   }
 
@@ -1464,7 +1486,7 @@ window.BaobabsStudio = (function () {
   function drawImageLayer(ctx, l, d, opts) {
     var w = l.w, h = l.h;
     ctx.save();
-    maskPath(ctx, l.mask || 'rect', w, h, l.radius || 0);
+    maskPath(ctx, l.mask || 'rect', w, h, rayonsDe(l));
     ctx.clip();
 
     var e = l.src ? getImage(l.src) : null;
@@ -1504,7 +1526,7 @@ window.BaobabsStudio = (function () {
 
     if (l.stroke && l.stroke.w > 0) {
       ctx.save();
-      maskPath(ctx, l.mask || 'rect', w, h, l.radius || 0);
+      maskPath(ctx, l.mask || 'rect', w, h, rayonsDe(l));
       ctx.strokeStyle = css(l.stroke.color);
       ctx.lineWidth = l.stroke.w;
       ctx.stroke();
@@ -1516,7 +1538,7 @@ window.BaobabsStudio = (function () {
     ctx.save();
     ctx.fillStyle = 'rgba(125,255,79,0.05)';
     ctx.fillRect(0, 0, w, h);
-    maskPath(ctx, l.mask || 'rect', w, h, l.radius || 0);
+    maskPath(ctx, l.mask || 'rect', w, h, rayonsDe(l));
     ctx.strokeStyle = 'rgba(125,255,79,0.55)';
     ctx.lineWidth = Math.max(1, Math.min(w, h) * 0.006);
     ctx.setLineDash([Math.max(4, w * 0.02), Math.max(3, w * 0.014)]);
@@ -1755,7 +1777,7 @@ window.BaobabsStudio = (function () {
       if (l.mask && l.mask !== 'rect') {
         var mc = hitCtx();
         mc.setTransform(1, 0, 0, 1, 0, 0);
-        maskPath(mc, l.mask, l.w, l.h, l.radius || 0);
+        maskPath(mc, l.mask, l.w, l.h, rayonsDe(l));
         if (!mc.isPointInPath(p.x, p.y)) return false;
       }
       var op = alphaImageA(l, p.x, p.y);
@@ -4769,6 +4791,31 @@ window.BaobabsStudio = (function () {
     return h;
   }
 
+  /* LES COINS : TOUS ENSEMBLE, OU UN PAR UN.
+     Un seul champ « Coins arrondis » ne permet ni d'arrondir seulement le
+     haut d'une carte, ni de garder un coin carre. Le bouton bascule vers
+     quatre champs ; revenir en arriere reprend le plus grand des quatre,
+     ce qui est le seul choix qui ne perde pas le travail.
+     Ecrit une fois : les formes et les cadres photo l'affichent tous
+     les deux, et ne peuvent donc pas diverger. */
+  function fCoins(l) {
+    var parCoin = !!(l.radii && l.radii.length === 4);
+    var h = '<div class="bs-f"><div class="bs-tgl-row"><span>Coins un par un</span>' +
+      '<button type="button" class="bs-tgl' + (parCoin ? ' is-on' : '') +
+      '" data-act="coinsParCoin"><i></i></button></div></div>';
+    if (!parCoin) {
+      return h + fStep('Coins arrondis', 'radius', l.radius || 0, { unit: 'px', dec: 0, min: 0 });
+    }
+    var r = l.radii;
+    return h +
+      '<div class="bs-frow">' +
+      fStep('Haut gauche', 'radii.0', r[0] || 0, { unit: 'px', dec: 0, min: 0 }) +
+      fStep('Haut droit', 'radii.1', r[1] || 0, { unit: 'px', dec: 0, min: 0 }) +
+      '</div><div class="bs-frow">' +
+      fStep('Bas gauche', 'radii.3', r[3] || 0, { unit: 'px', dec: 0, min: 0 }) +
+      fStep('Bas droit', 'radii.2', r[2] || 0, { unit: 'px', dec: 0, min: 0 }) +
+      '</div>';
+  }
   function fStep(label, path, value, opts) {
     opts = opts || {};
     return '<div class="bs-f"><label>' + esc(label) + '</label>' +
@@ -5252,7 +5299,7 @@ window.BaobabsStudio = (function () {
 
     h += fGroup('Forme',
       fSelect('Masque', 'mask', l.mask || 'rect', MASKS) +
-      (l.mask === 'rect' || !l.mask ? fStep('Coins arrondis', 'radius', l.radius || 0, { unit: 'px', dec: 0, min: 0 }) : '') +
+      (l.mask === 'rect' || !l.mask ? fCoins(l) : '') +
       fStep('Contour', 'stroke.w', (l.stroke && l.stroke.w) || 0, { unit: 'px', dec: 0, min: 0 }) +
       ((l.stroke && l.stroke.w) ? fColor('Couleur du contour', 'stroke.color', l.stroke.color) : ''));
 
@@ -5302,7 +5349,7 @@ window.BaobabsStudio = (function () {
   function propsShape(l) {
     var h = fGroup('Forme',
       fSelect('Type', 'shape', l.shape, SHAPE_KINDS) +
-      (l.shape === 'rect' ? fStep('Coins arrondis', 'radius', l.radius || 0, { unit: 'px', dec: 0, min: 0 }) : '') +
+      (l.shape === 'rect' ? fCoins(l) : '') +
       (l.shape === 'polygon' ? fStep('Côtés', 'sides', l.sides || 6, { dec: 0, min: 3, max: 24 }) : '') +
       (l.shape === 'stripes'
         ? fStep('Nombre de rayures', 'count', l.count || 14, { dec: 0, min: 2, max: 60 }) +
@@ -8630,6 +8677,23 @@ window.BaobabsStudio = (function () {
         });
         return;
       case 'align': doAlign(el.getAttribute('data-align')); return;
+      /* Passer aux quatre coins reprend le rayon commun ; revenir
+         garde le PLUS GRAND des quatre. Prendre le premier, ou zero,
+         effacerait un reglage sans prevenir. */
+      case 'coinsParCoin': {
+        var lc = selOne();
+        if (!lc) return;
+        change(function () {
+          if (lc.radii && lc.radii.length === 4) {
+            lc.radius = Math.max.apply(null, lc.radii.map(function (v) { return num(v, 0); }));
+            delete lc.radii;
+          } else {
+            var r0 = num(lc.radius, 0);
+            lc.radii = [r0, r0, r0, r0];
+          }
+        }, 'Coins');
+        return;
+      }
       case 'flipH': if (l) change(function () { l.flipH = !l.flipH; }); return;
       case 'flipV': if (l) change(function () { l.flipV = !l.flipV; }); return;
       case 'toggleVis': if (l) change(function () { l.visible = !l.visible; }); return;
@@ -9034,6 +9098,31 @@ window.BaobabsStudio = (function () {
         ' a' + n3(rx) + ' ' + n3(ry) + ' 0 1 0 ' + n3(-rx * 2) + ' 0 Z ';
     },
     arc: function (cx, cy, r) { this.ellipse(cx, cy, r, r); },
+    /* arcTo MANQUAIT, et roundRectPath ne dessine ses coins qu'avec lui :
+       toute forme a coins arrondis sortait VIDE du SVG, l'exception etant
+       avalee par le try/catch de traceDe(). Trouve en relisant les
+       appelants plutot qu'en attendant qu'un modele le montre.
+       L'arc est tangent aux deux segments : on calcule les deux points
+       de tangence et le sens de rotation, puis on ecrit un A. */
+    arcTo: function (x1, y1, x2, y2, r) {
+      var x0 = this.x, y0 = this.y;
+      var a1x = x0 - x1, a1y = y0 - y1;
+      var a2x = x2 - x1, a2y = y2 - y1;
+      var l1 = Math.hypot(a1x, a1y), l2 = Math.hypot(a2x, a2y);
+      if (!l1 || !l2 || !r) { this.lineTo(x1, y1); return; }
+      a1x /= l1; a1y /= l1; a2x /= l2; a2y /= l2;
+      var cosT = Math.max(-1, Math.min(1, a1x * a2x + a1y * a2y));
+      var demi = Math.acos(cosT) / 2;
+      if (!demi || Math.abs(Math.tan(demi)) < 1e-6) { this.lineTo(x1, y1); return; }
+      var d = r / Math.tan(demi);
+      var t1x = x1 + a1x * d, t1y = y1 + a1y * d;
+      var t2x = x1 + a2x * d, t2y = y1 + a2y * d;
+      /* le signe du produit vectoriel donne le sens de l'arc */
+      var sens = (a1x * a2y - a1y * a2x) < 0 ? 1 : 0;
+      this.lineTo(t1x, t1y);
+      this.d += 'A' + n3(r) + ' ' + n3(r) + ' 0 0 ' + sens + ' ' + n3(t2x) + ' ' + n3(t2y) + ' ';
+      this.x = t2x; this.y = t2y;
+    },
     save: function () {}, restore: function () {}, clip: function () {},
     setTransform: function () {}, translate: function () {}, scale: function () {}, rotate: function () {}
   };
@@ -9158,7 +9247,7 @@ window.BaobabsStudio = (function () {
       var r = fitRect(iw, ih, l.w, l.h, l.fit || 'cover', l.zoom || 1,
                       l.ox == null ? .5 : l.ox, l.oy == null ? .5 : l.oy);
       var idc = 'c' + (++_svgId);
-      var dm = traceDe(function (t) { maskPath(t, l.mask || 'rect', l.w, l.h, l.radius || 0); }, l);
+      var dm = traceDe(function (t) { maskPath(t, l.mask || 'rect', l.w, l.h, rayonsDe(l)); }, l);
       defs.push('<clipPath id="' + idc + '"><path d="' + dm + '"/></clipPath>');
       var img = '<image href="' + xmlEsc(l.src) + '" x="' + n3(r.x) + '" y="' + n3(r.y) +
         '" width="' + n3(r.w) + '" height="' + n3(r.h) + '" preserveAspectRatio="none"' +
