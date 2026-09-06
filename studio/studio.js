@@ -272,6 +272,142 @@ window.BaobabsStudio = (function () {
      3. MODÈLE DE DOCUMENT
      =================================================================== */
 
+  /* ===================================================================
+     CARROUSELS — PLUSIEURS PLANCHES DANS UN MEME DOCUMENT
+     ---------------------------------------------------------------
+     Un carrousel Instagram, c'est une suite d'affiches au meme format
+     qu'on publie ensemble. On ne pouvait en faire qu'en creant trois
+     documents separes, en recopiant le fond a la main dans chacun, et
+     en esperant qu'ils restent coherents.
+
+     LA STRUCTURE EST VOLONTAIREMENT MINUSCULE. doc.planches est un
+     tableau de { nom, layers }, et doc.pi dit laquelle est ouverte.
+     doc.layers reste la planche COURANTE : tout le reste du Studio --
+     le rendu, la pile, l'historique, l'export -- continue de ne
+     connaitre que doc.layers et n'a pas ete touche. Changer de planche
+     range les calques dans leur case et sort ceux de l'autre.
+
+     Un document sans doc.planches reste un document simple : les
+     projets deja enregistres s'ouvrent sans rien savoir de tout ceci.
+     =================================================================== */
+  function aDesPlanches() { return !!(doc && doc.planches && doc.planches.length > 1); }
+
+  /* Range la planche courante avant toute lecture du tableau : sans ca,
+     on exporterait la version d'avant le dernier geste. */
+  function rangerPlanche() {
+    if (!doc || !doc.planches || !doc.planches.length) return;
+    var i = doc.pi || 0;
+    if (doc.planches[i]) doc.planches[i].layers = doc.layers;
+  }
+
+  function assurerPlanches() {
+    if (!doc.planches || !doc.planches.length) {
+      doc.planches = [{ nom: 'Planche 1', layers: doc.layers }];
+      doc.pi = 0;
+    }
+    return doc.planches;
+  }
+
+  function allerPlanche(i) {
+    assurerPlanches();
+    if (i < 0 || i >= doc.planches.length || i === doc.pi) return;
+    rangerPlanche();
+    doc.pi = i;
+    doc.layers = doc.planches[i].layers || [];
+    sel = [];
+    if (edit) exitTextEdit();
+    contentEdit = null;
+    prewarmImages();
+    refreshAll();
+    majPlanches();
+    toast(doc.planches[i].nom || ('Planche ' + (i + 1)));
+  }
+
+  function ajouterPlanche(copier) {
+    assurerPlanches();
+    rangerPlanche();
+    change(function () {
+      var src = doc.planches[doc.pi || 0];
+      var neuve = copier
+        ? { nom: (src.nom || 'Planche') + ' copie', layers: (clone(src.layers) || []).map(reid) }
+        : { nom: 'Planche ' + (doc.planches.length + 1), layers: [] };
+      doc.planches.splice((doc.pi || 0) + 1, 0, neuve);
+      doc.pi = (doc.pi || 0) + 1;
+      doc.layers = neuve.layers;
+      sel = [];
+    }, copier ? 'Planche dupliquée' : 'Nouvelle planche');
+    prewarmImages();
+    majPlanches();
+    toast(copier ? 'Planche dupliquée' : 'Planche ajoutée');
+  }
+
+  function supprimerPlanche() {
+    if (!aDesPlanches()) { toast('Un carrousel garde au moins une planche'); return; }
+    rangerPlanche();
+    change(function () {
+      doc.planches.splice(doc.pi || 0, 1);
+      doc.pi = Math.max(0, (doc.pi || 0) - 1);
+      doc.layers = doc.planches[doc.pi].layers || [];
+      sel = [];
+    }, 'Planche supprimée');
+    majPlanches();
+    toast('Planche supprimée');
+  }
+
+  /* Le bandeau ne s'affiche que s'il y a un carrousel, ou si l'on vient
+     d'en demander un : une rangee de boutons pour une seule planche ne
+     ferait qu'occuper la place. */
+  function majPlanches() {
+    var b = els.planches;
+    if (!b) return;
+    if (!doc || !doc.planches || doc.planches.length < 2) { b.hidden = true; b.innerHTML = ''; return; }
+    b.hidden = false;
+    var h = '<span class="bs-planches-lab">Carrousel</span>';
+    doc.planches.forEach(function (p, i) {
+      h += '<button type="button" class="bs-planche' + (i === (doc.pi || 0) ? ' is-on' : '') +
+           '" data-planche="' + i + '" title="' + esc(p.nom || ('Planche ' + (i + 1))) + '">' + (i + 1) + '</button>';
+    });
+    h += '<button type="button" class="bs-planche bs-planche-add" data-planche="+" title="Ajouter une planche">+</button>';
+    b.innerHTML = h;
+    $$('[data-planche]', b).forEach(function (el) {
+      el.addEventListener('click', function () {
+        var v = el.getAttribute('data-planche');
+        if (v === '+') ajouterPlanche(false); else allerPlanche(parseInt(v, 10));
+      });
+    });
+  }
+
+  /* Exporter tout le carrousel, dans l'ordre. Le nom porte le rang :
+     une fois les fichiers dans un dossier, l'ordre de publication se lit
+     sans avoir a les ouvrir. */
+  function exportCarrousel(echelle) {
+    assurerPlanches();
+    rangerPlanche();
+    closeModal();
+    var n = doc.planches.length;
+    if (n < 2) { toast('Ce document n a qu une planche'); return; }
+    var base = JSON.parse(serialize(doc));
+    toast('Préparation du carrousel…');
+    imagesReady().then(function () {
+      var faits = 0;
+      function suivant(i) {
+        if (i >= n) { toast(faits + ' planches exportées', false, true); return; }
+        var d = JSON.parse(JSON.stringify(base));
+        d.layers = base.planches[i].layers;
+        var cv;
+        try { cv = renderToCanvas(echelle || 2, d); } catch (e) { suivant(i + 1); return; }
+        cv.toBlob(function (blob) {
+          if (blob) {
+            faits++;
+            var nom = slug(doc.name || 'carrousel') + '-' + String(i + 1).padStart(2, '0') + '-' + today() + '.png';
+            if (api && api.download) api.download(blob, nom); else downloadBlob(blob, nom);
+          }
+          setTimeout(function () { suivant(i + 1); }, 320);
+        }, 'image/png');
+      }
+      suivant(0);
+    }).catch(function () { toast('Carrousel impossible', true); });
+  }
   function newDoc(formatId, palId) {
     var f = formatById(formatId || 'story');
     var p = PALETTES[0];
@@ -287,6 +423,8 @@ window.BaobabsStudio = (function () {
       palette: { id: p.id, bg: p.bg, accent: p.accent, fg: p.fg, fg2: p.fg2 },
       safe: 0.055,
       rules: [],          /* repères posés à la main : {axis:'x'|'y', v} */
+      planches: [],       /* carrousel : [{nom, layers}] ; vide = une seule planche */
+      pi: 0,
       champs: [],         /* champs de données libres, propres au projet */
       credits: [],        /* crédits photo à reporter dans la légende */
       layers: [],
@@ -2467,7 +2605,13 @@ window.BaobabsStudio = (function () {
      lit. C'est la même donnée qui alimente le panneau Historique. */
   var hist = { undo: [], redo: [], pre: null, label: null };
 
+  /* On range la planche courante AVANT toute serialisation. C'est le seul
+     point de passage commun a l'enregistrement, a l'export JSON et a
+     l'export du carrousel : le poser ailleurs garantirait qu'un chemin
+     l'oublie, et on exporterait la planche telle qu'elle etait avant le
+     dernier geste. */
   function serialize(d) {
+    if (d === doc) rangerPlanche();
     return JSON.stringify(d, function (k, v) { return k.charAt(0) === '_' ? undefined : v; });
   }
   function beginChange(label) {
@@ -10145,6 +10289,7 @@ window.BaobabsStudio = (function () {
       tglSafe: $('#bs-tgl-safe'),
       tglPreview: $('#bs-tgl-preview'),
       float: $('#bs-float'),
+      planches: $('#bs-planches'),
       lyrNew: $('#bs-lyr-new'),
       lyrGroup: $('#bs-lyr-group'),
       home: $('#bs-home'),
@@ -10361,6 +10506,7 @@ window.BaobabsStudio = (function () {
   }
 
   function enterWorkspace() {
+    majPlanches();      /* un document ouvert peut etre un carrousel */
     atHome = false;
     root.classList.remove('is-home');
     requestAnimationFrame(function () {
@@ -10700,6 +10846,7 @@ window.BaobabsStudio = (function () {
         SEP,
         M('Exporter…', 'm.export', 'Ctrl E'),
         M('Export rapide PNG ×2', 'm.quickpng'),
+        M('Exporter le carrousel', 'm.plexport', null, { off: !aDesPlanches(), why: 'Ce document n a qu une planche' }),
         M('Exporter la série (3 formats)', 'm.serie'),
         M('Les affiches du mois…', 'm.mois'),
         M('Exporter le projet (.json)', 'm.json'),
@@ -10738,6 +10885,10 @@ window.BaobabsStudio = (function () {
 
       { id: 'image', label: 'Image', items: [
         M('Taille du document…', 'm.docsize'),
+        SEP,
+        M('Nouvelle planche', 'm.pladd', null, { why: 'Un carrousel : plusieurs affiches publiees ensemble' }),
+        M('Dupliquer la planche', 'm.pldup'),
+        M('Supprimer la planche', 'm.pldel', null, { off: !aDesPlanches(), why: 'Un carrousel garde au moins une planche' }),
         M('Rotation 90° à droite', 'm.rot90'),
         M('Rotation 90° à gauche', 'm.rot270'),
         M('Rotation 180°', 'm.rot180'),
@@ -12006,6 +12157,10 @@ window.BaobabsStudio = (function () {
       case 'm.addimg':   pendingFrame = (l && (l.type === 'image' || l.type === 'frame')) ? l.id : null; els.file.click(); return;
       case 'm.export':   openExport(); return;
       case 'm.quickpng': doExport(2, 'image/png'); return;
+      case 'm.pladd':    ajouterPlanche(false); return;
+      case 'm.pldup':    ajouterPlanche(true); return;
+      case 'm.pldel':    supprimerPlanche(); return;
+      case 'm.plexport': exportCarrousel(2); return;
       case 'm.serie':    exportSerie(); return;
       case 'm.mois':     ouvrirSerie(); return;
       case 'm.json':     exportJson(); return;
