@@ -2145,6 +2145,136 @@ window.BaobabsStudio = (function () {
     }
     ctx.setLineDash([]);
   }
+  /* LES EMBOUTS DE FLECHE.
+     Une ligne ne pouvait que commencer et finir dans le vide. Pour
+     montrer une course, un ecran, une passe -- le vocabulaire meme d'un
+     schema de basket -- il fallait poser une forme « fleche » a la main
+     et la faire tourner au degre pres a chaque fois que la ligne bougeait.
+
+     Six embouts, poses independamment au depart et a l'arrivee. La
+     taille suit l'epaisseur du trait : une fleche de taille fixe sur un
+     trait de 12 px aurait l'air d'une punaise, et l'inverse d'un harpon.
+
+     TOUT EST CALCULE EN COORDONNEES DEJA TOURNEES, sans translate ni
+     rotate. Le traceur SVG ignore ces deux appels -- c'est voulu, il ne
+     porte pas de pile de transformations -- et un embout dessine avec
+     eux serait sorti du fichier a l'origine, droit, quelle que soit la
+     ligne. Meme geometrie des deux cotes, ou rien. */
+  var TETES = [
+    { id: 'none',     label: 'Rien' },
+    { id: 'fleche',   label: 'Flèche' },
+    { id: 'pleine',   label: 'Flèche pleine' },
+    { id: 'triangle', label: 'Triangle' },
+    { id: 'rond',     label: 'Rond' },
+    { id: 'carre',    label: 'Carré' },
+    { id: 'barre',    label: 'Barre' }
+  ];
+
+  function porteEmbouts(l) {
+    if (l.type === 'shape') return l.shape === 'line';
+    if (l.type === 'path') {
+      var subs = pathSubs(l);
+      return subs.length > 0 && !subs[0].closed;
+    }
+    return false;
+  }
+
+  /* Ou poser les embouts, et vers ou ils pointent. L'angle est celui du
+     SENS DE MARCHE au bout : a l'arrivee il continue le trace, au depart
+     il le remonte -- une fleche de depart pointe vers l'exterieur, pas
+     vers l'interieur. */
+  function emboutsDe(l) {
+    var t0 = l.tete0 || 'none', t1 = l.tete1 || 'none', out = [];
+    if (t0 === 'none' && t1 === 'none') return out;
+    if (l.type === 'shape' && l.shape === 'line') {
+      if (t0 !== 'none') out.push({ t: t0, x: 0, y: l.h / 2, a: Math.PI });
+      if (t1 !== 'none') out.push({ t: t1, x: l.w, y: l.h / 2, a: 0 });
+      return out;
+    }
+    if (l.type !== 'path') return out;
+    var subs = pathSubs(l);
+    var pre = subs[0], der = subs[subs.length - 1];
+    if (pre && !pre.closed && t0 !== 'none' && pre.nodes && pre.nodes.length >= 2) {
+      var n = pre.nodes;
+      var px = n[0].x * l.w, py = n[0].y * l.h;
+      /* la tangente sort par la poignee de depart ; sans poignee, par le
+         point suivant -- c'est exactement ce que suit la courbe */
+      var hx = (n[0].h2x != null ? n[0].h2x : n[1].x) * l.w;
+      var hy = (n[0].h2y != null ? n[0].h2y : n[1].y) * l.h;
+      out.push({ t: t0, x: px, y: py, a: Math.atan2(py - hy, px - hx) });
+    }
+    if (der && !der.closed && t1 !== 'none' && der.nodes && der.nodes.length >= 2) {
+      var m = der.nodes, k = m.length - 1;
+      var qx = m[k].x * l.w, qy = m[k].y * l.h;
+      var gx = (m[k].h1x != null ? m[k].h1x : m[k - 1].x) * l.w;
+      var gy = (m[k].h1y != null ? m[k].h1y : m[k - 1].y) * l.h;
+      out.push({ t: t1, x: qx, y: qy, a: Math.atan2(qy - gy, qx - gx) });
+    }
+    return out;
+  }
+
+  function epaisseurTrait(l) {
+    if (l.stroke && l.stroke.w > 0) return l.stroke.w;
+    if (l.type === 'shape' && l.shape === 'line') return Math.max(1, l.h);
+    return 2;
+  }
+
+  function emboutPath(ctx, e, T, w) {
+    var ca = Math.cos(e.a), sa = Math.sin(e.a);
+    function px(u, v) { return e.x + u * ca - v * sa; }
+    function py(u, v) { return e.y + u * sa + v * ca; }
+    function M(u, v) { ctx.moveTo(px(u, v), py(u, v)); }
+    function Li(u, v) { ctx.lineTo(px(u, v), py(u, v)); }
+    switch (e.t) {
+      case 'fleche':
+        M(-T, -T * 0.62); Li(0, 0); Li(-T, T * 0.62);
+        return;
+      case 'pleine':
+        M(0, 0); Li(-T, -T * 0.56); Li(-T * 0.68, 0); Li(-T, T * 0.56);
+        ctx.closePath();
+        return;
+      case 'triangle':
+        M(0, 0); Li(-T, -T * 0.5); Li(-T, T * 0.5);
+        ctx.closePath();
+        return;
+      case 'rond':
+        ctx.ellipse(px(-T * 0.38, 0), py(-T * 0.38, 0), T * 0.38, T * 0.38, 0, 0, Math.PI * 2);
+        return;
+      case 'carre':
+        M(0, -T * 0.38); Li(0, T * 0.38); Li(-T * 0.76, T * 0.38); Li(-T * 0.76, -T * 0.38);
+        ctx.closePath();
+        return;
+      case 'barre':
+        M(0, -T * 0.55); Li(0, T * 0.55); Li(-w * 1.1, T * 0.55); Li(-w * 1.1, -T * 0.55);
+        ctx.closePath();
+        return;
+    }
+  }
+
+  function tracerEmbouts(ctx, l) {
+    var es = emboutsDe(l);
+    if (!es.length) return;
+    var w = epaisseurTrait(l);
+    var T = Math.max(4, w * 3.4);
+    var col = css((l.stroke && l.stroke.color) || color('#FFFFFF', 1));
+    for (var i = 0; i < es.length; i++) {
+      ctx.beginPath();
+      emboutPath(ctx, es[i], T, w);
+      if (es[i].t === 'fleche') {
+        /* le V ouvert se TRACE : le remplir en ferait un triangle, et
+           l'ecart entre les deux est justement le choix qu'on offre */
+        ctx.strokeStyle = col;
+        ctx.lineWidth = w;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = col;
+        ctx.fill();
+      }
+    }
+  }
+
   function drawShape(ctx, l) {
     shapePath(ctx, l);
     if (l.shape !== 'line') {
@@ -2158,6 +2288,7 @@ window.BaobabsStudio = (function () {
       ctx.lineWidth = Math.max(1, l.h);
       ctx.stroke();
     }
+    tracerEmbouts(ctx, l);
   }
 
   /* ---------- tracé plume ---------- */
@@ -2178,6 +2309,7 @@ window.BaobabsStudio = (function () {
       tracerContour(ctx, l, pathPath);
       if (!ferme) l.stroke.pos = memo;
     }
+    tracerEmbouts(ctx, l);
     ctx.restore();
     if (coupe) { /* le pochoir est local au calque, il ne fuit pas */ }
   }
@@ -5181,6 +5313,7 @@ window.BaobabsStudio = (function () {
     if (NOMS_REGLAGE[path]) return NOMS_REGLAGE[path];
     if (/^effets\./.test(path)) return 'Effets';
     if (path === 'arrondi') return 'Angles arrondis';
+    if (path === 'tete0' || path === 'tete1') return 'Embout de flèche';
     if (path === 'arcDeb' || path === 'arcBal' || path === 'arcTrou') return 'Arc de l’ellipse';
     if (/^fx\./.test(path)) return 'Retouche de l’image';
     if (/^path\./.test(path)) return 'Texte sur tracé';
@@ -5650,7 +5783,18 @@ window.BaobabsStudio = (function () {
   function fContour(l, titre) {
     var st = l.stroke || {};
     var h = fStep('Épaisseur', 'stroke.w', st.w || 0, { unit: 'px', dec: 1, min: 0, step: .5 });
-    if (!(st.w > 0)) return fGroup(titre, h);
+    if (!(st.w > 0)) {
+      /* Une ligne se dessine avec sa hauteur pour epaisseur : elle n'a
+         donc pas forcement de stroke.w, et pourtant elle merite ses
+         embouts. Sans cette sortie separee, le reglage disparaissait
+         precisement sur la forme qui en a le plus besoin. */
+      if (porteEmbouts(l)) {
+        h += '<div class="bs-frow">' +
+          fSelect('Embout de départ', 'tete0', l.tete0 || 'none', TETES) +
+          fSelect('Embout d’arrivée', 'tete1', l.tete1 || 'none', TETES) + '</div>';
+      }
+      return fGroup(titre, h);
+    }
     h += fColor('Couleur', 'stroke.color', st.color);
     h += fSeg('Position', 'stroke.pos', st.pos || 'center', [
       { id: 'inside', label: 'Intérieur' }, { id: 'center', label: 'Centré' }, { id: 'outside', label: 'Extérieur' }
@@ -5665,6 +5809,14 @@ window.BaobabsStudio = (function () {
     h += fSeg('Extrémités', 'stroke.cap', st.cap || 'butt', [
       { id: 'butt', label: 'Nette' }, { id: 'round', label: 'Ronde' }, { id: 'square', label: 'Carrée' }
     ]);
+    /* Les embouts n'ont de sens qu'aux DEUX BOUTS d'un trace ouvert :
+       une forme fermee n'a ni depart ni arrivee, et proposer le reglage
+       la ferait croire le contraire. */
+    if (porteEmbouts(l)) {
+      h += '<div class="bs-frow">' +
+        fSelect('Embout de départ', 'tete0', l.tete0 || 'none', TETES) +
+        fSelect('Embout d’arrivée', 'tete1', l.tete1 || 'none', TETES) + '</div>';
+    }
     return fGroup(titre, h);
   }
   function fCoins(l) {
@@ -10645,6 +10797,31 @@ window.BaobabsStudio = (function () {
     return t;
   }
 
+  /* Les embouts dans le SVG : la meme geometrie, par la meme fonction.
+     Le V ouvert se trace, les autres se remplissent -- comme a l'ecran.
+     On les emet en <path> separes plutot qu'en <marker> : un marqueur
+     SVG s'oriente tout seul, mais il faudrait alors DEUX descriptions
+     de la meme fleche, et deux descriptions finissent toujours par
+     diverger. */
+  function emboutsSVG(l) {
+    var es = emboutsDe(l);
+    if (!es.length) return '';
+    var w = epaisseurTrait(l), T = Math.max(4, w * 3.4);
+    var col = cssHex((l.stroke && l.stroke.color) || color('#FFFFFF', 1));
+    var op = alphaDe((l.stroke && l.stroke.color) || color('#FFFFFF', 1));
+    var out = '';
+    for (var i = 0; i < es.length; i++) {
+      var e = es[i];
+      var d = traceDe(function (t) { t.beginPath(); emboutPath(t, e, T, w); }, l);
+      if (!d) continue;
+      out += es[i].t === 'fleche'
+        ? '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-opacity="' + n3(op) +
+          '" stroke-width="' + n3(w) + '" stroke-linecap="round" stroke-linejoin="round"/>'
+        : '<path d="' + d + '" fill="' + col + '" fill-opacity="' + n3(op) + '"/>';
+    }
+    return out;
+  }
+
   function calqueSVG(l, defs, avert) {
     if (!l.visible) return '';
     var attrs = ' transform="' + transformSVG(l) + '"';
@@ -10677,9 +10854,25 @@ window.BaobabsStudio = (function () {
     if (l.type === 'shape' || l.type === 'path') {
       var d = traceDe(l.type === 'shape' ? shapePath : pathPath, l);
       if (!d) return '';
-      var f = peintureSVG(l.fill, l.w, l.h, defs, avert);
+      /* UNE LIGNE N'A PAS D'INTERIEUR.
+         Le canevas la dessine en TRACANT, avec la hauteur du calque pour
+         epaisseur quand aucune n'est donnee. Le SVG, lui, remplissait le
+         chemin -- et un segment n'a pas d'aire : la ligne sortait donc
+         invisible du fichier, sans erreur, sans avertissement. Trouve en
+         verifiant les embouts de fleche, pas en cherchant ce bug.
+         Ici on ecrit ce que fait l'ecran : un trace, de l'epaisseur
+         reellement employee. */
+      var ligne = (l.shape === 'line');
+      var ligneNue = ligne && !(l.stroke && l.stroke.w > 0);
+      var f = ligne ? 'none' : peintureSVG(l.fill, l.w, l.h, defs, avert);
       var s = '<path d="' + d + '" fill="' + f + '"';
-      if (l.fill && l.fill.type === 'solid' && alphaDe(l.fill.color) < 1) s += ' fill-opacity="' + alphaDe(l.fill.color) + '"';
+      if (!ligne && l.fill && l.fill.type === 'solid' && alphaDe(l.fill.color) < 1) s += ' fill-opacity="' + alphaDe(l.fill.color) + '"';
+      if (ligneNue) {
+        var cl = (l.stroke && l.stroke.color) || color('#FFFFFF', 1);
+        s += ' stroke="' + cssHex(cl) + '" stroke-opacity="' + n3(alphaDe(cl)) +
+             '" stroke-width="' + n3(Math.max(1, l.h)) + '"';
+        if (l.cap) s += ' stroke-linecap="' + l.cap + '"';
+      }
       if (l.stroke && l.stroke.w > 0) {
         s += ' stroke="' + cssHex(l.stroke.color) + '" stroke-width="' + n3(l.stroke.w) + '"' +
              ' stroke-opacity="' + alphaDe(l.stroke.color) + '"';
@@ -10687,7 +10880,7 @@ window.BaobabsStudio = (function () {
         if (l.cap) s += ' stroke-linecap="' + l.cap + '"';
       }
       s += '/>';
-      return '<g' + attrs + '>' + s + '</g>';
+      return '<g' + attrs + '>' + s + emboutsSVG(l) + '</g>';
     }
 
     if (l.type === 'image' || l.type === 'frame') {
