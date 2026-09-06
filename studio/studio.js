@@ -175,6 +175,11 @@ window.BaobabsStudio = (function () {
     { id: 'stripes',  label: 'Rayures' }
   ];
 
+  /* Quelles formes acceptent un arrondi d'angle : celles qui ont des
+     angles. Une table plutot qu'une suite de || dans le panneau, pour
+     qu'ajouter une forme demande de repondre a la question. */
+  var ARRONDISSABLES = { triangle: 1, polygon: 1, star: 1, arrow: 1, chevron: 1 };
+
   /* Icônes : des tracés SVG rendus par Path2D. Elles deviennent de
      vrais calques — on peut les colorer, les tourner, les écrêter,
      exactement comme une forme. Repère 24 × 24. */
@@ -1175,62 +1180,149 @@ window.BaobabsStudio = (function () {
     }
   }
 
+  /* ARRONDIR N'IMPORTE QUEL ANGLE.
+     Le rectangle savait arrondir ses coins, un par un meme ; le triangle,
+     le polygone, l'etoile, la fleche et le chevron n'avaient que des
+     pointes seches. C'est la premiere chose qu'on cherche sur une etoile
+     de recompense ou une fleche de resultat -- et Figma comme Photoshop
+     l'offrent sur toutes leurs formes.
+
+     Le procede est celui des coins de rectangle, generalise : on part du
+     MILIEU d'un cote, et a chaque sommet on demande un arc tangent aux
+     deux cotes qui s'y rejoignent. arcTo fait tout le travail, et il
+     existe aussi bien sur le canevas que sur le traceur SVG -- donc
+     l'export suit sans une ligne de plus.
+
+     Le rayon est BORNE par la moitie du plus court cote : au-dela, les
+     points de tangence sortent du segment et la forme se retourne sur
+     elle-meme. On prefere un arrondi plus doux que demande a une etoile
+     qui s'auto-intersecte sans qu'on comprenne pourquoi. */
+  function polyArrondi(ctx, pts, r) {
+    var n = pts.length, i;
+    if (n < 3) return;
+    if (r > 0) {
+      /* LA MOITIE DU COTE NE SUFFIT PAS COMME LIMITE.
+         Sur un angle droit elle convient ; sur la pointe d'une etoile a
+         cinq branches, qui fait 36 degres, l'arc mord trois fois plus
+         loin le long des cotes -- et la forme se retournait en noeud des
+         qu'on montait l'arrondi. Vu a l'ecran, pas en relisant : le rayon
+         etait bien borne, mais par la mauvaise grandeur.
+         La vraie limite tient a l'angle : l'arc quitte le cote a une
+         distance r / tan(angle / 2) du sommet, et cette distance doit
+         tenir dans la moitie du plus court des deux cotes. */
+      var lim = Infinity;
+      for (i = 0; i < n; i++) {
+        var pa = pts[(i - 1 + n) % n], pc = pts[i], pb = pts[(i + 1) % n];
+        var ax = pa[0] - pc[0], ay = pa[1] - pc[1];
+        var bx = pb[0] - pc[0], by = pb[1] - pc[1];
+        var la = Math.hypot(ax, ay), lb = Math.hypot(bx, by);
+        if (!la || !lb) continue;
+        var cosT = clamp((ax * bx + ay * by) / (la * lb), -1, 1);
+        var demi = Math.acos(cosT) / 2;
+        var tg = Math.tan(demi);
+        if (!isFinite(tg) || tg <= 1e-6) continue;
+        lim = Math.min(lim, Math.min(la, lb) / 2 * tg);
+      }
+      if (isFinite(lim)) r = Math.min(r, lim * 0.999);
+    }
+    ctx.beginPath();
+    if (r <= 0.4) {
+      for (i = 0; i < n; i++) i ? ctx.lineTo(pts[i][0], pts[i][1]) : ctx.moveTo(pts[0][0], pts[0][1]);
+      ctx.closePath();
+      return;
+    }
+    var m0 = [(pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2];
+    ctx.moveTo(m0[0], m0[1]);
+    for (i = 1; i <= n; i++) {
+      var cur = pts[i % n], nxt = pts[(i + 1) % n];
+      ctx.arcTo(cur[0], cur[1], (cur[0] + nxt[0]) / 2, (cur[1] + nxt[1]) / 2, r);
+    }
+    ctx.closePath();
+  }
+  function arrondiDe(l) { return Math.max(0, num(l.arrondi, 0)); }
+
   function shapePath(ctx, l) {
     var w = l.w, h = l.h, i, a, px, py;
     switch (l.shape) {
-      case 'ellipse':
+      /* L'ELLIPSE N'ETAIT QU'UN DISQUE PLEIN.
+         Ni part de camembert, ni anneau, ni arc -- alors qu'un pourcentage
+         de possession, un compte a rebours ou un simple cercle evide sont
+         exactement ce qu'on dessine sur une affiche de match. Figma donne
+         les trois avec les memes trois reglages : ou commence l'arc,
+         combien il balaie, quelle part du rayon est creusee. */
+      case 'ellipse': {
+        var erx = Math.abs(w / 2), ery = Math.abs(h / 2);
+        var ecx = w / 2, ecy = h / 2;
+        var bal = clamp(l.arcBal == null ? 360 : num(l.arcBal, 360), 0, 360);
+        /* 0 degre en HAUT : c'est la ou l'oeil place le depart d'un
+           compte a rebours, et c'est deja la convention des degrades. */
+        var deb = deg2rad(num(l.arcDeb, 0) - 90);
+        var trou = clamp(num(l.arcTrou, 0), 0, 0.98);
         ctx.beginPath();
-        ctx.ellipse(w / 2, h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, Math.PI * 2);
+        if (bal >= 360 && !trou) {
+          ctx.ellipse(ecx, ecy, erx, ery, 0, 0, Math.PI * 2);
+          break;
+        }
+        if (bal >= 360) {
+          /* anneau : le second cercle tourne a l'envers, et la regle du
+             nombre d'enroulements creuse le trou toute seule */
+          ctx.ellipse(ecx, ecy, erx, ery, 0, 0, Math.PI * 2);
+          ctx.moveTo(ecx + erx * trou, ecy);
+          ctx.ellipse(ecx, ecy, erx * trou, ery * trou, 0, 0, Math.PI * 2, true);
+          break;
+        }
+        if (bal <= 0) break;
+        var fin = deb + deg2rad(bal);
+        ctx.moveTo(ecx + Math.cos(deb) * erx * trou, ecy + Math.sin(deb) * ery * trou);
+        ctx.lineTo(ecx + Math.cos(deb) * erx, ecy + Math.sin(deb) * ery);
+        ctx.ellipse(ecx, ecy, erx, ery, 0, deb, fin);
+        ctx.lineTo(ecx + Math.cos(fin) * erx * trou, ecy + Math.sin(fin) * ery * trou);
+        if (trou) ctx.ellipse(ecx, ecy, erx * trou, ery * trou, 0, fin, deb, true);
+        ctx.closePath();
         break;
+      }
       case 'line':
         ctx.beginPath();
         ctx.moveTo(0, h / 2);
         ctx.lineTo(w, h / 2);
         break;
       case 'triangle':
-        ctx.beginPath();
-        ctx.moveTo(w / 2, 0); ctx.lineTo(w, h); ctx.lineTo(0, h);
-        ctx.closePath();
+        polyArrondi(ctx, [[w / 2, 0], [w, h], [0, h]], arrondiDe(l));
         break;
-      case 'polygon':
-        ctx.beginPath();
+      case 'polygon': {
+        var pp = [];
         for (i = 0; i < l.sides; i++) {
           a = Math.PI * 2 * i / l.sides - Math.PI / 2;
-          px = w / 2 + Math.cos(a) * w / 2; py = h / 2 + Math.sin(a) * h / 2;
-          i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+          pp.push([w / 2 + Math.cos(a) * w / 2, h / 2 + Math.sin(a) * h / 2]);
         }
-        ctx.closePath();
+        polyArrondi(ctx, pp, arrondiDe(l));
         break;
-      case 'star':
-        ctx.beginPath();
-        var n = l.points * 2;
+      }
+      case 'star': {
+        var ps = [], n = l.points * 2;
         for (i = 0; i < n; i++) {
           var rr = i % 2 ? l.inner : 1;
           a = Math.PI * i / l.points - Math.PI / 2;
-          px = w / 2 + Math.cos(a) * w / 2 * rr; py = h / 2 + Math.sin(a) * h / 2 * rr;
-          i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+          ps.push([w / 2 + Math.cos(a) * w / 2 * rr, h / 2 + Math.sin(a) * h / 2 * rr]);
         }
-        ctx.closePath();
+        polyArrondi(ctx, ps, arrondiDe(l));
         break;
-      case 'arrow':
-        ctx.beginPath();
+      }
+      case 'arrow': {
         var sh = h * 0.34, hd = Math.min(w * 0.42, h * 0.5);
-        ctx.moveTo(0, h / 2 - sh / 2);
-        ctx.lineTo(w - hd, h / 2 - sh / 2);
-        ctx.lineTo(w - hd, 0);
-        ctx.lineTo(w, h / 2);
-        ctx.lineTo(w - hd, h);
-        ctx.lineTo(w - hd, h / 2 + sh / 2);
-        ctx.lineTo(0, h / 2 + sh / 2);
-        ctx.closePath();
+        polyArrondi(ctx, [
+          [0, h / 2 - sh / 2], [w - hd, h / 2 - sh / 2], [w - hd, 0],
+          [w, h / 2], [w - hd, h], [w - hd, h / 2 + sh / 2], [0, h / 2 + sh / 2]
+        ], arrondiDe(l));
         break;
-      case 'chevron':
-        ctx.beginPath();
+      }
+      case 'chevron': {
         var cw = w * 0.34;
-        ctx.moveTo(0, 0); ctx.lineTo(cw, 0); ctx.lineTo(w, h / 2);
-        ctx.lineTo(cw, h); ctx.lineTo(0, h); ctx.lineTo(w - cw, h / 2);
-        ctx.closePath();
+        polyArrondi(ctx, [
+          [0, 0], [cw, 0], [w, h / 2], [cw, h], [0, h], [w - cw, h / 2]
+        ], arrondiDe(l));
         break;
+      }
       /* Rayures diagonales en un seul calque : un groupe de quinze
          rectangles tournés serait ingérable dans la pile. */
       case 'stripes': {
@@ -5088,6 +5180,8 @@ window.BaobabsStudio = (function () {
   function nomReglage(path) {
     if (NOMS_REGLAGE[path]) return NOMS_REGLAGE[path];
     if (/^effets\./.test(path)) return 'Effets';
+    if (path === 'arrondi') return 'Angles arrondis';
+    if (path === 'arcDeb' || path === 'arcBal' || path === 'arcTrou') return 'Arc de l’ellipse';
     if (/^fx\./.test(path)) return 'Retouche de l’image';
     if (/^path\./.test(path)) return 'Texte sur tracé';
     if (/^bg\./.test(path)) return 'Fond de l’affiche';
@@ -6312,6 +6406,19 @@ window.BaobabsStudio = (function () {
     var h = fGroup('Forme',
       fSelect('Type', 'shape', l.shape, SHAPE_KINDS) +
       (l.shape === 'rect' ? fCoins(l) : '') +
+      /* L'arrondi n'a de sens que sur une forme a angles. Le montrer sur
+         une ellipse ou des rayures serait un champ qui ne fait rien -- et
+         un champ qui ne fait rien coute plus cher qu'un champ absent. */
+      (ARRONDISSABLES[l.shape]
+        ? fStep('Angles arrondis', 'arrondi', num(l.arrondi, 0), { unit: 'px', dec: 0, min: 0 })
+        : '') +
+      (l.shape === 'ellipse'
+        ? '<div class="bs-frow">' +
+          fStep('Début de l’arc', 'arcDeb', num(l.arcDeb, 0), { unit: '°', dec: 0 }) +
+          fStep('Balayage', 'arcBal', l.arcBal == null ? 360 : num(l.arcBal, 360), { unit: '°', dec: 0, min: 0, max: 360 }) +
+          '</div>' +
+          fRange('Trou central', 'arcTrou', num(l.arcTrou, 0) * 100, 0, 98, 1, { unit: '%', mul: 0.01 })
+        : '') +
       (l.shape === 'polygon' ? fStep('Côtés', 'sides', l.sides || 6, { dec: 0, min: 3, max: 24 }) : '') +
       (l.shape === 'stripes'
         ? fStep('Nombre de rayures', 'count', l.count || 14, { dec: 0, min: 2, max: 60 }) +
@@ -10305,14 +10412,38 @@ window.BaobabsStudio = (function () {
     rect: function (x, y, w, h) {
       this.d += 'M' + n3(x) + ' ' + n3(y) + ' H' + n3(x + w) + ' V' + n3(y + h) + ' H' + n3(x) + ' Z ';
     },
-    /* une ellipse s'ecrit avec deux arcs : c'est la seule forme SVG qui
-       ne se deduit pas mot pour mot de l'appel canvas */
-    ellipse: function (cx, cy, rx, ry) {
-      this.d += 'M' + n3(cx - rx) + ' ' + n3(cy) +
-        ' a' + n3(rx) + ' ' + n3(ry) + ' 0 1 0 ' + n3(rx * 2) + ' 0' +
-        ' a' + n3(rx) + ' ' + n3(ry) + ' 0 1 0 ' + n3(-rx * 2) + ' 0 Z ';
+    /* UNE ELLIPSE S'ECRIT AVEC DEUX ARCS -- et le traceur ne savait faire
+       QUE le tour complet : les angles de depart et d'arrivee etaient
+       ignores. Le masque « arche », qui est un demi-cercle pose sur deux
+       montants, sortait donc du SVG en cercle entier ; personne ne l'avait
+       vu parce qu'il faut ouvrir le fichier ailleurs pour s'en apercevoir.
+       Maintenant que l'ellipse peut s'ouvrir en camembert, il fallait de
+       toute facon les honorer.
+       Un A de 360 degres est degenere en SVG (depart = arrivee, l'arc est
+       vide) : le tour complet se coupe donc toujours en deux moities. */
+    ellipse: function (cx, cy, rx, ry, rot, a0, a1, acw) {
+      if (a0 == null) { a0 = 0; a1 = Math.PI * 2; }
+      var sx = cx + Math.cos(a0) * rx, sy = cy + Math.sin(a0) * ry;
+      var sens = acw ? 0 : 1;
+      /* on rejoint le depart de l'arc : par un M si le trace est vide,
+         par un L sinon -- c'est ce que fait le canevas tout seul */
+      this.d += (this.d ? 'L' : 'M') + n3(sx) + ' ' + n3(sy) + ' ';
+      var delta = a1 - a0;
+      if (Math.abs(delta) >= Math.PI * 2 - 1e-6) {
+        var ox = cx - Math.cos(a0) * rx, oy = cy - Math.sin(a0) * ry;
+        this.d += 'A' + n3(rx) + ' ' + n3(ry) + ' 0 1 ' + sens + ' ' + n3(ox) + ' ' + n3(oy) + ' ';
+        this.d += 'A' + n3(rx) + ' ' + n3(ry) + ' 0 1 ' + sens + ' ' + n3(sx) + ' ' + n3(sy) + ' ';
+        this.x = sx; this.y = sy;
+        return;
+      }
+      if (acw) { while (delta > 0) delta -= Math.PI * 2; }
+      else { while (delta < 0) delta += Math.PI * 2; }
+      var ex = cx + Math.cos(a0 + delta) * rx, ey = cy + Math.sin(a0 + delta) * ry;
+      var grand = Math.abs(delta) > Math.PI ? 1 : 0;
+      this.d += 'A' + n3(rx) + ' ' + n3(ry) + ' 0 ' + grand + ' ' + sens + ' ' + n3(ex) + ' ' + n3(ey) + ' ';
+      this.x = ex; this.y = ey;
     },
-    arc: function (cx, cy, r) { this.ellipse(cx, cy, r, r); },
+    arc: function (cx, cy, r, a0, a1, acw) { this.ellipse(cx, cy, r, r, 0, a0, a1, acw); },
     /* arcTo MANQUAIT, et roundRectPath ne dessine ses coins qu'avec lui :
        toute forme a coins arrondis sortait VIDE du SVG, l'exception etant
        avalee par le try/catch de traceDe(). Trouve en relisant les
