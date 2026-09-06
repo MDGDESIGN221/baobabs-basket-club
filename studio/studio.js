@@ -3958,6 +3958,16 @@ window.BaobabsStudio = (function () {
     }
     if (path === 'role') { applyRole(value); return; }
     if (path === 'bind') { applyBind(value); return; }
+    /* L'AMBIANCE SE MODIFIE, ELLE NE SE SUBIT PLUS. On pouvait choisir
+       parmi six ambiances toutes faites, jamais retoucher leurs quatre
+       couleurs -- alors que c'est le premier geste quand le vert du club
+       n'est pas exactement celui du modele. Et changer une couleur de
+       palette DOIT repeindre les calques qui portaient l'ancienne, sinon
+       les pastilles montrent une couleur et l'affiche en montre une autre. */
+    if (scope === 'doc' && path.indexOf('palette.') === 0) {
+      majPalette(path.slice(8), (value && value.hex) ? value.hex : value);
+      return;
+    }
     var objs = targetsFor(scope);
     for (var i = 0; i < objs.length; i++) { setPath(objs[i], path, value); afterSet(objs[i], path); }
   }
@@ -4286,7 +4296,17 @@ window.BaobabsStudio = (function () {
     var pal = doc ? doc.palette : { bg: '#000', accent: '#7DFF4F', fg: '#fff', fg2: '#999' };
     var sw = '';
     if (opts.swatches !== false) {
-      var list = [pal.accent, pal.fg, pal.fg2, pal.bg, '#FFFFFF', '#000000'];
+      /* SIX PASTILLES POUR QUATRE COULEURS. Sur « Nuit verte », fg vaut
+         deja #FFFFFF et sur « Craie », bg vaut #FFFFFF et accent #111111 :
+         la rangee affichait deux blancs, ou deux noirs, cote a cote. On ne
+         voyait pas d'erreur, juste une rangee qui n'avait pas de sens. */
+      var list = [], brut = [pal.accent, pal.fg, pal.fg2, pal.bg, '#FFFFFF', '#000000'];
+      for (var q = 0; q < brut.length; q++) {
+        var hx = String(brut[q] || '').toLowerCase();
+        var deja = false;
+        for (var z = 0; z < list.length; z++) if (String(list[z]).toLowerCase() === hx) deja = true;
+        if (hx && !deja) list.push(brut[q]);
+      }
       sw = '<div class="bs-swatches" style="margin-top:6px">';
       for (var i = 0; i < list.length; i++) {
         sw += '<button type="button" data-swatch="' + list[i] + '" style="background:' + list[i] + '" title="' + list[i] + '"></button>';
@@ -4301,7 +4321,12 @@ window.BaobabsStudio = (function () {
       '<button type="button" class="bs-sw"><i style="background:' + css(col) + '"></i></button>' +
       '<input type="color" class="bs-hidden-color" value="' + esc(col.hex || '#ffffff') + '">' +
       '<input type="text" value="' + esc((col.hex || '#ffffff').toUpperCase()) + '" spellcheck="false">' +
-      '<div class="bs-step bs-color-alpha"><input type="number" class="bs-in-num" min="0" max="100" step="1" value="' + Math.round((col.a == null ? 1 : col.a) * 100) + '"><span class="bs-step-u">%</span></div>' +
+      /* Une couleur d'ambiance n'a pas d'opacite : elle est recopiee dans des
+         calques qui, eux, ont la leur. Afficher un % qui ne ferait rien serait
+         un bouton mort de plus. */
+      (opts.alpha === false ? '' :
+        '<div class="bs-step bs-color-alpha"><input type="number" class="bs-in-num" min="0" max="100" step="1" value="' +
+        Math.round((col.a == null ? 1 : col.a) * 100) + '"><span class="bs-step-u">%</span></div>') +
       '</div>' + sw + '</div>';
   }
 
@@ -4441,7 +4466,23 @@ window.BaobabsStudio = (function () {
         '<i style="width:14px;height:22px;border-radius:3px;background:' + p.fg + '"></i>' +
         '</span><span class="bs-item-txt"><b>' + esc(p.label) + '</b></span></button>';
     }
-    h += fGroup('Ambiance', '<div style="display:flex;flex-direction:column;gap:5px">' + sw + '</div>');
+    /* LES QUATRE COULEURS DE L'AMBIANCE, MODIFIABLES.
+       Jusqu'ici on choisissait parmi six ambiances toutes faites et c'est
+       tout : impossible de corriger le vert quand celui du club n'est pas
+       exactement celui du modele. Les pastilles de la barre flottante et
+       des champs couleur montraient alors une palette qu'on ne pouvait
+       pas suivre. Changer l'une de ces quatre couleurs repeint les calques
+       qui portaient l'ANCIENNE -- ce qui a ete choisi a la main reste. */
+    var pal2 = doc.palette;
+    h += fGroup('Ambiance',
+      '<div style="display:flex;flex-direction:column;gap:5px">' + sw + '</div>' +
+      '<div class="bs-note" style="margin:10px 0 8px">Les quatre couleurs ci-dessous sont ' +
+      'celles que reprennent les nouveaux calques. Modifiez-en une : les calques qui la ' +
+      'portaient suivent.</div>' +
+      fColor('Accent', 'palette.accent', color(pal2.accent, 1), { scope: 'doc', swatches: false, alpha: false }) +
+      fColor('Texte', 'palette.fg', color(pal2.fg, 1), { scope: 'doc', swatches: false, alpha: false }) +
+      fColor('Texte secondaire', 'palette.fg2', color(pal2.fg2, 1), { scope: 'doc', swatches: false, alpha: false }) +
+      fColor('Fond', 'palette.bg', color(pal2.bg, 1), { scope: 'doc', swatches: false, alpha: false }));
 
     h += fGroup('Repères',
       fToggle('Grille', 'grid', flags.grid, { scope: 'flags' }) +
@@ -6859,11 +6900,27 @@ window.BaobabsStudio = (function () {
       : (uns.orient === 'landscape' ? '&aspect_ratio=wide'
         : (uns.orient === 'squarish' ? '&aspect_ratio=square' : ''));
     var u = 'https://api.openverse.org/v1/images/?q=' + encodeURIComponent(uns.q) +
-      '&page_size=24&page=' + uns.page + ratio + '&mature=false';
+      /* VINGT, PAS VINGT-QUATRE. Openverse plafonne page_size a 20 pour
+         les requetes anonymes et repond sinon 401 avec, dans le corps :
+         « page_size may not exceed 20 for anonymous requests ». On lisait
+         le 401 comme un refus d'authentification, et on renvoyait
+         l'utilisateur vers Unsplash et sa cle -- alors qu'Openverse
+         n'attendait qu'un nombre plus petit. La recherche de photos etait
+         morte des le premier essai. */
+      '&page_size=20&page=' + uns.page + ratio + '&mature=false';
     fetch(u, { headers: { 'Accept': 'application/json' } })
       .then(function (r) {
         if (r.status === 429) throw new Error('Trop de recherches d’affilée. Attendez une minute.');
-        if (!r.ok) throw new Error('Openverse a répondu ' + r.status + '.');
+        /* Openverse dit POURQUOI dans le corps de sa reponse. Se contenter du
+           numero, c'est jeter la seule phrase utile -- et c'est ce qui a fait
+           perdre du temps sur le 401 du page_size. */
+        if (!r.ok) {
+          return r.json().then(function (j) {
+            throw new Error('Openverse a refuse : ' + ((j && j.detail) || ('reponse ' + r.status)));
+          }, function () {
+            throw new Error('Openverse a répondu ' + r.status + '.');
+          });
+        }
         return r.json();
       })
       .then(function (j) {
@@ -7790,6 +7847,25 @@ window.BaobabsStudio = (function () {
     toast('Style appliqué à ' + ls.length + ' calque(s)');
   }
 
+  /* Une seule couleur d'ambiance change. Meme mecanique que applyPalette :
+     on remplace les couleurs qui VENAIENT de l'ancienne valeur, et
+     seulement celles-la -- ce qui a ete choisi a la main reste. */
+  function majPalette(cle, hex) {
+    if (!doc || !doc.palette || !hex) return;
+    if (['accent', 'fg', 'fg2', 'bg'].indexOf(cle) < 0) return;
+    var ancien = String(doc.palette[cle] || '').toLowerCase();
+    doc.palette[cle] = hex;
+    doc.palette.id = 'perso';          /* plus aucune ambiance toute faite */
+    if (!ancien || ancien === String(hex).toLowerCase()) return;
+    var map = {}; map[ancien] = hex;
+    if (doc.bg) {
+      if (doc.bg.color && doc.bg.color.hex && map[doc.bg.color.hex.toLowerCase()]) doc.bg.color.hex = hex;
+      if (doc.bg.from && doc.bg.from.hex && map[doc.bg.from.hex.toLowerCase()]) doc.bg.from.hex = hex;
+      if (doc.bg.to && doc.bg.to.hex && map[doc.bg.to.hex.toLowerCase()]) doc.bg.to.hex = hex;
+    }
+    walk(doc.layers, function (l) { repaint(l, map); });
+  }
+  
   function applyPalette(id) {
     var p = null;
     for (var i = 0; i < PALETTES.length; i++) if (PALETTES[i].id === id) p = PALETTES[i];
