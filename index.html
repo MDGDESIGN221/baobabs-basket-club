@@ -14,7 +14,14 @@
    Pose ici, dans le premier bloc, parce que les <script> suivants ne se
    voient pas les uns les autres. */
 window.bbLienSur = function (u) {
-  var v = String(u == null ? '' : u).trim();
+  /* LES CARACTERES DE CONTROLE D'ABORD, LE SCHEMA ENSUITE.
+     Le navigateur retire tabulations, sauts de ligne et retours chariot
+     AVANT de lire le schema d'une adresse. Un « java<saut>script: » ne
+     ressemble alors a aucun schema pour une expression reguliere : il
+     passait pour un chemin relatif, et redevenait javascript: une fois
+     pose sur le href. Mesure faite : a.protocol valait bien javascript:.
+     On nettoie comme le navigateur nettoie, sinon on ne filtre rien. */
+  var v = String(u == null ? '' : u).replace(/[\u0000-\u001F\u007F]/g, '').trim();
   if (!v) return '';
   if (/^https?:\/\//i.test(v)) return v;
   if (v.charAt(0) === '/' || v.charAt(0) === '#') return v;
