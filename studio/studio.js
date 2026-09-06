@@ -1594,6 +1594,72 @@ window.BaobabsStudio = (function () {
   }
 
   /* ---------- formes ---------- */
+  /* UN CONTOUR COMPLET.
+     Il n'avait qu'une epaisseur, une couleur et une longueur de
+     pointille. Manquaient les trois reglages que Photoshop et Figma
+     donnent tous les deux, et qu'on cherche des qu'on cadre une photo :
+
+     LA POSITION. Le canevas ne sait tracer qu'AU MILIEU du contour :
+     un trait de 20 px deborde de 10 px a l'exterieur. Pour un cadre
+     colle au bord d'une image, c'est faux. On obtient l'interieur en
+     doublant l'epaisseur puis en decoupant a la forme ; l'exterieur en
+     doublant puis en decoupant l'inverse. C'est la seule facon exacte,
+     et elle vaut pour n'importe quelle forme, y compris un trace.
+
+     LA JOINTURE. Elle etait clouee a 'round' : un rectangle a angle vif
+     ressortait avec des coins mous, et on ne pouvait pas obtenir la
+     pointe d'une etoile.
+
+     L'ESPACE DES POINTILLES. Il valait toujours 0,8 fois le trait. On
+     ne pouvait donc faire ni un pointille serre, ni des tirets espaces.
+
+     Les valeurs absentes gardent l'ancien comportement : centre, rond,
+     espace a 0,8 -- les affiches deja faites ne bougent pas. */
+  function tracerContour(ctx, l, refaireTrace) {
+    var st = l.stroke;
+    if (!st || !(st.w > 0)) return;
+    var pos = st.pos || 'center';
+    ctx.strokeStyle = css(st.color);
+    ctx.lineJoin = st.join || 'round';
+    ctx.lineCap = st.cap || (l.shape === 'line' ? (l.cap || 'round') : 'butt');
+    var esp = (st.gap == null ? st.dash * 0.8 : st.gap);
+    ctx.setLineDash(st.dash ? [st.dash, Math.max(0, esp)] : []);
+
+    if (pos === 'center') {
+      ctx.lineWidth = st.w;
+      ctx.stroke();
+    } else {
+      /* on double, puis on ne garde que la moitie voulue */
+      ctx.save();
+      if (pos === 'inside') {
+        ctx.clip();
+      } else {
+        /* L'EXTERIEUR : on garde le complementaire de la forme.
+           Premiere version fausse, et de facon instructive : j'empilais un
+           grand rectangle PUIS la forme sur le meme chemin -- or shapePath()
+           commence par beginPath(), donc il effacait le rectangle et le
+           decoupage redevenait celui de l'interieur. Mesure a l'appui : le
+           pixel a 6 px dehors restait au fond.
+           On passe donc par Path2D, qui se compose vraiment, et on lui donne
+           la forme via le traceur SVG deja ecrit -- une seule source pour la
+           geometrie, ici comme a l'export. */
+        var dd = traceDe(refaireTrace, l);
+        if (dd) {
+          var grand = new Path2D();
+          grand.rect(-l.w * 2, -l.h * 2, l.w * 5, l.h * 5);
+          try { grand.addPath(new Path2D(dd)); } catch (err) {}
+          ctx.clip(grand, 'evenodd');
+        }
+      }
+      refaireTrace(ctx, l);
+      ctx.lineWidth = st.w * 2;
+      ctx.lineJoin = st.join || 'round';
+      ctx.setLineDash(st.dash ? [st.dash, Math.max(0, esp)] : []);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.setLineDash([]);
+  }
   function drawShape(ctx, l) {
     shapePath(ctx, l);
     if (l.shape !== 'line') {
@@ -1601,12 +1667,7 @@ window.BaobabsStudio = (function () {
       if (fs) { ctx.fillStyle = fs; ctx.fill(); }
     }
     if (l.stroke && l.stroke.w > 0) {
-      ctx.strokeStyle = css(l.stroke.color);
-      ctx.lineWidth = l.stroke.w;
-      ctx.lineCap = l.shape === 'line' ? (l.cap || 'round') : 'butt';
-      ctx.setLineDash(l.stroke.dash ? [l.stroke.dash, l.stroke.dash * 0.8] : []);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      tracerContour(ctx, l, shapePath);
     } else if (l.shape === 'line') {
       ctx.strokeStyle = css(l.stroke ? l.stroke.color : color('#fff', 1));
       ctx.lineWidth = Math.max(1, l.h);
@@ -1626,13 +1687,11 @@ window.BaobabsStudio = (function () {
     var fs = paintStyle(ctx, l.fill, l.w, l.h);
     if (fs && ferme) { ctx.fillStyle = fs; ctx.fill(l.fillRule || 'nonzero'); }
     if (l.stroke && l.stroke.w > 0) {
-      ctx.strokeStyle = css(l.stroke.color);
-      ctx.lineWidth = l.stroke.w;
-      ctx.lineCap = l.cap || 'round';
-      ctx.lineJoin = 'round';
-      ctx.setLineDash(l.stroke.dash ? [l.stroke.dash, l.stroke.dash * 0.8] : []);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      /* un trace OUVERT n'a pas d'interieur : la position n'a alors aucun
+         sens et on trace au milieu, sinon le decoupage mangerait tout. */
+      if (!ferme) { var memo = l.stroke.pos; l.stroke.pos = 'center'; }
+      tracerContour(ctx, l, pathPath);
+      if (!ferme) l.stroke.pos = memo;
     }
     ctx.restore();
     if (coupe) { /* le pochoir est local au calque, il ne fuit pas */ }
@@ -4798,6 +4857,29 @@ window.BaobabsStudio = (function () {
      ce qui est le seul choix qui ne perde pas le travail.
      Ecrit une fois : les formes et les cadres photo l'affichent tous
      les deux, et ne peuvent donc pas diverger. */
+  /* Les reglages de contour, ecrits une fois pour les formes et les
+     traces : deux panneaux qui divergent, c'est deux comportements a
+     expliquer. */
+  function fContour(l, titre) {
+    var st = l.stroke || {};
+    var h = fStep('Épaisseur', 'stroke.w', st.w || 0, { unit: 'px', dec: 1, min: 0, step: .5 });
+    if (!(st.w > 0)) return fGroup(titre, h);
+    h += fColor('Couleur', 'stroke.color', st.color);
+    h += fSeg('Position', 'stroke.pos', st.pos || 'center', [
+      { id: 'inside', label: 'Intérieur' }, { id: 'center', label: 'Centré' }, { id: 'outside', label: 'Extérieur' }
+    ]);
+    h += fSeg('Jointure', 'stroke.join', st.join || 'round', [
+      { id: 'miter', label: 'Angle' }, { id: 'round', label: 'Arrondie' }, { id: 'bevel', label: 'Biseau' }
+    ]);
+    h += '<div class="bs-frow">' +
+      fStep('Pointillés', 'stroke.dash', st.dash || 0, { unit: 'px', dec: 0, min: 0 }) +
+      fStep('Écart', 'stroke.gap', st.gap == null ? Math.round((st.dash || 0) * 0.8) : st.gap, { unit: 'px', dec: 0, min: 0 }) +
+      '</div>';
+    h += fSeg('Extrémités', 'stroke.cap', st.cap || 'butt', [
+      { id: 'butt', label: 'Nette' }, { id: 'round', label: 'Ronde' }, { id: 'square', label: 'Carrée' }
+    ]);
+    return fGroup(titre, h);
+  }
   function fCoins(l) {
     var parCoin = !!(l.radii && l.radii.length === 4);
     var h = '<div class="bs-f"><div class="bs-tgl-row"><span>Coins un par un</span>' +
@@ -5375,10 +5457,7 @@ window.BaobabsStudio = (function () {
           : ''));
     }
 
-    h += fGroup(l.shape === 'line' ? 'Trait' : 'Contour',
-      fStep('Épaisseur', 'stroke.w', (l.stroke && l.stroke.w) || 0, { unit: 'px', dec: 1, min: 0, step: .5 }) +
-      ((l.stroke && l.stroke.w) ? fColor('Couleur', 'stroke.color', l.stroke.color) +
-        fStep('Pointillés', 'stroke.dash', l.stroke.dash || 0, { unit: 'px', dec: 0, min: 0 }) : ''));
+    h += fContour(l, l.shape === 'line' ? 'Trait' : 'Contour');
     return h;
   }
 
@@ -5400,13 +5479,7 @@ window.BaobabsStudio = (function () {
         fStep('Angle', 'fill.angle', l.fill.angle || 90, { unit: '°', dec: 0 }) +
         fPlace('fill', l.fill) : ''));
 
-    h += fGroup('Trait',
-      fStep('Épaisseur', 'stroke.w', (l.stroke && l.stroke.w) || 0, { unit: 'px', dec: 1, min: 0, step: .5 }) +
-      fColor('Couleur', 'stroke.color', l.stroke.color) +
-      fStep('Pointillés', 'stroke.dash', l.stroke.dash || 0, { unit: 'px', dec: 0, min: 0 }) +
-      fSeg('Extrémités', 'cap', l.cap || 'round', [
-        { id: 'butt', label: 'Nette' }, { id: 'round', label: 'Ronde' }, { id: 'square', label: 'Carrée' }
-      ]));
+    h += fContour(l, 'Trait');
     return h;
   }
 
