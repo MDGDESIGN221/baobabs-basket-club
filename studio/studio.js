@@ -2266,6 +2266,46 @@ window.BaobabsStudio = (function () {
       g.restore();
     }
 
+    /* LE TEMOIN DE ROTATION CALEE.
+       Un aimant qui agit sans le dire laisse un doute : a-t-il mordu, ou
+       suis-je tombe juste par chance ? On trace donc, a travers le centre
+       du calque et jusqu'aux bords de l'affiche, l'axe sur lequel il
+       s'est cale -- couche pour un angle droit horizontal, debout pour
+       un vertical. Meme rose que les reperes de position : c'est le meme
+       message, « ceci est aligne ».
+       Le trait ne vit que pendant le geste : garde ensuite, il
+       encombrerait sans rien apprendre. */
+    if (drag && drag.kind === 'rotate' && drag.cale) {
+      var cr = d2s(drag.cx, drag.cy);
+      g.save();
+      g.strokeStyle = '#FF4DD8';
+      g.lineWidth = 1.5;
+      g.setLineDash([7, 5]);
+      g.beginPath();
+      if (drag.cale === 'h') {
+        var yh = Math.round(cr.y) + .5;
+        g.moveTo(o.x - 30, yh); g.lineTo(o.x + doc.w * z + 30, yh);
+      } else {
+        var xv = Math.round(cr.x) + .5;
+        g.moveTo(xv, o.y - 30); g.lineTo(xv, o.y + doc.h * z + 30);
+      }
+      g.stroke();
+      g.setLineDash([]);
+      /* et le mot, parce qu'un trait rose ne dit pas de quel angle il
+         s'agit quand le calque est deja tourne de 180 degres */
+      var mot = drag.cale === 'h' ? 'HORIZONTAL' : 'VERTICAL';
+      g.font = '700 11px ui-sans-serif, system-ui, sans-serif';
+      var lw2 = g.measureText(mot).width + 14;
+      g.fillStyle = '#FF4DD8';
+      roundRectPath(g, cr.x - lw2 / 2, cr.y - 34, lw2, 18, 4);
+      g.fill();
+      g.fillStyle = '#0B0B0D';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(mot, cr.x, cr.y - 25);
+      g.textAlign = 'left';
+      g.restore();
+    }
     /* tracé plume en cours */
     if (pathDraft) drawDraftPath(g);
 
@@ -2908,7 +2948,16 @@ window.BaobabsStudio = (function () {
     var b = bboxOf(ls);
     var p = d2s(b.x + b.w / 2, b.y);
     var s = sceneSize();
+    /* On passe AU-DESSUS de la poignee de rotation, pas devant elle.
+       La barre se posait a 12 px du bord et la poignee a 22 : elle la
+       recouvrait, et la rotation devenait inatteignable. On lit la
+       position reelle de la poignee plutot que de supposer 22 -- sur un
+       calque tourne, elle n'est pas droit au-dessus. */
     var top = p.y - 12;
+    if (ls.length === 1) {
+      var rpf = rotHandle(l);
+      top = Math.min(top, rpf.y - 14);
+    }
     if (top < 46) top = d2s(0, b.y + b.h).y + 52;      /* pas de place au-dessus : on passe dessous */
     els.float.style.left = clamp(p.x, 90, s.w - 90) + 'px';
     els.float.style.top = clamp(top, 40, s.h - 8) + 'px';
@@ -2957,7 +3006,10 @@ window.BaobabsStudio = (function () {
   function renderFloatTexte(l) {
     var b = bboxOf([l]), s = sceneSize();
     var p = d2s(b.x + b.w / 2, b.y);
-    var top = p.y - 12;
+    /* Meme regle que l'autre barre : on passe AU-DESSUS de la poignee de
+       rotation. C'est ici que le defaut se voyait -- sur un texte, la barre
+       de typographie est la plus haute, et elle recouvrait la poignee. */
+    var top = Math.min(p.y - 12, rotHandle(l).y - 14);
     if (top < 46) top = d2s(0, b.y + b.h).y + 52;
     els.float.style.left = clamp(p.x, 240, Math.max(240, s.w - 240)) + 'px';
     els.float.style.top = clamp(top, 40, s.h - 8) + 'px';
@@ -3497,15 +3549,34 @@ window.BaobabsStudio = (function () {
     else { f.stop1 = Math.round(surAxe(loc)); f.stop0 = Math.round(surAxe(fixe)); }
     if (f.stop0 > f.stop1) { var t2 = f.stop0; f.stop0 = f.stop1; f.stop1 = t2; }
   }
+  /* LA ROTATION NE DOIT PAS DEPENDRE D'UN SEUL POINT.
+     Elle n'etait accessible que par la poignee posee au-dessus de la
+     selection -- exactement la ou se place la barre flottante. Sur un
+     texte, la barre recouvrait la poignee et il devenait IMPOSSIBLE de
+     tourner le calque. Un geste qui n'a qu'un seul point d'entree finit
+     toujours par etre bouche par quelque chose.
+
+     On garde la poignee, et on ajoute ce que font Photoshop, Figma et
+     Illustrator : un anneau JUSTE EN DEHORS de chaque coin. Quatre
+     entrees de plus, aux quatre angles, donc rien ne peut toutes les
+     masquer. L'anneau commence la ou finit la poignee de
+     redimensionnement : les deux gestes ne se disputent jamais le meme
+     pixel. */
   function handleAt(l, sx, sy) {
     if (l.locked) return null;
     var rp = rotHandle(l);
     if (Math.hypot(sx - rp.x, sy - rp.y) <= 9) return 'rot';
     var hs = handlePoints(l);
     var skip = (l.type === 'shape' && l.shape === 'line') ? { n: 1, s: 1, nw: 1, ne: 1, se: 1, sw: 1 } : {};
-    for (var i = 0; i < hs.length; i++) {
+    var i;
+    for (i = 0; i < hs.length; i++) {
       if (skip[hs[i].k]) continue;
       if (Math.abs(sx - hs[i].x) <= HS + 3 && Math.abs(sy - hs[i].y) <= HS + 3) return hs[i].k;
+    }
+    for (i = 0; i < hs.length; i++) {
+      if (skip[hs[i].k] || hs[i].k.length !== 2) continue;   /* les coins seuls */
+      var d = Math.hypot(sx - hs[i].x, sy - hs[i].y);
+      if (d > HS + 3 && d <= HS + 17) return 'rot';
     }
     return null;
   }
@@ -3760,7 +3831,37 @@ window.BaobabsStudio = (function () {
         var c = d2s(drag.cx, drag.cy);
         var a = Math.atan2(pt.sy - c.y, pt.sx - c.x) * 180 / Math.PI;
         var nr = drag.rot0 + (a - drag.a0);
-        if (e.shiftKey) nr = Math.round(nr / 15) * 15;
+
+        /* « A PEU PRES HORIZONTAL » N'EXISTE PAS.
+           On pouvait s'arreter a 0,4 degre et croire le calque droit :
+           rien ne distinguait 0 de 0,4 a l'ecran, et le defaut ne se
+           voyait qu'a l'export, agrandi. Maj donnait deja des paliers de
+           15 degres, mais il fallait y penser.
+
+           L'aimant tire donc tout seul vers les angles droits, comme le
+           magnetisme le fait deja pour les positions -- et il utilise le
+           MEME interrupteur, celui de la barre d'etat : un seul reglage
+           pour une seule idee. Deux degres de tolerance, assez pour
+           attraper, trop peu pour empecher un angle voulu de 3 degres.
+
+           drag.cale retient l'angle attrape : c'est lui qui declenche le
+           trait de confirmation a l'ecran. Sans ce temoin, l'aimant
+           agirait en silence et l'on ne saurait pas s'il a mordu. */
+        drag.cale = null;
+        if (e.shiftKey) {
+          nr = Math.round(nr / 15) * 15;
+          drag.cale = (Math.round(nr) % 90 === 0) ? ((Math.round(nr) % 180 === 0) ? 'h' : 'v') : null;
+        } else if (flags.snap) {
+          var TOL = 2;
+          var proche = Math.round(nr / 90) * 90;
+          if (Math.abs(nr - proche) <= TOL) {
+            nr = proche;
+            drag.cale = (((proche % 360) + 360) % 360) % 180 === 0 ? 'h' : 'v';
+          } else {
+            var p45 = Math.round(nr / 45) * 45;
+            if (Math.abs(nr - p45) <= TOL) nr = p45;
+          }
+        }
         l2.rot = ((nr % 360) + 360) % 360;
         if (l2.rot > 180) l2.rot -= 360;
         requestDraw();
