@@ -73,14 +73,25 @@ function damier(c1, c2, w, h, label){
   x.textAlign='center'; x.textBaseline='middle'; x.fillText(label, w/2, h/2);
   return cv.toDataURL('image/png');
 }
+/* La mediatheque du banc sert de VRAIES images du site : slotSource()
+   se rabat sur medias[1] quand aucune photo de match n'existe, et un
+   damier a cet endroit faisait croire que le modele etait vide. */
 FAUX.media = [
-  { url: damier('#123','#7DFF4F', 800, 1000, 'MATCH'),   name:'photo-match.png' },
-  { url: damier('#301','#FF5C3D', 800, 1000, 'JOUEUSE'), name:'photo-joueuse.png' },
-  { url: damier('#013','#3DD6FF', 800,  800, 'ÉQUIPE'),  name:'photo-equipe.png' }
+  { url: '/media/img/Duo_Baobabs___contre-plong_e_snmhff.webp',              name:'duo.webp' },
+  { url: '/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp', name:'terrain.webp' },
+  { url: '/media/img/Trio_Baobabs___trois_quarts_f5uqkz.webp',               name:'trio.webp' }
 ];
-FAUX.players[0].photo = FAUX.media[1].url;
-FAUX.nextMatch.photo  = FAUX.media[0].url;
-FAUX.nextMatch.opponentLogo = damier('#222','#888', 400, 400, 'DUC');
+/* LES DAMIERS NE SONT PLUS LE DEFAUT.
+   Ils servaient a rendre les cadres visibles quand les modeles
+   sortaient vides. Depuis que les modeles portent leurs propres images
+   de repli, ces damiers les ECRASAIENT : on retombait sur un damier en
+   croyant regarder le modele. ?photos=damier les rend, pour verifier
+   qu'une vraie donnee du club l'emporte bien sur le repli. */
+if (new URLSearchParams(location.search).get('photos') === 'damier') {
+  FAUX.players[0].photo = FAUX.media[1].url;
+  FAUX.nextMatch.photo  = FAUX.media[0].url;
+  FAUX.nextMatch.opponentLogo = damier('#222','#888', 400, 400, 'DUC');
+}
 FAUX.matches = [
   FAUX.nextMatch,
   { opponent:'ASC VILLE DE DAKAR', competition:'CHAMPIONNAT NATIONAL D2', date:'2026-10-03',

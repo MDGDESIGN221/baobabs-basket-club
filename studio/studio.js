@@ -5444,6 +5444,47 @@ window.BaobabsStudio = (function () {
     return t;
   }
 
+  /* ===================================================================
+     UN MODELE DOIT SE VOIR
+     ---------------------------------------------------------------
+     Les cadres photo des modeles sortaient VIDES : un damier gris a la
+     place de la joueuse, du logo du club, de l'ecusson adverse. On ne
+     pouvait pas juger une affiche avant de l'avoir remplie, et rien ne
+     disait a quoi ressemblerait l'export -- ce qui est pourtant le seul
+     interet d'un modele.
+
+     On pose donc une image de repli sur chaque cadre laisse vide. Ce
+     sont des images du club, servies par le site :
+       . meme origine -> ni probleme de CORS, ni export bloque ;
+       . rien a telecharger, rien qui puisse disparaitre du web.
+
+     Elles ne sont qu'un REPLI. _fromSlot les marque comme telles, et
+     applyBindings() les remplace des qu'une vraie donnee existe pour
+     l'emplacement -- la photo de la joueuse choisie, l'ecusson du
+     prochain adversaire. Des que l'utilisateur pose SON image,
+     _fromSlot repasse a faux et plus rien n'y touche.
+     =================================================================== */
+  var IMG_DEF = {
+    photoJoueuse: '/media/img/Joueuse_maillot_blanc___fond_transparent_b0fu2e.webp',
+    photoMatch:   '/media/img/Duo_Baobabs___contre-plong_e_snmhff.webp',
+    logoClub:     '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp',
+    logoAdv:      '/media/img/DUC_Dakar_logo_zyqx86.webp',
+    libre:        '/media/img/Trio_Baobabs___trois_quarts_f5uqkz.webp'
+  };
+
+  /* Le seul chemin par lequel un modele devient un document. Les six
+     appels a t.build() passent par ici -- sinon le repli manquerait
+     quelque part, et c'est toujours la qu'on regarderait. */
+  function construire(t, d) {
+    var out = (t && t.build) ? (t.build(d) || []) : [];
+    walk(out, function (l) {
+      if ((l.type === 'frame' || l.type === 'image') && !l.src) {
+        var src = IMG_DEF[l.slot] || IMG_DEF.libre;
+        if (src) { l.src = src; l._fromSlot = true; getImage(src); }
+      }
+    });
+    return out;
+  }
   var TEMPLATES = [
     /* ---------------- MATCH DAY ----------------
        « Duel » reprend trait pour trait la maquette d'origine
@@ -6695,7 +6736,7 @@ window.BaobabsStudio = (function () {
       nd.name = doc.name;
       doc.bg = nd.bg;
       doc.palette = nd.palette;
-      doc.layers = t.build(doc) || [];
+      doc.layers = construire(t, doc);
       sel = [];
     });
     applyBindings();
@@ -6708,7 +6749,7 @@ window.BaobabsStudio = (function () {
      n y a pas d image de catalogue à maintenir. */
   function templateThumb(t, cvs) {
     var td = newDoc('affiche', t.pal);
-    td.layers = t.build(td) || [];
+    td.layers = construire(t, td);
     var W = cvs.width, H = cvs.height;
     var ctx = cvs.getContext('2d');
     var s = Math.min(W / td.w, H / td.h);
@@ -8452,7 +8493,7 @@ window.BaobabsStudio = (function () {
     if (!t) return;
     var nd = newDoc(d.format, t.pal);
     d.bg = nd.bg; d.palette = nd.palette;
-    d.layers = t.build(d) || [];
+    d.layers = construire(t, d);
   }
 
   function confirmIfDirty(fn) {
@@ -9914,7 +9955,7 @@ window.BaobabsStudio = (function () {
     doc = newDoc(f.id, palId || (t ? t.pal : 'nuit'));
     doc.w = f.w; doc.h = f.h; doc.format = f.id;
     doc.name = t ? t.label : (f.label === 'Sur mesure' ? 'Sans titre' : f.label);
-    if (t) doc.layers = t.build(doc) || [];
+    if (t) doc.layers = construire(t, doc);
     lastTpl = tplId || null;
     project.id = null; project.isTemplate = false;
     sel = []; hist.undo.length = 0; hist.redo.length = 0; hist.pre = null;
@@ -10862,7 +10903,7 @@ window.BaobabsStudio = (function () {
       var m = choisis[i];
       var d = newDoc(doc.format, t.pal);
       d.w = doc.w; d.h = doc.h;
-      d.layers = t.build(d) || [];
+      d.layers = construire(t, d);
       applyBindingsTo(d, donneesDuMatch(m), true);
       imagesReady().then(function () {
         var cv;
@@ -10893,7 +10934,7 @@ window.BaobabsStudio = (function () {
       var t = templateById('ref-calendrier');
       doc = newDoc(doc.format || 'affiche', t.pal);
       doc.name = 'Calendrier ' + nomDuMois(serieMois);
-      doc.layers = t.build(doc) || [];
+      doc.layers = construire(t, doc);
       project.id = null;
       sel = []; hist.undo.length = 0; hist.redo.length = 0; hist.pre = null;
       els.projName.value = doc.name;
