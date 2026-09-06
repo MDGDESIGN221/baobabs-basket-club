@@ -1469,6 +1469,175 @@ window.BaobabsStudio = (function () {
     ctx.restore();
   }
 
+  /* -------------------------------------------------------------------
+     LES EFFETS : UNE OMBRE NE SUFFIT PAS
+
+     Un calque ne portait qu'UNE ombre portee, sans diffusion, sans mode
+     de fusion, et aucune ombre interne. Or une carte posee sur une photo
+     demande souvent deux ombres -- une courte et dense pour decoller,
+     une longue et diffuse pour asseoir -- et un bouton creuse demande
+     une ombre INTERNE, qui n'existait pas du tout.
+
+     Figma en accepte huit de chaque, chacune avec couleur, opacite,
+     decalage, flou, DIFFUSION et mode de fusion. On tient la meme
+     promesse, avec le meme vocabulaire.
+
+     l.effets porte la liste. Quand elle manque -- tous les documents
+     enregistres, tous les modeles -- on la fabrique a partir du vieux
+     l.shadow : rien de l'existant ne change d'aspect, et le premier
+     reglage bascule sur la liste (materialiserEffets).
+
+     LE CANEVAS NE SAIT PAS FAIRE TOUT SEUL. Son ombre native n'a ni
+     diffusion ni ombre interne, et il n'en peint qu'une a la fois. On
+     passe donc par une silhouette hors ecran :
+       contenu -> silhouette -> dilatee ou erodee (diffusion) -> floutee
+       -> teintee -> posee decalee.
+     La dilatation se fait au tampon : on repose la silhouette sur un
+     cercle de rayon egal a la diffusion. Ce n'est pas une dilatation
+     exacte au pixel, mais c'est celle qu'on voit, et elle marche sur
+     n'importe quelle forme -- lettres comprises.
+     ------------------------------------------------------------------- */
+
+  function effetsDe(l) {
+    if (l.effets) return l.effets;
+    if (l.shadow && l.shadow.on) {
+      return [{ t: 'ombre', on: true, x: num(l.shadow.x, 0), y: num(l.shadow.y, 0),
+                b: num(l.shadow.blur, 0), s: 0,
+                c: l.shadow.color || color('#000000', .5), bl: 'source-over' }];
+    }
+    return [];
+  }
+
+  /* Le premier reglage fige la liste. On efface l'ancien champ dans le
+     meme geste : deux sources pour une seule ombre finiraient par se
+     contredire, et c'est toujours l'oublie qui gagne. */
+  function materialiserEffets(l) {
+    if (!l.effets) {
+      l.effets = effetsDe(l).map(function (e) { return clone(e); });
+      delete l.shadow;
+    }
+    return l.effets;
+  }
+
+  function cnvFX(w, h) {
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    return c;
+  }
+
+  /* Elargir (diffusion positive) ou retrecir (negative) une silhouette.
+     Le tampon suffit : au-dela de 24 coups l'oeil ne distingue plus. */
+  function tampons(r) { return Math.max(8, Math.min(24, Math.ceil(r * 1.6))); }
+  function dilater(src, W, H, r) {
+    if (r < 0.5) return src;
+    var c = cnvFX(W, H), g = c.getContext('2d'), n = tampons(r), i, a;
+    for (i = 0; i < n; i++) {
+      a = i / n * Math.PI * 2;
+      g.drawImage(src, Math.cos(a) * r, Math.sin(a) * r);
+    }
+    g.drawImage(src, 0, 0);
+    return c;
+  }
+  function eroder(src, W, H, r) {
+    if (r < 0.5) return src;
+    var c = cnvFX(W, H), g = c.getContext('2d'), n = tampons(r), i, a;
+    g.drawImage(src, 0, 0);
+    g.globalCompositeOperation = 'destination-in';
+    for (i = 0; i < n; i++) {
+      a = i / n * Math.PI * 2;
+      g.drawImage(src, Math.cos(a) * r, Math.sin(a) * r);
+    }
+    return c;
+  }
+
+  /* Le flou du canevas et celui de CSS ne comptent pas pareil :
+     shadowBlur vaut deux ecarts-types, blur(r) en vaut un. On divise
+     donc par deux, faute de quoi toutes les ombres deja reglees
+     doubleraient de taille a la premiere ouverture. */
+  function flouCss(b, ech) { return (b / 2) * ech; }
+
+  function drawLayerFX(ctx, l, d, opts, portees, internes) {
+    var ech = 1;
+    if (ctx.getTransform) {
+      var m = ctx.getTransform();
+      ech = Math.hypot(m.a, m.b) || 1;
+    }
+    ech = clamp(ech, 0.05, 4);
+
+    /* la marge doit contenir la plus lointaine des ombres, sinon elle
+       serait coupee net a la limite du hors-ecran */
+    var marge = 6, i, e, tous = portees.concat(internes);
+    for (i = 0; i < tous.length; i++) {
+      e = tous[i];
+      marge = Math.max(marge, Math.abs(num(e.x, 0)) + Math.abs(num(e.y, 0)) + num(e.b, 0) + Math.abs(num(e.s, 0)) + 4);
+    }
+    marge = Math.ceil(marge + (l.blur > 0 ? l.blur * 3 : 0));
+
+    var W = Math.ceil((l.w + marge * 2) * ech), H = Math.ceil((l.h + marge * 2) * ech);
+    if (W < 1 || H < 1 || W * H > 36e6) {           /* garde-fou memoire */
+      drawContent(ctx, l, d, opts);
+      return;
+    }
+
+    var oc = cnvFX(W, H), o = oc.getContext('2d');
+    o.setTransform(ech, 0, 0, ech, marge * ech, marge * ech);
+    if (l.blur > 0 && HAS_FILTER) o.filter = 'blur(' + (l.blur * ech) + 'px)';
+    drawContent(o, l, d, opts);
+    if (HAS_FILTER) o.filter = 'none';
+
+    var dw = W / ech, dh = H / ech;
+
+    /* LES OMBRES PORTEES, du bas de la liste vers le haut : la premiere
+       de la liste doit rester la plus proche, comme dans Figma. */
+    for (i = portees.length - 1; i >= 0; i--) {
+      e = portees[i];
+      var sp = num(e.s, 0) * ech;
+      var mq = sp > 0 ? dilater(oc, W, H, sp) : (sp < 0 ? eroder(oc, W, H, -sp) : oc);
+      var t2 = cnvFX(W, H), g2 = t2.getContext('2d');
+      if (num(e.b, 0) > 0 && HAS_FILTER) g2.filter = 'blur(' + flouCss(num(e.b, 0), ech) + 'px)';
+      g2.drawImage(mq, 0, 0);
+      if (HAS_FILTER) g2.filter = 'none';
+      g2.globalCompositeOperation = 'source-in';
+      g2.fillStyle = css(e.c || color('#000000', .5));
+      g2.fillRect(0, 0, W, H);
+      ctx.save();
+      ctx.globalCompositeOperation = e.bl || 'source-over';
+      ctx.drawImage(t2, -marge + num(e.x, 0), -marge + num(e.y, 0), dw, dh);
+      ctx.restore();
+    }
+
+    /* le contenu */
+    ctx.drawImage(oc, -marge, -marge, dw, dh);
+
+    /* LES OMBRES INTERNES. On part d'un rectangle plein dont on retire la
+       silhouette : ce qui reste est le TROU. Floute, teinte, puis rogne
+       a la silhouette du contenu -- c'est ce dernier rognage qui fait
+       qu'une ombre interne reste dedans. */
+    for (i = internes.length - 1; i >= 0; i--) {
+      e = internes[i];
+      var sp2 = num(e.s, 0) * ech;
+      var mq2 = sp2 > 0 ? eroder(oc, W, H, sp2) : (sp2 < 0 ? dilater(oc, W, H, -sp2) : oc);
+      var tr = cnvFX(W, H), gt = tr.getContext('2d');
+      gt.fillStyle = '#000';
+      gt.fillRect(0, 0, W, H);
+      gt.globalCompositeOperation = 'destination-out';
+      gt.drawImage(mq2, num(e.x, 0) * ech, num(e.y, 0) * ech);
+      var fl = cnvFX(W, H), gf = fl.getContext('2d');
+      if (num(e.b, 0) > 0 && HAS_FILTER) gf.filter = 'blur(' + flouCss(num(e.b, 0), ech) + 'px)';
+      gf.drawImage(tr, 0, 0);
+      if (HAS_FILTER) gf.filter = 'none';
+      gf.globalCompositeOperation = 'source-in';
+      gf.fillStyle = css(e.c || color('#000000', .5));
+      gf.fillRect(0, 0, W, H);
+      gf.globalCompositeOperation = 'destination-in';
+      gf.drawImage(oc, 0, 0);
+      ctx.save();
+      ctx.globalCompositeOperation = e.bl || 'source-over';
+      ctx.drawImage(fl, -marge, -marge, dw, dh);
+      ctx.restore();
+    }
+  }
+
   function drawLayer(ctx, l, d, opts, parentAlpha) {
     if (!l.visible) return;
     if (opts.skipId && opts.skipId === l.id) return;
@@ -1487,11 +1656,27 @@ window.BaobabsStudio = (function () {
        applique son pochoir. C'est ce qui permet le détourage. */
     if (l.mask2 && !l.maskOff && !opts.noMask) { drawWithMask(ctx, l, d, opts, alpha); return; }
 
+    /* QUEL CHEMIN. Une ombre simple -- pas de diffusion, fusion normale --
+       reste sur l'ombre native du canevas : c'est le cas de tous les
+       modeles existants, et le rendu doit rester au pixel pres celui
+       d'avant. Des qu'il y a plusieurs ombres, une diffusion, une ombre
+       interne ou un mode de fusion, on passe par les silhouettes. */
+    var eff = effetsDe(l), portees = [], internes = [], iE;
+    for (iE = 0; iE < eff.length; iE++) {
+      if (eff[iE].on === false) continue;
+      if (eff[iE].t === 'interne') internes.push(eff[iE]); else portees.push(eff[iE]);
+    }
+    var complexe = internes.length > 0 || portees.length > 1 ||
+      (portees.length === 1 && (num(portees[0].s, 0) !== 0 ||
+        (portees[0].bl && portees[0].bl !== 'source-over')));
+
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.globalCompositeOperation = l.blend || 'source-over';
-    /* flou de calque : disponible sur tout type, pas seulement les images */
-    if (l.blur > 0 && HAS_FILTER) ctx.filter = 'blur(' + l.blur + 'px)';
+    /* flou de calque : disponible sur tout type, pas seulement les images.
+       Dans le chemin des effets il est applique a la silhouette elle-meme,
+       sinon l'ombre serait floutee deux fois. */
+    if (l.blur > 0 && HAS_FILTER && !complexe) ctx.filter = 'blur(' + l.blur + 'px)';
 
     /* repère local : origine au coin haut-gauche, rotation au centre */
     ctx.translate(l.x + l.w / 2, l.y + l.h / 2);
@@ -1499,11 +1684,18 @@ window.BaobabsStudio = (function () {
     ctx.scale(l.flipH ? -1 : 1, l.flipV ? -1 : 1);
     ctx.translate(-l.w / 2, -l.h / 2);
 
-    if (l.shadow && l.shadow.on) {
-      ctx.shadowColor = css(l.shadow.color);
-      ctx.shadowBlur = l.shadow.blur || 0;
-      ctx.shadowOffsetX = l.shadow.x || 0;
-      ctx.shadowOffsetY = l.shadow.y || 0;
+    if (complexe) {
+      drawLayerFX(ctx, l, d, opts, portees, internes);
+      ctx.restore();
+      return;
+    }
+
+    if (portees.length === 1) {
+      var om = portees[0];
+      ctx.shadowColor = css(om.c || color('#000000', .5));
+      ctx.shadowBlur = num(om.b, 0);
+      ctx.shadowOffsetX = num(om.x, 0);
+      ctx.shadowOffsetY = num(om.y, 0);
     }
 
     drawContent(ctx, l, d, opts);
@@ -4895,6 +5087,7 @@ window.BaobabsStudio = (function () {
   };
   function nomReglage(path) {
     if (NOMS_REGLAGE[path]) return NOMS_REGLAGE[path];
+    if (/^effets\./.test(path)) return 'Effets';
     if (/^fx\./.test(path)) return 'Retouche de l’image';
     if (/^path\./.test(path)) return 'Texte sur tracé';
     if (/^bg\./.test(path)) return 'Fond de l’affiche';
@@ -4923,6 +5116,12 @@ window.BaobabsStudio = (function () {
       return;
     }
     var objs = targetsFor(scope);
+    /* Un chemin effets.N.* suppose un tableau. Tant que le calque vit
+       encore sur l'ancien l.shadow, il n'en a pas -- et setPath, fidele,
+       fabriquerait un objet { 0: {...} } que le moteur ne lirait jamais. */
+    if (path.indexOf('effets.') === 0) {
+      for (var iM = 0; iM < objs.length; iM++) materialiserEffets(objs[iM]);
+    }
     for (var i = 0; i < objs.length; i++) { setPath(objs[i], path, value); afterSet(objs[i], path); }
   }
 
@@ -5511,6 +5710,81 @@ window.BaobabsStudio = (function () {
   var ongletVu = 'objet';      /* ce qui est montre ici et maintenant */
   var groupesPlies = {};
 
+  var ICONES_FX = {
+    oeil: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/></svg>',
+    oeilBarre: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16"/><path d="M9.9 5.7A9.9 9.9 0 0 1 12 5.5c6.4 0 10 6.5 10 6.5a17 17 0 0 1-3 3.8M6.6 7.3A17 17 0 0 0 2 12s3.6 6.5 10 6.5c1 0 1.9-.2 2.7-.4"/></svg>',
+    moins: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>'
+  };
+  var TYPES_EFFET = [
+    { id: 'ombre',   label: 'Ombre portée' },
+    { id: 'interne', label: 'Ombre interne' }
+  ];
+
+  /* LA LISTE DES EFFETS.
+     Une case « Ombre portee » suivie de quatre champs ne dit pas qu'on
+     peut en avoir deux. Une liste, si -- et c'est tout ce qui separait le
+     Studio d'une ombre double, la seule facon de faire decoller une carte
+     posee sur une photo : une courte et dense pour le contact, une longue
+     et diffuse pour le poids.
+
+     Un seul effet montre ses reglages a la fois : celui qu'on a choisi.
+     Huit ombres depliees feraient trois ecrans de defilement et l'on ne
+     saurait plus laquelle on regle -- c'est deja la regle des arrets de
+     degrade, on n'en invente pas une seconde.
+
+     Chaque ligne montre ses trois nombres (X, Y, flou) sans etre ouverte :
+     une liste de « Ombre portee / Ombre portee / Ombre portee » obligerait
+     a les ouvrir une par une pour savoir laquelle est laquelle. */
+  var effetChoisi = 0;
+
+  function fEffets(l) {
+    var arr = effetsDe(l);
+    if (effetChoisi >= arr.length) effetChoisi = Math.max(0, arr.length - 1);
+    var h = '';
+    if (!arr.length) {
+      h += '<div class="bs-eff-vide">Aucun effet. Une ombre décolle un calque du fond ; deux le posent.</div>';
+    }
+    for (var i = 0; i < arr.length; i++) {
+      var e = arr[i];
+      var actif = e.on !== false;
+      var choisi = i === effetChoisi;
+      h += '<div class="bs-eff' + (choisi ? ' is-on' : '') + (actif ? '' : ' is-off') + '">';
+      h += '<div class="bs-eff-h">';
+      h += '<button type="button" class="bs-eff-t" data-act="effetChoisir" data-i="' + i + '">' +
+           '<span class="bs-eff-pt" style="background:' + css(e.c || color('#000000', .5)) + '"></span>' +
+           '<span class="bs-eff-nom">' + (e.t === 'interne' ? 'Ombre interne' : 'Ombre portée') + '</span>' +
+           '<span class="bs-eff-res">' + Math.round(num(e.x, 0)) + ' · ' + Math.round(num(e.y, 0)) +
+           ' · ' + Math.round(num(e.b, 0)) + '</span></button>';
+      h += '<button type="button" class="bs-eff-b" data-act="effetOnOff" data-i="' + i + '" title="' +
+           (actif ? 'Masquer cet effet' : 'Afficher cet effet') + '">' +
+           (actif ? ICONES_FX.oeil : ICONES_FX.oeilBarre) + '</button>';
+      h += '<button type="button" class="bs-eff-b" data-act="effetOter" data-i="' + i + '" title="Retirer cet effet">' +
+           ICONES_FX.moins + '</button>';
+      h += '</div>';
+      if (choisi) {
+        h += '<div class="bs-eff-c">';
+        h += fSelect('Type', 'effets.' + i + '.t', e.t || 'ombre', TYPES_EFFET);
+        h += '<div class="bs-frow">' +
+             fStep('Décalage X', 'effets.' + i + '.x', num(e.x, 0), { unit: 'px', dec: 0 }) +
+             fStep('Décalage Y', 'effets.' + i + '.y', num(e.y, 0), { unit: 'px', dec: 0 }) + '</div>';
+        h += '<div class="bs-frow">' +
+             fStep('Flou', 'effets.' + i + '.b', num(e.b, 0), { unit: 'px', dec: 0, min: 0 }) +
+             fStep('Diffusion', 'effets.' + i + '.s', num(e.s, 0), { unit: 'px', dec: 0 }) + '</div>';
+        h += fColor('Couleur', 'effets.' + i + '.c', e.c || color('#000000', .5), { swatches: false });
+        h += fSelect('Fusion', 'effets.' + i + '.bl', e.bl || 'source-over', BLENDS);
+        h += '</div>';
+      }
+      h += '</div>';
+    }
+    h += '<div class="bs-frow" style="margin-top:7px">' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center"' +
+      ' data-act="effetAjouter" data-t="ombre">+ Ombre portée</button>' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center"' +
+      ' data-act="effetAjouter" data-t="interne">+ Ombre interne</button>' +
+      '</div>';
+    return h;
+  }
+
   function fGroup(title, body, action, onglet) {
     var plie = !!groupesPlies[title];
     return '<div class="bs-pgroup' + (plie ? ' is-plie' : '') + '"' +
@@ -5794,14 +6068,12 @@ window.BaobabsStudio = (function () {
       (l.clip
         ? '<div class="bs-bind" style="margin:-2px 0 9px">' + ICONS.dyn +
           '<span>Ce calque est découpé par la silhouette de celui juste en dessous.</span></div>'
-        : '') +
-      fToggle('Ombre portée', 'shadow.on', !!(l.shadow && l.shadow.on)) +
-      (l.shadow && l.shadow.on
-        ? '<div class="bs-frow">' + fStep('Décalage X', 'shadow.x', l.shadow.x || 0, { unit: 'px', dec: 0 }) +
-          fStep('Décalage Y', 'shadow.y', l.shadow.y || 0, { unit: 'px', dec: 0 }) + '</div>' +
-          fStep('Flou', 'shadow.blur', l.shadow.blur || 0, { unit: 'px', dec: 0, min: 0 }) +
-          fColor('Couleur de l ombre', 'shadow.color', l.shadow.color || color('#000000', .5))
         : ''), null, 'apparence');
+
+    /* Les effets ont leur propre groupe. Loges dans « Apparence », ils y
+       etaient noyes entre l'opacite et le verrouillage -- alors que
+       c'est la partie qu'on rouvre le plus souvent. */
+    h += fGroup('Effets', fEffets(l), null, 'apparence');
 
     h += fGroup('Calque',
       '<div class="bs-frow">' +
@@ -9520,6 +9792,57 @@ window.BaobabsStudio = (function () {
         renderPanel();
         return;
       }
+      /* Choisir, ajouter, retirer, eteindre un effet. Toutes ces actions
+         passent par materialiserEffets() : tant qu'un calque vit encore
+         sur l'ancien l.shadow, il n'a pas de liste a modifier. */
+      case 'effetChoisir': {
+        effetChoisi = num(el.getAttribute('data-i'), 0);
+        renderProps();
+        return;
+      }
+      case 'effetAjouter': {
+        var lA = selOne();
+        if (!lA) return;
+        var typeA = el.getAttribute('data-t') || 'ombre';
+        change(function () {
+          var arrA = materialiserEffets(lA);
+          /* des valeurs de depart qui SE VOIENT. Une ombre a zero de
+             partout est invisible, et l'on croit que le bouton n'a rien
+             fait. On la proportionne au calque plutot qu'a une constante :
+             8 px sous un titre de 300 px ne se remarquent pas. */
+          var u = Math.max(3, Math.round(Math.min(lA.w, lA.h) * 0.045));
+          arrA.push(typeA === 'interne'
+            ? { t: 'interne', on: true, x: 0, y: u, b: u * 2, s: 0, c: color('#000000', .45), bl: 'source-over' }
+            : { t: 'ombre', on: true, x: 0, y: u, b: Math.round(u * 2.4), s: 0, c: color('#000000', .5), bl: 'source-over' });
+          effetChoisi = arrA.length - 1;
+        }, 'Effets');
+        renderProps();
+        return;
+      }
+      case 'effetOter': {
+        var lB = selOne();
+        if (!lB) return;
+        var iB = num(el.getAttribute('data-i'), 0);
+        change(function () {
+          var arrB = materialiserEffets(lB);
+          arrB.splice(iB, 1);
+          if (effetChoisi >= arrB.length) effetChoisi = Math.max(0, arrB.length - 1);
+        }, 'Effets');
+        renderProps();
+        return;
+      }
+      case 'effetOnOff': {
+        var lC = selOne();
+        if (!lC) return;
+        var iC = num(el.getAttribute('data-i'), 0);
+        change(function () {
+          var arrC = materialiserEffets(lC);
+          if (arrC[iC]) arrC[iC].on = arrC[iC].on === false;
+        }, 'Effets');
+        renderProps();
+        return;
+      }
+
       /* Ajouter et retirer un arret. On ecrit d'abord la liste complete
          a partir de arretsDe() : tant qu'un degrade vit encore sur
          from/to, il n'a pas de tableau a modifier -- c'est le premier
