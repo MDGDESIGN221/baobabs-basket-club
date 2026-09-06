@@ -900,19 +900,38 @@ window.BaobabsStudio = (function () {
     /* en colonne, chaque ligne ne porte qu'une lettre : aucune largeur
        ne peut la couper, donc pas de retour a la ligne a calculer. */
     var vertical = !!(l.ts && l.ts.vertical);
-    var maxW = (vertical || l.wrap === false) ? Infinity : Math.max(1, l.w);
+    /* LES RETRAITS RETRECISSENT LA LIGNE, ILS NE LA DEPLACENT PAS.
+       C'est la difference entre un retrait et un decalage : un retrait de
+       40 px a gauche laisse 40 px de moins pour les mots, donc la coupure
+       change. Le calculer au moment du DESSIN seulement donnerait des
+       lignes qui debordent. */
+    var rG = num(l.ts && l.ts.indentL, 0), rD = num(l.ts && l.ts.indentR, 0);
+    var r1 = num(l.ts && l.ts.indent1, 0);
+    var dispo = Math.max(1, l.w - rG - rD);
+    var maxW = (vertical || l.wrap === false) ? Infinity : dispo;
     var toks = tokenize(l);
     if (vertical) toks = enColonne(toks);
     var lines = [], hards = [], cur = [], curW = 0, trailW = 0, i;
 
-    function push(hard) { lines.push(cur); hards.push(!!hard); cur = []; curW = 0; trailW = 0; }
+    /* debutPara dit si la ligne en cours ouvre un paragraphe : c'est ce
+       qui distingue un retour a la ligne force d'un simple repli, donc
+       ou poser le retrait de premiere ligne et l'espace avant. */
+    var debutPara = true, paras = [];
+    function push(hard) {
+      lines.push(cur); hards.push(!!hard); paras.push(debutPara);
+      debutPara = !!hard;
+      cur = []; curW = 0; trailW = 0;
+    }
 
     for (i = 0; i < toks.length; i++) {
       var tk = toks[i];
       if (tk.kind === 'break') { push(true); continue; }
       var mw = measureRun(tk.t, tk.st, false).w;
       if (tk.kind === 'space') { cur.push({ tok: tk, w: mw }); curW += mw; trailW += mw; continue; }
-      if (curW + mw > maxW && cur.length) push(false);
+      /* la premiere ligne d'un paragraphe porte le retrait de premiere
+         ligne : elle dispose donc de moins de place que les suivantes */
+      var limite = (r1 && debutPara) ? Math.max(1, maxW - r1) : maxW;
+      if (curW + mw > limite && cur.length) push(false);
       if (mw > maxW && maxW !== Infinity) {
         var buf = '', bufW = 0, off = 0;
         for (var c = 0; c < tk.t.length; c++) {
@@ -957,11 +976,21 @@ window.BaobabsStudio = (function () {
       }
       var vis = Math.max(0, lw - tail);      /* largeur visible : sans les espaces de fin */
       maxLineW = Math.max(maxLineW, vis);
+      /* L'espace AVANT ne s'applique pas au tout premier paragraphe :
+         sinon le bloc entier descendrait, et l'on croirait a un mauvais
+         alignement vertical plutot qu'a un espacement. */
+      if (paras[i] && i > 0) totalH += num(l.ts && l.ts.spaceBefore, 0);
+      var estDernier = (i === lines.length - 1) || paras[i + 1];
       out.push({
         items: items, w: vis, wFull: lw, h: lh, asc: asc, desc: desc,
-        y: totalH, base: (lh - (asc + desc)) / 2 + asc, hard: hards[i]
+        y: totalH, base: (lh - (asc + desc)) / 2 + asc, hard: hards[i],
+        para: paras[i],           /* ouvre un paragraphe */
+        fin: estDernier,          /* le ferme : une ligne justifiee ne l'est pas */
+        retrait: (paras[i] ? r1 : 0) + rG,
+        dispo: dispo - (paras[i] ? r1 : 0)
       });
       totalH += lh;
+      if (estDernier && i < lines.length - 1) totalH += num(l.ts && l.ts.spaceAfter, 0);
     }
     return { lines: out, w: maxLineW, h: totalH };
   }
@@ -1437,6 +1466,36 @@ window.BaobabsStudio = (function () {
   }
 
   /* ---------- texte ---------- */
+  /* OU COMMENCE UNE LIGNE, ET DE COMBIEN ON ELARGIT SES ESPACES.
+     Ecrit une fois : le canevas et l'export SVG s'en servent tous les
+     deux. Deux calculs separes finiraient par diverger, et le SVG
+     montrerait une justification differente de l'ecran.
+
+     Une ligne de FIN de paragraphe ne se justifie pas -- sauf en
+     « justifie tout », qui est precisement le reglage qui l'exige. Sans
+     cette regle, le dernier mot d'un paragraphe se retrouverait seul,
+     etire sur toute la largeur. */
+  function placerLigne(l, ln) {
+    var a = (l.ts && l.ts.align) || 'left';
+    var retrait = ln.retrait == null ? 0 : ln.retrait;
+    var dispo = ln.dispo == null ? l.w : ln.dispo;
+    var justifie = a.indexOf('justify') === 0;
+    var parEspace = 0;
+    if (justifie && (a === 'justify-all' || !ln.fin)) {
+      var nb = 0;
+      ln.items.forEach(function (it) { nb += (it.t.split(' ').length - 1); });
+      if (nb > 0) parEspace = Math.max(0, (dispo - ln.w) / nb);
+    }
+    var x = retrait;
+    if (!justifie || parEspace === 0) {
+      /* la derniere ligne d'un paragraphe justifie suit le reglage
+         choisi : a gauche, centree ou a droite, comme dans Photoshop */
+      var fin = justifie ? (a === 'justify-center' ? 'center' : (a === 'justify-right' ? 'right' : 'left')) : a;
+      if (fin === 'center') x = retrait + (dispo - ln.w) / 2;
+      else if (fin === 'right') x = retrait + dispo - ln.w;
+    }
+    return { x: x, parEspace: parEspace };
+  }
   function drawText(ctx, l, opts) {
     if (l.path && l.path.nodes && l.path.nodes.length > 1) { drawTextSurTrace(ctx, l); return; }
     var lay = layoutText(l, false);
@@ -1446,14 +1505,27 @@ window.BaobabsStudio = (function () {
 
     for (var i = 0; i < lay.lines.length; i++) {
       var ln = lay.lines[i];
-      var lx = 0;
-      if (l.ts.align === 'center') lx = (l.w - ln.w) / 2;
-      else if (l.ts.align === 'right') lx = l.w - ln.w;
+      var pl = placerLigne(l, ln);
+      var lx = pl.x;
       var by = oy + ln.y + ln.base;
+      var vus = 0;                 /* espaces deja passes sur cette ligne */
 
       for (var j = 0; j < ln.items.length; j++) {
         var it = ln.items[j], st = it.st;
         if (!it.t) continue;
+        /* JUSTIFIER, C'EST ELARGIR LES ESPACES -- PAS LES LETTRES.
+           Le canevas sait le faire (ctx.wordSpacing), donc on ne
+           reimplemente pas la repartition. Mais les positions des
+           morceaux ont ete calculees SANS ce supplement : chaque morceau
+           doit donc etre decale du nombre d'espaces qui le precedent,
+           sinon un texte a plusieurs styles se decalerait morceau apres
+           morceau. */
+        /* chaque morceau part decale du supplement deja distribue par
+           les morceaux precedents de la meme ligne */
+        if (pl.parEspace) {
+          lx = pl.x + vus * pl.parEspace;
+          vus += (it.t.split(' ').length - 1);
+        }
         poserFont(ctx, st);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
@@ -1468,14 +1540,14 @@ window.BaobabsStudio = (function () {
         if (st.hollow) {
           ctx.strokeStyle = css(st.color);
           ctx.lineWidth = Math.max(0.5, st.strokeW || 1);
-          drawRunText(ctx, it.t, x, by, tk, true);
+          drawRunText(ctx, it.t, x, by, tk, true, pl.parEspace);
         } else {
           ctx.fillStyle = css(st.color);
-          drawRunText(ctx, it.t, x, by, tk, false);
+          drawRunText(ctx, it.t, x, by, tk, false, pl.parEspace);
           if (st.strokeW > 0) {
             ctx.strokeStyle = css(st.strokeColor || color('#000000', 1));
             ctx.lineWidth = st.strokeW;
-            drawRunText(ctx, it.t, x, by, tk, true);
+            drawRunText(ctx, it.t, x, by, tk, true, pl.parEspace);
           }
         }
         /* Souligne et barre : meme trait, deux hauteurs. La barre se
@@ -1484,7 +1556,8 @@ window.BaobabsStudio = (function () {
         if (st.underline || st.strike) {
           ctx.strokeStyle = css(st.color);
           ctx.lineWidth = Math.max(1, st.size * 0.055);
-          var x2 = x + it.w - (tk || 0);
+          var x2 = x + it.w - (tk || 0) +
+            (pl.parEspace ? (it.t.split(' ').length - 1) * pl.parEspace : 0);
           if (st.underline) {
             var uy = by + st.size * 0.13;
             ctx.beginPath(); ctx.moveTo(x, uy); ctx.lineTo(x2, uy); ctx.stroke();
@@ -1502,12 +1575,23 @@ window.BaobabsStudio = (function () {
   /* Quand l'interlettrage est nul on écrit la chaîne d'un coup, ce qui
      conserve le crénage de la police. Sinon on avance caractère par
      caractère, exactement comme la mesure. */
-  function drawRunText(ctx, txt, x, y, tk, stroke) {
-    if (!tk) { stroke ? ctx.strokeText(txt, x, y) : ctx.fillText(txt, x, y); return; }
+  /* PREMIERE VERSION DE LA JUSTIFICATION : FAUSSE, ET SILENCIEUSE.
+     Je m'appuyais sur ctx.wordSpacing, que le canevas sait faire. Mais
+     des que l'interlettrage n'est pas nul -- ce qui est le cas de tous
+     les roles typographiques du Studio -- le texte est trace LETTRE PAR
+     LETTRE, et wordSpacing ne s'applique plus. La justification ne
+     faisait donc rien du tout, sans la moindre erreur : les trois
+     rendus, a gauche, justifie et justifie tout, donnaient une image
+     au pixel identique. C'est la comparaison des images qui l'a dit.
+
+     Le supplement se pose donc ICI, au meme endroit que l'interlettrage
+     -- apres chaque espace -- ce qui marche dans les deux chemins. */
+  function drawRunText(ctx, txt, x, y, tk, stroke, espSup) {
+    if (!tk && !espSup) { stroke ? ctx.strokeText(txt, x, y) : ctx.fillText(txt, x, y); return; }
     var cx = x;
     for (var i = 0; i < txt.length; i++) {
       stroke ? ctx.strokeText(txt[i], cx, y) : ctx.fillText(txt[i], cx, y);
-      cx += ctx.measureText(txt[i]).width + tk;
+      cx += ctx.measureText(txt[i]).width + tk + (espSup && txt[i] === ' ' ? espSup : 0);
     }
   }
 
@@ -2439,16 +2523,24 @@ window.BaobabsStudio = (function () {
   function eachCharBox(l, lay, oy, fn) {
     var idx = 0;
     for (var i = 0; i < lay.lines.length; i++) {
-      var ln = lay.lines[i], lx = 0;
-      if (l.ts.align === 'center') lx = (l.w - ln.w) / 2;
-      else if (l.ts.align === 'right') lx = l.w - ln.w;
+      /* MEME REGLE QUE LE TRACE, PAR LA MEME FONCTION. Si le curseur
+         calculait sa place autrement, cliquer dans un texte justifie
+         placerait le curseur a cote des lettres -- l'ecart grandissant
+         de gauche a droite. */
+      var ln = lay.lines[i];
+      var pl = placerLigne(l, ln);
+      var lx = pl.x, vus = 0;
       var y0 = oy + ln.y, y1 = y0 + ln.h;
       for (var j = 0; j < ln.items.length; j++) {
         var it = ln.items[j], ch = it.chars || measureRun(it.t, it.st, true).chars;
+        var dec = 0;
+        if (pl.parEspace) { lx = pl.x + vus * pl.parEspace; }
         for (var k = 0; k < it.t.length; k++) {
-          fn(idx, lx + it.x + ch[k], lx + it.x + ch[k + 1], y0, y1, i, it.st);
+          fn(idx, lx + it.x + ch[k] + dec, lx + it.x + ch[k + 1] + dec, y0, y1, i, it.st);
+          if (pl.parEspace && it.t[k] === ' ') dec += pl.parEspace;
           idx++;
         }
+        if (pl.parEspace) vus += (it.t.split(' ').length - 1);
       }
       /* seul un vrai « \n » consomme un caractère ; un renvoi
          automatique n'en consomme aucun */
@@ -5397,11 +5489,8 @@ window.BaobabsStudio = (function () {
         { id: 'none', label: 'Aa' }, { id: 'upper', label: 'AA' },
         { id: 'lower', label: 'aa' }, { id: 'title', label: 'Aa Bb' }
       ], { text: true }) +
-      fSeg('Alignement', 'ts.align', st.align, [
-        { id: 'left', label: '', html: ALIGN_ICONS.left, title: 'À gauche' },
-        { id: 'center', label: '', html: ALIGN_ICONS.center, title: 'Centré' },
-        { id: 'right', label: '', html: ALIGN_ICONS.right, title: 'À droite' }
-      ]) +
+      /* l'alignement a rejoint le panneau Paragraphe, ou Photoshop le met */
+
       /* « Vertical » tout court desigmait l'alignement dans la boite, pas
          le sens d'ecriture : on cherchait le texte vertical ici et on ne
          trouvait que Haut / Milieu / Bas. */
@@ -5433,6 +5522,34 @@ window.BaobabsStudio = (function () {
        Le CRENAGE OPTIQUE de Photoshop n'est volontairement pas la : le
        canevas n'expose aucun moyen de le calculer, et un reglage qui ne
        ferait rien serait pire que son absence. */
+    /* LE PANNEAU PARAGRAPHE DE PHOTOSHOP, AU COMPLET SAUF UNE CHOSE.
+       Trois alignements, quatre justifications, trois retraits, deux
+       espacements. La CESURE n'y est pas, et volontairement : couper les
+       mots francais demande un dictionnaire de coupure ; sans lui on
+       couperait au hasard, ce qui est pire que des lignes un peu laches. */
+    h += fGroup('Paragraphe',
+      fSeg('Alignement', 'ts.align', st.align, [
+        { id: 'left', label: '', html: ALIGN_ICONS.left, title: 'À gauche' },
+        { id: 'center', label: '', html: ALIGN_ICONS.center, title: 'Centré' },
+        { id: 'right', label: '', html: ALIGN_ICONS.right, title: 'À droite' }
+      ], { text: true }) +
+      fSeg('Justification', 'ts.align', st.align, [
+        { id: 'justify', label: 'Gauche', title: 'Justifié, dernière ligne à gauche' },
+        { id: 'justify-center', label: 'Centre', title: 'Justifié, dernière ligne centrée' },
+        { id: 'justify-right', label: 'Droite', title: 'Justifié, dernière ligne à droite' },
+        { id: 'justify-all', label: 'Tout', title: 'Justifié, dernière ligne comprise' }
+      ], { text: true }) +
+      '<div class="bs-frow">' +
+      fStep('Retrait gauche', 'ts.indentL', st.indentL || 0, { unit: 'px', dec: 0, min: 0 }) +
+      fStep('Retrait droit', 'ts.indentR', st.indentR || 0, { unit: 'px', dec: 0, min: 0 }) +
+      '</div>' +
+      fStep('Retrait de première ligne', 'ts.indent1', st.indent1 || 0, { unit: 'px', dec: 0 }) +
+      '<div class="bs-frow">' +
+      fStep('Espace avant', 'ts.spaceBefore', st.spaceBefore || 0, { unit: 'px', dec: 0, min: 0 }) +
+      fStep('Espace après', 'ts.spaceAfter', st.spaceAfter || 0, { unit: 'px', dec: 0, min: 0 }) +
+      '</div>' +
+      '<div class="bs-note">Les retraits retrecissent la ligne, ils ne la deplacent pas : la coupure des mots suit.</div>'
+      , null, 'paragraphe');
     h += fGroup('Style de caractère',
       fToggle('Barré', 'ts.strike', !!st.strike, { text: true }) +
       fToggle('Petites capitales', 'ts.smallCaps', !!st.smallCaps, { text: true }) +
@@ -9635,12 +9752,16 @@ window.BaobabsStudio = (function () {
       if (l.ts.valign === 'middle') dy = (l.h - lay.h) / 2;
       else if (l.ts.valign === 'bottom') dy = l.h - lay.h;
       lay.lines.forEach(function (ln) {
-        var lx = 0;
-        if (l.ts.align === 'center') lx = (l.w - ln.w) / 2;
-        else if (l.ts.align === 'right') lx = l.w - ln.w;
+        /* MEME PLACEMENT QUE LE CANEVAS, PAR LA MEME FONCTION. Le SVG
+           recalculait l'alignement de son cote : il ignorait donc les
+           retraits et la justification, et le fichier exporte n'aurait pas
+           ressemble a l'ecran des qu'un texte est justifie. */
+        var pl = placerLigne(l, ln);
+        var lx = pl.x, vus = 0;
         ln.items.forEach(function (it) {
           if (!it.t) return;
           var st = it.st;
+          if (pl.parEspace) { lx = pl.x + vus * pl.parEspace; vus += (it.t.split(' ').length - 1); }
           out += '<text x="' + n3(lx + it.x) + '" y="' + n3(dy + ln.y + ln.base) + '"' +
             ' font-family="' + xmlEsc(st.font) + '"' +
             ' font-size="' + n3(st.size) + '"' +
@@ -9648,6 +9769,11 @@ window.BaobabsStudio = (function () {
             (st.italic ? ' font-style="italic"' : '') +
             (st.stretch && st.stretch !== 'normal' ? ' font-stretch="' + st.stretch + '"' : '') +
             (st.tracking ? ' letter-spacing="' + n3(st.tracking * st.size) + '"' : '') +
+            (pl.parEspace ? ' word-spacing="' + n3(pl.parEspace) + '"' : '') +
+            (st.smallCaps ? ' font-variant="small-caps"' : '') +
+            (st.shift ? ' dy="' + n3(-st.shift) + '"' : '') +
+            (st.underline || st.strike ? ' text-decoration="' +
+              [st.underline ? 'underline' : '', st.strike ? 'line-through' : ''].filter(Boolean).join(' ') + '"' : '') +
             ' fill="' + (st.hollow ? 'none' : cssHex(st.color)) + '"' +
             (st.hollow ? ' stroke="' + cssHex(st.color) + '" stroke-width="' + n3(st.strokeW || 1) + '"' : '') +
             ' xml:space="preserve">' + xmlEsc(it.t) + '</text>';
