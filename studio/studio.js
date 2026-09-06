@@ -449,7 +449,11 @@ window.BaobabsStudio = (function () {
       color: color(colHex || d.palette.fg, 1),
       hollow: !!r.hollow,
       strokeW: r.hollow ? Math.max(1, Math.round(d.w * 0.0022)) : 0,
-      underline: false
+      underline: false,
+      strike: false,
+      smallCaps: false,
+      shift: 0,          /* decalage de ligne de base, en pixels vers le haut */
+      stretch: 'normal'
     };
   }
 
@@ -784,9 +788,20 @@ window.BaobabsStudio = (function () {
 
   /* Largeur d'une chaîne dans un style, et éventuellement la position
      de chaque caractère (nécessaire pour placer le curseur d'édition). */
+  /* APPLIQUER UN STYLE A UN CONTEXTE, A UN SEUL ENDROIT.
+     La police se posait par ctx.font aux deux endroits qui comptent --
+     la mesure et le dessin. Des qu'un reglage ne tient PAS dans la
+     chaine `font` (les petites capitales sont une propriete a part
+     entiere du contexte), l'oublier d'un cote donne une largeur qui ne
+     correspond plus a ce qui est trace : le curseur tombe a cote et la
+     boite ne serre plus le texte. On passe donc par une seule fonction. */
+  function poserFont(c, st) {
+    c.font = fontCss(st);
+    if ('fontVariantCaps' in c) c.fontVariantCaps = st.smallCaps ? 'small-caps' : 'normal';
+  }
   function measureRun(txt, st, wantChars) {
     var c = mctx();
-    c.font = fontCss(st);
+    poserFont(c, st);
     var tk = trackPx(st), w, chars = null, i;
     if (!tk) {
       w = c.measureText(txt).width;
@@ -1439,11 +1454,16 @@ window.BaobabsStudio = (function () {
       for (var j = 0; j < ln.items.length; j++) {
         var it = ln.items[j], st = it.st;
         if (!it.t) continue;
-        ctx.font = fontCss(st);
+        poserFont(ctx, st);
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
         ctx.lineJoin = 'round';
         var x = lx + it.x, tk = trackPx(st);
+        /* Le decalage de ligne de base ne change PAS la largeur : il
+           n'entre donc ni dans la mise en page ni dans le curseur, et se
+           pose au seul moment du trace. C'est ce qui permet a un exposant
+           de rester cliquable a sa place dans le mot. */
+        if (st.shift) by -= st.shift;
 
         if (st.hollow) {
           ctx.strokeStyle = css(st.color);
@@ -1458,14 +1478,23 @@ window.BaobabsStudio = (function () {
             drawRunText(ctx, it.t, x, by, tk, true);
           }
         }
-        if (st.underline) {
-          var uy = by + st.size * 0.13;
+        /* Souligne et barre : meme trait, deux hauteurs. La barre se
+           pose au tiers de la hauteur des capitales, ce qui la place au
+           milieu des minuscules comme des majuscules. */
+        if (st.underline || st.strike) {
           ctx.strokeStyle = css(st.color);
           ctx.lineWidth = Math.max(1, st.size * 0.055);
-          ctx.beginPath();
-          ctx.moveTo(x, uy); ctx.lineTo(x + it.w - (tk || 0), uy);
-          ctx.stroke();
+          var x2 = x + it.w - (tk || 0);
+          if (st.underline) {
+            var uy = by + st.size * 0.13;
+            ctx.beginPath(); ctx.moveTo(x, uy); ctx.lineTo(x2, uy); ctx.stroke();
+          }
+          if (st.strike) {
+            var sy2 = by - st.size * 0.26;
+            ctx.beginPath(); ctx.moveTo(x, sy2); ctx.lineTo(x2, sy2); ctx.stroke();
+          }
         }
+        if (st.shift) by += st.shift;   /* la ligne suivante repart d'aplomb */
       }
     }
   }
@@ -5392,6 +5421,29 @@ window.BaobabsStudio = (function () {
         : '') +
       fToggle('Souligné', 'ts.underline', !!st.underline, { text: true }), null, 'caractere');
 
+    /* LES REGLAGES QUE PHOTOSHOP MET DANS SON PANNEAU CARACTERE.
+       Petites capitales : le canevas sait les rendre (mesure faite --
+       « Baobabs » en Archivo 40 passe de 165,6 a 147,6 px), donc c'est une
+       vraie petite capitale dessinee par la police, pas une majuscule
+       reduite a la main.
+       Exposant et indice ne sont pas des bascules mais deux gestes : ils
+       posent ensemble une taille et un decalage, valeurs qu'on peut
+       ensuite reprendre a la main -- c'est plus honnete qu'un interrupteur
+       dont on ne saurait pas defaire l'effet.
+       Le CRENAGE OPTIQUE de Photoshop n'est volontairement pas la : le
+       canevas n'expose aucun moyen de le calculer, et un reglage qui ne
+       ferait rien serait pire que son absence. */
+    h += fGroup('Style de caractère',
+      fToggle('Barré', 'ts.strike', !!st.strike, { text: true }) +
+      fToggle('Petites capitales', 'ts.smallCaps', !!st.smallCaps, { text: true }) +
+      fStep('Décalage vertical', 'ts.shift', st.shift || 0, { unit: 'px', dec: 0 }) +
+      '<div class="bs-frow" style="margin-top:4px">' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center" data-act="txExposant" data-v="sup">Exposant</button>' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center" data-act="txExposant" data-v="sub">Indice</button>' +
+      '</div>' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" style="margin-top:6px" data-act="txExposant" data-v="non">Revenir à la ligne normale</button>'
+      , null, 'caractere');
+
     if (l.path) {
       h += fGroup('Sur le tracé',
         fRange('Départ', 'path.offset', l.path.offset || 0, -0.5, 1, 0.005) +
@@ -8830,6 +8882,30 @@ window.BaobabsStudio = (function () {
         return;
       }
 
+      /* Exposant et indice posent DEUX valeurs a la fois -- une taille
+         reduite et un decalage. On garde la taille d'origine dans le style
+         pour pouvoir revenir : sans elle, « revenir a la normale » devrait
+         deviner, et se tromperait des qu'on a change la taille entre-temps. */
+      case 'txExposant': {
+        var quoi = el.getAttribute('data-v');
+        var lx = selOne();
+        if (!lx || lx.type !== 'text') { toast('Choisissez un texte'); return; }
+        var sx = activeTextStyle(lx);
+        change(function () {
+          if (quoi === 'non') {
+            if (sx.sizeAvant) applyTextProp('size', sx.sizeAvant);
+            applyTextProp('shift', 0);
+            applyTextProp('sizeAvant', 0);
+            return;
+          }
+          var base = sx.sizeAvant || sx.size;
+          applyTextProp('sizeAvant', base);
+          applyTextProp('size', Math.max(4, Math.round(base * 0.6)));
+          applyTextProp('shift', Math.round(base * (quoi === 'sup' ? 0.36 : -0.14)));
+        }, quoi === 'sup' ? 'Exposant' : (quoi === 'sub' ? 'Indice' : 'Ligne normale'));
+        renderProps();
+        return;
+      }
       case 'setChasse': {
         var ch = el.getAttribute('data-v');
         var lc = selOne();
