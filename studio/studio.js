@@ -2100,9 +2100,74 @@ window.BaobabsStudio = (function () {
 
      Les valeurs absentes gardent l'ancien comportement : centre, rond,
      espace a 0,8 -- les affiches deja faites ne bougent pas. */
+  /* UN CONTOUR COTE PAR COTE.
+     Un filet en haut seulement, une carte soulignee, un tableau : trois
+     dessins courants qu'on ne pouvait obtenir qu'en posant une ligne
+     par-dessus la forme -- et qui se decalait des qu'on redimensionnait.
+     Figma donne quatre epaisseurs sur un rectangle ; on fait pareil.
+
+     LE PROCEDE : plutot que de reconstruire quatre segments -- ce qui
+     obligerait a recalculer les arcs de coin, et a les rater -- on trace
+     QUATRE FOIS le contour entier, chaque fois decoupe dans un secteur
+     triangulaire allant du centre vers un cote. Les quatre secteurs se
+     rejoignent sur les diagonales : les epaisseurs differentes s'y
+     coupent en onglet, exactement comme un cadre de menuiserie. Et les
+     coins arrondis marchent sans une ligne de plus, puisque c'est le
+     meme trace qu'on decoupe.
+
+     Reserve aux rectangles : sur une etoile ou une ellipse, « le cote du
+     haut » ne veut rien dire. */
+  function cotesDe(l) {
+    var st = l.stroke;
+    if (!st || !st.cotes || st.cotes.length !== 4) return null;
+    if (l.type !== 'shape' || !(l.shape === 'rect' || !l.shape)) return null;
+    var c = [], i;
+    for (i = 0; i < 4; i++) c.push(Math.max(0, num(st.cotes[i], 0)));
+    return c;
+  }
+
+  /* Un cote seul peut porter une epaisseur alors que stroke.w vaut zero :
+     le test d'entree du dessin ne peut donc plus regarder stroke.w seul. */
+  function aContour(l) {
+    if (l.stroke && l.stroke.w > 0) return true;
+    var c = cotesDe(l);
+    return !!(c && (c[0] > 0 || c[1] > 0 || c[2] > 0 || c[3] > 0));
+  }
+
   function tracerContour(ctx, l, refaireTrace) {
     var st = l.stroke;
-    if (!st || !(st.w > 0)) return;
+    if (!st) return;
+    var cotes = cotesDe(l);
+    if (cotes) { contourParCote(ctx, l, refaireTrace, cotes); return; }
+    if (!(st.w > 0)) return;
+    contourUni(ctx, l, refaireTrace, st.w);
+  }
+
+  function contourParCote(ctx, l, refaireTrace, cotes) {
+    var cx = l.w / 2, cy = l.h / 2, i;
+    for (i = 0; i < 4; i++) {
+      var wi = cotes[i];
+      if (!(wi > 0)) continue;
+      /* le secteur deborde de l'epaisseur : sinon un contour exterieur
+         serait coupe net au bord de la boite */
+      var M = wi + 4;
+      var A = [[-M, -M], [l.w + M, -M], [l.w + M, l.h + M], [-M, l.h + M]];
+      var p1 = A[i], p2 = A[(i + 1) % 4];
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.closePath();
+      ctx.clip();
+      refaireTrace(ctx, l);
+      contourUni(ctx, l, refaireTrace, wi);
+      ctx.restore();
+    }
+  }
+
+  function contourUni(ctx, l, refaireTrace, largeur) {
+    var st = l.stroke;
     var pos = st.pos || 'center';
     ctx.strokeStyle = css(st.color);
     ctx.lineJoin = st.join || 'round';
@@ -2111,7 +2176,7 @@ window.BaobabsStudio = (function () {
     ctx.setLineDash(st.dash ? [st.dash, Math.max(0, esp)] : []);
 
     if (pos === 'center') {
-      ctx.lineWidth = st.w;
+      ctx.lineWidth = largeur;
       ctx.stroke();
     } else {
       /* on double, puis on ne garde que la moitie voulue */
@@ -2137,7 +2202,7 @@ window.BaobabsStudio = (function () {
         }
       }
       refaireTrace(ctx, l);
-      ctx.lineWidth = st.w * 2;
+      ctx.lineWidth = largeur * 2;
       ctx.lineJoin = st.join || 'round';
       ctx.setLineDash(st.dash ? [st.dash, Math.max(0, esp)] : []);
       ctx.stroke();
@@ -2281,7 +2346,7 @@ window.BaobabsStudio = (function () {
       var fs = paintStyle(ctx, l.fill, l.w, l.h);
       if (fs) { ctx.fillStyle = fs; ctx.fill(); }
     }
-    if (l.stroke && l.stroke.w > 0) {
+    if (aContour(l)) {
       tracerContour(ctx, l, shapePath);
     } else if (l.shape === 'line') {
       ctx.strokeStyle = css(l.stroke ? l.stroke.color : color('#fff', 1));
@@ -5313,6 +5378,7 @@ window.BaobabsStudio = (function () {
     if (NOMS_REGLAGE[path]) return NOMS_REGLAGE[path];
     if (/^effets\./.test(path)) return 'Effets';
     if (path === 'arrondi') return 'Angles arrondis';
+    if (/^stroke\.cotes/.test(path)) return 'Contour côté par côté';
     if (path === 'tete0' || path === 'tete1') return 'Embout de flèche';
     if (path === 'arcDeb' || path === 'arcBal' || path === 'arcTrou') return 'Arc de l’ellipse';
     if (/^fx\./.test(path)) return 'Retouche de l’image';
@@ -5796,6 +5862,7 @@ window.BaobabsStudio = (function () {
       return fGroup(titre, h);
     }
     h += fColor('Couleur', 'stroke.color', st.color);
+    h += fCotes(l);
     h += fSeg('Position', 'stroke.pos', st.pos || 'center', [
       { id: 'inside', label: 'Intérieur' }, { id: 'center', label: 'Centré' }, { id: 'outside', label: 'Extérieur' }
     ]);
@@ -5819,6 +5886,29 @@ window.BaobabsStudio = (function () {
     }
     return fGroup(titre, h);
   }
+  /* Le meme interrupteur que pour les coins : un etat simple par defaut,
+     le detail sur demande. Quatre champs toujours visibles feraient
+     croire que le contour se regle forcement cote par cote. */
+  var COTES_NOMS = ['Haut', 'Droite', 'Bas', 'Gauche'];
+  function fCotes(l) {
+    if (l.type !== 'shape' || !(l.shape === 'rect' || !l.shape)) return '';
+    var st = l.stroke || {};
+    var par = !!(st.cotes && st.cotes.length === 4);
+    var h = '<div class="bs-f"><div class="bs-tgl-row"><span>Contour côté par côté</span>' +
+      '<button type="button" class="bs-tgl' + (par ? ' is-on' : '') +
+      '" data-act="contourParCote"><i></i></button></div></div>';
+    if (!par) return h;
+    var c = st.cotes;
+    return h +
+      '<div class="bs-frow">' +
+      fStep(COTES_NOMS[0], 'stroke.cotes.0', num(c[0], 0), { unit: 'px', dec: 1, min: 0, step: .5 }) +
+      fStep(COTES_NOMS[1], 'stroke.cotes.1', num(c[1], 0), { unit: 'px', dec: 1, min: 0, step: .5 }) +
+      '</div><div class="bs-frow">' +
+      fStep(COTES_NOMS[2], 'stroke.cotes.2', num(c[2], 0), { unit: 'px', dec: 1, min: 0, step: .5 }) +
+      fStep(COTES_NOMS[3], 'stroke.cotes.3', num(c[3], 0), { unit: 'px', dec: 1, min: 0, step: .5 }) +
+      '</div>';
+  }
+
   function fCoins(l) {
     var parCoin = !!(l.radii && l.radii.length === 4);
     var h = '<div class="bs-f"><div class="bs-tgl-row"><span>Coins un par un</span>' +
@@ -10246,6 +10336,25 @@ window.BaobabsStudio = (function () {
         renderProps();
         return;
       }
+      case 'contourParCote': {
+        var lc = selOne();
+        if (!lc) return;
+        change(function () {
+          if (!lc.stroke) lc.stroke = { w: 0, color: color('#FFFFFF', 1), pos: 'center' };
+          if (lc.stroke.cotes && lc.stroke.cotes.length === 4) {
+            /* on repart de la plus grande : revenir a un contour uniforme
+               en le faisant disparaitre serait une perte silencieuse */
+            var mx = Math.max.apply(null, lc.stroke.cotes.map(function (v) { return num(v, 0); }));
+            delete lc.stroke.cotes;
+            if (mx > 0) lc.stroke.w = mx;
+          } else {
+            var u = num(lc.stroke.w, 0) || 1;
+            lc.stroke.cotes = [u, u, u, u];
+          }
+        }, 'Contour côté par côté');
+        renderProps();
+        return;
+      }
       case 'coinsParCoin': {
         var lc = selOne();
         if (!lc) return;
@@ -10914,6 +11023,33 @@ window.BaobabsStudio = (function () {
     return out;
   }
 
+  /* Le contour cote par cote dans le SVG : le meme decoupage en quatre
+     secteurs, ecrit en clipPath. Une seule idee geometrique, deux
+     ecritures -- et si l'une changeait sans l'autre, l'export cesserait
+     de ressembler a l'ecran. */
+  function contourCotesSVG(l, d, defs) {
+    var cotes = cotesDe(l);
+    if (!cotes || !d) return null;
+    var st = l.stroke, cx = l.w / 2, cy = l.h / 2, out = '', i;
+    for (i = 0; i < 4; i++) {
+      var wi = cotes[i];
+      if (!(wi > 0)) continue;
+      var M = wi + 4;
+      var A = [[-M, -M], [l.w + M, -M], [l.w + M, l.h + M], [-M, l.h + M]];
+      var p1 = A[i], p2 = A[(i + 1) % 4];
+      var idc = 'k' + (++_svgId);
+      defs.push('<clipPath id="' + idc + '"><path d="M' + n3(cx) + ' ' + n3(cy) +
+        ' L' + n3(p1[0]) + ' ' + n3(p1[1]) + ' L' + n3(p2[0]) + ' ' + n3(p2[1]) + ' Z"/></clipPath>');
+      out += '<g clip-path="url(#' + idc + ')"><path d="' + d + '" fill="none" stroke="' +
+        cssHex(st.color) + '" stroke-opacity="' + n3(alphaDe(st.color)) +
+        '" stroke-width="' + n3(wi) + '"' +
+        (st.join ? ' stroke-linejoin="' + st.join + '"' : '') +
+        (st.dash ? ' stroke-dasharray="' + n3(st.dash) + ' ' + n3(st.gap == null ? st.dash * 0.8 : st.gap) + '"' : '') +
+        '/></g>';
+    }
+    return out;
+  }
+
   function calqueSVG(l, defs, avert) {
     if (!l.visible) return '';
     var attrs = ' transform="' + transformSVG(l) + '"';
@@ -10965,14 +11101,15 @@ window.BaobabsStudio = (function () {
              '" stroke-width="' + n3(Math.max(1, l.h)) + '"';
         if (l.cap) s += ' stroke-linecap="' + l.cap + '"';
       }
-      if (l.stroke && l.stroke.w > 0) {
+      var parCote = contourCotesSVG(l, d, defs);
+      if (l.stroke && l.stroke.w > 0 && !parCote) {
         s += ' stroke="' + cssHex(l.stroke.color) + '" stroke-width="' + n3(l.stroke.w) + '"' +
              ' stroke-opacity="' + alphaDe(l.stroke.color) + '"';
         if (l.stroke.dash) s += ' stroke-dasharray="' + n3(l.stroke.dash) + '"';
         if (l.cap) s += ' stroke-linecap="' + l.cap + '"';
       }
       s += '/>';
-      return '<g' + attrs + '>' + s + emboutsSVG(l) + '</g>';
+      return '<g' + attrs + '>' + s + (parCote || '') + emboutsSVG(l) + '</g>';
     }
 
     if (l.type === 'image' || l.type === 'frame') {
