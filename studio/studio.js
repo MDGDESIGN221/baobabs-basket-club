@@ -2014,7 +2014,16 @@ window.BaobabsStudio = (function () {
   function requestDraw() {
     if (rafPending) return;
     rafPending = true;
-    requestAnimationFrame(function () { rafPending = false; draw(); });
+    requestAnimationFrame(function () {
+      rafPending = false;
+      draw();
+      /* le cadre de navigation suit la vue. Pose ICI et nulle part
+         ailleurs : c'est le seul passage commun au zoom, au deplacement,
+         au redimensionnement de la fenetre et au changement de format --
+         le brancher sur chacun garantirait d'en oublier un, et le cadre
+         mentirait sans qu'on sache pourquoi. */
+      if (panelName === 'nav') majNav();
+    });
   }
 
   function sizeCanvases() {
@@ -7636,11 +7645,12 @@ window.BaobabsStudio = (function () {
     var f = {
       modeles: panelTemplates, images: panelImages, elements: panelElements,
       texte: panelTexte, donnees: panelDonnees, styles: panelStyles,
-      projets: panelProjets, unsplash: panelUnsplash
+      projets: panelProjets, unsplash: panelUnsplash, nav: panelNav
     }[panelName] || panelTemplates;
     els.panelBody.innerHTML = f();
     wireFields(els.panelBody);
     if (panelName === 'modeles') paintTemplateThumbs();
+    if (panelName === 'nav') brancherNav();
     /* Le panneau est reconstruit à chaque frappe : sans ceci, le champ
        de recherche perdrait le focus dès la première lettre. */
     if (refocusSearch) {
@@ -8170,6 +8180,130 @@ window.BaobabsStudio = (function () {
       h += '<div class="bs-note">Chaque r\u00f4le porte sa police, sa graisse, son interlettrage et sa casse. Vous pouvez ensuite tout modifier, y compris <b>une seule lettre</b> : double-cliquez le texte, s\u00e9lectionnez la lettre, changez sa couleur.</div>';
     }
     return h;
+  }
+
+  /* ===================================================================
+     NAVIGATION
+     ---------------------------------------------------------------
+     Photoshop et Figma ont tous deux ce panneau, et il manquait : une
+     vignette de l'affiche entiere avec un cadre montrant ce qu'on voit.
+     Zoome a 300 % dans un coin, on ne savait plus OU l'on etait ; il
+     fallait ajuster a l'ecran, se reperer, puis re-zoomer.
+
+     Le cadre se tire pour se deplacer, et un clic ailleurs y saute.
+     La vignette se redessine a chaque mouvement de vue -- c'est bon
+     marche : elle fait 190 pixels de large, pas 1080.
+     =================================================================== */
+  function panelNav() {
+    var h = ph('Navigation', doc ? Math.round(view.zoom * 100) + ' %' : '');
+    h += '<div class="bs-nav"><canvas id="bs-nav-cv" width="190" height="190"></canvas>' +
+         '<div class="bs-nav-vue" id="bs-nav-vue"></div></div>';
+    h += '<div class="bs-f" style="padding:0 12px"><label>Zoom</label>' +
+         '<input type="range" class="bs-range" id="bs-nav-z" min="5" max="400" step="1" value="' +
+         Math.round(view.zoom * 100) + '"></div>';
+    h += '<div class="bs-list">';
+    [['fit', 'Ajuster \u00e0 l\u2019\u00e9cran', 'Ctrl 0'], ['100', 'Taille r\u00e9elle', 'Ctrl 1'],
+     ['sel', 'Cadrer la s\u00e9lection', 'Ctrl 2']].forEach(function (o) {
+      h += '<button type="button" class="bs-item" data-act="navZoom" data-v="' + o[0] + '">' +
+        '<span class="bs-item-txt"><b>' + o[1] + '</b><small>' + o[2] + '</small></span></button>';
+    });
+    h += '</div>';
+    h += '<div class="bs-note">Tirez le cadre pour vous d\u00e9placer dans l\u2019affiche. La molette zoome, la barre d\u2019espace maintenue donne la main.</div>';
+    return h;
+  }
+
+  /* Redessine la vignette et repose le cadre. Appelee au rendu du
+     panneau ET a chaque changement de vue -- sinon le cadre mentirait
+     des le premier deplacement. */
+  function majNav() {
+    if (panelName !== 'nav' || !doc) return;
+    var cv = document.getElementById('bs-nav-cv');
+    var vue = document.getElementById('bs-nav-vue');
+    if (!cv || !vue) return;
+    var s = Math.min(cv.width / doc.w, cv.height / doc.h);
+    var ox = (cv.width - doc.w * s) / 2, oy = (cv.height - doc.h * s) / 2;
+    try { docThumb(doc, cv); } catch (e) {}
+    /* ce que la scene montre, en coordonnees du document */
+    var sc = sceneSize();
+    var a = s2d(0, 0), b = s2d(sc.w, sc.h);
+    var r = cv.getBoundingClientRect(), p = cv.parentNode.getBoundingClientRect();
+    var k = r.width / cv.width;          /* la vignette peut etre mise a l'echelle en CSS */
+    vue.style.left = ((r.left - p.left) + (ox + a.x * s) * k) + 'px';
+    vue.style.top = ((r.top - p.top) + (oy + a.y * s) * k) + 'px';
+    vue.style.width = Math.max(6, (b.x - a.x) * s * k) + 'px';
+    vue.style.height = Math.max(6, (b.y - a.y) * s * k) + 'px';
+    /* le pourcentage de l'entete se remet a jour ICI, pas dans chaque
+       geste : majNav() est le seul passage commun a la glissiere, au saut
+       dans la vignette, a la molette et aux raccourcis. */
+    var t = els.panelBody && els.panelBody.querySelector('.bs-ph-sub');
+    if (t) t.textContent = Math.round(view.zoom * 100) + ' %';
+    var gl = document.getElementById('bs-nav-z');
+    if (gl && document.activeElement !== gl) gl.value = Math.round(view.zoom * 100);
+  }
+
+  /* Sauter, ou tirer : les deux amenent le CENTRE de la vue au point
+     vise, ce qui est le geste qu'on attend d'une carte. */
+  /* LA VUE NE QUITTE PAS L'AFFICHE.
+     Sans cela, sauter pres d'un bord de la vignette poussait le cadre
+     HORS d'elle -- coordonnees negatives, cadre invisible, et l'impression
+     d'avoir perdu l'affiche. On garde toujours au moins un quart de
+     l'ecran occupe par le document.
+     Ne s'applique qu'a la navigation : le deplacement libre a la main
+     reste libre, c'est parfois utile pour poser un element qui deborde. */
+  function clampVue() {
+    var sc = sceneSize();
+    var dw = doc.w * view.zoom, dh = doc.h * view.zoom;
+    var margeX = Math.max(sc.w * 0.25, 40), margeY = Math.max(sc.h * 0.25, 40);
+    view.px = clamp(view.px, sc.w - dw - (sc.w - margeX), margeX);
+    view.py = clamp(view.py, sc.h - dh - (sc.h - margeY), margeY);
+  }
+  function navVers(clientX, clientY) {
+    var cv = document.getElementById('bs-nav-cv');
+    if (!cv || !doc) return;
+    var r = cv.getBoundingClientRect();
+    var s = Math.min(cv.width / doc.w, cv.height / doc.h);
+    var k = r.width / cv.width;
+    var ox = (cv.width - doc.w * s) / 2 * k, oy = (cv.height - doc.h * s) / 2 * k;
+    var dx = (clientX - r.left - ox) / (s * k);
+    var dy = (clientY - r.top - oy) / (s * k);
+    var sc = sceneSize();
+    view.px = sc.w / 2 - dx * view.zoom;
+    view.py = sc.h / 2 - dy * view.zoom;
+    clampVue();
+    requestDraw();
+    majNav();
+  }
+
+  function brancherNav() {
+    var cv = document.getElementById('bs-nav-cv');
+    var vue = document.getElementById('bs-nav-vue');
+    var z = document.getElementById('bs-nav-z');
+    if (!cv) return;
+    function suivre(e) { navVers(e.clientX, e.clientY); }
+    [cv, vue].forEach(function (el) {
+      if (!el) return;
+      el.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        try { el.setPointerCapture(e.pointerId); } catch (err) {}
+        suivre(e);
+        function up() {
+          el.removeEventListener('pointermove', suivre);
+          el.removeEventListener('pointerup', up);
+        }
+        el.addEventListener('pointermove', suivre);
+        el.addEventListener('pointerup', up);
+      });
+    });
+    /* La glissiere passe par setZoom() et pas par view.zoom en direct :
+       lui seul met a jour l'etiquette de la barre d'etat. Premiere version
+       fautive -- le cadre retrecissait bien, mais la barre continuait
+       d'afficher l'ancien pourcentage. Deux chiffres pour un seul zoom. */
+    if (z) z.addEventListener('input', function () {
+      setZoom(clamp(num(z.value, 100) / 100, 0.05, 8));
+      clampVue();
+      majNav();
+    });
+    majNav();
   }
 
   /* ---------- données ---------- */
@@ -8820,6 +8954,15 @@ window.BaobabsStudio = (function () {
       /* Passer aux quatre coins reprend le rayon commun ; revenir
          garde le PLUS GRAND des quatre. Prendre le premier, ou zero,
          effacerait un reglage sans prevenir. */
+      case 'navZoom': {
+        var v = el.getAttribute('data-v');
+        if (v === 'fit') fitView();
+        else if (v === '100') setZoom(1);
+        else zoomToSelection();
+        majNav();
+        renderPanel();
+        return;
+      }
       case 'coinsParCoin': {
         var lc = selOne();
         if (!lc) return;
