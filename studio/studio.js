@@ -5001,8 +5001,52 @@ window.BaobabsStudio = (function () {
       '</div>' + sw + '</div>';
   }
 
-  function fGroup(title, body, action) {
-    return '<div class="bs-pgroup"><div class="bs-pgroup-t"><span>' + esc(title) + '</span>' + (action || '') + '</div>' + body + '</div>';
+  /* LE PANNEAU S'ALLONGEAIT SANS FIN.
+     Tout etait empile dans un seul defilement : sur un texte, il fallait
+     descendre a travers la position, la typographie, la couleur, le
+     trait, la liaison de donnees et l'apparence pour atteindre le
+     dernier reglage. Photoshop separe Caractere et Paragraphe en
+     panneaux distincts, Figma range par sections ; on fait les deux.
+
+     Chaque groupe porte desormais :
+       . un onglet, pour n'afficher que ce qu'on cherche ;
+       . un pli, retenu d'une selection a l'autre -- un groupe qu'on
+         ferme reste ferme, sinon le rangement serait a refaire a chaque
+         clic.
+     Un groupe sans onglet s'affiche toujours : c'est le cas de l'entete. */
+  var propsOnglet = 'objet';   /* le souhait */
+  var ongletVu = 'objet';      /* ce qui est montre ici et maintenant */
+  var groupesPlies = {};
+
+  function fGroup(title, body, action, onglet) {
+    var plie = !!groupesPlies[title];
+    return '<div class="bs-pgroup' + (plie ? ' is-plie' : '') + '"' +
+      (onglet ? ' data-ong="' + onglet + '"' : '') + '>' +
+      '<div class="bs-pgroup-t" data-plier="' + esc(title) + '">' +
+      '<span>' + esc(title) + '</span>' + (action || '') +
+      '<i class="bs-pgroup-x"></i></div>' +
+      '<div class="bs-pgroup-b">' + body + '</div></div>';
+  }
+
+  /* La barre d'onglets : elle ne parait que s'il y a au moins deux
+     familles a montrer. Une rangee d'un seul onglet ne range rien. */
+  function barreOnglets(html) {
+    var vus = [], re = /data-ong="([a-z]+)"/g, m;
+    while ((m = re.exec(html))) { if (vus.indexOf(m[1]) < 0) vus.push(m[1]); }
+    if (vus.length < 2) { ongletVu = vus[0] || 'objet'; return ''; }
+    /* On NE remplace PAS le choix quand l'onglet n'existe pas ici : passer
+       par une forme, qui n'a pas de « Caractere », effacerait le reglage et
+       il faudrait le reprendre en revenant sur un texte. On affiche le
+       repli, on garde le souhait. */
+    ongletVu = (vus.indexOf(propsOnglet) >= 0) ? propsOnglet : vus[0];
+    var NOMS = { objet: 'Objet', caractere: 'Caract\u00e8re', paragraphe: 'Paragraphe',
+                 forme: 'Forme', image: 'Image', apparence: 'Apparence', document: 'Document' };
+    var h = '<div class="bs-pongs">';
+    vus.forEach(function (o) {
+      h += '<button type="button" class="bs-pong' + (o === ongletVu ? ' is-on' : '') +
+           '" data-pong="' + o + '">' + (NOMS[o] || o) + '</button>';
+    });
+    return h + '</div>';
   }
 
   var ICONS = {
@@ -5038,7 +5082,30 @@ window.BaobabsStudio = (function () {
     if (!ls.length) html = propsDoc();
     else if (ls.length > 1) html = propsMulti(ls);
     else html = propsLayer(ls[0]);
-    els.propsBody.innerHTML = html;
+    var barre = barreOnglets(html);
+    els.propsBody.innerHTML = barre + html;
+    /* on masque plutot que de ne pas construire : les champs restent
+       cables, donc changer d'onglet ne coute rien et ne perd pas le
+       focus d'une saisie en cours. */
+    if (barre) {
+      $$('[data-ong]', els.propsBody).forEach(function (g) {
+        g.hidden = g.getAttribute('data-ong') !== ongletVu;
+      });
+      $$('[data-pong]', els.propsBody).forEach(function (b) {
+        b.addEventListener('click', function () {
+          propsOnglet = b.getAttribute('data-pong');
+          renderProps();
+        });
+      });
+    }
+    $$('[data-plier]', els.propsBody).forEach(function (t) {
+      t.addEventListener('click', function (e) {
+        if (e.target.closest('button') && e.target.closest('button') !== t) return;
+        var k = t.getAttribute('data-plier');
+        groupesPlies[k] = !groupesPlies[k];
+        t.parentNode.classList.toggle('is-plie', groupesPlies[k]);
+      });
+    });
     wireFields(els.propsBody);
     updateStatusDims();
     majAide();
@@ -5111,7 +5178,7 @@ window.BaobabsStudio = (function () {
       fStep('Largeur', 'w', doc.w, { scope: 'doc', unit: 'px', dec: 0 }) +
       fStep('Hauteur', 'h', doc.h, { scope: 'doc', unit: 'px', dec: 0 }) +
       '</div>' +
-      fRange('Marges de sécurité', 'safe', doc.safe * 100, 0, 15, 0.5, { scope: 'doc', unit: '%', mul: 0.01 }));
+      fRange('Marges de sécurité', 'safe', doc.safe * 100, 0, 15, 0.5, { scope: 'doc', unit: '%', mul: 0.01 }), null, 'document');
 
     var bgKind = doc.bg.type;
     h += fGroup('Fond',
@@ -5125,7 +5192,7 @@ window.BaobabsStudio = (function () {
           fColor('Fin', 'bg.to', doc.bg.to, { scope: 'doc' }) +
           (bgKind === 'linear' ? fStep('Angle', 'bg.angle', doc.bg.angle, { scope: 'doc', unit: '°', dec: 0 }) : '') +
           fPlace('bg', doc.bg, 'doc')
-        : ''));
+        : ''), null, 'document');
 
     var sw = '';
     for (var i = 0; i < PALETTES.length; i++) {
@@ -5153,7 +5220,7 @@ window.BaobabsStudio = (function () {
       fColor('Accent', 'palette.accent', color(pal2.accent, 1), { scope: 'doc', swatches: false, alpha: false }) +
       fColor('Texte', 'palette.fg', color(pal2.fg, 1), { scope: 'doc', swatches: false, alpha: false }) +
       fColor('Texte secondaire', 'palette.fg2', color(pal2.fg2, 1), { scope: 'doc', swatches: false, alpha: false }) +
-      fColor('Fond', 'palette.bg', color(pal2.bg, 1), { scope: 'doc', swatches: false, alpha: false }));
+      fColor('Fond', 'palette.bg', color(pal2.bg, 1), { scope: 'doc', swatches: false, alpha: false }), null, 'document');
 
     h += fGroup('Repères',
       fToggle('Grille', 'grid', flags.grid, { scope: 'flags' }) +
@@ -5161,7 +5228,7 @@ window.BaobabsStudio = (function () {
       fToggle('Marges et repères', 'safe', flags.safe, { scope: 'flags' }) +
       '<div class="bs-note" style="margin:9px 0 0">Tirez depuis les règles, en haut et à gauche, pour poser un repère. Ramenez-le sur la règle pour l enlever.</div>' +
       '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" style="margin-top:8px" data-act="clearRules">Effacer les repères' +
-      ((doc.rules && doc.rules.length) ? ' (' + doc.rules.length + ')' : '') + '</button>');
+      ((doc.rules && doc.rules.length) ? ' (' + doc.rules.length + ')' : '') + '</button>', null, 'document');
 
     h += '<div class="bs-pgroup"><div class="bs-empty" style="padding:6px 0">' +
       'Sélectionnez un calque pour le modifier, ou double-cliquez sur l affiche.</div></div>';
@@ -5171,13 +5238,13 @@ window.BaobabsStudio = (function () {
   function propsMulti(ls) {
     var b = bboxOf(ls);
     var h = head(ICONS.group, ls.length + ' calques', Math.round(b.w) + ' × ' + Math.round(b.h) + ' px');
-    h += fGroup('Alignement', alignButtons());
+    h += fGroup('Alignement', alignButtons(), null, 'objet');
     h += fGroup('Actions',
       '<div style="display:flex;flex-direction:column;gap:5px">' +
       '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" data-act="group">Grouper les calques</button>' +
       '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" data-act="dup">Dupliquer</button>' +
       '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" data-act="del">Supprimer</button>' +
-      '</div>');
+      '</div>', null, 'objet');
     return h;
   }
 
@@ -5216,7 +5283,7 @@ window.BaobabsStudio = (function () {
       '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="flex:1;justify-content:center" data-act="flipV" title="Miroir vertical">↕</button>' +
       '</div></div></div>' +
       alignButtons(),
-      '<button type="button" data-act="center" title="Centrer dans l affiche">Centrer</button>');
+      '<button type="button" data-act="center" title="Centrer dans l affiche">Centrer</button>', 'objet');
 
     if (l.type === 'text') h += propsText(l);
     else if (l.type === 'image' || l.type === 'frame') h += propsImage(l);
@@ -5241,7 +5308,7 @@ window.BaobabsStudio = (function () {
           fStep('Décalage Y', 'shadow.y', l.shadow.y || 0, { unit: 'px', dec: 0 }) + '</div>' +
           fStep('Flou', 'shadow.blur', l.shadow.blur || 0, { unit: 'px', dec: 0, min: 0 }) +
           fColor('Couleur de l ombre', 'shadow.color', l.shadow.color || color('#000000', .5))
-        : ''));
+        : ''), null, 'apparence');
 
     h += fGroup('Calque',
       '<div class="bs-frow">' +
@@ -5251,7 +5318,7 @@ window.BaobabsStudio = (function () {
       '<div class="bs-frow">' +
       '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center" data-act="dup">Dupliquer</button>' +
       '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center" data-act="del">Supprimer</button>' +
-      '</div>');
+      '</div>', null, 'apparence');
     return h;
   }
 
@@ -5305,7 +5372,7 @@ window.BaobabsStudio = (function () {
       ]) +
       fToggle('Écrire en colonne', 'ts.vertical', !!st.vertical, { text: true }) +
       fToggle('Retour à la ligne', 'wrap', l.wrap !== false)
-    );
+    , null, 'caractere');
 
     h += fGroup(hasSel ? 'Couleur de la sélection' : 'Couleur',
       fColor('Remplissage', 'ts.color', st.color, { text: true }) +
@@ -5314,7 +5381,7 @@ window.BaobabsStudio = (function () {
         ? fStep('Épaisseur du trait', 'ts.strokeW', st.strokeW || 1, { unit: 'px', dec: 1, min: 0, step: .5 }) +
           (!st.hollow ? fColor('Couleur du trait', 'ts.strokeColor', st.strokeColor || color('#000000', 1), { text: true }) : '')
         : '') +
-      fToggle('Souligné', 'ts.underline', !!st.underline, { text: true }));
+      fToggle('Souligné', 'ts.underline', !!st.underline, { text: true }), null, 'caractere');
 
     if (l.path) {
       h += fGroup('Sur le tracé',
@@ -5323,7 +5390,7 @@ window.BaobabsStudio = (function () {
         fSeg('Côté', 'path.side', l.path.side || 'dessus', [
           { id: 'dessus', label: 'Au-dessus' }, { id: 'dessous', label: 'En dessous' }
         ]) +
-        '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" style="margin-top:8px" data-act="offPath">Remettre le texte à plat</button>');
+        '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" style="margin-top:8px" data-act="offPath">Remettre le texte à plat</button>', null, 'paragraphe');
     }
 
     /* liaison de données — l'objet dynamique côté texte */
@@ -5335,7 +5402,7 @@ window.BaobabsStudio = (function () {
       : fSelect('Lier à une donnée', 'bind', '', [{ id: '', label: '— aucun —' }].concat(allBindings().map(function (b) {
           return { id: b.id, label: b.label };
         })));
-    h += fGroup('Objet dynamique', bnd);
+    h += fGroup('Objet dynamique', bnd, null, 'objet');
     return h;
   }
   function weightLabel(w) {
@@ -5359,7 +5426,7 @@ window.BaobabsStudio = (function () {
       (l.src ? '<div class="bs-frow" style="margin-top:8px">' +
         '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center" data-act="cropImage">Recadrer</button>' +
         '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center" data-act="clearImage">Vider</button>' +
-        '</div>' : ''));
+        '</div>' : ''), null, 'image');
 
     h += fGroup('Objet dynamique',
       fSelect('Emplacement', 'slot', l.slot || 'libre', SLOTS) +
@@ -5367,7 +5434,7 @@ window.BaobabsStudio = (function () {
         ? '<div class="bs-bind" style="margin-top:8px">' + ICONS.dyn +
           '<span>Se remplit tout seul depuis <b>' + esc(slotLabel(l.slot)) + '</b></span></div>' +
           '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" style="margin-top:8px" data-act="refreshSlot">Recharger l image</button>'
-        : ''));
+        : ''), null, 'image');
 
     h += fGroup('Cadrage',
       fSeg('Ajustement', 'fit', l.fit || 'cover', [
@@ -5377,13 +5444,13 @@ window.BaobabsStudio = (function () {
       '<div class="bs-frow">' +
       fRange('Décalage H', 'ox', l.ox == null ? .5 : l.ox, 0, 1, 0.005) +
       fRange('Décalage V', 'oy', l.oy == null ? .5 : l.oy, 0, 1, 0.005) +
-      '</div>');
+      '</div>', null, 'image');
 
     h += fGroup('Forme',
       fSelect('Masque', 'mask', l.mask || 'rect', MASKS) +
       (l.mask === 'rect' || !l.mask ? fCoins(l) : '') +
       fStep('Contour', 'stroke.w', (l.stroke && l.stroke.w) || 0, { unit: 'px', dec: 0, min: 0 }) +
-      ((l.stroke && l.stroke.w) ? fColor('Couleur du contour', 'stroke.color', l.stroke.color) : ''));
+      ((l.stroke && l.stroke.w) ? fColor('Couleur du contour', 'stroke.color', l.stroke.color) : ''), null, 'image');
 
     var fx = l.fx || {};
     h += fGroup('Retouche',
@@ -5394,7 +5461,7 @@ window.BaobabsStudio = (function () {
       fRange('Flou', 'fx.blur', fx.blur || 0, 0, 40, 0.5, { unit: 'px' }) +
       fRange('Voile sombre', 'fx.veil', (fx.veil || 0) * 100, 0, 90, 1, { unit: '%', mul: 0.01 }) +
       fRange('Teinte', 'fx.tintAmt', (fx.tintAmt || 0) * 100, 0, 100, 1, { unit: '%', mul: 0.01 }) +
-      ((fx.tintAmt || 0) > 0 ? fColor('Couleur de teinte', 'fx.tint', fx.tint || color(doc.palette.accent, 1)) : ''));
+      ((fx.tintAmt || 0) > 0 ? fColor('Couleur de teinte', 'fx.tint', fx.tint || color(doc.palette.accent, 1)) : ''), null, 'image');
     return h;
   }
   function fileName(u) {
@@ -5415,16 +5482,16 @@ window.BaobabsStudio = (function () {
     });
     grid += '</div>';
 
-    return fGroup('Icône', grid) +
+    return fGroup('Icône', grid, null, 'forme') +
       fGroup('Trait',
         fStep('Épaisseur', 'stroke.w', (l.stroke && l.stroke.w) || 0, { unit: 'px', dec: 1, min: 0, step: .5 }) +
-        fColor('Couleur du trait', 'stroke.color', l.stroke.color)) +
+        fColor('Couleur du trait', 'stroke.color', l.stroke.color), null, 'forme') +
       fGroup('Remplissage',
         fSeg('Type', 'fill.type', l.fill.type, [
           { id: 'none', label: 'Aucun' }, { id: 'solid', label: 'Uni' }, { id: 'linear', label: 'Dégradé' }
         ]) +
         (l.fill.type === 'solid' ? fColor('Couleur', 'fill.color', l.fill.color) : '') +
-        (l.fill.type === 'linear' ? fColor('Début', 'fill.from', l.fill.from) + fColor('Fin', 'fill.to', l.fill.to) : ''));
+        (l.fill.type === 'linear' ? fColor('Début', 'fill.from', l.fill.from) + fColor('Fin', 'fill.to', l.fill.to) : ''), null, 'forme');
   }
 
   /* ---------- forme ---------- */
@@ -5441,7 +5508,7 @@ window.BaobabsStudio = (function () {
       (l.shape === 'star'
         ? fStep('Branches', 'points', l.points || 5, { dec: 0, min: 3, max: 20 }) +
           fRange('Creux', 'inner', l.inner || .46, 0.1, 0.9, 0.01)
-        : ''));
+        : ''), null, 'forme');
 
     if (l.shape !== 'line') {
       h += fGroup('Remplissage',
@@ -5454,7 +5521,7 @@ window.BaobabsStudio = (function () {
           ? fColor('Début', 'fill.from', l.fill.from) + fColor('Fin', 'fill.to', l.fill.to) +
             (l.fill.type === 'linear' ? fStep('Angle', 'fill.angle', l.fill.angle || 90, { unit: '°', dec: 0 }) : '') +
             fPlace('fill', l.fill)
-          : ''));
+          : ''), null, 'forme');
     }
 
     h += fContour(l, l.shape === 'line' ? 'Trait' : 'Contour');
@@ -5468,7 +5535,7 @@ window.BaobabsStudio = (function () {
       'Outil <b>A</b> pour les déplacer, Alt+clic pour en retirer un, clic sur le trait pour en ajouter.</div>' +
       '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" data-act="nodeTool">Modifier les points</button>' +
       '<div style="height:8px"></div>' +
-      fToggle('Tracé fermé', 'closed', !!l.closed));
+      fToggle('Tracé fermé', 'closed', !!l.closed), null, 'forme');
 
     h += fGroup('Remplissage',
       fSeg('Type', 'fill.type', l.fill.type, [
@@ -5477,7 +5544,7 @@ window.BaobabsStudio = (function () {
       (l.fill.type === 'solid' ? fColor('Couleur', 'fill.color', l.fill.color) : '') +
       (l.fill.type === 'linear' ? fColor('Début', 'fill.from', l.fill.from) + fColor('Fin', 'fill.to', l.fill.to) +
         fStep('Angle', 'fill.angle', l.fill.angle || 90, { unit: '°', dec: 0 }) +
-        fPlace('fill', l.fill) : ''));
+        fPlace('fill', l.fill) : ''), null, 'forme');
 
     h += fContour(l, 'Trait');
     return h;
@@ -5488,7 +5555,7 @@ window.BaobabsStudio = (function () {
     return fGroup('Groupe',
       '<div class="bs-note" style="margin:0 0 9px">' + l.children.length + ' calques. ' +
       'Double-cliquez sur l affiche pour entrer dans le groupe et sélectionner un élément.</div>' +
-      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" data-act="group">Dissoudre le groupe</button>');
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm bs-btn-block" data-act="group">Dissoudre le groupe</button>', null, 'objet');
   }
 
   /* ===================================================================
