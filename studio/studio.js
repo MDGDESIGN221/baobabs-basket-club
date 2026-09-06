@@ -64,9 +64,9 @@ window.BaobabsStudio = (function () {
     { id: 'Oswald',       label: 'Oswald',       cat: 'Affiche', weights: [200, 300, 400, 500, 600, 700], stack: "'Oswald', 'Anton', sans-serif" },
     { id: 'Teko',         label: 'Teko',         cat: 'Affiche', weights: [300, 400, 500, 600, 700], stack: "'Teko', 'Oswald', sans-serif" },
     /* — titres — */
-    { id: 'Archivo',      label: 'Archivo',      cat: 'Titres', weights: [400, 500, 600, 700, 800, 900], stack: "'Archivo', system-ui, sans-serif" },
+    { id: 'Archivo',      label: 'Archivo',      cat: 'Titres', weights: [400, 500, 600, 700, 800, 900], stack: "'Archivo', system-ui, sans-serif", chasse: [62, 125] },
     { id: 'Syne',         label: 'Syne',         cat: 'Titres', weights: [400, 500, 600, 700, 800], stack: "'Syne', 'Archivo', sans-serif" },
-    { id: 'Bricolage Grotesque', label: 'Bricolage Grotesque', cat: 'Titres', weights: [200, 300, 400, 500, 600, 700, 800], stack: "'Bricolage Grotesque', 'Archivo', sans-serif" },
+    { id: 'Bricolage Grotesque', label: 'Bricolage Grotesque', cat: 'Titres', weights: [200, 300, 400, 500, 600, 700, 800], stack: "'Bricolage Grotesque', 'Archivo', sans-serif", chasse: [75, 100] },
     { id: 'Space Grotesk',label: 'Space Grotesk',cat: 'Titres', weights: [400, 500, 600, 700], stack: "'Space Grotesk', system-ui, sans-serif" },
     /* — serif, pour l'editorial et le solennel — */
     { id: 'Playfair Display', label: 'Playfair Display', cat: 'Serif', weights: [400, 500, 600, 700, 800, 900], stack: "'Playfair Display', Georgia, serif" },
@@ -599,8 +599,33 @@ window.BaobabsStudio = (function () {
     return _mctx;
   }
 
+  /* LA CHASSE D'UNE POLICE VARIABLE, ET SEULEMENT QUAND ELLE EXISTE.
+     Archivo porte un axe de largeur de 62 a 125, Bricolage Grotesque de
+     75 a 100 : ce sont les seules du jeu a en avoir, et c'est la reponse
+     de Google Fonts qui le dit, pas une supposition.
+
+     Le canevas ne connait pas font-variation-settings, mais il accepte
+     le mot-cle de chasse dans la chaine `font` -- mesure faite :
+     « BAOBABS » en Archivo 48 passe de 160 a 306 pixels de large selon
+     le reglage. Sept crans, donc, et pas un curseur continu : promettre
+     une valeur qu'on ne saurait pas rendre serait pire que sept crans
+     qui marchent.
+
+     Une police sans axe ignore le reglage -- le panneau ne l'affiche
+     alors pas, plutot que de proposer un bouton sans effet. */
+  var CHASSES = ['ultra-condensed', 'extra-condensed', 'condensed', 'semi-condensed',
+                 'normal', 'semi-expanded', 'expanded'];
   function fontCss(st) {
-    return (st.italic ? 'italic ' : '') + (st.weight || 400) + ' ' + Math.max(1, st.size) + 'px ' + fontStack(st.font);
+    var ch = (st.stretch && CHASSES.indexOf(st.stretch) >= 0 && st.stretch !== 'normal')
+      ? st.stretch + ' ' : '';
+    return (st.italic ? 'italic ' : '') + (st.weight || 400) + ' ' + ch +
+           Math.max(1, st.size) + 'px ' + fontStack(st.font);
+  }
+
+  /* La police choisie porte-t-elle un axe de largeur ? */
+  function policeAChasse(id) {
+    for (var i = 0; i < FONTS.length; i++) if (FONTS[i].id === id) return !!FONTS[i].chasse;
+    return false;
   }
 
   var _metCache = {};
@@ -7696,23 +7721,123 @@ window.BaobabsStudio = (function () {
   }
 
   /* ---------- texte ---------- */
+  /* LE PANNEAU TEXTE NE MONTRAIT QUE DES ROLES.
+     Pour changer de police il fallait aller a droite, dans une liste
+     deroulante ou aucune police ne se voit -- on choisissait un nom, pas
+     une lettre. Et il n'y avait NULLE PART ou prendre un tiret cadratin,
+     un guillemet francais ou un espace insecable.
+
+     Le panneau ne redouble pas les Proprietes : l'alignement,
+     l'interligne et l'interlettrage y sont deja et y restent. Il apporte
+     les trois choses qui manquaient -- voir les polices, regler la
+     chasse quand elle existe, poser un caractere. */
+  var texteOnglet = 'polices';
+  var polRecherche = '';
+
+  var CARACTERES = [
+    ['Ponctuation', ['\u2014', '\u2013', '\u2026', '\u00ab\u202f', '\u202f\u00bb', '\u201c', '\u201d', '\u2019', '\u00a0', '\u202f', '\u00b7', '\u2022']],
+    ['Sport et chiffres', ['\u2212', '\u00d7', '\u00f7', '\u00b0', '\u2032', '\u2033', '\u00bd', '\u2153', '\u00bc', '\u2044', '\u2116', '#']],
+    ['Flèches et signes', ['\u2192', '\u2190', '\u2191', '\u2193', '\u2197', '\u2198', '\u25b6', '\u25c0', '\u2605', '\u2606', '\u2713', '\u2717']],
+    ['Monnaie et divers', ['\u20a3', '\u20ac', '$', '\u00a3', '%', '\u2030', '@', '&', '\u00a9', '\u00ae', '\u2122', '\u00a7']]
+  ];
+
   function panelTexte() {
-    var h = ph('Texte', 'Rôles typographiques');
-    h += '<div class="bs-list">';
-    ROLES.forEach(function (r) {
-      var prev = r.hollow ? 'Contour' : (r.id === 'chiffre' ? '00' : 'Baobabs');
-      var sz = Math.min(26, Math.max(11, r.size * 260));
-      h += '<button type="button" class="bs-item" data-act="addText" data-role="' + r.id + '">' +
-        '<span class="bs-item-txt">' +
-        '<b style="font-family:' + fontStack(r.font).replace(/"/g, '&quot;') + ';font-weight:' + r.weight +
-        ';font-size:' + sz + 'px;letter-spacing:' + (r.tracking) + 'em;' +
-        (r.upper ? 'text-transform:uppercase;' : '') +
-        (r.hollow ? '-webkit-text-stroke:1px var(--bs-accent);color:transparent;' : '') +
-        'line-height:1.15">' + esc(prev) + '</b>' +
-        '<small>' + esc(r.label) + ' · ' + esc(r.font) + '</small></span></button>';
+    var l = selOne();
+    var surTexte = !!(l && l.type === 'text');
+    var st = surTexte ? activeTextStyle(l) : null;
+
+    var h = ph('Texte', surTexte ? esc(l.name || 'Calque texte') : 'Aucun texte choisi');
+
+    /* Trois onglets : on ne fait pas defiler soixante lignes pour
+       atteindre un tiret cadratin. */
+    h += '<div class="bs-seg" style="margin:0 12px 10px">';
+    [['polices', 'Polices'], ['caracteres', 'Caract\u00e8res'], ['roles', 'R\u00f4les']].forEach(function (o) {
+      h += '<button type="button" class="bs-seg-b' + (texteOnglet === o[0] ? ' is-on' : '') +
+           '" data-act="txOnglet" data-v="' + o[0] + '">' + o[1] + '</button>';
     });
     h += '</div>';
-    h += '<div class="bs-note">Chaque rôle porte sa police, sa graisse, son interlettrage et sa casse. Vous pouvez ensuite tout modifier, y compris <b>une seule lettre</b> : double-cliquez le texte, sélectionnez la lettre, changez sa couleur.</div>';
+
+    if (!surTexte) {
+      h += '<div class="bs-note" style="margin:0 12px 10px">Aucun calque texte choisi : ce qui suit cr\u00e9era un nouveau texte au centre de l\u2019affiche. Choisissez un texte pour le modifier \u2014 ou quelques lettres, pour ne toucher qu\u2019elles.</div>';
+    }
+
+    /* ---------------- polices ---------------- */
+    if (texteOnglet === 'polices') {
+      h += '<div class="bs-search"><input type="text" class="bs-in" placeholder="Rechercher une police…" data-act="polSearch" value="' + esc(polRecherche) + '"></div>';
+      var q = polRecherche.trim().toLowerCase();
+      var cats = [];
+      FONTS.forEach(function (f) { if (cats.indexOf(f.cat) < 0) cats.push(f.cat); });
+      var trouve = 0;
+      cats.forEach(function (c) {
+        var dedans = FONTS.filter(function (f) {
+          return f.cat === c && (!q || f.label.toLowerCase().indexOf(q) >= 0 || f.id.toLowerCase().indexOf(q) >= 0);
+        });
+        if (!dedans.length) return;
+        h += '<div class="bs-sec-lab">' + esc(c) + '</div><div class="bs-list">';
+        dedans.forEach(function (f) {
+          trouve++;
+          var actif = st && st.font === f.id;
+          h += '<button type="button" class="bs-item' + (actif ? ' is-on' : '') + '" data-act="setFont" data-v="' + esc(f.id) + '">' +
+            '<span class="bs-item-txt">' +
+            '<b style="font-family:' + fontStack(f.id).replace(/"/g, '&quot;') + ';font-weight:600;font-size:19px;line-height:1.2">Baobabs 00</b>' +
+            '<small>' + esc(f.label) + (f.chasse ? ' \u00b7 chasse variable' : '') + '</small></span></button>';
+        });
+        h += '</div>';
+      });
+      if (!trouve) h += '<div class="bs-note">Aucune police ne porte ce nom.</div>';
+
+      /* la chasse, seulement quand la police en a une */
+      if (surTexte && st && policeAChasse(st.font)) {
+        h += '<div class="bs-sec-lab">Chasse</div>';
+        h += '<div class="bs-list">';
+        [['ultra-condensed', 'Tr\u00e8s \u00e9troite'], ['condensed', '\u00c9troite'],
+         ['semi-condensed', 'Un peu \u00e9troite'], ['normal', 'Normale'],
+         ['semi-expanded', 'Un peu large'], ['expanded', 'Large']].forEach(function (o) {
+          var on = (st.stretch || 'normal') === o[0];
+          h += '<button type="button" class="bs-item' + (on ? ' is-on' : '') + '" data-act="setChasse" data-v="' + o[0] + '">' +
+            '<span class="bs-item-txt"><b style="font-family:' + fontStack(st.font).replace(/"/g, '&quot;') +
+            ';font-stretch:' + o[0] + ';font-weight:600;font-size:17px">BAOBABS</b>' +
+            '<small>' + o[1] + '</small></span></button>';
+        });
+        h += '</div>';
+        h += '<div class="bs-note">Cette police porte un axe de largeur : les lettres s\u2019\u00e9tirent vraiment, elles ne sont pas d\u00e9form\u00e9es. Les autres polices du jeu n\u2019en ont pas, et ce r\u00e9glage ne s\u2019affiche alors pas.</div>';
+      }
+    }
+
+    /* ---------------- caracteres ---------------- */
+    if (texteOnglet === 'caracteres') {
+      h += '<div class="bs-note" style="margin:0 12px 10px">Un clic pose le caract\u00e8re au curseur si vous \u00eates en train d\u2019\u00e9crire, sinon \u00e0 la fin du texte choisi.</div>';
+      CARACTERES.forEach(function (g) {
+        h += '<div class="bs-sec-lab">' + esc(g[0]) + '</div>';
+        h += '<div class="bs-glyphes">';
+        g[1].forEach(function (c) {
+          var vide = (c === '\u00a0' || c === '\u202f');
+          h += '<button type="button" data-act="insChar" data-v="' + esc(c) + '" title="' +
+            (vide ? 'Espace ins\u00e9cable' : 'Ins\u00e9rer') + '">' +
+            (vide ? '<i style="font-style:normal;opacity:.5">\u2423</i>' : esc(c)) + '</button>';
+        });
+        h += '</div>';
+      });
+    }
+
+    /* ---------------- roles ---------------- */
+    if (texteOnglet === 'roles') {
+      h += '<div class="bs-list">';
+      ROLES.forEach(function (r) {
+        var prev = r.hollow ? 'Contour' : (r.id === 'chiffre' ? '00' : 'Baobabs');
+        var sz = Math.min(26, Math.max(11, r.size * 260));
+        h += '<button type="button" class="bs-item" data-act="addText" data-role="' + r.id + '">' +
+          '<span class="bs-item-txt">' +
+          '<b style="font-family:' + fontStack(r.font).replace(/"/g, '&quot;') + ';font-weight:' + r.weight +
+          ';font-size:' + sz + 'px;letter-spacing:' + (r.tracking) + 'em;' +
+          (r.upper ? 'text-transform:uppercase;' : '') +
+          (r.hollow ? '-webkit-text-stroke:1px var(--bs-accent);color:transparent;' : '') +
+          'line-height:1.15">' + esc(prev) + '</b>' +
+          '<small>' + esc(r.label) + ' \u00b7 ' + esc(r.font) + '</small></span></button>';
+      });
+      h += '</div>';
+      h += '<div class="bs-note">Chaque r\u00f4le porte sa police, sa graisse, son interlettrage et sa casse. Vous pouvez ensuite tout modifier, y compris <b>une seule lettre</b> : double-cliquez le texte, s\u00e9lectionnez la lettre, changez sa couleur.</div>';
+    }
     return h;
   }
 
@@ -8217,6 +8342,52 @@ window.BaobabsStudio = (function () {
       case 'offPath': retirerDuTrace(); return;
 
       /* --- texte --- */
+      case 'txOnglet': texteOnglet = el.getAttribute('data-v'); renderPanel(); return;
+      case 'polSearch': polRecherche = el.value || ''; refocusSearch = true; renderPanel(); return;
+
+      /* Choisir une police : sur la selection de lettres si elle existe,
+         sinon sur tout le calque, sinon on cree un texte -- c'est la
+         seule sequence qui ne perde jamais le geste. */
+      case 'setFont': {
+        var idPol = el.getAttribute('data-v');
+        var lt = selOne();
+        if (lt && lt.type === 'text') {
+          change(function () { applyTextProp('font', idPol); }, 'Police');
+          renderPanel();
+          return;
+        }
+        var nt = makeText(doc, 'titre', 'Votre texte', centeredBox(0.8, null));
+        nt.ts.font = idPol;
+        syncTextBox(nt);
+        nt.y = Math.round(doc.h / 2 - nt.h / 2);
+        insertLayers([nt]);
+        renderPanel();
+        return;
+      }
+
+      case 'setChasse': {
+        var ch = el.getAttribute('data-v');
+        var lc = selOne();
+        if (!lc || lc.type !== 'text') { toast('Choisissez un texte'); return; }
+        change(function () { applyTextProp('stretch', ch); }, 'Chasse');
+        renderPanel();
+        return;
+      }
+
+      /* Poser un caractere : au curseur si l'on ecrit, sinon a la fin du
+         texte choisi. Sans texte choisi, il n'y a rien a poser -- on le
+         dit plutot que de creer un calque d'un seul tiret. */
+      case 'insChar': {
+        var c = el.getAttribute('data-v');
+        if (edit) { insertText(c); return; }
+        var li = selOne();
+        if (!li || li.type !== 'text') { toast('Choisissez d abord un texte'); return; }
+        change(function () {
+          setPlainText(li, plainText(li) + c);
+          syncTextBox(li);
+        }, 'Caractère');
+        return;
+      }
       case 'addText': {
         var t = makeText(doc, el.getAttribute('data-role'), roleSample(el.getAttribute('data-role')), centeredBox(0.8, null));
         syncTextBox(t);
