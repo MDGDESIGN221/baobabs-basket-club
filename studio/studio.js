@@ -10372,35 +10372,133 @@ window.BaobabsStudio = (function () {
   /* Une peinture : aplat, degrade lineaire ou radial. Les degrades
      partent dans <defs> et rendent leur url(#id). */
   var _svgId = 0;
-  function peintureSVG(paint, w, h, defs) {
+  /* LE SVG N'AVAIT QUE DEUX ARRETS.
+     Le canevas accepte desormais autant de couleurs qu'on veut dans un
+     degrade -- l'export, lui, ecrivait toujours from et to. Un degrade a
+     trois couleurs sortait donc a deux, sans un mot. Ce n'etait pas
+     visible a la relecture du code : il fallait comparer les deux rendus.
+
+     LE CAS QU'ON NE PEUT PAS TENIR : le degrade angulaire. SVG 1.1 n'a
+     pas de conicGradient ; on rend le lineaire de memes arrets -- proche
+     a l'oeil sur un fond, faux sur une roue -- et l'ecran d'export le
+     dit. Mieux vaut un fichier annonce approximatif qu'un fichier cru
+     fidele. */
+  function peintureSVG(paint, w, h, defs, avert) {
     if (!paint || paint.type === 'none') return 'none';
     if (paint.type === 'solid' || !paint.type) return cssHex(paint.color);
+    if (paint.type === 'angular' && avert) avert.conique = true;
     var id = 'g' + (++_svgId);
-    var p0 = clamp((paint.stop0 == null ? 0 : paint.stop0), 0, 100);
-    var p1 = clamp((paint.stop1 == null ? 100 : paint.stop1), 0, 100);
-    if (p1 < p0) { var t = p0; p0 = p1; p1 = t; }
-    var a = cssHex(paint.from), oa = alphaDe(paint.from);
-    var b = cssHex(paint.to), ob = alphaDe(paint.to);
-    if (paint.type === 'linear') {
+    var arr = arretsDe(paint), stops = '', dernier = -1, k, p;
+    for (k = 0; k < arr.length; k++) {
+      p = clamp(num(arr[k].p, 0), 0, 100);
+      if (p < dernier) p = dernier;        /* SVG exige des offsets croissants */
+      dernier = p;
+      stops += '<stop offset="' + n3(p) + '%" stop-color="' + cssHex(arr[k].c) +
+        '" stop-opacity="' + n3(alphaDe(arr[k].c)) + '"/>';
+    }
+    if (paint.type === 'radial') {
+      var mx = (paint.cx == null ? 50 : paint.cx) / 100 * w;
+      var my = (paint.cy == null ? 50 : paint.cy) / 100 * h;
+      var ray = Math.max(0.01, (paint.rayon == null ? 100 : paint.rayon) / 100 * Math.max(w, h) / 2);
+      defs.push('<radialGradient id="' + id + '" gradientUnits="userSpaceOnUse"' +
+        ' cx="' + n3(mx) + '" cy="' + n3(my) + '" r="' + n3(ray) + '">' + stops + '</radialGradient>');
+    } else {
       var ang = deg2rad(paint.angle == null ? 90 : paint.angle);
       var cx = w / 2, cy = h / 2;
       var r = (Math.abs(w * Math.cos(ang)) + Math.abs(h * Math.sin(ang))) / 2;
       defs.push('<linearGradient id="' + id + '" gradientUnits="userSpaceOnUse"' +
         ' x1="' + n3(cx - Math.cos(ang) * r) + '" y1="' + n3(cy - Math.sin(ang) * r) +
         '" x2="' + n3(cx + Math.cos(ang) * r) + '" y2="' + n3(cy + Math.sin(ang) * r) + '">' +
-        '<stop offset="' + p0 + '%" stop-color="' + a + '" stop-opacity="' + oa + '"/>' +
-        '<stop offset="' + p1 + '%" stop-color="' + b + '" stop-opacity="' + ob + '"/></linearGradient>');
-    } else {
-      var mx = (paint.cx == null ? 50 : paint.cx) / 100 * w;
-      var my = (paint.cy == null ? 50 : paint.cy) / 100 * h;
-      var ray = Math.max(0.01, (paint.rayon == null ? 100 : paint.rayon) / 100 * Math.max(w, h) / 2);
-      defs.push('<radialGradient id="' + id + '" gradientUnits="userSpaceOnUse"' +
-        ' cx="' + n3(mx) + '" cy="' + n3(my) + '" r="' + n3(ray) + '">' +
-        '<stop offset="' + p0 + '%" stop-color="' + a + '" stop-opacity="' + oa + '"/>' +
-        '<stop offset="' + p1 + '%" stop-color="' + b + '" stop-opacity="' + ob + '"/></radialGradient>');
+        stops + '</linearGradient>');
     }
     return 'url(#' + id + ')';
   }
+
+  /* LES OMBRES DANS LE SVG.
+     Elles n'y etaient pas -- ni les nouvelles, ni l'ancienne : le faux
+     contexte enregistrait bien shadowColor, personne ne le relisait. Un
+     titre pose sur une photo sortait donc a plat.
+
+     Chaque ombre devient une chaine de primitives, la meme que celle du
+     canevas et dans le meme ordre : dilater ou eroder (diffusion),
+     flouter, decaler, teinter. L'ombre interne se fabrique a l'envers --
+     la silhouette MOINS l'alpha decale donne le croissant qui reste
+     dedans.
+
+     La zone du filtre est calculee sur la portee reelle des ombres. Par
+     defaut elle ne deborde que de 10 %, et une ombre longue se ferait
+     couper net -- un defaut qui ne se voit qu'a l'ouverture du fichier
+     dans un autre logiciel, c'est-a-dire trop tard. */
+  function effetsSVG(l, defs, avert) {
+    var eff = effetsDe(l), portees = [], internes = [], i;
+    for (i = 0; i < eff.length; i++) {
+      if (eff[i].on === false) continue;
+      if (eff[i].bl && eff[i].bl !== 'source-over' && avert) avert.fusionEffet = true;
+      if (eff[i].t === 'interne') internes.push(eff[i]); else portees.push(eff[i]);
+    }
+    if (!portees.length && !internes.length) return '';
+
+    var portee = 0, tous = portees.concat(internes), e;
+    for (i = 0; i < tous.length; i++) {
+      e = tous[i];
+      portee = Math.max(portee, Math.abs(num(e.x, 0)) + Math.abs(num(e.y, 0)) +
+        num(e.b, 0) * 1.5 + Math.abs(num(e.s, 0)) + 4);
+    }
+
+    var id = 'fx' + (++_svgId), c = '', noms = [], k, sp, src;
+    for (i = portees.length - 1; i >= 0; i--) {
+      e = portees[i]; k = id + 'p' + i; src = 'SourceAlpha'; sp = num(e.s, 0);
+      if (sp !== 0) {
+        c += '<feMorphology in="' + src + '" operator="' + (sp > 0 ? 'dilate' : 'erode') +
+          '" radius="' + n3(Math.abs(sp)) + '" result="' + k + 'm"/>';
+        src = k + 'm';
+      }
+      if (num(e.b, 0) > 0) {
+        c += '<feGaussianBlur in="' + src + '" stdDeviation="' + n3(num(e.b, 0) / 2) +
+          '" result="' + k + 'b"/>';
+        src = k + 'b';
+      }
+      c += '<feOffset in="' + src + '" dx="' + n3(num(e.x, 0)) + '" dy="' + n3(num(e.y, 0)) +
+        '" result="' + k + 'o"/>';
+      c += '<feFlood flood-color="' + cssHex(e.c) + '" flood-opacity="' + n3(alphaDe(e.c)) +
+        '" result="' + k + 'f"/>';
+      c += '<feComposite in="' + k + 'f" in2="' + k + 'o" operator="in" result="' + k + '"/>';
+      noms.push(k);
+    }
+    noms.push('SourceGraphic');
+    for (i = internes.length - 1; i >= 0; i--) {
+      e = internes[i]; k = id + 'i' + i; src = 'SourceAlpha'; sp = num(e.s, 0);
+      /* une diffusion positive EPAISSIT l'ombre interne : c'est donc le
+         trou qu'on retrecit, pas la silhouette qu'on grossit */
+      if (sp !== 0) {
+        c += '<feMorphology in="' + src + '" operator="' + (sp > 0 ? 'erode' : 'dilate') +
+          '" radius="' + n3(Math.abs(sp)) + '" result="' + k + 'm"/>';
+        src = k + 'm';
+      }
+      c += '<feOffset in="' + src + '" dx="' + n3(num(e.x, 0)) + '" dy="' + n3(num(e.y, 0)) +
+        '" result="' + k + 'o"/>';
+      src = k + 'o';
+      if (num(e.b, 0) > 0) {
+        c += '<feGaussianBlur in="' + src + '" stdDeviation="' + n3(num(e.b, 0) / 2) +
+          '" result="' + k + 'b"/>';
+        src = k + 'b';
+      }
+      c += '<feComposite in="SourceAlpha" in2="' + src + '" operator="out" result="' + k + 'h"/>';
+      c += '<feFlood flood-color="' + cssHex(e.c) + '" flood-opacity="' + n3(alphaDe(e.c)) +
+        '" result="' + k + 'f"/>';
+      c += '<feComposite in="' + k + 'f" in2="' + k + 'h" operator="in" result="' + k + '"/>';
+      noms.push(k);
+    }
+    var merge = '<feMerge>';
+    for (i = 0; i < noms.length; i++) merge += '<feMergeNode in="' + noms[i] + '"/>';
+    merge += '</feMerge>';
+    defs.push('<filter id="' + id + '" filterUnits="userSpaceOnUse"' +
+      ' x="' + n3(-portee) + '" y="' + n3(-portee) +
+      '" width="' + n3(l.w + portee * 2) + '" height="' + n3(l.h + portee * 2) + '">' +
+      c + merge + '</filter>');
+    return 'url(#' + id + ')';
+  }
+
   function cssHex(c) { return (c && c.hex) || '#000000'; }
   function alphaDe(c) { return (c && c.a != null) ? c.a : 1; }
 
@@ -10429,7 +10527,15 @@ window.BaobabsStudio = (function () {
        photo teintee en vert du modele « Duel » ressortait grise dans le
        SVG. Constate en comparant les deux rendus cote a cote. */
     var filtreSurImage = (l.type === 'image' || l.type === 'frame');
-    if (fcss && fcss !== 'none' && !filtreSurImage) style.push('filter:' + fcss);
+    /* Les retouches d'image d'abord, les ombres ensuite : une ombre se
+       jette a partir du calque tel qu'on le voit, pas de celui d'avant
+       la desaturation. L'ordre des fonctions CSS est l'ordre d'appli-
+       cation, il suffit de les ecrire dans le bon. */
+    var fombre = effetsSVG(l, defs, avert);
+    var chaine = [];
+    if (fcss && fcss !== 'none' && !filtreSurImage) chaine.push(fcss);
+    if (fombre) chaine.push(fombre);
+    if (chaine.length) style.push('filter:' + chaine.join(' '));
     if (style.length) attrs += ' style="' + style.join(';') + '"';
 
     if (l.type === 'group') {
@@ -10440,7 +10546,7 @@ window.BaobabsStudio = (function () {
     if (l.type === 'shape' || l.type === 'path') {
       var d = traceDe(l.type === 'shape' ? shapePath : pathPath, l);
       if (!d) return '';
-      var f = peintureSVG(l.fill, l.w, l.h, defs);
+      var f = peintureSVG(l.fill, l.w, l.h, defs, avert);
       var s = '<path d="' + d + '" fill="' + f + '"';
       if (l.fill && l.fill.type === 'solid' && alphaDe(l.fill.color) < 1) s += ' fill-opacity="' + alphaDe(l.fill.color) + '"';
       if (l.stroke && l.stroke.w > 0) {
@@ -10527,12 +10633,12 @@ window.BaobabsStudio = (function () {
     closeModal();
     rangerPlanche();
     _svgId = 0;
-    var defs = [], avert = { pochoir: false };
+    var defs = [], avert = { pochoir: false, conique: false, fusionEffet: false };
     var corps = '';
 
     /* le fond du document */
     var fondPeint = doc.bg && doc.bg.type !== 'none'
-      ? peintureSVG(doc.bg.type === 'solid' ? { type: 'solid', color: doc.bg.color } : doc.bg, doc.w, doc.h, defs)
+      ? peintureSVG(doc.bg.type === 'solid' ? { type: 'solid', color: doc.bg.color } : doc.bg, doc.w, doc.h, defs, avert)
       : 'none';
     if (fondPeint !== 'none') {
       corps += '<rect x="0" y="0" width="' + doc.w + '" height="' + doc.h + '" fill="' + fondPeint + '"/>';
@@ -10549,9 +10655,16 @@ window.BaobabsStudio = (function () {
     var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
     var nom = slug(doc.name || 'affiche') + '-' + today() + '.svg';
     if (api && api.download) api.download(blob, nom); else downloadBlob(blob, nom);
-    toast(avert.pochoir
-      ? 'SVG exporté — un détourage au pinceau n’a pas pu être transporté'
-      : 'SVG exporté', false, !avert.pochoir);
+    /* On nomme CE QUI n'a pas suivi. « Certaines choses n'ont pas pu
+       etre transportees » oblige a rouvrir le fichier pour deviner
+       lesquelles ; la liste evite ce tour. */
+    var soucis = [];
+    if (avert.pochoir) soucis.push('un détourage au pinceau');
+    if (avert.conique) soucis.push('un dégradé angulaire (rendu en linéaire)');
+    if (avert.fusionEffet) soucis.push('un mode de fusion d’effet (rendu en normal)');
+    toast(soucis.length
+      ? 'SVG exporté — non transporté : ' + soucis.join(' · ')
+      : 'SVG exporté', false, !soucis.length);
   }
 
   function exportSerie() {
