@@ -1260,11 +1260,31 @@ window.BaobabsStudio = (function () {
        rayon          sa portee.
      Absents, ils valent 0, 100, 50, 50, 100 -- exactement le rendu
      d'avant. Les projets deja enregistres ne bougent donc pas d'un pixel. */
+  /* DEUX COULEURS, C'ETAIT TOUT.
+     Un degrade ne portait qu'un debut et une fin -- et la fin naissait
+     NOIRE, quelle que soit l'ambiance : elle etait modifiable, mais
+     elle avait l'air imposee, et on ne pouvait de toute facon pas
+     glisser une troisieme couleur au milieu. Photoshop et Figma en
+     acceptent autant qu'on veut, chacune avec sa couleur, son opacite
+     et sa position.
+
+     paint.stops porte desormais cette liste. Quand elle manque -- tous
+     les documents deja enregistres, tous les modeles -- on la fabrique
+     a partir de from/to et des positions : rien de l'existant ne change
+     d'aspect, et le premier ajout d'arret bascule sur la liste. */
+  function arretsDe(paint) {
+    if (paint.stops && paint.stops.length >= 2) {
+      return paint.stops.slice().sort(function (a, b) { return (a.p || 0) - (b.p || 0); });
+    }
+    return [
+      { c: paint.from, p: paint.stop0 == null ? 0 : paint.stop0 },
+      { c: paint.to,   p: paint.stop1 == null ? 100 : paint.stop1 }
+    ];
+  }
+
   function paintStyle(ctx, paint, w, h) {
     if (!paint || paint.type === 'none') return null;
-    if (paint.type === 'linear' || paint.type === 'radial') {
-      var p0 = clamp((paint.stop0 == null ? 0 : paint.stop0) / 100, 0, 1);
-      var p1 = clamp((paint.stop1 == null ? 100 : paint.stop1) / 100, 0, 1);
+    if (paint.type === 'linear' || paint.type === 'radial' || paint.type === 'angular') {
       var g;
       if (paint.type === 'linear') {
         var a = deg2rad(paint.angle || 90);
@@ -1272,18 +1292,31 @@ window.BaobabsStudio = (function () {
         var r = (Math.abs(w * Math.cos(a)) + Math.abs(h * Math.sin(a))) / 2;
         g = ctx.createLinearGradient(cx - Math.cos(a) * r, cy - Math.sin(a) * r,
                                      cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-      } else {
+      } else if (paint.type === 'radial') {
         var mx = (paint.cx == null ? 50 : paint.cx) / 100 * w;
         var my = (paint.cy == null ? 50 : paint.cy) / 100 * h;
         var ray = (paint.rayon == null ? 100 : paint.rayon) / 100 * Math.max(w, h) / 2;
-        /* un rayon nul ferait jeter createRadialGradient : on garde un fil */
         g = ctx.createRadialGradient(mx, my, 0, mx, my, Math.max(0.01, ray));
+      } else {
+        /* angulaire : la couleur tourne autour du centre. Le canevas
+           sait le faire depuis createConicGradient -- verifie avant de
+           l'exposer, sinon on aurait offert un type qui ne rend rien. */
+        if (!ctx.createConicGradient) return css(paint.from);
+        var ax = (paint.cx == null ? 50 : paint.cx) / 100 * w;
+        var ay = (paint.cy == null ? 50 : paint.cy) / 100 * h;
+        g = ctx.createConicGradient(deg2rad(paint.angle || 0), ax, ay);
       }
-      /* Canvas exige des positions croissantes ; il jette si p1 < p0.
-         On les remet dans l'ordre plutot que de refuser la saisie. */
-      if (p1 < p0) { var t = p0; p0 = p1; p1 = t; }
-      g.addColorStop(p0, css(paint.from));
-      g.addColorStop(p1, css(paint.to));
+      var arr = arretsDe(paint);
+      var dernier = -1;
+      for (var k = 0; k < arr.length; k++) {
+        var p = clamp(num(arr[k].p, 0) / 100, 0, 1);
+        /* addColorStop jette si les positions reculent : deux arrets
+           poses au meme endroit sont legitimes (une cassure nette), un
+           ordre inverse ne l'est pas. */
+        if (p < dernier) p = dernier;
+        dernier = p;
+        try { g.addColorStop(p, css(arr[k].c)); } catch (e) {}
+      }
       return g;
     }
     return css(paint.color);
@@ -3573,11 +3606,23 @@ window.BaobabsStudio = (function () {
       if (skip[hs[i].k]) continue;
       if (Math.abs(sx - hs[i].x) <= HS + 3 && Math.abs(sy - hs[i].y) <= HS + 3) return hs[i].k;
     }
-    for (i = 0; i < hs.length; i++) {
-      if (skip[hs[i].k] || hs[i].k.length !== 2) continue;   /* les coins seuls */
-      var d = Math.hypot(sx - hs[i].x, sy - hs[i].y);
-      if (d > HS + 3 && d <= HS + 17) return 'rot';
-    }
+    /* TOUT LE TOUR DU CADRE, PAS SEULEMENT LES QUATRE COINS.
+       Limiter la rotation aux angles laisse quatre petits ronds a viser :
+       sur un calque long et bas -- un titre, une bande -- ils sont loin
+       les uns des autres et le geste redevient une chasse au pixel.
+       Photoshop et Illustrator font tourner des qu'on sort du cadre, ou
+       que ce soit. On teste donc en coordonnees DU CALQUE, ce qui suit
+       gratuitement sa rotation et ses miroirs : dehors, mais a moins de
+       seize pixels d'ecran du bord.
+       La bande commence hors du cadre : a l'interieur, c'est le
+       deplacement qui doit repondre, sinon on ne pourrait plus saisir un
+       calque par son bord. */
+    var dd = s2d(sx, sy);
+    var pl2 = toLocal(l, dd.x, dd.y);
+    var m = 16 / view.zoom;
+    var dehors = pl2.x < 0 || pl2.y < 0 || pl2.x > l.w || pl2.y > l.h;
+    var pres = pl2.x > -m && pl2.y > -m && pl2.x < l.w + m && pl2.y < l.h + m;
+    if (dehors && pres) return 'rot';
     return null;
   }
   function multiHandleAt(box, sx, sy) {
@@ -5024,6 +5069,67 @@ window.BaobabsStudio = (function () {
       }
     });
 
+    /* --- bande de degrade : choisir, tirer, ajouter --- */
+    $$('[data-deg]', ctx).forEach(function (bande) {
+      var pre = bande.getAttribute('data-deg');
+      var scope = bande.getAttribute('data-scope') || 'layer';
+      function peinture() {
+        if (pre === 'bg') return doc.bg;
+        var l2 = selOne();
+        return l2 ? l2.fill : null;
+      }
+      /* Cliquer la BANDE ajoute un arret la ou l'on a clique -- c'est le
+         geste de Photoshop et de Figma. Cliquer un CURSEUR le choisit.
+         Les deux sur le meme element, donc on distingue par la cible. */
+      bande.addEventListener('pointerdown', function (e) {
+        var cur = e.target.closest('[data-arret]');
+        var r = bande.getBoundingClientRect();
+        var p = peinture();
+        if (!p) return;
+        if (cur) {
+          arretChoisi = num(cur.getAttribute('data-arret'), 0);
+          /* et on tire : la position suit le pointeur tant qu'on tient */
+          var bougé = false;
+          function mv(e2) {
+            bougé = true;
+            var v = clamp(Math.round((e2.clientX - r.left) / r.width * 100), 0, 100);
+            var arr = arretsDe(p).map(function (o) { return { c: clone(o.c), p: num(o.p, 0) }; });
+            if (!arr[arretChoisi]) return;
+            arr[arretChoisi].p = v;
+            p.stops = arr;
+            cur.style.left = v + '%';
+            bande.querySelector('.bs-deg-bande').style.background =
+              'linear-gradient(90deg,' + cssDegrade(arretsDe(p)) + ')';
+            requestDraw();
+          }
+          function up() {
+            document.removeEventListener('pointermove', mv);
+            document.removeEventListener('pointerup', up);
+            if (bougé) { endChange('Arrêt du dégradé'); }
+            renderProps();
+          }
+          beginChange('Arrêt du dégradé');
+          document.addEventListener('pointermove', mv);
+          document.addEventListener('pointerup', up);
+          renderProps();
+          return;
+        }
+        /* clic sur la bande : nouvel arret a cet endroit, de la couleur
+           qu'a le degrade a cette position -- sinon on casserait le
+           fondu au moment meme ou l'on veut le regler */
+        var v = clamp(Math.round((e.clientX - r.left) / r.width * 100), 0, 100);
+        change(function () {
+          var arr = arretsDe(p).map(function (o) { return { c: clone(o.c), p: num(o.p, 0) }; });
+          var apres = 0;
+          while (apres < arr.length && num(arr[apres].p, 0) < v) apres++;
+          var ref = arr[Math.max(0, apres - 1)];
+          arr.splice(apres, 0, { c: clone(ref.c), p: v });
+          p.stops = arr;
+          arretChoisi = apres;
+        }, 'Arrêt du dégradé');
+        renderProps();
+      });
+    });
     /* --- nuanciers de la palette --- */
     $$('[data-swatch]', ctx).forEach(function (el) {
       el.addEventListener('click', function () {
@@ -5064,6 +5170,73 @@ window.BaobabsStudio = (function () {
      Les valeurs sont en pourcentage de la boite -- elles suivent donc
      le calque quand on le redimensionne, et tiennent dans les sept
      formats. Les defauts rendent exactement le dessin d'avant. */
+  /* L'EDITEUR D'ARRETS.
+     Deux champs « Debut » et « Fin » ne sont pas un editeur de degrade :
+     ils ne disent pas qu'on peut en ajouter un troisieme. La liste, si.
+     Chaque arret porte sa couleur, son opacite et sa position ; le
+     bouton en retire un, celui du bas en ajoute un au milieu du plus
+     grand ecart -- la ou on l'aurait pose a la main.
+     On garde au moins deux arrets : un degrade a une couleur n'est plus
+     un degrade, et l'utilisateur se retrouverait avec un aplat sans
+     comprendre pourquoi. */
+  /* LA BANDE DE DEGRADE.
+     Une liste de lignes numerotees dit ce qu'il y a, pas ce que ca fait :
+     on lit « 0 %, 50 %, 100 % » sans voir le degrade. Photoshop et Figma
+     montrent une BANDE, avec un curseur par arret pose dessus -- on
+     clique la bande pour ajouter, on tire un curseur pour deplacer, on
+     choisit un curseur pour changer sa couleur.
+
+     La bande est peinte avec le vrai degrade, pas une approximation : on
+     recopie les arrets dans un degre CSS, donc ce qu'on regle est ce
+     qu'on verra. */
+  var arretChoisi = 0;
+
+  function cssDegrade(arr) {
+    return arr.map(function (o) {
+      return css(o.c) + ' ' + clamp(num(o.p, 0), 0, 100) + '%';
+    }).join(', ');
+  }
+
+  function fArrets(pre, paint, scope) {
+    var arr = arretsDe(paint);
+    if (arretChoisi >= arr.length) arretChoisi = 0;
+    var sel2 = arr[arretChoisi] || arr[0];
+
+    var h = '<div class="bs-deg" data-deg="' + pre + '"' + (scope ? ' data-scope="' + scope + '"' : '') + '>';
+    h += '<div class="bs-deg-bande" style="background:linear-gradient(90deg,' + cssDegrade(arr) + ')"></div>';
+    for (var i = 0; i < arr.length; i++) {
+      h += '<button type="button" class="bs-deg-cur' + (i === arretChoisi ? ' is-on' : '') + '"' +
+           ' data-arret="' + i + '" style="left:' + clamp(num(arr[i].p, 0), 0, 100) + '%"' +
+           ' title="' + esc((arr[i].c && arr[i].c.hex) || '') + '">' +
+           '<i style="background:' + css(arr[i].c) + '"></i></button>';
+    }
+    h += '</div>';
+
+    /* les reglages de l'arret CHOISI, pas des huit a la fois : c'est ce
+       qui garde le panneau court quel que soit le nombre d'arrets */
+    h += '<div class="bs-frow" style="margin-top:9px">';
+    h += fColor('Couleur de l’arrêt', pre + '.stops.' + arretChoisi + '.c', sel2.c || color('#ffffff', 1),
+                { scope: scope, swatches: false });
+    h += '</div>';
+    h += '<div class="bs-frow">' +
+      fStep('Position', pre + '.stops.' + arretChoisi + '.p', num(sel2.p, 0),
+            { scope: scope, unit: '%', dec: 0, min: 0, max: 100 }) +
+      '<div class="bs-f"><label>Arrêt</label><div style="display:flex;gap:4px">' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="flex:1;justify-content:center"' +
+      ' data-act="arretAjouter" data-pre="' + pre + '" title="Ajouter un arrêt">+</button>' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="flex:1;justify-content:center"' +
+      ' data-act="arretOter" data-pre="' + pre + '" data-i="' + arretChoisi + '"' +
+      (arr.length <= 2 ? ' disabled title="Un dégradé garde au moins deux arrêts"' : ' title="Retirer cet arrêt"') +
+      '>\u2212</button>' +
+      '</div></div></div>';
+    h += '<div class="bs-frow">' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center"' +
+      ' data-act="degInverser" data-pre="' + pre + '">Inverser</button>' +
+      '<button type="button" class="bs-btn bs-btn-ghost bs-btn-sm" style="justify-content:center"' +
+      ' data-act="degRepartir" data-pre="' + pre + '" title="Espacer les arrêts régulièrement">Répartir</button>' +
+      '</div>';
+    return h;
+  }
   function fPlace(pre, paint, scope) {
     var o = function (extra) {
       var r = { unit: '%', dec: 0 };
@@ -5415,12 +5588,12 @@ window.BaobabsStudio = (function () {
     h += fGroup('Fond',
       fSeg('Type', 'bg.type', bgKind, [
         { id: 'solid', label: 'Uni' }, { id: 'linear', label: 'Dégradé' },
-        { id: 'radial', label: 'Radial' }, { id: 'none', label: 'Aucun' }
+        { id: 'radial', label: 'Radial' }, { id: 'angular', label: 'Angulaire' },
+        { id: 'none', label: 'Aucun' }
       ], { scope: 'doc' }) +
       (bgKind === 'solid' ? fColor('Couleur', 'bg.color', doc.bg.color, { scope: 'doc' }) : '') +
-      (bgKind === 'linear' || bgKind === 'radial'
-        ? fColor('Début', 'bg.from', doc.bg.from, { scope: 'doc' }) +
-          fColor('Fin', 'bg.to', doc.bg.to, { scope: 'doc' }) +
+      (bgKind === 'linear' || bgKind === 'radial' || bgKind === 'angular'
+        ? fArrets('bg', doc.bg, 'doc') +
           (bgKind === 'linear' ? fStep('Angle', 'bg.angle', doc.bg.angle, { scope: 'doc', unit: '°', dec: 0 }) : '') +
           fPlace('bg', doc.bg, 'doc')
         : ''), null, 'document');
@@ -5770,7 +5943,7 @@ window.BaobabsStudio = (function () {
           { id: 'none', label: 'Aucun' }, { id: 'solid', label: 'Uni' }, { id: 'linear', label: 'Dégradé' }
         ]) +
         (l.fill.type === 'solid' ? fColor('Couleur', 'fill.color', l.fill.color) : '') +
-        (l.fill.type === 'linear' ? fColor('Début', 'fill.from', l.fill.from) + fColor('Fin', 'fill.to', l.fill.to) : ''), null, 'forme');
+        (l.fill.type === 'linear' ? fArrets('fill', l.fill) : ''), null, 'forme');
   }
 
   /* ---------- forme ---------- */
@@ -5793,11 +5966,12 @@ window.BaobabsStudio = (function () {
       h += fGroup('Remplissage',
         fSeg('Type', 'fill.type', l.fill.type, [
           { id: 'solid', label: 'Uni' }, { id: 'linear', label: 'Dégradé' },
-          { id: 'radial', label: 'Radial' }, { id: 'none', label: 'Aucun' }
+          { id: 'radial', label: 'Radial' }, { id: 'angular', label: 'Angulaire' },
+          { id: 'none', label: 'Aucun' }
         ]) +
         (l.fill.type === 'solid' ? fColor('Couleur', 'fill.color', l.fill.color) : '') +
-        (l.fill.type === 'linear' || l.fill.type === 'radial'
-          ? fColor('Début', 'fill.from', l.fill.from) + fColor('Fin', 'fill.to', l.fill.to) +
+        (l.fill.type === 'linear' || l.fill.type === 'radial' || l.fill.type === 'angular'
+          ? fArrets('fill', l.fill) +
             (l.fill.type === 'linear' ? fStep('Angle', 'fill.angle', l.fill.angle || 90, { unit: '°', dec: 0 }) : '') +
             fPlace('fill', l.fill)
           : ''), null, 'forme');
@@ -5821,7 +5995,7 @@ window.BaobabsStudio = (function () {
         { id: 'none', label: 'Aucun' }, { id: 'solid', label: 'Uni' }, { id: 'linear', label: 'Dégradé' }
       ]) +
       (l.fill.type === 'solid' ? fColor('Couleur', 'fill.color', l.fill.color) : '') +
-      (l.fill.type === 'linear' ? fColor('Début', 'fill.from', l.fill.from) + fColor('Fin', 'fill.to', l.fill.to) +
+      (l.fill.type === 'linear' ? fArrets('fill', l.fill) +
         fStep('Angle', 'fill.angle', l.fill.angle || 90, { unit: '°', dec: 0 }) +
         fPlace('fill', l.fill) : ''), null, 'forme');
 
@@ -9255,6 +9429,58 @@ window.BaobabsStudio = (function () {
         else zoomToSelection();
         majNav();
         renderPanel();
+        return;
+      }
+      /* Ajouter et retirer un arret. On ecrit d'abord la liste complete
+         a partir de arretsDe() : tant qu'un degrade vit encore sur
+         from/to, il n'a pas de tableau a modifier -- c'est le premier
+         geste qui le materialise. */
+      case 'degInverser':
+      case 'degRepartir': {
+        var pre2 = el.getAttribute('data-pre');
+        var p2 = (pre2 === 'bg') ? doc.bg : (selOne() ? selOne().fill : null);
+        if (!p2) return;
+        change(function () {
+          var arr = arretsDe(p2).map(function (o) { return { c: clone(o.c), p: num(o.p, 0) }; });
+          if (name === 'degInverser') {
+            /* on inverse les COULEURS, pas les positions : inverser les
+               positions donnerait le meme degrade lu a l'envers, donc
+               rien de visible quand les arrets sont symetriques. */
+            var cs = arr.map(function (o) { return o.c; }).reverse();
+            arr.forEach(function (o, k) { o.c = cs[k]; });
+          } else {
+            arr.forEach(function (o, k) { o.p = Math.round(k / (arr.length - 1) * 100); });
+          }
+          p2.stops = arr;
+        }, name === 'degInverser' ? 'Dégradé inversé' : 'Arrêts répartis');
+        renderProps();
+        return;
+      }
+      case 'arretAjouter':
+      case 'arretOter': {
+        var pre = el.getAttribute('data-pre');
+        var cible = (pre === 'bg') ? doc : selOne();
+        if (!cible) return;
+        var peint = (pre === 'bg') ? doc.bg : cible.fill;
+        if (!peint) return;
+        change(function () {
+          var arr = arretsDe(peint).map(function (o) { return { c: clone(o.c), p: num(o.p, 0) }; });
+          if (name === 'arretOter') {
+            if (arr.length <= 2) return;
+            arr.splice(num(el.getAttribute('data-i'), 0), 1);
+          } else {
+            /* au milieu du plus grand ecart : la ou l'oeil l'aurait mis */
+            var meilleur = 0, ecart = -1;
+            for (var q = 1; q < arr.length; q++) {
+              var e2 = num(arr[q].p, 0) - num(arr[q - 1].p, 0);
+              if (e2 > ecart) { ecart = e2; meilleur = q; }
+            }
+            var pos = (num(arr[meilleur].p, 0) + num(arr[meilleur - 1].p, 0)) / 2;
+            arr.splice(meilleur, 0, { c: clone(arr[meilleur - 1].c), p: Math.round(pos) });
+          }
+          peint.stops = arr;
+        }, 'Arrêts du dégradé');
+        renderProps();
         return;
       }
       case 'coinsParCoin': {
