@@ -1460,6 +1460,24 @@ window.BaobabsStudio = (function () {
   function layerCenter(l) { return { x: l.x + l.w / 2, y: l.y + l.h / 2 }; }
 
   /* point du document -> repère local du calque */
+  /* L'INVERSE DE toLocal(), QUI MANQUAIT.
+     On savait passer d'un point de l'affiche aux coordonnees internes
+     d'un calque ; pas l'inverse. Il le faut des qu'on veut DESSINER
+     quelque chose a une position interne -- la poignee de degrade, par
+     exemple, qui vit dans la boite du calque et doit suivre sa rotation
+     et ses miroirs. */
+  function depuisLocal(l, lx, ly) {
+    var c = layerCenter(l);
+    var dx = lx - l.w / 2, dy = ly - l.h / 2;
+    if (l.flipH) dx = -dx;
+    if (l.flipV) dy = -dy;
+    if (l.rot) {
+      var a = deg2rad(l.rot), cs = Math.cos(a), sn = Math.sin(a);
+      var nx = dx * cs - dy * sn, ny = dx * sn + dy * cs;
+      dx = nx; dy = ny;
+    }
+    return { x: dx + c.x, y: dy + c.y };
+  }
   function toLocal(l, px, py) {
     var c = layerCenter(l);
     var dx = px - c.x, dy = py - c.y;
@@ -1948,6 +1966,9 @@ window.BaobabsStudio = (function () {
         g.arc(rp.x, rp.y, 5.5, 0, Math.PI * 2);
         g.fillStyle = '#0B0B0D'; g.strokeStyle = '#7DFF4F'; g.lineWidth = 1.4;
         g.fill(); g.stroke();
+
+        /* la poignee de degrade, quand le calque en porte un */
+        dessinerDegrade(g, l);
       }
       if (l.locked) {
         g.setLineDash([4, 3]);
@@ -2898,6 +2919,124 @@ window.BaobabsStudio = (function () {
     requestDraw();
   }
 
+  /* ===================================================================
+     LA POIGNEE DE DEGRADE
+     ---------------------------------------------------------------
+     Les degrades se reglaient au nombre : angle, depart, arrivee,
+     centre, portee. C'est juste, et c'est illisible -- on tape 34 %,
+     on regarde, on retape. Photoshop et Figma donnent une poignee
+     qu'on tire sur l'affiche, et on voit ce qu'on fait.
+
+     Elle vit dans la boite du calque, donc elle suit sa rotation et
+     ses miroirs : depuisLocal() s'en charge. Deux prises seulement --
+     le depart et l'arrivee -- parce qu'a elles deux elles portent
+     tout : pour un lineaire, l'angle ET les deux arrets ; pour un
+     radial, le centre ET la portee.
+     =================================================================== */
+  function degradeDe(l) {
+    if (!l || l.locked) return null;
+    var f = l.fill;
+    if (!f || (f.type !== 'linear' && f.type !== 'radial')) return null;
+    return f;
+  }
+
+  /* Les deux prises, en coordonnees ECRAN. */
+  function prisesDegrade(l) {
+    var f = degradeDe(l);
+    if (!f) return null;
+    var p0 = (f.stop0 == null ? 0 : f.stop0) / 100;
+    var p1 = (f.stop1 == null ? 100 : f.stop1) / 100;
+    var a, b;
+    if (f.type === 'linear') {
+      var ang = deg2rad(f.angle == null ? 90 : f.angle);
+      var cx = l.w / 2, cy = l.h / 2;
+      var r = (Math.abs(l.w * Math.cos(ang)) + Math.abs(l.h * Math.sin(ang))) / 2;
+      var ax = cx - Math.cos(ang) * r, ay = cy - Math.sin(ang) * r;
+      var bx = cx + Math.cos(ang) * r, by = cy + Math.sin(ang) * r;
+      a = { x: ax + (bx - ax) * p0, y: ay + (by - ay) * p0 };
+      b = { x: ax + (bx - ax) * p1, y: ay + (by - ay) * p1 };
+    } else {
+      var mx = (f.cx == null ? 50 : f.cx) / 100 * l.w;
+      var my = (f.cy == null ? 50 : f.cy) / 100 * l.h;
+      var ray = (f.rayon == null ? 100 : f.rayon) / 100 * Math.max(l.w, l.h) / 2;
+      a = { x: mx, y: my };
+      b = { x: mx + ray, y: my };
+    }
+    var A = depuisLocal(l, a.x, a.y), B = depuisLocal(l, b.x, b.y);
+    var sa = d2s(A.x, A.y), sb = d2s(B.x, B.y);
+    return { a: sa, b: sb, type: f.type };
+  }
+
+  function priseDegradeA(l, sx, sy) {
+    var pr = prisesDegrade(l);
+    if (!pr) return null;
+    if (Math.hypot(sx - pr.b.x, sy - pr.b.y) <= 10) return 'g1';
+    if (Math.hypot(sx - pr.a.x, sy - pr.a.y) <= 10) return 'g0';
+    return null;
+  }
+
+  function dessinerDegrade(g, l) {
+    var pr = prisesDegrade(l);
+    if (!pr) return;
+    g.save();
+    g.strokeStyle = 'rgba(255,255,255,.85)';
+    g.lineWidth = 1.5;
+    g.setLineDash([5, 4]);
+    g.beginPath(); g.moveTo(pr.a.x, pr.a.y); g.lineTo(pr.b.x, pr.b.y); g.stroke();
+    g.setLineDash([]);
+    [[pr.a, pr.type === 'radial' ? 'centre' : 'depart'],
+     [pr.b, pr.type === 'radial' ? 'portee' : 'arrivee']].forEach(function (o, i) {
+      g.beginPath();
+      g.arc(o[0].x, o[0].y, i ? 6 : 7, 0, Math.PI * 2);
+      g.fillStyle = i ? 'rgba(10,12,10,.9)' : '#ffffff';
+      g.fill();
+      g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.stroke();
+    });
+    g.restore();
+  }
+
+  /* On repose la poignee la ou on l'a lachee. Pour un lineaire, les
+     deux prises donnent a la fois l'angle et les deux arrets ; pour un
+     radial, le centre et la portee. */
+  function tirerDegrade(l, quelle, px, py) {
+    var f = degradeDe(l);
+    if (!f) return;
+    var loc = toLocal(l, px, py);
+    if (f.type === 'radial') {
+      if (quelle === 'g0') {
+        f.cx = clamp(loc.x / l.w * 100, -50, 150);
+        f.cy = clamp(loc.y / l.h * 100, -50, 150);
+      } else {
+        var mx = (f.cx == null ? 50 : f.cx) / 100 * l.w;
+        var my = (f.cy == null ? 50 : f.cy) / 100 * l.h;
+        var dd = Math.hypot(loc.x - mx, loc.y - my);
+        f.rayon = clamp(dd / (Math.max(l.w, l.h) / 2) * 100, 1, 400);
+      }
+      return;
+    }
+    /* lineaire : l'autre prise reste fixe, celle qu'on tire donne le
+       nouvel axe -- c'est le geste de Figma. */
+    var pr = prisesDegrade(l);
+    var fixeS = quelle === 'g0' ? pr.b : pr.a;
+    var fixeD = s2d(fixeS.x, fixeS.y);
+    var fixe = toLocal(l, fixeD.x, fixeD.y);
+    var vx = loc.x - fixe.x, vy = loc.y - fixe.y;
+    if (!vx && !vy) return;
+    var ang = Math.atan2(vy, vx) * 180 / Math.PI;
+    f.angle = Math.round(quelle === 'g0' ? ang + 180 : ang);
+    /* les arrets se recalculent le long du nouvel axe */
+    var a2 = deg2rad(f.angle), cx2 = l.w / 2, cy2 = l.h / 2;
+    var r2 = (Math.abs(l.w * Math.cos(a2)) + Math.abs(l.h * Math.sin(a2))) / 2;
+    var ax2 = cx2 - Math.cos(a2) * r2, ay2 = cy2 - Math.sin(a2) * r2;
+    function surAxe(pt) {
+      var ux = Math.cos(a2), uy = Math.sin(a2);
+      var t = ((pt.x - ax2) * ux + (pt.y - ay2) * uy) / (2 * r2 || 1);
+      return clamp(t * 100, 0, 100);
+    }
+    if (quelle === 'g0') { f.stop0 = Math.round(surAxe(loc)); f.stop1 = Math.round(surAxe(fixe)); }
+    else { f.stop1 = Math.round(surAxe(loc)); f.stop0 = Math.round(surAxe(fixe)); }
+    if (f.stop0 > f.stop1) { var t2 = f.stop0; f.stop0 = f.stop1; f.stop1 = t2; }
+  }
   function handleAt(l, sx, sy) {
     if (l.locked) return null;
     var rp = rotHandle(l);
@@ -3052,6 +3191,18 @@ window.BaobabsStudio = (function () {
 
     var cur = selectedLayers();
     if (cur.length === 1) {
+      /* LE DEGRADE PASSE AVANT LE REDIMENSIONNEMENT.
+         Ses deux prises tombent souvent sur un bord de la boite, donc
+         sur une poignee de taille. Teste apres, on ne pourrait jamais
+         l'attraper -- on redimensionnerait le calque en croyant tirer
+         le degrade. */
+      var gk = priseDegradeA(cur[0], pt.sx, pt.sy);
+      if (gk) {
+        beginChange('Dégradé');
+        drag = { kind: 'degrade', id: cur[0].id, quelle: gk };
+        capture(e);
+        return;
+      }
       var hk = handleAt(cur[0], pt.sx, pt.sy);
       if (hk === 'rot') { startRotate(cur[0], pt); capture(e); return; }
       if (hk) { startResize(cur[0], hk, pt, e); capture(e); return; }
@@ -3110,6 +3261,12 @@ window.BaobabsStudio = (function () {
     }
 
     switch (drag.kind) {
+      case 'degrade': {
+        var gl = findLayer(doc.layers, drag.id);
+        if (gl) { tirerDegrade(gl, drag.quelle, p.x, p.y); requestDraw(); }
+        break;
+      }
+
       case 'pan':
         view.px = drag.px + (pt.sx - drag.sx);
         view.py = drag.py + (pt.sy - drag.sy);
@@ -3248,11 +3405,12 @@ window.BaobabsStudio = (function () {
       if (bl2) maskCommit(bl2);
     }
     if (kind === 'move' || kind === 'resize' || kind === 'multiresize' || kind === 'rotate' ||
-        kind === 'content' || kind === 'node' || kind === 'create' || kind === 'brush') {
+        kind === 'content' || kind === 'node' || kind === 'create' || kind === 'brush' ||
+        kind === 'degrade') {
       endChange(({
         move: 'Déplacement', resize: 'Redimensionnement', multiresize: 'Redimensionnement',
         rotate: 'Rotation', content: 'Recadrage du contenu', node: 'Point de tracé',
-        create: 'Création', brush: 'Détourage'
+        create: 'Création', brush: 'Détourage', degrade: 'Dégradé'
       })[kind] || 'Modification');
     }
     guides = [];
