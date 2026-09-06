@@ -6812,6 +6812,170 @@ window.BaobabsStudio = (function () {
         o.push(tGrain(d, { a: .2 }));
         return o;
       }
+    },
+
+    /* ---------------- TROIS MODELES TIRES DES REFERENCES ----------------
+       Ils comblent les trois formes qui manquaient a la bibliotheque :
+       une GRILLE de prochains matchs (on avait une liste, pas une
+       grille), une COMPOSITION a onze portraits (on s'arretait a cinq),
+       et un RESULTAT a bandes laterales avec la ligne de statistiques.
+       Chacun se remplit tout seul : les cadres portent un emplacement,
+       les textes une liaison, et les quatre matchs a venir arrivent par
+       le mecanisme de serie, deja utilise par « Calendrier du mois ». */
+    {
+      id: 'ref-prochains', cat: 'Match Day', label: 'Prochains matchs', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .075, A2 = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tFondPhoto(d, 'photoMatch', { veil: .74, gray: 46, nom: 'Photo de fond' }));
+        o.push(tHalo(d, A2, { cx: .5, cy: .28, w: 1.15, h: .55, a: .3, nom: 'Halo' }));
+
+        /* La grille d'abord, le titre dessous : c'est l'ordre de la
+           reference, et il se lit mieux -- on voit QUAND avant de lire
+           QUOI. */
+        var cw = (W - p * 2 - W * .045) / 2, ch = H * .155;
+        var cases = [[p, H * .10], [p + cw + W * .045, H * .10],
+                     [p, H * .10 + ch + H * .035], [p + cw + W * .045, H * .10 + ch + H * .035]];
+        cases.forEach(function (b, i) {
+          var carte = tRect(d, { x: b[0], y: b[1], w: cw, h: ch }, d.palette.fg, {
+            a: .06, radius: W * .018, nom: 'Carte ' + (i + 1)
+          });
+          carte.stroke = { color: color(d.palette.fg, .14), w: Math.max(1, W * .0016), dash: 0 };
+          o.push(carte);
+          var lg = tLogo(d, { x: b[0] + cw / 2 - W * .05, y: b[1] + ch * .10, w: W * .1, h: W * .1 },
+                         'logoAdv', { mask: 'rect', nom: 'Ecusson ' + (i + 1) });
+          lg.slot = 'libre'; lg.serie = { i: i, champ: 'logo' }; o.push(lg);
+          var dt = tTexte(d, 'donnee', 'SAMEDI 00', { x: b[0], y: b[1] + ch * .62, w: cw }, {
+            size: W * .026, align: 'center', col: d.palette.fg, upper: true, nom: 'Date ' + (i + 1)
+          });
+          dt.serie = { i: i, champ: 'date' }; o.push(dt);
+          var hl = tTexte(d, 'mention', '19H00 — MARIUS NDIAYE', { x: b[0], y: b[1] + ch * .80, w: cw }, {
+            size: W * .0155, align: 'center', col: d.palette.fg2, nom: 'Heure et lieu ' + (i + 1)
+          });
+          hl.serie = { i: i, champ: 'lieu' }; o.push(hl);
+        });
+
+        o.push(tTitreDouble(d, H * .565, 'PROCHAINS', 'MATCHS', {
+          size: .148, align: 'center', pad: p, ombre: true, nom: 'Titre'
+        }));
+        o = o.concat(tInfos(d, [['CHAMPIONNAT NATIONAL D2', 'match.competition', 'Competition']],
+          H * .80, { size: .022, align: 'center', col: A2, pad: p }));
+        o.push(tLogo(d, { x: W * .5 - W * .055, y: H * .855, w: W * .11, h: W * .11 }, 'logoClub',
+          { mask: 'rect', nom: 'Logo du club' }));
+        o.push(tPied(d, {}));
+        o.push(tGrain(d, { a: .2 }));
+        return o;
+      }
+    },
+
+    {
+      id: 'ref-onze', cat: 'Équipe', label: 'Les onze', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, p = W * .055, A2 = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#0C0F0D', { nom: 'Fond' }));
+        o.push(tFondPhoto(d, 'photoMatch', { veil: .8, gray: 70, nom: 'Photo de fond' }));
+        o = o.concat(tKicker(d, H * .058, 'COMPOSITION', { pad: p, col: A2 }));
+        o.push(tTexte(d, 'affiche', 'LES ONZE', { x: p, y: H * .082, w: W * .6 }, {
+          size: W * .1, nom: 'Titre'
+        }));
+        o.push(tTexte(d, 'donnee', 'VS DUC DAKAR', { x: W * .52, y: H * .115, w: W - p - W * .52 }, {
+          size: W * .024, align: 'right', col: d.palette.fg2, bind: 'match.adversaire', nom: 'Adversaire'
+        }));
+
+        /* Quatre colonnes, trois rangs : onze cartes plus le banc. Le
+           numero en pastille, le nom EN COLONNE le long de la carte --
+           c'est ce qui fait tenir onze noms sans les ecraser. */
+        var cols = 4, cw = (W - p * 2 - W * .018 * (cols - 1)) / cols, ch = cw * 1.32;
+        var y0 = H * .195;
+        for (var i = 0; i < 11; i++) {
+          var cx = p + (i % cols) * (cw + W * .018);
+          var cy = y0 + Math.floor(i / cols) * (ch + W * .045);
+          var f = makeFrame(d, { x: cx, y: cy, w: cw, h: ch, slot: i === 0 ? 'photoJoueuse' : 'libre' });
+          f.mask = 'squircle'; f.radius = W * .012;
+          f.fx.gray = 30; f.fx.contrast = 8;
+          f.stroke = { color: color(A2, i === 0 ? .85 : .22), w: Math.max(1, W * .0018) };
+          f.name = 'Joueuse ' + (i + 1);
+          o.push(f);
+          o = o.concat(tSurligne(d, String(i + 1), { x: cx + W * .008, y: cy + W * .008, w: W * .032 }, {
+            role: 'etiquette', size: W * .017, bg: i === 0 ? A2 : d.palette.bg,
+            fg: i === 0 ? d.palette.bg : d.palette.fg, radius: W * .004, pad: .3,
+            nom: 'Numero ' + (i + 1)
+          }));
+          var nom = tTexte(d, 'etiquette', 'NOM', { x: cx + cw - W * .026, y: cy + ch * .3, w: W * .026 }, {
+            size: W * .015, align: 'center', col: d.palette.fg, nom: 'Nom ' + (i + 1)
+          });
+          nom.ts.vertical = true; syncTextBox(nom);
+          o.push(nom);
+        }
+
+        /* La douzieme case n'est pas une joueuse : c'est le banc. */
+        var bx = p + 3 * (cw + W * .018), by = y0 + 2 * (ch + W * .045);
+        var banc = tRect(d, { x: bx, y: by, w: cw, h: ch }, d.palette.fg, { a: .05, radius: W * .012, nom: 'Banc' });
+        banc.stroke = { color: color(d.palette.fg, .16), w: Math.max(1, W * .0016), dash: 0 };
+        o.push(banc);
+        o.push(tTexte(d, 'mention', 'BANC', { x: bx, y: by + ch * .08, w: cw }, {
+          size: W * .014, align: 'center', col: A2, nom: 'Titre du banc'
+        }));
+        o.push(tTexte(d, 'mention', 'NOM\nNOM\nNOM\nNOM\nNOM', { x: bx, y: by + ch * .24, w: cw }, {
+          size: W * .0145, align: 'center', col: d.palette.fg2, lh: 1.7, nom: 'Liste du banc'
+        }));
+
+        o.push(tLogo(d, { x: p, y: H * .93, w: W * .075, h: W * .075 }, 'logoClub', { mask: 'rect', nom: 'Logo du club' }));
+        o = o.concat(tInfos(d, [['SAMEDI 00 — STADIUM MARIUS NDIAYE', 'match.lieu', 'Salle']],
+          H * .952, { size: .019, align: 'right', col: d.palette.fg2, pad: p }));
+        o.push(tGrain(d, { a: .22 }));
+        return o;
+      }
+    },
+
+    {
+      id: 'ref-final-rails', cat: 'Résultat', label: 'Final — bandes', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, A2 = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#0B0E12', { nom: 'Fond' }));
+        o.push(tFondPhoto(d, 'photoMatch', { veil: .34, contrast: 10, nom: 'Photo de fond' }));
+        /* Les bandes qui courent sur les quatre bords : c'est elles qui
+           donnent le cadre televise de la reference. */
+        o = o.concat(tMarquee(d, 'BAOBABS BASKET CLUB', { col: A2, h: .034 }));
+
+        /* La carte du score, posee bas : la photo respire au-dessus. */
+        var cx = W * .07, cw = W - cx * 2, cy = H * .565, ch = H * .245;
+        var carte = tRect(d, { x: cx, y: cy, w: cw, h: ch }, '#0B0E12', { a: .9, radius: W * .035, nom: 'Carte du score' });
+        carte.stroke = { color: color(A2, .8), w: Math.max(1, W * .0026), dash: 0 };
+        o.push(carte);
+        o = o.concat(tSurligne(d, 'FINAL', { x: W * .5 - W * .09, y: cy - W * .022, w: W * .18 }, {
+          role: 'etiquette', size: W * .022, bg: A2, fg: '#0B0E12', radius: W * .03, nom: 'Mention FINAL'
+        }));
+        o.push(tLogo(d, { x: cx + cw * .07, y: cy + ch * .22, w: W * .12, h: W * .12 }, 'logoClub',
+          { mask: 'rect', nom: 'Logo du club' }));
+        o.push(tLogo(d, { x: cx + cw * .93 - W * .12, y: cy + ch * .22, w: W * .12, h: W * .12 }, 'logoAdv',
+          { mask: 'rect', nom: 'Logo adversaire' }));
+        o.push(tTexte(d, 'score', '80', { x: cx + cw * .22, y: cy + ch * .25, w: cw * .22 }, {
+          size: W * .13, align: 'center', bind: 'resultat.scoreNous', nom: 'Notre score'
+        }));
+        o.push(tTexte(d, 'score', '72', { x: cx + cw * .56, y: cy + ch * .25, w: cw * .22 }, {
+          size: W * .13, align: 'center', col: d.palette.fg2, bind: 'resultat.scoreEux', nom: 'Score adverse'
+        }));
+        o.push(tRect(d, { x: W * .5 - Math.max(1, W * .0012), y: cy + ch * .3, w: Math.max(2, W * .0024), h: ch * .38 },
+          A2, { a: .5, nom: 'Separateur' }));
+
+        /* La ligne de statistiques : le detail qui fait « diffusion ». */
+        var sy = H * .845, sh = H * .062;
+        o.push(tRect(d, { x: cx, y: sy, w: cw, h: sh }, A2, { radius: W * .012, nom: 'Bande statistique' }));
+        o.push(tTexte(d, 'donnee', 'A. DIOP', { x: cx + cw * .04, y: sy + sh * .28, w: cw * .34 }, {
+          size: W * .028, col: '#0B0E12', bind: 'joueuse.nom', nom: 'Joueuse'
+        }));
+        [['22', 'PTS', .42], ['9', 'REB', .62], ['5', 'PD', .80]].forEach(function (st) {
+          o.push(tTexte(d, 'score', st[0], { x: cx + cw * st[2], y: sy + sh * .2, w: cw * .12 }, {
+            size: W * .034, align: 'center', col: '#0B0E12', nom: st[1] + ' — chiffre'
+          }));
+          o.push(tTexte(d, 'mention', st[1], { x: cx + cw * st[2], y: sy + sh * .66, w: cw * .12 }, {
+            size: W * .013, align: 'center', col: '#0B0E12', nom: st[1] + ' — libelle'
+          }));
+        });
+        o.push(tGrain(d, { a: .18 }));
+        return o;
+      }
     }
   ];
 
