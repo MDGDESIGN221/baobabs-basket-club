@@ -10538,7 +10538,20 @@ window.BaobabsStudio = (function () {
       });
       col.classList.toggle('is-empty', !reste);
     });
-    if (els.panel) els.panel.classList.toggle('is-empty', dockEtat.panel && dockEtat.panel.loose);
+    /* CETTE LIGNE TUAIT LE PANNEAU QU'ELLE VENAIT DE DETACHER.
+       els.panel N'EST PAS une colonne qui contiendrait des panneaux : c'est
+       l'<aside id="bs-panel"> lui-meme. Lui poser is-empty -- donc
+       display:none -- au moment ou il passe en flottant le faisait
+       disparaitre net : 0 x 0, aucune commande, et un toast qui invitait a
+       « glisser sa barre de titre » alors qu'il n'y avait plus rien a saisir.
+       Le seul retour possible etait de recharger le Studio.
+    
+       Rien ne la remplace, et c'est voulu : .bs-dock.is-loose est deja en
+       position:absolute, donc le panneau sort du flux et la colonne se
+       referme toute seule. La ligne ne servait a rien d'autre qu'a nuire.
+    
+       els.right, lui, EST une vraie colonne a deux panneaux : son is-empty
+       ci-dessous reste, il ne se declenche que si les DEUX sont partis. */
     if (els.right) {
       var p = dockEtat.props && dockEtat.props.loose;
       var c = dockEtat.layers && dockEtat.layers.loose;
