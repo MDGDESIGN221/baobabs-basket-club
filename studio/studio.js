@@ -9440,6 +9440,7 @@ window.BaobabsStudio = (function () {
         toast('Poignées sur l affiche, ou les champs à droite');
         return;
       }
+      if (k === 'n') { e.preventDefault(); ouvrirNouveauDoc(); return; }
       if (k === 'd') { e.preventDefault(); duplicateSelected(); return; }
       if (k === 'g') { e.preventDefault(); groupSelected(); return; }
       if (k === 'a') { e.preventDefault(); selectAll(); return; }
@@ -9738,6 +9739,8 @@ window.BaobabsStudio = (function () {
       case 'expGo': lancerExport(); return true;
       case 'expSerie': exportSerie(); return true;
       case 'champOk': validerChamp(el.getAttribute('data-i')); return true;
+      case 'rpOk': poserReperes(); return true;
+      case 'ndOk': creerNouveauDoc(); return true;
       case 'dsOk': appliquerTailleDoc(); return true;
       case 'histGo': histGo(num(el.getAttribute('data-i'), 0)); return true;
       case 'gotoLayer': closeModal(); select([el.getAttribute('data-id')]); zoomToSelection(); return true;
@@ -10654,6 +10657,7 @@ window.BaobabsStudio = (function () {
         M('Grille', 'm.grid', 'Ctrl ’', { on: flags.grid }),
         M('Magnétisme', 'm.snap', null, { on: flags.snap }),
         M('Marges et repères', 'm.safe', null, { on: flags.safe }),
+        M('Poser des repères…', 'm.rules'),
         M('Effacer les repères', 'm.clearrules', null, { off: !(doc.rules && doc.rules.length), why: 'Aucun repère posé — tirez-en un depuis les règles' }),
         SEP,
         M('Aperçu propre', 'm.preview', '⇧ P', { on: preview })
@@ -11818,7 +11822,11 @@ window.BaobabsStudio = (function () {
     var l = selOne(), ls = selectedLayers();
     switch (a) {
       /* --- fichier --- */
-      case 'm.new':      quitterVers(function () { homeScreen = 'nouveau'; showHome(); }); return;
+      /* « Nouveau… » renvoyait a l'ecran d'accueil : on quittait son
+         travail des yeux pour choisir un format. La fenetre fait la meme
+         chose sans bouger, et accepte des mesures libres. L'accueil reste
+         a un clic sur le logo. */
+      case 'm.new':      ouvrirNouveauDoc(); return;
       case 'm.open':     quitterVers(function () { homeScreen = 'recents'; showHome(); }); return;
       case 'm.import':   els.fileJson.click(); return;
       case 'm.save':     saveProject(false); return;
@@ -11917,6 +11925,7 @@ window.BaobabsStudio = (function () {
       case 'm.grid':  toggleFlag('grid'); return;
       case 'm.snap':  toggleFlag('snap'); return;
       case 'm.safe':  toggleFlag('safe'); return;
+      case 'm.rules': ouvrirReperes(); return;
       case 'm.clearrules': runAction('clearRules', { getAttribute: function () { return null; } }); return;
       case 'm.preview': togglePreview(); return;
 
@@ -11970,6 +11979,141 @@ window.BaobabsStudio = (function () {
   }
 
   /* ---------- taille du document ---------- */
+  /* CTRL+N : UN NOUVEAU DOCUMENT, AVEC SES VALEURS.
+     Le raccourci n'existait pas : pour repartir d'une page vide il
+     fallait revenir a l'accueil, donc quitter son travail des yeux.
+     La fenetre propose les formats du club ET deux champs libres --
+     choisir un format remplit les champs, taper dans les champs
+     bascule sur « Sur mesure ». Le travail en cours est protege par
+     quitterVers(), comme partout ailleurs. */
+  /* POSER DES REPERES D'UN COUP.
+     On ne pouvait en tirer qu'un a la fois depuis les regles. Pour
+     caler une affiche en trois colonnes, cela fait six gestes a la
+     main, jamais exactement au bon endroit. La fenetre pose la grille
+     entiere, au pixel, et remplace les reperes existants -- on refait
+     une disposition sans avoir a nettoyer la precedente.
+
+     Les mesures sont en pourcentage du document, donc la meme
+     disposition vaut pour une story et pour une banniere. */
+  function ouvrirReperes() {
+    modal('Poser des reperes',
+      '<div class="bs-frow">' +
+      '<div class="bs-f"><label>Colonnes</label><div class="bs-step"><input type="number" class="bs-in-num" id="bs-rp-col" value="3" min="0" max="24"></div></div>' +
+      '<div class="bs-f"><label>Rangees</label><div class="bs-step"><input type="number" class="bs-in-num" id="bs-rp-row" value="0" min="0" max="24"></div></div>' +
+      '</div>' +
+      '<div class="bs-f"><label>Marge</label><div class="bs-step"><input type="number" class="bs-in-num" id="bs-rp-mar" value="7" min="0" max="40" step="0.5"><span class="bs-step-u">%</span></div></div>' +
+      '<div class="bs-f"><div class="bs-tgl-row"><span>Ajouter les tiers</span>' +
+      '<button type="button" class="bs-tgl" id="bs-rp-tiers"><i></i></button></div></div>' +
+      '<div class="bs-f"><div class="bs-tgl-row"><span>Ajouter les axes du centre</span>' +
+      '<button type="button" class="bs-tgl is-on" id="bs-rp-centre"><i></i></button></div></div>' +
+      '<div class="bs-note" style="margin:10px 0 0">Les reperes remplacent ceux qui sont poses. Ils ne s’exportent jamais : ils guident le magnetisme et disparaissent en apercu.</div>',
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Annuler</button>' +
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="clearRules">Tout effacer</button>' +
+      '<button type="button" class="bs-btn bs-btn-accent" data-act="rpOk">Poser</button>');
+    $$('.bs-tgl', els.modalCard).forEach(function (t) {
+      t.addEventListener('click', function () { t.classList.toggle('is-on'); });
+    });
+  }
+
+  function poserReperes() {
+    var nc = clamp(num($('#bs-rp-col', els.modalCard).value, 0), 0, 24);
+    var nr = clamp(num($('#bs-rp-row', els.modalCard).value, 0), 0, 24);
+    var mar = clamp(num($('#bs-rp-mar', els.modalCard).value, 0), 0, 40) / 100;
+    var tiers = $('#bs-rp-tiers', els.modalCard).classList.contains('is-on');
+    var centre = $('#bs-rp-centre', els.modalCard).classList.contains('is-on');
+    closeModal();
+    change(function () {
+      var r = [], i;
+      var mx = Math.round(doc.w * mar), my = Math.round(doc.h * mar);
+      if (mar > 0) {
+        r.push({ axis: 'x', v: mx }, { axis: 'x', v: doc.w - mx });
+        r.push({ axis: 'y', v: my }, { axis: 'y', v: doc.h - my });
+      }
+      /* les colonnes se comptent DANS les marges : c'est la seule
+         lecture utile -- une colonne qui deborde ne sert a rien. */
+      var x0 = mx, x1 = doc.w - mx, y0 = my, y1 = doc.h - my;
+      for (i = 1; i < nc; i++) r.push({ axis: 'x', v: Math.round(x0 + (x1 - x0) * i / nc) });
+      for (i = 1; i < nr; i++) r.push({ axis: 'y', v: Math.round(y0 + (y1 - y0) * i / nr) });
+      if (tiers) {
+        r.push({ axis: 'x', v: Math.round(doc.w / 3) }, { axis: 'x', v: Math.round(doc.w * 2 / 3) });
+        r.push({ axis: 'y', v: Math.round(doc.h / 3) }, { axis: 'y', v: Math.round(doc.h * 2 / 3) });
+      }
+      if (centre) {
+        r.push({ axis: 'x', v: Math.round(doc.w / 2) });
+        r.push({ axis: 'y', v: Math.round(doc.h / 2) });
+      }
+      /* deux reperes au meme endroit ne se voient pas mais se comptent :
+         on les fond, sinon « 14 reperes » en montre huit. */
+      var vus = {}, net = [];
+      r.forEach(function (o) {
+        var k = o.axis + ':' + o.v;
+        if (vus[k]) return;
+        vus[k] = 1; net.push(o);
+      });
+      doc.rules = net;
+    }, 'Reperes');
+    if (!flags.safe) toggleFlag('safe');   /* poser sans montrer n'a pas de sens */
+    requestDraw();
+    toast(doc.rules.length + ' repere' + (doc.rules.length > 1 ? 's' : '') + ' pose' + (doc.rules.length > 1 ? 's' : ''));
+  }
+  function ouvrirNouveauDoc() {
+    var cats = [];
+    FORMATS.forEach(function (f) { if (cats.indexOf(f.cat) < 0) cats.push(f.cat); });
+    var opts = '';
+    cats.forEach(function (c) {
+      opts += '<optgroup label="' + esc(c) + '">';
+      FORMATS.forEach(function (f) {
+        if (f.cat !== c) return;
+        opts += '<option value="' + esc(f.id) + '">' + esc(f.label) + ' — ' + f.w + ' × ' + f.h + '</option>';
+      });
+      opts += '</optgroup>';
+    });
+    opts += '<option value="__libre">Sur mesure…</option>';
+
+    var palOpts = PALETTES.map(function (p) {
+      return '<option value="' + esc(p.id) + '">' + esc(p.label) + '</option>';
+    }).join('');
+
+    modal('Nouveau document',
+      '<div class="bs-f"><label>Format</label>' +
+      '<select class="bs-in" id="bs-nd-fmt">' + opts + '</select></div>' +
+      '<div class="bs-frow">' +
+      '<div class="bs-f"><label>Largeur</label><div class="bs-step"><input type="number" class="bs-in-num" id="bs-nd-w" value="1080" min="16" max="12000"><span class="bs-step-u">px</span></div></div>' +
+      '<div class="bs-f"><label>Hauteur</label><div class="bs-step"><input type="number" class="bs-in-num" id="bs-nd-h" value="1440" min="16" max="12000"><span class="bs-step-u">px</span></div></div>' +
+      '</div>' +
+      '<div class="bs-f"><label>Ambiance</label>' +
+      '<select class="bs-in" id="bs-nd-pal">' + palOpts + '</select></div>' +
+      '<div class="bs-note" style="margin:10px 0 0">Les mesures sont en pixels. Une affiche destinee a l’impression gagne a etre doublee : tout est redessine a la taille demandee, seuls les photos importees dependent de leur resolution.</div>',
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Annuler</button>' +
+      '<button type="button" class="bs-btn bs-btn-accent" data-act="ndOk">Creer</button>');
+
+    var selF = $('#bs-nd-fmt', els.modalCard);
+    var iw = $('#bs-nd-w', els.modalCard), ih = $('#bs-nd-h', els.modalCard);
+    selF.value = (doc && doc.format) || 'affiche';
+    var f0 = formatById(selF.value);
+    if (f0) { iw.value = f0.w; ih.value = f0.h; }
+    selF.addEventListener('change', function () {
+      var f = formatById(selF.value);
+      if (f) { iw.value = f.w; ih.value = f.h; }
+    });
+    /* taper une mesure ne doit pas laisser un nom de format qui ment */
+    [iw, ih].forEach(function (el) {
+      el.addEventListener('input', function () { selF.value = '__libre'; });
+    });
+  }
+
+  function creerNouveauDoc() {
+    var w = clamp(num($('#bs-nd-w', els.modalCard).value, 1080), 16, 12000);
+    var h = clamp(num($('#bs-nd-h', els.modalCard).value, 1440), 16, 12000);
+    var idF = $('#bs-nd-fmt', els.modalCard).value;
+    var pal = $('#bs-nd-pal', els.modalCard).value;
+    var f = formatById(idF);
+    var fmt = (f && f.w === w && f.h === h)
+      ? f
+      : { id: 'libre', cat: 'Sur mesure', label: 'Sur mesure', w: w, h: h };
+    closeModal();
+    quitterVers(function () { nouveauDoc(fmt, null, pal); });
+  }
   function ouvrirTailleDoc() {
     modal('Taille du document',
       '<div class="bs-frow">' +
