@@ -680,9 +680,52 @@ window.BaobabsStudio = (function () {
         ou par un simple renvoi automatique. Seul le premier consomme
         un caractère — sans cette distinction, cliquer dans un
         paragraphe replié place le curseur au mauvais endroit. */
+  /* TEXTE VERTICAL — UNE LETTRE PAR LIGNE.
+
+     On n'ecrit PAS un second moteur de mise en page. Le moteur
+     horizontal sait deja produire des lignes d'un seul caractere : il le
+     fait quand un mot depasse la largeur de la boite. On lui donne donc
+     simplement des jetons deja coupes -- une lettre, une coupure, une
+     lettre -- et tout le reste suit sans y toucher : le dessin, le
+     clic, le curseur, la selection de lettres, l'export.
+
+     Les lettres restent DROITES, empilees. C'est ce qu'on attend d'un
+     titre vertical d'affiche ; du texte couche sur le flanc s'obtient
+     avec la rotation du calque, qui existe deja.
+
+     i0 suit chaque lettre : c'est lui qui relie une position a l'ecran
+     au bon caractere du texte. Sans ca, cliquer dans un texte vertical
+     placerait le curseur n'importe ou. */
+  function enColonne(toks) {
+    var out = [];
+    function coupure(st, i0) { out.push({ t: '\n', raw: '\n', st: st, kind: 'break', i0: i0 }); }
+    for (var i = 0; i < toks.length; i++) {
+      var tk = toks[i], suiv = toks[i + 1];
+      if (tk.kind === 'break') { out.push(tk); continue; }
+      if (tk.kind === 'space') {
+        /* un espace devient une ligne vide : les mots restent separes */
+        out.push(tk);
+        if (suiv && suiv.kind !== 'break') coupure(tk.st, tk.i0 + tk.t.length);
+        continue;
+      }
+      for (var c = 0; c < tk.t.length; c++) {
+        out.push({ t: tk.t[c], raw: (tk.raw && tk.raw[c]) || tk.t[c],
+                   st: tk.st, kind: 'word', i0: tk.i0 + c });
+        if (c < tk.t.length - 1) coupure(tk.st, tk.i0 + c + 1);
+      }
+      if (suiv && suiv.kind !== 'break') coupure(tk.st, tk.i0 + tk.t.length);
+    }
+    if (!out.length) out.push({ t: '', raw: '', st: toks[0] && toks[0].st, kind: 'word', i0: 0 });
+    return out;
+  }
   function layoutText(l, wantChars) {
-    var maxW = l.wrap === false ? Infinity : Math.max(1, l.w);
-    var toks = tokenize(l), lines = [], hards = [], cur = [], curW = 0, trailW = 0, i;
+    /* en colonne, chaque ligne ne porte qu'une lettre : aucune largeur
+       ne peut la couper, donc pas de retour a la ligne a calculer. */
+    var vertical = !!(l.ts && l.ts.vertical);
+    var maxW = (vertical || l.wrap === false) ? Infinity : Math.max(1, l.w);
+    var toks = tokenize(l);
+    if (vertical) toks = enColonne(toks);
+    var lines = [], hards = [], cur = [], curW = 0, trailW = 0, i;
 
     function push(hard) { lines.push(cur); hards.push(!!hard); cur = []; curW = 0; trailW = 0; }
 
@@ -753,7 +796,10 @@ window.BaobabsStudio = (function () {
     if (l.path) return null;
     var lay = layoutText(l, false);
     l.h = Math.max(1, Math.round(lay.h));
-    if (l.wrap === false) l.w = Math.max(1, Math.round(lay.w));
+    /* Une colonne n'a pas de largeur a respecter : sa boite se serre sur
+       la lettre la plus large, sinon le calque garderait la largeur du
+       texte horizontal d'avant et les poignees flotteraient dans le vide. */
+    if (l.wrap === false || (l.ts && l.ts.vertical)) l.w = Math.max(1, Math.round(lay.w));
     return lay;
   }
 
@@ -4670,9 +4716,13 @@ window.BaobabsStudio = (function () {
         { id: 'center', label: '', html: ALIGN_ICONS.center, title: 'Centré' },
         { id: 'right', label: '', html: ALIGN_ICONS.right, title: 'À droite' }
       ]) +
-      fSeg('Vertical', 'ts.valign', st.valign, [
+      /* « Vertical » tout court desigmait l'alignement dans la boite, pas
+         le sens d'ecriture : on cherchait le texte vertical ici et on ne
+         trouvait que Haut / Milieu / Bas. */
+      fSeg('Alignement vertical', 'ts.valign', st.valign, [
         { id: 'top', label: 'Haut' }, { id: 'middle', label: 'Milieu' }, { id: 'bottom', label: 'Bas' }
       ]) +
+      fToggle('Écrire en colonne', 'ts.vertical', !!st.vertical, { text: true }) +
       fToggle('Retour à la ligne', 'wrap', l.wrap !== false)
     );
 
