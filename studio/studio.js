@@ -8696,12 +8696,104 @@ window.BaobabsStudio = (function () {
   var panelFilter = { tpl: 'Tous', q: '' };
   var favoris = [];
 
+  /* LE RAIL OUVRAIT, IL NE REFERMAIT PAS.
+     Cliquer un onglet deja ouvert ne faisait rien : le panneau restait,
+     et il n'y avait pas d'autre issue evidente que le petit chevron de
+     la barre de titre -- qui porte d'ailleurs le mot « Outils », jamais
+     le nom de ce qu'on regarde. On cliquait donc « Navigation » et on
+     restait coince avec.
+
+     Pire, le meme clic etait MORT dans deux autres etats : panneau replie
+     ou masque par le menu, l'onglet s'allumait et rien n'apparaissait. Un
+     bouton qui s'allume sans rien montrer est le pire des deux mondes --
+     on croit que le logiciel a compris.
+
+     Une seule regle desormais : le rail bascule. Le meme onglet referme,
+     un autre ouvre -- et ouvrir ramene TOUJOURS le panneau, qu'il fut
+     replie, masque, ou les deux. */
+  function panneauVisible() {
+    if (panelHidden) return false;
+    var st = dockEtat && dockEtat.panel;
+    return !(st && st.folded);
+  }
+
+  function montrerPanneau() {
+    if (panelHidden) {
+      panelHidden = false;
+      els.panel.classList.remove('is-hidden');
+    }
+    var st = dockEtat && dockEtat.panel;
+    if (st && st.folded) replierDock('panel');   /* replierDock bascule */
+    onResize();
+  }
+
+  function cacherPanneau() {
+    panelHidden = true;
+    els.panel.classList.add('is-hidden');
+    majRail();
+    onResize();
+  }
+
+  /* L'onglet allume dit « ce panneau est SOUS TES YEUX », pas « ce
+     panneau serait celui-la si on l'affichait ». */
+  function majRail() {
+    var vu = panneauVisible();
+    $$('.bs-rail-i', root).forEach(function (b) {
+      b.classList.toggle('is-on', vu && b.getAttribute('data-panel') === panelName);
+    });
+  }
+
+  /* openPanel OUVRE, toujours. La bascule est un geste du rail, pas une
+     propriete de la fonction : les huit autres appelants -- « choisissez
+     une image », le menu Fenetre, le demarrage -- veulent ouvrir, et un
+     drapeau a passer partout se serait oublie quelque part. Il s'etait
+     d'ailleurs oublie tout de suite : au demarrage, openPanel('modeles')
+     tombait sur le panneau deja ouvert et le refermait. */
   function openPanel(name) {
     panelName = name;
-    $$('.bs-rail-i', root).forEach(function (b) {
-      b.classList.toggle('is-on', b.getAttribute('data-panel') === name);
-    });
+    montrerPanneau();
+    majRail();
+    majTitrePanneau();
     renderPanel();
+  }
+
+  /* La barre de titre affichait « Outils » quel que soit le panneau. On
+     cherche un bouton pour fermer « Navigation » et on lit le nom d'autre
+     chose : le doute vient de la, autant que du bouton manquant. Le nom
+     est repris de l'onglet lui-meme -- deux libelles a tenir a jour
+     finiraient par se contredire. */
+  /* Ce que le rail propose, dans son ordre. C'est LUI la source : il
+     porte le libelle, l'ordre et l'existence de chaque panneau. */
+  function panneauxDuRail() {
+    var out = [];
+    $$('.bs-rail-i', root).forEach(function (b) {
+      var id = b.getAttribute('data-panel');
+      if (!id) return;
+      out.push({ id: id, nom: (b.getAttribute('title') || b.textContent || id).trim() });
+    });
+    return out;
+  }
+
+  function titreDock(id) {
+    return (dockEtat[id] && dockEtat[id].titre) || 'Outils';
+  }
+
+  function basculerPanneau(name) {
+    if (name === panelName && panneauVisible()) cacherPanneau();
+    else openPanel(name);
+  }
+
+  function majTitrePanneau() {
+    if (!els.panel) return;
+    var t = els.panel.querySelector('.bs-ptitle-t');
+    if (!t) return;
+    var b = null;
+    $$('.bs-rail-i', root).forEach(function (x) {
+      if (x.getAttribute('data-panel') === panelName) b = x;
+    });
+    var nom = b ? (b.getAttribute('title') || b.textContent || '').trim() : '';
+    t.textContent = nom || 'Outils';
+    if (dockEtat && dockEtat.panel) dockEtat.panel.titre = t.textContent;
   }
 
   function renderPanel() {
@@ -12324,8 +12416,9 @@ window.BaobabsStudio = (function () {
   function wireChrome() {
     /* rail */
     $$('.bs-rail-i', root).forEach(function (b) {
-      b.addEventListener('click', function () { openPanel(b.getAttribute('data-panel')); });
+      b.addEventListener('click', function () { basculerPanneau(b.getAttribute('data-panel')); });
     });
+    majTitrePanneau();
     /* outils */
     $$('.bs-tool', root).forEach(function (b) {
       b.addEventListener('click', function () { setTool(b.getAttribute('data-tool')); });
@@ -12999,28 +13092,28 @@ window.BaobabsStudio = (function () {
       ] },
 
       { id: 'fenetre', label: 'Fenêtre', items: [
-        M('Modèles', 'm.panel', null, { arg: 'modeles', on: panelName === 'modeles' && !panelHidden }),
-        M('Images', 'm.panel', null, { arg: 'images', on: panelName === 'images' && !panelHidden }),
-        M('Unsplash', 'm.panel', null, { arg: 'unsplash', on: panelName === 'unsplash' && !panelHidden }),
-        M('Éléments', 'm.panel', null, { arg: 'elements', on: panelName === 'elements' && !panelHidden }),
-        M('Texte', 'm.panel', null, { arg: 'texte', on: panelName === 'texte' && !panelHidden }),
-        M('Données du club', 'm.panel', null, { arg: 'donnees', on: panelName === 'donnees' && !panelHidden }),
-        M('Styles', 'm.panel', null, { arg: 'styles', on: panelName === 'styles' && !panelHidden }),
-        M('Projets', 'm.panel', null, { arg: 'projets', on: panelName === 'projets' && !panelHidden }),
+        /* LA LISTE DES PANNEAUX EST LUE SUR LE RAIL.
+           Ecrite a la main, elle avait deja oublie « Navigation » : le
+           panneau existait dans le rail et nulle part dans le menu. Une
+           liste recopiee finit toujours par se desynchroniser de sa
+           source ; celle-ci ne le peut plus. */
+      ].concat(panneauxDuRail().map(function (o) {
+        return M(o.nom, 'm.panel', null, { arg: o.id, on: panelName === o.id && panneauVisible() });
+      })).concat([
         SEP,
         M('Masquer le panneau de gauche', 'm.hidepanel', null, { on: panelHidden }),
         SEP,
         LAB('Disposition des panneaux'),
-        M('Réduire / déplier « Outils »', 'm.fold', null, { arg: 'panel', on: !!(dockEtat.panel && dockEtat.panel.folded) }),
+        M('Réduire / déplier « ' + titreDock('panel') + ' »', 'm.fold', null, { arg: 'panel', on: !!(dockEtat.panel && dockEtat.panel.folded) }),
         M('Réduire / déplier « Propriétés »', 'm.fold', null, { arg: 'props', on: !!(dockEtat.props && dockEtat.props.folded) }),
         M('Réduire / déplier « Calques »', 'm.fold', null, { arg: 'layers', on: !!(dockEtat.layers && dockEtat.layers.folded) }),
-        M('Détacher / réancrer « Outils »', 'm.loose', null, { arg: 'panel', on: !!(dockEtat.panel && dockEtat.panel.loose) }),
+        M('Détacher / réancrer « ' + titreDock('panel') + ' »', 'm.loose', null, { arg: 'panel', on: !!(dockEtat.panel && dockEtat.panel.loose) }),
         M('Détacher / réancrer « Propriétés »', 'm.loose', null, { arg: 'props', on: !!(dockEtat.props && dockEtat.props.loose) }),
         M('Détacher / réancrer « Calques »', 'm.loose', null, { arg: 'layers', on: !!(dockEtat.layers && dockEtat.layers.loose) }),
         M('Tout réancrer', 'm.dockall'),
         SEP,
         M('Historique', 'm.history')
-      ] },
+      ]) },
 
       { id: 'aide', label: 'Aide', items: [
         M('Raccourcis clavier', 'm.help', '?'),
@@ -13448,6 +13541,9 @@ window.BaobabsStudio = (function () {
     st.el.classList.toggle('is-folded', st.folded);
     var b = st.el.querySelector('.bs-ptitle-fold');
     if (b) b.title = st.folded ? 'Déplier ce panneau' : 'Réduire ce panneau';
+    /* replier le panneau de gauche eteint son onglet : sinon le rail
+       affirmerait qu'on regarde un panneau reduit a une barre. */
+    if (id === 'panel') majRail();
     onResize();
   }
 
@@ -14270,11 +14366,11 @@ window.BaobabsStudio = (function () {
       case 'm.preview': togglePreview(); return;
 
       /* --- fenêtre --- */
-      case 'm.panel': panelHidden = false; els.panel.classList.remove('is-hidden'); openPanel(arg); return;
+      /* depuis le menu, choisir un panneau l'OUVRE toujours : on ne vient
+         pas d'y cliquer pour le refermer. D'ou le drapeau. */
+      case 'm.panel': openPanel(arg); return;
       case 'm.hidepanel':
-        panelHidden = !panelHidden;
-        els.panel.classList.toggle('is-hidden', panelHidden);
-        onResize();
+        if (panneauVisible()) cacherPanneau(); else openPanel(panelName);
         return;
       case 'm.fold': replierDock(arg); return;
       case 'm.loose': basculerDock(arg); return;
