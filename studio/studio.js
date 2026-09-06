@@ -2581,11 +2581,37 @@ window.BaobabsStudio = (function () {
      15. MUTATIONS DE CALQUES
      =================================================================== */
 
-  function addLayer(l, atTop) {
-    change(function () {
-      if (atTop === false) doc.layers.unshift(l); else doc.layers.push(l);
-      sel = [l.id];
-    });
+  /* UN NOUVEAU CALQUE SE POSE JUSTE AU-DESSUS DE CELUI QU'ON REGARDE.
+     Il partait systematiquement tout en haut de la pile. Sur une affiche
+     a vingt calques, on ajoutait un texte en travaillant au milieu et il
+     apparaissait par-dessus tout -- il fallait ensuite le redescendre a la
+     main, dix fois. Et s'il partait a la racine alors qu'on travaillait
+     DANS un groupe, il n'entrait pas dans le groupe.
+
+     locate() rend le tableau qui contient vraiment le calque choisi : on
+     s'insere donc au bon rang ET au bon niveau, groupe compris. Sans
+     selection, on garde l'ancien comportement -- tout en haut, ce qui est
+     ce qu'on attend quand on part d'une affiche vide. */
+  /* OU SE POSE UN NOUVEAU CALQUE.
+     Il partait systematiquement tout en haut de la pile. Sur une affiche
+     a vingt calques, on ajoutait un texte en travaillant au milieu et il
+     apparaissait par-dessus tout : il fallait le redescendre a la main.
+     Et si l'on travaillait DANS un groupe, il n'entrait pas dans le
+     groupe -- il se posait a cote, a la racine.
+
+     locate() rend le tableau qui contient vraiment le calque choisi : on
+     s'insere donc au bon rang ET au bon niveau. Sans selection, on garde
+     l'ancien comportement -- tout en haut, ce qu'on attend en partant
+     d'une affiche vide.
+
+     addLayer() vivait ici sans qu'aucune ligne ne l'appelle : les quatre
+     chemins de creation faisaient doc.layers.push() en direct. C'est
+     pour cela que le rangement n'avait jamais pu etre corrige au bon
+     endroit -- on aurait modifie du code mort. */
+  function poser(l) {
+    var loc = sel.length ? locate(doc.layers, sel[sel.length - 1]) : null;
+    if (loc) loc.arr.splice(loc.idx + 1, 0, l);
+    else doc.layers.push(l);
     return l;
   }
 
@@ -3457,7 +3483,7 @@ window.BaobabsStudio = (function () {
       syncTextBox(l);
     }
     if (!l) return;
-    doc.layers.push(l);
+    poser(l);
     sel = [l.id];
     if (dg.tool === 'text') enterTextEdit(l, 0, textLen(l));
     setTool('select');
@@ -3481,7 +3507,7 @@ window.BaobabsStudio = (function () {
       l.fill = { type: 'none' };
     }
     if (!l) return;
-    doc.layers.push(l);
+    poser(l);
     sel = [l.id];
     if (dg.tool === 'text') enterTextEdit(l, 0, textLen(l));
     setTool('select');
@@ -3583,7 +3609,7 @@ window.BaobabsStudio = (function () {
     });
     var l = makePath(doc, nodes, { closed: !!closed, x: x0, y: y0, w: w, h: h });
     if (closed) l.fill = { type: 'solid', color: color(doc.palette.accent, 1), from: color(doc.palette.accent, 1), to: color(doc.palette.bg, 1), angle: 90 };
-    doc.layers.push(l);
+    poser(l);
     sel = [l.id];
     pathDraft = null;
     endChange();
@@ -4046,33 +4072,51 @@ window.BaobabsStudio = (function () {
         applyProp(path, num(el.value, 0) * (parseFloat(el.getAttribute('data-mul')) || 1), scope);
         endChange(nomReglage(path)); refreshAll();
       });
-      /* glisser horizontalement sur le libellé du champ modifie la valeur */
+      /* GLISSER SUR UN REGLAGE POUR LE FAIRE MONTER OU DESCENDRE.
+         La poignee n'etait que le suffixe d'unite -- 23 x 15 pixels, le
+         « px » ou le « ° » a droite du champ. Le libelle du reglage, lui,
+         fait 122 pixels de large et ne repondait a rien. Personne ne
+         trouvait le geste : il existait, il etait juste invisible.
+         Photoshop et Figma font glisser le LIBELLE. On cable les deux. */
+      var poignees = [];
       var box = el.closest('.bs-step');
       if (box) {
         var unit = box.querySelector('.bs-step-u');
-        if (unit) {
-          unit.classList.add('bs-step-drag');
-          unit.addEventListener('pointerdown', function (ev) {
-            ev.preventDefault();
-            var x0 = ev.clientX, v0 = num(el.value, 0), step = parseFloat(el.step) || 1;
-            beginChange(nomReglage(path));
-            try { unit.setPointerCapture(ev.pointerId); } catch (err) {}
-            function mv(e2) {
-              var v = v0 + Math.round((e2.clientX - x0) / 3) * step;
-              el.value = fmtNum(v, 2);
-              applyProp(path, num(el.value, 0) * (parseFloat(el.getAttribute('data-mul')) || 1), scope);
-              requestDraw();
-            }
-            function up(e2) {
-              unit.removeEventListener('pointermove', mv);
-              unit.removeEventListener('pointerup', up);
-              endChange(nomReglage(path)); refreshAll();
-            }
-            unit.addEventListener('pointermove', mv);
-            unit.addEventListener('pointerup', up);
-          });
-        }
+        if (unit) poignees.push(unit);
       }
+      var champ = el.closest('.bs-f');
+      if (champ) {
+        var lab = champ.querySelector('label');
+        /* Un libelle ne devient une poignee que s'il ne commande QU'UN
+           champ : sur une ligne « Largeur / Hauteur », tirer serait
+           ambigu. On laisse alors le suffixe faire le travail. */
+        if (lab && champ.querySelectorAll('[data-p]').length === 1) poignees.push(lab);
+      }
+      poignees.forEach(function (poignee) {
+        poignee.classList.add('bs-step-drag');
+        poignee.addEventListener('pointerdown', function (ev) {
+          ev.preventDefault();
+          var x0 = ev.clientX, v0 = num(el.value, 0), step = parseFloat(el.step) || 1;
+          beginChange(nomReglage(path));
+          try { poignee.setPointerCapture(ev.pointerId); } catch (err) {}
+          function mv(e2) {
+            var v = v0 + Math.round((e2.clientX - x0) / 3) * step;
+            var mn = parseFloat(el.min), mx = parseFloat(el.max);
+            if (!isNaN(mn)) v = Math.max(mn, v);
+            if (!isNaN(mx)) v = Math.min(mx, v);
+            el.value = fmtNum(v, 2);
+            applyProp(path, num(el.value, 0) * (parseFloat(el.getAttribute('data-mul')) || 1), scope);
+            requestDraw();
+          }
+          function up() {
+            poignee.removeEventListener('pointermove', mv);
+            poignee.removeEventListener('pointerup', up);
+            endChange(nomReglage(path)); refreshAll();
+          }
+          poignee.addEventListener('pointermove', mv);
+          poignee.addEventListener('pointerup', up);
+        });
+      });
     });
 
     /* --- curseurs --- */
@@ -4838,6 +4882,24 @@ window.BaobabsStudio = (function () {
     html = rowsFor(doc.layers, 0);
     els.layerList.innerHTML = html || '<div class="bs-empty" style="padding:18px 12px">Aucun calque.<br>Utilisez la barre d outils pour en ajouter.</div>';
     wireLayerRows();
+
+    /* CLIQUER UN ELEMENT SUR L'AFFICHE DOIT LE MONTRER DANS LA PILE.
+       La ligne se surlignait bien, mais rien ne la ramenait sous les
+       yeux : sur une affiche a vingt calques, on cliquait le pied de
+       page et la pile restait en haut. On croyait que la selection
+       n'avait pas pris. On ne fait defiler que si la ligne est hors du
+       cadre -- sinon la pile sauterait a chaque clic, ce qui est pire. */
+    if (sel.length) {
+      var ligne = els.layerList.querySelector('.bs-lyr[data-id="' + sel[sel.length - 1] + '"]');
+      if (ligne) {
+        var vue = els.layerList.getBoundingClientRect();
+        var r = ligne.getBoundingClientRect();
+        if (r.top < vue.top + 2 || r.bottom > vue.bottom - 2) {
+          try { ligne.scrollIntoView({ block: 'nearest' }); } catch (e) { ligne.scrollIntoView(); }
+        }
+      }
+    }
+
     if (els.lyrGroup) {
       var one = selOne();
       els.lyrGroup.title = (one && one.type === 'group') ? 'Dissoudre le groupe (Ctrl+Maj+G)' : 'Grouper (Ctrl+G)';
@@ -8652,7 +8714,10 @@ window.BaobabsStudio = (function () {
       clipboard.forEach(function (c) {
         var n = reid(clone(c));
         shiftLayer(n, off, off);
-        doc.layers.push(n);
+        poser(n);
+        /* chaque colle se pose au-dessus de la precedente, sinon
+           poser() les empilerait toutes au meme rang, a l'envers. */
+        sel = [n.id];
         ids.push(n.id);
       });
       sel = ids;
