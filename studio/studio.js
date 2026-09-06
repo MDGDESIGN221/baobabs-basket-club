@@ -8986,6 +8986,261 @@ window.BaobabsStudio = (function () {
   /* La même affiche en story, post et carré, d'un seul geste. Un club
      publie sur trois surfaces ; refaire trois fois la mise en page est
      exactement le travail qu'un outil doit éviter. */
+  /* ===================================================================
+     EXPORT SVG — TRAVAILLER EN VECTORIEL
+     ---------------------------------------------------------------
+     Le document EST vectoriel : formes, traces et textes sont des
+     descriptions, pas des pixels. Seule la sortie etait en pixels. Un
+     SVG rouvre l'affiche dans Illustrator, Inkscape ou une imprimerie
+     sans perdre une courbe.
+
+     LA REGLE QUI EVITE QUE LE SVG DIVERGE DU CANEVAS : on ne
+     reimplemente aucune geometrie. shapePath() et pathPath() dessinent
+     deja chaque forme ; on leur donne un faux contexte qui, au lieu de
+     tracer, ecrit la commande en SVG. La forme exportee est donc
+     litteralement celle qui est affichee.
+
+     CE QUE LE SVG NE PEUT PAS PORTER, ET QU'ON DIT PLUTOT QUE DE LE
+     TAIRE : le pochoir de detourage (mask2) est une image de canevas,
+     il n'a pas d'equivalent ; le grain et les voiles restent des
+     images. L'ecran d'export l'annonce avant de lancer.
+     =================================================================== */
+
+  /* Un faux contexte 2D : il ne dessine rien, il ecrit du SVG. */
+  function TraceurSVG() {
+    this.d = '';
+    this.x = 0; this.y = 0;
+  }
+  TraceurSVG.prototype = {
+    beginPath: function () { this.d = ''; },
+    closePath: function () { this.d += 'Z '; },
+    moveTo: function (x, y) { this.d += 'M' + n3(x) + ' ' + n3(y) + ' '; this.x = x; this.y = y; },
+    lineTo: function (x, y) { this.d += 'L' + n3(x) + ' ' + n3(y) + ' '; this.x = x; this.y = y; },
+    quadraticCurveTo: function (cx, cy, x, y) {
+      this.d += 'Q' + n3(cx) + ' ' + n3(cy) + ' ' + n3(x) + ' ' + n3(y) + ' '; this.x = x; this.y = y;
+    },
+    bezierCurveTo: function (c1x, c1y, c2x, c2y, x, y) {
+      this.d += 'C' + n3(c1x) + ' ' + n3(c1y) + ' ' + n3(c2x) + ' ' + n3(c2y) + ' ' + n3(x) + ' ' + n3(y) + ' ';
+      this.x = x; this.y = y;
+    },
+    rect: function (x, y, w, h) {
+      this.d += 'M' + n3(x) + ' ' + n3(y) + ' H' + n3(x + w) + ' V' + n3(y + h) + ' H' + n3(x) + ' Z ';
+    },
+    /* une ellipse s'ecrit avec deux arcs : c'est la seule forme SVG qui
+       ne se deduit pas mot pour mot de l'appel canvas */
+    ellipse: function (cx, cy, rx, ry) {
+      this.d += 'M' + n3(cx - rx) + ' ' + n3(cy) +
+        ' a' + n3(rx) + ' ' + n3(ry) + ' 0 1 0 ' + n3(rx * 2) + ' 0' +
+        ' a' + n3(rx) + ' ' + n3(ry) + ' 0 1 0 ' + n3(-rx * 2) + ' 0 Z ';
+    },
+    arc: function (cx, cy, r) { this.ellipse(cx, cy, r, r); },
+    save: function () {}, restore: function () {}, clip: function () {},
+    setTransform: function () {}, translate: function () {}, scale: function () {}, rotate: function () {}
+  };
+  function n3(v) { return Math.round(v * 1000) / 1000; }
+  /* Le canevas et le CSS nomment les fusions presque pareil : seuls
+     'source-over' (le defaut) et les modes de composition qui n'existent
+     pas en CSS demandent une traduction. Un mode inconnu retombe sur
+     'normal' plutot que d'ecrire dans le SVG un mot qu'aucun lecteur ne
+     comprendra. */
+  var BLEND_CSS = {
+    'source-over': 'normal', 'multiply': 'multiply', 'screen': 'screen',
+    'overlay': 'overlay', 'darken': 'darken', 'lighten': 'lighten',
+    'color-dodge': 'color-dodge', 'color-burn': 'color-burn',
+    'hard-light': 'hard-light', 'soft-light': 'soft-light',
+    'difference': 'difference', 'exclusion': 'exclusion',
+    'hue': 'hue', 'saturation': 'saturation', 'color': 'color', 'luminosity': 'luminosity'
+  };
+  function blendCss(b) { return BLEND_CSS[b] || 'normal'; }
+
+  function xmlEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  }
+
+  function traceDe(fn, l) {
+    var t = new TraceurSVG();
+    try { fn(t, l); } catch (e) { return ''; }
+    return t.d.trim();
+  }
+
+  /* Une peinture : aplat, degrade lineaire ou radial. Les degrades
+     partent dans <defs> et rendent leur url(#id). */
+  var _svgId = 0;
+  function peintureSVG(paint, w, h, defs) {
+    if (!paint || paint.type === 'none') return 'none';
+    if (paint.type === 'solid' || !paint.type) return cssHex(paint.color);
+    var id = 'g' + (++_svgId);
+    var p0 = clamp((paint.stop0 == null ? 0 : paint.stop0), 0, 100);
+    var p1 = clamp((paint.stop1 == null ? 100 : paint.stop1), 0, 100);
+    if (p1 < p0) { var t = p0; p0 = p1; p1 = t; }
+    var a = cssHex(paint.from), oa = alphaDe(paint.from);
+    var b = cssHex(paint.to), ob = alphaDe(paint.to);
+    if (paint.type === 'linear') {
+      var ang = deg2rad(paint.angle == null ? 90 : paint.angle);
+      var cx = w / 2, cy = h / 2;
+      var r = (Math.abs(w * Math.cos(ang)) + Math.abs(h * Math.sin(ang))) / 2;
+      defs.push('<linearGradient id="' + id + '" gradientUnits="userSpaceOnUse"' +
+        ' x1="' + n3(cx - Math.cos(ang) * r) + '" y1="' + n3(cy - Math.sin(ang) * r) +
+        '" x2="' + n3(cx + Math.cos(ang) * r) + '" y2="' + n3(cy + Math.sin(ang) * r) + '">' +
+        '<stop offset="' + p0 + '%" stop-color="' + a + '" stop-opacity="' + oa + '"/>' +
+        '<stop offset="' + p1 + '%" stop-color="' + b + '" stop-opacity="' + ob + '"/></linearGradient>');
+    } else {
+      var mx = (paint.cx == null ? 50 : paint.cx) / 100 * w;
+      var my = (paint.cy == null ? 50 : paint.cy) / 100 * h;
+      var ray = Math.max(0.01, (paint.rayon == null ? 100 : paint.rayon) / 100 * Math.max(w, h) / 2);
+      defs.push('<radialGradient id="' + id + '" gradientUnits="userSpaceOnUse"' +
+        ' cx="' + n3(mx) + '" cy="' + n3(my) + '" r="' + n3(ray) + '">' +
+        '<stop offset="' + p0 + '%" stop-color="' + a + '" stop-opacity="' + oa + '"/>' +
+        '<stop offset="' + p1 + '%" stop-color="' + b + '" stop-opacity="' + ob + '"/></radialGradient>');
+    }
+    return 'url(#' + id + ')';
+  }
+  function cssHex(c) { return (c && c.hex) || '#000000'; }
+  function alphaDe(c) { return (c && c.a != null) ? c.a : 1; }
+
+  /* La transformation d'un calque, dans l'ordre exact du rendu. */
+  function transformSVG(l) {
+    var t = 'translate(' + n3(l.x) + ' ' + n3(l.y) + ')';
+    var cx = l.w / 2, cy = l.h / 2;
+    if (l.rot) t += ' rotate(' + n3(l.rot) + ' ' + n3(cx) + ' ' + n3(cy) + ')';
+    if (l.flipH || l.flipV) {
+      t += ' translate(' + n3(cx) + ' ' + n3(cy) + ') scale(' +
+        (l.flipH ? -1 : 1) + ' ' + (l.flipV ? -1 : 1) + ') translate(' + n3(-cx) + ' ' + n3(-cy) + ')';
+    }
+    return t;
+  }
+
+  function calqueSVG(l, defs, avert) {
+    if (!l.visible) return '';
+    var attrs = ' transform="' + transformSVG(l) + '"';
+    if (l.opacity != null && l.opacity < 1) attrs += ' opacity="' + n3(l.opacity) + '"';
+    var style = [];
+    if (l.blend && l.blend !== 'source-over') style.push('mix-blend-mode:' + blendCss(l.blend));
+    var fcss = filterCss(l.fx);
+    /* LE FILTRE VA SUR L'IMAGE, PAS SUR SON GROUPE.
+       Le canevas filtre l'image PUIS peint la teinte par-dessus. Pose
+       sur le groupe, le meme filtre decolorait aussi la teinte : la
+       photo teintee en vert du modele « Duel » ressortait grise dans le
+       SVG. Constate en comparant les deux rendus cote a cote. */
+    var filtreSurImage = (l.type === 'image' || l.type === 'frame');
+    if (fcss && fcss !== 'none' && !filtreSurImage) style.push('filter:' + fcss);
+    if (style.length) attrs += ' style="' + style.join(';') + '"';
+
+    if (l.type === 'group') {
+      var dedans = (l.children || []).map(function (c) { return calqueSVG(c, defs, avert); }).join('');
+      return '<g' + attrs + '>' + dedans + '</g>';
+    }
+
+    if (l.type === 'shape' || l.type === 'path') {
+      var d = traceDe(l.type === 'shape' ? shapePath : pathPath, l);
+      if (!d) return '';
+      var f = peintureSVG(l.fill, l.w, l.h, defs);
+      var s = '<path d="' + d + '" fill="' + f + '"';
+      if (l.fill && l.fill.type === 'solid' && alphaDe(l.fill.color) < 1) s += ' fill-opacity="' + alphaDe(l.fill.color) + '"';
+      if (l.stroke && l.stroke.w > 0) {
+        s += ' stroke="' + cssHex(l.stroke.color) + '" stroke-width="' + n3(l.stroke.w) + '"' +
+             ' stroke-opacity="' + alphaDe(l.stroke.color) + '"';
+        if (l.stroke.dash) s += ' stroke-dasharray="' + n3(l.stroke.dash) + '"';
+        if (l.cap) s += ' stroke-linecap="' + l.cap + '"';
+      }
+      s += '/>';
+      return '<g' + attrs + '>' + s + '</g>';
+    }
+
+    if (l.type === 'image' || l.type === 'frame') {
+      if (!l.src) return '';
+      if (l.mask2) avert.pochoir = true;
+      var e = imgCache[l.src];
+      var iw = (e && e.img && (e.img.naturalWidth || e.img.width)) || l.w;
+      var ih = (e && e.img && (e.img.naturalHeight || e.img.height)) || l.h;
+      var r = fitRect(iw, ih, l.w, l.h, l.fit || 'cover', l.zoom || 1,
+                      l.ox == null ? .5 : l.ox, l.oy == null ? .5 : l.oy);
+      var idc = 'c' + (++_svgId);
+      var dm = traceDe(function (t) { maskPath(t, l.mask || 'rect', l.w, l.h, l.radius || 0); }, l);
+      defs.push('<clipPath id="' + idc + '"><path d="' + dm + '"/></clipPath>');
+      var img = '<image href="' + xmlEsc(l.src) + '" x="' + n3(r.x) + '" y="' + n3(r.y) +
+        '" width="' + n3(r.w) + '" height="' + n3(r.h) + '" preserveAspectRatio="none"' +
+        ((fcss && fcss !== 'none') ? ' style="filter:' + fcss + '"' : '') + '/>';
+      var dedans2 = '<g clip-path="url(#' + idc + ')">' + img;
+      if (l.fx && l.fx.tintAmt > 0) {
+        dedans2 += '<path d="' + dm + '" fill="' + cssHex(l.fx.tint) + '" opacity="' + n3(l.fx.tintAmt) + '"/>';
+      }
+      if (l.fx && l.fx.veil > 0) {
+        dedans2 += '<path d="' + dm + '" fill="#000000" opacity="' + n3(l.fx.veil) + '"/>';
+      }
+      dedans2 += '</g>';
+      if (l.stroke && l.stroke.w > 0) {
+        dedans2 += '<path d="' + dm + '" fill="none" stroke="' + cssHex(l.stroke.color) +
+          '" stroke-width="' + n3(l.stroke.w) + '"/>';
+      }
+      return '<g' + attrs + '>' + dedans2 + '</g>';
+    }
+
+    if (l.type === 'text') {
+      /* On reprend la mise en page du canevas ligne par ligne : c'est
+         elle qui decide ou tombe chaque mot, y compris en colonne. */
+      var lay = layoutText(l, false);
+      var out = '';
+      var dy = 0;
+      if (l.ts.valign === 'middle') dy = (l.h - lay.h) / 2;
+      else if (l.ts.valign === 'bottom') dy = l.h - lay.h;
+      lay.lines.forEach(function (ln) {
+        var lx = 0;
+        if (l.ts.align === 'center') lx = (l.w - ln.w) / 2;
+        else if (l.ts.align === 'right') lx = l.w - ln.w;
+        ln.items.forEach(function (it) {
+          if (!it.t) return;
+          var st = it.st;
+          out += '<text x="' + n3(lx + it.x) + '" y="' + n3(dy + ln.y + ln.base) + '"' +
+            ' font-family="' + xmlEsc(st.font) + '"' +
+            ' font-size="' + n3(st.size) + '"' +
+            ' font-weight="' + (st.weight || 400) + '"' +
+            (st.italic ? ' font-style="italic"' : '') +
+            (st.stretch && st.stretch !== 'normal' ? ' font-stretch="' + st.stretch + '"' : '') +
+            (st.tracking ? ' letter-spacing="' + n3(st.tracking * st.size) + '"' : '') +
+            ' fill="' + (st.hollow ? 'none' : cssHex(st.color)) + '"' +
+            (st.hollow ? ' stroke="' + cssHex(st.color) + '" stroke-width="' + n3(st.strokeW || 1) + '"' : '') +
+            ' xml:space="preserve">' + xmlEsc(it.t) + '</text>';
+        });
+      });
+      return '<g' + attrs + '>' + out + '</g>';
+    }
+    return '';
+  }
+
+  function exportSVG() {
+    closeModal();
+    rangerPlanche();
+    _svgId = 0;
+    var defs = [], avert = { pochoir: false };
+    var corps = '';
+
+    /* le fond du document */
+    var fondPeint = doc.bg && doc.bg.type !== 'none'
+      ? peintureSVG(doc.bg.type === 'solid' ? { type: 'solid', color: doc.bg.color } : doc.bg, doc.w, doc.h, defs)
+      : 'none';
+    if (fondPeint !== 'none') {
+      corps += '<rect x="0" y="0" width="' + doc.w + '" height="' + doc.h + '" fill="' + fondPeint + '"/>';
+    }
+    doc.layers.forEach(function (l) { corps += calqueSVG(l, defs, avert); });
+
+    var svg = '<?xml version="1.0" encoding="UTF-8"?>' +
+      '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"' +
+      ' width="' + doc.w + '" height="' + doc.h + '" viewBox="0 0 ' + doc.w + ' ' + doc.h + '">' +
+      '<title>' + xmlEsc(doc.name || 'Affiche') + '</title>' +
+      (defs.length ? '<defs>' + defs.join('') + '</defs>' : '') +
+      corps + '</svg>';
+
+    var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    var nom = slug(doc.name || 'affiche') + '-' + today() + '.svg';
+    if (api && api.download) api.download(blob, nom); else downloadBlob(blob, nom);
+    toast(avert.pochoir
+      ? 'SVG exporté — un détourage au pinceau n’a pas pu être transporté'
+      : 'SVG exporté', false, !avert.pochoir);
+  }
+
   function exportSerie() {
     closeModal();
     var cibles = ['story', 'post', 'carre'];
@@ -9079,6 +9334,8 @@ window.BaobabsStudio = (function () {
       '<div class="bs-sec-lab" style="padding:16px 0 8px">Autres sorties</div><div class="bs-list" style="padding:0">' +
       '<button type="button" class="bs-item" data-act="expSerie"><span class="bs-item-txt"><b>La série — 3 formats</b>' +
       '<small>La même affiche en story, post portrait et carré</small></span></button>' +
+      '<button type="button" class="bs-item" data-act="expSvg"><span class="bs-item-txt"><b>SVG — vectoriel</b>' +
+      '<small>Formes, traces et textes restent modifiables dans Illustrator ou Inkscape</small></span></button>' +
       '<button type="button" class="bs-item" data-act="doExportJson"><span class="bs-item-txt"><b>Fichier de projet (.json)</b>' +
       '<small>Pour rouvrir l’affiche plus tard, calques compris</small></span></button>' +
       '</div>';
@@ -10052,6 +10309,7 @@ window.BaobabsStudio = (function () {
       case 'serieCal': remplirCalendrier(); return true;
       case 'expScale': expOpts.scale = num(el.getAttribute('data-s'), 2); openExport(); return true;
       case 'expGo': lancerExport(); return true;
+      case 'expSvg': exportSVG(); return true;
       case 'expSerie': exportSerie(); return true;
       case 'champOk': validerChamp(el.getAttribute('data-i')); return true;
       case 'rpOk': poserReperes(); return true;
@@ -10849,6 +11107,7 @@ window.BaobabsStudio = (function () {
         M('Exporter le carrousel', 'm.plexport', null, { off: !aDesPlanches(), why: 'Ce document n a qu une planche' }),
         M('Exporter la série (3 formats)', 'm.serie'),
         M('Les affiches du mois…', 'm.mois'),
+        M('Exporter en SVG (vectoriel)', 'm.svg'),
         M('Exporter le projet (.json)', 'm.json'),
         SEP,
         M('Partager sur les réseaux…', 'm.partage', 'Ctrl ⇧ P'),
@@ -12163,6 +12422,7 @@ window.BaobabsStudio = (function () {
       case 'm.plexport': exportCarrousel(2); return;
       case 'm.serie':    exportSerie(); return;
       case 'm.mois':     ouvrirSerie(); return;
+      case 'm.svg':      exportSVG(); return;
       case 'm.json':     exportJson(); return;
       case 'm.partage':  partager(); return;
       case 'm.publish':  publish(); return;
