@@ -3535,6 +3535,51 @@ window.BaobabsStudio = (function () {
     setTool('select');
   }
 
+  /* NOUVEAU CALQUE DEPUIS LA PILE.
+     On ne pouvait creer un calque QUE par la barre d'outils, en le
+     tracant au pointeur. Le panneau Calques -- l'endroit ou l'on pense a
+     ajouter un calque -- n'offrait que grouper, monter, descendre,
+     supprimer. Photoshop, Figma et Illustrator ont tous ce bouton la.
+
+     Le calque se pose au centre de ce qu'on VOIT, pas au centre de
+     l'affiche : en travaillant zoome dans un coin, un calque pose au
+     milieu du document apparaitrait hors de l'ecran et on le croirait
+     perdu. Il suit ensuite la regle de poser() -- au-dessus du calque
+     choisi, dans le groupe ou l'on travaille. */
+  function nouveauCalque(kind) {
+    if (!doc) return;
+    var s = sceneSize();
+    var c = s2d(s.w / 2, s.h / 2);
+    var NOMS = { text: 'Texte', rect: 'Rectangle', ellipse: 'Ellipse',
+                 line: 'Ligne', frame: 'Cadre photo' };
+    change(function () { finishCreateClick({ tool: kind, x0: c.x, y0: c.y }); },
+           'Nouveau calque');
+    refreshAll();
+    toast((NOMS[kind] || 'Calque') + ' ajouté');
+  }
+
+  /* Le petit menu du bouton +, monte avec la meme machinerie que le menu
+     du clic droit : une seule facon de dessiner un menu dans le Studio. */
+  function menuNouveauCalque(x, y) {
+    var h = '<div class="bs-menu-lab">Nouveau calque</div>';
+    [['text', 'Texte', 'T'], ['rect', 'Rectangle', 'R'], ['ellipse', 'Ellipse', 'O'],
+     ['line', 'Ligne', 'L'], ['frame', 'Cadre photo', 'F']].forEach(function (o) {
+      h += '<button type="button" data-neuf="' + o[0] + '"><span>' + o[1] +
+           '</span><kbd>' + o[2] + '</kbd></button>';
+    });
+    els.ctx.innerHTML = h;
+    els.ctx.classList.add('is-on');
+    var r = els.ctx.getBoundingClientRect();
+    els.ctx.style.left = Math.min(x, window.innerWidth - r.width - 8) + 'px';
+    els.ctx.style.top = Math.min(y, window.innerHeight - r.height - 8) + 'px';
+    $$('button[data-neuf]', els.ctx).forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-neuf');
+        closeCtx();
+        nouveauCalque(k);
+      });
+    });
+  }
   function finishCreateClick(dg) {
     var l = null, W = doc.w;
     if (dg.tool === 'text') {
@@ -8976,6 +9021,23 @@ window.BaobabsStudio = (function () {
       }
       if (k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
       if (k === 'y') { e.preventDefault(); redo(); return; }
+      /* CTRL+T : LE REFLEXE DE TOUT LE MONDE, ET IL NE FAISAIT RIEN.
+         Le Studio n'a pas de « mode transformation » a entrer : les
+         poignees sont toujours la des qu'un calque est choisi. Ctrl+T
+         amene donc ce qu'on cherche a l'ecran -- l'outil Selection, la
+         selection cadree, et le curseur dans la Largeur, prete a taper.
+         Rien de decoratif : les trois gestes qu'on fait apres l'avoir
+         presse. */
+      if (k === 't') {
+        e.preventDefault();
+        if (!sel.length) { toast('Choisissez d abord un calque'); return; }
+        setTool('select');
+        zoomToSelection();
+        var champW = els.right && els.right.querySelector('[data-p="w"]');
+        if (champW) { champW.focus(); champW.select(); }
+        toast('Poignées sur l affiche, ou les champs à droite');
+        return;
+      }
       if (k === 'd') { e.preventDefault(); duplicateSelected(); return; }
       if (k === 'g') { e.preventDefault(); groupSelected(); return; }
       if (k === 'a') { e.preventDefault(); selectAll(); return; }
@@ -9507,6 +9569,7 @@ window.BaobabsStudio = (function () {
       tglSafe: $('#bs-tgl-safe'),
       tglPreview: $('#bs-tgl-preview'),
       float: $('#bs-float'),
+      lyrNew: $('#bs-lyr-new'),
       lyrGroup: $('#bs-lyr-group'),
       home: $('#bs-home'),
       homeMain: $('#bs-home-main'),
@@ -9563,6 +9626,10 @@ window.BaobabsStudio = (function () {
     on('#bs-tgl-snap', 'click', function () { toggleFlag('snap'); });
     on('#bs-tgl-safe', 'click', function () { toggleFlag('safe'); });
     on('#bs-tgl-preview', 'click', togglePreview);
+    on('#bs-lyr-new', 'click', function (e) {
+      var r = els.lyrNew.getBoundingClientRect();
+      menuNouveauCalque(r.left, r.bottom + 4);
+    });
     on('#bs-lyr-group', 'click', groupSelected);
     on('#bs-lyr-up', 'click', function () { var l = selOne(); if (l) moveLayerOrder(l.id, 1); });
     on('#bs-lyr-down', 'click', function () { var l = selOne(); if (l) moveLayerOrder(l.id, -1); });
