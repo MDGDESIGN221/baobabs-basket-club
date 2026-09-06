@@ -1562,7 +1562,87 @@ window.BaobabsStudio = (function () {
       if (ctx.isPointInStroke && ctx.isPointInStroke(p.x, p.y)) return true;
       return false;
     }
+
+    /* UNE IMAGE S'ATTRAPE LA OU ON LA VOIT, PAS SUR SA BOITE.
+
+       C'est d'ici que venait « j'appuie sur un element et c'est un
+       autre qui se deplace ». Une joueuse detouree occupe un grand
+       rectangle presque entierement TRANSPARENT ; un logo rond occupe
+       un carre. On cliquait le titre derriere, la boite de la photo
+       l'emportait -- elle est plus haut dans la pile -- et c'est elle
+       qui partait. Rien ne le laissait deviner : a l'ecran, on avait
+       vise le titre.
+
+       Trois filtres, du moins cher au plus cher :
+         1. la boite, pour ecarter tout de suite ce qui est loin ;
+         2. la FORME du masque -- un cercle n'est pas son carre ;
+         3. l'ALPHA du pixel vise, pochoir de detourage compris.
+
+       La tolerance ne s'applique qu'a la boite : elle sert a rattraper
+       un clic un peu court sur un bord, pas a rendre le vide cliquable.
+
+       Ce qu'on ne peut pas lire, on ne le refuse pas : une image d'un
+       autre domaine salit le canevas et getImageData jette. On retombe
+       alors sur la boite -- se tromper en attrapant vaut mieux que de
+       rendre un calque insaisissable. */
+    if (l.type === 'image' || l.type === 'frame') {
+      if (!inBox(p, l, tol)) return false;
+      if (!l.src) return true;                  /* cadre vide : sa boite EST l'objet */
+      if (!inBox(p, l, 0)) return true;         /* dans la marge de tolerance */
+      if (l.mask && l.mask !== 'rect') {
+        var mc = hitCtx();
+        mc.setTransform(1, 0, 0, 1, 0, 0);
+        maskPath(mc, l.mask, l.w, l.h, l.radius || 0);
+        if (!mc.isPointInPath(p.x, p.y)) return false;
+      }
+      var op = alphaImageA(l, p.x, p.y);
+      if (op === null) return true;             /* illisible : on ne refuse pas */
+      return op > 12;                           /* 5 % d'opacite : le seuil du visible */
+    }
+
     return inBox(p, l, tol);
+  }
+
+  /* L'alpha du pixel vise, en coordonnees du calque.
+     On redessine l'image dans un canevas de 1 x 1 place de facon que le
+     point tombe sur son unique pixel : fitRect() donne le meme cadrage
+     que le rendu, donc on ne reimplemente rien et on ne peut pas diverger
+     de ce qui est affiche. Le pochoir de detourage se multiplie ensuite. */
+  var _alphaCv = null, _alphaCtx = null;
+  function alphaImageA(l, lx, ly) {
+    var e = imgCache[l.src];
+    if (!e || !e.ok || !e.img || e.tainted) return null;
+    var iw = e.img.naturalWidth || e.img.width, ih = e.img.naturalHeight || e.img.height;
+    if (!iw || !ih) return null;
+    if (!_alphaCtx) {
+      _alphaCv = document.createElement('canvas');
+      _alphaCv.width = _alphaCv.height = 1;
+      _alphaCtx = _alphaCv.getContext('2d', { willReadFrequently: true });
+    }
+    var g = _alphaCtx, a;
+    var r = fitRect(iw, ih, l.w, l.h, l.fit || 'cover', l.zoom || 1,
+                    l.ox == null ? .5 : l.ox, l.oy == null ? .5 : l.oy);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, 1, 1);
+    try { g.drawImage(e.img, r.x - lx, r.y - ly, r.w, r.h); } catch (err) { return null; }
+    try { a = g.getImageData(0, 0, 1, 1).data[3]; } catch (err) { return null; }
+    if (!a) return 0;
+
+    /* le detourage : ce qui a ete efface n'est plus attrapable */
+    if (l.mask2) {
+      var mk = maskCache && maskCache[l.id];   /* declare plus bas : ceinture */
+      if (mk && mk.ready && mk.cv) {
+        var mx = Math.round(lx / l.w * mk.cv.width);
+        var my = Math.round(ly / l.h * mk.cv.height);
+        if (mx >= 0 && my >= 0 && mx < mk.cv.width && my < mk.cv.height) {
+          try {
+            var mp = mk.ctx.getImageData(mx, my, 1, 1).data;
+            a = a * (mp[0] / 255);      /* pochoir en niveaux de blanc */
+          } catch (err) {}
+        }
+      }
+    }
+    return a;
   }
   function inBox(p, l, tol) {
     tol = tol || 0;
