@@ -4593,7 +4593,7 @@
     <!-- ===== SECTION CODES PROMO ===== -->
     <section id="section-promos" class="hide">
       <div class="ds-head"><span class="ds-count" id="pm-count">—</span></div>
-      <div class="callout ds-note">Un code se partage partout et s'applique <b>dans le panier de la boutique</b>. Tant que la migration « codes promo » n'a pas été exécutée dans Supabase, cet écran ne peut rien enregistrer.</div>
+      <div class="callout ds-note">Un code se partage partout et s'applique <b>dans le panier de la boutique</b>.</div>
       <div class="grid-2" style="align-items:start"><div>
         <div class="tm-panel">
           <div class="tm-panel-h"><b>Nouveau code</b><span>Court et parlant : TRIBU10, MATCHDAY…</span></div>
@@ -5119,14 +5119,43 @@
   // supprime -- mais verifier d'abord qu'aucun declencheur de la base ne
   // l'appelle encore, sinon les alertes cesseraient sans un mot.
   //
-  // confirmation-reservation n'existe sous AUCUN slug : l'e-mail de
-  // confirmation d'une reservation ne part donc pas. Le site le supporte
-  // (la reservation est acquise avant l'envoi, voir index.html) mais le
-  // supporter ne recoit rien.
+  // REMESURE DU 3 SEPTEMBRE (commit 0c529df), apres deploiement en ligne
+  // de commande : confirmation-reservation et depot-piece repondent, sous
+  // leur propre nom -- deployee par CLI, le slug EST le nom du dossier.
+  // Elles ne sont donc plus dans la liste des absentes.
+  //
+  // LA NEWSLETTER N'EST PAS BRANCHEE, ET CE FICHIER LE DIT EXPRES.
+  //
+  // bright-endpoint repond -- mais c'est le deploiement d'AVANT le portage
+  // vers Resend (commit fd649bd), donc la version qui appelait Brevo et
+  // repondait 500 sans jamais rien envoyer. Pointer dessus donnait le pire
+  // des deux mondes : la sonde de l'ecran Newsletter demande OPTIONS, ce qui
+  // repond « une fonction est la », et jamais « c'est la bonne version ».
+  // Bandeau vert, envoi mort, et une heure a chercher pourquoi.
+  //
+  // On pointe donc sur 'envoi-newsletter', le nom du dossier. C'est la seule
+  // ecriture qui ne mente dans AUCUN des deux etats :
+  //   . rien de deploye sous ce nom -> la sonde recoit un 404, l'ecran leve
+  //     son bandeau et donne la commande exacte ;
+  //   . deploiement par CLI -> le slug EST ce nom : le bandeau s'eteint tout
+  //     seul et l'envoi part, sans avoir a retoucher a ce fichier.
+  //
+  // Plus personne n'appelle bright-endpoint. Voir DEPLOIEMENT-FONCTIONS.txt.
   var FN = {
-    newsletter:  'bright-endpoint',           // affichee « envoi-newsletter »
+    // Le seul appel de ce fichier qui vise une fonction pas encore deployee :
+    //   npx supabase functions deploy envoi-newsletter \
+    //       --project-ref lmwbwasupqkvswukieav
+    newsletter:  'envoi-newsletter',
+
+    reservation: 'confirmation-reservation',  // deployee par CLI le 3 sept.
+
+    // LES DEUX SUIVANTES NE SONT APPELEES DE NULLE PART DANS CE FICHIER, et
+    // c'est normal. On les garde pour que la carte des slugs soit complete,
+    // et pour qu'on arrete de chercher un appelant qui n'existe pas :
+    // l'alerte part d'un declencheur de la base, le depot de piece part du
+    // site (index.html), qui ne voit pas cette table.
     alerte:      'hyper-processor',           // affichee « alerte-inscription »
-    reservation: 'confirmation-reservation'   // absente : a deployer
+    piece:       'depot-piece'                // deployee par CLI le 3 sept.
   };
 
   // storageKey dédiée : sans ça, une session client (index.html) ouverte
@@ -5276,6 +5305,32 @@
       eb.textContent = ROLE_NOMS[currentRole] || currentRole;
       eb.classList.remove('hide');
     }
+
+    // UN RÔLE SANS AUCUN DROIT : LE DIRE, PLUTÔT QUE DE LAISSER UN VIDE.
+    //
+    // chargerRole() se rattrape quand la lecture de role_permissions
+    // ÉCHOUE — repli sur super_admin, personne n'est enfermé dehors.
+    // Elle ne se rattrape pas quand la lecture RÉUSSIT sans rendre une
+    // seule ligne : c'est le cas d'un compte à qui l'on vient de poser un
+    // rôle avant d'avoir rempli ses permissions. Tout disparaît alors sauf
+    // le tableau de bord, sans erreur et sans un mot — et ça ressemble à
+    // une panne. On ne rouvre rien : ouvrir des portes en silence serait
+    // pire que d'en fermer. On explique, et on dit où ça se règle.
+    var dash = document.getElementById('section-dashboard');
+    var seul = !document.querySelector('#sidebar .sb-link[data-section]:not(.hide):not([data-section="dashboard"])');
+    var vieux = dash && dash.querySelector('.ro-banner.sans-droit');
+    if (dash && seul && currentRole && currentRole !== 'super_admin'){
+      if (!vieux){
+        var sd = document.createElement('div');
+        sd.className = 'ro-banner sans-droit';
+        sd.innerHTML = '<span class="ro-ico">⚠</span><span><b>Aucun écran n’est encore ouvert à votre rôle.</b> ' +
+          'Votre casquette (' + esc(ROLE_NOMS[currentRole] || currentRole) + ') existe, mais aucune autorisation ne lui a ' +
+          'été attribuée : l’administration n’est pas en panne, elle est vide pour vous. Un super administrateur ' +
+          'ouvre les écrans un par un dans <b>Comptes &amp; rôles</b> — une ligne par autorisation dans ' +
+          '<code>role_permissions</code>.</span>';
+        dash.insertBefore(sd, dash.firstChild);
+      }
+    } else if (vieux) vieux.remove();
   }
 
   // Le second étage du filtrage par rôle. « voir » décide si l'écran
@@ -7402,7 +7457,9 @@
                     ['#in-board .ds-col-h', '#in-board'],
                     null, '#in-filter-pay', null, null,
                     ['#in-pdf-btn', '#in-board [data-id]', '#in-board'],
-                    null],
+                    // Le lien « Reçu » n'existe qu'a cote d'un versement deja
+                    // encaisse : sans versement, on montre le tableau.
+                    ['[data-inrecu]', '#in-board [data-id]', '#in-board']],
     applications:  ['#cd-list-view',
                     ['#cd-board .ds-col-h', '#cd-board', '#cd-view-switch'],
                     null],
@@ -7435,7 +7492,12 @@
                      '#qgc-c_tryouts .qgc-nav', null],
     c_inscriptions: ['#qgc-c_inscriptions .qgc-nav',
                      ['#qgc-c_inscriptions .qgc-block:not([hidden]) .qgc-fields', '#qgc-c_inscriptions'],
-                     null, null, null, null],
+                     null, null,
+                     // Le champ des categories vit dans le chapitre 2, qui
+                     // n'est pas toujours celui qu'on a sous les yeux :
+                     // le repli ramene alors la barre des chapitres.
+                     ['#qgc-f-ins_categories', '#qgc-c_inscriptions .qgc-nav'],
+                     null],
     c_app:          [['#qgc-c_app .qgc-block:not([hidden]) .qgc-fields', '#qgc-c_app'],
                      '#qgc-c_app .qgc-nav', null],
     c_promo:        [['#qgc-c_promo .qgc-block:not([hidden]) .qgc-fields', '#qgc-c_promo'],
@@ -8429,6 +8491,16 @@
   //
   // La sonde est silencieuse quand tout va bien : un bandeau permanent
   // « tout fonctionne » cesse d'être lu au bout de trois jours.
+  // CE QUE LA SONDE NE SAIT PAS DIRE, ET QUI A DEJA COUTE UNE HEURE :
+  // elle repond « quelque chose repond a cette adresse », jamais « c'est
+  // la bonne version ». Tant que FN.newsletter visait bright-endpoint --
+  // l'ancien deploiement, celui qui appelait Brevo -- la sonde se taisait,
+  // l'ecran paraissait sain, et rien ne partait.
+  //
+  // D'ou la regle posee en tete de script : FN ne porte que le nom du
+  // dossier. Ne JAMAIS y remettre un slug tire au sort pour faire
+  // disparaitre ce bandeau -- le bandeau est la seule chose qui dise la
+  // verite tant que la fonction n'est pas deployee sous son nom.
   function nwSonder(){
     var box = document.getElementById('nw-hs');
     var envoi = document.getElementById('nw-send-btn');
@@ -8442,8 +8514,9 @@
         'Il manque la dernière pièce, à poser une seule fois. Le plus sûr, dans un terminal ' +
         'ouvert sur le dossier du site :</span>' +
         '<code class="nw-hs-cmd">npx supabase login<br>' +
-        'npx supabase link --project-ref lmwbwasupqkvswukieav<br>' +
-        'npx supabase functions deploy</code>' +
+        'npx supabase functions deploy envoi-newsletter --project-ref lmwbwasupqkvswukieav</code>' +
+        '<span>On nomme la fonction : un <code>deploy</code> tout court propose une liste de ' +
+        'projets et part parfois dans le mauvais — c’est arrivé le 2 septembre 2026.</span>' +
         '<span><b>Attention au piège si vous passez par le tableau de bord</b> : le nom que vous ' +
         'tapez n’est qu’une étiquette. L’adresse réelle vient d’un <i>slug</i> tiré au sort ' +
         '(<code>bright-endpoint</code>, <code>swift-api</code>…), visible dans la colonne URL de la liste ' +
@@ -12599,9 +12672,19 @@
 
     box.querySelectorAll('.bn-toggle').forEach(function(b){
       b.addEventListener('click', function(){
+        // Le succès se disait nulle part : la base répondait 204, la liste
+        // se redessinait à l'identique à un libellé près, et on cliquait une
+        // seconde fois en croyant que rien n'était parti. Annonces répond
+        // déjà pour le même geste — les deux écrans parlent maintenant pareil.
+        var on = b.getAttribute('data-on') !== '1';
         b.disabled = true;
-        sbUpdate('banners', b.getAttribute('data-id'), { is_active: b.getAttribute('data-on') !== '1' }, 'Bannières')
-          .then(bnLoad).catch(function(){ b.disabled = false; showMsg(msg, "Le changement a échoué.", false); });
+        sbUpdate('banners', b.getAttribute('data-id'), { is_active: on }, 'Bannières')
+          .then(function(){
+            showMsg(msg, on ? 'En ligne. Elle entre dans le défilé d’accueil.'
+                            : 'Retirée du site. Elle reste ici, prête à resservir.', true);
+            return bnLoad();
+          })
+          .catch(function(){ b.disabled = false; showMsg(msg, "Le changement a échoué.", false); });
       });
     });
 
@@ -19305,7 +19388,9 @@
     box.querySelectorAll('.tk-mail').forEach(function(b){
       b.addEventListener('click',function(){
         b.disabled=true;
-        fetch(SUPABASE_URL + '/functions/v1/confirmation-reservation', {
+        // Par FN, pas en dur : un slug ne s'ecrit qu'a un seul endroit,
+        // sinon un redeploiement en oublie toujours une copie.
+        fetch(SUPABASE_URL + '/functions/v1/' + FN.reservation, {
           method:'POST', headers: sbHeaders({ 'Content-Type':'application/json' }),
           body: JSON.stringify({ reservation_id: b.getAttribute('data-id') })
         }).then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })

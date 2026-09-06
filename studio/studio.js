@@ -2823,6 +2823,17 @@ window.BaobabsStudio = (function () {
 
   function onPointerDown(e) {
     if (!doc) return;
+
+    /* LA BARRE FLOTTANTE VIT DANS LA SCENE, ET LA SCENE ECOUTE LE POINTEUR.
+       Sans ce garde-fou, appuyer sur un de ses boutons etait d'abord traite
+       comme un clic sur le fond : la barre se pose AU-DESSUS de l'objet,
+       donc le point vise tombe dans le vide. La selection sautait,
+       renderFloat() eteignait la barre, et le click arrivait sur un bouton
+       qui n'avait plus rien a commander. Vu de l'ecran : la barre
+       apparait, refuse tout, puis disparait.
+       On rend la main au bouton -- pas de preventDefault, pas de capture :
+       le click part normalement, et floatAction() trouve sa selection. */
+    if (els.float && els.float.contains(e.target)) return;
     var pt = scenePoint(e), p = s2d(pt.sx, pt.sy);
     lastPointer = pt;
     var additive = e.shiftKey;
@@ -9645,7 +9656,11 @@ window.BaobabsStudio = (function () {
     $$('[data-dthumb]', els.homeMain).forEach(function (cv) {
       var id = cv.getAttribute('data-dthumb'), p = null;
       for (var i = 0; i < projectList.length; i++) if (String(projectList[i].id) === String(id)) p = projectList[i];
-      if (p && p.doc) {
+      // `p.doc.layers` et pas seulement `p.doc` : un document sans
+      // calques faisait lire `undefined.length` a walk(), et le forEach
+      // s'arretait la -- la vignette de CE projet et celles de tous les
+      // suivants restaient vides. docThumb, lui, se gardait deja.
+      if (p && p.doc && p.doc.layers) {
         walk(p.doc.layers, function (l) { if ((l.type === 'image' || l.type === 'frame') && l.src) getImage(l.src); });
         try { docThumb(p.doc, cv); } catch (e) {}
         imagesReady().then(function () { try { docThumb(p.doc, cv); } catch (e) {} });

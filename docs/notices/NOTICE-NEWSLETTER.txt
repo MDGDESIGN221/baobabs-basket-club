@@ -7,12 +7,32 @@ Mise en place : 5 minutes si l'e-mail de confirmation est déjà installé
   Supabase → SQL Editor → exécutez sql/migrations/MIGRATION-newsletter.sql
   (le journal des envois).
 
-ÉTAPE 2 — LA FONCTION
-  Supabase → Edge Functions → Deploy a new function
-    Nom EXACT :  envoi-newsletter
-    Collez tout le contenu de  supabase/functions/envoi-newsletter/index.ts  → Deploy.
+ÉTAPE 2 — LA FONCTION, EN LIGNE DE COMMANDE ET PAS AUTREMENT
+
+  NE PASSEZ PAS PAR « Deploy a new function » DANS LE TABLEAU DE BORD.
+  Le nom qu'on y tape n'est qu'une étiquette : l'adresse réelle reçoit un
+  slug tiré au sort (bright-endpoint, swift-api…). La fonction s'affiche
+  bien sous « envoi-newsletter » et répond ailleurs ; l'admin, qui appelle
+  un nom précis, ne la trouve pas. C'est exactement ce qui est arrivé —
+  et comme l'ancienne répondait quand même, l'écran paraissait sain
+  pendant que rien ne partait.
+
+  Un terminal ouvert DANS le dossier du site :
+
+      npx supabase login
+      npx supabase functions deploy envoi-newsletter --project-ref lmwbwasupqkvswukieav
+
+  Déployée ainsi, la fonction prend le nom de son dossier. On la nomme
+  explicitement : un « deploy » tout court enverrait les cinq dossiers,
+  dont alerte-inscription qui tourne déjà ailleurs.
+
   Les secrets RESEND_API_KEY / BBC_SENDER_EMAIL sont déjà en place si
   vous avez suivi NOTICE-EMAIL.txt. Sinon, faites d'abord ses étapes 1-2.
+  Sans BBC_SENDER_EMAIL, la fonction répond mais Resend refuse d'envoyer.
+
+  COMMENT SAVOIR QUE C'EST BON, SANS ENVOYER UN SEUL E-MAIL : ouvrez
+  Admin → Newsletter. Un bandeau orange s'affiche tant que la fonction
+  n'est pas joignable, et disparaît tout seul dès qu'elle l'est.
 
 ÉTAPE 3 — TESTER SANS RISQUE
   Admin → Newsletter :

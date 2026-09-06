@@ -4,6 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>if('scrollRestoration' in history){history.scrollRestoration='manual';}window.scrollTo(0,0);</script>
+<script>
+/* UNE ADRESSE VENUE DE L'ADMIN N'EST PAS UN HREF.
+   esc() protege le HTML ; elle laisse passer javascript:, data: et
+   vbscript: intacts. Tout href construit a partir d'un reglage passe donc
+   par ici : http(s), un chemin absolu ou une ancre, rien d'autre. Ce qui
+   est refuse rend '' -- l'appelant ne pose alors aucun href, et le lien
+   garde celui qu'il a dans le HTML.
+   Pose ici, dans le premier bloc, parce que les <script> suivants ne se
+   voient pas les uns les autres. */
+window.bbLienSur = function (u) {
+  var v = String(u == null ? '' : u).trim();
+  if (!v) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  if (v.charAt(0) === '/' || v.charAt(0) === '#') return v;
+  if (/^(mailto|tel):/i.test(v)) return v;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return '';   // un schema, et pas un des notres
+  return v;                                        // chemin relatif : page.html
+};
+</script>
 <title>Baobabs Basket Club — Dakar</title>
 <meta name="description" content="Baobabs Basket Club, club de basketball fondé à Dakar en 2026. Actualités, effectif, boutique et tryouts officiels 25 & 26 juillet.">
 <meta property="og:title" content="Baobabs Basket Club">
@@ -2291,7 +2310,8 @@
                   'letter-spacing:.08em;text-transform:uppercase';
                 fallback.appendChild(a);
               }
-              a.href = url;
+              var lienSur = window.bbLienSur(url);
+              if (lienSur) a.href = lienSur;
               a.textContent = label || 'Regarder le direct';
             }
 
@@ -6801,7 +6821,8 @@ window.bbCloud = function(url, w){
       });
     }
     // Favicon
-    if(s.favicon_url){ document.querySelectorAll('link[rel="icon"]').forEach(function(fav){ fav.href=s.favicon_url; }); }
+    var favSur = window.bbLienSur(s.favicon_url);
+    if(favSur){ document.querySelectorAll('link[rel="icon"]').forEach(function(fav){ fav.href=favSur; }); }
     // Description (SEO)
     if(s.club_description){ var md=document.querySelector('meta[name="description"]'); if(md) md.setAttribute('content', s.club_description); }
     // Texte du footer
@@ -6811,7 +6832,8 @@ window.bbCloud = function(url, w){
     // Adresse « Le camp de base »
     if(s.club_address){ ['bb-address','bb-bill-address'].forEach(function(id){ var ad=document.getElementById(id); if(ad) ad.textContent=s.club_address; }); }
     // Lien Google Maps (bouton Itinéraire)
-    if(s.club_maps_url){ ['bb-map-cta','bb-bill-map'].forEach(function(id){ var mc=document.getElementById(id); if(mc) mc.href=s.club_maps_url; }); }
+    var mapsSur = window.bbLienSur(s.club_maps_url);
+    if(mapsSur){ ['bb-map-cta','bb-bill-map'].forEach(function(id){ var mc=document.getElementById(id); if(mc) mc.href=mapsSur; }); }
     // Réseaux sociaux — branche tous les liens du footer selon la plateforme détectée
     var soc={ instagram:s.social_instagram, facebook:s.social_facebook, tiktok:s.social_tiktok, youtube:s.social_youtube, linkedin:s.social_linkedin, whatsapp:s.social_whatsapp };
     function detectPlatform(href, label){
@@ -6827,7 +6849,10 @@ window.bbCloud = function(url, w){
     document.querySelectorAll('footer a[href], footer a[aria-label]').forEach(function(a){
       var p=detectPlatform(a.getAttribute('href'), a.getAttribute('aria-label')); if(!p) return;
       var v=soc[p]; if(!v) return;
-      a.href = (p==='whatsapp' && /^\+?\d[\d\s]*$/.test(v)) ? ('https://wa.me/'+v.replace(/[^\d]/g,'')) : v;
+      var socSur = (p==='whatsapp' && /^\+?\d[\d\s]*$/.test(v))
+        ? ('https://wa.me/'+v.replace(/[^\d]/g,''))
+        : window.bbLienSur(v);
+      if (socSur) a.href = socSur;
     });
   }
 
@@ -7048,7 +7073,10 @@ window.bbCloud = function(url, w){
     if(nav.indexOf(low)>=0){ a.setAttribute('data-nav',low); a.href='#'; return; }
     if(low==='contact'){ a.setAttribute('data-cta','contact'); a.href='#'; return; }
     if(low==='abonnement'||low==='subscribe'||low==='newsletter'){ a.setAttribute('data-cta','subscribe'); a.href='#'; return; }
-    a.href=v;
+    // Tout ce qui arrive ici est une adresse libre saisie dans l'admin.
+    // Sans ce filtre, un « javascript:… » devenait le lien du site.
+    var sur = window.bbLienSur(v);
+    if (sur) a.href = sur;
   }
 
   function applyMedia(s){
@@ -7081,7 +7109,8 @@ window.bbCloud = function(url, w){
       wrap.style.display='block';
       var img=document.getElementById('bb-media-'+n+'-img'); if(img){ img.src=(window.bbCloud?window.bbCloud(url,900):(url)); img.alt=cap||''; }
       bbSet('bb-media-'+n+'-caption', cap);
-      if(link){ wrap.href=link; wrap.target='_blank'; wrap.rel='noopener'; } else { wrap.removeAttribute('href'); }
+      var lienMd = window.bbLienSur(link);
+      if(lienMd){ wrap.href=lienMd; wrap.target='_blank'; wrap.rel='noopener'; } else { wrap.removeAttribute('href'); }
     });
     var side=document.getElementById('bb-media-side');
     if(side) side.style.display = anySide ? 'flex' : 'none';

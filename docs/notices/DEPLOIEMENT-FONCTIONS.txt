@@ -31,7 +31,7 @@ LE PIÈGE, ET IL EXPLIQUE TOUT
 
   Slug réel                Répond                            C'est donc
   ---------------------------------------------------------------------
-  bright-endpoint          « sujet manquant »                newsletter
+  bright-endpoint          « sujet manquant »                newsletter, ANCIENNE
   hyper-processor          « identifiant d'inscription… »    alerte inscr.
   swift-api                « identifiant d'inscription… »    alerte, DOUBLON
   generate-text            INVALID_CREDENTIALS               aide rédaction
@@ -56,6 +56,43 @@ LE PIÈGE, ET IL EXPLIQUE TOUT
   L'admin appelle désormais les slugs réels : voir la table FN en tête
   du script de admin-matchs.html.
 
+
+LA SEULE CHOSE QUI BLOQUE VRAIMENT AUJOURD'HUI — LA NEWSLETTER
+
+  L'écran Newsletter est complet et la liste des inscrits se remplit,
+  mais AUCUN envoi ne peut partir : la fonction n'est pas branchée.
+
+  POURQUOI ÇA N'AVAIT PAS ÉTÉ VU. bright-endpoint répond — c'est le
+  déploiement fait depuis le tableau de bord, AVANT le portage vers
+  Resend. Donc la version qui appelait Brevo, et qui répondait 500 sans
+  jamais rien envoyer. L'admin pointait dessus, la sonde de l'écran la
+  trouvait, aucun bandeau ne s'affichait : tout paraissait sain. La sonde
+  demande OPTIONS ; ça répond « une fonction est là », jamais « c'est la
+  bonne version ». Une adresse qui répond n'est pas une promesse tenue.
+
+  CE QUI A ÉTÉ CHANGÉ DANS LE CODE. La table FN de admin-matchs.html vise
+  désormais 'envoi-newsletter' — le nom du dossier. L'écran affiche donc
+  son bandeau orange tant que rien n'est déployé sous ce nom : c'est
+  voulu, et c'est la vérité.
+
+  LA COMMANDE QUI RÈGLE TOUT. Un terminal ouvert DANS le dossier du site :
+
+      npx supabase login
+      npx supabase functions deploy envoi-newsletter --project-ref lmwbwasupqkvswukieav
+
+  Déployée ainsi, la fonction prend le nom de son dossier : l'admin la
+  trouve, le bandeau disparaît tout seul au rechargement, et il n'y a
+  RIEN à modifier dans le code après coup.
+
+  ENSUITE, ET SEULEMENT ENSUITE. Vérifiez BBC_SENDER_EMAIL (point 3
+  ci-dessous) : déployée sans son adresse d'expéditeur, la fonction
+  répond mais Resend refuse d'envoyer. Puis « M'envoyer un test » dans
+  l'écran Newsletter avant tout envoi général.
+
+  L'ANCIENNE PEUT PARTIR. Une fois le test reçu, bright-endpoint ne sert
+  plus à rien et plus personne ne l'appelle :
+      npx supabase functions delete bright-endpoint --project-ref lmwbwasupqkvswukieav
+  Rien ne presse — une fonction inutilisée ne coûte rien.
 
 CE QUI RESTE À FAIRE
   1. FAIT le 3 septembre : confirmation-reservation et depot-piece sont
@@ -184,15 +221,19 @@ DÉPLOYER AVEC UN SLUG LISIBLE — LA LIGNE DE COMMANDE
       npx supabase login
       npx supabase functions deploy depot-piece --project-ref lmwbwasupqkvswukieav
 
-  On nomme la fonction : « deploy » tout court enverrait AUSSI
-  envoi-newsletter et alerte-inscription, qui tournent déjà sous
-  bright-endpoint et hyper-processor. On se retrouverait avec des
-  doublons, et il faudrait mettre à jour la table FN de l'admin dans la
-  foulée. On répare ce qui est cassé, on ne touche pas à ce qui marche.
+  ON NOMME TOUJOURS LA FONCTION. « deploy » tout court enverrait les
+  cinq dossiers d'un coup, dont alerte-inscription — qui tourne déjà
+  sous hyper-processor et que le webhook de la base appelle par ce
+  slug-là. On se retrouverait avec un doublon, et l'alerte continuerait
+  d'arriver par l'ancienne sans qu'on sache laquelle sert.
 
-  La dernière commande envoie les quatre fonctions rangées dans
-  supabase/functions/ (envoi-newsletter, confirmation-reservation,
-  alerte-inscription, aide-redaction), chacune sous son propre nom.
+  ATTENTION, CE PARAGRAPHE A DÉJÀ DIT LE CONTRAIRE. Il conseillait aussi
+  de laisser envoi-newsletter tranquille, « puisqu'elle tourne déjà sous
+  bright-endpoint ». C'était faux : bright-endpoint est la version Brevo,
+  qui répond sans rien envoyer. envoi-newsletter EST à déployer — voir la
+  section « LA SEULE CHOSE QUI BLOQUE VRAIMENT AUJOURD'HUI » plus haut.
+
+  Une fonction à la fois, donc, et son --project-ref à chaque ligne.
 
   Le mot de passe demandé au « link » est celui de la BASE DE DONNÉES
   (Project Settings → Database), pas celui de votre compte.
