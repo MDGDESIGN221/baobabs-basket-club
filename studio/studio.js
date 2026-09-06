@@ -972,21 +972,44 @@ window.BaobabsStudio = (function () {
     return true;
   }
 
+  /* L'EMPLACEMENT DU DEGRADE, ET PAS SEULEMENT SES COULEURS.
+     Jusqu'ici un degrade etait cloue au centre de sa boite : le lineaire
+     traversait toujours toute la largeur, le radial partait toujours du
+     milieu avec un rayon impose. On ne pouvait ni serrer la transition,
+     ni pousser un halo dans un coin -- les deux gestes qu'on fait le plus.
+
+     Quatre reglages, tous en POURCENTAGE de la boite, donc valables quel
+     que soit le format :
+       stop0 / stop1  ou les deux couleurs se posent le long de l'axe ;
+       cx / cy        le centre du radial ;
+       rayon          sa portee.
+     Absents, ils valent 0, 100, 50, 50, 100 -- exactement le rendu
+     d'avant. Les projets deja enregistres ne bougent donc pas d'un pixel. */
   function paintStyle(ctx, paint, w, h) {
     if (!paint || paint.type === 'none') return null;
-    if (paint.type === 'linear') {
-      var a = deg2rad(paint.angle || 90);
-      var cx = w / 2, cy = h / 2, r = (Math.abs(w * Math.cos(a)) + Math.abs(h * Math.sin(a))) / 2;
-      var g = ctx.createLinearGradient(cx - Math.cos(a) * r, cy - Math.sin(a) * r, cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-      g.addColorStop(0, css(paint.from));
-      g.addColorStop(1, css(paint.to));
+    if (paint.type === 'linear' || paint.type === 'radial') {
+      var p0 = clamp((paint.stop0 == null ? 0 : paint.stop0) / 100, 0, 1);
+      var p1 = clamp((paint.stop1 == null ? 100 : paint.stop1) / 100, 0, 1);
+      var g;
+      if (paint.type === 'linear') {
+        var a = deg2rad(paint.angle || 90);
+        var cx = w / 2, cy = h / 2;
+        var r = (Math.abs(w * Math.cos(a)) + Math.abs(h * Math.sin(a))) / 2;
+        g = ctx.createLinearGradient(cx - Math.cos(a) * r, cy - Math.sin(a) * r,
+                                     cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      } else {
+        var mx = (paint.cx == null ? 50 : paint.cx) / 100 * w;
+        var my = (paint.cy == null ? 50 : paint.cy) / 100 * h;
+        var ray = (paint.rayon == null ? 100 : paint.rayon) / 100 * Math.max(w, h) / 2;
+        /* un rayon nul ferait jeter createRadialGradient : on garde un fil */
+        g = ctx.createRadialGradient(mx, my, 0, mx, my, Math.max(0.01, ray));
+      }
+      /* Canvas exige des positions croissantes ; il jette si p1 < p0.
+         On les remet dans l'ordre plutot que de refuser la saisie. */
+      if (p1 < p0) { var t = p0; p0 = p1; p1 = t; }
+      g.addColorStop(p0, css(paint.from));
+      g.addColorStop(p1, css(paint.to));
       return g;
-    }
-    if (paint.type === 'radial') {
-      var g2 = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) / 2);
-      g2.addColorStop(0, css(paint.from));
-      g2.addColorStop(1, css(paint.to));
-      return g2;
     }
     return css(paint.color);
   }
@@ -4172,6 +4195,28 @@ window.BaobabsStudio = (function () {
      25. FRAGMENTS DE FORMULAIRE
      =================================================================== */
 
+  /* L'EMPLACEMENT D'UN DEGRADE, ECRIT UNE FOIS POUR LES TROIS ENDROITS
+     qui en affichent un : le fond du document, une forme, un texte.
+     Les valeurs sont en pourcentage de la boite -- elles suivent donc
+     le calque quand on le redimensionne, et tiennent dans les sept
+     formats. Les defauts rendent exactement le dessin d'avant. */
+  function fPlace(pre, paint, scope) {
+    var o = function (extra) {
+      var r = { unit: '%', dec: 0 };
+      for (var k in extra) r[k] = extra[k];
+      if (scope) r.scope = scope;
+      return r;
+    };
+    var h = fStep('Départ', pre + '.stop0', paint.stop0 == null ? 0 : paint.stop0, o({ min: 0, max: 100 })) +
+            fStep('Arrivée', pre + '.stop1', paint.stop1 == null ? 100 : paint.stop1, o({ min: 0, max: 100 }));
+    if (paint.type === 'radial') {
+      h += fStep('Centre ↔', pre + '.cx', paint.cx == null ? 50 : paint.cx, o({})) +
+           fStep('Centre ↕', pre + '.cy', paint.cy == null ? 50 : paint.cy, o({})) +
+           fStep('Portée', pre + '.rayon', paint.rayon == null ? 100 : paint.rayon, o({ min: 1, max: 400 }));
+    }
+    return h;
+  }
+
   function fStep(label, path, value, opts) {
     opts = opts || {};
     return '<div class="bs-f"><label>' + esc(label) + '</label>' +
@@ -4382,7 +4427,8 @@ window.BaobabsStudio = (function () {
       (bgKind === 'linear' || bgKind === 'radial'
         ? fColor('Début', 'bg.from', doc.bg.from, { scope: 'doc' }) +
           fColor('Fin', 'bg.to', doc.bg.to, { scope: 'doc' }) +
-          (bgKind === 'linear' ? fStep('Angle', 'bg.angle', doc.bg.angle, { scope: 'doc', unit: '°', dec: 0 }) : '')
+          (bgKind === 'linear' ? fStep('Angle', 'bg.angle', doc.bg.angle, { scope: 'doc', unit: '°', dec: 0 }) : '') +
+          fPlace('bg', doc.bg, 'doc')
         : ''));
 
     var sw = '';
@@ -4690,7 +4736,8 @@ window.BaobabsStudio = (function () {
         (l.fill.type === 'solid' ? fColor('Couleur', 'fill.color', l.fill.color) : '') +
         (l.fill.type === 'linear' || l.fill.type === 'radial'
           ? fColor('Début', 'fill.from', l.fill.from) + fColor('Fin', 'fill.to', l.fill.to) +
-            (l.fill.type === 'linear' ? fStep('Angle', 'fill.angle', l.fill.angle || 90, { unit: '°', dec: 0 }) : '')
+            (l.fill.type === 'linear' ? fStep('Angle', 'fill.angle', l.fill.angle || 90, { unit: '°', dec: 0 }) : '') +
+            fPlace('fill', l.fill)
           : ''));
     }
 
@@ -4716,7 +4763,8 @@ window.BaobabsStudio = (function () {
       ]) +
       (l.fill.type === 'solid' ? fColor('Couleur', 'fill.color', l.fill.color) : '') +
       (l.fill.type === 'linear' ? fColor('Début', 'fill.from', l.fill.from) + fColor('Fin', 'fill.to', l.fill.to) +
-        fStep('Angle', 'fill.angle', l.fill.angle || 90, { unit: '°', dec: 0 }) : ''));
+        fStep('Angle', 'fill.angle', l.fill.angle || 90, { unit: '°', dec: 0 }) +
+        fPlace('fill', l.fill) : ''));
 
     h += fGroup('Trait',
       fStep('Épaisseur', 'stroke.w', (l.stroke && l.stroke.w) || 0, { unit: 'px', dec: 1, min: 0, step: .5 }) +
