@@ -2381,6 +2381,10 @@ window.BaobabsStudio = (function () {
     h += B('center', 'Centrer dans l affiche', '<svg width="14" height="14" viewBox="0 0 24 24" ' + S + '><path d="M12 3v18M3 12h18"/><rect x="8.5" y="8.5" width="7" height="7"/></svg>');
     h += B('front', 'Premier plan', '<svg width="14" height="14" viewBox="0 0 24 24" ' + S + '><rect x="3" y="3" width="12" height="12" rx="2"/><path d="M9 21h10a2 2 0 0 0 2-2V9"/></svg>');
     h += B('clip', l.clip ? 'Retirer le masque' : 'Masquer par le calque du dessous', '<svg width="14" height="14" viewBox="0 0 24 24" ' + S + '><circle cx="9" cy="9" r="6"/><path d="M13 13h8v8h-8z"/></svg>');
+    /* La pipette etait rangee dans la barre d'outils, sous une seule
+       lettre : personne ne la trouvait au moment de choisir une couleur.
+       Elle est desormais la, sous le pouce. */
+    h += B('pick', 'Pipette : piocher une couleur de l affiche', '<svg width="14" height="14" viewBox="0 0 24 24" ' + S + '><path d="m18.5 2.5 3 3-8 8-3-3 8-8Z"/><path d="M11 8 3.5 15.5V20.5h5L16 13"/></svg>');
     h += '<span class="bs-float-sep"></span>';
     h += B('dup', 'Dupliquer (Ctrl+D)', '<svg width="14" height="14" viewBox="0 0 24 24" ' + S + '><rect x="3.5" y="3.5" width="12" height="12" rx="2"/><path d="M8 20.5h10a2.5 2.5 0 0 0 2.5-2.5V8"/></svg>');
     h += B('del', 'Supprimer (Suppr)', '<svg width="14" height="14" viewBox="0 0 24 24" ' + S + '><path d="M4 6.5h16M9 6.5V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5v2M17.5 6.5V19a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2V6.5"/></svg>', 'bs-f-danger');
@@ -2460,6 +2464,7 @@ window.BaobabsStudio = (function () {
     [doc.palette.accent, doc.palette.fg, doc.palette.fg2, doc.palette.bg].forEach(function (c) {
       h += '<button type="button" class="bs-float-sw" data-fswatch="' + c + '" style="background:' + c + '" title="' + c + '"></button>';
     });
+    h += B('pick', 'Pipette : piocher une couleur de l affiche', '<svg width="14" height="14" viewBox="0 0 24 24" ' + S + '><path d="m18.5 2.5 3 3-8 8-3-3 8-8Z"/><path d="M11 8 3.5 15.5V20.5h5L16 13"/></svg>', false);
 
     h += '<span class="bs-float-sep"></span>';
     h += B('dup', 'Dupliquer (Ctrl+D)',
@@ -2541,6 +2546,9 @@ window.BaobabsStudio = (function () {
     if (a === 'crop' && l) { if (l.src) { contentEdit = l.id; renderFloat(); requestDraw(); } else openPanel('images'); return; }
     if (a === 'swap' && l) { pendingFrame = l.id; els.file.click(); return; }
     if (a === 'nodes') return setTool('node');
+    /* La pipette garde le mode texte ouvert (voir setTool) : si des
+       lettres sont selectionnees, la couleur piochee n'ira qu'a elles. */
+    if (a === 'pick') return setTool('eyedrop');
     if (a === 'front' && l) return sendTo(l.id, 'front');
     if (a === 'clip' && l) return change(function () { l.clip = !l.clip; });
     runAction(a, { getAttribute: function () { return null; } });
@@ -8585,7 +8593,12 @@ window.BaobabsStudio = (function () {
     $$('.bs-tool', root).forEach(function (b) { b.classList.toggle('is-on', b.getAttribute('data-tool') === t); });
     renderToolOpts();
     majAide();
-    if (t !== 'select' && t !== 'node' && edit) exitTextEdit();
+    /* LA PIPETTE RESTE DANS LE TEXTE. Sans 'eyedrop' ici, choisir la
+       pipette fermait l'edition -- et applyPickedColor(), qui sait
+       pourtant colorer une selection de lettres, ne trouvait plus jamais
+       `edit`. Cette branche etait morte : on ne pouvait piocher une
+       couleur que pour un calque entier. */
+    if (t !== 'select' && t !== 'node' && t !== 'eyedrop' && edit) exitTextEdit();
     if (t !== 'select') contentEdit = null;
     setCursor(t === 'hand' ? 'hand' : (t === 'text' ? 'text' : (t === 'zoom' ? 'zoom-in' : (t === 'select' || t === 'node' ? 'select' : 'cross'))));
     requestDraw();
