@@ -2090,6 +2090,22 @@
   /* Les casquettes en toutes lettres — le tableau dit « quels écrans »,
      ces cartes disent « quel métier ». */
   .cp-roles{display:grid;gap:9px;margin-top:4px}
+  /* l'espace du proprietaire */
+  .cp-form{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:8px}
+  .cp-form .qg-in{flex:1 1 220px;min-width:0}
+  .cp-form .btn{flex:none;width:auto}
+  .cp-cq-list{display:grid;gap:7px;margin-top:8px}
+  .cp-cq{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+  .cp-cq b{font-family:var(--font-ui);font-size:13.5px}
+  .cp-cq span{flex:1;min-width:0;font-size:12.5px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cp-cq-sys{flex:none;font-size:10.5px;color:var(--gold);border:1px solid rgba(198,162,87,.4);border-radius:20px;padding:2px 8px}
+  .cp-cq-x{flex:none;background:none;border:1px solid var(--line);border-radius:8px;color:var(--faint);padding:4px 9px;font-size:12px;cursor:pointer}
+  .cp-cq-x:hover{border-color:var(--danger);color:var(--danger)}
+  /* une case reglable se donne l'air de l'etre, mais seulement quand
+     elle l'est : un curseur main sur une case morte est un mensonge */
+  #cp-matrice td.cp-n.cp-clic{cursor:pointer}
+  #cp-matrice td.cp-n.cp-clic:hover{outline:2px solid var(--gold);outline-offset:-2px}
+  #cp-matrice td.cp-n.cp-encours{opacity:.4}
   .cp-role{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:rgba(243,239,230,.02)}
   .cp-role b{display:block;font-size:14px;margin-bottom:3px}
   .cp-role span{color:var(--muted);font-size:13.5px;line-height:1.55}
@@ -4978,6 +4994,42 @@
           <span><i class="cp-n-r">○</i>Consulte seulement</span>
           <span><i class="cp-n-n">·</i>N'a pas l'écran&nbsp;: il n'apparaît pas dans son menu</span>
         </div>
+        <p class="card-sub hide" id="cp-matrice-aide" style="margin-top:10px">Cliquez une case pour la faire tourner&nbsp;: <b>rien</b> → <b>consulte</b> → <b>consulte et modifie</b>. Le changement part aussitôt en base et s'applique à la prochaine connexion de la personne.</p>
+      </div>
+
+      <!-- L'ESPACE DU PROPRIETAIRE.
+           Il n'existe que sur un seul compte, et pas seulement parce que
+           les boutons sont caches : les fonctions appelees refusent tout
+           autre appelant, en base. Cacher un bouton n'a jamais empeche
+           personne d'appeler l'API a la main. -->
+      <div class="card cp-proprio hide" id="cp-proprio" style="margin-top:16px">
+        <h2 class="card-title">Espace du propriétaire</h2>
+        <p class="card-sub">Ajouter quelqu'un, inventer une casquette, choisir ses écrans. Cet espace n'apparaît que sur le compte propriétaire du site, et la base refuse ces gestes à tout autre compte.</p>
+
+        <div class="callout ds-note">
+          <b>Le compte se crée d'abord dans Supabase.</b> <i>Authentication › Users › Add user</i>&nbsp;: l'adresse, un mot de passe, et cochez <b>Auto Confirm User</b>. Revenez ensuite ici pour lui donner sa casquette.
+          <br>Créer le compte depuis cette page demanderait de mettre la clé de service du projet dans le navigateur&nbsp;— qui la lit prend le contrôle de tout. Ces trente secondes dans Supabase sont le prix de cette barrière.
+          <br><b>Le mot de passe ne se relit jamais</b>, ni ici ni ailleurs&nbsp;: Supabase n'en garde qu'une empreinte. Notez-le au moment où vous le fixez.
+        </div>
+
+        <div class="tm-panel-h" style="margin-top:4px">Donner l'accès à une adresse</div>
+        <div class="cp-form">
+          <input type="email" id="cp-new-mail" class="qg-in" placeholder="adresse@exemple.com" autocomplete="off">
+          <select id="cp-new-role" class="qg-in" aria-label="Casquette du nouveau compte"></select>
+          <button type="button" class="btn btn-primary" id="cp-new-go">Donner l'accès</button>
+        </div>
+        <p class="card-sub hide" id="cp-new-hint">Donnez d'abord le mot de passe (bouton <b>Changer un rôle</b> plus haut)&nbsp;: ajouter un administrateur engage autant que changer une casquette.</p>
+        <div class="msg" id="cp-new-msg"></div>
+
+        <div class="tm-panel-h" style="margin-top:20px">Les casquettes</div>
+        <p class="card-sub">Une casquette neuve n'ouvre aucun écran tant que vous ne lui en donnez pas dans le tableau ci-dessus.</p>
+        <div id="cp-cq-list" class="cp-cq-list"></div>
+        <div class="cp-form" style="margin-top:10px">
+          <input type="text" id="cp-cq-nom" class="qg-in" placeholder="Nom — ex. Trésorerie" autocomplete="off">
+          <input type="text" id="cp-cq-res" class="qg-in" placeholder="Ce qu'elle fait, en une phrase" autocomplete="off">
+          <button type="button" class="btn btn-ghost" id="cp-cq-go">Créer la casquette</button>
+        </div>
+        <div class="msg" id="cp-cq-msg"></div>
       </div>
     </section>
     <section id="section-c_app" class="hide"><div id="qgc-c_app"></div></section>
@@ -5265,6 +5317,9 @@
   }
 
   function chargerRole(){
+    // Les libelles des casquettes partent en meme temps que le role :
+    // ils servent des le bandeau, avant meme qu'on ouvre un ecran.
+    cpChargerCasquettes();
     return sb.rpc('bbc_role').then(function(r){
       currentRole = (r && !r.error && r.data) ? r.data : 'super_admin';
       if (currentRole === 'super_admin'){ currentPerms = {}; return; }
@@ -5279,11 +5334,43 @@
     });
   }
 
+  // LES CASQUETTES VIVAIENT DANS CE FICHIER.
+  // En inventer une demandait de rouvrir l'administration, d'ajouter
+  // deux lignes et de redeployer -- autant dire : d'attendre quelqu'un.
+  // Elles vivent maintenant dans la table admin_roles, et ces deux
+  // objets ne sont plus que le REFLET de ce qu'elle contient.
+  //
+  // Ce qui est ecrit ci-dessous reste le filet : tant que la migration
+  // MIGRATION-casquettes.sql n'est pas passee, ou si la lecture echoue,
+  // l'administration fonctionne exactement comme avant. Un ecran qui
+  // s'effondre parce qu'une table manque est pire qu'un ecran fige.
   var ROLE_NOMS = {
     super_admin:'Administration', president:'Présidence',
     directeur_sportif:'Direction sportive', coach:'Coach',
     community_manager:'Communication'
   };
+  var ROLES_EN_BASE = false;   /* la table repond-elle ? */
+
+  function cpChargerCasquettes(){
+    return sbGet('admin_roles?select=id,nom,resume,ordre,systeme&order=ordre.asc')
+      .then(function(rows){
+        if (!rows || !rows.length) return;
+        ROLES_EN_BASE = true;
+        var noms = {}, res = {};
+        rows.forEach(function(r){
+          noms[r.id] = r.nom || r.id;
+          res[r.id] = r.resume || '';
+        });
+        // On REMPLACE le contenu sans changer les objets : d'autres
+        // fonctions les tiennent deja par reference.
+        Object.keys(ROLE_NOMS).forEach(function(k){ delete ROLE_NOMS[k]; });
+        Object.keys(ROLE_RESUME).forEach(function(k){ delete ROLE_RESUME[k]; });
+        Object.keys(noms).forEach(function(k){ ROLE_NOMS[k] = noms[k]; ROLE_RESUME[k] = res[k]; });
+        window.__CQ_SYS = {};
+        rows.forEach(function(r){ window.__CQ_SYS[r.id] = !!r.systeme; });
+      })
+      .catch(function(){ /* table absente : on garde le filet */ });
+  }
 
   function appliquerRole(){
     // Les entrées interdites disparaissent, et un groupe vidé de toutes
@@ -19178,6 +19265,7 @@
 
   // Le métier de chaque casquette, en une phrase. Le tableau du bas dit
   // « quels écrans » ; ceci dit « pour quoi faire ».
+  // (declare plus haut par var : cpChargerCasquettes() peut le vider)
   var ROLE_RESUME = {
     super_admin:'Tout, sans exception, y compris distribuer les rôles. La casquette de la personne qui répond du site.',
     president:'Voit tout le club et approuve. Publie le contenu, touche aux réglages et aux inscriptions — mais ne fait pas la saisie du quotidien.',
@@ -19217,6 +19305,12 @@
     document.getElementById('cp-annuler').addEventListener('click', cpRefermer);
     var bp = document.getElementById('cp-pdf');
     if (bp) bp.addEventListener('click', cpPdf);
+    var bn = document.getElementById('cp-new-go');
+    if (bn) bn.addEventListener('click', cpAjouterCompte);
+    var bq = document.getElementById('cp-cq-go');
+    if (bq) bq.addEventListener('click', cpCreerCasquette);
+    var mn = document.getElementById('cp-new-mail');
+    if (mn) mn.addEventListener('keydown', function(e){ if (e.key === 'Enter') cpAjouterCompte(); });
     document.getElementById('cp-demander').addEventListener('click', function(){
       document.getElementById('cp-lock').classList.remove('hide');
       document.getElementById('cp-demander').classList.add('hide');
@@ -19274,6 +19368,11 @@
         cpOuvert = true;
         cpRows = rows;
         cpRendre();
+        // LE TABLEAU AUSSI. cpRendre() ne redessine que la liste des
+        // comptes : sans cette ligne, le mot de passe ouvrait les menus
+        // de role mais les cases du tableau restaient mortes, et il
+        // fallait changer d'ecran et revenir pour qu'elles s'animent.
+        cpMatrice();
         showMsg(document.getElementById('cp-msg'),
           'Les menus sont ouverts. Un changement s’applique à la prochaine connexion de la personne concernée.', true);
       })
@@ -19332,10 +19431,24 @@
           esc(ROLE_NOMS[u.role]||u.role||'—')+
           (estProtege ? ' · propriétaire du site, compte verrouillé' : '')+'</div></div>'+
         droite+
+        // Le retrait ne s'affiche que quand il aboutirait : proprietaire,
+        // mot de passe donne, et pas sur son propre compte -- se retirer
+        // soi-meme fermerait la porte de l'interieur, et la base le
+        // refuserait de toute facon.
+        (proprio && cpOuvert && !estProtege
+          ? '<button type="button" class="cp-cq-x" data-cpdel="'+esc(u.email||'')+'" title="Retirer l’accès à l’administration">Retirer</button>'
+          : '')+
       '</div>';
     }).join('') || '<div class="empty">Aucun compte.</div>';
 
     box.querySelectorAll('[data-cprole]').forEach(cpBrancherMenu);
+    // Retirer un acces : reserve au proprietaire, et seulement une fois
+    // le mot de passe donne. Le bouton n'apparait pas autrement, parce
+    // qu'un bouton qui repond « refuse » fait perdre deux fois du temps.
+    box.querySelectorAll('[data-cpdel]').forEach(function(b){
+      b.addEventListener('click', function(){ cpRetirerAcces(b.getAttribute('data-cpdel')); });
+    });
+    cpProprioRendre();
   }
 
   function cpBrancherMenu(sel){
@@ -19425,17 +19538,227 @@
         (idx[c] = idx[c] || {})[p.action] = true;
       });
       var roles = Object.keys(ROLE_NOMS);
+      // Une case n'est reglable que pour le proprietaire, une fois le
+      // mot de passe donne, et jamais sur la colonne Administration :
+      // celle-la ouvre tout par construction (bbc_can le dit en base),
+      // la regler serait un bouton qui ment.
+      var reglable = cpJeSuisProprio() && cpOuvert;
       t.innerHTML =
         '<tr><th>L’écran</th>' + roles.map(function(r){ return '<th>'+esc(ROLE_NOMS[r])+'</th>'; }).join('') + '</tr>' +
         CP_MODULES.map(function(m){
           return '<tr><td>'+esc(m[1])+'</td>' + roles.map(function(r){
             var n = cpNiveau(r, m[0], idx);
-            return '<td class="cp-n cp-n-'+n.k+'" title="'+esc(ROLE_NOMS[r]+' : '+n.t)+'">'+n.s+'</td>';
+            var ok = reglable && r !== 'super_admin';
+            return '<td class="cp-n cp-n-'+n.k+(ok?' cp-clic':'')+'"' +
+              (ok ? ' data-cqrole="'+esc(r)+'" data-cqmod="'+esc(m[0])+'" data-cqniv="'+n.k+'"' : '') +
+              ' title="'+esc(ROLE_NOMS[r]+' : '+n.t+(ok ? ' — cliquez pour changer' : ''))+'">'+n.s+'</td>';
           }).join('') + '</tr>';
         }).join('');
+      t.querySelectorAll('td.cp-clic').forEach(function(td){
+        td.addEventListener('click', function(){ cpBasculerCase(td); });
+      });
     }).catch(function(){
       t.innerHTML = '<tr><td>Tableau des droits indisponible — passez MIGRATION-phase0-socle.sql.</td></tr>';
     });
+  }
+
+  // ============ L'ESPACE DU PROPRIETAIRE ============
+  //
+  // DEUX SERRURES, ET ELLES NE PROTEGENT PAS LA MEME CHOSE.
+  //
+  //   Le compte. Les fonctions bbc_compte_rattacher, bbc_compte_retirer,
+  //   bbc_casquette_supprimer et bbc_permissions_poser refusent tout
+  //   appelant qui n'est pas le proprietaire du site -- en base, pas a
+  //   l'ecran. Cacher un bouton n'empeche personne d'appeler l'API a la
+  //   main ; une fonction qui leve une exception, si.
+  //
+  //   Le mot de passe. Il protege le GESTE, pas le droit : il evite
+  //   qu'on ajoute un administrateur depuis une session laissee ouverte
+  //   sur un telephone pose sur une table. C'est le meme mot de passe
+  //   que pour changer un role, et pour la meme raison.
+  //
+  // CE QUI N'EST PAS ICI, ET POURQUOI. La creation du compte lui-meme.
+  // Elle demande la cle de service du projet ; mise dans cette page,
+  // elle serait lisible par quiconque ouvre les outils du navigateur, et
+  // donnerait le controle du projet entier. Le compte se cree donc dans
+  // Supabase, et tout le reste ici.
+  function cpProprioRendre(){
+    var box = document.getElementById('cp-proprio');
+    if (!box) return;
+    var moi = cpJeSuisProprio();
+    box.classList.toggle('hide', !moi);
+    var aide = document.getElementById('cp-matrice-aide');
+    if (aide) aide.classList.toggle('hide', !(moi && cpOuvert));
+    if (!moi) return;
+
+    // Le menu des casquettes du formulaire d'ajout.
+    var sel = document.getElementById('cp-new-role');
+    if (sel){
+      var avant = sel.value;
+      sel.innerHTML = Object.keys(ROLE_NOMS).map(function(r){
+        return '<option value="'+esc(r)+'">'+esc(ROLE_NOMS[r])+'</option>';
+      }).join('');
+      if (avant && ROLE_NOMS[avant]) sel.value = avant;
+    }
+
+    // La liste des casquettes, avec ce qu'on peut en faire.
+    var liste = document.getElementById('cp-cq-list');
+    if (liste){
+      var sys = window.__CQ_SYS || {};
+      var portees = {};
+      cpRows.forEach(function(u){ portees[u.role] = (portees[u.role]||0) + 1; });
+      liste.innerHTML = Object.keys(ROLE_NOMS).map(function(r){
+        var n = portees[r] || 0;
+        return '<div class="cp-cq">' +
+          '<b>'+esc(ROLE_NOMS[r])+'</b>' +
+          '<span>'+esc(ROLE_RESUME[r] || 'Aucune description.')+'</span>' +
+          '<span class="cp-cq-sys" style="color:var(--faint);border-color:var(--line)">'+
+            n + (n > 1 ? ' comptes' : ' compte') + '</span>' +
+          (sys[r]
+            ? '<span class="cp-cq-sys">du système</span>'
+            : '<button type="button" class="cp-cq-x" data-cqdel="'+esc(r)+'">Supprimer</button>') +
+          '</div>';
+      }).join('');
+      liste.querySelectorAll('[data-cqdel]').forEach(function(b){
+        b.addEventListener('click', function(){ cpSupprimerCasquette(b.getAttribute('data-cqdel')); });
+      });
+    }
+
+    // Les boutons n'agissent qu'une fois le mot de passe donne. On le
+    // DIT plutot que de les griser en silence : un bouton gris sans
+    // explication se lit comme une panne.
+    var prets = cpOuvert;
+    ['cp-new-go','cp-cq-go'].forEach(function(id){
+      var b = document.getElementById(id);
+      if (b) b.disabled = !prets;
+    });
+    // UN CONSEIL N'EST PAS UNE ERREUR. Cette phrase sortait en rouge,
+    // dans la zone des messages : on ouvrait l'ecran et on croyait que
+    // quelque chose venait d'echouer, alors qu'on n'avait rien tente.
+    var hint = document.getElementById('cp-new-hint');
+    if (hint) hint.classList.toggle('hide', prets);
+  }
+
+  // Le conseil sur la migration ne s'ajoute QUE si la fonction manque.
+  // Colle a la fin de chaque refus, il brouillait le refus lui-meme :
+  // « créez le compte d'abord » se terminait par une phrase sur une
+  // migration deja passee, et l'on ne savait plus quoi faire.
+  function cpErreur(e, defaut){
+    var m = String((e && e.message) || defaut || 'Opération impossible.');
+    if (/function|schema cache|introuvable|not exist|404/i.test(m)) {
+      m += ' Passez sql/migrations/MIGRATION-casquettes.sql, puis réessayez.';
+    }
+    return m;
+  }
+
+  function cpAjouterCompte(){
+    var champ = document.getElementById('cp-new-mail');
+    var msg = document.getElementById('cp-new-msg');
+    var btn = document.getElementById('cp-new-go');
+    var mail = (champ.value || '').trim().toLowerCase();
+    var role = document.getElementById('cp-new-role').value;
+    if (!mail || mail.indexOf('@') < 0){ showMsg(msg, 'Indiquez une adresse e-mail.', false); champ.focus(); return; }
+    btn.disabled = true; showMsg(msg, 'Recherche du compte…', true);
+    tkRpc('bbc_compte_rattacher', { p_email: mail, p_role: role })
+      .then(function(rows){
+        btn.disabled = false;
+        champ.value = '';
+        var nom = ROLE_NOMS[role] || role;
+        showMsg(msg, mail + ' porte maintenant la casquette « ' + nom + ' ». Elle s’applique à sa prochaine connexion.', true);
+        cpCharger().then(cpProprioRendre);
+      })
+      .catch(function(e){
+        btn.disabled = false;
+        // Le message de la base est ecrit pour etre lu : « Aucun compte
+        // Supabase pour … » dit quoi faire. On le montre tel quel plutot
+        // que de le remplacer par un « erreur » qui n'apprend rien.
+        showMsg(msg, cpErreur(e, 'Ajout impossible.'), false);
+      });
+  }
+
+  function cpRetirerAcces(email){
+    if (!confirm('Retirer l’accès à l’administration pour ' + email + ' ?\n\n' +
+                 'Son compte reste utilisable sur le site public ; il ne voit simplement plus l’administration.')) return;
+    tkRpc('bbc_compte_retirer', { p_email: email })
+      .then(function(){
+        showMsg(document.getElementById('cp-msg'), 'Accès retiré pour ' + email + '.', true);
+        cpCharger().then(cpProprioRendre);
+      })
+      .catch(function(e){
+        showMsg(document.getElementById('cp-msg'), cpErreur(e, 'Retrait impossible.'), false);
+      });
+  }
+
+  function cpCreerCasquette(){
+    var nomIn = document.getElementById('cp-cq-nom');
+    var resIn = document.getElementById('cp-cq-res');
+    var msg = document.getElementById('cp-cq-msg');
+    var nom = (nomIn.value || '').trim();
+    if (!nom){ showMsg(msg, 'Donnez un nom à la casquette.', false); nomIn.focus(); return; }
+    // L'identifiant se deduit du nom : sans accent, sans espace. C'est
+    // lui qui vit dans role_permissions et dans admin_users -- il ne doit
+    // plus jamais changer, alors on ne le fait pas saisir.
+    var id = nom.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+               .replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'').toLowerCase();
+    if (!id){ showMsg(msg, 'Ce nom ne donne aucun identifiant utilisable.', false); return; }
+    if (ROLE_NOMS[id]){ showMsg(msg, 'Une casquette porte déjà ce nom.', false); return; }
+    var btn = document.getElementById('cp-cq-go');
+    btn.disabled = true; showMsg(msg, 'Création…', true);
+    var ordre = Object.keys(ROLE_NOMS).length * 10 + 100;
+    sbInsert('admin_roles', { id:id, nom:nom, resume:(resIn.value||'').trim(), ordre:ordre, systeme:false }, 'Casquettes')
+      .then(function(){
+        btn.disabled = false; nomIn.value = ''; resIn.value = '';
+        showMsg(msg, 'Casquette « ' + nom + ' » créée. Elle n’ouvre encore aucun écran : donnez-lui des droits dans le tableau ci-dessus.', true);
+        return cpChargerCasquettes().then(function(){ cpCasquettes(); cpMatrice(); cpProprioRendre(); });
+      })
+      .catch(function(e){
+        btn.disabled = false;
+        showMsg(msg, 'Création impossible. Passez sql/migrations/MIGRATION-casquettes.sql, puis réessayez.', false);
+      });
+  }
+
+  function cpSupprimerCasquette(id){
+    if (!confirm('Supprimer la casquette « ' + (ROLE_NOMS[id]||id) + ' » ?\n\n' +
+                 'Ses autorisations partent avec elle. L’opération est refusée si quelqu’un la porte encore.')) return;
+    tkRpc('bbc_casquette_supprimer', { p_id: id })
+      .then(function(){
+        showMsg(document.getElementById('cp-cq-msg'), 'Casquette supprimée.', true);
+        return cpChargerCasquettes().then(function(){ cpCasquettes(); cpMatrice(); cpProprioRendre(); });
+      })
+      .catch(function(e){
+        showMsg(document.getElementById('cp-cq-msg'), cpErreur(e, 'Suppression impossible.'), false);
+      });
+  }
+
+  // LA CASE QUI TOURNE. Rien → consulte → consulte et modifie → rien.
+  // Trois etats et un seul geste : un menu deroulant par case ferait
+  // cinquante menus sur cette page, et l'on passerait plus de temps a
+  // les ouvrir qu'a decider.
+  var CP_NIVEAUX = ['n', 'r', 'w'];
+  function cpActionsDuNiveau(k){
+    if (k === 'w') return ['voir'].concat(CP_ECRIRE).concat(['exporter']);
+    if (k === 'r') return ['voir'];
+    return [];
+  }
+  function cpBasculerCase(td){
+    var role = td.getAttribute('data-cqrole');
+    var mod  = td.getAttribute('data-cqmod');
+    var k    = td.getAttribute('data-cqniv') || 'n';
+    var suivant = CP_NIVEAUX[(CP_NIVEAUX.indexOf(k) + 1) % CP_NIVEAUX.length];
+    td.classList.add('cp-encours');
+    tkRpc('bbc_permissions_poser', { p_role: role, p_module: mod, p_actions: cpActionsDuNiveau(suivant) })
+      .then(function(){
+        td.classList.remove('cp-encours');
+        cpMatrice();
+        showMsg(document.getElementById('cp-msg'),
+          (ROLE_NOMS[role]||role) + ' : ' +
+          (suivant==='w' ? 'consulte et modifie' : suivant==='r' ? 'consulte seulement' : 'n’a plus') +
+          ' « ' + (CP_MODULES.filter(function(m){ return m[0]===mod; })[0]||['',mod])[1] + ' ».', true);
+      })
+      .catch(function(e){
+        td.classList.remove('cp-encours');
+        showMsg(document.getElementById('cp-msg'), cpErreur(e, 'Changement refusé.'), false);
+      });
   }
 
   function inExportCsv(){

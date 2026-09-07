@@ -1,0 +1,182 @@
+=====================================================================
+ AJOUTER QUELQU'UN A L'ADMINISTRATION, ET CHOISIR CE QU'IL VOIT
+ Baobabs Basket Club — 7 septembre 2026
+=====================================================================
+
+Cette notice vaut pour toujours. Elle ne demande ni terminal, ni aide
+exterieure : trois ecrans, dix minutes la premiere fois, deux minutes
+ensuite.
+
+
+---------------------------------------------------------------------
+ CE QU'IL FAUT SAVOIR AVANT
+---------------------------------------------------------------------
+
+1. LE MOT DE PASSE D'UNE PERSONNE NE SE RELIT JAMAIS.
+   Supabase n'en garde qu'une empreinte : ni vous, ni personne, ne
+   peut le retrouver. C'est VOUS qui le fixez a la creation ; notez-le
+   a ce moment-la et transmettez-le. S'il est perdu, on n'en cherche
+   pas l'ancien : on en met un nouveau (voir plus bas).
+
+2. LA CREATION DU COMPTE SE FAIT DANS SUPABASE, PAS DANS L'ADMIN.
+   Creer un utilisateur demande la cle de service du projet. Mise dans
+   une page web, elle serait lisible par n'importe qui ouvre les outils
+   du navigateur -- et donnerait le controle du projet entier. Ces
+   trente secondes dans Supabase sont le prix de cette barriere.
+
+3. TOUT LE RESTE SE FAIT DANS L'ADMINISTRATION.
+   La casquette, les ecrans, le retrait d'un acces, l'invention d'une
+   nouvelle casquette : tout est dans « Comptes & roles », et seul le
+   compte proprietaire du site le voit.
+
+
+---------------------------------------------------------------------
+ UNE SEULE FOIS : POSER LA MIGRATION
+---------------------------------------------------------------------
+
+A faire une fois, et jamais plus.
+
+  1. Ouvrez https://supabase.com/dashboard et votre projet.
+  2. Menu de gauche : SQL Editor, puis « New query ».
+  3. Ouvrez le fichier sql/migrations/MIGRATION-casquettes.sql,
+     copiez TOUT son contenu, collez-le dans la fenetre.
+  4. Bouton « Run ».
+
+Vous devez lire « Success ». Si une erreur parle de
+bbc_est_proprietaire, passez d'abord MIGRATION-phase2c-compte-
+proprietaire.sql, puis recommencez.
+
+Pour verifier, dans la meme fenetre :
+
+  select id, nom, systeme from admin_roles order by ordre;
+
+Cinq lignes doivent apparaitre.
+
+
+---------------------------------------------------------------------
+ AJOUTER QUELQU'UN
+---------------------------------------------------------------------
+
+ETAPE 1 — LE COMPTE, DANS SUPABASE
+
+  1. Supabase › Authentication › Users
+  2. Bouton « Add user » › « Create new user »
+  3. Email    : l'adresse de la personne
+     Password : un mot de passe que VOUS choisissez
+     Cochez   : « Auto Confirm User »
+       Sans cette case, la personne recoit un courriel de confirmation
+       et ne peut pas se connecter avant d'avoir clique dedans. Avec la
+       case, elle se connecte tout de suite.
+  4. « Create user »
+
+  Notez le mot de passe maintenant. Il ne sera plus jamais affiche.
+
+ETAPE 2 — LA CASQUETTE, DANS L'ADMINISTRATION
+
+  1. Administration › Comptes & roles
+  2. Bouton « Changer un role », donnez le mot de passe de l'admin
+     (le meme que pour l'ecran Historique)
+  3. Plus bas, « Espace du proprietaire » › « Donner l'acces a une
+     adresse » : la meme adresse qu'a l'etape 1, la casquette voulue,
+     puis « Donner l'acces ».
+
+  La personne voit sa nouvelle administration a sa prochaine connexion.
+
+
+---------------------------------------------------------------------
+ CHANGER LA CASQUETTE DE QUELQU'UN
+---------------------------------------------------------------------
+
+  Comptes & roles › « Changer un role » (mot de passe) › le menu
+  deroulant a droite de son nom.
+
+  Un changement s'applique a sa prochaine connexion.
+
+
+---------------------------------------------------------------------
+ INVENTER UNE CASQUETTE
+---------------------------------------------------------------------
+
+  Comptes & roles › Espace du proprietaire › « Les casquettes ».
+  Un nom, une phrase qui dit ce qu'elle fait, « Creer la casquette ».
+
+  ATTENTION : une casquette neuve n'ouvre AUCUN ecran. C'est voulu --
+  une casquette qui ouvrirait tout par defaut serait un trou. Donnez-
+  lui ses ecrans dans le tableau « Qui ouvre quel ecran » juste au-
+  dessus.
+
+  Une casquette ne se supprime que si plus personne ne la porte.
+  « Administration » ne se supprime jamais : sans elle, plus personne
+  ne pourrait distribuer les roles.
+
+
+---------------------------------------------------------------------
+ CHOISIR LES ECRANS D'UNE CASQUETTE
+---------------------------------------------------------------------
+
+  Comptes & roles › « Changer un role » (mot de passe) › tableau
+  « Qui ouvre quel ecran ».
+
+  Chaque case tourne au clic :
+
+     ·  →  l'ecran n'apparait pas dans son menu
+     ○  →  elle consulte, sans pouvoir modifier
+     ✓  →  elle consulte et modifie
+
+  La colonne « Administration » ne se regle pas : cette casquette
+  ouvre tout par construction, c'est ecrit dans la base.
+
+  Chaque clic part aussitot en base. La personne concernee voit le
+  changement a sa prochaine connexion.
+
+
+---------------------------------------------------------------------
+ RETIRER UN ACCES
+---------------------------------------------------------------------
+
+  Comptes & roles › « Changer un role » (mot de passe) › bouton
+  « Retirer » a droite de la ligne.
+
+  Cela retire l'acces a l'ADMINISTRATION, pas le compte. La personne
+  peut encore se connecter au site public comme n'importe qui. Pour
+  supprimer le compte lui-meme : Supabase › Authentication › Users ›
+  les trois points au bout de la ligne › « Delete user ».
+
+  Votre propre compte n'a pas de bouton « Retirer », et la base le
+  refuserait de toute facon : l'administration doit toujours avoir un
+  proprietaire.
+
+
+---------------------------------------------------------------------
+ QUELQU'UN A PERDU SON MOT DE PASSE
+---------------------------------------------------------------------
+
+  Supabase › Authentication › Users › la ligne de la personne › les
+  trois points › « Reset password » (ou « Update user » pour en poser
+  un directement).
+
+  Il n'y a rien a faire dans l'administration : la casquette ne bouge
+  pas, seul le mot de passe change.
+
+
+---------------------------------------------------------------------
+ SI QUELQUE CHOSE NE VA PAS
+---------------------------------------------------------------------
+
+  « Aucun compte Supabase pour ... »
+      Le compte n'a pas encore ete cree. Reprenez l'etape 1.
+
+  « ... Passez sql/migrations/MIGRATION-casquettes.sql »
+      La migration n'a pas ete posee, ou pas jusqu'au bout.
+      Recommencez la section « UNE SEULE FOIS » ci-dessus.
+
+  « Seul le compte proprietaire du site peut ... »
+      Vous n'etes pas connecte avec l'adresse du proprietaire. Cette
+      adresse est ecrite dans la base (bbc_proprietaire_email) ET dans
+      l'administration (CP_PROPRIETAIRE) : les deux doivent dire la
+      meme chose.
+
+  L'espace du proprietaire n'apparait pas
+      Meme cause. Verifiez avec quelle adresse vous etes connecte.
+
+=====================================================================
