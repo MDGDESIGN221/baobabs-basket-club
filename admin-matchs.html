@@ -767,6 +767,13 @@
   .msg{font-size:13.5px;margin-top:14px;padding:11px 13px;border-radius:9px;display:none;line-height:1.45}
   .msg.ok{display:block;background:rgba(168,217,59,.1);color:var(--lime);border:1px solid rgba(168,217,59,.3)}
   .msg.err{display:block;background:rgba(229,86,74,.1);color:var(--danger);border:1px solid rgba(229,86,74,.32)}
+  /* NI UNE ERREUR, NI UNE REUSSITE. Une deconnexion pour inactivite
+     n'est la faute de personne : en rouge, elle se lit comme un refus
+     et l'on retape son mot de passe trois fois. En or, elle informe.
+     Sans cette troisieme classe, le message restait invisible --
+     .msg est display:none tant qu'il n'a ni .ok ni .err, et le mien
+     n'avait ni l'un ni l'autre. */
+  .msg.info{display:block;background:var(--gold-soft);color:var(--gold-bright);border:1px solid var(--gold-edge)}
 
   .list{margin-top:26px}
   .list-head{display:flex;align-items:center;gap:10px;margin:0 0 13px}
@@ -5308,6 +5315,7 @@
 
   var gate = document.getElementById('gate');
   gateInit();
+  veilleMessageRetour();
   var app = document.getElementById('app');
   var emailInput = document.getElementById('gate-email');
   var pwInput = document.getElementById('pw');
@@ -5320,6 +5328,101 @@
   document.getElementById('logout-btn').addEventListener('click', function(){
     sb.auth.signOut().then(function(){ location.reload(); });
   });
+
+  // ============ DEUX HEURES SANS RIEN FAIRE ============
+  //
+  // Une session Supabase se renouvelle toute seule : ouverte un lundi,
+  // elle est encore ouverte le vendredi. Sur un telephone pose sur une
+  // table ou un ordinateur du club partage entre trois personnes, c'est
+  // une porte laissee ouverte -- et l'administration donne acces aux
+  // dossiers des enfants, aux paiements et aux comptes.
+  //
+  // L'inactivite se compte donc a part, dans le navigateur, et elle
+  // survit au rechargement : la marque est ecrite dans localStorage, si
+  // bien qu'un onglet rouvert trois heures plus tard se retrouve dehors
+  // avant meme d'avoir affiche quoi que ce soit.
+  //
+  // ON PREVIENT AVANT DE FERMER. Quelqu'un qui redige un article et
+  // s'interrompt cinq minutes perdrait son texte sans un mot. Un
+  // avertissement a cinq minutes de l'echeance suffit : le moindre
+  // mouvement le fait disparaitre et remet le compteur a zero.
+  var VEILLE_MS   = 2 * 60 * 60 * 1000;   // deux heures
+  var VEILLE_PREV = 5 * 60 * 1000;        // l'avertissement, cinq minutes avant
+  var CLE_VEILLE  = 'bbc_admin_activite';
+  var veilleTimer = null, veillePrevenu = false;
+
+  function veilleMarquer(){
+    try { localStorage.setItem(CLE_VEILLE, String(Date.now())); } catch(e){}
+  }
+  function veilleDerniere(){
+    var v = 0;
+    try { v = parseInt(localStorage.getItem(CLE_VEILLE) || '0', 10) || 0; } catch(e){}
+    return v;
+  }
+
+  // Appelee au demarrage, AVANT d'ouvrir l'application : une session
+  // dormante depuis trois heures ne doit pas s'afficher une seconde.
+  function veilleExpiree(){
+    var d = veilleDerniere();
+    return d > 0 && (Date.now() - d) > VEILLE_MS;
+  }
+
+  function veilleFermer(){
+    try { localStorage.removeItem(CLE_VEILLE); } catch(e){}
+    try { sessionStorage.setItem('bbc_admin_veille_msg', '1'); } catch(e){}
+    sb.auth.signOut().then(function(){ location.reload(); })
+      .catch(function(){ location.reload(); });
+  }
+
+  function veilleControler(){
+    if (!currentSession) return;
+    var reste = VEILLE_MS - (Date.now() - veilleDerniere());
+    if (reste <= 0){ veilleFermer(); return; }
+    if (reste <= VEILLE_PREV && !veillePrevenu){
+      veillePrevenu = true;
+      try {
+        toast('Vous serez déconnecté dans ' + Math.max(1, Math.round(reste/60000)) +
+              ' minutes sans activité. Bougez la souris ou tapez une touche pour rester.', true);
+      } catch(e){}
+    }
+  }
+
+  function veilleDemarrer(){
+    veilleMarquer();
+    // Un seul enregistrement par tranche de trente secondes : ecrire
+    // dans localStorage a chaque mouvement de souris ferait des
+    // milliers d'ecritures pour rien.
+    var dernierEcrit = 0;
+    function bouge(){
+      var t = Date.now();
+      veillePrevenu = false;
+      if (t - dernierEcrit < 30000) return;
+      dernierEcrit = t;
+      veilleMarquer();
+    }
+    ['pointerdown','keydown','wheel','touchstart'].forEach(function(ev){
+      document.addEventListener(ev, bouge, { passive: true, capture: true });
+    });
+    // Revenir sur l'onglet compte comme une activite : on vient
+    // justement de reprendre le travail.
+    document.addEventListener('visibilitychange', function(){
+      if (!document.hidden){ veillePrevenu = false; veilleMarquer(); veilleControler(); }
+    });
+    if (veilleTimer) clearInterval(veilleTimer);
+    veilleTimer = setInterval(veilleControler, 30000);
+  }
+
+  // Le message au retour : on dit POURQUOI on est dehors. Sans lui, on
+  // croit s'etre trompe de mot de passe et on le retape trois fois.
+  function veilleMessageRetour(){
+    var vu = null;
+    try { vu = sessionStorage.getItem('bbc_admin_veille_msg'); sessionStorage.removeItem('bbc_admin_veille_msg'); } catch(e){}
+    if (!vu) return;
+    var m = document.getElementById('gate-msg');
+    if (!m) return;
+    m.textContent = 'Vous avez été déconnecté après deux heures sans activité. Reconnectez-vous.';
+    m.className = 'msg info';
+  }
 
   function tryUnlock(){
     var email = (emailInput.value || '').trim();
@@ -5349,6 +5452,7 @@
           return;
         }
         currentSession = res.data.session;
+        veilleDemarrer();
         onAuthenticated();
       });
     }).catch(function(){
@@ -5682,9 +5786,21 @@
   // client valide ne doit jamais donner accès ici.
   sb.auth.getSession().then(function(res){
     if (res.data && res.data.session) {
+      // DEUX HEURES SANS RIEN FAIRE, ET LA PORTE S'EST REFERMEE.
+      // On le verifie AVANT is_admin() et avant tout affichage : une
+      // session dormante depuis la veille ne doit pas montrer
+      // l'administration une fraction de seconde.
+      if (veilleExpiree()){
+        try { sessionStorage.setItem('bbc_admin_veille_msg', '1'); } catch(e){}
+        try { localStorage.removeItem(CLE_VEILLE); } catch(e){}
+        sb.auth.signOut().then(function(){ location.reload(); })
+                        .catch(function(){ location.reload(); });
+        return;
+      }
       sb.rpc('is_admin').then(function(check){
         if (check.error || check.data !== true) { sb.auth.signOut(); return; }
         currentSession = res.data.session;
+        veilleDemarrer();
         gate.classList.add('hide');
         document.getElementById('welcome').classList.add('hide');
         // Le rôle est chargé AVANT d'ouvrir l'application : sinon la
