@@ -12158,6 +12158,10 @@
       });
     });
 
+    // La pastille Inscriptions part la premiere et ne depend de personne :
+    // enchainee derriere les autres, elle serait arrivee bonne derniere.
+    inPastilleDepart();
+
     // Compteurs boîte de réception (une requête légère par table, déjà utilisées ailleurs)
     var inboxTables = [
       {key:'newsletter', table:'newsletter_subscribers'},
@@ -17622,15 +17626,48 @@
   // Pastille de la barre latérale : le nombre de dossiers qui attendent une
   // action, pas le nombre total — un compteur qui ne redescend jamais cesse
   // d'être lu au bout d'une semaine.
-  function inBadge(){
-    var b = document.getElementById('sb-inscriptions-badge'); if (!b) return;
-    var n = inRows.filter(function(r){
+  // La regle de comptage vit ICI et nulle part ailleurs : elle est lue
+  // par l'ecran ouvert comme par le demarrage, et deux copies auraient
+  // fini par se contredire — la barre laterale annoncant trois dossiers
+  // et l'ecran en montrant cinq.
+  function inCompteAttente(rows){
+    return (rows||[]).filter(function(r){
       return (r.status||'nouvelle')==='nouvelle'
           || inEnRetard(r)
           || ((r.status||'')==='inscrite' && r.medical_recu === false);
     }).length;
-    b.textContent = n;
-    b.classList.toggle('hide', n===0);
+  }
+
+  function inPastille(n){
+    var b = document.getElementById('sb-inscriptions-badge'); if (!b) return;
+    b.textContent = n > 99 ? '99+' : n;
+    b.classList.toggle('hide', n === 0);
+  }
+
+  function inBadge(){ inPastille(inCompteAttente(inRows)); }
+
+  // ELLE NE SE COMPTAIT QU'EN ENTRANT DANS L'ECRAN.
+  // inBadge() n'etait appelee que par inLoad(), qui n'est appelee que par
+  // inInit(), qui n'est appelee qu'en ouvrant Inscriptions. Tant qu'on n'y
+  // allait pas, la barre laterale affirmait qu'il n'y avait rien a
+  // traiter — alors que c'est precisement cette pastille qui doit donner
+  // envie d'y aller. Les deux autres pastilles (Messages, Candidatures)
+  // etaient calculees au demarrage depuis toujours ; celle-ci avait ete
+  // oubliee quand les inscriptions ont eu leur propre menu.
+  //
+  // Requete legere : quatre colonnes, pas la vue entiere, et lancee sans
+  // attendre les autres compteurs — c'est ce qui la fait arriver tot.
+  function inPastilleDepart(){
+    if (!document.getElementById('sb-inscriptions-badge')) return;
+    return sbGet('inscriptions_admin?select=status,medical_recu,periodes_payees,created_at&order=created_at.desc')
+      .catch(function(){
+        // la vue manque : la table brute n'a pas periodes_payees, donc le
+        // retard de paiement ne peut pas etre vu. On compte ce qu'on peut
+        // plutot que de n'afficher rien.
+        return sbGet('academy_registrations?select=status,medical_recu,created_at&order=created_at.desc&limit=500');
+      })
+      .then(function(rows){ inPastille(inCompteAttente(rows)); })
+      .catch(function(){});
   }
 
   function inFillCats(){
