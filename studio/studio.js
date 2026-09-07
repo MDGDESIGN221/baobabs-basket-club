@@ -11050,6 +11050,71 @@ window.BaobabsStudio = (function () {
     return out;
   }
 
+  /* LA POSITION DU CONTOUR, DANS LE SVG AUSSI.
+     Le panneau propose trois positions -- interieur, centre, exterieur --
+     et l'ecran les respecte depuis longtemps. Le fichier exporte, lui,
+     tracait toujours au milieu : un cadre regle « exterieur » revenait
+     d'Illustrator decale d'une demi-epaisseur, et sur un contour epais
+     ca se voit. Un reglage qui vit a l'ecran et meurt a l'export est un
+     reglage a moitie.
+
+     Le procede est celui du canevas, transpose : on trace DOUBLE, puis on
+     ne garde que la moitie voulue -- par un clipPath pour l'interieur,
+     par un masque pour l'exterieur. Meme idee des deux cotes.
+
+     Le contour part maintenant dans son PROPRE <path>. Sur le meme
+     element que le remplissage, le masque de l'exterieur aurait aussi
+     efface le remplissage -- il ne distingue pas les deux. */
+  function contourSVG(l, d, defs) {
+    var st = l.stroke || null;
+    var ligne = (l.type === 'shape' && l.shape === 'line');
+    /* une ligne se trace avec la hauteur du calque quand aucune epaisseur
+       n'est donnee : c'est ce que fait l'ecran */
+    var w = (st && st.w > 0) ? st.w : (ligne ? Math.max(1, l.h) : 0);
+    if (!(w > 0) || !d) return '';
+    var col = (st && st.color) || color('#FFFFFF', 1);
+
+    /* UN TRACE OUVERT N'A PAS D'INTERIEUR. La position n'y veut rien dire,
+       et le canevas l'ignore deja : on suit la meme regle plutot que d'en
+       inventer une seconde. */
+    var ferme = true;
+    if (l.type === 'path') {
+      var subs = pathSubs(l);
+      ferme = l.subs ? subs.some(function (x) { return x.closed; }) : !!l.closed;
+    }
+    var pos = (ligne || !ferme) ? 'center' : ((st && st.pos) || 'center');
+
+    var att = ' fill="none" stroke="' + cssHex(col) + '" stroke-opacity="' + n3(alphaDe(col)) + '"';
+    if (st && st.join) att += ' stroke-linejoin="' + st.join + '"';
+    var cap = (st && st.cap) || (ligne ? (l.cap || 'round') : null);
+    if (cap) att += ' stroke-linecap="' + cap + '"';
+    if (st && st.dash) {
+      att += ' stroke-dasharray="' + n3(st.dash) + ' ' +
+        n3(st.gap == null ? st.dash * 0.8 : st.gap) + '"';
+    }
+
+    if (pos === 'center') return '<path d="' + d + '"' + att + ' stroke-width="' + n3(w) + '"/>';
+
+    var id = 'q' + (++_svgId);
+    if (pos === 'inside') {
+      defs.push('<clipPath id="' + id + '"><path d="' + d + '"/></clipPath>');
+      return '<path d="' + d + '"' + att + ' stroke-width="' + n3(w * 2) +
+        '" clip-path="url(#' + id + ')"/>';
+    }
+    /* exterieur : un masque blanc partout SAUF sur la forme. La marge
+       depasse l'epaisseur doublee, sinon le masque couperait le contour
+       la ou il deborde le plus. */
+    var M = w * 2 + 8;
+    defs.push('<mask id="' + id + '" maskUnits="userSpaceOnUse"' +
+      ' x="' + n3(-M) + '" y="' + n3(-M) +
+      '" width="' + n3(l.w + M * 2) + '" height="' + n3(l.h + M * 2) + '">' +
+      '<rect x="' + n3(-M) + '" y="' + n3(-M) +
+      '" width="' + n3(l.w + M * 2) + '" height="' + n3(l.h + M * 2) + '" fill="#ffffff"/>' +
+      '<path d="' + d + '" fill="#000000"/></mask>');
+    return '<path d="' + d + '"' + att + ' stroke-width="' + n3(w * 2) +
+      '" mask="url(#' + id + ')"/>';
+  }
+
   function calqueSVG(l, defs, avert) {
     if (!l.visible) return '';
     var attrs = ' transform="' + transformSVG(l) + '"';
@@ -11090,26 +11155,16 @@ window.BaobabsStudio = (function () {
          verifiant les embouts de fleche, pas en cherchant ce bug.
          Ici on ecrit ce que fait l'ecran : un trace, de l'epaisseur
          reellement employee. */
-      var ligne = (l.shape === 'line');
-      var ligneNue = ligne && !(l.stroke && l.stroke.w > 0);
+      var ligne = (l.type === 'shape' && l.shape === 'line');
       var f = ligne ? 'none' : peintureSVG(l.fill, l.w, l.h, defs, avert);
       var s = '<path d="' + d + '" fill="' + f + '"';
       if (!ligne && l.fill && l.fill.type === 'solid' && alphaDe(l.fill.color) < 1) s += ' fill-opacity="' + alphaDe(l.fill.color) + '"';
-      if (ligneNue) {
-        var cl = (l.stroke && l.stroke.color) || color('#FFFFFF', 1);
-        s += ' stroke="' + cssHex(cl) + '" stroke-opacity="' + n3(alphaDe(cl)) +
-             '" stroke-width="' + n3(Math.max(1, l.h)) + '"';
-        if (l.cap) s += ' stroke-linecap="' + l.cap + '"';
-      }
-      var parCote = contourCotesSVG(l, d, defs);
-      if (l.stroke && l.stroke.w > 0 && !parCote) {
-        s += ' stroke="' + cssHex(l.stroke.color) + '" stroke-width="' + n3(l.stroke.w) + '"' +
-             ' stroke-opacity="' + alphaDe(l.stroke.color) + '"';
-        if (l.stroke.dash) s += ' stroke-dasharray="' + n3(l.stroke.dash) + '"';
-        if (l.cap) s += ' stroke-linecap="' + l.cap + '"';
-      }
       s += '/>';
-      return '<g' + attrs + '>' + s + (parCote || '') + emboutsSVG(l) + '</g>';
+      /* remplissage, puis contour, puis embouts : trois elements, dans
+         l'ordre ou l'ecran les pose. */
+      var trait = contourCotesSVG(l, d, defs);
+      if (trait === null) trait = contourSVG(l, d, defs);
+      return '<g' + attrs + '>' + s + trait + emboutsSVG(l) + '</g>';
     }
 
     if (l.type === 'image' || l.type === 'frame') {
