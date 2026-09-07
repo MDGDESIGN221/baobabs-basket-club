@@ -3167,6 +3167,18 @@
      donne le relevé du jour avant d'entrer ; sinon il ne ferait que
      retarder le travail d'un clic. Une seule colonne, centrée : il n'y a
      rien à mettre en face. */
+  /* MEME TRAITEMENT QUE L'ECRAN DE CONNEXION.
+     Le tutoriel montre cet ecran a quelqu'un qui l'a deja franchi : il
+     faut donc le remettre par-dessus, et le rendre INTOUCHABLE. Sans
+     pointer-events:none, un clic sur « Entrer dans l'espace » le
+     refermerait au milieu de la demonstration, et le narrateur
+     continuerait de decrire un ecran disparu. */
+  #welcome.tut-demo{z-index:450;pointer-events:none;user-select:none}
+  #welcome.tut-demo::after{
+    content:'Écran de démonstration — vous êtes déjà connecté';
+    position:fixed;left:50%;transform:translateX(-50%);bottom:18px;
+    padding:8px 14px;border-radius:99px;font-size:12px;font-weight:700;
+    border:1px solid var(--gold-edge);background:var(--gold-soft);color:var(--gold-bright)}
   #welcome{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;
     align-items:center;justify-content:center;padding:32px 24px;overflow-y:auto}
   .wc-inner{width:100%;max-width:520px;animation:wcUp .5s ease both}
@@ -6415,6 +6427,30 @@
           // On ne le remasque QUE si une session est ouverte : sinon on
           // enfermerait dehors quelqu'un qui n'est pas connecte.
           if (currentSession) g.classList.add('hide');
+        }
+      },
+
+      // L'ECRAN D'ACCUEIL
+      // Celui qui suit la connexion : la salutation avec le prenom, la
+      // casquette, et le releve du jour. Le tutoriel ne le montrait pas
+      // du tout -- on passait de « se connecter » au tableau de bord,
+      // et l'ecran que tout le monde voit en premier n'etait explique
+      // nulle part. Il porte les VRAIES donnees de la personne : le
+      // montrer, c'est lui montrer son propre releve.
+      accueil: {
+        montrer: function(){
+          var w = document.getElementById('welcome');
+          if (!w) return false;
+          w.classList.remove('hide'); w.classList.add('tut-demo');
+          return true;
+        },
+        cacher: function(){
+          var w = document.getElementById('welcome');
+          if (!w) return;
+          w.classList.remove('tut-demo');
+          // On ne le remasque QUE si une session est ouverte : sinon on
+          // laisserait un ecran vide devant quelqu'un qui n'est pas entre.
+          if (currentSession) w.classList.add('hide');
         }
       },
 

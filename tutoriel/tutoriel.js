@@ -42,7 +42,7 @@
   var frappe = null;        // minuteur de la frappe lettre par lettre
   var clicsSurveilles = false;
   var META_SPECIAL = {
-    _connexion: 'De l’adresse du site à votre tableau de bord · ~2 min',
+    _connexion: 'De l’adresse du site à votre tableau de bord · ~3 min',
     _entete:    'Les commandes qui vous suivent partout · ~1 min',
     _roles:     'Qui fait quoi, et qui ne peut pas quoi · ~2 min',
     _cadrage:   'Choisir ce que le site garde d’une photo · ~2 min',
@@ -970,7 +970,33 @@
       { special: true, nom: 'Se connecter', connexion: true, cible: '#gate-msg',
         html: 'Si ça refuse, le message s’affiche ici. « <b>Identifiants incorrects</b> » veut dire adresse ou ' +
               'mot de passe&nbsp;; « <b>ce compte n’a pas accès</b> » veut dire que le compte existe mais n’est ' +
-              'pas dans l’administration — là, il faut demander au responsable du site.' }
+              'pas dans l’administration — là, il faut demander au responsable du site.' },
+
+      // L'ECRAN QU'ON VOYAIT SANS QU'IL SOIT JAMAIS EXPLIQUE.
+      // Le chapitre sautait de « se connecter » au tableau de bord. Or
+      // entre les deux il y a cet ecran-la, que TOUT LE MONDE voit en
+      // premier et que personne ne comprenait : on y appuyait sur le
+      // gros bouton sans lire le releve, c'est-a-dire sans lire la
+      // seule chose qui justifie qu'il existe.
+      { special: true, nom: 'Ce qui vous accueille', accueil: true,
+        html: 'Et vous voilà entré. <b>Ceci n’est pas encore l’administration</b> — c’est le palier&nbsp;: ' +
+              'quelques secondes pour savoir ce qui vous attend avant d’ouvrir quoi que ce soit. ' +
+              'Ce que vous voyez ici est le vôtre, pas une image d’exemple.' },
+      { special: true, nom: 'Ce qui vous accueille', accueil: true, cible: '#wc-name',
+        html: 'Votre <b>nom</b>, tel que le responsable du site l’a inscrit — pas votre adresse. ' +
+              'S’il n’y en a pas, l’écran dit simplement « Bonjour ». La salutation suit l’heure&nbsp;: ' +
+              'après dix-huit heures, elle passe à « Bonsoir ».' },
+      { special: true, nom: 'Ce qui vous accueille', accueil: true, cible: '#wc-role',
+        html: 'Et votre <b>casquette</b>. C’est elle qui décide des écrans que vous trouverez dans le menu&nbsp;: ' +
+              'vous ne verrez pas les autres, et vous n’aurez pas à les chercher.' },
+      { special: true, nom: 'Ce qui vous accueille', accueil: true, cible: '#wc-brief',
+        html: 'Le <b>relevé du jour</b>, et c’est lui qui justifie cet écran. Le prochain match, puis ce qui ' +
+              'attend une décision&nbsp;: une inscription sans réponse, une candidature qui dort, un site ' +
+              'sans actualité depuis des semaines. <b>Trois lignes au plus</b> — au-delà ce ne serait plus ' +
+              'un relevé, ce serait l’écran suivant.' },
+      { special: true, nom: 'Ce qui vous accueille', accueil: true, cible: '#enter-btn',
+        html: 'Et on entre. La touche <b>Entrée</b> fait la même chose, sans viser le bouton — ' +
+              'c’est le geste qu’on prend au bout de trois jours.' }
     ];
   }
 
@@ -3983,8 +4009,9 @@
 
   function gererSurcouche(e) {
     var veut = e.connexion ? '_connexion'
+             : (e.accueil ? '_accueil'
              : (e.studio ? '_studio'
-             : (e.cadrage ? '_cadrage' : null));
+             : (e.cadrage ? '_cadrage' : null)));
 
     // LE RETOUR ANTICIPE NE COUVRE QUE L'OUVERTURE, PAS LA SUITE.
     //
@@ -3997,6 +4024,7 @@
     if (surcouche !== veut) {
       fermerSurcouche();
       if (veut === '_connexion' && api.connexion) { api.connexion.montrer(); surcouche = '_connexion'; }
+      if (veut === '_accueil' && api.accueil) { api.accueil.montrer(); surcouche = '_accueil'; }
       if (veut === '_studio' && api.studio) { api.studio.ouvrir(); surcouche = '_studio'; }
       if (veut === '_cadrage' && api.cadrage) { api.cadrage.ouvrir(); surcouche = '_cadrage'; }
     }
@@ -4021,6 +4049,7 @@
 
   function fermerSurcouche() {
     if (surcouche === '_connexion' && api.connexion) api.connexion.cacher();
+    if (surcouche === '_accueil' && api.accueil) api.accueil.cacher();
     if (surcouche === '_studio' && api.studio) api.studio.fermer();
     if (surcouche === '_cadrage' && api.cadrage) api.cadrage.fermer();
     surcouche = null;
