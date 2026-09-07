@@ -1026,8 +1026,14 @@
   var STUDIO_ATELIER = [
     { c: '#bs-canvas',     d: 'Voilà un <b>plan de travail</b>. C’est la surface qu’on compose, aux dimensions exactes du format choisi&nbsp;: ce qu’on voit ici est ce qui sortira. Celui-ci part du modèle <b>Duel</b>.' },
     { c: '#bs-proj-name',  d: 'En haut, le <b>nom du projet</b>. La pastille juste à côté s’allume dès qu’une modification n’est pas enregistrée — tant qu’elle est là, le travail n’existe que dans cette page.' },
-    { c: '#bs-rail',       d: 'La <b>colonne d’outils</b>&nbsp;: modèles, images, photos, éléments, texte, styles, projets. Et <b>Données</b>, qui va chercher le prochain match dans l’administration pour remplir l’affiche toute seule.' },
-    { c: '#bs-props',      d: 'À droite, les <b>propriétés</b>. Tant que rien n’est sélectionné, ce sont celles de l’affiche — son format, ses dimensions. Dès qu’on choisit un élément, le panneau devient le sien.' },
+    { c: '#bs-rail',       d: 'La <b>colonne d’outils</b>&nbsp;: modèles, images, photos, éléments, texte, styles, <b>navigation</b> et projets. Et <b>Données</b>, qui va chercher le prochain match dans l’administration pour remplir l’affiche toute seule. Un onglet déjà ouvert se <b>referme</b> si on le reclique&nbsp;: c’est ainsi qu’on récupère de la place pour l’affiche.' },
+    { c: '#bs-props',      d: 'À droite, les <b>propriétés</b>. Tant que rien n’est sélectionné, ce sont celles de l’affiche — son format, ses dimensions, son fond. Dès qu’on choisit un élément, le panneau devient le sien.' },
+    // LA BARRE D'ONGLETS N'EXISTE QU'AVEC UN CALQUE CHOISI.
+    // D'ou le drapeau calque : sans lui, cette etape designerait le
+    // vide -- et le tutoriel ne dit rien quand une cible manque, il
+    // montre simplement une page sans halo.
+    { c: '.bs-pongs', calque: true,
+      d: 'Et voilà ce qui change quand on choisit un élément&nbsp;: le panneau se <b>range en onglets</b>. <b>Objet</b> pour la place et la taille, <b>Forme</b> ou <b>Caractère</b> et <b>Paragraphe</b> selon ce qu’on a pris, <b>Apparence</b> pour l’opacité, les effets et les ombres. Sans eux, tout s’empilait dans un seul défilement où l’on descendait à travers dix réglages pour en atteindre un.' },
     { c: '#bs-layer-list', parcours: '.bs-lyr, li, [data-id]', d: 'En dessous, les <b>calques</b>&nbsp;: nom de l’adversaire, logo, date, salle, titre… Chaque morceau de l’affiche est une ligne, et l’ordre de cette liste décide de ce qui passe devant.' },
     { c: '#bs-undo',       d: '<b>Annuler</b>, et sa jumelle pour refaire. Rien n’est définitif tant qu’on n’a pas enregistré&nbsp;: on peut essayer sans rien risquer.' },
     { c: '#bs-zoom-fit',   d: 'Le <b>zoom</b>, et ce bouton qui remet l’affiche entière à l’écran. Il sert plus souvent qu’on ne croit, quand on s’est perdu dans un détail.' },
@@ -1096,7 +1102,10 @@
             '<span style="opacity:.75">Enregistrer, Exporter et Publier seront montrés, jamais cliqués.</span>'
     });
     STUDIO_ATELIER.forEach(function (e) {
-      out.push({ special: true, nom: E, studio: true, atelier: true, cible: e.c, html: e.d, parcours: e.parcours });
+      // e.calque voyage avec l'etape : c'est lui qui fait choisir un
+      // calque avant que la cible soit cherchee.
+      out.push({ special: true, nom: E, studio: true, atelier: true, calque: e.calque,
+                 cible: e.c, html: e.d, parcours: e.parcours });
     });
     return out;
   }
@@ -4044,6 +4053,10 @@
         if (api.studio.accueil) api.studio.accueil();
         atelierOuvert = false;
       }
+      // Certaines cibles n'apparaissent qu'avec un calque choisi : la
+      // barre d'onglets du panneau de droite en est une. On demande
+      // donc la selection AVANT que l'etape cherche sa cible.
+      if (e.calque && api.studio.calque) api.studio.calque();
     }
   }
 

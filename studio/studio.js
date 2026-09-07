@@ -15589,6 +15589,27 @@ window.BaobabsStudio = (function () {
       enterWorkspace();
       return true;
     },
+    /* CHOISIR UN CALQUE, POUR LA DEMONSTRATION.
+       Le panneau de droite ne montre ses onglets -- Objet, Forme,
+       Caractere, Paragraphe, Apparence -- que lorsqu'un calque est
+       choisi. Tant que rien ne l'est, il affiche les proprietes de
+       l'affiche et la barre d'onglets n'existe pas dans la page.
+       Le tutoriel pointait donc le vide en voulant la designer.
+
+       On prend le PREMIER TEXTE du document : c'est celui qui ouvre le
+       plus d'onglets, donc celui qui montre le mieux a quoi sert le
+       rangement. A defaut, le premier calque venu. */
+    demoCalque: function () {
+      if (!mounted || atHome || !doc) return false;
+      var cible = null;
+      walk(doc.layers, function (l) {
+        if (!cible && l.type === 'text' && l.visible !== false) cible = l;
+      });
+      if (!cible) walk(doc.layers, function (l) { if (!cible) cible = l; });
+      if (!cible) return false;
+      select([cible.id]);
+      return true;
+    },
     estAtelier: function () { return mounted && !atHome; },
     version: VERSION
   };
