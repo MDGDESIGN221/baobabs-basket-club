@@ -3057,32 +3057,102 @@
     padding:8px 14px;border-radius:99px;font-size:12px;font-weight:700;
     border:1px solid var(--gold-edge);background:var(--gold-soft);color:var(--gold-bright)
   }
-  #gate .brand{justify-content:center;margin-bottom:22px}
-  #gate .card{text-align:center}
-  #gate .card-title{font-size:22px}
+  /* L'ECRAN DE CONNEXION.
+     Il tenait dans une carte de 380 px, centree, avec deux champs
+     serres et un bouton. Rien de faux, mais rien qui accueille non
+     plus : c'est pourtant la premiere chose que voit quelqu'un a qui
+     l'on vient de confier une casquette, et souvent la seule qu'il
+     verra si elle le refuse.
+
+     Ce qui change : de l'air, une salutation qui suit l'heure, des
+     champs a la taille d'un doigt, le mot de passe qu'on peut
+     afficher, l'alerte des majuscules bloquees -- la premiere cause
+     de « identifiants incorrects » -- et une sortie vers le site
+     public pour qui s'est trompe de porte. */
+  #gate{max-width:none;margin:0;padding:0;min-height:100vh;display:flex;
+    align-items:center;justify-content:center}
+  .gt-wrap{width:100%;max-width:430px;padding:32px 22px 40px}
+  #gate .brand{justify-content:flex-start;margin-bottom:30px}
+  .gt-hello{font-family:var(--font-ui);font-weight:700;font-size:clamp(26px,5vw,32px);
+    letter-spacing:-.02em;line-height:1.1;color:var(--text);margin:0 0 8px}
+  .gt-sub{font-size:13.5px;line-height:1.55;color:var(--faint);margin:0 0 26px}
+  #gate .card{text-align:left;padding:22px}
+  .gt-lab{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .gt-lab label{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:0}
+  /* « Afficher » est un bouton, pas un lien : il agit sur la page. */
+  .gt-voir{background:none;border:none;padding:0;font:inherit;font-size:11.5px;
+    color:var(--gold);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+  .gt-voir:hover{color:var(--gold-bright)}
+  #gate .field{margin-bottom:16px}
+  #gate .field input{height:46px;font-size:15px}
+  .gt-caps{display:none;align-items:center;gap:8px;margin:-8px 0 14px;
+    font-size:12px;color:var(--warn)}
+  .gt-caps.on{display:flex}
+  .gt-caps b{font-weight:700}
+  #unlock-btn{width:100%;height:50px;font-size:15px;margin-top:2px}
+  #gate-msg{margin-top:14px}
+  .gt-pied{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    flex-wrap:wrap;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--faint)}
+  .gt-pied a{color:var(--gold);text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+  .gt-pied a:hover{text-decoration:underline}
+  .gt-pied svg{width:13px;height:13px}
+  @media(max-width:520px){
+    #gate{align-items:flex-start}
+    .gt-wrap{padding-top:9vh}
+  }
 </style>
 </head>
 <body>
 
 <!-- ===== GATE ===== -->
 <div id="gate">
-  <div class="brand">
-    <div class="brand-mark"><img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs"></div>
-    <div class="brand-text"><b>Baobabs Basket Club</b><span>Espace gestion</span></div>
-  </div>
-  <div class="card">
-    <h2 class="card-title">Accès réservé</h2>
-    <p class="card-sub">Connectez-vous avec votre compte pour gérer le contenu du site.</p>
-    <div class="field" style="text-align:left">
-      <label for="gate-email">E-mail</label>
-      <input type="email" id="gate-email" placeholder="vous@exemple.com" autocomplete="username">
+  <div class="gt-wrap">
+    <div class="brand">
+      <div class="brand-mark"><img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs"></div>
+      <div class="brand-text"><b>Baobabs Basket Club</b><span>Espace de gestion</span></div>
     </div>
-    <div class="field" style="text-align:left">
-      <label for="pw">Mot de passe</label>
-      <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password">
+
+    <h1 class="gt-hello" id="gt-hello">Bonjour.</h1>
+    <p class="gt-sub">Cet espace sert à tenir le site du club&nbsp;: les matchs, l'effectif, l'école de basket, la boutique. Il ne fait pas partie du site public et n'est lié depuis aucune de ses pages.</p>
+
+    <div class="card">
+      <!-- LES QUATRE IDENTIFIANTS CI-DESSOUS NE CHANGENT JAMAIS.
+           gate-email, pw, unlock-btn et gate-msg sont designes un par un
+           par le tutoriel (voir etapesConnexion dans tutoriel.js). Les
+           renommer eteindrait le pointage de tout le chapitre, en
+           silence : le tutoriel ne leve pas d'erreur quand une cible
+           manque, il montre simplement du vide. -->
+      <div class="field">
+        <div class="gt-lab"><label for="gate-email">Votre adresse e-mail</label></div>
+        <input type="email" id="gate-email" placeholder="vous@exemple.com" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="field">
+        <div class="gt-lab">
+          <label for="pw">Mot de passe</label>
+          <button type="button" class="gt-voir" id="gt-voir" aria-pressed="false">Afficher</button>
+        </div>
+        <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <!-- LA PREMIERE CAUSE DE « IDENTIFIANTS INCORRECTS ».
+           Le champ est masque : on ne voit pas qu'on tape en capitales,
+           et l'on recommence trois fois avant d'y penser. Le navigateur
+           sait, il suffit de le lui demander. -->
+      <div class="gt-caps" id="gt-caps">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex:none"><path d="M12 3 4 11h4v5h8v-5h4L12 3Z"/><path d="M8 20h8"/></svg>
+        <span><b>Majuscules bloquées.</b> Le mot de passe en tient compte.</span>
+      </div>
+      <button class="btn btn-primary" id="unlock-btn">Se connecter</button>
+      <div class="msg" id="gate-msg">Identifiants incorrects.</div>
+
+      <div class="gt-pied">
+        <span>Vous cherchiez le site&nbsp;?</span>
+        <a href="index.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+          baobabsbasketclub.com
+        </a>
+      </div>
     </div>
-    <button class="btn btn-primary" id="unlock-btn">Se connecter</button>
-    <div class="msg" id="gate-msg">Identifiants incorrects.</div>
   </div>
 </div>
 
@@ -4976,7 +5046,7 @@
 
         <div id="cp-list"></div>
         <div class="msg" id="cp-msg"></div>
-        <p class="card-sub" style="margin-top:14px">Les comptes eux-mêmes se créent dans Supabase&nbsp;(Authentication), puis s'ajoutent à la table <code>admin_users</code>. Ici, on ne fait que distribuer les casquettes.</p>
+        <p class="card-sub" style="margin-top:14px">Le compte lui-même se crée dans Supabase&nbsp;(Authentication&nbsp;› Add user)&nbsp;: cela demande la clé de service du projet, qui ne peut pas vivre dans une page web. Tout le reste — la casquette, les écrans, le retrait — se fait ici, dans l'espace du propriétaire plus bas.</p>
       </div>
 
       <div class="card" style="margin-top:16px">
@@ -4987,7 +5057,7 @@
 
       <div class="card" style="margin-top:16px">
         <h2 class="card-title">Qui ouvre quel écran</h2>
-        <p class="card-sub">Le tableau se lit par colonne&nbsp;: une casquette, et tout ce qu'elle trouve en se connectant. Les droits se règlent dans la table <code>role_permissions</code>.</p>
+        <p class="card-sub">Le tableau se lit par colonne&nbsp;: une casquette, et tout ce qu'elle trouve en se connectant. Le propriétaire du site règle chaque case au clic, une fois le mot de passe donné.</p>
         <div style="overflow-x:auto"><table class="gd-sheet" id="cp-matrice"><tbody></tbody></table></div>
         <div class="cp-legende">
           <span><i class="cp-n-w">✓</i>Consulte et modifie</span>
@@ -5015,6 +5085,7 @@
         <div class="tm-panel-h" style="margin-top:4px">Donner l'accès à une adresse</div>
         <div class="cp-form">
           <input type="email" id="cp-new-mail" class="qg-in" placeholder="adresse@exemple.com" autocomplete="off">
+          <input type="text" id="cp-new-nom" class="qg-in" placeholder="Son nom — ex. Fatou Sarr" autocomplete="off">
           <select id="cp-new-role" class="qg-in" aria-label="Casquette du nouveau compte"></select>
           <button type="button" class="btn btn-primary" id="cp-new-go">Donner l'accès</button>
         </div>
@@ -5220,6 +5291,7 @@
   var currentSession = null;
 
   var gate = document.getElementById('gate');
+  gateInit();
   var app = document.getElementById('app');
   var emailInput = document.getElementById('gate-email');
   var pwInput = document.getElementById('pw');
@@ -5280,7 +5352,7 @@
   // l'accès complet à tout compte de admin_users — le durcissement des
   // politiques table par table viendra ensuite. Autrement dit : ceci
   // range l'admin selon le métier de chacun, ça n'enferme pas encore.
-  var currentRole = null, currentPerms = null;
+  var currentRole = null, currentPerms = null, currentNom = '';
 
   // Chaque écran appartient à un module. Un module regroupe ce qu'une
   // même personne gère : le coach ne pense pas « calendrier » et
@@ -5320,6 +5392,16 @@
     // Les libelles des casquettes partent en meme temps que le role :
     // ils servent des le bandeau, avant meme qu'on ouvre un ecran.
     cpChargerCasquettes();
+    // Le nom de la personne, pour l'accueil. Il vit en base depuis
+    // MIGRATION-casquettes.sql ; avant elle, la colonne n'existe pas et
+    // la lecture echoue sans bruit -- on retombe alors sur CP_NOMS, puis
+    // sur une simple salutation.
+    var uid = (currentSession && currentSession.user && currentSession.user.id) || '';
+    if (uid) {
+      sbGet('admin_users?select=nom&user_id=eq.'+encodeURIComponent(uid))
+        .then(function(rows){ currentNom = ((rows||[])[0] || {}).nom || ''; })
+        .catch(function(){});
+    }
     return sb.rpc('bbc_role').then(function(r){
       currentRole = (r && !r.error && r.data) ? r.data : 'super_admin';
       if (currentRole === 'super_admin'){ currentPerms = {}; return; }
@@ -5454,11 +5536,59 @@
   // e-mail en gros titre : « mdgdesign221@gmail.com » ne rentre pas dans
   // 46 px et se faisait couper au milieu.
   function wcSalutation(user){
-    var m = (user && user.user_metadata) || {};
-    var nom = (m.full_name || m.name || '').trim();
-    if (nom) return 'Bonjour ' + nom.split(/\s+/)[0];
     var h = new Date().getHours();
-    return h < 5 ? 'Bonsoir' : h < 18 ? 'Bonjour' : 'Bonsoir';
+    var bonjour = (h < 5 || h >= 18) ? 'Bonsoir' : 'Bonjour';
+    // TROIS SOURCES, DANS CET ORDRE. Le nom saisi par le proprietaire
+    // quand il a donne l'acces ; a defaut la table ecrite en dur ;
+    // a defaut ce que Supabase sait du compte -- presque toujours
+    // rien, pour un compte cree a la main dans le tableau de bord.
+    var m = (user && user.user_metadata) || {};
+    var nom = (currentNom || cpNom(user && user.email) ||
+               m.full_name || m.name || '').trim();
+    if (nom) return bonjour + ' ' + nom.split(/\s+/)[0];
+    return bonjour;
+  }
+
+  // ============ L'ECRAN DE CONNEXION ============
+  // Trois gestes, et deux d'entre eux existent parce qu'on se trompe
+  // toujours aux memes endroits.
+  function gateInit(){
+    // La salutation suit l'heure. Un « Bonjour » a vingt-deux heures
+    // sonne faux, et cet ecran est souvent ouvert le soir, apres un
+    // match.
+    var h = new Date().getHours();
+    var hello = document.getElementById('gt-hello');
+    if (hello) hello.textContent = (h < 5 || h >= 18) ? 'Bonsoir.' : 'Bonjour.';
+
+    // Afficher le mot de passe. Sur un telephone, une majuscule tapee
+    // sans le vouloir se corrige en trois secondes quand on la voit, et
+    // en trois tentatives quand on ne la voit pas.
+    var voir = document.getElementById('gt-voir');
+    var pw = document.getElementById('pw');
+    if (voir && pw){
+      voir.addEventListener('click', function(){
+        var montre = pw.type === 'text';
+        pw.type = montre ? 'password' : 'text';
+        voir.textContent = montre ? 'Afficher' : 'Masquer';
+        voir.setAttribute('aria-pressed', montre ? 'false' : 'true');
+        pw.focus();
+      });
+    }
+
+    // Les majuscules bloquees. Le champ etant masque, on ne voit pas
+    // qu'on tape en capitales : c'est la premiere cause de refus, et la
+    // derniere a laquelle on pense.
+    var caps = document.getElementById('gt-caps');
+    function majuscules(e){
+      if (!caps || !e.getModifierState) return;
+      caps.classList.toggle('on', e.getModifierState('CapsLock'));
+    }
+    [pw, document.getElementById('gate-email')].forEach(function(el){
+      if (!el) return;
+      el.addEventListener('keydown', majuscules);
+      el.addEventListener('keyup', majuscules);
+      el.addEventListener('blur', function(){ if (caps) caps.classList.remove('on'); });
+    });
   }
 
   function onAuthenticated(){
@@ -5476,6 +5606,18 @@
       if (badge && currentRole){
         badge.textContent = ROLE_NOMS[currentRole] || currentRole;
         badge.classList.remove('hide');
+      }
+      // LE NOM ARRIVE APRES. wcSalutation() est appelee plus haut,
+      // avant que la base ait repondu : sans cette seconde ecriture,
+      // l'ecran disait « Bonsoir » tout court a quelqu'un dont on
+      // connait parfaitement le prenom.
+      var t = document.getElementById('wc-name');
+      if (t) t.textContent = wcSalutation(currentSession.user);
+      var q = document.getElementById('wc-who');
+      if (q) {
+        q.textContent = currentNom
+          ? (currentSession.user.email || '')
+          : (currentSession.user.email || '');
       }
       wcBriefing();
     });
@@ -7437,7 +7579,7 @@
     forms: ["<b>L'écran s'ouvre sur Contact</b> : c'est le seul des trois onglets où quelqu'un attend une réponse. Le liseré doré marque ce qui reste à traiter.","La lettre d'information se rédige dans l'écran <b>Newsletter</b> ; le détail d'une commande s'ouvre dans l'écran <b>Commandes</b>.","Les candidatures ont leur propre écran, avec un vrai suivi de dossier."],
     home: ["<b>L'image de fond et l'accroche du grand bloc d'accueil.</b>","Si des bannières sont actives (écran Bannières & slider), elles passent devant cette image."],
     analytics: ["<b>Les statistiques sportives disent si l'équipe joue bien. Celles-ci disent si le club tient debout.</b> Deux questions différentes, posées par deux personnes différentes.","<b>Les recettes</b> comptent la boutique au jour de la commande, l'école au jour de l'encaissement réel : une mensualité de septembre payée en novembre est une recette de novembre, sinon la trésorerie raconterait une histoire qu'elle n'a pas vécue.","<b>« Mensualités recouvrées »</b> est le chiffre à surveiller. Sous 70 %, l'écran le passe en orange : c'est le moment de relancer, pas le mois suivant.","<b>Le trafic du site n'est pas ici</b>, volontairement. Un outil de mesure d'audience le fait mieux et gratuitement. Cet écran ne montre que ce que le club possède et peut recontacter — une adresse e-mail vaut mille pages vues.","Réservé à la présidence et à la direction sportive."],
-    comptes: ["<b>Un compte, un rôle.</b> Le rôle décide des écrans que la personne voit en se connectant — elle ne trouve pas les autres, elle ne les cherche pas.","<b>Lire ne demande rien, changer demande le mot de passe.</b> Tout administrateur qui ouvre cet écran voit qui porte quelle casquette et ce que chaque casquette ouvre. Le mot de passe n'est réclamé qu'au moment de changer un rôle — et il faut en plus être super administrateur.","<b>Un compte est verrouillé en base : celui du propriétaire du site.</b> Personne d'autre que son titulaire ne peut changer son rôle, son adresse, ni le supprimer — même en passant directement par l'API, sans écran. Il porte un cadenas dans la liste — pour tout le monde sauf son titulaire, qui voit sa propre ligne comme les autres.","Les comptes eux-mêmes se créent dans Supabase (Authentication), puis s'ajoutent à la table <code>admin_users</code>. Ici on ne fait que distribuer les casquettes.","Le tableau du bas distingue trois états : <b>✓</b> consulte et modifie, <b>○</b> consulte seulement, <b>·</b> n'a pas l'écran. Pour affiner, c'est la table <code>role_permissions</code> — une ligne par autorisation.","<b>Ce filtrage range l'admin, il ne l'enferme pas encore</b> : hors comptes, réglages et dossiers sensibles, la base accorde encore l'accès complet à tout administrateur. Le verrouillage se poursuit module par module."],
+    comptes: ["<b>Un compte, un rôle.</b> Le rôle décide des écrans que la personne voit en se connectant — elle ne trouve pas les autres, elle ne les cherche pas.","<b>Lire ne demande rien, changer demande le mot de passe.</b> Tout administrateur qui ouvre cet écran voit qui porte quelle casquette et ce que chaque casquette ouvre. Le mot de passe n'est réclamé qu'au moment de changer quelque chose.","<b>Un compte est verrouillé en base : celui du propriétaire du site.</b> Personne d'autre que son titulaire ne peut changer son rôle, son adresse, ni le supprimer — même en passant directement par l'API, sans écran.","<b>Le compte se crée dans Supabase, la casquette se donne ici.</b> Créer un utilisateur demande la clé de service du projet : mise dans cette page, elle serait lisible par n'importe qui et donnerait le contrôle de tout. Trente secondes dans Authentication, et le reste se fait dans l'administration.","Le tableau distingue trois états : <b>✓</b> consulte et modifie, <b>○</b> consulte seulement, <b>·</b> n'a pas l'écran. Le propriétaire fait tourner chaque case au clic — le changement part aussitôt en base.","<b>Ce filtrage range l'admin, il ne l'enferme pas encore</b> : hors comptes, réglages et dossiers sensibles, la base accorde encore l'accès complet à tout administrateur. Le verrouillage se poursuit module par module.","<b>L'espace du propriétaire n'existe que sur un compte.</b> Donner l'accès à une adresse, inventer une casquette, la supprimer, retirer un accès : ces quatre gestes sont refusés à tout autre compte — en base, pas seulement à l'écran.","<b>Une casquette neuve n'ouvre aucun écran.</b> C'est voulu : une casquette qui ouvrirait tout par défaut serait un trou. On la crée, puis on lui donne ses écrans dans le tableau, case par case."],
     audit: ["<b>Qui a modifié quoi, et quand.</b> Chaque ligne est une phrase, regroupée par jour ; l'ancienne valeur est barrée, la nouvelle à côté.","Protégé par mot de passe. La recherche et les filtres retrouvent une modification précise.","Rien ne s'efface : c'est la mémoire de l'admin."]
   };
 
@@ -7626,9 +7768,14 @@
     reglages:   [['#qgs-mount .qgc-block:not([hidden]) .qgc-fields', '#qgs-mount'],
                  '#qgs-mount .qgc-nav',
                  ['#qgs-mount .qgc-block:not([hidden]) .qgc-preview', '#qgs-mount']],
+    // HUIT CONSEILS, HUIT CIBLES, DANS LE MEME ORDRE.
+    // Cette table est POSITIONNELLE : un conseil ajoute sans sa cible
+    // decale toutes les suivantes et eteint le pointage de l'ecran
+    // entier, sans lever la moindre erreur.
     comptes:    ['#cp-list', '#cp-demander',
                  ['#cp-list .cp-protege', '#cp-list'],
-                 null, '#cp-matrice', null],
+                 null, '#cp-matrice', null,
+                 '#cp-proprio', '#cp-cq-list'],
     // COHERENCE S'OUVRE VERROUILLE, TOUJOURS.
     // #co-content et #co-list n'existent visiblement qu'apres le mot de
     // passe : deux conseils sur trois ne designaient rien a l'ouverture.
@@ -19258,8 +19405,18 @@
     // ,'president@…': 'Nom du président'
     // ,'…': '…'
   };
+  // LA BASE D'ABORD, LE FICHIER ENSUITE. Les noms etaient ecrits ici,
+  // dans CP_NOMS : en ajouter un demandait de rouvrir l'administration.
+  // Ils vivent maintenant dans admin_users.nom, saisis par le
+  // proprietaire au moment ou il donne l'acces. CP_NOMS reste le filet
+  // pour les installations qui n'ont pas encore passe la migration.
   function cpNom(email){
     var e = String(email == null ? '' : email).trim().toLowerCase();
+    if (!e) return '';
+    for (var i = 0; i < cpRows.length; i++){
+      if (String(cpRows[i].email||'').trim().toLowerCase() === e && cpRows[i].nom)
+        return String(cpRows[i].nom).trim();
+    }
     return CP_NOMS[e] || '';
   }
 
@@ -19334,7 +19491,9 @@
   // admin_users_lecture) : aucun mot de passe n'est nécessaire pour
   // répondre à « qui est qui ».
   function cpCharger(){
-    return sbGet('admin_users?select=user_id,email,role&order=email.asc')
+    return sbGet('admin_users?select=user_id,email,role,nom&order=email.asc')
+      .catch(function(){ /* colonne nom absente : on relit sans elle */
+        return sbGet('admin_users?select=user_id,email,role&order=email.asc'); })
       .then(function(rows){ cpRows = rows || []; cpRendre(); })
       .catch(function(){
         document.getElementById('cp-sub').textContent = 'Comptes indisponibles.';
@@ -19657,14 +19816,21 @@
     var btn = document.getElementById('cp-new-go');
     var mail = (champ.value || '').trim().toLowerCase();
     var role = document.getElementById('cp-new-role').value;
+    // Le nom sert a l'accueil (« Bonjour Fatou ») et a la liste des
+    // comptes : une colonne de six adresses ne dit a personne qui est
+    // qui. Facultatif -- laisse vide, l'ecran montre l'adresse.
+    var nomIn = document.getElementById('cp-new-nom');
+    var nom = nomIn ? (nomIn.value || '').trim() : '';
     if (!mail || mail.indexOf('@') < 0){ showMsg(msg, 'Indiquez une adresse e-mail.', false); champ.focus(); return; }
     btn.disabled = true; showMsg(msg, 'Recherche du compte…', true);
-    tkRpc('bbc_compte_rattacher', { p_email: mail, p_role: role })
+    tkRpc('bbc_compte_rattacher', { p_email: mail, p_role: role, p_nom: nom })
       .then(function(rows){
         btn.disabled = false;
         champ.value = '';
-        var nom = ROLE_NOMS[role] || role;
-        showMsg(msg, mail + ' porte maintenant la casquette « ' + nom + ' ». Elle s’applique à sa prochaine connexion.', true);
+        if (nomIn) nomIn.value = '';
+        var libelle = ROLE_NOMS[role] || role;
+        showMsg(msg, (nom || mail) + ' porte maintenant la casquette « ' + libelle +
+          ' ». Elle s’applique à sa prochaine connexion.', true);
         cpCharger().then(cpProprioRendre);
       })
       .catch(function(e){

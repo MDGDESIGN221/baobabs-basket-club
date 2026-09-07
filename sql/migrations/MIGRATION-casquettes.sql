@@ -74,6 +74,20 @@ create policy admin_roles_ecriture on admin_roles
 
 
 -- ---------------------------------------------------------------------
+-- 1 bis. LE NOM DE LA PERSONNE
+--
+--    admin_users ne gardait qu'une adresse et un rôle. Une liste de six
+--    adresses ne dit à personne qui est qui, et l'écran d'accueil ne
+--    pouvait dire que « Bonjour » — jamais « Bonjour Fatou ».
+--
+--    Les noms vivaient dans le JavaScript (CP_NOMS) : en ajouter un
+--    demandait de rouvrir le fichier. Ils vivent ici désormais, et le
+--    propriétaire les saisit en même temps qu'il donne l'accès.
+-- ---------------------------------------------------------------------
+alter table admin_users add column if not exists nom text;
+
+
+-- ---------------------------------------------------------------------
 -- 2. DONNER L'ACCÈS À UNE ADRESSE
 --
 --    admin_users veut un user_id, c'est-à-dire l'identifiant interne du
@@ -89,8 +103,8 @@ create policy admin_roles_ecriture on admin_roles
 --    « créez d'abord le compte » est une phrase qu'on peut suivre,
 --    « null value violates not-null constraint » ne l'est pas.
 -- ---------------------------------------------------------------------
-create or replace function bbc_compte_rattacher(p_email text, p_role text)
-returns table (user_id uuid, email text, role text)
+create or replace function bbc_compte_rattacher(p_email text, p_role text, p_nom text default null)
+returns table (user_id uuid, email text, role text, nom text)
 language plpgsql
 security definer
 set search_path = public, auth, extensions
@@ -117,17 +131,46 @@ begin
     raise exception 'Aucun compte Supabase pour %. Créez-le d''abord dans Authentication, puis revenez ici.', v_mail;
   end if;
 
-  insert into admin_users (user_id, email, role)
-  values (v_uid, v_mail, p_role)
-  on conflict (user_id) do update set email = excluded.email, role = excluded.role;
+  insert into admin_users (user_id, email, role, nom)
+  values (v_uid, v_mail, p_role, nullif(trim(coalesce(p_nom,'')), ''))
+  on conflict (user_id) do update
+     set email = excluded.email,
+         role  = excluded.role,
+         -- un nom vide ne doit pas EFFACER celui qui est déjà là : on
+         -- rattache parfois une adresse une seconde fois juste pour
+         -- changer sa casquette.
+         nom   = coalesce(excluded.nom, admin_users.nom);
 
   return query
-    select a.user_id, a.email, a.role from admin_users a where a.user_id = v_uid;
+    select a.user_id, a.email, a.role, a.nom from admin_users a where a.user_id = v_uid;
 end;
 $$;
 
-revoke all on function bbc_compte_rattacher(text, text) from public;
-grant execute on function bbc_compte_rattacher(text, text) to authenticated;
+revoke all on function bbc_compte_rattacher(text, text, text) from public;
+grant execute on function bbc_compte_rattacher(text, text, text) to authenticated;
+
+
+-- ---------------------------------------------------------------------
+-- 2 bis. RENOMMER QUELQU'UN, SANS TOUCHER À SA CASQUETTE
+-- ---------------------------------------------------------------------
+create or replace function bbc_compte_nommer(p_email text, p_nom text)
+returns text
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  if not bbc_est_proprietaire() then
+    raise exception 'Seul le compte propriétaire du site peut renommer un compte.';
+  end if;
+  update admin_users set nom = nullif(trim(coalesce(p_nom,'')), '')
+   where lower(email) = lower(trim(p_email));
+  return p_nom;
+end;
+$$;
+
+revoke all on function bbc_compte_nommer(text, text) from public;
+grant execute on function bbc_compte_nommer(text, text) to authenticated;
 
 
 -- ---------------------------------------------------------------------

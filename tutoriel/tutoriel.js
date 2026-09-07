@@ -954,7 +954,16 @@
               'du club&nbsp;: c’est la vôtre, personnellement.' },
       { special: true, nom: 'Se connecter', connexion: true, cible: '#pw',
         html: 'Votre <b>mot de passe</b>. Je ne le remplis pas, même pour de faux — un champ de mot de passe ' +
-              'ne se met jamais en scène. Il vous a été communiqué à part.' },
+              'ne se met jamais en scène. Il vous a été communiqué à part, et il ne peut pas être retrouvé&nbsp;: ' +
+              'perdu, on n’en cherche pas l’ancien, on en met un nouveau.' },
+      // Deux details qui evitent des appels au responsable du site : le
+      // mot de passe qu'on peut relire, et l'alerte des majuscules --
+      // premiere cause de « identifiants incorrects », et derniere a
+      // laquelle on pense.
+      { special: true, nom: 'Se connecter', connexion: true, cible: '#gt-voir',
+        html: '<b>Afficher</b> montre ce que vous tapez. Sur un téléphone, une majuscule glissée sans le ' +
+              'vouloir se corrige en trois secondes quand on la voit, et en trois tentatives quand on ne la ' +
+              'voit pas. Un avertissement apparaît aussi tout seul si les majuscules sont bloquées.' },
       { special: true, nom: 'Se connecter', connexion: true, cible: '#unlock-btn',
         html: 'Et on entre. <b>Deux conditions, pas une</b>&nbsp;: le bon mot de passe, et un compte inscrit ' +
               'dans l’administration. Un compte client du site ne suffit pas.' },
