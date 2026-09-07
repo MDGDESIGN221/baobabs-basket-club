@@ -3147,6 +3147,41 @@
      afficher, l'alerte des majuscules bloquees -- la premiere cause
      de « identifiants incorrects » -- et une sortie vers le site
      public pour qui s'est trompe de porte. */
+  /* LE BATTEMENT D'ECRAN AU RAFRAICHISSEMENT.
+     #gate est dans la page des le premier octet ; savoir si
+     quelqu'un est deja connecte demande getSession(), puis
+     is_admin(), puis chargerRole() -- trois allers-retours. D'ou
+     l'ecran de connexion qui apparaissait et disparaissait a chaque
+     Ctrl+Shift+R.
+
+     Le jeton de session dort dans localStorage : on peut le lire
+     AVANT le premier rendu et decider quoi peindre. Ce n'est qu'un
+     indice d'AFFICHAGE -- il n'ouvre aucune porte, is_admin() reste
+     seul juge, et un jeton perime ramene simplement l'ecran de
+     connexion.
+
+     Le remplacant ne s'allume qu'apres un tiers de seconde : quand
+     la session revient vite -- le cas courant -- on n'aura montre
+     RIEN DU TOUT, ce qui est exactement ce qu'on cherche. Remplacer
+     un battement par un autre n'aurait rien reglé. */
+  html.bbc-reprise #gate{display:none}
+  #boot{display:none}
+  /* En surcouche, pas dans le flux : sinon l'application s'ouvrirait
+     SOUS lui, decalee d'une hauteur d'ecran, le temps d'une image. */
+  html.bbc-reprise #boot{display:flex;align-items:center;justify-content:center;
+    position:fixed;inset:0;z-index:60;background:var(--bg);padding:20px}
+  #boot .brand{width:auto;padding:0;gap:12px}
+  .boot-in{display:flex;flex-direction:column;align-items:center;gap:20px;
+    animation:bootIn .45s ease .35s both}
+  @keyframes bootIn{from{opacity:0}to{opacity:1}}
+  .boot-line{width:104px;height:2px;border-radius:2px;background:var(--line-strong);overflow:hidden}
+  .boot-line i{display:block;height:100%;width:38%;border-radius:2px;background:var(--gold);
+    animation:bootGo 1.15s ease-in-out infinite}
+  @keyframes bootGo{0%{transform:translateX(-110%)}100%{transform:translateX(370%)}}
+  @media (prefers-reduced-motion:reduce){
+    .boot-in{animation-delay:.35s;animation-duration:.01s}
+    .boot-line i{animation:none;width:100%;opacity:.45}
+  }
   #gate{max-width:none;margin:0;padding:0;min-height:100vh;display:flex;
     align-items:center;justify-content:center}
   .gt-wrap{width:100%;max-width:430px;padding:32px 22px 40px}
@@ -3187,6 +3222,36 @@
 </style>
 </head>
 <body>
+
+<!-- AVANT TOUT LE RESTE : y a-t-il deja quelqu'un ?
+     Ce script est place ici, et pas plus bas, parce qu'il doit poser
+     sa classe AVANT que le navigateur ait analyse #gate. Un script
+     de fin de page arriverait apres le premier rendu, c'est-a-dire
+     apres le battement qu'on veut supprimer. -->
+<script>
+(function(){
+  try {
+    for (var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      // La cle que pose le SDK Supabase : sb-<projet>-auth-token.
+      if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0 && localStorage.getItem(k)){
+        document.documentElement.className += ' bbc-reprise';
+        return;
+      }
+    }
+  } catch(e){}   /* navigation privee, stockage refuse : on peint la porte */
+})();
+</script>
+
+<div id="boot" aria-hidden="true">
+  <div class="boot-in">
+    <div class="brand">
+      <div class="brand-mark"><img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt=""></div>
+      <div class="brand-text"><b>Baobabs Basket Club</b><span>Espace de gestion</span></div>
+    </div>
+    <div class="boot-line"><i></i></div>
+  </div>
+</div>
 
 <!-- ===== GATE ===== -->
 <div id="gate">
@@ -5953,6 +6018,21 @@
   // Session déjà active (retour sur la page) : on vérifie quand même
   // is_admin() avant de sauter l'écran de connexion — une session
   // client valide ne doit jamais donner accès ici.
+  // ON REND LA MAIN A L'AFFICHAGE NORMAL.
+  // Tant que la classe est posee, #gate reste cache : TOUTE sortie
+  // de la reprise doit passer par ici, sinon l'ecran de connexion ne
+  // reviendrait jamais. C'est le prix de l'avoir cache d'avance, et
+  // c'est pourquoi il y a aussi un filet de securite plus bas.
+  function finReprise(){
+    document.documentElement.classList.remove('bbc-reprise');
+    var b = document.getElementById('boot');
+    if (b && b.parentNode) b.parentNode.removeChild(b);
+  }
+  // Si getSession() ne repond jamais -- hors ligne, serveur muet --
+  // on montre la porte plutot qu'une attente sans fin.
+  var repriseFilet = setTimeout(finReprise, 8000);
+  function repriseFinie(){ clearTimeout(repriseFilet); finReprise(); }
+
   sb.auth.getSession().then(function(res){
     if (res.data && res.data.session) {
       // DEUX HEURES SANS RIEN FAIRE, ET LA PORTE S'EST REFERMEE.
@@ -5967,7 +6047,7 @@
         return;
       }
       sb.rpc('is_admin').then(function(check){
-        if (check.error || check.data !== true) { sb.auth.signOut(); return; }
+        if (check.error || check.data !== true) { repriseFinie(); sb.auth.signOut(); return; }
         currentSession = res.data.session;
         veilleDemarrer();
         gate.classList.add('hide');
@@ -5981,6 +6061,8 @@
           init();
           appliquerRole();
           notifInit();
+          // L'application est peinte : on peut retirer le remplacant.
+          repriseFinie();
           // LE RETOUR SUR LA PAGE PASSE ICI, PAS PAR onAuthenticated().
           // Les pastilles n'etaient peintes que sur le chemin de la
           // premiere connexion : en rouvrant l'onglet le lendemain, le
@@ -5988,9 +6070,12 @@
           // etait entre.
           avPeindre();
         });
-      });
+      }).catch(function(){ repriseFinie(); });
+    } else {
+      // Jeton perime, ou efface ailleurs : la porte, tout simplement.
+      repriseFinie();
     }
-  });
+  }).catch(function(){ repriseFinie(); });
   function wcEntrer(){
     var w = document.getElementById('welcome');
     if (!w || w.classList.contains('hide')) return;
