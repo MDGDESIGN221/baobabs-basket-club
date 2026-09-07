@@ -7374,7 +7374,16 @@ window.BaobabsStudio = (function () {
 
         var pr = makeFrame(d, { x: fx(236), y: fy(235), w: fx(130), h: fy(220), slot: 'photoMatch' });
         pr.name = 'Joueuse — adversaire';
-        pr.fx.gray = 100; pr.fx.tint = color(A, 1); pr.fx.tintAmt = .34;
+        /* LA TEINTE ETAIT DU MAUVAIS COTE.
+           L'adversaire recevait la couleur d'accent -- c'est-a-dire la
+           couleur DU CLUB -- pendant que la joueuse des Baobabs restait
+           en gris. Sur une affiche Baobabs, c'etait donc l'equipe d'en
+           face qui portait le vert. L'intention etait le contraste
+           classique de l'affiche de duel ; le resultat disait l'inverse.
+           Les deux joueuses sont desormais traitees pareil, en noir et
+           blanc : le vert reste au decor, au titre et aux filets, la ou
+           il appartient au club et a personne d'autre. */
+        pr.fx.gray = 100; pr.fx.contrast = 12;
         out.push(pr);
 
         /* pastille VS */
