@@ -2108,6 +2108,22 @@
   .cp-cq-sys{flex:none;font-size:10.5px;color:var(--gold);border:1px solid rgba(198,162,87,.4);border-radius:20px;padding:2px 8px}
   .cp-cq-x{flex:none;background:none;border:1px solid var(--line);border-radius:8px;color:var(--faint);padding:4px 9px;font-size:12px;cursor:pointer}
   .cp-cq-x:hover{border-color:var(--danger);color:var(--danger)}
+  /* LA PASTILLE DE PORTRAIT, ECRITE UNE FOIS.
+     Elle apparait a trois endroits -- l'ecran de connexion, l'accueil,
+     le bandeau -- et trois dessins differents pour le meme visage
+     donneraient trois applications. Le cadrage suit le modele deja
+     employe pour les joueuses : object-position + scale, jamais une
+     image recoupee. */
+  .av{position:relative;flex:none;border-radius:50%;overflow:hidden;
+    background:var(--surface-2);border:1px solid var(--line-strong);
+    display:flex;align-items:center;justify-content:center}
+  .av img{width:100%;height:100%;object-fit:cover;display:block}
+  .av span{font-family:var(--font-ui);font-weight:700;color:var(--faint);
+    letter-spacing:.02em;user-select:none}
+  .av-24{width:24px;height:24px} .av-24 span{font-size:10px}
+  .av-34{width:34px;height:34px} .av-34 span{font-size:13px}
+  .av-56{width:56px;height:56px} .av-56 span{font-size:20px}
+  .av-72{width:72px;height:72px} .av-72 span{font-size:26px}
   .cp-nom-edit{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
   .cp-nom-edit .qg-in{flex:1 1 200px;min-width:0;height:34px}
   .cp-nom-edit .btn{flex:none;height:34px;padding:0 14px;font-size:12.5px}
@@ -3084,6 +3100,11 @@
     align-items:center;justify-content:center}
   .gt-wrap{width:100%;max-width:430px;padding:32px 22px 40px}
   #gate .brand{justify-content:flex-start;margin-bottom:30px}
+  .gt-connu{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .gt-connu-t b{display:block;font-family:var(--font-ui);font-weight:700;font-size:14.5px;color:var(--text)}
+  .gt-connu-t button{background:none;border:none;padding:0;margin-top:2px;font:inherit;
+    font-size:11.5px;color:var(--faint);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+  .gt-connu-t button:hover{color:var(--gold)}
   .gt-hello{font-family:var(--font-ui);font-weight:700;font-size:clamp(26px,5vw,32px);
     letter-spacing:-.02em;line-height:1.1;color:var(--text);margin:0 0 8px}
   .gt-sub{font-size:13.5px;line-height:1.55;color:var(--faint);margin:0 0 26px}
@@ -3124,6 +3145,20 @@
       <div class="brand-text"><b>Baobabs Basket Club</b><span>Espace de gestion</span></div>
     </div>
 
+    <!-- LA DERNIERE PERSONNE ENTREE SUR CET APPAREIL.
+         Avant la connexion, la base ne sait pas qui frappe : seul le
+         navigateur peut s'en souvenir. Le bloc reste cache tant qu'il
+         n'y a rien a montrer, et « ce n'est pas vous ? » l'efface.
+         Cette sortie n'est pas une politesse : sur un ordinateur du
+         club, c'est elle qui evite d'annoncer a tout le monde qui
+         administre le site. -->
+    <div class="gt-connu hide" id="gt-connu">
+      <div id="gt-connu-av"></div>
+      <div class="gt-connu-t">
+        <b id="gt-connu-nom"></b>
+        <button type="button" id="gt-connu-non">Ce n'est pas vous&nbsp;?</button>
+      </div>
+    </div>
     <h1 class="gt-hello" id="gt-hello">Bonjour.</h1>
     <p class="gt-sub">Cet espace sert à tenir le site du club&nbsp;: les matchs, l'effectif, l'école de basket, la boutique. Il ne fait pas partie du site public et n'est lié depuis aucune de ses pages.</p>
 
@@ -3235,6 +3270,7 @@
       <span class="wc-role hide" id="wc-role"></span>
     </header>
 
+    <div id="wc-avatar" class="hide" style="margin-bottom:16px"></div>
     <h1 class="wc-name" id="wc-name">Bonjour</h1>
     <p class="wc-who" id="wc-who"></p>
 
@@ -3310,6 +3346,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
           </button>
         </div>
+        <!-- Le visage a cote de la casquette : sur un ordinateur du club
+             partage, c'est ce qui dit d'un coup d'oeil sous quel compte
+             on est en train d'ecrire. -->
+        <span id="tb-avatar" class="hide" title=""></span>
         <span id="role-badge" class="hide" title="Votre rôle dans l'administration">Administration</span>
       </div>
     </div>
@@ -5227,6 +5267,13 @@
   var SUPABASE_KEY = "sb_publishable_68RKprorqTmVkzjHrKgdZw_h-AcMXRh";
   var BAOBABS_LOGO = "/media/img/BBC_-_COLORED_LOGO_jjcrux.webp";
   var MEDIA_BUCKET = "site-media";
+  // DECLAREE ICI, ET PAS PLUS BAS AVEC SES FONCTIONS.
+  // gateInit() s'execute pendant le corps de cette IIFE ; une var
+  // declaree cinq mille lignes plus loin vaut encore undefined a ce
+  // moment-la. localStorage.getItem(undefined) ne leve rien : il rend
+  // la cle « undefined », donc null, et l'ecran de connexion oubliait
+  // la personne a chaque fois -- sans la moindre erreur en console.
+  var CLE_DERNIER = 'bbc_admin_dernier';
 
   // ===================== LES FONCTIONS SERVEUR ONT DEUX NOMS =====================
   //
@@ -5472,7 +5519,7 @@
   // l'accès complet à tout compte de admin_users — le durcissement des
   // politiques table par table viendra ensuite. Autrement dit : ceci
   // range l'admin selon le métier de chacun, ça n'enferme pas encore.
-  var currentRole = null, currentPerms = null, currentNom = '';
+  var currentRole = null, currentPerms = null, currentNom = '', currentProfil = null;
 
   // Chaque écran appartient à un module. Un module regroupe ce qu'une
   // même personne gère : le coach ne pense pas « calendrier » et
@@ -5517,12 +5564,29 @@
     // la lecture echoue sans bruit -- on retombe alors sur CP_NOMS, puis
     // sur une simple salutation.
     var uid = (currentSession && currentSession.user && currentSession.user.id) || '';
-    if (uid) {
-      sbGet('admin_users?select=nom&user_id=eq.'+encodeURIComponent(uid))
-        .then(function(rows){ currentNom = ((rows||[])[0] || {}).nom || ''; })
-        .catch(function(){});
+    // LA LECTURE DU PROFIL ENTRE DANS LA PROMESSE RENDUE.
+    // Elle etait lancee a cote, sans etre attendue : avPeindre(), appelee
+    // sur chargerRole().then(...), peignait donc les pastilles AVANT que
+    // la photo soit arrivee. Resultat, les initiales partout et un
+    // souvenir enregistre sans photo -- si bien que l'ecran de connexion
+    // suivant montrait lui aussi des initiales. Une course perdue par un
+    // aller-retour reseau.
+    function profil(){
+      if (!uid) return Promise.resolve();
+      function poser(rows){
+        currentProfil = (rows||[])[0] || null;
+        currentNom = (currentProfil && currentProfil.nom) || '';
+      }
+      return sbGet('admin_users?select=nom,photo_url,photo_x,photo_y,photo_zoom&user_id=eq.'+encodeURIComponent(uid))
+        .then(poser)
+        // colonnes absentes (migration pas encore passee) : on relit le
+        // strict minimum plutot que de tout perdre
+        .catch(function(){
+          return sbGet('admin_users?select=nom&user_id=eq.'+encodeURIComponent(uid))
+            .then(poser).catch(function(){});
+        });
     }
-    return sb.rpc('bbc_role').then(function(r){
+    var role = sb.rpc('bbc_role').then(function(r){
       currentRole = (r && !r.error && r.data) ? r.data : 'super_admin';
       if (currentRole === 'super_admin'){ currentPerms = {}; return; }
       return sbGet('role_permissions?select=module,action&role=eq.'+encodeURIComponent(currentRole))
@@ -5534,6 +5598,7 @@
       // Rôles pas encore posés en base : on ne bloque personne.
       currentRole = 'super_admin'; currentPerms = {};
     });
+    return Promise.all([role, profil()]);
   }
 
   // LES CASQUETTES VIVAIENT DANS CE FICHIER.
@@ -5698,6 +5763,32 @@
     // Les majuscules bloquees. Le champ etant masque, on ne voit pas
     // qu'on tape en capitales : c'est la premiere cause de refus, et la
     // derniere a laquelle on pense.
+    // La derniere personne entree sur cet appareil. Rien de sensible
+    // n'est garde -- un prenom, une adresse, l'adresse d'une photo --
+    // et un clic efface tout.
+    var connu = dernierLu();
+    var boite = document.getElementById('gt-connu');
+    if (connu && (connu.nom || connu.email) && boite){
+      document.getElementById('gt-connu-av').innerHTML = avHtml(connu, 56);
+      document.getElementById('gt-connu-nom').textContent = connu.nom || connu.email;
+      boite.classList.remove('hide');
+      var champ = document.getElementById('gate-email');
+      if (champ && connu.email){
+        champ.value = connu.email;
+        // Le mot de passe prend le curseur : l'adresse est deja la, la
+        // faire retaper serait un geste pour rien.
+        var mp = document.getElementById('pw');
+        if (mp) setTimeout(function(){ mp.focus(); }, 60);
+      }
+      var non = document.getElementById('gt-connu-non');
+      if (non) non.addEventListener('click', function(){
+        dernierOublier();
+        boite.classList.add('hide');
+        var c2 = document.getElementById('gate-email');
+        if (c2){ c2.value = ''; c2.focus(); }
+      });
+    }
+
     var caps = document.getElementById('gt-caps');
     function majuscules(e){
       if (!caps || !e.getModifierState) return;
@@ -5733,6 +5824,7 @@
       // connait parfaitement le prenom.
       var t = document.getElementById('wc-name');
       if (t) t.textContent = wcSalutation(currentSession.user);
+      avPeindre();
       var q = document.getElementById('wc-who');
       if (q) {
         q.textContent = currentNom
@@ -5741,6 +5833,32 @@
       }
       wcBriefing();
     });
+  }
+
+  // LES TROIS PASTILLES, PEINTES AU MEME MOMENT.
+  // Elles montrent la meme personne : les remplir a trois endroits du
+  // code garantirait qu'un jour l'une des trois montre autre chose.
+  function avPeindre(){
+    var u = (currentSession && currentSession.user) || {};
+    var p = {
+      nom: currentNom || cpNom(u.email),
+      email: u.email || '',
+      photo_url: currentProfil && currentProfil.photo_url,
+      photo_x: currentProfil && currentProfil.photo_x,
+      photo_y: currentProfil && currentProfil.photo_y,
+      photo_zoom: currentProfil && currentProfil.photo_zoom
+    };
+    var a = document.getElementById('wc-avatar');
+    if (a){ a.innerHTML = avHtml(p, 72); a.classList.remove('hide'); }
+    var b = document.getElementById('tb-avatar');
+    if (b){
+      b.innerHTML = avHtml(p, 24);
+      b.title = (p.nom || p.email || '') + (currentRole ? ' · ' + (ROLE_NOMS[currentRole]||currentRole) : '');
+      b.classList.remove('hide');
+    }
+    // Et l'appareil s'en souvient, pour l'ecran de connexion de la
+    // prochaine fois.
+    dernierEcrire(p);
   }
 
   // Le relevé du jour : le prochain match, puis ce qui demande une
@@ -5812,6 +5930,12 @@
           init();
           appliquerRole();
           notifInit();
+          // LE RETOUR SUR LA PAGE PASSE ICI, PAS PAR onAuthenticated().
+          // Les pastilles n'etaient peintes que sur le chemin de la
+          // premiere connexion : en rouvrant l'onglet le lendemain, le
+          // bandeau n'avait plus de visage, et l'appareil oubliait qui
+          // etait entre.
+          avPeindre();
         });
       });
     }
@@ -19561,6 +19685,54 @@
     // ,'president@…': 'Nom du président'
     // ,'…': '…'
   };
+  // LA PASTILLE DE PORTRAIT, FABRIQUEE AU MEME ENDROIT POUR TOUS.
+  // Sans photo, les initiales -- jamais un rond vide, qui se lit comme
+  // une image cassee. Le cadrage n'est pas applique a l'image : il est
+  // applique a l'AFFICHAGE, avec les trois memes nombres que partout
+  // ailleurs dans le site (voir cadrage/cadrage.js).
+  function avInitiales(nom, email){
+    var t = String(nom || '').trim();
+    if (t){
+      var m = t.split(/\s+/);
+      return (m[0].charAt(0) + (m.length > 1 ? m[m.length-1].charAt(0) : '')).toUpperCase();
+    }
+    return String(email || '?').charAt(0).toUpperCase();
+  }
+  function avHtml(p, taille){
+    p = p || {};
+    var cls = 'av av-' + (taille || 34);
+    if (p.photo_url){
+      var x = (p.photo_x == null ? 50 : p.photo_x);
+      var y = (p.photo_y == null ? 50 : p.photo_y);
+      var z = (p.photo_zoom == null ? 100 : p.photo_zoom);
+      return '<span class="' + cls + '"><img src="' + esc(p.photo_url) + '" alt="" ' +
+        'style="object-position:' + x + '% ' + y + '%;transform:scale(' + (z/100) + ');' +
+        'transform-origin:' + x + '% ' + y + '%"></span>';
+    }
+    return '<span class="' + cls + '"><span>' + esc(avInitiales(p.nom, p.email)) + '</span></span>';
+  }
+
+  // CE QUE L'APPAREIL RETIENT DE LA DERNIERE PERSONNE ENTREE.
+  // Avant la connexion, la base ne sait pas encore qui frappe a la
+  // porte : le seul moyen d'accueillir quelqu'un par son nom est que
+  // le navigateur s'en souvienne. On garde donc le strict necessaire
+  // -- prenom, adresse, photo -- et JAMAIS le mot de passe.
+  //
+  // Sur un ordinateur partage, cela montre qui administre le site.
+  // D'ou le « ce n'est pas vous ? » de l'ecran de connexion, qui
+  // efface tout d'un clic : la porte de sortie fait partie du
+  // dispositif, elle n'en est pas un ajout poli.
+  function dernierLu(){
+    try { return JSON.parse(localStorage.getItem(CLE_DERNIER) || 'null'); }
+    catch(e){ return null; }
+  }
+  function dernierEcrire(o){
+    try { localStorage.setItem(CLE_DERNIER, JSON.stringify(o || {})); } catch(e){}
+  }
+  function dernierOublier(){
+    try { localStorage.removeItem(CLE_DERNIER); } catch(e){}
+  }
+
   // LA BASE D'ABORD, LE FICHIER ENSUITE. Les noms etaient ecrits ici,
   // dans CP_NOMS : en ajouter un demandait de rouvrir l'administration.
   // Ils vivent maintenant dans admin_users.nom, saisis par le
@@ -19647,7 +19819,7 @@
   // admin_users_lecture) : aucun mot de passe n'est nécessaire pour
   // répondre à « qui est qui ».
   function cpCharger(){
-    return sbGet('admin_users?select=user_id,email,role,nom&order=email.asc')
+    return sbGet('admin_users?select=user_id,email,role,nom,photo_url,photo_x,photo_y,photo_zoom&order=email.asc')
       .catch(function(){ /* colonne nom absente : on relit sans elle */
         return sbGet('admin_users?select=user_id,email,role&order=email.asc'); })
       .then(function(rows){ cpRows = rows || []; cpRendre(); })
@@ -19738,6 +19910,8 @@
       // se reconnait d'un coup d'oeil, pas « mdgdesign221@gmail.com ».
       var nom = cpNom(u.email);
       return '<div class="rec-item" style="align-items:center">'+
+        avHtml({ nom: nom, email: u.email, photo_url: u.photo_url,
+                 photo_x: u.photo_x, photo_y: u.photo_y, photo_zoom: u.photo_zoom }, 34)+
         '<div class="rec-main"><div class="rec-title">'+esc(nom || u.email || '—')+
           (estMoi ? ' <span class="status-pill" style="color:var(--gold);border:1px solid rgba(198,162,87,.4);background:rgba(198,162,87,.12)">vous</span>' : '')+
         '</div>'+
@@ -19751,6 +19925,9 @@
         // a autant besoin de corriger le sien que celui des autres.
         (proprio && cpOuvert
           ? '<button type="button" class="cp-cq-x" data-cpnom="'+esc(u.email||'')+'" title="Changer le nom affiché à sa connexion">Nom</button>'
+          : '')+
+        (proprio && cpOuvert
+          ? '<button type="button" class="cp-cq-x" data-cpphoto="'+esc(u.email||'')+'" title="Choisir et cadrer sa photo">Photo</button>'
           : '')+
         // Le retrait ne s'affiche que quand il aboutirait : proprietaire,
         // mot de passe donne, et pas sur son propre compte -- se retirer
@@ -19771,6 +19948,9 @@
     });
     box.querySelectorAll('[data-cpnom]').forEach(function(b){
       b.addEventListener('click', function(){ cpEditerNom(b, b.getAttribute('data-cpnom')); });
+    });
+    box.querySelectorAll('[data-cpphoto]').forEach(function(b){
+      b.addEventListener('click', function(){ cpPhoto(b.getAttribute('data-cpphoto')); });
     });
     cpProprioRendre();
   }
@@ -20056,6 +20236,75 @@
       if (e.key === 'Enter'){ e.preventDefault(); garder(); }
       if (e.key === 'Escape'){ e.preventDefault(); annuler(); }
     });
+  }
+
+  // LA PHOTO D'UN COMPTE : choisir, envoyer, cadrer, enregistrer.
+  //
+  // Le cadrage passe par l'atelier deja ecrit (cadrage/cadrage.js) --
+  // celui qui sert aux images du site. Deux ateliers de cadrage dans
+  // la meme application finiraient par ne plus tomber au meme endroit
+  // pour les memes chiffres.
+  //
+  // Le cadre est CARRE et sans onglet Telephone : une pastille ronde
+  // a la meme forme partout, et proposer un reglage mobile qui ne
+  // change rien serait promettre pour rien.
+  function cpPhoto(email){
+    var u = null;
+    for (var i = 0; i < cpRows.length; i++){
+      if (String(cpRows[i].email||'').toLowerCase() === String(email||'').toLowerCase()) u = cpRows[i];
+    }
+    var msg = document.getElementById('cp-msg');
+
+    // cadrageOuvrir() et non BaobabsCadrage.ouvrir() : c'est lui qui
+    // charge le fichier au premier appel, deplace la surcouche sous
+    // <body> et la monte. L'appeler directement marchait la deuxieme
+    // fois et jamais la premiere.
+    function cadrer(url){
+      cadrageOuvrir({
+        url: url,
+        titre: cpNom(email) || email,
+        ratioD: 1,
+        sansMobile: true,
+        valeurs: u ? { x:u.photo_x, y:u.photo_y, zoom:u.photo_zoom } : null,
+        onValider: function(v){
+          tkRpc('bbc_compte_photo', {
+            p_email: email, p_url: url,
+            p_x: (v && v.x != null) ? v.x : 50,
+            p_y: (v && v.y != null) ? v.y : 50,
+            p_zoom: (v && v.zoom != null) ? v.zoom : 100
+          }).then(function(){
+            showMsg(msg, 'Photo enregistrée. Elle s’affichera à sa prochaine connexion.', true);
+            cpCharger().then(cpProprioRendre);
+          }).catch(function(e){
+            showMsg(msg, cpErreur(e, 'Enregistrement de la photo impossible.'), false);
+          });
+        }
+      });
+    }
+
+    // Deja une photo : on va droit au cadrage. Devoir la renvoyer pour
+    // corriger un cadrage serait absurde -- c'est justement pour cela
+    // qu'on garde l'original et trois nombres a cote.
+    if (u && u.photo_url){
+      if (confirm('Recadrer la photo actuelle ?\n\n« Annuler » pour en choisir une autre.')){
+        cadrer(u.photo_url); return;
+      }
+    }
+
+    var f = document.createElement('input');
+    f.type = 'file'; f.accept = 'image/*';
+    f.addEventListener('change', function(){
+      var file = f.files && f.files[0];
+      if (!file) return;
+      showMsg(msg, 'Envoi de la photo…', true);
+      uploadFile(MEDIA_BUCKET, file).then(function(url){
+        showMsg(msg, '', true);
+        cadrer(url);
+      }).catch(function(){
+        showMsg(msg, 'L’envoi a échoué. Vérifiez votre connexion et réessayez.', false);
+      });
+    });
+    f.click();
   }
 
   function cpRetirerAcces(email){

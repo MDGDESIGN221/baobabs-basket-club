@@ -88,6 +88,52 @@ alter table admin_users add column if not exists nom text;
 
 
 -- ---------------------------------------------------------------------
+-- 1 ter. LA PHOTO, ET SON CADRAGE
+--
+--    Une adresse et un rôle ne font pas un visage. La photo apparaît
+--    sur l'écran d'accueil, dans le bandeau de l'administration et sur
+--    l'écran de connexion — là, celle de la dernière personne entrée
+--    sur cet appareil, gardée par le navigateur : avant la connexion,
+--    la base ne sait pas encore qui frappe.
+--
+--    TROIS NOMBRES, PAS UNE IMAGE RECOUPÉE. Le recadrage se fait à
+--    l'affichage (object-position + scale), exactement comme pour les
+--    photos de joueuses et les actualités. On garde donc l'original :
+--    recadrer autrement demain ne demande pas de renvoyer la photo, et
+--    une erreur de cadrage ne détruit rien.
+-- ---------------------------------------------------------------------
+alter table admin_users add column if not exists photo_url  text;
+alter table admin_users add column if not exists photo_x    numeric;
+alter table admin_users add column if not exists photo_y    numeric;
+alter table admin_users add column if not exists photo_zoom numeric;
+
+create or replace function bbc_compte_photo(
+  p_email text, p_url text,
+  p_x numeric default null, p_y numeric default null, p_zoom numeric default null)
+returns text
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  if not bbc_est_proprietaire() then
+    raise exception 'Seul le compte propriétaire du site peut changer une photo.';
+  end if;
+  update admin_users
+     set photo_url  = nullif(trim(coalesce(p_url,'')), ''),
+         photo_x    = p_x,
+         photo_y    = p_y,
+         photo_zoom = p_zoom
+   where lower(email) = lower(trim(p_email));
+  return p_url;
+end;
+$$;
+
+revoke all on function bbc_compte_photo(text, text, numeric, numeric, numeric) from public;
+grant execute on function bbc_compte_photo(text, text, numeric, numeric, numeric) to authenticated;
+
+
+-- ---------------------------------------------------------------------
 -- 2. DONNER L'ACCÈS À UNE ADRESSE
 --
 --    admin_users veut un user_id, c'est-à-dire l'identifiant interne du
@@ -295,6 +341,7 @@ grant execute on function bbc_permissions_poser(text, text, text[]) to authentic
 --  VÉRIFICATION — à lancer après, pour voir que tout est en place.
 --
 --    select id, nom, systeme from admin_roles order by ordre;
+--    select email, nom, role, photo_url is not null as photo from admin_users;
 --    select role, module, count(*) from role_permissions group by 1,2 order by 1,2;
 --
 --  ET LE JOUR OÙ VOUS AJOUTEZ QUELQU'UN :
