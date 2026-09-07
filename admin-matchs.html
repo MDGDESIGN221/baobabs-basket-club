@@ -2101,6 +2101,10 @@
   .cp-cq-sys{flex:none;font-size:10.5px;color:var(--gold);border:1px solid rgba(198,162,87,.4);border-radius:20px;padding:2px 8px}
   .cp-cq-x{flex:none;background:none;border:1px solid var(--line);border-radius:8px;color:var(--faint);padding:4px 9px;font-size:12px;cursor:pointer}
   .cp-cq-x:hover{border-color:var(--danger);color:var(--danger)}
+  .cp-nom-edit{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .cp-nom-edit .qg-in{flex:1 1 200px;min-width:0;height:34px}
+  .cp-nom-edit .btn{flex:none;height:34px;padding:0 14px;font-size:12.5px}
+  .cp-nom-edit .cp-cq-x{height:34px}
   /* une case reglable se donne l'air de l'etre, mais seulement quand
      elle l'est : un curseur main sur une case morte est un mensonge */
   #cp-matrice td.cp-n.cp-clic{cursor:pointer}
@@ -19590,6 +19594,12 @@
           esc(ROLE_NOMS[u.role]||u.role||'—')+
           (estProtege ? ' · propriétaire du site, compte verrouillé' : '')+'</div></div>'+
         droite+
+        // RENOMMER : sur TOUTES les lignes, la sienne comprise. Le nom
+        // n'est pas un droit, c'est une etiquette -- et le proprietaire
+        // a autant besoin de corriger le sien que celui des autres.
+        (proprio && cpOuvert
+          ? '<button type="button" class="cp-cq-x" data-cpnom="'+esc(u.email||'')+'" title="Changer le nom affiché à sa connexion">Nom</button>'
+          : '')+
         // Le retrait ne s'affiche que quand il aboutirait : proprietaire,
         // mot de passe donne, et pas sur son propre compte -- se retirer
         // soi-meme fermerait la porte de l'interieur, et la base le
@@ -19606,6 +19616,9 @@
     // qu'un bouton qui repond « refuse » fait perdre deux fois du temps.
     box.querySelectorAll('[data-cpdel]').forEach(function(b){
       b.addEventListener('click', function(){ cpRetirerAcces(b.getAttribute('data-cpdel')); });
+    });
+    box.querySelectorAll('[data-cpnom]').forEach(function(b){
+      b.addEventListener('click', function(){ cpEditerNom(b, b.getAttribute('data-cpnom')); });
     });
     cpProprioRendre();
   }
@@ -19840,6 +19853,57 @@
         // que de le remplacer par un « erreur » qui n'apprend rien.
         showMsg(msg, cpErreur(e, 'Ajout impossible.'), false);
       });
+  }
+
+  // RENOMMER SUR PLACE, PAS DANS UNE FENETRE.
+  // Un prompt() du navigateur aurait suffi et pris trois lignes ; il
+  // aurait aussi sorti la personne de l'ecran, avec une boite grise
+  // du systeme qui ne montre ni de qui l'on parle ni ce qu'il y avait
+  // avant. Le champ prend la place du nom, la ou l'oeil est deja.
+  function cpEditerNom(bouton, email){
+    var ligne = bouton.closest('.rec-item');
+    if (!ligne || ligne.querySelector('.cp-nom-edit')) return;
+    var titre = ligne.querySelector('.rec-title');
+    if (!titre) return;
+    var avant = cpNom(email);
+    var garde = titre.innerHTML;
+
+    var boite = document.createElement('div');
+    boite.className = 'cp-nom-edit';
+    boite.innerHTML =
+      '<input type="text" class="qg-in" value="' + esc(avant) + '" placeholder="Nom affiché à sa connexion" autocomplete="off">' +
+      '<button type="button" class="btn btn-primary btn-sm">Enregistrer</button>' +
+      '<button type="button" class="cp-cq-x">Annuler</button>';
+    titre.innerHTML = '';
+    titre.appendChild(boite);
+
+    var champ = boite.querySelector('input');
+    var ok = boite.querySelector('.btn');
+    var non = boite.querySelector('.cp-cq-x');
+    champ.focus(); champ.select();
+
+    function annuler(){ titre.innerHTML = garde; }
+    function garder(){
+      var val = (champ.value || '').trim();
+      ok.disabled = true; champ.disabled = true;
+      tkRpc('bbc_compte_nommer', { p_email: email, p_nom: val })
+        .then(function(){
+          showMsg(document.getElementById('cp-msg'),
+            val ? ('Ce compte s’affichera désormais sous « ' + val + ' », à sa prochaine connexion.')
+                : 'Nom effacé : ce compte s’affichera sous son adresse.', true);
+          cpCharger().then(cpProprioRendre);
+        })
+        .catch(function(e){
+          ok.disabled = false; champ.disabled = false;
+          showMsg(document.getElementById('cp-msg'), cpErreur(e, 'Renommage impossible.'), false);
+        });
+    }
+    ok.addEventListener('click', garder);
+    non.addEventListener('click', annuler);
+    champ.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); garder(); }
+      if (e.key === 'Escape'){ e.preventDefault(); annuler(); }
+    });
   }
 
   function cpRetirerAcces(email){
