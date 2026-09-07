@@ -14506,7 +14506,27 @@
     { id:'@settings', name:'Réglages (hero, logos)', query:'site_settings?select=key,value' }
   ];
   function mdAllFolders(){ return MD_FOLDERS.concat(MD_DB_SOURCES, MD_SITE_GROUPS); }
-  function mdLooksImg(v){ return /^https?:\/\//i.test(v||'') && (/\.(jpe?g|png|gif|webp|svg|avif)(\?|$)/i.test(v) || /cloudinary|supabase\.co\/storage/i.test(v)); }
+  // CE QUI COMPTE COMME UNE IMAGE DANS UNE FICHE.
+  // Le test exigeait une adresse ABSOLUE. Or les fiches du club n'en
+  // ont presque aucune : les photos vivent dans /media/, ecrites en
+  // chemin racine. Consequence, « Photos des joueuses » etait vide
+  // alors que les huit joueuses ont leur portrait -- et pareil pour
+  // les logos d'adversaires (13), les reglages (9), les articles (3)
+  // et le staff (1). Trente-quatre images invisibles, dont la plupart
+  // etaient meme comptees « jamais utilisees nulle part ».
+  //
+  // Le garde-fou avait sa raison : site_settings.value contient 132
+  // valeurs dont neuf seulement sont des images, le reste etant du
+  // texte libre. On ne le retire donc pas, on l'elargit -- une
+  // adresse commence par http(s):// OU par / , et ne contient jamais
+  // d'espace. Un titre d'article ne passe ni l'un ni l'autre.
+  function mdLooksImg(v){
+    v = String(v == null ? '' : v);
+    if (!/^(https?:\/\/|\/)/i.test(v)) return false;
+    if (/\s/.test(v)) return false;
+    return /\.(jpe?g|png|gif|webp|svg|avif)(\?|$)/i.test(v) ||
+           /cloudinary|supabase\.co\/storage/i.test(v);
+  }
   function mdDbItems(src, rows){
     var out=[];
     (rows||[]).forEach(function(r){
