@@ -16579,6 +16579,16 @@
       : '<div class="ds-photo">'+esc(name.charAt(0).toUpperCase())+'</div>';
   }
 
+  // « 2008-03-14 » est une date de base de donnees, pas une date qu'on
+  // imprime. Sur un document qu'un parent va lire, on ecrit « 14 mars
+  // 2008 » ; l'ISO reste dans la base, la ou il sert.
+  function fmtDateSeule(v){
+    if (!v) return '';
+    var d = new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+  }
+
   function cdSubline(r){
     var age = r.age ? r.age+' ans' : '';
     return [r.position, r.category, age, r.city].filter(Boolean).join(' · ');
@@ -16660,11 +16670,22 @@
 
     var o = {
       doc: doc,
-      PW: 210, PH: 297, M: 18, HEADER_H: 32,
+      PW: 210, PH: 297, M: 18, HEADER_H: 28,
       // Vraies couleurs du club (reprises de :root du site), pas des
       // approximations : --court:#0F4030, --gold:#C6A257, --text:#F3EFE6.
       INK:[26,32,28], FAINT:[122,130,124], LINE:[226,229,222],
       GOLD:[198,162,87], COURT:[15,64,48], COURT_DEEP:[10,35,24],
+      // LE NOIR DES SURFACES. Le vert du club habille le site et les
+      // affiches ; sur du papier, une puce vert bouteille tire vers le
+      // sombre sans etre franche, et l'on ne sait plus si c'est une
+      // couleur ou une salissure. Les aplats passent donc au noir chaud,
+      // et le vert reste ou il se lit : dans le blason.
+      NOIR:[18,20,18],
+      // Le vert vif du club (--lime du site). C'est LUI qui ponctue les
+      // aplats noirs : l'or y passait pour une tache de rouille, alors
+      // que ce vert est la couleur qu'on reconnait du club a dix metres.
+      // L'or reste sur le blanc, ou il tient.
+      LIME:[168,217,59],
       // Papier : un blanc légèrement chaud plutôt qu'un gris froid — le
       // gris neutre donnait un rendu « formulaire administratif ».
       PAPER:[250,249,245], HAIR:[236,238,232],
@@ -16672,7 +16693,7 @@
     };
     var PW=o.PW, PH=o.PH, M=o.M, HEADER_H=o.HEADER_H;
     var INK=o.INK, FAINT=o.FAINT, LINE=o.LINE, GOLD=o.GOLD;
-    var COURT=o.COURT, COURT_DEEP=o.COURT_DEEP, PAPER=o.PAPER, HAIR=o.HAIR;
+    var COURT=o.COURT, COURT_DEEP=o.COURT_DEEP, PAPER=o.PAPER, HAIR=o.HAIR, NOIR=o.NOIR, LIME=o.LIME;
 
     // Polices : Space Grotesk pour toute la hiérarchie de titres/labels
     // (Bold/Medium), Inter pour le texte courant (Regular/SemiBold) —
@@ -16682,6 +16703,11 @@
     o.fInter   = function(sz){ doc.setFont('Inter','normal'); doc.setFontSize(sz); };
     o.fInterSb = function(sz){ doc.setFont('InterSb','normal'); doc.setFontSize(sz); };
     o.col      = function(c){ doc.setTextColor(c[0],c[1],c[2]); };
+    // La demi-hauteur de capitale d'un corps donne, en millimetres : de
+    // quoi descendre une ligne de base jusqu'au vrai centre optique.
+    // 0,7 est la hauteur de capitale des deux familles employees ici ;
+    // 2,8346 convertit les points en millimetres.
+    o.demiCap  = function(pt){ return (pt * 0.7 / 2.8346) / 2; };
     o.hex      = function(str){ var n = parseInt(String(str).replace('#',''),16);
                                 return [(n>>16)&255,(n>>8)&255,n&255]; };
     var fSGBold=o.fSGBold, fSGMed=o.fSGMed, fInter=o.fInter, fInterSb=o.fInterSb, col=o.col;
@@ -16734,72 +16760,82 @@
       return out;
     };
 
+    // Les pages suivantes : pas de bandeau, une ligne. Le papier reste
+    // blanc d'un bout a l'autre du document -- c'est ce qui distingue
+    // une piece imprimee d'une page web transposee.
     o.enTeteSuite = function(){
-      doc.setFillColor(COURT[0],COURT[1],COURT[2]);
-      doc.rect(0, 0, PW, 15, 'F');
-      doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
-      doc.rect(0, 15, PW, 0.7, 'F');
-      fSGMed(8.5); col([243,239,230]);
-      doc.text('BAOBABS BASKET CLUB', M, 9.6);
-      fInter(8); col([176,190,180]);
-      doc.text((opts.titre || 'Fiche') + ' — suite', PW-M, 9.6, { align:'right' });
-      o.y = 27;
+      fSGBold(8); col(NOIR);
+      doc.text('BAOBABS BASKET CLUB', M, 15, { charSpace:0.9 });
+      fInter(6.2); col(FAINT);
+      doc.text(o.sur(String(opts.titre || 'Document')) + ' \u00B7 suite', PW-M, 15,
+               { align:'right' });
+      doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.4);
+      doc.line(M, 19, PW-M, 19);
+      o.y = 30;
     };
     o.checkPageBreak = function(need){
       if (o.y + need > PH - M){ doc.addPage(); o.enTeteSuite(); }
     };
-    // Petit carré or, titre, puis un filet clair qui court jusqu'à la
-    // marge droite : l'œil suit la ligne et le bloc respire, sans le
-    // trait pleine largeur qui écrasait la hiérarchie.
+    // UN FILET, PUIS UNE ETIQUETTE MINUSCULE. C'est tout.
+    // Un titre de section n'a pas besoin de crier : ce qui donne au
+    // lecteur la carte du document, c'est la REGULARITE des filets, pas
+    // la taille des mots. Filet pleine largeur AU-DESSUS, puis le
+    // libelle en capitales de 6 points largement espacees, en gris.
+    // Le contenu qui suit, lui, est en noir : c'est le contraste entre
+    // les deux qui hierarchise, pas le corps du titre.
     o.sectionTitle = function(t){
-      o.checkPageBreak(14);
-      doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
-      doc.rect(M, o.y-2.1, 2, 2, 'F');
-      fSGBold(9.5); col(INK);
-      var label = String(t).toUpperCase();
-      doc.text(label, M+4.6, o.y);
-      var w = doc.getTextWidth(label);
-      doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.4);
-      doc.line(M+4.6+w+4, o.y-1.1, PW-M, o.y-1.1);
-      o.y += 8.5;
+      o.checkPageBreak(20);
+      doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.4);
+      doc.line(M, o.y, PW-M, o.y);
+      fInter(6.2); col(FAINT);
+      doc.text(o.sur(String(t).toUpperCase()), M, o.y+5.6, { charSpace:1 });
+      o.y += 11.5;
     };
-    // Grille de champs clé-valeur, 2 colonnes : label Inter petit/gris
-    // au-dessus, valeur Space Grotesk Medium en dessous — empilé plutôt
-    // qu'aligné en ligne, pour un rendu « fiche » plutôt que « tableau ».
+    // LA GRILLE DE CHAMPS, EN FORMULAIRE.
+    // Deux colonnes, label en capitales espacees au-dessus de la valeur.
+    // Ce qui manquait : un FILET SOUS CHAQUE RANGEE. Sans lui, les
+    // couples flottaient sur du blanc et une fiche a trois champs avait
+    // l'air d'une page vide ou l'on aurait oublie d'imprimer le reste.
+    // Le filet donne au bloc une assise : c'est ce qui separe un
+    // formulaire d'une liste de mots.
     o.fieldsGrid = function(pairs){
       var visible = pairs.filter(function(p){ return !!p[1]; });
       if (!visible.length) return;
-      var colW = (PW - 2*M - 10) / 2;
+      var colW = (PW - 2*M - 9) / 2;
       for (var i=0; i<visible.length; i+=2){
         var row = visible.slice(i, i+2);
         var rowLines = row.map(function(p){
-          fSGMed(10.5);
-          return doc.splitTextToSize(String(p[1]), colW - 2);
+          fSGMed(10);
+          return doc.splitTextToSize(o.sur(String(p[1])), colW - 3);
         });
-        var rowH = Math.max.apply(null, rowLines.map(function(l){ return l.length; })) * 5 + 9;
-        o.checkPageBreak(rowH);
-        // Filet vertical entre les deux colonnes : structure la grille
-        // sans la transformer en tableau à bordures.
-        if (row.length === 2){
-          doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.4);
-          doc.line(M+colW+5, o.y-3.4, M+colW+5, o.y+rowH-7);
-        }
+        var rowH = Math.max.apply(null, rowLines.map(function(l){ return l.length; })) * 4.9 + 9.6;
+        o.checkPageBreak(rowH + 3);
         row.forEach(function(pr, idx){
-          var cx = M + idx*(colW+10);
-          fInter(6.8); col(FAINT);
-          doc.text(String(pr[0]).toUpperCase(), cx, o.y, { charSpace:0.35 });
-          fSGMed(10.5); col(INK);
-          doc.text(rowLines[idx], cx, o.y+5.8);
+          var cx = M + idx*(colW+9);
+          fInter(6.3); col(FAINT);
+          doc.text(o.sur(String(pr[0]).toUpperCase()), cx, o.y, { charSpace:0.7 });
+          fSGMed(10); col(INK);
+          doc.text(rowLines[idx], cx, o.y+5.4);
         });
         o.y += rowH;
+        doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.3);
+        doc.line(M, o.y-3.6, PW-M, o.y-3.6);
       }
-      o.y += 2;
+      o.y += 3.5;
     };
     // Les mots de la personne, posés dans un panneau papier avec un
     // filet or à gauche : on distingue d'un coup d'œil ce qu'elle a
     // écrit de nos propres données.
     o.quote = function(text, accent, neutral){
-      var lines = doc.splitTextToSize(String(text), PW-2*M-14);
+      // LA POLICE D'ABORD, LA DECOUPE ENSUITE.
+      // splitTextToSize mesure avec la police COURANTE. Elle etait appelee
+      // avant fInter(9.8) : la decoupe se faisait donc au corps du dernier
+      // texte ecrit -- 6,2 points, celui des titres de section -- et les
+      // lignes, rendues ensuite en 9,8, depassaient la marge droite et
+      // sortaient de la page. Visible seulement sur un message assez long
+      // pour se replier, c'est-a-dire jamais sur un jeu d'essai vide.
+      fInter(9.8);
+      var lines = doc.splitTextToSize(o.sur(String(text)), PW-2*M-14);
       var h = lines.length*5.2 + 9;
       o.checkPageBreak(h+2);
       doc.setFillColor(PAPER[0],PAPER[1],PAPER[2]);
@@ -16807,7 +16843,7 @@
       var a = accent || (neutral ? [188,194,186] : GOLD);
       doc.setFillColor(a[0],a[1],a[2]);
       doc.rect(M, o.y-4, 1.4, h, 'F');
-      fInter(9.8); col(accent ? accent : INK);
+      fInter(9.8); col(accent ? accent : [58,66,60]);
       var ly = o.y + 1.4;
       lines.forEach(function(ln){ doc.text(ln, M+7, ly); ly += 5.2; });
       o.y += h + 3;
@@ -16846,21 +16882,27 @@
       doc.text(n+' sur 5', M + 2.4 + 5*5.8 + 1.5, cy+1.4);
       o.y += 13;
     };
-    // Pastille de statut pleine (fond coloré), comme les status-pill du
-    // site. measureOnly=true calcule juste la largeur sans dessiner.
+    // UNE PUCE SOMBRE, POINT COLORE A GAUCHE.
+    // Le statut sortait en gommette pleine aux couleurs de l'interface :
+    // sur du papier, un ovale bleu pale a l'air d'une capture d'ecran
+    // collee la. La couleur du statut porte une information, on la
+    // garde -- mais reduite a un point de 1,5 mm, pose dans une puce
+    // vert profond a coins arrondis, le mot en capitales blanches
+    // espacees. C'est la forme qu'ont les etiquettes de document, et
+    // elle se lit sans faire de bruit.
     o.pill = function(label, x, yBase, rgb, measureOnly){
-      fInterSb(8);
-      var w = doc.getTextWidth(label) + 7;
-      var h = 5.5;
+      var txt = o.sur(String(label).toUpperCase());
+      fInterSb(6.6);
+      var w = doc.getTextWidth(txt) + txt.length*0.5 + 15;
+      var h = 7.4;
       if (!measureOnly){
+        var cy = yBase - h/2 + 1.2;
+        doc.setFillColor(NOIR[0],NOIR[1],NOIR[2]);
+        doc.roundedRect(x, yBase-h+1.2, w, h, h/2, h/2, 'F');
         doc.setFillColor(rgb[0],rgb[1],rgb[2]);
-        doc.roundedRect(x, yBase-h+1.3, w, h, h/2, h/2, 'F');
-        // Texte en blanc ou en encre foncée selon la luminosité de la
-        // couleur, pour rester lisible sur des pastilles claires comme
-        // sur des pastilles sombres.
-        var lum = 0.299*rgb[0] + 0.587*rgb[1] + 0.114*rgb[2];
-        col(lum > 165 ? [26,32,28] : [255,255,255]);
-        doc.text(label, x+3.5, yBase-0.35);
+        doc.circle(x+5, cy, 1.6, 'F');
+        col([246,244,238]);
+        doc.text(txt, x+9, cy + o.demiCap(6.6), { charSpace:0.5 });
       }
       return w;
     };
@@ -16876,13 +16918,54 @@
         c.getContext('2d').drawImage(photo.el, sx, sy, sw, sh, 0, 0, c.width, c.height);
         doc.addImage(c.toDataURL('image/jpeg',0.92), 'JPEG', x, yy, w, h);
       } else {
+        // UNE CASE VIDE NE DOIT PAS CRIER. L'initiale sortait en 24 pt
+        // gris : sur une fiche sans photo, cette lettre geante pesait
+        // plus lourd que le nom de la personne a cote. Monogramme
+        // discret, et le mot qui dit pourquoi la case est vide.
         doc.setFillColor(PAPER[0],PAPER[1],PAPER[2]);
         doc.rect(x, yy, w, h, 'F');
-        fSGBold(24); col([206,210,200]);
-        doc.text(String(initiale||'?').charAt(0).toUpperCase(), x+w/2, yy+h/2+4, { align:'center' });
+        fSGMed(12); col([176,184,174]);
+        doc.text(String(initiale||'?').charAt(0).toUpperCase(), x+w/2, yy+h/2, { align:'center' });
+        fInter(5.6); col([190,196,186]);
+        doc.text('SANS PHOTO', x+w/2, yy+h/2+6.4, { align:'center', charSpace:0.6 });
       }
       doc.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); doc.setLineWidth(0.5);
       doc.rect(x-1.1, yy-1.1, w+2.2, h+2.2, 'S');
+    };
+
+    // LE BLOC DE CLOTURE : « fait a Dakar, le … », visa et signature.
+    // C'est ce qui manquait le plus. Une fiche interne qui s'arrete sur
+    // le dernier champ ressemble a un brouillon ; la meme fiche avec un
+    // cartouche de visa devient une piece de dossier. Il occupe en outre
+    // le bas de page vide qui donnait a ces PDF leur air inachevé.
+    o.blocVisa = function(cases, lieu){
+      cases = cases || ['Responsable du dossier', 'Direction du club'];
+      var h = 30;
+      o.checkPageBreak(h + 8);
+      o.y += 4;
+      fInter(8.4); col([76,84,78]);
+      // La meme date qu'en tete de document, ecrite pareil. Deux formats
+      // de date sur une meme feuille font douter que ce soit la meme.
+      doc.text(o.sur('Fait à ' + (lieu || 'Dakar') + ', le ' +
+                     new Date().toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }) + '.'),
+               M, o.y);
+      o.y += 8;
+      var n = cases.length, gap = 9;
+      var cw = (PW - 2*M - gap*(n-1)) / n;
+      for (var i = 0; i < n; i++){
+        var cx = M + i*(cw+gap);
+        doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.45);
+        doc.roundedRect(cx, o.y, cw, h, 1.6, 1.6, 'S');
+        fInter(6.3); col(FAINT);
+        doc.text(o.sur(String(cases[i]).toUpperCase()), cx+4, o.y+6, { charSpace:0.7 });
+        doc.setDrawColor(HAIR[0],HAIR[1],HAIR[2]); doc.setLineWidth(0.3);
+        doc.setLineDashPattern([0.7,1.2], 0);
+        doc.line(cx+4, o.y+h-7, cx+cw-4, o.y+h-7);
+        doc.setLineDashPattern([], 0);
+        fInter(5.8); col([190,196,186]);
+        doc.text('NOM, DATE ET SIGNATURE', cx+4, o.y+h-3, { charSpace:0.5 });
+      }
+      o.y += h + 6;
     };
     // Le journal d'un dossier : filet vertical, pastille, date, phrase.
     // Le filet est tracé segment par segment pour s'interrompre
@@ -16926,22 +17009,180 @@
     };
     // Pied de page sur chaque page : numérotation + date de génération.
     // Appelé en dernier, quand le nombre de pages est connu.
+    // Le pied : un point or, une seule ligne grise, la pagination a
+    // droite. Rien d'autre. Un pied de page charge est un pied de page
+    // qu'on ne lit pas.
     o.pied = function(mention){
       var pageCount = doc.internal.getNumberOfPages();
       for (var i=1; i<=pageCount; i++){
         doc.setPage(i);
-        doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.3);
-        doc.line(M, PH-M+4, PW-M, PH-M+4);
-        // Pastille or en tête de pied de page : signature du club.
-        doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
-        doc.circle(M+1, PH-M+8, 1, 'F');
-        fInter(6.8); col(FAINT);
-        doc.text('BAOBABS BASKET CLUB · '+(mention||'CONFIDENTIEL')+' · '+new Date().toLocaleDateString('fr-FR'),
-                 M+4.5, PH-M+9, { charSpace:0.3 });
-        fSGMed(7.6); col(FAINT);
-        doc.text(i+' / '+pageCount, PW-M, PH-M+9, { align:'right' });
+        doc.setFillColor(LIME[0],LIME[1],LIME[2]);
+        doc.circle(M+1, PH-13.6, 1.1, 'F');
+        fInter(6.1); col(FAINT);
+        doc.text(o.sur('Baobabs Basket Club · Dakar, Sénégal · baobabsbasketclub.com · ' +
+                       String(mention || 'Document interne').toLowerCase()),
+                 M+4.6, PH-13, { charSpace:0.15 });
+        fSGMed(6.4); col(FAINT);
+        doc.text(i + ' / ' + pageCount, PW-M, PH-13, { align:'right' });
       }
     };
+    // DEUX COLONNES D'IDENTITE. « De qui » et « pour qui », cote a cote,
+    // sous une etiquette minuscule chacune. C'est le premier bloc de tout
+    // document administratif digne de ce nom : avant de lire, on veut
+    // savoir qui parle et a qui.
+    o.deuxColonnes = function(colonnes){
+      var n = colonnes.length, gap = 10;
+      var cw = (PW - 2*M - gap*(n-1)) / n;
+      var hauteurs = [], i;
+      // on mesure d'abord, on dessine ensuite : les colonnes doivent
+      // partager la meme ligne de base, quelle que soit la plus longue
+      // Une colonne peut porter une VIGNETTE (le portrait d'une
+      // candidate) : elle occupe alors 24 mm a droite de la colonne et
+      // le texte se replie sur le reste. C'est la seule facon d'avoir
+      // le visage en haut de fiche sans casser la grille a deux
+      // colonnes -- et une fiche de recrutement sans visage oblige a
+      // rouvrir l'ordinateur pour savoir de qui l'on parle.
+      var VIGN_W = 23, VIGN_H = 29;
+      for (i = 0; i < n; i++){
+        fInter(8.2);
+        var nb = 0;
+        var dispo = cw - 2 - (colonnes[i][2] ? VIGN_W + 5 : 0);
+        colonnes[i][1].forEach(function(t){
+          if (!t) return;
+          nb += doc.splitTextToSize(o.sur(String(t)), dispo).length;
+        });
+        if (colonnes[i][2]) nb = Math.max(nb, Math.ceil(VIGN_H / 4.6));
+        hauteurs.push(nb);
+      }
+      var maxL = Math.max.apply(null, hauteurs);
+      o.checkPageBreak(maxL*4.6 + 16);
+      var y0 = o.y;
+      for (i = 0; i < n; i++){
+        var cx = M + i*(cw+gap);
+        doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.4);
+        doc.line(cx, y0, cx+cw, y0);
+        fInter(6.2); col(FAINT);
+        doc.text(o.sur(String(colonnes[i][0]).toUpperCase()), cx, y0+5.4, { charSpace:1 });
+        var vign = colonnes[i][2];
+        var dispoC = cw - 2 - (vign ? VIGN_W + 5 : 0);
+        if (vign) o.portrait(vign.photo, cx+cw-VIGN_W, y0+12, VIGN_W, VIGN_H, vign.initiale);
+        var yy = y0 + 12;
+        colonnes[i][1].forEach(function(t, li){
+          if (!t) return;
+          if (li === 0){ fSGMed(9.6); col(INK); }
+          else { fInter(8.2); col([92,100,94]); }
+          doc.splitTextToSize(o.sur(String(t)), dispoC).forEach(function(ln){
+            doc.text(ln, cx, yy); yy += li === 0 ? 5.4 : 4.6;
+          });
+        });
+      }
+      o.y = y0 + 12 + maxL*4.6 + 8;
+    };
+
+    // LE PANNEAU D'OBJET. Un aplat papier tres pale, l'etiquette, le
+    // titre en gras, puis la phrase qui dit de quoi il retourne. C'est le
+    // seul endroit du document ou l'on ecrit une phrase entiere ; tout le
+    // reste est en champs.
+    o.panneau = function(label, titre, texte){
+      fInter(8.4);
+      var lignes = texte ? doc.splitTextToSize(o.sur(String(texte)), PW-2*M-16) : [];
+      var h = 15 + (titre ? 7 : 0) + lignes.length*4.7;
+      o.checkPageBreak(h + 6);
+      doc.setFillColor(PAPER[0],PAPER[1],PAPER[2]);
+      doc.roundedRect(M, o.y, PW-2*M, h, 1.6, 1.6, 'F');
+      fInter(6.2); col(FAINT);
+      doc.text(o.sur(String(label).toUpperCase()), M+8, o.y+7.4, { charSpace:1 });
+      var yy = o.y + 14.6;
+      if (titre){
+        fSGBold(11.5); col(NOIR);
+        doc.text(o.sur(String(titre)), M+8, yy);
+        yy += 7;
+      }
+      if (lignes.length){
+        fInter(8.4); col([76,84,78]);
+        lignes.forEach(function(ln){ doc.text(ln, M+8, yy); yy += 4.7; });
+      }
+      o.y += h + 9;
+    };
+
+    // LA BARRE SOMBRE. UNE SEULE PAR DOCUMENT, pour le chiffre qui compte :
+    // la somme d'un recu, le total encaisse d'un dossier. Tout le reste du
+    // document est clair ; c'est ce contraste unique qui fait que l'oeil
+    // tombe dessus avant tout. Deux barres sombres, et il n'y en a plus
+    // aucune.
+    o.barreTotal = function(label, valeur, suffixe, largeur){
+      var w = largeur || (PW - 2*M) * 0.52;
+      var x = PW - M - w, h = 13;
+      o.checkPageBreak(h + 8);
+      doc.setFillColor(NOIR[0],NOIR[1],NOIR[2]);
+      doc.roundedRect(x, o.y, w, h, 1.2, 1.2, 'F');
+      fInter(6.6); col([158,164,158]);
+      doc.text(o.sur(String(label).toUpperCase()), x+7, o.y+8, { charSpace:1.1 });
+      var sx = PW - M - 7;
+      if (suffixe){
+        fSGMed(7.4); col(LIME);
+        doc.text(o.sur(String(suffixe)), sx, o.y+8, { align:'right' });
+        sx -= doc.getTextWidth(o.sur(String(suffixe))) + 2.6;
+      }
+      fSGBold(15); col([246,244,238]);
+      doc.text(o.sur(String(valeur)), sx, o.y+8.8, { align:'right' });
+      o.y += h + 8;
+    };
+
+    // UNE GRILLE DE PETITS BLOCS : filet, etiquette minuscule, paragraphe
+    // court. Trois par rangee. C'est la forme des conditions au dos d'un
+    // devis -- beaucoup d'informations breves sans une seule ligne de
+    // tableau.
+    o.blocsCourts = function(blocs, parRangee){
+      var n = parRangee || 3, gap = 8;
+      var cw = (PW - 2*M - gap*(n-1)) / n;
+      for (var i = 0; i < blocs.length; i += n){
+        var rangee = blocs.slice(i, i+n);
+        var lignes = rangee.map(function(b){
+          fInter(7.6);
+          return doc.splitTextToSize(o.sur(String(b[1] || '')), cw - 2);
+        });
+        var maxL = Math.max.apply(null, lignes.map(function(l){ return l.length; }));
+        var h = 11 + maxL*4.3;
+        o.checkPageBreak(h + 4);
+        rangee.forEach(function(b, k){
+          var cx = M + k*(cw+gap);
+          doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.4);
+          doc.line(cx, o.y, cx+cw, o.y);
+          fInter(6.1); col(FAINT);
+          doc.text(o.sur(String(b[0]).toUpperCase()), cx, o.y+5.2, { charSpace:0.9 });
+          fInter(7.6); col([76,84,78]);
+          var yy = o.y + 11;
+          lignes[k].forEach(function(ln){ doc.text(ln, cx, yy); yy += 4.3; });
+        });
+        o.y += h + 7;
+      }
+    };
+
+    // DES LIGNES NUMEROTEES : 01, le titre en gras, la precision en gris
+    // dessous, un filet entre chacune. C'est la forme d'un bordereau, et
+    // elle vaut pour tout ce qui s'enumere -- des pieces d'un dossier aux
+    // etapes d'un suivi.
+    o.lignesNumerotees = function(lignes){
+      lignes.forEach(function(l, i){
+        fInter(7.6);
+        var desc = l[1] ? doc.splitTextToSize(o.sur(String(l[1])), PW-2*M-16) : [];
+        var h = 9 + desc.length*4.3 + 4;
+        o.checkPageBreak(h + 2);
+        doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.4);
+        doc.line(M, o.y, PW-M, o.y);
+        fSGMed(6.8); col(GOLD);
+        doc.text(('0'+(i+1)).slice(-2), M, o.y+6.4, { charSpace:0.5 });
+        fSGBold(9.4); col(INK);
+        doc.text(o.sur(String(l[0])), M+11, o.y+6.4);
+        var yy = o.y + 11.4;
+        fInter(7.6); col([104,112,106]);
+        desc.forEach(function(ln){ doc.text(ln, M+11, yy); yy += 4.3; });
+        o.y += h;
+      });
+      o.y += 3;
+    };
+
     // Nom de fichier : sans accent, sans espace, en minuscules.
     o.nomFichier = function(prefixe, nom, defaut){
       var t = String(nom || defaut || 'document').normalize('NFD')
@@ -16950,57 +17191,91 @@
       return prefixe + '-' + (t || defaut || 'document') + '.pdf';
     };
 
-    // === Bandeau d'en-tête : vert club plein, dégradé vers le vert
-    // profond à droite, et filet or en pied de bandeau. ===
-    doc.setFillColor(COURT[0],COURT[1],COURT[2]);
-    doc.rect(0, 0, PW, HEADER_H, 'F');
-    // Le dégradé n'existe pas en PDF simple : on le simule par bandes
-    // verticales, invisibles à l'œil mais qui évitent l'aplat plat.
-    for (var gi=0; gi<26; gi++){
-      var t0 = gi/25;
-      doc.setFillColor(
-        Math.round(COURT[0]+(COURT_DEEP[0]-COURT[0])*t0),
-        Math.round(COURT[1]+(COURT_DEEP[1]-COURT[1])*t0),
-        Math.round(COURT[2]+(COURT_DEEP[2]-COURT[2])*t0)
-      );
-      doc.rect(PW/2 + (PW/2)*t0*0.98, 0, PW/50 + 0.4, HEADER_H, 'F');
-    }
-    doc.setFillColor(GOLD[0],GOLD[1],GOLD[2]);
-    doc.rect(0, HEADER_H, PW, 0.9, 'F');
-
-    var logo = opts.logo;
+    // ================= L'EN-TETE, SUR DU BLANC =================
+    // Le bandeau vert pleine largeur est parti. Il donnait a chaque
+    // document l'air d'une page web imprimee : un aplat de couleur en
+    // haut, du texte blanc dessus, et le reste de la feuille qui n'a plus
+    // rien a voir avec. Sur du papier, l'identite ne se pose pas en
+    // aplat -- elle se tient dans la typographie, les filets et UN seul
+    // accent.
+    //
+    // Ce qui reste, et qui suffit : la marque en haut a gauche, le type de
+    // document en puce sombre a droite, la reference et la date dessous,
+    // un filet pleine largeur qui ferme l'en-tete. Rien d'autre.
+    var top = 15;
+    var logo = opts.logo, lw = 0;
     if (logo){
-      var lh = 17, lw = lh * (logo.w/logo.h);
-      // Le logo source fait plusieurs centaines de kilo-octets : à 17 mm
-      // de haut, 200 px suffisent. Ces fiches circulent par e-mail au
+      var lh = 11.5; lw = lh * (logo.w/logo.h);
+      // Le logo source pese plusieurs centaines de kilo-octets : a 11 mm
+      // de haut, 160 px suffisent. Ces fiches circulent par courriel au
       // bureau, le poids du fichier compte.
       var logoData = logo.data;
       try {
         var lc = document.createElement('canvas');
-        lc.height = 200; lc.width = Math.round(200 * (logo.w/logo.h));
+        lc.height = 160; lc.width = Math.round(160 * (logo.w/logo.h));
         lc.getContext('2d').drawImage(logo.el, 0, 0, lc.width, lc.height);
         logoData = lc.toDataURL('image/png');
       } catch(e){}
-      doc.addImage(logoData, 'PNG', M, (HEADER_H-lh)/2, lw, lh);
+      doc.addImage(logoData, 'PNG', M, top-1.5, lw, lh);
     }
-    var headerTx = logo ? M + (17*(logo.w/logo.h)) + 7 : M;
-    fSGBold(12.5); col([243,239,230]);
-    doc.text('BAOBABS BASKET CLUB', headerTx, HEADER_H/2 - 1, { charSpace:0.2 });
-    fInter(7.4); col([160,180,166]);
-    doc.text('DAKAR · CHAMPIONNAT D2', headerTx, HEADER_H/2 + 4.4, { charSpace:0.5 });
+    var wx = logo ? M + lw + 5.5 : M;
+    fSGBold(10.5); col(NOIR);
+    doc.text('BAOBABS BASKET CLUB', wx, top+4.2, { charSpace:0.9 });
+    fInter(5.8); col(FAINT);
+    doc.text(o.sur('CLUB DE BASKET · DAKAR, SÉNÉGAL'), wx, top+8.6, { charSpace:1.2 });
 
-    fSGMed(9.5); col([243,239,230]);
-    doc.text(String(opts.titre||'Fiche'), PW-M, HEADER_H/2 - 1, { align:'right' });
-    fInter(7); col([150,172,158]);
-    doc.text(String(opts.mention||'USAGE INTERNE — CONFIDENTIEL'), PW-M, HEADER_H/2 + 4.4,
-             { align:'right', charSpace:0.4 });
+    // La puce du type de document : le seul aplat sombre de l'en-tete.
+    var etiq = o.sur(String(opts.titre || 'Document').toUpperCase());
+    fInterSb(6.6);
+    var ew = doc.getTextWidth(etiq) + etiq.length*0.5 + 15;
+    // LE CENTRAGE VERTICAL SE CALCULE, IL NE SE DEVINE PAS.
+    // doc.text() place la LIGNE DE BASE, pas le milieu du texte : poser
+    // la base au centre de la puce fait remonter le mot d'une demi-
+    // hauteur de capitale. On descend donc la base de cette demi-hauteur,
+    // calculee (0,7 x corps, en points, ramene en millimetres) plutot que
+    // reglee a l'oeil -- a l'oeil, ca redevient faux au premier
+    // changement de corps.
+    var puceH = 7.4, puceC = top - 1.5 + puceH/2;
+    doc.setFillColor(NOIR[0],NOIR[1],NOIR[2]);
+    doc.roundedRect(PW-M-ew, top-1.5, ew, puceH, puceH/2, puceH/2, 'F');
+    doc.setFillColor(LIME[0],LIME[1],LIME[2]);
+    doc.circle(PW-M-ew+5, puceC, 1.6, 'F');
+    col([246,244,238]);
+    doc.text(etiq, PW-M-ew+9, puceC + o.demiCap(6.6), { charSpace:0.5 });
 
-    o.y = HEADER_H + 16;
+    // La reference sous la puce. Pas de « N° » : le degre ne fait pas
+    // partie du sous-ensemble de polices embarque et sortirait en blanc
+    // (voir PDF_CARACTERES plus haut).
+    var yMeta = top + 12.4;
+    if (opts.ref){
+      fSGMed(8.2); col(INK);
+      doc.text(o.sur('RÉF. ' + opts.ref), PW-M, yMeta, { align:'right' });
+      yMeta += 4.8;
+    }
+    fInter(6.5); col(FAINT);
+    var dLong = new Date().toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+    doc.text(o.sur('Établi le ' + dLong + ' · ' + (opts.mention || 'Usage interne')),
+             PW-M, yMeta, { align:'right' });
+
+    doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.5);
+    doc.line(M, top+24, PW-M, top+24);
+    o.y = top + 36;
     return o;
   }
 
   function cdRenderPdfDoc(r, logo, photo){
-    var o = pdfSocle({ titre:'Fiche de candidature', logo:logo });
+    // La reference se fabrique a partir de l'identifiant du dossier :
+    // stable, courte, et la meme sur deux impressions du meme dossier —
+    // c'est ce qui permet de reclamer « la CAND-2026-4F2A1B » au telephone.
+    var ref = 'CAND-' + new Date(r.created_at || Date.now()).getFullYear() + '-' +
+              (String(r.id||'').replace(/-/g,'').slice(-6).toUpperCase() || '000000');
+    var o = pdfSocle({
+      titre: 'Fiche de candidature',
+      sousTitre: 'Dossier de recrutement, section féminine',
+      mention: 'Usage interne',
+      ref: ref,
+      logo: logo
+    });
     if (!o) return;
     var doc = o.doc;
     var PW=o.PW, PH=o.PH, M=o.M, HEADER_H=o.HEADER_H;
@@ -17009,82 +17284,73 @@
     var hex=o.hex, pill=o.pill, sectionTitle=o.sectionTitle, fieldsGrid=o.fieldsGrid;
     var quote=o.quote, ratingRow=o.ratingRow, checkPageBreak=o.checkPageBreak;
 
-    // === Bloc identité ===
-    // Un portrait rectangulaire, pas une vignette ronde : c'est un dossier de
-    // recrutement, la photo doit se lire comme sur la fiche du site. Le cadre
-    // or est posé en léger retrait (effet passe-partout) et le bloc se ferme
-    // sur un filet, sans boîte grise — le blanc structure mieux que le gris.
-    var cardY = o.y;
-    var pW = 30, pH = 38, pX = M, pY = cardY;
-
-    if (photo){
-      // Recadrage « cover » ancré en haut, comme object-position:top center
-      // sur le site : on ne coupe jamais le visage.
-      var tR = pW/pH, sR = photo.w/photo.h, sw, sh, sx, sy;
-      if (sR > tR){ sh = photo.h; sw = photo.h*tR; sx = (photo.w-sw)/2; sy = 0; }
-      else        { sw = photo.w; sh = photo.w/tR; sx = 0; sy = 0; }
-      var c = document.createElement('canvas'); c.width = 600; c.height = Math.round(600/tR);
-      c.getContext('2d').drawImage(photo.el, sx, sy, sw, sh, 0, 0, c.width, c.height);
-      doc.addImage(c.toDataURL('image/jpeg',0.92), 'JPEG', pX, pY, pW, pH);
-    } else {
-      doc.setFillColor(PAPER[0],PAPER[1],PAPER[2]);
-      doc.rect(pX, pY, pW, pH, 'F');
-      fSGBold(24); col([206,210,200]);
-      doc.text((r.full_name||'?').charAt(0).toUpperCase(), pX+pW/2, pY+pH/2+4, { align:'center' });
-    }
-    doc.setDrawColor(GOLD[0],GOLD[1],GOLD[2]); doc.setLineWidth(0.5);
-    doc.rect(pX-1.1, pY-1.1, pW+2.2, pH+2.2, 'S');
-
-    var tx = pX + pW + 11;
+    // === QUI ECRIT, QUI EST CONCERNE, ET POURQUOI ===
+    // L'ancienne version ouvrait sur une grande photo, un nom en 19 points
+    // et une gommette de statut : trois choses de rangs differents qui se
+    // disputaient le haut de page. Un document administratif s'ouvre
+    // autrement -- l'emetteur, le destinataire, puis l'objet. On lit dans
+    // cet ordre parce qu'on classe dans cet ordre.
     var st = cdSt(r.status||'nouvelle');
     var stRgb = hex(st.color);
 
-    // Statut en haut à droite, comme un tampon : on voit la décision avant
-    // même de lire le nom.
-    var pillW = pill(st.label, 0, 0, stRgb, true);
-    pill(st.label, PW-M-pillW, cardY+5.5, stRgb);
-    fInter(7.2); col(FAINT);
-    doc.text('Reçue le '+fmtDateTime(r.created_at), PW-M, cardY+12.5, { align:'right' });
+    o.deuxColonnes([
+      ['Émetteur', [
+        'Baobabs Basket Club',
+        'Service recrutement, section féminine',
+        'Terrain Sicap Baobabs, Dakar, Sénégal',
+        'baobabsbasketclub.com'
+      ]],
+      ['Candidate', [
+        r.full_name || '—',
+        // le resume SANS la ville : elle a sa propre ligne juste dessous,
+        // et la repeter faisait replier le resume sur deux lignes pour
+        // redire ce qui suivait.
+        [r.position, r.category, r.age ? r.age + ' ans' : ''].filter(Boolean).join(' · ') || 'Profil à compléter',
+        r.phone || '',
+        r.email || '',
+        r.city || ''
+      ], { photo: photo, initiale: r.full_name }]
+    ]);
 
-    fSGBold(19); col(INK);
-    doc.text(r.full_name||'—', tx, cardY+11.5);
-    fInter(9); col(FAINT);
-    doc.text(cdSubline(r)||'Profil à compléter', tx, cardY+18.5);
+    // L'objet : ce que le club a recu, dit en une ligne, puis les mots de
+    // la candidate. C'est le seul endroit du document ou l'on ecrit une
+    // phrase entiere.
+    var objTitre = 'Candidature ' + (r.position ? ': ' + r.position : 'spontanée') +
+                   (r.category ? ' (' + r.category + ')' : '');
+    o.panneau('Objet', objTitre,
+              r.message || 'Aucun message n’accompagne cette candidature.');
 
-    // Coordonnées en libellés capitales : lisible d'un coup d'œil quand on
-    // décroche le téléphone avec la feuille en main.
-    var cCols = [['Téléphone', r.phone], ['Email', r.email]];
-    var cW = (PW - M - tx) / 2;
-    cCols.forEach(function(p, i){
-      if (!p[1]) return;
-      var cx = tx + i*cW;
-      fInter(6.8); col(FAINT);
-      doc.text(p[0].toUpperCase(), cx, cardY+28, { charSpace:0.35 });
-      // Une adresse d'école ou de club dépasse vite la colonne. On ne tronque
-      // pas : c'est la coordonnée qui sert à joindre la candidate. On réduit
-      // le corps tant que ça dépasse, puis on accepte deux lignes.
-      var val = String(p[1]), avail = cW - 4, size = 9.5;
-      doc.setFont('SpaceGroteskMd','normal'); doc.setFontSize(size);
-      while (size > 7 && doc.getTextWidth(val) > avail){ size -= 0.5; doc.setFontSize(size); }
-      fSGMed(size); col(INK);
-      var vLines = doc.splitTextToSize(val, avail).slice(0, 2);
-      vLines.forEach(function(ln, li){ doc.text(ln, cx, cardY+33.4 + li*4.4); });
-    });
-
-    // Filet de clôture du bloc, en or clair : ferme l'en-tête du dossier.
-    doc.setDrawColor(226,210,178); doc.setLineWidth(0.5);
-    doc.line(M, cardY+pH+8, PW-M, cardY+pH+8);
-
-    o.y = cardY + pH + 18;
+    // L'etat du dossier sur sa propre ligne : la puce porte la couleur du
+    // statut, la date dit depuis quand il attend.
+    o.checkPageBreak(20);
+    doc.setDrawColor(LINE[0],LINE[1],LINE[2]); doc.setLineWidth(0.4);
+    doc.line(M, o.y, PW-M, o.y);
+    fInter(6.2); col(FAINT);
+    doc.text('ÉTAT DU DOSSIER', M, o.y+5.6, { charSpace:1 });
+    var pw2 = pill(st.label, 0, 0, stRgb, true);
+    pill(st.label, M, o.y+16, stRgb);
+    fInter(7.6); col(FAINT);
+    doc.text(o.sur('Reçue le ' + fmtDateTime(r.created_at)), M + pw2 + 6, o.y+14.4);
+    if (r.assigned_to){
+      fInter(7.6); col(FAINT);
+      doc.text(o.sur('Suivi par ' + r.assigned_to), PW-M, o.y+14.4, { align:'right' });
+    }
+    o.y += 24;
 
     // --- Coordonnées ---
-    sectionTitle('Coordonnées');
-    fieldsGrid([
-      ['Téléphone', r.phone], ['Email', r.email],
-      ['Ville', r.city], ['Date de naissance', r.birth_date],
-      ['Âge', r.age?r.age+' ans':'']
-    ]);
-    o.y += 2;
+    // Le telephone et le courriel sont deja dans le bloc d'identite, en
+    // haut : c'est la qu'on les cherche quand on decroche avec la
+    // feuille en main. Les repeter ici donnait une fiche qui dit deux
+    // fois la meme chose a dix centimetres d'intervalle -- le lecteur
+    // se demande alors laquelle des deux fait foi.
+    var coord = [
+      ['Ville', r.city], ['Date de naissance', fmtDateSeule(r.birth_date)]
+    ];
+    if (coord.some(function(p){ return !!p[1]; })){
+      sectionTitle('État civil');
+      fieldsGrid(coord);
+      o.y += 2;
+    }
 
     // --- Profil sportif ---
     sectionTitle('Profil sportif');
@@ -17096,16 +17362,18 @@
     ]);
     o.y += 2;
 
-    // --- Message du candidat ---
-    if (r.message || r.health_notes){
-      sectionTitle('Message du candidat');
-      if (r.message) quote(r.message);
-      if (r.health_notes) quote('Santé : '+r.health_notes, [176,90,50]);
+    // --- Santé ---
+    // Le message de la candidate est deja dans le panneau d'objet, en
+    // haut de la premiere page : le reprendre ici le faisait lire deux
+    // fois, a deux endroits, sans qu'on sache lequel fait foi.
+    if (r.health_notes){
+      sectionTitle('Santé');
+      quote('Santé : '+r.health_notes, [176,90,50]);
       o.y += 2;
     }
 
     // --- Décision & suivi (usage interne) ---
-    sectionTitle('Décision & suivi — usage interne');
+    sectionTitle('Décision et suivi, usage interne');
     fieldsGrid([
       ['Statut actuel', st.label],
       ['Entretien', r.interview_at ? fmtDateTime(r.interview_at) : ''],
@@ -17122,7 +17390,7 @@
 
     // --- Notes internes ---
     if (r.admin_notes){
-      sectionTitle('Notes internes — jamais visibles du candidat');
+      sectionTitle('Notes internes, jamais visibles du candidat');
       quote(r.admin_notes, null, true);
       o.y += 2;
     }
@@ -17159,6 +17427,10 @@
       });
     }
 
+    // Le cartouche de visa ferme la fiche. Sans lui, le document
+    // s'arretait sur le dernier champ et le bas de page restait blanc :
+    // c'est ce vide qui lui donnait son air de brouillon.
+    o.blocVisa(['Responsable du recrutement', 'Direction du club']);
     o.pied('CONFIDENTIEL');
     doc.save(o.nomFichier('fiche-candidature', r.full_name, 'candidat'));
   }
@@ -17559,6 +17831,14 @@
   // La saison sportive va de septembre à juin. Un dossier ouvert en janvier
   // appartient à la saison commencée en septembre précédent — sinon on lui
   // réclamerait des mensualités qui n'existent pas.
+  // « 2025-2026 » : le meme calcul que inSaison(), rendu lisible. Utilise
+  // en sous-titre du dossier PDF — un dossier d'inscription sans sa saison
+  // ne se classe pas.
+  function inSaisonLabel(row){
+    var mois = inSaison(row);
+    if (!mois.length) return '';
+    return mois[0].slice(0,4) + '-' + mois[mois.length-1].slice(0,4);
+  }
   function inSaison(row){
     var d = row && row.created_at ? new Date(row.created_at) : new Date();
     if (isNaN(d.getTime())) d = new Date();
@@ -18249,11 +18529,17 @@
     });
   }
   function inRecuRendre(r, p, logo){
-    var o = pdfSocle({ titre:'Reçu de paiement', mention:'À REMETTRE À LA FAMILLE', logo:logo });
+    var o = pdfSocle({
+      titre: 'Reçu de paiement',
+      sousTitre: 'École de basket · ' + (r.full_name || 'inscription'),
+      mention: 'Remis à la famille',
+      ref: 'REC-' + String(p.id||'').replace(/-/g,'').slice(-6).toUpperCase(),
+      logo: logo
+    });
     if (!o) return;
     var doc = o.doc, PW = o.PW, M = o.M;
     var lib = p.kind==='inscription' ? "Frais d'inscription"
-            : (p.kind==='mensualite' ? 'Mensualité — ' + inPeriodeLabel(p.period) : 'Versement');
+            : (p.kind==='mensualite' ? 'Mensualité ' + inPeriodeLabel(p.period) : 'Versement');
     var meth = (IN_METHODES.filter(function(m){ return m[0]===p.method; })[0]||['','—'])[1];
     // Pas de « N° » : le ° ne fait pas partie du sous-ensemble embarqué
     // (voir PDF_CARACTERES en tête de pdfSocle) et sortirait en blanc.
@@ -18261,26 +18547,36 @@
 
     // Le volet se dessine à une hauteur donnée. On garde o.y en dehors :
     // ce document ne coule pas, il est composé à des positions fixes.
+    // LE VOLET SE COMPOSAIT A DES HAUTEURS FIXES, ET IL SE CHEVAUCHAIT.
+    // Les six lignes descendaient de 8,4 mm chacune depuis y0+33 : la
+    // barre du montant tombait donc a y0+82, et la mention « Cachet et
+    // signature du club », elle, etait clouee a y0+90 -- sous la barre.
+    // Le resultat s'imprimait l'un par-dessus l'autre depuis toujours ;
+    // on le voyait a peine parce que la barre etait verte et le texte
+    // gris. Tout se calcule maintenant a partir du curseur : rien n'est
+    // pose a une hauteur devinee.
+    var VOLET_H = 100;
     function volet(y0, exemplaire){
+      doc.setDrawColor(o.LINE[0],o.LINE[1],o.LINE[2]); doc.setLineWidth(0.4);
+      doc.roundedRect(M, y0, PW-2*M, VOLET_H, 2, 2, 'S');
+
+      o.fSGBold(10.5); o.col(o.NOIR);
+      doc.text('REÇU DE PAIEMENT', M+8, y0+11.5, { charSpace:0.4 });
+      o.fSGMed(7.6); o.col(o.FAINT);
+      doc.text(num, PW-M-8, y0+11.5, { align:'right' });
+      o.fInter(7); o.col(o.FAINT);
+      doc.text(o.sur('École de basket · Terrain Sicap Baobabs, Dakar'), M+8, y0+17.4);
+
       doc.setDrawColor(o.HAIR[0],o.HAIR[1],o.HAIR[2]); doc.setLineWidth(0.4);
-      doc.roundedRect(M, y0, PW-2*M, 96, 2, 2, 'S');
+      doc.line(M+8, y0+22, PW-M-8, y0+22);
 
-      o.fSGBold(11); o.col(o.INK);
-      doc.text('REÇU DE PAIEMENT', M+8, y0+13);
-      o.fInter(7.4); o.col(o.FAINT);
-      doc.text(num, PW-M-8, y0+13, { align:'right' });
-      doc.text('École de basket · Terrain Sicap Baobabs, Dakar', M+8, y0+19.5);
-
-      doc.setDrawColor(o.HAIR[0],o.HAIR[1],o.HAIR[2]); doc.setLineWidth(0.4);
-      doc.line(M+8, y0+24, PW-M-8, y0+24);
-
-      var l = y0 + 33;
+      var l = y0 + 30;
       function ligne(k, v){
-        o.fInter(8.2); o.col(o.FAINT);
-        doc.text(k, M+8, l);
-        o.fSGMed(10); o.col(o.INK);
-        doc.text(String(v==null||v==='' ? '—' : v), M+52, l);
-        l += 8.4;
+        o.fInter(7.8); o.col(o.FAINT);
+        doc.text(o.sur(k), M+8, l);
+        o.fSGMed(9.6); o.col(o.INK);
+        doc.text(o.sur(String(v==null||v==='' ? '—' : v)), M+50, l);
+        l += 7.6;
       }
       ligne('Enfant',      r.full_name);
       ligne('Référence',   r.reference);
@@ -18289,25 +18585,41 @@
       ligne('Moyen',       meth);
       ligne('Date',        String(p.paid_on||'').split('-').reverse().join('/'));
 
-      // Le montant sur fond vert club : c'est le seul chiffre qu'on
-      // cherche quand on ressort le papier six mois plus tard.
-      doc.setFillColor(o.COURT[0],o.COURT[1],o.COURT[2]);
-      doc.rect(M+8, l-1, PW-2*M-16, 15, 'F');
-      o.fInterSb(9); o.col([176,190,180]);
-      doc.text('MONTANT REÇU', M+14, l+8.5, { charSpace:0.4 });
-      o.fSGBold(13); o.col([243,239,230]);
-      doc.text(inFcfa(p.amount_fcfa), PW-M-14, l+8.7, { align:'right' });
+      // Le montant sur fond noir : le seul chiffre qu'on cherche quand on
+      // ressort le papier six mois plus tard, et la seule surface sombre
+      // du volet. Meme noir et meme vert que partout ailleurs -- deux
+      // documents du meme club qui n'emploient pas les memes aplats ont
+      // l'air de venir de deux endroits.
+      var bY = l - 1.5, bh = 14, bc = bY + bh/2;
+      doc.setFillColor(o.NOIR[0],o.NOIR[1],o.NOIR[2]);
+      doc.roundedRect(M+8, bY, PW-2*M-16, bh, 1.2, 1.2, 'F');
+      o.fInterSb(7); o.col([158,164,158]);
+      doc.text('MONTANT REÇU', M+14, bc + o.demiCap(7), { charSpace:1 });
+      var mx = PW-M-14;
+      o.fSGMed(7.6); o.col(o.LIME);
+      doc.text('FCFA', mx, bc + o.demiCap(7.6), { align:'right' });
+      mx -= doc.getTextWidth('FCFA') + 2.8;
+      o.fSGBold(13.5); o.col([243,239,230]);
+      doc.text(inFcfa(p.amount_fcfa).replace(/ FCFA$/, ''), mx, bc + o.demiCap(13.5), { align:'right' });
 
-      o.fInter(7); o.col(o.FAINT);
-      doc.text('Cachet et signature du club', M+8, y0+90);
-      doc.text(exemplaire, PW-M-8, y0+90, { align:'right' });
+      // La ligne de signature, SOUS la barre et non dessous au hasard :
+      // un pointille pour signer, la mention a gauche, l'exemplaire a
+      // droite.
+      var sy = bY + bh + 9.5;
+      doc.setDrawColor(o.HAIR[0],o.HAIR[1],o.HAIR[2]); doc.setLineWidth(0.3);
+      doc.setLineDashPattern([0.7,1.2], 0);
+      doc.line(M+8, sy, M+78, sy);
+      doc.setLineDashPattern([], 0);
+      o.fInter(6.4); o.col(o.FAINT);
+      doc.text('Cachet et signature du club', M+8, sy+4.4, { charSpace:0.3 });
+      doc.text(o.sur(exemplaire), PW-M-8, sy+4.4, { align:'right', charSpace:0.3 });
     }
 
     volet(o.y, 'Exemplaire famille');
     // Le pointillé de découpe, et il est franc : un trait plein se
     // confondrait avec un filet de mise en page, et on plierait au
     // mauvais endroit.
-    var mid = o.y + 104;
+    var mid = o.y + VOLET_H + 10;
     doc.setDrawColor(190,196,188); doc.setLineWidth(0.4);
     doc.setLineDashPattern([2.4,2.2], 0);
     doc.line(M-4, mid, PW-M+4, mid);
@@ -18348,40 +18660,49 @@
   }
 
   function inFicheRendre(r, logo, photo){
-    var o = pdfSocle({ titre:'Dossier d’inscription', logo:logo });
+    var o = pdfSocle({
+      titre: 'Dossier d’inscription',
+      sousTitre: 'École de basket · saison ' + inSaisonLabel(r),
+      mention: 'Usage interne',
+      ref: r.reference || ('INS-' + String(r.id||'').replace(/-/g,'').slice(-6).toUpperCase()),
+      logo: logo
+    });
     if (!o) return;
     var doc = o.doc, PW = o.PW, M = o.M;
     var s = inSt(r.status||'nouvelle');
 
-    // --- Bloc identité : portrait, nom, statut, référence ---
-    var cardY = o.y, pW = 30, pH = 38;
-    o.portrait(photo, M, cardY, pW, pH, r.full_name);
+    // === QUI, POUR QUI, ET DANS QUEL ETAT ===
+    // Meme ouverture que la fiche de candidature : le club a gauche,
+    // l'enfant a droite avec son portrait, puis l'etat du dossier sur sa
+    // ligne. Deux documents du meme club qui s'ouvrent differemment
+    // obligent a réapprendre a lire a chaque fois.
+    o.deuxColonnes([
+      ['Émetteur', [
+        'Baobabs Basket Club',
+        'École de basket',
+        'Terrain Sicap Baobabs, Dakar, Sénégal',
+        'baobabsbasketclub.com'
+      ]],
+      ['Enfant inscrit', [
+        r.full_name || '—',
+        inSubline(r) || 'Dossier à compléter',
+        r.guardian_name ? 'Responsable : ' + r.guardian_name : '',
+        r.guardian_phone || ''
+      ], { photo: photo, initiale: r.full_name }]
+    ]);
 
-    var tx = M + pW + 11;
+    o.checkPageBreak(20);
+    doc.setDrawColor(o.LINE[0],o.LINE[1],o.LINE[2]); doc.setLineWidth(0.4);
+    doc.line(M, o.y, PW-M, o.y);
+    o.fInter(6.2); o.col(o.FAINT);
+    doc.text('ÉTAT DU DOSSIER', M, o.y+5.6, { charSpace:1 });
     var pillW = o.pill(s.label, 0, 0, o.hex(s.color), true);
-    o.pill(s.label, PW-M-pillW, cardY+5.5, o.hex(s.color));
-    o.fInter(7.2); o.col(o.FAINT);
-    doc.text('Reçue le ' + fmtDateTime(r.created_at), PW-M, cardY+12.5, { align:'right' });
-
-    o.fSGBold(19); o.col(o.INK);
-    doc.text(r.full_name || '—', tx, cardY+11.5);
-    o.fInter(9); o.col(o.FAINT);
-    doc.text(inSubline(r) || 'Dossier à compléter', tx, cardY+18.5);
-    if (r.reference){
-      o.fSGMed(10); o.col(o.GOLD);
-      doc.text(r.reference, tx, cardY+26);
-    }
-    // Le téléphone du responsable, en clair sous le nom : c'est le seul
-    // numéro qu'on cherche quand on tient la feuille à la main.
-    if (r.guardian_phone){
-      o.fInter(6.8); o.col(o.FAINT);
-      doc.text('RESPONSABLE À JOINDRE', tx, cardY+33.5, { charSpace:0.35 });
-      o.fSGMed(10.5); o.col(o.INK);
-      doc.text([r.guardian_name, r.guardian_phone].filter(Boolean).join(' · '), tx, cardY+39);
-    }
-    doc.setDrawColor(226,210,178); doc.setLineWidth(0.5);
-    doc.line(M, cardY+pH+8, PW-M, cardY+pH+8);
-    o.y = cardY + pH + 18;
+    o.pill(s.label, M, o.y+16, o.hex(s.color));
+    o.fInter(7.6); o.col(o.FAINT);
+    doc.text(o.sur('Reçue le ' + fmtDateTime(r.created_at)), M + pillW + 6, o.y+14.4);
+    o.fInter(7.6); o.col(o.FAINT);
+    doc.text(o.sur('Saison ' + inSaisonLabel(r)), PW-M, o.y+14.4, { align:'right' });
+    o.y += 24;
 
     // --- CE QUI MANQUE, EN PREMIER ---
     // Un certificat médical absent chez un enfant qui s'entraîne déjà
@@ -18434,18 +18755,22 @@
     var totalPaye = r.total_paye != null ? r.total_paye
       : inPayments.reduce(function(t, pm){ return t + (parseInt(pm.amount_fcfa,10)||0); }, 0);
 
-    o.sectionTitle('L’argent — ' + inFcfa(totalPaye) + ' encaissés');
-    o.releve("Frais d'inscription — " + inFcfa(r.fee_registration_fcfa),
+    o.sectionTitle('L’argent');
+    o.releve("Frais d'inscription, " + inFcfa(r.fee_registration_fcfa),
              fraisPayes ? 'Réglés' : 'En attente');
     var saison = inSaison(r), moisCourant = inPeriodeCourante();
     var regles = saison.filter(function(pp){ return payees.indexOf(pp) >= 0; });
     var dus    = saison.filter(function(pp){ return payees.indexOf(pp) < 0 && pp <= moisCourant; });
-    o.releve('Mensualité — ' + inFcfa(r.fee_monthly_fcfa) + ' par mois',
+    o.releve('Mensualité, ' + inFcfa(r.fee_monthly_fcfa) + ' par mois',
              regles.length + ' réglée' + (regles.length>1?'s':'') + ' sur ' + saison.length);
     if (dus.length)
       o.releve('Mois dus', dus.map(function(pp){ return IN_MOIS[parseInt(pp.slice(5),10)-1]; }).join(', '));
-    o.releve('Total encaissé', inFcfa(totalPaye), true);
-    o.y += 4;
+    o.y += 3;
+    // LA SEULE SURFACE SOMBRE DU DOCUMENT, pour le seul chiffre qu'on
+    // cherche vraiment sur un dossier de paiement. Il etait jusqu'ici une
+    // ligne de releve comme les autres, en gras : on le trouvait en le
+    // lisant, pas en le voyant.
+    o.barreTotal('Total encaissé', inFcfa(totalPaye).replace(/ FCFA$/, ''), 'FCFA');
 
     if (inPayments.length){
       o.fInter(6.8); o.col(o.FAINT);
@@ -18456,7 +18781,7 @@
                 : (pm.kind === 'mensualite' ? inPeriodeLabel(pm.period) : 'Versement');
         var meth = (IN_METHODES.filter(function(m){ return m[0]===pm.method; })[0]||['','—'])[1];
         return [String(pm.paid_on||'').split('-').reverse().join('/'),
-                lib + ' — ' + inFcfa(pm.amount_fcfa) + ' · ' + meth];
+                lib + ' · ' + inFcfa(pm.amount_fcfa) + ' · ' + meth];
       }));
       o.y += 3;
     }
@@ -18465,7 +18790,7 @@
     var nbPieces = IN_PIECES.filter(function(pc){
       return inDocs.some(function(d){ return d.kind === pc[0]; });
     }).length;
-    o.sectionTitle('Pièces du dossier — ' + nbPieces + ' sur ' + IN_PIECES.length);
+    o.sectionTitle('Pièces du dossier, ' + nbPieces + ' sur ' + IN_PIECES.length);
     IN_PIECES.forEach(function(pc){
       var d = inDocs.filter(function(x){ return x.kind === pc[0]; })[0];
       o.releve(pc[1], d
@@ -18484,7 +18809,7 @@
 
     // --- Notes internes ---
     if (r.admin_notes){
-      o.sectionTitle('Notes internes — jamais visibles de la famille');
+      o.sectionTitle('Notes internes, jamais visibles de la famille');
       o.quote(r.admin_notes, null, true);
       o.y += 2;
     }
