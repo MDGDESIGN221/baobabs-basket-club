@@ -7054,6 +7054,13 @@
   // maquette, jamais planter sur une donnée absente.
   // ------------------------------------------------------------------
   var studioMedias = null;
+  // ON GARDE LA PROMESSE, PAS SEULEMENT LE RESULTAT.
+  // Le cache ne se remplissait qu'a l'arrivee des reponses : deux
+  // appels rapproches -- et il y en a deux a chaque ouverture --
+  // partaient donc tous les deux. C'etait une requete de trop tant
+  // que le bucket se lisait d'un coup ; depuis qu'on interroge huit
+  // dossiers et trois tables, c'en est onze.
+  var studioMediasP = null;
 
   function studioEstImage(v){
     return typeof v === 'string' && /\.(jpe?g|png|webp|avif|svg)(\?|$)/i.test(v) ? v : null;
@@ -7125,15 +7132,38 @@
         // dans les fiches joueuses, matchs et articles.
         media: function(){
           if (studioMedias) return Promise.resolve(studioMedias);
-          var bucket = fetch(SUPABASE_URL + '/storage/v1/object/list/' + MEDIA_BUCKET, {
-            method: 'POST',
-            headers: sbHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ prefix: '', limit: 80, offset: 0, sortBy: { column: 'created_at', order: 'desc' } })
-          }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){
-            return (rows || []).filter(function(o){ return o && o.id && studioEstImage(o.name); })
-              .map(function(o){
-                return { url: SUPABASE_URL + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + o.name, name: o.name };
-              });
+          if (studioMediasP) return studioMediasP;
+          // LES DOSSIERS QUE LE STUDIO A LE DROIT DE VOIR.
+          // L'API de listage ne descend pas dans les sous-dossiers : on
+          // interroge chaque prefixe, comme le fait deja mdList().
+          // La racine y figure parce qu'elle contient tout ce qui a ete
+          // televerse AVANT que les envois soient ranges ; elle finira
+          // par ne plus servir, mais la vider aujourd'hui casserait
+          // toutes les adresses deja ecrites en base.
+          //
+          // Ce qui n'y figure pas est le coeur de l'affaire : comptes
+          // (les visages), partenaires (leurs logos), dossiers (les
+          // pieces des familles, certificats medicaux compris). Ces
+          // images appartiennent a un autre ecran ; les proposer ici,
+          // c'est offrir de les poser sur une affiche -- et la croix du
+          // Studio les supprimerait POUR DE BON.
+          var STUDIO_DOSSIERS = ['', 'affiches', 'matchs', 'joueuses',
+                                 'boutique', 'actus', 'club', 'divers'];
+          var bucket = Promise.all(STUDIO_DOSSIERS.map(function(pre){
+            return fetch(SUPABASE_URL + '/storage/v1/object/list/' + MEDIA_BUCKET, {
+              method: 'POST',
+              headers: sbHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify({ prefix: pre, limit: 80, offset: 0, sortBy: { column: 'created_at', order: 'desc' } })
+            }).then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){
+              // Une entree sans id est un dossier, pas un fichier.
+              return (rows || []).filter(function(o){ return o && o.id && studioEstImage(o.name); })
+                .map(function(o){
+                  var chemin = (pre ? pre + '/' : '') + o.name;
+                  return { url: SUPABASE_URL + '/storage/v1/object/public/' + MEDIA_BUCKET + '/' + chemin, name: o.name };
+                });
+            }).catch(function(){ return []; });
+          })).then(function(lots){
+            return lots.reduce(function(a, b){ return a.concat(b); }, []);
           }).catch(function(){ return []; });
 
           var fiches = Promise.all([
@@ -7151,14 +7181,55 @@
             return out;
           }).catch(function(){ return []; });
 
-          return Promise.all([bucket, fiches]).then(function(r){
+          // CE QUI APPARTIENT DEJA A UN AUTRE ECRAN.
+          // Ranger les nouveaux envois dans des dossiers ne suffit pas :
+          // tout ce qui a ete televerse AVANT reste a la racine, donc
+          // visible ici. Et l'ennui n'est pas seulement qu'on les
+          // propose pour une affiche -- la croix du Studio les
+          // supprimerait POUR DE BON, et l'avatar du compte comme le
+          // bloc du partenaire deviendraient des cadres vides sans que
+          // rien ne previenne.
+          // On demande donc aux ecrans proprietaires de dire quelles
+          // adresses sont prises. Un ecran de plus = une requete de plus.
+          var reserves = Promise.all([
+            sbGet('admin_users?select=photo_url').catch(function(){ return []; }),
+            sbGet('partners?select=logo_url').catch(function(){ return []; }),
+            sbGet('academy_documents?select=url').catch(function(){ return []; })
+          ]).then(function(rr){
+            var pris = {};
+            function poser(u){
+              if (!u) return;
+              pris[u] = 1;
+              // Deuxieme cle, le nom de fichier seul : la mediatheque
+              // encode ses adresses, le listage du bucket non. Deux
+              // ecritures de la meme image ne doivent pas passer.
+              var f = String(u).split('?')[0].split('/').pop();
+              if (!f) return;
+              try { f = decodeURIComponent(f); } catch(e){}
+              pris['#' + f.toLowerCase()] = 1;
+            }
+            (rr[0] || []).forEach(function(x){ poser(x.photo_url); });
+            (rr[1] || []).forEach(function(x){ poser(x.logo_url); });
+            (rr[2] || []).forEach(function(x){ poser(x.url); });
+            return pris;
+          }).catch(function(){ return {}; });
+
+          studioMediasP = Promise.all([bucket, fiches, reserves]).then(function(r){
+            var pris = r[2] || {};
+            function reserve(u){
+              if (pris[u]) return true;
+              var f = String(u || '').split('?')[0].split('/').pop();
+              try { f = decodeURIComponent(f); } catch(e){}
+              return !!pris['#' + String(f).toLowerCase()];
+            }
             var vus = {};
             studioMedias = r[0].concat(r[1]).filter(function(m){
-              if (!m.url || vus[m.url]) return false;
+              if (!m.url || vus[m.url] || reserve(m.url)) return false;
               vus[m.url] = 1; return true;
             });
             return studioMedias;
-          });
+          }).catch(function(e){ studioMediasP = null; throw e; });
+          return studioMediasP;
         }
       },
 
@@ -7200,8 +7271,8 @@
       },
 
       uploadImage: function(file){
-        return uploadFile(MEDIA_BUCKET, file).then(function(url){
-          studioMedias = null;                 // la médiathèque a changé
+        return uploadFile(MEDIA_BUCKET, file, 'affiches').then(function(url){
+          studioMedias = null; studioMediasP = null;   // la médiathèque a changé
           return url;
         });
       },
@@ -7219,7 +7290,7 @@
           method: 'DELETE', headers: sbHeaders()
         }).then(function(r){
           if (!r.ok) throw new Error('suppression refusée');
-          studioMedias = null;
+          studioMedias = null; studioMediasP = null;
           return true;
         });
       },
@@ -7545,9 +7616,50 @@
     });
   }
 
-  function uploadFile(bucket,file){
+  // DE QUEL ECRAN VIENT CE FICHIER ?
+  // Etiqueter a la main les douze endroits qui televersent aurait
+  // tenu jusqu'au treizieme : un champ image ajoute plus tard serait
+  // reparti a la racine, sans que rien ne le signale. Le dossier se
+  // deduit donc du champ lui-meme -- on remonte jusqu'a la section
+  // qui le contient. Un ecran neuf non liste tombe dans « divers »,
+  // ce qui est faux mais visible, plutot que dans le tas.
+  var DOSSIER_ECRAN = {
+    gameday:'matchs', matches2:'matchs', calendar:'matchs', results:'matchs',
+    standings:'matchs', teams:'matchs', live:'matchs', tickets:'matchs',
+    squad:'joueuses', staff:'joueuses',
+    products:'boutique', stock:'boutique', promos:'boutique',
+    clients:'boutique', orders2:'boutique',
+    articles:'actus', categories:'actus', news:'actus', newsl:'actus',
+    announce:'actus', banners:'actus',
+    partners:'partenaires',
+    home:'club', c_home:'club', c_club:'club', c_tryouts:'club',
+    c_inscriptions:'club', c_app:'club', c_promo:'club', c_legal:'club',
+    bureau:'club', founder:'club', timeline:'club', galerie:'club',
+    reglages:'club',
+    // Ces trois-la ne sont PAS de la matiere a publier, et c'est
+    // pourquoi le Studio ne lit jamais leurs dossiers.
+    applications:'dossiers', inscriptions:'dossiers', forms:'dossiers',
+    comptes:'comptes'
+  };
+  function dossierPour(el){
+    try {
+      var sec = el && el.closest && el.closest('section[id^="section-"]');
+      var cle = sec ? sec.id.replace(/^section-/, '') : '';
+      return DOSSIER_ECRAN[cle] || 'divers';
+    } catch(e){ return 'divers'; }
+  }
+
+  // LE TROISIEME ARGUMENT MANQUAIT, ET IL COUTAIT CHER.
+  // Tout envoi partant d'un formulaire tombait a la RACINE du bucket.
+  // La mediatheque a pourtant sept dossiers -- mais seul son propre
+  // televersement s'en servait ; les formulaires, eux, empilaient tout
+  // au meme endroit. Et le Studio liste precisement cette racine : le
+  // visage d'un compte et le logo d'un partenaire se retrouvaient donc
+  // proposes pour une affiche, a cote des photos de match.
+  function uploadFile(bucket,file,dossier){
     return compresserImage(file).then(function(f){
-      var path = Date.now()+'-'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      var path = (dossier ? dossier + '/' : '') +
+        Date.now()+'-'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
       // ON LE DIT. Le gain partait dans la console : personne ne l'y a
       // jamais lu, et on continuait a croire qu'une photo de 5 Mo etait
       // partie telle quelle -- donc a redimensionner a la main avant,
@@ -7802,7 +7914,7 @@
     if (modeUrlBtn.classList.contains('active')) return Promise.resolve((urlEl.value||'').trim()||null);
     var f = fileEl.files[0];
     if (!f) return Promise.resolve((urlEl.value||'').trim()||null);
-    return uploadFile(bucket, f);
+    return uploadFile(bucket, f, dossierPour(fileEl));
   }
   function wireImageControl(uploadBtn, urlBtn, fileEl, urlEl, previewEl){
     uploadBtn.addEventListener('click', function(){ uploadBtn.classList.add('active'); urlBtn.classList.remove('active'); fileEl.classList.remove('hide'); urlEl.classList.add('hide'); });
@@ -14358,7 +14470,12 @@
     { id:'actus',       name:'Actualités' },
     { id:'partenaires', name:'Partenaires' },
     { id:'club',        name:'Club & histoire' },
-    { id:'divers',      name:'Divers' }
+    { id:'divers',      name:'Divers' },
+    // Les visages des comptes : ranges a part parce qu'ils ne sont pas
+    // de la matiere a publier. Voir studioApi().data.media.
+    { id:'affiches',    name:'Studio & affiches' },
+    { id:'comptes',     name:'Comptes & rôles' },
+    { id:'dossiers',    name:'Pièces des dossiers' }
   ];
   // Les visuels du site ne sont pas tous dans le bucket : la plupart sont
   // des liens enregistrés dans les fiches (adversaires, joueuses, produits,
@@ -14511,7 +14628,7 @@
       var f = inp.files && inp.files[0]; if (!f) return;
       var lbl = t.querySelector('span'), avant = lbl.textContent;
       lbl.textContent = 'Envoi…'; t.classList.add('occupe');
-      uploadFile(MEDIA_BUCKET, f).then(function(url){
+      uploadFile(MEDIA_BUCKET, f, dossierPour(el)).then(function(url){
         el.value = url;
         // On previent le formulaire comme si l'on avait tape l'adresse :
         // c'est ce qui met a jour l'apercu et le drapeau « non
@@ -18969,7 +19086,9 @@
         var file = fe.files[0]; if (!file) return;
         var kind = fe.getAttribute('data-inpiece');
         var span = fe.parentNode.querySelector('span'); if (span) span.textContent = 'Envoi…';
-        uploadFile(MEDIA_BUCKET, file).then(function(url){
+        // Un certificat medical d'enfant n'a rien a faire dans le tas
+        // commun, ni dans une liste d'images a poser sur une affiche.
+        uploadFile(MEDIA_BUCKET, file, 'dossiers').then(function(url){
           return sbInsert('academy_documents', {
             registration_id: r.id, kind: kind, url: url,
             author: (currentSession && currentSession.user && currentSession.user.email) || null
@@ -20354,7 +20473,7 @@
       var file = f.files && f.files[0];
       if (!file) return;
       showMsg(msg, 'Envoi de la photo…', true);
-      uploadFile(MEDIA_BUCKET, file).then(function(url){
+      uploadFile(MEDIA_BUCKET, file, 'comptes').then(function(url){
         showMsg(msg, '', true);
         cadrer(url);
       }).catch(function(){
@@ -21438,7 +21557,7 @@
   function qgPhotoUpload(){
     var fileEl=document.getElementById('qg-f-file'); var f=fileEl&&fileEl.files[0]; if(!f) return;
     var lbl=document.getElementById('qg-file-label'); if(lbl) lbl.textContent='Envoi…';
-    uploadFile(MEDIA_BUCKET,f).then(function(url){
+    uploadFile(MEDIA_BUCKET,f,dossierPour(fileEl)).then(function(url){
       var cur=qgCurrent(); if(cur){ cur.photo_url=url; }
       var urlEl=document.getElementById('qg-f-photo'); if(urlEl) urlEl.value=url;
       if(lbl) lbl.textContent='Téléverser'; qgRenderCards(); qgPosBlockPreview('qg-f-photo','photo');
