@@ -6815,7 +6815,7 @@ window.bbCloud = function(url, w){
     function set(id,val){ if(val==null||val==='') return; var el=document.getElementById(id); if(el) el.textContent=val; }
 
     /* LES TEXTES QUE LA PAGE ANNONCE ELLE-MEME.
-       Soixante-quatorze elements portent data-bb="clef" : une liste
+       Soixante-quatorze elements portent un attribut data-bb : une liste
        ecrite dans le HTML de ce qui devrait venir d'un reglage. Rien ne
        la lisait. L'admin, lui, croyait l'attribut et comptait ces textes
        comme deja administrables -- ils ne l'etaient pas.
@@ -6830,10 +6830,22 @@ window.bbCloud = function(url, w){
        MEME GARDE QUE set() : un reglage vide ou absent laisse le texte
        du fichier. Tant qu'aucune de ces clefs n'existe en base, cette
        boucle ne change donc rien a l'ecran. */
+    /* CINQ EXCEPTIONS, ET ELLES SE JUSTIFIENT.
+       data-bb ne sert pas qu'a poser du texte dans ce fichier : il
+       DESIGNE aussi des elements pour autre chose. Le bouton d'appel
+       des tryouts n'est vise que pour son href ; les quatre chiffres du
+       bandeau sont poses par applyStats() sous d'autres noms
+       (st1_value...) et animes par un compteur qui lit leur texte au
+       moment ou ils entrent dans l'ecran.
+       Y ecrire par cette boucle serait se battre avec eux -- au mieux
+       en double, au pire en remplacant un libelle par un numero. */
+    var BB_SAUF = { 'try-call':1, 'stat1-v':1, 'stat2-v':1, 'stat3-v':1, 'stat4-v':1 };
     var annonces = document.querySelectorAll('[data-bb]');
     for (var i = 0; i < annonces.length; i++){
       var el = annonces[i];
-      var k = (el.getAttribute('data-bb') || '').replace(/-/g, '_');
+      var brut = el.getAttribute('data-bb') || '';
+      if (BB_SAUF[brut]) continue;
+      var k = brut.replace(/-/g, '_');
       if (!k) continue;
       var v = s[k];
       if (v == null || v === '') continue;
