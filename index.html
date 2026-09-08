@@ -3397,9 +3397,22 @@ window.bbLienSur = function (u) {
       // boutons de zoom, ni l'attribution, qui sont dans d'autres
       // couches. C'est aussi pourquoi il n'est pas pose sur la carte
       // entiere : le marqueur ressortirait magenta.
+      /* LA CARTE ETAIT GRISE, ET C'ETAIT NOTRE PROPRE CSP.
+         Notre Content-Security-Policy ne laisse passer les images que de
+         quelques domaines, et tile.openstreetmap.org n'en faisait pas
+         partie : le navigateur bloquait chaque tuile en silence -- une
+         erreur par tuile dans la console, un rectangle vide pour le
+         visiteur.
+         La CSP autorisait deja *.basemaps.cartocdn.com, et Carto semblait
+         donc le fournisseur prevu. Essaye : ses tuiles gratuites arrivent
+         desormais barrees d'un « API KEY REQUIRED » en travers de la
+         carte. Une carte tatouee est pire qu'une carte vide.
+         On garde donc OpenStreetMap, et c'est la CSP qui s'ouvre -- pour
+         ce seul domaine, et pour les images seulement (voir
+         vercel.json). */
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
         maxZoom:19,
-        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
       }).addTo(map);
       var icon=L.divIcon({className:'',html:'<div style="position:relative;width:34px;height:34px;transform:translate(-50%,-100%)"><div style="width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#A8D93B;border:2px solid #0A1B0D;box-shadow:0 6px 16px rgba(0,0,0,.5)"></div><div style="position:absolute;top:9px;left:11px;width:12px;height:12px;border-radius:50%;background:#0A1B0D"></div></div>',iconSize:[34,34],iconAnchor:[0,0]});
       var VENUE_DEF='Complexe Patrick Semedo', ADDR_DEF='Rue Aroun, Mermoz–Sacré-Cœur, Dakar';
