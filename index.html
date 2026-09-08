@@ -6800,6 +6800,33 @@ window.bbCloud = function(url, w){
   function applyContent(s){
     if(!s) return;
     function set(id,val){ if(val==null||val==='') return; var el=document.getElementById(id); if(el) el.textContent=val; }
+
+    /* LES TEXTES QUE LA PAGE ANNONCE ELLE-MEME.
+       Soixante-quatorze elements portent data-bb="clef" : une liste
+       ecrite dans le HTML de ce qui devrait venir d'un reglage. Rien ne
+       la lisait. L'admin, lui, croyait l'attribut et comptait ces textes
+       comme deja administrables -- ils ne l'etaient pas.
+
+       Une boucle suffit, et elle vaut pour tout ce qu'on annotera plus
+       tard : ajouter data-bb a un texte le rend administrable, sans
+       toucher a ce script.
+
+       Le tiret devient un souligne : les reglages s'ecrivent ainsi
+       partout ailleurs (stat1-v -> stat1_v).
+
+       MEME GARDE QUE set() : un reglage vide ou absent laisse le texte
+       du fichier. Tant qu'aucune de ces clefs n'existe en base, cette
+       boucle ne change donc rien a l'ecran. */
+    var annonces = document.querySelectorAll('[data-bb]');
+    for (var i = 0; i < annonces.length; i++){
+      var el = annonces[i];
+      var k = (el.getAttribute('data-bb') || '').replace(/-/g, '_');
+      if (!k) continue;
+      var v = s[k];
+      if (v == null || v === '') continue;
+      el.textContent = v;
+    }
+
     set('bb-club-kicker', s.club_intro_kicker);
     set('bb-club-title', s.club_intro_title);
     set('bb-club-intro', s.club_intro_text);
