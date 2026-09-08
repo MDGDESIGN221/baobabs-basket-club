@@ -5280,6 +5280,23 @@
           <button type="button" class="btn btn-ghost" id="cp-cq-go">Créer la casquette</button>
         </div>
         <div class="msg" id="cp-cq-msg"></div>
+
+        <!-- LES NEUF LISTES. Meme mecanique que les casquettes : la
+             base decide, le code n'est plus qu'un filet. -->
+        <div class="tm-panel-h" style="margin-top:20px">Les listes du club</div>
+        <p class="card-sub">Ce que l'administration vous propose dans ses menus&nbsp;: les clubs du championnat, les salles, les tarifs de billetterie, les pièces du dossier, les moyens de paiement… Ajouter un club se fait ici, plus dans le code.</p>
+        <div class="cp-form">
+          <select id="cp-li-sel" class="qg-in" aria-label="Choisir la liste"></select>
+        </div>
+        <p class="card-sub" id="cp-li-note"></p>
+        <div id="cp-li-list" class="cp-cq-list"></div>
+        <div class="cp-form" style="margin-top:10px">
+          <input type="text" id="cp-li-nom" class="qg-in" autocomplete="off">
+          <input type="text" id="cp-li-val" class="qg-in" autocomplete="off">
+          <button type="button" class="btn btn-ghost" id="cp-li-go">Ajouter</button>
+          <button type="button" class="cp-cq-x hide" id="cp-li-annuler">Annuler</button>
+        </div>
+        <div class="msg" id="cp-li-msg"></div>
       </div>
     </section>
     <section id="section-c_app" class="hide"><div id="qgc-c_app"></div></section>
@@ -5671,6 +5688,66 @@
     return m === null || m === undefined ? true : can(m, 'voir');
   }
 
+  // LES NEUF LISTES DU CLUB, EN BASE PLUTOT QU'EN DUR.
+  //
+  // Les clubs adverses, les salles, les tarifs de billetterie, les
+  // pieces du dossier, les moyens de paiement, les postes du bureau,
+  // les tailles, les postes des joueuses, les couleurs : neuf listes
+  // qui vivaient dans ce fichier. Ajouter un club au championnat
+  // demandait de rouvrir le code -- exactement le probleme des
+  // casquettes, et la meme reponse.
+  //
+  // LE CODE GARDE SES VALEURS. La base ne fait que les REMPLACER,
+  // et seulement si elle repond quelque chose. Table absente, liste
+  // vide, lecture refusee : on retombe sur ce que le fichier a
+  // toujours connu. Une migration pas encore passee ne casse rien.
+  var LISTES_META = {
+    clubs:    { nom:'Clubs adverses',            second:'Logo',              type:'image' },
+    salles:   { nom:'Salles et terrains',        second:null,                type:'simple' },
+    tarifs:   { nom:'Tarifs de billetterie',     second:'Prix (F CFA)',      type:'prix' },
+    pieces:   { nom:'Pièces du dossier',         second:'À quoi elle sert',  type:'texte',   cleFigee:true },
+    paiement: { nom:'Moyens de paiement',        second:null,                type:'simple',  cleFigee:true },
+    bureau:   { nom:'Postes du bureau',          second:null,                type:'simple',  cleFigee:true },
+    tailles:  { nom:'Tailles de la boutique',    second:null,                type:'simple',  cleFigee:true },
+    postes:   { nom:'Postes des joueuses',       second:null,                type:'simple' },
+    couleurs: { nom:'Couleurs de mise en forme', second:'Couleur',           type:'couleur', cleFigee:true }
+  };
+  // Ce que la base a repondu ce tour-ci : l'ecran du proprietaire le
+  // relit sans redemander.
+  var listesRows = null;
+
+  function listesAppliquer(rows){
+    var par = {};
+    (rows || []).forEach(function(r){ (par[r.liste] = par[r.liste] || []).push(r); });
+    function L(n){
+      return (par[n] || []).slice().sort(function(a, b){ return (a.ordre||0) - (b.ordre||0); });
+    }
+    var l;
+    l = L('clubs');    if (l.length) KNOWN_CLUBS    = l.map(function(r){ return { name:r.libelle, logo_url:r.valeur || '' }; });
+    l = L('salles');   if (l.length) SALLES_CONNUES = l.map(function(r){ return r.libelle; });
+    // La liste deroulante des salles est batie au chargement : sans ce
+    // rappel elle garderait les salles du fichier pour toujours.
+    try { if (l.length) remplirSalles(true); } catch(e){}
+    l = L('tarifs');   if (l.length) TK_PRESETS     = l.map(function(r){ return { label:r.libelle, price:Number(r.valeur) || 0 }; });
+    l = L('pieces');   if (l.length) IN_PIECES      = l.map(function(r){ return [r.cle, r.libelle, r.valeur || '']; });
+    l = L('paiement'); if (l.length) IN_METHODES    = l.map(function(r){ return [r.cle, r.libelle]; });
+    l = L('bureau');   if (l.length) ORG_ROLES      = l.map(function(r){ return { key:r.cle, label:r.libelle }; });
+    l = L('tailles');  if (l.length) PR_SIZES       = l.map(function(r){ return r.libelle; });
+    // CES DEUX-LA GARDENT LEUR ENTREE NEUTRE, POSEE PAR LE CODE.
+    // « aucun poste » et « couleur d'origine » ne sont pas des
+    // valeurs du club : ce sont les cases vides des menus. Les
+    // ranger en base aurait mis une ligne sans nom dans l'ecran,
+    // que personne n'aurait su quoi en faire.
+    l = L('postes');   if (l.length) QG_POS         = [''].concat(l.map(function(r){ return r.libelle; }));
+    l = L('couleurs'); if (l.length) AP_COULEURS    = [['', 'Couleur d\u2019origine']].concat(l.map(function(r){ return [r.cle, r.libelle]; }));
+  }
+
+  function chargerListes(){
+    return sbGet('club_listes?select=liste,cle,libelle,valeur,ordre&order=liste.asc,ordre.asc')
+      .then(function(rows){ listesRows = rows || []; listesAppliquer(listesRows); })
+      .catch(function(){ listesRows = null; });
+  }
+
   function chargerRole(){
     // Les libelles des casquettes partent en meme temps que le role :
     // ils servent des le bandeau, avant meme qu'on ouvre un ecran.
@@ -5714,7 +5791,10 @@
       // Rôles pas encore posés en base : on ne bloque personne.
       currentRole = 'super_admin'; currentPerms = {};
     });
-    return Promise.all([role, profil()]);
+    // Les listes entrent dans la meme attente que le role : un ecran
+    // ne doit jamais s'ouvrir sur les valeurs du fichier pour se
+    // corriger une seconde plus tard.
+    return Promise.all([role, profil(), chargerListes(), chargerProprietaire()]);
   }
 
   // LES CASQUETTES VIVAIENT DANS CE FICHIER.
@@ -10990,13 +11070,20 @@
   // La datalist n'a plus d'options en dur : elle se remplit ici, depuis
   // SALLES_CONNUES. wireDidYouMean lit ensuite le DOM, donc le rattrapage
   // de faute de frappe profite de la meme liste sans rien savoir d'elle.
-  (function remplirSalles(){
+  // ELLE SE REMPLISSAIT UNE FOIS, AU CHARGEMENT DU SCRIPT.
+  // Depuis que les salles peuvent venir de la base, cette liste etait
+  // batie AVANT la reponse : on voyait toujours les salles du fichier,
+  // jamais celles du club. Elle se refait donc sur demande, et
+  // listesAppliquer() la redemande.
+  function remplirSalles(refaire){
     var dl = document.getElementById('venues');
-    if (!dl || dl.children.length) return;
+    if (!dl) return;
+    if (dl.children.length && !refaire) return;
     dl.innerHTML = SALLES_CONNUES.map(function(v){
       return '<option value="' + esc(v) + '"></option>';
     }).join('');
-  })();
+  }
+  remplirSalles();
   wireDidYouMean(document.getElementById('venue'), document.getElementById('dym_venue'), function(){ return datalistValues('venues'); });
   wireDidYouMean(document.getElementById('competition'), document.getElementById('dym_competition'), function(){ return datalistValues('competitions'); });
 
@@ -20091,7 +20178,21 @@
   // La constante ci-dessous ne décide rien et ne protège rien — elle
   // sert seulement à poser le cadenas au bon endroit. Elle doit rester
   // identique à bbc_proprietaire_email() en base.
+  // L'ADRESSE DU PROPRIETAIRE VIT EN BASE, PAS ICI.
+  // Elle etait ecrite a DEUX endroits qui devaient rester d'accord :
+  // bbc_proprietaire_email() cote base, et cette ligne cote ecran. La
+  // base decide qui a le droit ; cette ligne decidait seulement qui
+  // VOIT l'espace. Les faire diverger donnait le pire des deux : un
+  // espace visible dont chaque bouton est refuse, ou un espace
+  // introuvable pour qui en a pourtant la cle.
+  // Elle ne reste donc qu'un filet, pour le cas ou la lecture echoue.
   var CP_PROPRIETAIRE = 'mdgdesign221@gmail.com';
+  function chargerProprietaire(){
+    return sb.rpc('bbc_proprietaire_email').then(function(r){
+      var a = (r && !r.error && r.data) ? String(r.data).trim().toLowerCase() : '';
+      if (a) CP_PROPRIETAIRE = a;
+    }).catch(function(){});
+  }
 
   // QUI SE CACHE DERRIERE UNE ADRESSE
   // admin_users ne stocke qu'un e-mail et un role : une liste de six
@@ -20215,6 +20316,12 @@
     if (bn) bn.addEventListener('click', cpAjouterCompte);
     var bq = document.getElementById('cp-cq-go');
     if (bq) bq.addEventListener('click', cpCreerCasquette);
+    var bl = document.getElementById('cp-li-go');
+    if (bl) bl.addEventListener('click', cpListeEnregistrer);
+    var ba = document.getElementById('cp-li-annuler');
+    if (ba) ba.addEventListener('click', cpListeReset);
+    var ln = document.getElementById('cp-li-nom');
+    if (ln) ln.addEventListener('keydown', function(e){ if (e.key === 'Enter') cpListeEnregistrer(); });
     var mn = document.getElementById('cp-new-mail');
     if (mn) mn.addEventListener('keydown', function(e){ if (e.key === 'Enter') cpAjouterCompte(); });
     document.getElementById('cp-demander').addEventListener('click', function(){
@@ -20552,8 +20659,10 @@
     // Les boutons n'agissent qu'une fois le mot de passe donne. On le
     // DIT plutot que de les griser en silence : un bouton gris sans
     // explication se lit comme une panne.
+    cpListesRendre();
+
     var prets = cpOuvert;
-    ['cp-new-go','cp-cq-go'].forEach(function(id){
+    ['cp-new-go','cp-cq-go','cp-li-go'].forEach(function(id){
       var b = document.getElementById(id);
       if (b) b.disabled = !prets;
     });
@@ -20739,6 +20848,190 @@
       .catch(function(e){
         showMsg(document.getElementById('cp-msg'), cpErreur(e, 'Retrait impossible.'), false);
       });
+  }
+
+  // ============ LES LISTES DU CLUB, COTE ECRAN ============
+  //
+  // Une seule mecanique pour neuf listes de formes differentes : une
+  // liste de mots (les salles), une liste a deux colonnes (un tarif
+  // et son prix), une liste a image (un club et son logo). Ce qui
+  // change d'une a l'autre tient dans LISTES_META ; le reste est
+  // commun. Neuf ecrans separes auraient diverge des la premiere
+  // retouche.
+  var cpListe = 'clubs';   // celle qu'on regarde
+  var cpListeEdit = null;  // la cle qu'on modifie, ou rien
+
+  // La cle technique ne se saisit pas : elle se deduit du nom, et
+  // elle ne bouge plus jamais. C'est elle que d'autres tables citent
+  // -- le moyen de paiement inscrit sur un recu, le poste occupe
+  // dans le bureau. La changer orphelinerait ces enregistrements.
+  function cpListeCle(liste, nom, val){
+    var m = LISTES_META[liste] || {};
+    if (m.type === 'couleur') return String(val || '').trim().toUpperCase();
+    if (liste === 'tailles')  return String(nom || '').trim().toUpperCase();
+    return String(nom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+  }
+
+  function cpListeRows(){
+    return (listesRows || []).filter(function(r){ return r.liste === cpListe; })
+      .sort(function(a, b){ return (a.ordre || 0) - (b.ordre || 0); });
+  }
+
+  function cpListesRendre(){
+    var sel = document.getElementById('cp-li-sel');
+    if (!sel) return;
+    var m = LISTES_META[cpListe] || {};
+
+    if (!sel.options.length){
+      sel.innerHTML = Object.keys(LISTES_META).map(function(k){
+        return '<option value="' + esc(k) + '">' + esc(LISTES_META[k].nom) + '</option>';
+      }).join('');
+      sel.addEventListener('change', function(){
+        cpListe = sel.value; cpListeEdit = null; cpListesRendre();
+      });
+    }
+    sel.value = cpListe;
+
+    // LA TABLE N'EST PAS ENCORE LA. On le dit une bonne fois, plutot
+    // que de montrer une liste vide qui se lit comme une perte.
+    var note = document.getElementById('cp-li-note');
+    var absente = (listesRows === null);
+    if (note){
+      note.innerHTML = absente
+        ? 'Ces listes vivent encore dans le code. Passez <b>sql/migrations/MIGRATION-listes.sql</b> dans Supabase pour pouvoir les modifier ici.'
+        : (m.cleFigee
+          ? 'D’autres écrans citent ces entrées. Vous pouvez les renommer librement&nbsp;; en <b>retirer</b> une encore utilisée sera refusé, et la raison vous sera dite.'
+          : 'Ajoutez, renommez, réordonnez. Le site et l’administration suivent à la prochaine ouverture.');
+    }
+
+    var nomIn = document.getElementById('cp-li-nom');
+    var valIn = document.getElementById('cp-li-val');
+    if (nomIn) nomIn.placeholder = (m.type === 'image' ? 'Nom du club' : 'Nom');
+    if (valIn){
+      valIn.classList.toggle('hide', !m.second);
+      valIn.placeholder = m.second || '';
+      valIn.type = (m.type === 'couleur') ? 'color' : (m.type === 'prix' ? 'number' : 'text');
+    }
+
+    var box = document.getElementById('cp-li-list');
+    var rows = cpListeRows();
+    if (!box) return;
+    if (!rows.length){
+      box.innerHTML = '<div class="empty">' + (absente
+        ? 'La table n’est pas encore posée.'
+        : 'Cette liste est vide — l’administration retombe sur ses valeurs d’origine.') + '</div>';
+      return;
+    }
+    box.innerHTML = rows.map(function(r, i){
+      var apercu = '';
+      if (m.type === 'image' && r.valeur){
+        apercu = '<img src="' + esc(r.valeur) + '" alt="" style="width:26px;height:26px;object-fit:contain;flex:none">';
+      } else if (m.type === 'couleur'){
+        apercu = '<span style="width:20px;height:20px;border-radius:5px;flex:none;border:1px solid var(--line-strong);background:' + esc(r.cle) + '"></span>';
+      }
+      var second = '';
+      if (m.type === 'prix')  second = esc(r.valeur || '0') + ' F';
+      else if (m.type === 'texte') second = esc(r.valeur || '');
+      return '<div class="cp-cq">' + apercu +
+        '<b>' + esc(r.libelle) + '</b>' +
+        (second ? '<span>' + second + '</span>' : '<span></span>') +
+        '<button type="button" class="cp-cq-x" data-limv="' + esc(r.cle) + '" data-sens="-1"' + (i === 0 ? ' disabled' : '') + ' title="Monter">↑</button>' +
+        '<button type="button" class="cp-cq-x" data-limv="' + esc(r.cle) + '" data-sens="1"' + (i === rows.length - 1 ? ' disabled' : '') + ' title="Descendre">↓</button>' +
+        '<button type="button" class="cp-cq-x" data-lied="' + esc(r.cle) + '">Modifier</button>' +
+        '<button type="button" class="cp-cq-x" data-lidel="' + esc(r.cle) + '">Retirer</button>' +
+      '</div>';
+    }).join('');
+
+    box.querySelectorAll('[data-lidel]').forEach(function(b){
+      b.addEventListener('click', function(){ cpListeRetirer(b.getAttribute('data-lidel')); });
+    });
+    box.querySelectorAll('[data-lied]').forEach(function(b){
+      b.addEventListener('click', function(){ cpListeModifier(b.getAttribute('data-lied')); });
+    });
+    box.querySelectorAll('[data-limv]').forEach(function(b){
+      b.addEventListener('click', function(){
+        cpListeDeplacer(b.getAttribute('data-limv'), Number(b.getAttribute('data-sens')));
+      });
+    });
+  }
+
+  // Modifier, c'est remplir le formulaire du bas avec l'entree : un
+  // seul endroit ou l'on tape, qu'on ajoute ou qu'on corrige.
+  function cpListeModifier(cle){
+    var r = cpListeRows().filter(function(x){ return x.cle === cle; })[0];
+    if (!r) return;
+    cpListeEdit = cle;
+    document.getElementById('cp-li-nom').value = r.libelle || '';
+    document.getElementById('cp-li-val').value = r.valeur || '';
+    document.getElementById('cp-li-go').textContent = 'Enregistrer';
+    document.getElementById('cp-li-annuler').classList.remove('hide');
+    document.getElementById('cp-li-nom').focus();
+  }
+
+  function cpListeReset(){
+    cpListeEdit = null;
+    var n = document.getElementById('cp-li-nom'), v = document.getElementById('cp-li-val');
+    if (n) n.value = ''; if (v) v.value = '';
+    var g = document.getElementById('cp-li-go'); if (g) g.textContent = 'Ajouter';
+    var a = document.getElementById('cp-li-annuler'); if (a) a.classList.add('hide');
+  }
+
+  function cpListeEnregistrer(){
+    var msg = document.getElementById('cp-li-msg');
+    var nom = (document.getElementById('cp-li-nom').value || '').trim();
+    var val = (document.getElementById('cp-li-val').value || '').trim();
+    var m = LISTES_META[cpListe] || {};
+    if (!nom){ showMsg(msg, 'Donnez un nom à l’entrée.', false); return; }
+    // En modification, la cle ne bouge pas : c'est tout l'interet.
+    var cle = cpListeEdit || cpListeCle(cpListe, nom, val);
+    if (!cle){ showMsg(msg, 'Ce nom ne donne aucune clé utilisable.', false); return; }
+    if (!cpListeEdit && cpListeRows().some(function(r){ return r.cle === cle; })){
+      showMsg(msg, 'Cette liste contient déjà « ' + nom + ' ».', false); return;
+    }
+    var btn = document.getElementById('cp-li-go');
+    btn.disabled = true; showMsg(msg, 'Enregistrement…', true);
+    tkRpc('bbc_liste_poser', {
+      p_liste: cpListe, p_cle: cle, p_libelle: nom,
+      p_valeur: m.second ? val : null, p_ordre: null
+    }).then(function(){
+      btn.disabled = false; cpListeReset();
+      showMsg(msg, '« ' + nom +' » enregistré. L’administration en tient compte à la prochaine ouverture.', true);
+      return chargerListes().then(cpListesRendre);
+    }).catch(function(e){
+      btn.disabled = false;
+      showMsg(msg, cpErreur(e, 'Enregistrement impossible.'), false);
+    });
+  }
+
+  function cpListeRetirer(cle){
+    var r = cpListeRows().filter(function(x){ return x.cle === cle; })[0];
+    if (!r) return;
+    if (!confirm('Retirer « ' + r.libelle + ' » de cette liste ?')) return;
+    var msg = document.getElementById('cp-li-msg');
+    showMsg(msg, 'Suppression…', true);
+    tkRpc('bbc_liste_retirer', { p_liste: cpListe, p_cle: cle })
+      .then(function(){
+        showMsg(msg, '« ' + r.libelle + ' » retiré.', true);
+        if (cpListeEdit === cle) cpListeReset();
+        return chargerListes().then(cpListesRendre);
+      })
+      // Le refus de la base porte sa raison : « 3 paiements ont ete
+      // encaisses par ce moyen ». On la montre telle quelle.
+      .catch(function(e){ showMsg(msg, cpErreur(e, 'Suppression impossible.'), false); });
+  }
+
+  function cpListeDeplacer(cle, sens){
+    var rows = cpListeRows();
+    var i = rows.findIndex(function(r){ return r.cle === cle; });
+    var j = i + sens;
+    if (i < 0 || j < 0 || j >= rows.length) return;
+    var cles = rows.map(function(r){ return r.cle; });
+    cles.splice(j, 0, cles.splice(i, 1)[0]);
+    var msg = document.getElementById('cp-li-msg');
+    tkRpc('bbc_liste_ordonner', { p_liste: cpListe, p_cles: cles })
+      .then(function(){ return chargerListes().then(cpListesRendre); })
+      .catch(function(e){ showMsg(msg, cpErreur(e, 'Impossible de changer l’ordre.'), false); });
   }
 
   function cpCreerCasquette(){

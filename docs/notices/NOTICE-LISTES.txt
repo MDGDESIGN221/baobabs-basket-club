@@ -1,0 +1,148 @@
+=====================================================================
+ LES LISTES DU CLUB : LES CHANGER SOI-MEME
+ Baobabs Basket Club — 8 septembre 2026
+=====================================================================
+
+Neuf listes vivaient dans le code de l'administration. Les changer
+demandait de rouvrir le fichier. Elles sont maintenant en base, et
+vous les modifiez depuis l'ecran « Comptes & roles ».
+
+Comme pour les casquettes : cet espace n'apparait que sur le compte
+proprietaire du site.
+
+
+---------------------------------------------------------------------
+ UNE SEULE FOIS : POSER LA MIGRATION
+---------------------------------------------------------------------
+
+  1. Ouvrez https://supabase.com/dashboard et votre projet.
+  2. Menu de gauche : SQL Editor, puis « New query ».
+  3. Ouvrez sql/migrations/MIGRATION-listes.sql, copiez TOUT son
+     contenu, collez-le dans la fenetre.
+  4. Bouton « Run ».
+
+Vous devez lire « Success ». Pour verifier, dans la meme fenetre :
+
+  select liste, count(*) from club_listes group by liste order by liste;
+
+Neuf lignes doivent apparaitre :
+  bureau 14, clubs 52, couleurs 5, paiement 6, pieces 4,
+  postes 5, salles 43, tailles 6, tarifs 7
+
+Ce sont exactement les valeurs d'aujourd'hui, extraites du code et non
+retapees : le premier jour, RIEN NE CHANGE a l'ecran.
+
+
+---------------------------------------------------------------------
+ OU CA SE PASSE
+---------------------------------------------------------------------
+
+  Administration > Comptes & roles > « Changer un role » (mot de
+  passe) > tout en bas, « Les listes du club ».
+
+  Un menu deroulant choisit la liste. Chaque entree porte quatre
+  boutons : monter, descendre, Modifier, Retirer.
+
+
+---------------------------------------------------------------------
+ LES NEUF LISTES
+---------------------------------------------------------------------
+
+  Clubs adverses (52)
+      Le nom du club et son logo. C'est ce que propose la grille
+      « Clubs connus » quand vous ajoutez une equipe.
+
+  Salles et terrains (43)
+      Ce que propose le champ « Lieu » d'un match.
+
+  Tarifs de billetterie (7)
+      Les boutons de prix de l'ecran Billetterie. A revoir chaque
+      saison.
+
+  Pieces du dossier (4)
+      Ce qu'on exige a l'inscription : photo, extrait de naissance,
+      certificat medical, autorisation parentale. Le second champ est
+      la phrase qui explique a quoi la piece sert.
+
+  Moyens de paiement (6)
+      Especes, Wave, Orange Money, Free Money, virement, autre.
+
+  Postes du bureau (14)
+      President, tresoriere, directeur sportif...
+
+  Tailles de la boutique (6)
+      XS a XXL. Ajoutez 3XL ou des tailles enfant si besoin.
+
+  Postes des joueuses (5)
+      Meneuse, arriere, ailiere, pivot.
+
+  Couleurs de mise en forme (5)
+      Les couleurs proposees dans l'onglet Apparence des blocs du
+      site.
+
+
+---------------------------------------------------------------------
+ CE QUI PEUT ETRE REFUSE, ET POURQUOI
+---------------------------------------------------------------------
+
+QUATRE LISTES PORTENT DES CLES QUE D'AUTRES ECRANS CITENT :
+moyens de paiement, pieces du dossier, postes du bureau, tailles.
+
+  RENOMMER est toujours permis. « Orange Money » devient « OM » sans
+  rien casser : les recus deja emis suivent le nouveau nom.
+
+  RETIRER est refuse tant que l'entree sert, et la raison est dite :
+      « 3 paiement(s) ont ete encaisses par ce moyen. »
+      « 2 piece(s) de ce type ont deja ete recues. »
+      « Ce poste est occupe. »
+      « 4 produit(s) ont encore un stock dans cette taille. »
+
+  C'est voulu. Retirer un moyen de paiement inscrit sur des recus
+  laisserait ces recus en place sans que plus rien ne sache dire ce
+  qu'ils veulent dire.
+
+  Pour les cinq autres listes -- clubs, salles, tarifs, postes des
+  joueuses, couleurs -- retirer est toujours possible : ce sont des
+  catalogues, et ce qui est deja enregistre garde son texte.
+
+
+---------------------------------------------------------------------
+ QUAND LE CHANGEMENT SE VOIT
+---------------------------------------------------------------------
+
+  A la PROCHAINE OUVERTURE de l'administration. Les listes sont lues
+  une fois, au moment ou vous entrez -- comme les casquettes. Un
+  changement fait maintenant se verra en rechargeant la page.
+
+
+---------------------------------------------------------------------
+ SI LA MIGRATION N'EST PAS PASSEE
+---------------------------------------------------------------------
+
+  L'ecran vous le dit : « Ces listes vivent encore dans le code. »
+  Rien n'est casse pour autant. L'administration retombe sur ses
+  valeurs d'origine -- les memes qu'avant, exactement.
+
+  C'est vrai aussi si la lecture echoue un jour, ou si vous videz une
+  liste entierement : le code garde ses valeurs et les ressort. Une
+  liste vide en base ne vide pas les menus du site.
+
+
+---------------------------------------------------------------------
+ SI QUELQUE CHOSE NE VA PAS
+---------------------------------------------------------------------
+
+  « Seul le compte proprietaire du site peut modifier les listes. »
+      Vous n'etes pas connecte avec l'adresse du proprietaire. Cette
+      adresse est maintenant lue DANS LA BASE (bbc_proprietaire_email)
+      et non plus recopiee dans le code : il n'y a plus qu'un endroit
+      a regarder.
+
+  Un club ajoute n'apparait pas dans « Clubs connus »
+      Rechargez la page : les listes sont lues a l'ouverture.
+
+  Le logo d'un club ne s'affiche pas
+      Le champ « Logo » attend une ADRESSE d'image. Copiez-la depuis
+      la Mediatheque (un clic sur une image copie son adresse).
+
+=====================================================================
