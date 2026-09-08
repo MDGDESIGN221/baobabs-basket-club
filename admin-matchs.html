@@ -11355,7 +11355,19 @@
       var dbVal = s[key] == null ? '' : String(s[key]).trim().replace(/\s+/g, ' ');
       if (!fileVal && !dbVal) return;
       if (fileVal === dbVal) return;
-      ecart.push({ key: key, id: id, file: fileVal, db: dbVal });
+      // DEUX ECARTS DE NATURE OPPOSEE, ET UN SEUL MOT POUR LES DIRE.
+      //   base VIDE   : le reglage n'a jamais ete rempli. Le site
+      //                 affiche le texte du fichier -- son poseur
+      //                 ignore les valeurs vides. Reprendre le
+      //                 fichier ne change RIEN a l'ecran, ca ne fait
+      //                 qu'ecrire ce qui est deja affiche.
+      //   base PLEINE : quelqu'un a saisi autre chose, et c'est CELA
+      //                 que le visiteur voit. Reprendre le fichier
+      //                 changerait le site et defairait ce choix.
+      // Les melanger dans un bouton « tout adopter » revenait a
+      // proposer d'annuler une modification volontaire sans le dire.
+      ecart.push({ key: key, id: id, file: fileVal, db: dbVal, vide: !dbVal });
+
     });
 
     // ---- 2. En dur : un emplacement de contenu qu'aucun réglage n'alimente.
@@ -11460,13 +11472,22 @@
       // trente lignes : les reprendre une par une, avec une confirmation
       // chacune, décourage avant la dixième — et l'admin reste faux.
       // Une seule requête, un seul upsert : la table encaisse le lot.
-      var barre = rows.length > 1
+      // Le bloc ne prend QUE les reglages vides. Les autres se
+      // reprennent un par un, avec les yeux ouverts.
+      var aRemplir = rows.filter(function(r){ return r.vide; });
+      var divergents = rows.length - aRemplir.length;
+      var barre = aRemplir.length > 1
         ? '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;' +
           'border:1px solid rgba(70,191,29,.28);border-radius:12px;background:rgba(70,191,29,.06)">' +
             '<span style="font-size:12.5px;color:var(--faint);flex:1;min-width:180px">' +
-            '<b style="color:var(--ink)">' + rows.length + ' textes</b> diffèrent entre le fichier et l\'admin.</span>' +
+            '<b style="color:var(--ink)">' + aRemplir.length + ' réglages</b> n’ont jamais été remplis&nbsp;: ' +
+            'le site affiche le texte de son fichier. Les enregistrer ne change rien à l’écran.' +
+            (divergents ? ' <b style="color:var(--attente)">' + divergents + ' autre' + (divergents > 1 ? 's' : '') +
+              '</b> ' + (divergents > 1 ? 'portent' : 'porte') + ' une valeur différente dans l’admin — ' +
+              (divergents > 1 ? 'ceux-là se reprennent' : 'celui-là se reprend') + ' un par un.' : '') +
+            '</span>' +
             '<button type="button" class="btn btn-ghost co-adopt-tout" style="padding:8px 13px;font-size:12px">' +
-            'Adopter les ' + rows.length + ' valeurs du fichier</button>' +
+            'Enregistrer les ' + aRemplir.length + ' textes du site</button>' +
           '</div>'
         : '';
       box.innerHTML = barre + rows.map(function(r, i){
@@ -11477,6 +11498,10 @@
             '<div class="co-box"><div class="co-box-l">Dans le fichier</div><div class="co-box-v">' + (r.file ? esc(r.file) : '<em>vide</em>') + '</div></div>' +
             '<div class="co-box win"><div class="co-box-l">Dans l\'admin — c\'est ce qui s\'affiche</div><div class="co-box-v">' + (r.db ? esc(r.db) : '<em>vide</em>') + '</div></div>' +
           '</div>' +
+          (r.vide ? '' :
+            '<div style="margin-top:9px;font-size:12px;color:var(--attente)">' +
+            'L’admin porte une autre valeur, et c’est elle que le visiteur voit. ' +
+            'Reprendre le fichier <b>changerait le site</b>.</div>') +
           '<div style="margin-top:11px;display:flex;gap:8px;flex-wrap:wrap">' +
             coBoutonOu(r.key, i) +
             '<button type="button" class="btn btn-ghost co-adopt" data-i="' + i + '" style="padding:8px 13px;font-size:12px">Adopter la valeur du fichier</button>' +
@@ -11489,17 +11514,17 @@
 
       var tout = box.querySelector('.co-adopt-tout');
       if (tout) tout.addEventListener('click', function(){
-        if (!confirm('Reprendre les ' + rows.length + ' valeurs du fichier dans l\'admin ?\n\n' +
+        if (!confirm('Enregistrer les ' + aRemplir.length + ' textes du site dans l\'admin ?\n\n' +
                      'Ce que le site affiche aujourd\'hui deviendra ce que l\'admin enregistre. Rien n\'est perdu : chaque valeur remplacée reste dans l\'Historique.')) return;
-        tout.disabled = true; tout.textContent = 'Adoption…';
-        sbUpsert('site_settings', rows.map(function(r){ return { key:r.key, value:r.file || '' }; }), 'Cohérence')
+        tout.disabled = true; tout.textContent = 'Enregistrement…';
+        sbUpsert('site_settings', aRemplir.map(function(r){ return { key:r.key, value:r.file || '' }; }), 'Cohérence')
           .then(function(){
-            rows.forEach(function(r){ settings[r.key] = r.file || ''; });
-            showMsg(msg, rows.length + ' valeurs adoptées. Le site les affichera au prochain chargement.', true);
+            aRemplir.forEach(function(r){ settings[r.key] = r.file || ''; });
+            showMsg(msg, aRemplir.length + ' textes enregistrés. Rien n’a changé à l’écran : c’était déjà ce que le site affichait.', true);
             coScan();
           })
           .catch(function(){
-            tout.disabled = false; tout.textContent = 'Adopter les ' + rows.length + ' valeurs du fichier';
+            tout.disabled = false; tout.textContent = 'Enregistrer les ' + aRemplir.length + ' textes du site';
             showMsg(msg, "L'enregistrement groupé a échoué. Les valeurs n'ont pas été modifiées.", false);
           });
       });
@@ -11507,7 +11532,10 @@
       box.querySelectorAll('.co-adopt').forEach(function(b){
         b.addEventListener('click', function(){
           var r = rows[parseInt(b.getAttribute('data-i'), 10)];
-          if (!confirm('Enregistrer « ' + (r.file || '(vide)') + ' » dans le réglage ' + r.key + ' ?')) return;
+          var avertir = r.vide ? ''
+            : '\n\nATTENTION : l’admin porte « ' + r.db + ' », et c’est ce que le site affiche.' +
+              '\nCette reprise CHANGERA le site.';
+          if (!confirm('Enregistrer « ' + (r.file || '(vide)') + ' » dans le réglage ' + r.key + ' ?' + avertir)) return;
           b.disabled = true; b.textContent = '…';
           // Une ligne par clef, écrite en upsert : la table n'a pas de
           // colonne « id », un PATCH par identifiant n'y a jamais rien écrit.
