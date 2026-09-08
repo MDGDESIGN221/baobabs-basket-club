@@ -12007,6 +12007,31 @@
       if (m){ parSetAll[m[1]] = m[2]; consumed[m[2]] = true; }
     });
 
+    // QUATRIEME FORME : l'ecriture directe.
+    //   var cp = document.getElementById('bb-copyright');
+    //   if (cp) cp.textContent = s.footer_copyright;
+    // Ni set(), ni bbSetAll(), ni data-bb -- et pourtant parfaitement
+    // administrable. Six textes passaient par la : le nom du club, sa
+    // signature, l'adresse du camp de base, les deux phrases de la
+    // newsletter, le copyright. On les comptait comme « en dur »,
+    // c'est-a-dire comme du travail restant, alors qu'ils etaient
+    // faits depuis toujours.
+    //
+    // On ne peut pas le lire d'une seule expression : l'identifiant et
+    // l'affectation sont separes par un nom de variable et parfois par
+    // un point-virgule. On regarde donc les 240 caracteres qui suivent
+    // chaque getElementById, et on ne retient que ce qui vient d'un
+    // reglage -- une affectation calculee (un score, un total) n'est
+    // pas une administration.
+    var reGid = /getElementById\(\s*'([^']+)'\s*\)/g, mg;
+    while ((mg = reGid.exec(html))){
+      var suite = html.slice(mg.index, mg.index + 240);
+      var aff = suite.match(/\.(?:textContent|innerHTML|innerText)\s*=\s*s\.([a-z0-9_]+)/);
+      if (!aff) continue;
+      if (!idToKey[mg[1]]) idToKey[mg[1]] = aff[1];
+      consumed[aff[1]] = true;
+    }
+
     doc.querySelectorAll('[data-bb]').forEach(function(el){
       var k = el.getAttribute('data-bb');
       if (!k) return;
