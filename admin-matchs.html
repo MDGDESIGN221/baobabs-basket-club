@@ -11390,7 +11390,7 @@
       var t = lisible(d.el);
       if (!t) return;
       dur.push({ id: d.el.id || '', tag: d.el.tagName.toLowerCase(), text: t,
-                 section: coSection(d.el), declare: true, cle: d.cle });
+                 section: coSection(d.el), declare: true, cle: d.cle, sauf: !!d.sauf });
     });
 
     doc.querySelectorAll('[id^="bb-"]').forEach(function(el){
@@ -11569,7 +11569,10 @@
         // bloc entier qui en reclame plusieurs.
         var titre = r.declare
           ? '<span style="color:var(--gold)">' + esc(r.cle) + '</span>' +
-            ' <span style="color:var(--faint);font-weight:400">— clef annoncée sur le site, mais aucun réglage ne la branche</span>'
+            ' <span style="color:var(--faint);font-weight:400">— ' +
+            (r.sauf
+              ? 'le site vise cet élément pour autre chose que son texte (un lien, un compteur) : à laisser'
+              : 'clef annoncée sur le site, mais aucun réglage ne la branche') + '</span>'
           : r.bloc
           ? (r.id ? '#' + esc(r.id) : 'Section sans identifiant') +
             ' <span style="color:var(--faint);font-weight:400">— bloc entier, ' + r.n + ' texte' + (r.n > 1 ? 's' : '') + ' qu\'aucun réglage n\'alimente</span>'
@@ -11955,21 +11958,60 @@
   // On ne devine plus : on cherche dans la page de quoi lire
   // l'attribut. Le jour ou le site posera la boucle generique, la
   // Coherence le verra toute seule et rendra sa confiance.
+  // La BOUCLE GENERIQUE : « pour chaque element data-bb, prends le
+  // reglage du meme nom ». Elle se reconnait a un selecteur d'attribut
+  // sans valeur. Tant qu'elle n'est pas la, l'attribut seul ne
+  // garantit rien.
   function coAppliqueDataBb(html){
     return /getAttribute\(\s*['\"]data-bb['\"]\s*\)/.test(html)
-        || /querySelectorAll\(\s*['\"]\[data-bb\]['\"]/.test(html)
+        || /querySelectorAll\(\s*['\"]\[data-bb\]['\"]\s*\)/.test(html)
         || /\.dataset\.bb\b(?![A-Za-z0-9_])/.test(html);
+  }
+
+  // LES CINQ QUE LA BOUCLE S'INTERDIT.
+  // data-bb designe aussi des elements pour autre chose que leur
+  // texte -- un href, un compteur anime. Le site les nomme dans un
+  // BB_SAUF ; on le relit plutot que de recopier la liste, sinon les
+  // deux divergeront des la premiere retouche.
+  function coSaufDataBb(html){
+    var m = html.match(/BB_SAUF\s*=\s*\{([^}]*)\}/);
+    var out = {};
+    if (!m) return out;
+    (m[1].match(/'([^']+)'/g) || []).forEach(function(q){ out[q.slice(1, -1)] = true; });
+    return out;
   }
 
   function coRelever(html, doc){
     var idToKey = {}, consumed = {}, declares = [];
     var vivant = coAppliqueDataBb(html);
+    var sauf = coSaufDataBb(html);
+
+    // TROISIEME FORME : bbSetAll('nom-du-data-bb', s.clef).
+    // Le site s'en sert quinze fois -- les affiches, tout le bloc
+    // tryouts. Elle NOMME le reglage, et ce nom differe souvent de
+    // l'attribut (poster-badge <- try_poster_badge). Sans la lire, on
+    // comptait comme « pas administrables » des textes qui l'etaient
+    // depuis toujours.
+    var parSetAll = {};
+    [].forEach.call(html.match(/bbSetAll\(\s*'[^']+'\s*,\s*s\.[a-z0-9_]+/g) || [], function(t){
+      var m = t.match(/bbSetAll\(\s*'([^']+)'\s*,\s*s\.([a-z0-9_]+)/);
+      if (m){ parSetAll[m[1]] = m[2]; consumed[m[2]] = true; }
+    });
+
     doc.querySelectorAll('[data-bb]').forEach(function(el){
       var k = el.getAttribute('data-bb');
       if (!k) return;
+      // Pose nommement par le site : administrable, et sous SON nom.
+      if (parSetAll[k]){
+        if (el.id) idToKey[el.id] = parSetAll[k];
+        return;
+      }
+      // Ecarte de la boucle : le site vise cet element pour autre
+      // chose que son texte. Ce n'est donc pas un texte administrable.
+      if (sauf[k]){ declares.push({ el: el, cle: k, sauf: true }); return; }
       if (!vivant){ declares.push({ el: el, cle: k }); return; }
-      consumed[k] = true;
-      if (el.id) idToKey[el.id] = k;
+      consumed[k.replace(/-/g, '_')] = true;
+      if (el.id) idToKey[el.id] = k.replace(/-/g, '_');
     });
     [...html.matchAll(/\b(?:bbSet|set)\(\s*'([^']+)'\s*,\s*s\.([a-z0-9_]+)/g)].forEach(function(m){
       idToKey[m[1]] = m[2];
