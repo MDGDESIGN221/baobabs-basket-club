@@ -11596,13 +11596,46 @@
       return;
     }
 
-    box.innerHTML = rows.map(function(r){
+    box.innerHTML = rows.map(function(r, i){
       return '<div class="co-row">' +
         '<div class="co-key">' + esc(r.key) + '</div>' +
         '<div class="co-snip">' + esc(r.value.length > 300 ? r.value.slice(0, 300) + '…' : r.value) + '</div>' +
+        '<div style="margin-top:11px">' +
+          '<button type="button" class="btn btn-ghost co-orph-x" data-i="' + i + '" ' +
+          'style="padding:8px 13px;font-size:12px">Retirer ce réglage</button>' +
+        '</div>' +
       '</div>';
     }).join('') +
-    '<p class="cd-prose" style="color:var(--faint);font-size:12.5px;margin-top:12px;max-width:70ch">Je ne supprime rien automatiquement&nbsp;: un réglage peut servir à une page que vous n\'avez pas analysée. Dites-moi lesquels retirer.</p>';
+    '<p class="cd-prose" style="color:var(--faint);font-size:12.5px;margin-top:12px;max-width:70ch">Retirer un réglage ne casse rien&nbsp;: le site retombe sur le texte écrit dans son fichier, exactement comme aujourd\'hui puisqu’il ne lit déjà plus celui-ci. Mais vérifiez d’abord qu’il ne sert pas à une page que vous n\'avez pas analysée.</p>';
+
+    // RETIRER, PLUTOT QUE DE LAISSER LA LISTE VIEILLIR.
+    // Sans ce bouton, un reglage devenu inutile restait la pour
+    // toujours -- et un compteur qui n'atteint jamais zero apprend a
+    // l'oeil a ne plus le lire.
+    // site_settings n'a PAS de colonne id : sa clef primaire est
+    // « key ». Un DELETE par identifiant n'y effacerait rien.
+    var msgO = document.getElementById('co-msg');
+    box.querySelectorAll('.co-orph-x').forEach(function(b){
+      b.addEventListener('click', function(){
+        var r = rows[parseInt(b.getAttribute('data-i'), 10)];
+        if (!r) return;
+        if (!confirm('Retirer le réglage ' + r.key + ' ?' +
+                     '\n\nSa valeur actuelle : ' + (r.value.length > 90 ? r.value.slice(0, 90) + '…' : r.value) +
+                     '\n\nLa page analysée ne le lit nulle part. Le geste est enregistré dans l\'Historique.')) return;
+        b.disabled = true; b.textContent = 'Suppression…';
+        fetch(SUPABASE_URL + '/rest/v1/site_settings?key=eq.' + encodeURIComponent(r.key), {
+          method: 'DELETE', headers: sbHeaders({ 'Prefer': 'return=minimal' })
+        }).then(function(x){
+          if (!x.ok) throw new Error('HTTP ' + x.status);
+          delete settings[r.key];
+          showMsg(msgO, 'Réglage ' + r.key + ' retiré.', true);
+          coScan();
+        }).catch(function(){
+          b.disabled = false; b.textContent = 'Retirer ce réglage';
+          showMsg(msgO, 'La suppression a échoué. Le réglage est toujours là.', false);
+        });
+      });
+    });
   }
 
   // ===================== COMPOSITEUR D'AFFICHE =====================
