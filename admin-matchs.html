@@ -11114,7 +11114,7 @@
 
   var CO_HINT = {
     ecart: "Ces textes sont administrables, mais la valeur écrite dans le fichier diffère de celle enregistrée ici. Attention : au chargement, le site lit l'admin et écrase le fichier — c'est la colonne « Admin » qui s'affiche réellement. Adoptez la valeur du site si c'est elle que vous vouliez garder.",
-    dur: "Ces emplacements portent du texte sur le site mais aucun réglage ne les alimente : les modifier demande de toucher au fichier. Dites-moi lesquels rendre administrables.",
+    dur: "Ces emplacements portent du texte sur le site mais aucun réglage ne les alimente : les modifier demande de toucher au fichier. Ceux qui apparaissent avec une clef en couleur sont les moins chers : le site annonce déjà le nom du réglage, il ne reste qu'à le brancher. Dites-moi lesquels rendre administrables.",
     orphelin: "Ces réglages contiennent une valeur, mais la page analysée ne les lit nulle part. Soit ils servent à une autre page, soit ils ne servent plus à rien et peuvent être retirés."
   };
 
@@ -11326,6 +11326,7 @@
     //   2. appels set('id', s.clef) / bbSet('id', s.clef) dans le script
     var rel = coRelever(html, doc);
     var idToKey = rel.idToKey, consumed = rel.consumed;
+    var declares = rel.declares || [];
     // Accès dynamiques (les grilles de tarifs) : la clef est construite au
     // vol, on marque toute la famille comme consommée.
     [...html.matchAll(/s\['([a-z_]+)'\s*\+\s*[a-z]\s*\+\s*'([a-z_]+)'\]/g)].forEach(function(m){
@@ -11382,9 +11383,19 @@
       return t;
     }
 
+    // Ceux qui ANNONCENT un reglage sans qu'aucun ne les alimente.
+    // Ils viennent en tete : ils portent deja leur nom de clef, donc
+    // ce sont les moins chers a rendre administrables.
+    declares.forEach(function(d){
+      var t = lisible(d.el);
+      if (!t) return;
+      dur.push({ id: d.el.id || '', tag: d.el.tagName.toLowerCase(), text: t,
+                 section: coSection(d.el), declare: true, cle: d.cle });
+    });
+
     doc.querySelectorAll('[id^="bb-"]').forEach(function(el){
       if (idToKey[el.id]) return;
-      if (el.hasAttribute('data-bb')) return;
+      if (el.hasAttribute('data-bb')) return;   // deja pris juste au-dessus
       if (el.children.length) return;
       var t = lisible(el);
       if (t) dur.push({ id: el.id, tag: el.tagName.toLowerCase(), text: t, section: coSection(el) });
@@ -11399,7 +11410,9 @@
       if (sec.closest('template')) return;
       var nourri = false;
       sec.querySelectorAll('[id],[data-bb]').forEach(function(el){
-        if (el.hasAttribute('data-bb') || idToKey[el.id]) nourri = true;
+        // Un attribut que rien ne lit n'alimente rien : sans cette
+        // nuance, deux sections entieres sortaient du releve.
+        if ((rel.vivant && el.hasAttribute('data-bb')) || idToKey[el.id]) nourri = true;
       });
       if (nourri) return;
       var textes = [];
@@ -11551,7 +11564,13 @@
       box.innerHTML = rows.map(function(r){
         // Un bloc entier et un texte isolé ne demandent pas le même geste :
         // le premier réclame un champ dans l'admin, le second une ligne.
-        var titre = r.bloc
+        // Trois cas, trois gestes : une clef annoncee qu'il suffit de
+        // brancher, un texte isole a qui il faut inventer un reglage, un
+        // bloc entier qui en reclame plusieurs.
+        var titre = r.declare
+          ? '<span style="color:var(--gold)">' + esc(r.cle) + '</span>' +
+            ' <span style="color:var(--faint);font-weight:400">— clef annoncée sur le site, mais aucun réglage ne la branche</span>'
+          : r.bloc
           ? (r.id ? '#' + esc(r.id) : 'Section sans identifiant') +
             ' <span style="color:var(--faint);font-weight:400">— bloc entier, ' + r.n + ' texte' + (r.n > 1 ? 's' : '') + ' qu\'aucun réglage n\'alimente</span>'
           : '#' + esc(r.id) + ' <span style="color:var(--faint);font-weight:400">&lt;' + esc(r.tag) + '&gt;</span>';
@@ -11920,11 +11939,35 @@
 
   // Le relevé « quel réglage alimente quel texte », partagé avec l'écran
   // Cohérence : deux relevés différents finiraient par se contredire.
+  // LE SITE APPLIQUE-T-IL data-bb, OU L'ANNONCE-T-IL SEULEMENT ?
+  //
+  // L'attribut dit « ce texte vient d'un reglage ». On le croyait sur
+  // parole -- et il etait faux : soixante-quatorze elements le
+  // portaient, aucune page ne le lisait, aucune des cles n'existait
+  // en base. Une liste d'intentions, jamais branchee.
+  //
+  // Le mensonge coutait double. L'element sortait du compteur « non
+  // administrable » parce qu'il semblait alimente ; la cle sortait du
+  // compteur « reglages inutilises » parce qu'elle semblait lue. Un
+  // angle mort dans les deux sens, et l'ecran cense tout dire etait
+  // celui qui le cachait.
+  //
+  // On ne devine plus : on cherche dans la page de quoi lire
+  // l'attribut. Le jour ou le site posera la boucle generique, la
+  // Coherence le verra toute seule et rendra sa confiance.
+  function coAppliqueDataBb(html){
+    return /getAttribute\(\s*['\"]data-bb['\"]\s*\)/.test(html)
+        || /querySelectorAll\(\s*['\"]\[data-bb\]['\"]/.test(html)
+        || /\.dataset\.bb\b(?![A-Za-z0-9_])/.test(html);
+  }
+
   function coRelever(html, doc){
-    var idToKey = {}, consumed = {};
+    var idToKey = {}, consumed = {}, declares = [];
+    var vivant = coAppliqueDataBb(html);
     doc.querySelectorAll('[data-bb]').forEach(function(el){
       var k = el.getAttribute('data-bb');
       if (!k) return;
+      if (!vivant){ declares.push({ el: el, cle: k }); return; }
       consumed[k] = true;
       if (el.id) idToKey[el.id] = k;
     });
@@ -11932,7 +11975,7 @@
       idToKey[m[1]] = m[2];
       consumed[m[2]] = true;
     });
-    return { idToKey: idToKey, consumed: consumed };
+    return { idToKey: idToKey, consumed: consumed, declares: declares, vivant: vivant };
   }
 
   function coTextesDuSite(html){
