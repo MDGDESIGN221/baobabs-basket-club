@@ -12007,6 +12007,36 @@
       if (m){ parSetAll[m[1]] = m[2]; consumed[m[2]] = true; }
     });
 
+    // ON A CESSE DE COURIR APRES LES IDIOMES.
+    //
+    // Le site pose ses textes d'au moins cinq facons : set(id, s.k),
+    // bbSetAll(nom, s.k), l'attribut data-bb, l'ecriture directe
+    //   var cp = getElementById('x'); if (cp) cp.textContent = s.k;
+    // et un tableau de triplets
+    //   [['bb-hs-btn2', s.hs_btn2_label, s.hs_btn2_url], ...]
+    // Chaque fois qu'on en apprenait une, le compteur baissait -- et
+    // chaque fois il restait faux, parce qu'il en manquait une autre.
+    // Une regle par idiome, c'etait s'engager a en oublier un.
+    //
+    // On prend donc la regle generale : un identifiant CITE ENTRE
+    // GUILLEMETS avec un reglage a moins de 120 caracteres est
+    // alimente par ce reglage. C'est ce que font les cinq formes, et
+    // ce que fera la sixieme.
+    //
+    // La fenetre est le seul reglage delicat : trop large, un
+    // identifiant herite du reglage de son voisin ; trop etroite, le
+    // tableau de triplets passe a travers. Mesure sur la page reelle,
+    // 60 / 120 / 200 donnent 102 / 103 / 104 -- le palier est plat,
+    // 120 tient le milieu sans rien inventer.
+    var reIdLit = /['\"](bb-[a-z0-9_-]+)['\"]/g, mi;
+    while ((mi = reIdLit.exec(html))){
+      if (idToKey[mi[1]]) continue;
+      var pres = html.slice(mi.index, mi.index + 120).match(/\bs\.([a-z0-9_]+)/);
+      if (!pres) continue;
+      idToKey[mi[1]] = pres[1];
+      consumed[pres[1]] = true;
+    }
+
     // QUATRIEME FORME : l'ecriture directe.
     //   var cp = document.getElementById('bb-copyright');
     //   if (cp) cp.textContent = s.footer_copyright;
