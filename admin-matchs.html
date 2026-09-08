@@ -8840,6 +8840,15 @@
     document.getElementById('page-desc').textContent = m.d;
     helpFill(key);
     sectionCourante = key;
+    // OU J'EN ETAIS. Rafraichir la page renvoyait au tableau de bord :
+    // personne ne l'avait decide, l'ecran courant n'etait simplement
+    // retenu nulle part. Or on rafraichit souvent ici -- pour voir si un
+    // paiement est arrive, si un dossier a bouge -- et on perdait sa
+    // place a chaque fois.
+    // sessionStorage et pas localStorage : c'est « ou j'en etais dans
+    // cette session », pas une preference. Rouvrir l'admin demain doit
+    // ramener au tableau de bord, pas sur l'ecran de mardi soir.
+    try { sessionStorage.setItem('bbc_admin_ecran', key); } catch(e){}
     if (!loadedSections[key]) { loadedSections[key]=true; SECTION_AGE[key]=Date.now(); if (LOADERS[key]) LOADERS[key](); }
     else sectionRefresh(key);
     roAppliquer(key);
@@ -22058,6 +22067,19 @@
     // encore filtree, et annoncerait « 0 ecran » a quelqu'un qui
     // decouvre l'outil. On reessaiera a la prochaine connexion.
     if(!dejaVu) setTimeout(function(){ if (currentRole) tutorielOuvrir(); },900);
+
+    // ET ON Y RETOURNE.
+    // En dernier, quand tout est cable : showSection declenche le
+    // chargeur de l'ecran, qui suppose les branchements faits.
+    // canSection garde la porte -- une casquette a pu changer entre
+    // deux visites, et on ne rouvre pas un ecran qu'elle n'ouvre plus.
+    try {
+      var repris = sessionStorage.getItem('bbc_admin_ecran');
+      if (repris && repris !== 'dashboard' && SECTION_META[repris] &&
+          (typeof canSection !== 'function' || canSection(repris))) {
+        showSection(repris);
+      }
+    } catch(e){}
   }
 
   // ===================== QG VISUEL — EFFECTIF (édition en direct sur players) =====================
