@@ -1710,6 +1710,14 @@ window.bbLienSur = function (u) {
     position:relative; z-index:3;
     padding:clamp(16px,2vw,28px); display:flex; flex-direction:column; gap:12px;
   }
+  /* La pastille du direct est posee en absolu sur la photo. Sur un
+     telephone la zone se comprime et son bas passait par-dessus le
+     « Prochain match » de la carte. On lui reserve sa hauteur, et
+     seulement quand elle est la : un reglage vide la retire, et une
+     place gardee pour rien laisserait un blanc. */
+  @media(max-width:900px){
+    #bb-hero-overlays.bb-avec-pastille{ padding-top:58px }
+  }
 
   /* ---- la carte du prochain match ----
      Elle etait une boite epaisse posee sur la photo. Elle devient une
@@ -1729,9 +1737,15 @@ window.bbLienSur = function (u) {
     font-family:'Anton',Impact,sans-serif; font-size:15px; letter-spacing:.01em;
     color:#08160D; background:#A8D93B; padding:3px 11px; border-radius:100px;
   }
+  /* LES DEUX LOGOS PARTENT DE LA MEME LIGNE.
+     En align-items:center, un nom d'adversaire sur deux lignes rendait
+     sa colonne plus haute et le centrage poussait SON logo vers le haut :
+     neuf pixels d'ecart mesures sur « HLM BASKET CLUB ». On aligne donc
+     par le haut, et le « VS » se recentre sur la hauteur du logo. */
   #bb-next-match-teams{
-    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px;
   }
+  .bb-nm-vs{ flex:none; height:56px; display:flex; align-items:center }
   #bb-next-match-info{
     text-align:center; font-family:'Inter',sans-serif; font-size:12.5px; color:#B9C2BB;
     line-height:1.65; border-top:1px solid rgba(243,239,230,.09); padding-top:13px;
@@ -2372,7 +2386,7 @@ window.bbLienSur = function (u) {
                   <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs" style="width:56px;height:56px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)" loading="lazy" decoding="async">
                   <div style="font-family:'Inter',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">BAOBABS</div>
                 </div>
-                <div style="font-family:'Anton',sans-serif;font-size:20px;color:#A8D93B">VS</div>
+                <div class="bb-nm-vs" style="font-family:'Anton',sans-serif;font-size:20px;color:#A8D93B">VS</div>
                 <div style="text-align:center;flex:1">
                   <img src="/media/img/DUC_Dakar_logo_zyqx86.webp" alt="DUC Dakar" style="width:56px;height:56px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)" loading="lazy" decoding="async">
                   <div style="font-family:'Inter',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">DUC DAKAR</div>
@@ -9025,7 +9039,15 @@ window.bbCloud = function(url, w){
     var e = window.bbLiveEtat;
 
     // Reglage vide = pastille retiree, quoi qu'il y ait au calendrier.
-    if (e.note === ''){ pill.style.display = 'none'; return; }
+    // La colonne du dessous doit savoir si elle a une pastille au-dessus
+    // d'elle : c'est ce qui lui fait garder la place, ou pas.
+    var col = document.getElementById('bb-hero-overlays');
+    function poser(visible){
+      pill.style.display = visible ? 'flex' : 'none';
+      if (col) col.classList.toggle('bb-avec-pastille', visible);
+    }
+
+    if (e.note === ''){ poser(false); return; }
 
     var mot = null, m = e.match;
     if (m && m.match_date){
@@ -9037,9 +9059,9 @@ window.bbCloud = function(url, w){
     }
     // Aucun match programme : c'est la que le texte de l'admin sert.
     if (!mot) mot = e.note;
-    if (!mot){ pill.style.display = 'none'; return; }
+    if (!mot){ poser(false); return; }
 
-    pill.style.display = 'flex';
+    poser(true);
     var t = document.getElementById('bb-hs-livenote');
     if (t) t.textContent = mot;
   };
@@ -9804,7 +9826,7 @@ document.addEventListener('keydown', function(e){
     var teamsRow = document.getElementById('bb-next-match-teams');
     if (teamsRow) {
       teamsRow.innerHTML = teamBlock(homeName, homeLogo) +
-        '<div style="font-family:\'Anton\',sans-serif;font-weight:400;font-size:22px;color:#A8D93B">VS</div>' +
+        '<div class="bb-nm-vs" style="font-family:\'Anton\',sans-serif;font-weight:400;font-size:22px;color:#A8D93B">VS</div>' +
         teamBlock(awayName, awayLogo);
     }
 
