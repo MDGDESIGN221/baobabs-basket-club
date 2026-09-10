@@ -1847,13 +1847,36 @@ window.bbLienSur = function (u) {
     display:block; width:100%; text-align:left; padding:0; border:0; background:none;
     color:inherit; font:inherit; cursor:pointer; position:relative;
   }
+  /* 21/9 plutot que 16/9 : la tete faisait 660 px sur l'accueil pour une
+     seule actualite. Elle en fait ~380 sans rien perdre d'utile. */
   .bb-ac-tete-vis{
-    display:block; position:relative; aspect-ratio:16/9; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    position:relative; aspect-ratio:21/9; overflow:hidden;
     border-radius:18px; background:#0F1E15;
   }
-  .bb-ac-tete-vis img{
+  /* UNE PHOTO PAYSAGE remplit le cadre : c'est ce qu'elle demande. */
+  .bb-ac-tete-vis.large img{
     position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
     transition:transform .6s cubic-bezier(.2,.8,.3,1);
+  }
+  /* UNE AFFICHE VERTICALE ne s'etire plus. Elle etait affichee a 1 081 px
+     de large pour 904 px reels -- 1,2x ici, 1,7x sur un 1920, et un mot
+     de son titre coupe par le recadrage. Elle s'affiche entiere, jamais
+     au-dela de sa taille native, sur son propre flou. */
+  .bb-ac-tete-vis img{
+    position:relative; z-index:2; display:block;
+    width:auto; height:auto; max-width:100%; max-height:100%;
+    transition:transform .6s cubic-bezier(.2,.8,.3,1);
+  }
+  .bb-ac-tete-vis .bb-ac-tete-flou{
+    position:absolute; inset:0; z-index:0; background-size:cover; background-position:center;
+    filter:blur(30px) saturate(1.15); transform:scale(1.16); opacity:.5;
+  }
+  .bb-ac-tete-vis .bb-ac-tete-voile{
+    position:absolute; inset:0; z-index:1; background:rgba(7,19,13,.5);
+  }
+  @media (prefers-reduced-motion:reduce){
+    .bb-ac-tete-vis .bb-ac-tete-flou{ filter:none; opacity:.28 }
   }
   .bb-ac-tete:hover .bb-ac-tete-vis img{ transform:scale(1.03) }
   .bb-ac-tete-vis::after{
@@ -9483,8 +9506,16 @@ window.bbCloud = function(url, w){
   // angle tres arrondi, du meme cote que le cartouche de date, pour
   // que l'oeil parte de la.
   function bbAcTete(n){
+    // Le rapport de l'image decide du traitement : « cover » pour une
+    // photo paysage, entiere sur son flou pour une affiche verticale.
+    var large = bbAcImageLarge(n);
     return '<button type="button" class="bb-ac-tete" data-ac="' + esc(String(n.id)) + '">' +
-        '<span class="bb-ac-tete-vis">' + bbAcImage(n, true) + '</span>' +
+        '<span class="bb-ac-tete-vis' + (large ? ' large' : '') + '">' +
+          (large || !n.image_url ? '' :
+            '<span class="bb-ac-tete-flou" style="background-image:url(' +
+            window.bbSafeUrl(window.bbCloud ? window.bbCloud(n.image_url, 700) : n.image_url) +
+            ')"></span><span class="bb-ac-tete-voile"></span>') +
+          bbAcImage(n, true) + '</span>' +
         '<span class="bb-ac-panneau">' +
           bbAcCartouche(n.published_at) +
           '<span class="bb-ac-panneau-t">' + esc(bbTypo(n.title || 'Sans titre')) + '</span>' +
