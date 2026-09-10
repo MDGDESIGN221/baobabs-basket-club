@@ -524,6 +524,10 @@
   .live-step b{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:22px;color:var(--gold);flex:none;width:26px;text-align:center;line-height:1.2}
   .live-step div{font-size:13.5px;color:var(--muted);line-height:1.55}
   .live-step strong{color:var(--text);font-family:var(--font-ui);font-size:13.5px;display:block}
+  /* <b> est pris par le numero de l'etape : il ne reste rien pour une
+     mise en avant DANS le corps du texte. <i> sert a ca ici, sans
+     italique -- la graisse suffit a detacher une phrase. */
+  .live-step i{font-style:normal;font-weight:700;color:var(--text)}
 
   /* ===== V2 — classement : le podium au-dessus de l'éditeur =====
      Trois cartes arrondies dont une posee sur un degrade vert cerne
@@ -4353,7 +4357,7 @@
             <div class="field">
               <label for="stream_url">Lien du direct / replay <span class="opt">(optionnel)</span></label>
               <input type="url" id="stream_url" placeholder="https://youtube.com/…">
-              <span class="hint">Lien spécifique à ce match (le direct global se règle dans « Direct »).</span>
+              <span class="hint">Commande la carte du direct pendant CE match, avant le réglage de saison de l'écran «&nbsp;Direct&nbsp;». Collez l'adresse de la page du direct&nbsp;: elle peut appartenir à un autre compte. Après le match, elle devient le «&nbsp;Replay&nbsp;» des résultats.</span>
             </div>
 
             <div class="field">
@@ -5011,14 +5015,15 @@
     <!-- ===== SECTION DIRECT ===== -->
     <section id="section-live" class="hide">
       <div class="live-stage">
-        <div class="live-lamp off" id="live-lamp"><span class="live-dot"></span><b id="live-lamp-text">Aucune chaîne reliée</b></div>
-        <div class="live-title">Le jour du match,<br>le site bascule tout seul</div>
-        <p style="font-size:13.5px;color:var(--muted);max-width:54ch;margin:0;line-height:1.6">Reliez une fois la chaîne YouTube du club. Ensuite, lancer votre direct suffit&nbsp;: l'accueil passe en mode «&nbsp;En direct&nbsp;» pendant la diffusion, puis revient à la normale.</p>
+        <div class="live-lamp off" id="live-lamp"><span class="live-dot"></span><b id="live-lamp-text">Aucun direct en cours</b></div>
+        <div class="live-title">C'est le tableau de marque<br>qui allume le direct</div>
+        <p style="font-size:13.5px;color:var(--muted);max-width:54ch;margin:0;line-height:1.6">Vous n'avez rien à venir cocher ici un soir de match. Dès que vous ouvrez <b>Soir de match</b> et que le tableau de marque démarre, l'accueil du site passe en «&nbsp;En direct&nbsp;». Le coup de sifflet final l'éteint.</p>
         <div class="live-steps">
-          <div class="live-step"><b>1</b><div><strong>Lancez votre direct sur YouTube</strong>Comme d'habitude, depuis votre téléphone ou la régie.</div></div>
-          <div class="live-step"><b>2</b><div><strong>Le site le détecte</strong>Le bloc «&nbsp;En direct&nbsp;» de l'accueil affiche le match, sans aucune manipulation ici.</div></div>
-          <div class="live-step"><b>3</b><div><strong>Le direct se termine</strong>L'accueil revient à la normale et affiche votre message hors-direct.</div></div>
+          <div class="live-step"><b>1</b><div><strong>Vous ouvrez le tableau de marque</strong>C'est le geste que vous faites déjà au bord du terrain. Il suffit&nbsp;: le site sait que le match a commencé.</div></div>
+          <div class="live-step"><b>2</b><div><strong>Le site montre ce qu'il a</strong>La vidéo si vous en diffusez une, <i>le score au panier près sinon</i>. Un match qui se joue n'est jamais annoncé comme «&nbsp;pas de direct&nbsp;».</div></div>
+          <div class="live-step"><b>3</b><div><strong>Coup de sifflet final</strong>L'accueil revient à la normale et affiche votre message hors-direct.</div></div>
         </div>
+        <p style="font-size:12.5px;color:var(--faint);max-width:60ch;margin:14px 0 0;line-height:1.6">Diffuser la <b>vidéo</b> reste au choix, et se règle plus bas. Diffuser le <b>score</b> ne dépend de personne&nbsp;: c'est votre propre direct, il n'a besoin d'aucune plateforme.</p>
       </div>
       <div class="card" style="max-width:660px">
         <h2 class="card-title">L'interrupteur</h2>
@@ -5026,21 +5031,23 @@
         <div class="field">
           <label for="set_live_mode">État de la diffusion</label>
           <select id="set_live_mode">
-            <option value="auto">Automatique — le site suit la détection YouTube</option>
+            <option value="auto">Automatique — le site suit le tableau de marque</option>
             <option value="on">Forcé allumé — le direct s'affiche maintenant</option>
             <option value="off">Forcé éteint — aucun direct, message hors-direct</option>
           </select>
-          <span class="hint">« Forcé allumé » est le geste du soir de match si la détection ne suit pas. Pensez à repasser en automatique après la rencontre.</span>
+          <span class="hint"><b>Laissez sur automatique</b>&nbsp;: le direct s'allume quand le tableau de marque démarre, et s'éteint au coup de sifflet final. «&nbsp;Forcé allumé&nbsp;» sert à diffuser hors match — un tirage au sort, une conférence de presse — et il faut penser à revenir en automatique après.</span>
         </div>
         <div class="field">
           <label for="set_live_note">Message hors-direct <span class="opt">(optionnel)</span></label>
           <input type="text" id="set_live_note" placeholder="Aucun match en direct pour le moment">
+          <span class="hint">Remplace le titre du bloc les jours sans match. Laissé vide, le site écrit «&nbsp;Aucun match en direct pour le moment&nbsp;».</span>
         </div>
       </div>
 
       <div class="card" style="max-width:660px;margin-top:18px">
         <h2 class="card-title">Par quel canal</h2>
-        <p class="card-sub">YouTube, Facebook et TikTok s'intègrent directement dans la page. Pour toute autre plateforme, le site affiche un bouton qui y renvoie — ça marche partout.</p>
+        <p class="card-sub">Réglage de saison, pour les jours où vous diffusez toujours au même endroit. <b>Un match précis peut avoir son propre lien</b> — dans sa fiche, onglet Diffusion — et celui-là passe devant.</p>
+        <div class="callout ds-note" style="margin-bottom:16px">YouTube et Facebook s'affichent <b>dans</b> la page. TikTok, Twitch, Instagram et les chaînes de télévision ne fournissent pas de lecteur qu'un autre site puisse afficher&nbsp;: pour celles-là, le site pose un bouton qui ouvre le direct. C'est une limite de ces plateformes, pas un réglage manquant.</div>
         <div class="field">
           <label for="set_live_channel">Canal de diffusion</label>
           <select id="set_live_channel">
@@ -5052,21 +5059,22 @@
         </div>
 
         <div class="field live-ch live-ch-youtube">
-          <label for="set_yt_channel">ID de la chaîne YouTube</label>
-          <input type="text" id="set_yt_channel" placeholder="Ex : UCxxxxxxxxxxxxxxxxxxxxxx">
-          <span class="hint">Se trouve dans l'URL de votre chaîne (youtube.com/channel/<b>UC…</b>) ou via les paramètres avancés YouTube.</span>
+          <label for="set_yt_channel">Adresse du direct YouTube</label>
+          <input type="text" id="set_yt_channel" placeholder="https://www.youtube.com/watch?v=…">
+          <span class="hint">Collez l'adresse de la page du direct — celle de la barre d'adresse, ou celle du bouton <b>Partager</b>. <b>Elle peut appartenir à n'importe quel compte</b>&nbsp;: c'est ainsi qu'on rediffuse le direct d'une fédération ou du club adverse. Une adresse de <b>playlist</b> marche aussi, et évite d'y revenir à chaque match si vous y ajoutez vos directs.</span>
+          <span class="hint" id="live-yt-quoi" style="display:none"></span>
         </div>
 
         <div class="field live-ch live-ch-facebook hide">
           <label for="set_live_fb">Adresse de la vidéo Facebook</label>
           <input type="text" id="set_live_fb" placeholder="https://www.facebook.com/…/videos/…">
-          <span class="hint">Collez l'adresse de la publication en direct. Elle change à chaque match&nbsp;: pensez à la mettre à jour.</span>
+          <span class="hint">Collez l'adresse de la publication en direct. Elle change à chaque match&nbsp;: pensez à la mettre à jour. <b>La publication doit être publique</b>, sinon le lecteur reste vide pour les visiteurs.</span>
         </div>
 
         <div class="field live-ch live-ch-tiktok hide">
           <label for="set_live_tiktok">Compte TikTok</label>
           <input type="text" id="set_live_tiktok" placeholder="@baobabsbasketclub">
-          <span class="hint">Le nom du compte, avec ou sans l'arobase. Le lecteur s'ouvre sur son direct en cours.</span>
+          <span class="hint">Le nom du compte, avec ou sans l'arobase. <b>TikTok ne permet pas d'afficher un direct dans un autre site</b>&nbsp;: le site posera un bouton «&nbsp;Regarder sur TikTok&nbsp;».</span>
         </div>
 
         <div class="field live-ch live-ch-lien hide">
@@ -8191,7 +8199,7 @@
     promos:{t:'Codes promo',d:'Des remises à partager : pourcentage ou montant, avec période, minimum d\'achat et limite d\'utilisation.'},
     gameday:{t:'Soir de match',d:'L\'écran du jour J : le score d\'un côté, le guichet de retrait des billets de l\'autre.'},
     teams:{t:'Adversaires',d:'Les clubs que vous affrontez : ajout en un clic, logos, historique des confrontations.'},
-    live:{t:'Diffusion en direct',d:'Reliez la chaîne YouTube du club pour activer le direct sur l\'accueil.'},
+    live:{t:'Diffusion en direct',d:'Le direct suit le tableau de marque. Ici, vous choisissez seulement s\'il y a une vidéo, et où.'},
     standings:{t:'Classement',d:'Le tableau du championnat affiché sur la page Compétitions. Les lignes se classent par points.'},
     coherence:{t:'Cohérence site ↔ admin',d:'Compare la page en ligne avec le contenu de l\'admin : écarts, contenu en dur, réglages inutilisés.'},
     banners:{t:'Bannières & slider',d:'Les bannières du grand bloc d\'accueil : visuel, titre, bouton, et programmation dans le temps.'},
@@ -8253,7 +8261,7 @@
     promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b>, dans la barre : un clic ajoute le club, logo compris. Pour un club absent, <b>Ajouter un adversaire</b> ouvre un formulaire — les deux panneaux se ferment l’un l’autre, la liste ne part jamais à deux écrans de défilement.","<b>Changer le logo</b> sur une ligne — ou <b>Ajouter un logo</b> si elle n’en a pas — ouvre l’éditeur. Les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo.","La colonne <b>Logo</b> est la seule chose de cet écran qui appelle un geste : elle dit d’un coup d’œil combien de clubs en attendent un. La recherche filtre par nom, et <b>Confrontations</b> compte les matchs déjà joués contre chacun."],
     gameday: ["<b>L'écran du jour de match</b>, pensé pour la personne au guichet et à la table de marque.","<b>Les touches +1 / +2 / +3 ne sont que du côté de l’adversaire, et c’est voulu.</b> Ses points n’ont personne à qui être attribués : trois touches suffisent. <b>Les nôtres vont dans la feuille de match d’une joueuse</b> — on les saisit dans la table de marque, en dessous : la joueuse, puis le geste. C’est de là que sortent les statistiques de la saison.","<b>Le score vous suit.</b> Dès que le grand tableau sort de l’écran, une barre se colle sous le bandeau du haut : score, période, points de l’adversaire et annulation. Plus besoin de remonter entre deux paniers.","<b>Coup de sifflet final</b> publie le score sur le site, qui l’affiche alors comme définitif. Avant ça, le direct suit déjà chaque panier.","Le guichet retrouve une réservation par référence, nom ou téléphone ; <b>Retirer</b> pointe le billet à l'entrée.","Les jauges de droite montrent les places restantes par catégorie, mises à jour à chaque retrait."],
-    live: ["<b>Relie la chaîne YouTube du club au site.</b> C'est le seul réglage nécessaire.","Un jour de match, lancez votre direct sur YouTube comme d'habitude : le bloc « En direct » de l'accueil bascule tout seul, puis revient à la normale à la fin.","Le message hors-direct s'affiche quand rien n'est diffusé."],
+    live: ["<b>Collez ici l'adresse de la page du direct</b> — celle de la barre d'adresse, ou du bouton <b>Partager</b>. Elle peut appartenir à <b>n'importe quel compte</b> : c'est ainsi qu'on rediffuse le direct d'une fédération ou du club adverse. La ligne sous le champ dit tout de suite si l'adresse donnera un lecteur ou un bouton.","<b>Laissez « Automatique ».</b> Le direct s'allume quand vous ouvrez le tableau de marque dans <b>Soir de match</b>, et s'éteint au coup de sifflet final — le geste que vous faites déjà. « Forcé allumé » ne sert qu'à diffuser hors match.","Le message hors-direct remplace le titre du bloc les jours sans match. <b>Un soir de match sans caméra, le site n'écrit jamais « pas de direct » : il montre le score</b>, au panier près, sans aucune plateforme."],
     standings: ["<b>Le classement affiché sur la page Compétitions du site.</b>","Le podium en haut montre les trois premiers du championnat. Le <b>filet doré marque les Baobabs</b>, pas le leader : en ouvrant cet écran on cherche où est son club, pas qui mène. Si le club n’est pas sur le podium, une ligne en dessous dit son rang. L’éditeur permet de corriger chaque ligne — victoires, défaites, points — et le tableau se retrie tout seul.","L'éditeur visuel se manipule à la souris ; le formulaire classique reste disponible via l'onglet."],
     coherence: ["<b>Compare la page publique en ligne avec le contenu de l'admin</b> : écarts de texte, contenu codé en dur, réglages inutilisés.","Protégé par le mot de passe de l'historique — l'écran expose la structure interne du site.","« Adopter » récupère la valeur du site dans l'admin en un clic."],
     banners: ["<b>Les grandes bannières du bloc d'accueil</b> : visuel, titre, bouton, et période d'affichage.","Une bannière programmée s'affiche toute seule à sa date de début et disparaît à sa date de fin.","Sans bannière active, le site affiche l'image du hero classique — rien ne casse."],
@@ -8535,12 +8543,12 @@
   var TUT_DEMOS = {
     // ---- DIRECT : relier la chaine YouTube ----
     live: [
-      { cible:'#set_yt_channel', geste:'saisir', valeur:'UCbAoBaBsExempleDeChaine',
-        dit:'On colle ici l’identifiant de la chaîne YouTube du club. Il se trouve dans l’adresse de votre chaîne, après <code>/channel/</code>.' },
+      { cible:'#set_yt_channel', geste:'saisir', valeur:'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+        dit:'On colle l’adresse de la page du direct, telle qu’elle apparaît dans la barre d’adresse. La ligne verte sous le champ confirme que le site en fera un lecteur.' },
       { cible:'#set_live_mode', geste:'choisir', valeur:'on',
-        dit:'« Forcé allumé » est le geste du soir de match si la détection ne suit pas. On repasse en automatique après la rencontre.' },
+        dit:'« Forcé allumé » ne sert qu’à diffuser hors match — un tirage au sort, une conférence de presse.' },
       { cible:'#set_live_mode', geste:'choisir', valeur:'auto',
-        dit:'Et on revient en automatique — c’est le réglage de tous les autres jours.' },
+        dit:'Et on revient en automatique : le direct suivra le tableau de marque, sans qu’on ait à venir ici le soir du match.' },
       { cible:'#set_live_note', geste:'saisir', valeur:'Prochain direct : samedi 20h',
         dit:'Ce message s’affiche sur le site quand rien n’est diffusé.' },
       { cible:'#save-live-btn', geste:'montrer',
@@ -12273,8 +12281,30 @@
       document.querySelectorAll('.live-ch-'+k).forEach(function(el){ el.classList.toggle('hide', k!==ch); });
     });
   }
+  // CE QU'UNE ADRESSE YOUTUBE DONNERA SUR LE SITE.
+  // Le meme decoupage que window.bbYtEmbed dans index.html -- les deux
+  // fichiers ne se voient pas, et la personne qui colle une adresse a le
+  // droit de savoir tout de suite si elle donnera un lecteur ou un
+  // bouton. C'est la seule facon de ne pas decouvrir un cadre vide le
+  // soir du match.
+  function liveYtForme(v){
+    v = String(v==null?'':v).trim();
+    if (!v) return null;
+    if (/[?&]v=[A-Za-z0-9_-]{11}/.test(v) || /youtu\.be\/[A-Za-z0-9_-]{11}/.test(v) ||
+        /\/(?:live|embed|shorts|v)\/[A-Za-z0-9_-]{11}/.test(v) || /^[A-Za-z0-9_-]{11}$/.test(v))
+      return { ok:true, mot:'Reconnu : une vidéo. Elle s’affichera dans la page.' };
+    if (/[?&]list=(?:PL|UU|LL)[A-Za-z0-9_-]+/.test(v) || /^(?:PL|UU)[A-Za-z0-9_-]{10,}$/.test(v))
+      return { ok:true, mot:'Reconnu : une playlist. Le site affichera sa vidéo la plus récente.' };
+    if (/UC[A-Za-z0-9_-]{22}/.test(v))
+      return { ok:false, mot:'Reconnu : un identifiant de chaîne. YouTube n’accepte plus toujours cette forme — si le cadre reste vide le soir du match, collez plutôt l’adresse de la page du direct.' };
+    if (/youtube\.com|youtu\.be/i.test(v))
+      return { ok:false, mot:'Adresse YouTube non reconnue (une adresse en @compte, par exemple). Le site affichera un bouton qui l’ouvre, pas un lecteur.' };
+    return { ok:false, mot:'Ceci ne ressemble pas à une adresse YouTube.' };
+  }
+
   // La lampe disait « reliée » dès qu'une chaîne était saisie, ce qui ne
-  // veut rien dire : elle annonce maintenant l'état réel de diffusion.
+  // veut rien dire. Et elle parlait d'une « détection YouTube » qui
+  // n'existait pas : le signal vient du tableau de marque.
   function livePaintLamp(){
     var lamp=document.getElementById('live-lamp'); if(!lamp) return;
     var mode=(document.getElementById('set_live_mode')||{}).value||'auto';
@@ -12287,16 +12317,43 @@
       lien:function(){ return !!document.getElementById('set_live_link').value.trim(); }
     }[ch])();
 
+    // Ce que donnera l'adresse YouTube collée, dit sous le champ.
+    var quoi=document.getElementById('live-yt-quoi');
+    if (quoi){
+      var f = liveYtForme(document.getElementById('set_yt_channel').value);
+      quoi.style.display = f ? '' : 'none';
+      if (f){
+        quoi.innerHTML = f.mot;
+        quoi.style.color = f.ok ? 'var(--ok, #A8D93B)' : 'var(--warn, #E0A93B)';
+      }
+    }
+
+    // Une adresse YouTube que le site ne peut pas integrer donnera un
+    // bouton, pas un lecteur. La lampe le dit comme la ligne sous le
+    // champ : deux phrases contraires sur le meme ecran, c'est celle du
+    // haut qu'on lit, et elle serait fausse.
+    var quoiCanal = NOM[ch];
+    if (ch === 'youtube' && renseigne){
+      var fl = liveYtForme(document.getElementById('set_yt_channel').value);
+      quoiCanal = (fl && fl.ok) ? 'YouTube' : 'YouTube (bouton de renvoi)';
+    } else if (ch === 'tiktok' || ch === 'lien'){
+      quoiCanal = NOM[ch] + ' (bouton de renvoi)';
+    }
+
     var etat, texte;
     if (mode==='off'){ etat='off'; texte='Éteint — le site affiche le message hors-direct'; }
     else if (mode==='on'){
       etat = renseigne ? 'on' : 'off';
-      texte = renseigne ? 'EN DIRECT sur '+NOM[ch]+' — visible sur le site maintenant'
+      texte = renseigne ? 'Forcé allumé sur '+quoiCanal+' — visible sur le site maintenant'
                         : 'Forcé allumé, mais le canal '+NOM[ch]+' n’est pas renseigné';
     } else {
-      etat = renseigne ? 'on' : 'off';
-      texte = ch!=='youtube' ? 'Automatique : seul YouTube est détecté — passez en « forcé allumé » pour '+NOM[ch]
-            : (renseigne ? 'Chaîne reliée — détection automatique' : 'Aucune chaîne reliée');
+      // En automatique, la lampe ne peut rien affirmer sur l'instant : le
+      // direct s'allumera quand le tableau de marque demarrera. Elle dit
+      // donc ce qui est prêt, pas ce qui se passe.
+      etat = 'off';
+      texte = renseigne
+        ? 'En attente du tableau de marque — '+quoiCanal+' est prêt'
+        : 'En attente du tableau de marque — le site montrera le score, sans vidéo';
     }
     lamp.className='live-lamp '+etat;
     document.getElementById('live-lamp-text').textContent=texte;
@@ -17470,7 +17527,7 @@
     if (mcTab === 'diffusion'){
       p.innerHTML =
         field('mc-stream','Lien de diffusion de ce match', m.stream_url, 'text', 'https://youtube.com/watch?v=…')+
-        '<p class="cd-prose" style="color:var(--faint);font-size:12.5px;margin-bottom:16px">Propre à cette rencontre. La chaîne YouTube du club et le message hors-direct restent dans l\'écran <b>Direct</b>, car ils valent pour toute la saison.</p>'+
+        '<p class="cd-prose" style="color:var(--faint);font-size:12.5px;margin-bottom:16px">C\'est <b>ce lien qui commande la carte du direct</b> sur l\'accueil pendant la rencontre&nbsp;: il passe devant le réglage de saison de l\'écran <b>Direct</b>. Collez l\'adresse de la page du direct — <b>elle peut appartenir à un autre compte</b>, une fédération ou le club adverse. Après le match, le même lien devient le «&nbsp;Replay&nbsp;» affiché dans les résultats.</p>'+
         saveBar();
       mcWireSave(m, ['mc-stream'], function(){
         return { stream_url: document.getElementById('mc-stream').value.trim() || null };

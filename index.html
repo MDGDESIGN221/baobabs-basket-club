@@ -1527,6 +1527,42 @@ window.bbLienSur = function (u) {
     #bb-live-card.bb-live-repos .bb-live-fb{ gap:3px 10px }
     #bb-live-card.bb-live-repos .bb-live-info-title{ flex:1 1 100% }
   }
+  /* LE DIRECT QUE LE CLUB POSSEDE VRAIMENT.
+     Un soir de match sans camera, la carte n'annonce plus « aucun direct »
+     -- ce qui etait faux : le match se joue. Elle montre le score de la
+     table de marque, au panier pres, sans aucune plateforme. La scene
+     perd son 16/9 : reserver la place d'une video pour afficher deux
+     nombres, c'est meubler. */
+  .bb-lv-sc{ display:none }
+  #bb-live-card.bb-lv-score .bb-live-scene{ aspect-ratio:auto; margin-top:12px }
+  #bb-live-card.bb-lv-score .bb-lv-sc{ display:block; position:relative; padding:15px 16px 17px }
+  .bb-lv-sc-l{ display:flex; align-items:center; justify-content:center;
+    gap:clamp(9px,2.4vw,20px) }
+  .bb-lv-sc-e{ flex:1 1 0; min-width:0; font-family:'Inter',sans-serif; font-weight:700;
+    font-size:clamp(11px,2.7vw,13.5px); color:#D6DDD7; text-align:center;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .bb-lv-sc-n{ flex:none; font-family:'Anton',sans-serif; font-size:clamp(30px,7.4vw,44px);
+    line-height:1; color:#F3EFE6; font-variant-numeric:tabular-nums; min-width:1.6ch;
+    text-align:center }
+  .bb-lv-sc-s{ flex:none; font-family:'Anton',sans-serif; font-size:clamp(19px,4vw,26px);
+    color:#7E8A82 }
+  .bb-lv-sc-p{ margin:9px 0 0; text-align:center; font-family:'Inter',sans-serif;
+    font-weight:700; font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:#A8D93B }
+  .bb-lv-sc-p b{ color:#7E8A82; font-weight:600; letter-spacing:.1em }
+  /* LE RENVOI VERS UNE AUTRE PLATEFORME.
+     Mesure : 651 px de carte pour un bouton de 46 px -- la scene gardait
+     son 16/9 pour annoncer qu'il n'y aurait pas de video. Elle se replie,
+     sans se reduire au format de l'etat de repos : ici il y a quelque
+     chose a regarder, et le bouton doit se voir. */
+  #bb-live-card.bb-lv-lien .bb-live-scene{ aspect-ratio:auto; margin-top:12px }
+  #bb-live-card.bb-lv-lien .bb-live-fb{ position:relative; inset:auto; padding:22px 18px 26px }
+  /* La sortie de secours : un cadre qui ne charge pas ne laisse plus le
+     visiteur devant un rectangle gris. */
+  #bb-live-sortie{ display:none; align-items:center; gap:7px; font-family:'Inter',sans-serif;
+    font-weight:600; font-size:11.5px; color:#93A099; text-decoration:none;
+    border-bottom:1px solid rgba(168,217,59,.34); padding-bottom:1px }
+  #bb-live-sortie:hover{ color:#A8D93B; border-bottom-color:#A8D93B }
 
 
 
@@ -2608,6 +2644,12 @@ window.bbLienSur = function (u) {
               <div id="bb-offline-badge" style="display:flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#7E8A82">
                 <span style="width:8px;height:8px;border-radius:50%;background:#7E8A82"></span>PAS DE DIRECT EN COURS
               </div>
+              <!-- La sortie de secours. Un lecteur integre peut refuser de
+                   charger sans qu'aucun code ne le sache : la plateforme
+                   repond dans son propre cadre, hors de notre portee. On
+                   ne devine donc pas la panne, on laisse toujours une
+                   porte ouverte a cote du badge. -->
+              <a id="bb-live-sortie" href="#" target="_blank" rel="noopener">Ouvrir sur la plateforme</a>
             </div>
             <div id="bb-live-player-wrap" class="bb-live-scene">
               <div style="position:absolute;inset:0;background-image:url('/media/img/Duo_Baobabs___contre-plong_e_snmhff.webp');background-size:cover;background-position:center;filter:blur(6px);transform:scale(1.08)"></div>
@@ -2618,6 +2660,18 @@ window.bbLienSur = function (u) {
                 <span class="bb-live-info-title" style="font-family:'Inter',sans-serif;font-weight:600;font-size:13px;color:#B9C2BB">Aucun match en direct pour le moment</span>
                 <span class="bb-live-info-sub" style="font-family:'Inter',sans-serif;font-weight:500;font-size:11.5px;color:#7E8A82">La diffusion démarre automatiquement ici dès qu'un live commence</span>
               </div>
+              <!-- Le score de la table de marque, quand le match se joue
+                   sans etre filme. Rempli par bbLiveScore(). -->
+              <div class="bb-lv-sc" id="bb-live-sc" role="status" aria-live="polite">
+                <div class="bb-lv-sc-l">
+                  <span class="bb-lv-sc-e" id="bb-lv-eq-h">Baobabs</span>
+                  <span class="bb-lv-sc-n" id="bb-lv-sc-h">0</span>
+                  <span class="bb-lv-sc-s">–</span>
+                  <span class="bb-lv-sc-n" id="bb-lv-sc-a">0</span>
+                  <span class="bb-lv-sc-e" id="bb-lv-eq-a">Adversaire</span>
+                </div>
+                <p class="bb-lv-sc-p" id="bb-lv-sc-p"></p>
+              </div>
             </div>
           </div>
           <script>
@@ -2626,7 +2680,18 @@ window.bbLienSur = function (u) {
             var fallback = document.getElementById('bb-live-fallback');
             var liveBadge = document.getElementById('bb-live-badge');
             var offlineBadge = document.getElementById('bb-offline-badge');
-            var fallbackText = fallback.querySelector('span:last-child');
+            // LE MESSAGE HORS-DIRECT VA SUR LE TITRE.
+            // Il atterrissait sur la ligne du bas -- « La diffusion demarre
+            // automatiquement ici… » -- alors que le champ de l'admin
+            // propose « Aucun match en direct pour le moment » en exemple,
+            // c'est-a-dire le titre. Le club ecrivait donc a un endroit et
+            // le site changeait l'autre.
+            var fallbackTitre = fallback.querySelector('.bb-live-info-title');
+            var fallbackTitreDef = fallbackTitre ? fallbackTitre.textContent : '';
+            var fallbackSub = fallback.querySelector('.bb-live-info-sub');
+            var fallbackSubDef = fallbackSub ? fallbackSub.textContent : '';
+            var lienSortie = document.getElementById('bb-live-sortie');
+            var panneau = document.getElementById('bb-live-sc');
 
             // Appelée une fois que index.html a chargé site_settings.
             // Reçoit tout l'objet : le direct ne dépend plus d'un seul
@@ -2651,30 +2716,83 @@ window.bbLienSur = function (u) {
             // feuille de style. Reserver un lecteur 16/9 pour dire qu'il
             // n'y a rien a regarder, c'est meubler.
             var carte = document.getElementById('bb-live-card');
-            function bbLiveOff(note){
-              if (note && fallbackText) fallbackText.textContent = note;
+            // Un seul endroit remet la carte a plat, pour qu'aucun etat
+            // ne survive au precedent : le bouton de renvoi, la sortie de
+            // secours, le panneau de score et le cadre.
+            function bbLiveNet(){
               bbLiveDropLink();
               iframe.style.display = 'none';
               iframe.removeAttribute('src');
+              if (lienSortie) lienSortie.style.display = 'none';
+              if (carte){ carte.classList.remove('bb-lv-score'); carte.classList.remove('bb-lv-lien'); }
+            }
+            function bbLiveOff(note){
+              if (fallbackTitre) fallbackTitre.textContent = note || fallbackTitreDef;
+              if (fallbackSub) fallbackSub.textContent = fallbackSubDef;
+              bbLiveNet();
               fallback.style.display = '';
               liveBadge.style.display = 'none';
               offlineBadge.style.display = 'flex';
               if (carte) carte.classList.add('bb-live-repos');
             }
-            function bbLiveEmbed(src){
-              bbLiveDropLink();
+            // « sortie » est l'adresse publique du direct : elle reste
+            // affichee A COTE du cadre. Voir le commentaire du lien dans
+            // le marquage -- on ne peut pas savoir si un cadre a charge.
+            function bbLiveEmbed(src, sortie){
+              bbLiveNet();
               iframe.src = src;
               iframe.style.display = 'block';
               fallback.style.display = 'none';
               liveBadge.style.display = 'flex';
               offlineBadge.style.display = 'none';
               if (carte) carte.classList.remove('bb-live-repos');
+              var sur = sortie ? window.bbLienSur(sortie) : '';
+              if (lienSortie && sur){
+                lienSortie.href = sur;
+                lienSortie.textContent = 'Rien ne s’affiche ? Ouvrir le direct';
+                lienSortie.style.display = 'inline-flex';
+              }
+            }
+            // LE DIRECT SANS PLATEFORME.
+            // Le match se joue, personne ne le filme : la carte montre le
+            // score de la table de marque. Rien a installer, rien a
+            // payer -- le geste est deja fait au bord du terrain, et
+            // match_live le porte a la seconde pres.
+            function bbLiveScore(l, match){
+              bbLiveNet();
+              fallback.style.display = 'none';
+              liveBadge.style.display = 'flex';
+              offlineBadge.style.display = 'none';
+              if (carte){ carte.classList.remove('bb-live-repos'); carte.classList.add('bb-lv-score'); }
+              if (!panneau) return;
+              // Les Baobabs a gauche quand ils recoivent, a droite en
+              // deplacement : la convention des feuilles de match, la
+              // meme que la barre de score du haut.
+              var dom = !match || match.is_home !== false;
+              var adv = (match && match.opponent_name) || 'Adversaire';
+              var mise = [
+                ['bb-lv-eq-h', dom ? 'Baobabs' : adv],
+                ['bb-lv-eq-a', dom ? adv : 'Baobabs'],
+                ['bb-lv-sc-h', String(dom ? l.score_bbc : l.score_adv)],
+                ['bb-lv-sc-a', String(dom ? l.score_adv : l.score_bbc)]
+              ];
+              mise.forEach(function(p){
+                var el = document.getElementById(p[0]);
+                if (el) el.textContent = p[1];
+              });
+              var per = document.getElementById('bb-lv-sc-p');
+              if (per) per.innerHTML = (window.bbLsPeriode ? window.bbLsPeriode(l.period) : '') +
+                ' <b>· suivi au panier près depuis le bord du terrain</b>';
             }
             // Plateformes que la CSP ne peut pas autoriser une à une :
             // plutôt qu'un lecteur intégré, un bouton qui y renvoie.
-            function bbLiveLink(url, label){
-              iframe.style.display = 'none';
-              iframe.removeAttribute('src');
+            // « titre » remplace la ligne « Aucun match en direct pour le
+            // moment » : la garder sous un badge « EN DIRECT » faisait deux
+            // affirmations contraires sur le meme ecran.
+            function bbLiveLink(url, label, titre){
+              bbLiveNet();
+              if (fallbackTitre) fallbackTitre.textContent = titre || fallbackTitreDef;
+              if (carte) carte.classList.add('bb-lv-lien');
               fallback.style.display = '';
               liveBadge.style.display = 'flex';
               offlineBadge.style.display = 'none';
@@ -2694,45 +2812,148 @@ window.bbLienSur = function (u) {
               a.textContent = label || 'Regarder le direct';
             }
 
-            window.bbInitLive = function(s, legacyNote){
-              // Compatibilité : l'ancien appel passait (channelId, note).
-              if (typeof s === 'string') s = { yt_channel_id: s, live_offline_note: legacyNote };
-              s = s || {};
+            // ================== D'UNE ADRESSE A UN CADRE QUI LIT
+            //
+            // MESURE, trois cadres cote a cote sur la meme page :
+            //   embed/live_stream?channel=UC…  « Cette video n'est pas
+            //                                    disponible »
+            //   embed/<id de la video>          lit
+            //   embed/videoseries?list=<id>     lit
+            //
+            // Le site n'utilisait que la premiere : on donnait a YouTube
+            // un identifiant de CHAINE la ou il attend celui d'une VIDEO.
+            // C'est tout le mystere du cadre vide.
+            //
+            // On accepte donc ce que le club a reellement sous la main --
+            // l'adresse de la page du direct, un lien youtu.be, une
+            // playlist tenue a jour, ou l'identifiant de chaine -- et on
+            // en deduit la forme integrable. L'identifiant de chaine reste
+            // accepte en dernier recours : il ne coute rien de le tenter,
+            // et la sortie de secours est la si YouTube refuse.
+            window.bbYtEmbed = function(v){
+              v = String(v == null ? '' : v).trim();
+              if (!v) return '';
+              var id = v.match(/[?&]v=([A-Za-z0-9_-]{11})/) ||
+                       v.match(/youtu\.be\/([A-Za-z0-9_-]{11})/) ||
+                       v.match(/\/(?:live|embed|shorts|v)\/([A-Za-z0-9_-]{11})/);
+              if (id) return 'https://www.youtube.com/embed/' + id[1] + '?autoplay=0&rel=0';
+              var pl = v.match(/[?&]list=((?:PL|UU|LL)[A-Za-z0-9_-]+)/) ||
+                       v.match(/^((?:PL|UU)[A-Za-z0-9_-]{10,})$/);
+              if (pl) return 'https://www.youtube.com/embed/videoseries?list=' + pl[1] + '&autoplay=0';
+              if (/^[A-Za-z0-9_-]{11}$/.test(v))
+                return 'https://www.youtube.com/embed/' + v + '?autoplay=0&rel=0';
+              var ch = v.match(/(UC[A-Za-z0-9_-]{22})/);
+              if (ch) return 'https://www.youtube.com/embed/live_stream?channel=' + ch[1] + '&autoplay=0';
+              return '';
+            };
+            // L'adresse a ouvrir hors du site, pour la sortie de secours.
+            function bbYtPage(v){
+              v = String(v == null ? '' : v).trim();
+              if (/^https?:/i.test(v)) return v;
+              var ch = v.match(/(UC[A-Za-z0-9_-]{22})/);
+              if (ch) return 'https://www.youtube.com/channel/' + ch[1] + '/live';
+              if (/^[A-Za-z0-9_-]{11}$/.test(v)) return 'https://www.youtube.com/watch?v=' + v;
+              return '';
+            }
+
+            // ============== OU REGARDER : le match d'abord, la saison ensuite
+            //
+            // Le lien saisi dans la fiche du match passe DEVANT le reglage
+            // de la saison. Il est plus recent, plus precis, et c'est le
+            // seul moyen de rediffuser le direct d'un AUTRE compte -- une
+            // federation, le club adverse -- ce que le champ « chaine du
+            // club » ne permettait pas du tout.
+            //
+            // Rend { src, sortie, etiquette } : « src » pour un cadre,
+            // « sortie » pour une adresse a ouvrir. Une plateforme que la
+            // CSP n'autorise pas rend une sortie sans src, et le site
+            // affiche alors un bouton -- ce qui marche partout.
+            function bbLiveOu(s, lienMatch, canal){
+              if (lienMatch){
+                if (/youtube\.com|youtu\.be/i.test(lienMatch))
+                  return { src: window.bbYtEmbed(lienMatch), sortie: lienMatch };
+                if (/facebook\.com/i.test(lienMatch))
+                  return { src: 'https://www.facebook.com/plugins/video.php?href=' +
+                    encodeURIComponent(lienMatch) + '&show_text=false&autoplay=false',
+                    sortie: lienMatch };
+                return { src: '', sortie: lienMatch };
+              }
+              if (canal === 'youtube' && s.yt_channel_id)
+                return { src: window.bbYtEmbed(s.yt_channel_id), sortie: bbYtPage(s.yt_channel_id) };
+              if (canal === 'facebook' && s.live_fb_url)
+                return { src: 'https://www.facebook.com/plugins/video.php?href=' +
+                  encodeURIComponent(s.live_fb_url) + '&show_text=false&autoplay=false',
+                  sortie: s.live_fb_url };
+              if (canal === 'tiktok' && s.live_tiktok_user){
+                // TIKTOK N'A PAS D'ADRESSE D'INTEGRATION POUR SES DIRECTS.
+                // « /embed/live/@compte » n'est documente nulle part : le
+                // cadre restait vide. On renvoie donc sur le compte, ce
+                // qui marche, plutot que de promettre un lecteur.
+                var u = String(s.live_tiktok_user).replace(/^@/, '');
+                return { src: '', sortie: 'https://www.tiktok.com/@' + encodeURIComponent(u) + '/live',
+                         etiquette: 'Regarder sur TikTok' };
+              }
+              if (canal === 'lien' && s.live_link_url)
+                return { src: '', sortie: s.live_link_url, etiquette: s.live_link_label };
+              return { src: '', sortie: '' };
+            }
+
+            // ============== L'ETAT DU DIRECT, DEPOSE PAR TROIS CHEMINS
+            //
+            // Les reglages du club, la table de marque et le calendrier
+            // arrivent separement, dans un ordre qu'on ne maitrise pas.
+            // Chacun DEPOSE ce qu'il sait puis appelle bbDirectPeindre :
+            // aucun ordre a respecter, donc aucun ecrasement muet. Meme
+            // motif que bbLiveEtat pour la pastille du hero.
+            window.bbDirect = { reglages:null, live:null, matchLive:null, matchSuivant:null };
+
+            window.bbDirectPeindre = function(){
+              var e = window.bbDirect;
+              var s = e.reglages || {};
               var note = s.live_offline_note || '';
               var mode = s.live_mode || 'auto';
               var canal = s.live_channel || 'youtube';
 
               if (mode === 'off') return bbLiveOff(note);
 
-              if (mode === 'auto'){
-                // Historique : YouTube seul sait basculer tout seul.
-                if (canal !== 'youtube' || !s.yt_channel_id) return bbLiveOff(note);
-                return bbLiveEmbed('https://www.youtube.com/embed/live_stream?channel=' +
-                  encodeURIComponent(s.yt_channel_id) + '&autoplay=0');
-              }
+              // EN AUTOMATIQUE, LE SIGNAL EST CELUI DE LA TABLE DE MARQUE.
+              // L'ancienne version ne detectait rien : elle posait le cadre
+              // de la chaine et allumait « EN DIRECT » en permanence, match
+              // ou pas -- le site mentait tous les autres jours de l'annee.
+              // Or le club fait deja un geste qui dit « ca commence » : il
+              // ouvre le tableau de marque, et match_live.is_live passe a
+              // vrai. On suit ce signal-la. Il ne demande aucune cle
+              // d'API, aucune permission, et il vaut pour TOUS les canaux
+              // -- l'ancien « auto » ne marchait qu'avec YouTube et
+              // s'eteignait sans rien dire pour les autres.
+              var enDirect = !!(e.live && e.live.is_live);
+              if (mode === 'auto' && !enDirect) return bbLiveOff(note);
 
-              // mode === 'on' : on montre le canal choisi, s'il est renseigné.
-              if (canal === 'youtube'){
-                if (!s.yt_channel_id) return bbLiveOff(note);
-                return bbLiveEmbed('https://www.youtube.com/embed/live_stream?channel=' +
-                  encodeURIComponent(s.yt_channel_id) + '&autoplay=0');
+              var m = e.matchLive || e.matchSuivant;
+              var lienMatch = (m && m.stream_url) ? String(m.stream_url).trim() : '';
+              var ou = bbLiveOu(s, lienMatch, canal);
+
+              if (ou.src) return bbLiveEmbed(ou.src, ou.sortie);
+              if (ou.sortie){
+                // Le sous-titre dit pourquoi il n'y a pas de lecteur ici :
+                // ces plateformes n'en fournissent pas, ou la politique de
+                // securite du site ne peut pas les autoriser une a une.
+                var sub = fallback.querySelector('.bb-live-info-sub');
+                if (sub) sub.textContent = 'Cette plateforme ne s’intègre pas dans la page : le bouton ouvre le direct dans un nouvel onglet.';
+                return bbLiveLink(ou.sortie, ou.etiquette,
+                  enDirect ? 'Le direct a commencé' : 'Le direct est diffusé sur une autre plateforme');
               }
-              if (canal === 'facebook'){
-                if (!s.live_fb_url) return bbLiveOff(note);
-                return bbLiveEmbed('https://www.facebook.com/plugins/video.php?href=' +
-                  encodeURIComponent(s.live_fb_url) + '&show_text=false&autoplay=false');
-              }
-              if (canal === 'tiktok'){
-                if (!s.live_tiktok_user) return bbLiveOff(note);
-                return bbLiveEmbed('https://www.tiktok.com/embed/live/@' +
-                  encodeURIComponent(String(s.live_tiktok_user).replace(/^@/,'')));
-              }
-              if (canal === 'lien'){
-                if (!s.live_link_url) return bbLiveOff(note);
-                if (note && fallbackText) fallbackText.textContent = note;
-                return bbLiveLink(s.live_link_url, s.live_link_label);
-              }
+              // Aucune video, mais le match se joue : le score, alors.
+              if (enDirect) return bbLiveScore(e.live, e.matchLive || m);
               return bbLiveOff(note);
+            };
+
+            // L'ancien nom reste : applySiteSettings l'appelle, et un
+            // vieux cache pourrait le faire avec (chaine, note).
+            window.bbInitLive = function(s, legacyNote){
+              if (typeof s === 'string') s = { yt_channel_id: s, live_offline_note: legacyNote };
+              window.bbDirect.reglages = s || {};
+              window.bbDirectPeindre();
             };
           })();
           </script>
@@ -8514,6 +8735,7 @@ window.bbCloud = function(url, w){
   // ============================================================================
   var bbLs = { h:null, a:null, id:null, timer:null, canal:null };
 
+  window.bbLsPeriode = bbLsPeriode;
   function bbLsPeriode(n){
     n = parseInt(n,10) || 1;
     if (n >= 5) return 'Prolongation' + (n > 5 ? ' ' + (n-4) : '');
@@ -8547,15 +8769,27 @@ window.bbCloud = function(url, w){
     document.getElementById('bb-ls-per').innerHTML = bbLsPeriode(l.period);
   }
 
+  // La carte du direct de l'accueil se sert du meme chargement : elle
+  // n'a plus besoin d'un rechargement de page pour voir un match
+  // commencer, et cela ne coute aucune requete supplementaire.
+  function bbLsDeposer(l, match){
+    if (!window.bbDirect) return;
+    window.bbDirect.live = l || null;
+    window.bbDirect.matchLive = l ? (match || null) : null;
+    if (window.bbDirectPeindre) window.bbDirectPeindre();
+  }
+
   function bbLsCharger(){
     return sbFetch('match_live?select=*&is_live=is.true&limit=1').then(function(rows){
       var l = (rows||[])[0];
-      if (!l){ bbLsPeindre(null); bbLs.id = null; return; }
-      if (String(bbLs.id) === String(l.match_id)) { bbLsPeindre(l, bbLs.match); return; }
+      if (!l){ bbLsPeindre(null); bbLs.id = null; bbLs.match = null; bbLsDeposer(null); return; }
+      if (String(bbLs.id) === String(l.match_id)) { bbLsPeindre(l, bbLs.match); bbLsDeposer(l, bbLs.match); return; }
       bbLs.id = l.match_id;
-      return sbFetch('matches?select=opponent_name,is_home&id=eq.'+l.match_id).then(function(ms){
+      // stream_url en plus : c'est lui qui dit ou regarder CE match.
+      return sbFetch('matches?select=opponent_name,is_home,stream_url&id=eq.'+l.match_id).then(function(ms){
         bbLs.match = (ms||[])[0] || null;
         bbLsPeindre(l, bbLs.match);
+        bbLsDeposer(l, bbLs.match);
       });
     }).catch(function(){});
   }
@@ -10296,6 +10530,13 @@ document.addEventListener('keydown', function(e){
     if (window.bbLiveEtat){
       window.bbLiveEtat.match = (upcoming && upcoming.length) ? upcoming[0] : null;
       if (window.bbLivePill) window.bbLivePill();
+    }
+    // Le meme match sert a la carte du direct : en « force allume », un
+    // soir ou la table de marque n'est pas ouverte, c'est son lien de
+    // diffusion qu'il faut lire.
+    if (window.bbDirect){
+      window.bbDirect.matchSuivant = (upcoming && upcoming.length) ? upcoming[0] : null;
+      if (window.bbDirectPeindre) window.bbDirectPeindre();
     }
     var card = document.getElementById('bb-next-match');
     if (!card || !upcoming || !upcoming.length) return; // garde le contenu statique de secours
