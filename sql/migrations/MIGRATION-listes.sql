@@ -96,6 +96,7 @@ insert into club_listes (liste, cle, libelle, valeur, ordre) values
   ('clubs', 'avenir-thiaroye', 'Avenir Thiaroye', '', 500),
   ('clubs', 'gbc', 'GBC', '', 510),
   ('clubs', 'malika', 'Malika', '/media/img/Malika_Basket_Academy_m16adb.webp', 520),
+  ('salles', 'complexe-patrick-semedo', 'Complexe Patrick Semedo', null, 5),
   ('salles', 'stadium-marius-ndiaye', 'Stadium Marius Ndiaye', null, 10),
   ('salles', 'dakar-arena', 'Dakar Arena', null, 20),
   ('salles', 'stade-demba-diop', 'Stade Demba Diop', null, 30),

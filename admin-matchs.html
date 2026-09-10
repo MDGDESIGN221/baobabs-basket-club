@@ -3101,6 +3101,17 @@
   .tk-match-n{font-family:var(--font-ui);font-weight:600;font-size:13.5px;color:var(--text)}
   .tk-match-m{font-size:11px;color:var(--faint);margin-top:4px;line-height:1.45}
   .tk-match-s{margin-top:7px}
+  /* L'entree libre est une PROPRIETE du match, pas une action : une case
+     a cocher, jamais un bouton. Le filet passe a l'or quand elle est
+     cochee, comme partout ailleurs : l'or dit ou porter la main. */
+  .tk-libre{display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:13px 14px;
+    margin:0 0 16px;background:var(--surface-2);border-left:2px solid var(--line-strong)}
+  .tk-libre.on{border-left-color:var(--gold)}
+  .tk-libre>input{width:17px;height:17px;flex:none;margin-top:1px;accent-color:var(--gold)}
+  .tk-libre>span{min-width:0}
+  .tk-libre b{font-family:var(--font-ui);font-weight:600;font-size:13px;color:var(--text)}
+  .tk-libre i{display:block;font-style:normal;font-size:11.5px;color:var(--faint);
+    line-height:1.5;margin-top:3px}
   .tk-offer input,.tk-offer select{background:transparent;border:1px solid var(--line-strong);
     color:var(--text);border-radius:var(--r-sm);padding:9px 10px;font:inherit;font-size:13px;width:100%}
   .tk-offer-foot{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
@@ -4815,6 +4826,7 @@
         </div><div>
           <div class="tk-col">
             <div class="tm-panel-h"><b id="tk-offers-title">Billets</b><span id="tk-offers-sub">Sélectionnez un match à gauche.</span></div>
+            <div id="tk-free" class="hide"></div>
             <div id="tk-offers-list"></div>
             <div id="tk-offers-add" class="hide">
               <div class="tk-presets" id="tk-preset-row"></div>
@@ -7894,7 +7906,7 @@
     // --- Billetterie ---
     category:'Catégorie de billet', price_fcfa:'Tarif (FCFA)', quota:'Nombre de places', is_open:'Vente ouverte', sort_order:'Ordre d\'affichage',
     // --- Matchs ---
-    opponent_name:'Nom de l\'adversaire', opponent_logo_url:'Logo de l\'adversaire', match_date:'Date du match', match_time:'Heure du match', is_home:'Domicile / extérieur', venue:'Salle / stade', competition:'Compétition', stream_url:'Lien du direct / replay', notes:'Notes internes', score_baobabs:'Score Baobabs', score_opponent:'Score adverse',
+    opponent_name:'Nom de l\'adversaire', opponent_logo_url:'Logo de l\'adversaire', match_date:'Date du match', match_time:'Heure du match', is_home:'Domicile / extérieur', free_entry:'Entrée gratuite', venue:'Salle / stade', competition:'Compétition', stream_url:'Lien du direct / replay', notes:'Notes internes', score_baobabs:'Score Baobabs', score_opponent:'Score adverse',
     // --- Champs communs à plusieurs écrans (commandes, candidatures…) ---
     status:'Statut', rating:'Note interne', admin_notes:'Notes internes',
     first_name:'Prénom', last_name:'Nom', phone:'Téléphone', email:'Email',
@@ -8171,7 +8183,7 @@
     calendar: ["<b>La saison en un coup d'œil</b> : vue mois ou liste chronologique.","Cliquez une rencontre pour ouvrir sa fiche complète.","Les matchs sans lieu à moins de 48 h sont signalés."],
     matches2: ["<b>Une fiche par rencontre</b>, en onglets : feuille de match, résultat, billetterie, diffusion, médias.","<b>Nouveau match</b> demande l’adversaire, la date, l’heure, le lieu — puis ouvre la fiche pour le reste. L’adversaire se choisit dans les clubs enregistrés (écran <b>Adversaires</b>) : c’est cette liste qui porte les logos. La salle et la compétition sont proposées d’après les matchs déjà saisis.","C'est le centre de gestion d'un match — tout ce qui le concerne au même endroit.","Les autres écrans (Calendrier, Résultats, Billetterie) mènent ici."],
     results: ["<b>La file d'après-match</b> : les rencontres jouées dont le score manque encore.","Saisissez les deux scores dans les cases façon tableau d'affichage, puis <b>Publier</b> — le site se met à jour immédiatement.","« Tout est à jour » = rien en attente, tout va bien."],
-    tickets: ["<b>La vente de billets, match par match.</b> Une ligne par catégorie de place : tarif, quota, vente ouverte ou fermée.","<b>Le paiement se fait sur place</b> : le site enregistre la réservation et donne une référence à présenter au guichet.","Tant qu'aucune catégorie n'est ouverte, rien n'apparaît sur le site.","« Copier la grille d'un autre match » recopie les catégories d'un coup — elles arrivent vente fermée.","L'onglet Réservations liste tout ; le retrait le jour J se fait plutôt dans Soir de match.","Le relevé du haut porte sur le match choisi : places réservées, recette attendue, places restantes, catégories en vente. Ce dernier passe en rouge quand il vaut zéro — des billets prêts que le site ne montre pas, c’est le seul état qui coûte vraiment."],
+    tickets: ["<b>La vente de billets, match par match.</b> Une ligne par catégorie de place : tarif, quota, vente ouverte ou fermée.","<b>Le paiement se fait sur place</b> : le site enregistre la réservation et donne une référence à présenter au guichet.","Tant qu'aucune catégorie n'est ouverte, rien n'apparaît sur le site.","<b>Un match peut ne rien coûter.</b> La case <b>Entrée gratuite</b>, au-dessus des catégories, dit que cette rencontre n'a pas de guichet : le site annonce l'entrée libre, et cet écran cesse de réclamer une grille de tarifs. Les catégories déjà saisies sont conservées — elles reviennent si vous décochez.","« Copier la grille d'un autre match » recopie les catégories d'un coup — elles arrivent vente fermée.","L'onglet Réservations liste tout ; le retrait le jour J se fait plutôt dans Soir de match.","Le relevé du haut porte sur le match choisi : places réservées, recette attendue, places restantes, catégories en vente. Ce dernier passe en rouge quand il vaut zéro — des billets prêts que le site ne montre pas, c’est le seul état qui coûte vraiment."],
     orders2: ["<b>Chaque commande est un bon de préparation</b> : le client, les articles à emballer, le montant, le paiement.","Faites glisser une carte d'une colonne à l'autre pour changer son statut — le client peut suivre sa commande.","La fiche imprime un bon de préparation propre.","Chaque changement de statut est tracé dans l'historique de la commande.","Le relevé du haut dit ce qu’il reste à faire : commandes ouvertes, <b>argent non encaissé</b>, commandes laissées en attente plus d’un jour, recette du mois. Le filtre ouvre chacun de ces trois premiers chiffres — un chiffre qui annonce un problème sans donner le moyen de le regarder ne sert à rien."],
     clients: ["<b>Vos supporters</b> : coordonnées, historique de commandes, total dépensé, réservations, notes internes.","Les comptes se créent sur le site (connexion / inscription) ; cette liste se remplit toute seule.","Cliquez une ligne pour ouvrir la fiche complète.","La liste est un tableau parce que c’est ce qu’on vient y faire : comparer. Qui dépense, qui commande souvent, qui a des billets en cours. Le relevé du haut donne les mêmes chiffres pour l’ensemble, dont le <b>panier moyen</b>."],
     applications: ["<b>Chaque candidature est un dossier de recrutement</b> : profil, coordonnées, parcours, documents, notes.","Faites glisser une carte pour changer son statut (nouvelle, à étudier, entretien, acceptée…) — chaque décision est tracée dans le journal du dossier.","Les candidatures arrivent du formulaire Tryouts du site."],
@@ -8283,6 +8295,9 @@
     live:       ['#set_yt_channel', '#set_live_mode', '#set_live_note'],
     tickets:    ['#tk-offers-list', null,
                  ['#tk-offers-list .tk-offer', '#tk-offers-list'],
+                 // La case n'existe qu'une fois un match choisi : sans
+                 // selection, on designe la liste, ce qui reste vrai.
+                 ['#tk-free', '#tk-offers-list'],
                  ['#tk-copygrid', '#tk-preset-row', '#tk-offers-list'],
                  '#tickets-subtabs',
                  ['#tk-kpis', '#tk-offers-list']],
@@ -9870,7 +9885,7 @@
             'Joué il y a ' + depuis + ' jour' + (depuis>1?'s':'') + '. Le site affiche encore ce match comme à venir.',
             'results', 'matchs');
         }
-        if (m.statut === 'a_venir' && j !== null && j <= 3 && !m.vente_ouverte){
+        if (m.statut === 'a_venir' && j !== null && j <= 3 && !m.vente_ouverte && !m.free_entry){
           ajout('important',
             'Billetterie fermée — ' + (m.opponent_name||'match') + ' dans ' + j + ' jour' + (j>1?'s':''),
             'Aucune catégorie de place n\'est ouverte à la vente.',
@@ -10757,6 +10772,7 @@
   // Sans elle, les suggestions ne contenaient que les lieux DEJA joues :
   // un club qui debute, ou un debut de saison, n'avait aucune proposition.
   var SALLES_CONNUES = [
+    "Complexe Patrick Semedo",
     "Stadium Marius Ndiaye",
     "Dakar Arena",
     "Stade Demba Diop",
@@ -16930,23 +16946,47 @@
         .then(function(rows){
           if (String(mcSel)!==String(m.id) || mcTab!=='billetterie') return;
           mcOffers = rows||[];
+          var libre = m.free_entry === true;
+          var caseLibre = '<label class="tk-libre'+(libre?' on':'')+'">'+
+            '<input type="checkbox" id="mc-free-cb"'+(libre?' checked':'')+'>'+
+            '<span><b>Entrée gratuite — ce match n\'a pas de billetterie</b><i>'+
+            (libre
+              ? 'Le site annonce l\'entrée libre à la place des tarifs.'
+              : 'Pour un amical, un tournoi ou une journée portes ouvertes : ni catégorie, ni quota, ni guichet.')+
+            '</i></span></label>';
           var jauge = '';
-          if (Number(m.places_totales) > 0){
+          if (!libre && Number(m.places_totales) > 0){
             var pct = Math.round((Number(m.places_reservees)/Number(m.places_totales))*100);
             jauge = '<div style="margin-bottom:18px"><div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:6px">'+
               '<span>'+m.places_reservees+' réservée(s) sur '+m.places_totales+'</span><span>'+pct+'%</span></div>'+
               '<div style="height:7px;border-radius:4px;background:var(--surface-2);overflow:hidden"><i style="display:block;height:100%;width:'+pct+'%;background:linear-gradient(90deg,#46BF1D,#A8D93B)"></i></div></div>';
           }
-          p.innerHTML = jauge +
-            (mcOffers.length ? mcOffers.map(function(o){
+          p.innerHTML = caseLibre + jauge +
+            (libre
+              ? '<p class="cd-prose" style="color:var(--faint)">'+
+                  (mcOffers.length
+                    ? 'Ce match garde '+mcOffers.length+' catégorie(s) enregistrée(s). Elles n\'apparaissent pas sur le site tant que l\'entrée est gratuite, et redeviennent visibles si vous décochez la case.'
+                    : 'Rien à préparer : le site annonce l\'entrée libre pour cette rencontre.')+'</p>'
+              : (mcOffers.length ? mcOffers.map(function(o){
               var left = Math.max((o.quota||0)-(o.sold||0), 0);
               return '<div class="cd-kv" style="align-items:center">'+
                 '<span style="color:var(--text);font-weight:600">'+esc(o.category)+'</span>'+
                 '<span>'+esc((o.price_fcfa||0).toLocaleString('fr-FR'))+' FCFA · '+left+' place(s) restante(s) · '+
                 (o.is_open?'<b style="color:var(--lime)">ouverte</b>':'<b style="color:var(--faint)">fermée</b>')+'</span></div>';
-            }).join('') : '<p class="cd-prose" style="color:var(--faint)">Aucune catégorie de billet pour ce match.</p>')+
+            }).join('') : '<p class="cd-prose" style="color:var(--faint)">Aucune catégorie de billet pour ce match.</p>'))+
+            (libre ? '' :
             '<div style="margin-top:18px"><button type="button" class="btn btn-primary" id="mc-goto-tickets" style="padding:10px 16px;font-size:13px">Gérer la billetterie de ce match</button></div>'+
-            '<p class="cd-prose" style="color:var(--faint);font-size:12px;margin-top:10px">La création des catégories et des quotas se fait dans l\'écran Billetterie, qui garde la vue d\'ensemble des ventes de la saison.</p>';
+            '<p class="cd-prose" style="color:var(--faint);font-size:12px;margin-top:10px">La création des catégories et des quotas se fait dans l\'écran Billetterie, qui garde la vue d\'ensemble des ventes de la saison.</p>');
+          var cb = document.getElementById('mc-free-cb');
+          if (cb) cb.addEventListener('change', function(){
+            var self = this; self.disabled = true;
+            matchEntreeLibre(m.id, self.checked)
+              .then(function(){
+                qgToast(self.checked ? 'Entrée gratuite ✓' : 'Billetterie rétablie ✓');
+                return mcLoad();
+              })
+              .catch(function(){ self.checked = !self.checked; self.disabled = false; qgToast(TK_LIBRE_ERR, true); });
+          });
           var g = document.getElementById('mc-goto-tickets');
           if (g) g.addEventListener('click', function(){
             showSection('tickets');
@@ -21437,7 +21477,10 @@
       // « A configurer » est le seul de ces quatre etats qui appelle un
       // geste : c'est le seul qui garde une teinte. Les trois autres
       // decrivent une situation, ils s'ecrivent.
-      var pill = !offs.length ? '<span class="ds-tag warn">À configurer</span>'
+      // Un match gratuit n'a rien a configurer : il passe avant les trois
+      // autres etats, sinon il resterait « A configurer » pour toujours.
+      var pill = m.free_entry ? '<span class="ds-st"><i></i>Entrée gratuite</span>'
+               : !offs.length ? '<span class="ds-tag warn">À configurer</span>'
                : !nbOuvertes ? '<span class="ds-st"><i></i>Vente fermée</span>'
                : nbOuvertes===offs.length ? '<span class="ds-st act"><i></i>Vente ouverte</span>'
                       : '<span class="ds-st act"><i></i>'+nbOuvertes+' catégorie(s) sur '+offs.length+' en vente</span>';
@@ -21449,7 +21492,9 @@
         '<div class="tk-match-b"><div class="tk-match-n">'+esc(tkLabel(m))+'</div>'+
         '<div class="tk-match-m">'+esc(formatDateShort(m.match_date))+(m.venue?' · '+esc(m.venue):'')+'</div>'+
         '<div class="tk-match-s">'+pill+'</div>'+
-        (!offs.length
+        (m.free_entry
+          ? '<div class="tk-match-m">Entrée libre — aucune billetterie à préparer</div>'
+          : !offs.length
           ? '<div class="tk-match-m">Aucune catégorie de billet</div>'
           : !nbOuvertes
             ? '<div class="tk-match-m">'+offs.length+' catégorie(s) prête(s), aucune en vente — rien n\'apparaît sur le site</div>'
@@ -21483,22 +21528,81 @@
     band.classList.remove('hide');
   }
 
+  // ===================== ENTREE GRATUITE =====================
+  // TOUS LES MATCHS NE SE PAIENT PAS. Un amical, un tournoi, une
+  // journee de l'ecole de basket : il n'y a pas de guichet. Sans cette
+  // case, un tel match restait « A configurer » pour toujours dans la
+  // colonne de gauche, et l'alerte du tableau de bord reclamait a trois
+  // jours du coup d'envoi une vente qui n'aurait jamais lieu.
+  //
+  // Une seule ecriture pour les deux ecrans qui posent cette case — la
+  // fiche du match et celui-ci. Deux appels separes finiraient par
+  // diverger sur ce qu'ils enregistrent.
+  function matchEntreeLibre(id, libre){
+    return sbUpdate('matches', id, { free_entry: !!libre }, 'Billetterie');
+  }
+  var TK_LIBRE_ERR = "Enregistrement impossible — la migration MIGRATION-entree-gratuite.sql a-t-elle été passée dans Supabase ?";
+
+  function tkRenderFree(m){
+    var box=document.getElementById('tk-free'); if(!box) return;
+    var libre=m.free_entry===true;
+    box.classList.remove('hide');
+    box.innerHTML='<label class="tk-libre'+(libre?' on':'')+'">'+
+      '<input type="checkbox" id="tk-free-cb"'+(libre?' checked':'')+'>'+
+      '<span><b>Entrée gratuite — ce match n\'a pas de billetterie</b><i>'+
+      (libre
+        ? 'Le site annonce l\'entrée libre à la place des tarifs. Rien n\'est à préparer ici.'
+        : 'Pour un amical, un tournoi ou une journée portes ouvertes : ni catégorie, ni quota, ni guichet.')+
+      '</i></span></label>';
+    box.querySelector('#tk-free-cb').addEventListener('change', function(){ tkSetFree(m, this); });
+  }
+
+  function tkSetFree(m, input){
+    var libre=input.checked, msg=document.getElementById('tk-offers-msg');
+    input.disabled=true;
+    matchEntreeLibre(m.id, libre)
+      .then(function(){
+        m.free_entry=libre;
+        showMsg(msg, libre
+          ? 'Entrée gratuite. Le site annonce l\'entrée libre pour ce match.'
+          : 'Billetterie rétablie. Les catégories ouvertes réapparaissent sur le site.', true);
+        return tkLoadOffers();
+      })
+      .catch(function(){
+        input.checked=!libre;
+        showMsg(msg, TK_LIBRE_ERR, false);
+      })
+      .finally(function(){ input.disabled=false; });
+  }
+
   function tkRenderOffers(matchId){
     var m=tkMatchById(matchId); if(!m) return;
     document.getElementById('tk-offers-title').textContent=tkLabel(m);
     document.getElementById('tk-offers-sub').textContent=formatDateShort(m.match_date)+(m.match_time?' · '+m.match_time:'')+(m.venue?' · '+m.venue:'');
-    document.getElementById('tk-offers-add').classList.remove('hide');
+    var libre = m.free_entry === true;
+    tkRenderFree(m);
+    // Gratuit : plus de formulaire d'ajout, plus de copie de grille. On
+    // ne propose pas un geste dont on vient de dire qu'il ne sert a rien.
+    document.getElementById('tk-offers-add').classList.toggle('hide', libre);
     var srcSel=document.getElementById('tk-copy-src');
     if(srcSel){
       var srcs=tkMatches.filter(function(x){ return String(x.id)!==String(matchId) && (tkOffers[x.id]||[]).length; });
-      document.getElementById('tk-copygrid').classList.toggle('hide', !srcs.length);
+      document.getElementById('tk-copygrid').classList.toggle('hide', libre || !srcs.length);
       srcSel.innerHTML='<option value="">Copier la grille d\'un autre match…</option>'+srcs.map(function(x){
         return '<option value="'+x.id+'">'+esc(tkLabel(x))+' — '+(tkOffers[x.id]||[]).length+' catégorie(s)</option>';
       }).join('');
     }
     var offs=tkOffers[matchId]||[];
-    tkKpis(offs);
+    tkKpis(libre ? null : offs);
     var list=document.getElementById('tk-offers-list');
+    if(libre){
+      // Les categories deja saisies ne sont pas effacees : decocher la
+      // case doit tout rendre. On dit seulement qu'elles dorment.
+      list.innerHTML = offs.length
+        ? '<div class="empty">L\'entrée de ce match est gratuite.<br><br>Ses '+offs.length+' catégorie(s) restent enregistrées mais n\'apparaissent pas sur le site. Décochez la case ci-dessus pour les remettre en vente.</div>'
+        : '<div class="empty">Rien à configurer : l\'entrée de ce match est gratuite.</div>';
+      return;
+    }
     list.innerHTML = offs.length ? offs.map(function(o){
       return '<div class="tk-offer" data-id="'+o.id+'">'+
         '<input class="tk-cat" type="text" value="'+esc(o.category)+'" aria-label="Catégorie">'+

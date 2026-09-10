@@ -1972,6 +1972,34 @@ window.bbLienSur = function (u) {
     .bb-bl-cta, .bb-bl-complet{ grid-column:2; grid-row:1 / span 2 }
   }
 
+  /* ---- l'entrée gratuite : elle REMPLACE le tableau des places ----
+     Une bande, pas une ligne de tableau : il n'y a rien à comparer,
+     rien à choisir, et une colonne « places restantes » vide dirait
+     le contraire de ce qu'on veut dire. */
+  .bb-bl-libre{
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px 20px;
+    padding:clamp(16px,2vw,22px) clamp(16px,2.2vw,26px);
+    background:rgba(168,217,59,.06);
+  }
+  .bb-bl-libre b{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-.02em;
+    font-size:clamp(18px,2.2vw,26px); color:#A8D93B; flex:none;
+  }
+  .bb-bl-libre span{
+    flex:1; min-width:min(100%,240px); font-family:'Inter',sans-serif;
+    font-size:13.5px; line-height:1.6; color:#A9B2AB;
+  }
+  .bb-bl-s-libre{
+    flex:none; font-family:'Inter',sans-serif; font-weight:800; font-size:10.5px;
+    letter-spacing:.14em; text-transform:uppercase; color:#A8D93B;
+    border:1px solid rgba(168,217,59,.4); border-radius:100px; padding:9px 16px;
+  }
+  .bb-sm-libre{
+    display:inline-block; margin-left:9px; font-family:'Inter',sans-serif;
+    font-weight:800; font-size:9.5px; letter-spacing:.12em;
+    text-transform:uppercase; color:#A8D93B;
+  }
+
   /* ---- les matchs suivants ---- */
   .bb-bl-suite{ margin-top:clamp(20px,2.6vw,30px) }
   .bb-bl-s{
@@ -5395,6 +5423,9 @@ window.bbCloud = function(url, w){
     } else {
       var j = m.match_date ? daysUntil(m.match_date) : null;
       html += '<div class="bb-mx-score"><b style="color:var(--bb-or);font-size:.72em">' + (j == null ? '' : (j <= 0 ? "C'est aujourd'hui" : (j === 1 ? 'Demain' : 'J-' + j))) + '</b></div>';
+      // Comment entrer : c'est la première question qu'on se pose en
+      // ouvrant la fiche d'un match à venir.
+      if (m.free_entry) html += '<p class="bb-mx-verdict" style="color:#A8D93B">Entrée gratuite</p>';
     }
 
     // L'histoire contre cet adversaire : ce que le classement ne dit pas.
@@ -5784,6 +5815,7 @@ window.bbCloud = function(url, w){
 
   /* ===== billetterie (réservation, paiement sur place) ===== */
   var bbTkOffers = [], bbTkSel = null, bbTkQty = 1, bbTkState = 'idle', bbTkResult = null;
+  var bbTkLibres = [];   // les matchs à entrée gratuite, lus à part
 
   function bbTkRpc(fn, body){
     return fetch(SUPABASE_URL + '/rest/v1/rpc/' + fn, { method: 'POST', headers: bbTkHeaders(), body: JSON.stringify(body || {}) })
@@ -5809,12 +5841,27 @@ window.bbCloud = function(url, w){
 
   function bbTkLoad(){
     var today = new Date().toISOString().slice(0,10);
-    return fetch(SUPABASE_URL + '/rest/v1/ticket_offers?select=*,matches(opponent_name,opponent_logo_url,match_date,match_time,is_home,venue)&is_open=eq.true&order=price_fcfa.asc,sort_order.asc', { headers: bbTkHeaders() })
-      .then(function(r){ if(!r.ok) throw new Error('offers'); return r.json(); })
-      .then(function(rows){
-        bbTkOffers = (rows || []).filter(function(o){ return o.matches && (!o.matches.match_date || o.matches.match_date >= today); });
-        return bbTkOffers;
+    return Promise.all([
+      fetch(SUPABASE_URL + '/rest/v1/ticket_offers?select=*,matches(opponent_name,opponent_logo_url,match_date,match_time,is_home,venue)&is_open=eq.true&order=price_fcfa.asc,sort_order.asc', { headers: bbTkHeaders() })
+        .then(function(r){ if(!r.ok) throw new Error('offers'); return r.json(); }),
+      // Un match à entrée gratuite n'a AUCUNE offre : sans cette seconde
+      // lecture il n'apparaîtrait nulle part sur la page qu'on ouvre
+      // justement pour savoir comment entrer. Elle a le droit d'échouer :
+      // la page redevient alors celle d'avant, rien ne casse.
+      fetch(SUPABASE_URL + '/rest/v1/matches?select=id,opponent_name,opponent_logo_url,match_date,match_time,is_home,venue&free_entry=eq.true&match_date=gte.' + today + '&order=match_date.asc', { headers: bbTkHeaders() })
+        .then(function(r){ return r.ok ? r.json() : []; })
+        .catch(function(){ return []; })
+    ]).then(function(res){
+      bbTkLibres = res[1] || [];
+      var estLibre = {};
+      bbTkLibres.forEach(function(m){ estLibre[m.id] = true; });
+      // Une grille oubliée sur un match passé gratuit ne doit plus
+      // s'afficher : la case cochée l'emporte sur les tarifs.
+      bbTkOffers = (res[0] || []).filter(function(o){
+        return o.matches && (!o.matches.match_date || o.matches.match_date >= today) && !estLibre[o.match_id];
       });
+      return bbTkOffers;
+    });
   }
 
   function bbTkOpen(preselect){
@@ -5918,7 +5965,7 @@ window.bbCloud = function(url, w){
     // plus sûrement qu'un paragraphe.
     function billet(g){
       var m = g.match, q = quand(m), badge = jx(m);
-      var lignes = g.offers.map(function(o){
+      var lignes = g.libre ? bandeLibre() : g.offers.map(function(o){
         var reste = Math.max((o.quota || 0) - (o.sold || 0), 0);
         var vide = reste <= 0 || o.is_open === false;
         var classe = vide ? 'nul' : (reste <= 10 ? 'peu' : '');
@@ -5953,11 +6000,28 @@ window.bbCloud = function(url, w){
         '</article>';
     }
 
+    // L'ENTRÉE GRATUITE REMPLACE LE TABLEAU DES PLACES.
+    // Pas de catégorie, pas de prix, pas de bouton : il n'y a rien à
+    // choisir ni à réserver, et un tableau vide ferait croire à une
+    // billetterie en panne.
+    function bandeLibre(){
+      return '<div class="bb-bl-libre"><b>Entrée gratuite</b>' +
+        '<span>Aucun billet à réserver : présentez-vous à l\'entrée le jour du match. ' +
+        'Venez en avance, les places assises partent vite.</span></div>';
+    }
+
     // LES SUIVANTS RESTENT DES LIGNES. Détailler quatre catégories pour
     // chaque match de la saison rendrait la page illisible, et le
     // visiteur ne réserve presque jamais le troisième match à l'avance.
     function suivant(g){
       var m = g.match, q = quand(m);
+      if (g.libre){
+        return '<div class="bb-bl-s">' +
+            '<span class="bb-bl-s-d">' + (q ? q.jour + ' ' + q.q + ' ' + q.mois : '—') + '</span>' +
+            '<span class="bb-bl-s-t">Baobabs vs ' + bbTkEsc(m.opponent_name || 'Adversaire') + '</span>' +
+            '<span class="bb-bl-s-libre">Entrée gratuite</span>' +
+          '</div>';
+      }
       var mini = g.offers.reduce(function(a, o){
         var p = Number(o.price_fcfa) || 0;
         return (a === null || p < a) ? p : a;
@@ -5986,6 +6050,13 @@ window.bbCloud = function(url, w){
     bbTkOffers.forEach(function(o){
       if (!byMatch[o.match_id]) { byMatch[o.match_id] = { match: o.matches, offers: [] }; order.push(o.match_id); }
       byMatch[o.match_id].offers.push(o);
+    });
+    // Les matchs à entrée libre entrent dans le MEME fil : ils tombent
+    // aux mêmes dates que les autres, ils se rangent au même endroit.
+    bbTkLibres.forEach(function(m){
+      if (byMatch[m.id]) return;
+      byMatch[m.id] = { match: m, offers: [], libre: true };
+      order.push(m.id);
     });
     order.sort(function(a,b){ return String(byMatch[a].match.match_date||'').localeCompare(String(byMatch[b].match.match_date||'')); });
     return order.map(function(id){ return byMatch[id]; });
@@ -9249,7 +9320,8 @@ document.addEventListener('keydown', function(e){
         '<div class="bb-sm-team">' + crest +
           '<div style="min-width:0">' +
             '<div class="bb-sm-name"><span class="bb-sm-vs">' + (m.is_home ? 'Reçoit' : 'Se déplace chez') + '</span><br>' + escHtml(m.opponent_name || 'Adversaire') + '</div>' +
-            '<div class="bb-sm-sub">' + escHtml([m.venue, m.competition].filter(Boolean).join(' · ') || '') + '</div>' +
+            '<div class="bb-sm-sub">' + escHtml([m.venue, m.competition].filter(Boolean).join(' · ') || '') +
+              (!isPlayed && m.free_entry ? '<b class="bb-sm-libre">Entrée gratuite</b>' : '') + '</div>' +
           '</div>' +
         '</div>' + right + fav +
       '</div>';
