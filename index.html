@@ -1950,25 +1950,114 @@ window.bbLienSur = function (u) {
   .bb-ac-retour:hover{ text-decoration:underline }
   .bb-ac-retour:focus-visible{ outline:2px solid #A8D93B; outline-offset:3px }
   .bb-ac-art{ max-width:min(100%,860px) }
-  .bb-ac-art-h{
-    display:flex; align-items:flex-start; gap:clamp(16px,2.4vw,32px);
-    padding-bottom:clamp(16px,2.2vw,24px); border-bottom:2px solid #F3EFE6;
-    margin-bottom:clamp(20px,2.8vw,32px);
+
+  /* LA BARRE DE LECTURE. Deux pixels en haut de la fenetre : elle dit ou
+     l'on en est sans rien occuper. Elle ne s'affiche que pendant la
+     lecture d'un article. */
+  .bb-ac-prog{
+    position:fixed; left:0; top:0; height:2px; width:0; z-index:60;
+    background:linear-gradient(90deg,var(--bb-or),#A8D93B);
+    transition:width .1s linear; pointer-events:none;
   }
-  .bb-ac-art-h .bb-ac-quand{
-    border-right:1px solid rgba(243,239,230,.24); color:#F3EFE6;
-    padding-right:clamp(14px,2vw,26px); align-self:stretch;
+
+  /* LE BANDEAU DE TETE. Rubrique, date, duree : trois reperes sur une
+     ligne, avant le titre. Ils etaient tous en base et ne s'affichaient
+     nulle part. */
+  .bb-ac-meta{
+    display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px;
+    font-family:'Inter',sans-serif; font-weight:700; font-size:10.5px;
+    letter-spacing:.16em; text-transform:uppercase; color:#7E8A82;
+    margin-bottom:clamp(12px,1.6vw,18px);
   }
-  .bb-ac-art-h .bb-ac-quand span{ color:#8F9A91 }
+  .bb-ac-meta .rub{ display:inline-flex; align-items:center; gap:7px; color:#F3EFE6 }
+  .bb-ac-meta .rub i{ width:7px; height:7px; border-radius:50%; flex:none }
+  .bb-ac-meta .sep{ width:3px; height:3px; border-radius:50%; background:#3E4A43; flex:none }
+
   .bb-ac-art h2{
     font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-.03em;
-    font-size:clamp(26px,4.4vw,52px); line-height:1.04; color:#F3EFE6; margin:0; align-self:center;
+    font-size:clamp(28px,4.6vw,56px); line-height:1.02; color:#F3EFE6;
+    margin:0 0 clamp(14px,1.8vw,20px); text-wrap:balance;
   }
+  /* LE CHAPO. Il porte la promesse de l'article : il se lit avant le
+     corps, donc il est plus grand que lui. */
+  .bb-ac-chapo{
+    font-family:'Inter',sans-serif; font-weight:400;
+    font-size:clamp(16px,1.5vw,19px); line-height:1.65; color:#B9C2BB;
+    max-width:62ch; margin:0 0 clamp(18px,2.4vw,26px); text-wrap:pretty;
+  }
+
+  /* La signature et le partage sur la meme ligne, separes par un filet
+     du titre : on sait de qui vient le texte avant de le lire. */
+  .bb-ac-sign{
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    gap:12px 18px; padding:clamp(12px,1.6vw,16px) 0;
+    border-top:1px solid rgba(243,239,230,.14);
+    border-bottom:1px solid rgba(243,239,230,.14);
+    margin-bottom:clamp(20px,2.8vw,30px);
+  }
+  .bb-ac-auteur{
+    display:flex; align-items:center; gap:10px; min-width:0;
+    font-family:'Inter',sans-serif; font-size:13.5px; color:#A9B2AB;
+  }
+  .bb-ac-auteur img{ width:30px; height:30px; border-radius:50%; object-fit:contain;
+    background:#0C1913; border:1px solid rgba(243,239,230,.16); flex:none }
+  .bb-ac-auteur b{ color:#F3EFE6; font-weight:600 }
+  .bb-ac-part{ display:flex; align-items:center; gap:8px; flex:none }
+  .bb-ac-part button{
+    display:inline-flex; align-items:center; gap:7px; cursor:pointer;
+    font-family:'Inter',sans-serif; font-weight:700; font-size:10.5px;
+    letter-spacing:.1em; text-transform:uppercase; color:#B9C2BB;
+    background:transparent; border:1px solid rgba(243,239,230,.18);
+    border-radius:100px; padding:8px 14px; transition:border-color .2s, color .2s;
+  }
+  .bb-ac-part button:hover{ border-color:var(--bb-or); color:var(--bb-or) }
+  .bb-ac-part button:focus-visible{ outline:2px solid var(--bb-or); outline-offset:2px }
+
+  /* L'IMAGE EST BORNEE EN HAUTEUR, PAS EN LARGEUR.
+     Mesure sur l'article de Nouakchott : l'affiche verticale prenait
+     1 217 px, soit un ecran et demi avant le premier mot. Bornee a
+     55 vh, elle tient dans un demi-ecran -- et une photo paysage garde
+     toute la largeur, elle n'y perd rien. */
   .bb-ac-fig{
     margin:0 0 clamp(22px,3vw,34px); border-radius:16px; overflow:hidden;
     background:#0F1E15; border:1px solid rgba(243,239,230,.1);
+    display:flex; align-items:center; justify-content:center; position:relative;
   }
-  .bb-ac-fig img{ display:block; width:100%; height:auto }
+  /* UNE AFFICHE VERTICALE est bornee en HAUTEUR : en pleine largeur elle
+     prenait 1 217 px, un ecran et demi avant le premier mot. Elle reste
+     entiere, a une taille qui se lit, et le clic l'ouvre en grand. */
+  .bb-ac-fig img{
+    display:block; width:auto; height:auto; max-width:100%;
+    max-height:clamp(300px,46vh,470px);
+  }
+  .bb-ac-fig.zoom{ cursor:zoom-in }
+  /* Le vide autour d'une affiche verticale : le lecteur du direct pose
+     deja l'image floutee derriere son cadre. Meme geste ici, meme
+     image -- rien de plus a telecharger. */
+  .bb-ac-fig .bb-ac-flou{
+    position:absolute; inset:0; z-index:0;
+    background-size:cover; background-position:center;
+    filter:blur(28px) saturate(1.15); transform:scale(1.15); opacity:.5;
+  }
+  .bb-ac-fig .bb-ac-voile{
+    position:absolute; inset:0; z-index:1; background:rgba(7,19,13,.5);
+  }
+  .bb-ac-fig img{ position:relative; z-index:2 }
+  .bb-ac-fig .bb-ac-loupe{ z-index:3 }
+  .bb-ac-fig.zoom{ padding:clamp(14px,2vw,22px) 0 }
+  .bb-ac-fig.zoom img{ box-shadow:0 18px 44px rgba(0,0,0,.5); border-radius:8px }
+  @media (prefers-reduced-motion:reduce){ .bb-ac-fig .bb-ac-flou{ filter:none; opacity:.28 } }
+  .bb-ac-fig .bb-ac-loupe{
+    position:absolute; right:12px; bottom:12px;
+    font-family:'Inter',sans-serif; font-weight:800; font-size:9.5px;
+    letter-spacing:.14em; text-transform:uppercase; color:#07130D;
+    background:var(--bb-or); border-radius:100px; padding:5px 11px; pointer-events:none;
+  }
+  /* UNE PHOTO PAYSAGE prend toute la largeur : c'est ce qu'elle demande,
+     et sa hauteur reste raisonnable d'elle-meme. */
+  .bb-ac-fig.large img{ width:100%; max-height:none }
+  .bb-ac-fig.large{ cursor:default }
+
   /* La colonne de lecture est bornee a 68 signes : au-dela, l'oeil perd
      le debut de la ligne suivante. Ce n'est pas un gout, c'est mesure. */
   .bb-ac-corps{
@@ -1976,15 +2065,53 @@ window.bbLienSur = function (u) {
     max-width:68ch;
   }
   .bb-ac-corps > p:first-child::first-letter{
-    float:left; font-family:'Anton',Impact,sans-serif; font-size:3.4em; line-height:.82;
-    padding:.04em .12em 0 0; color:#A8D93B;
+    float:left; font-family:'Anton',Impact,sans-serif; font-size:2.9em; line-height:.86;
+    padding:.05em .1em 0 0; color:#A8D93B;
   }
   .bb-ac-corps p{ margin:0 0 1.15em }
   .bb-ac-corps b, .bb-ac-corps strong{ color:#F3EFE6 }
+
+  /* A LIRE ENSUITE. Le lecteur qui finit un article ne doit pas avoir
+     pour seule sortie le bouton « retour ». */
+  .bb-ac-suite{
+    max-width:min(100%,860px); margin-top:clamp(34px,4.4vw,56px);
+    padding-top:clamp(18px,2.4vw,26px); border-top:1px solid rgba(243,239,230,.16);
+  }
+  .bb-ac-suite-t{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:10.5px;
+    letter-spacing:.2em; text-transform:uppercase; color:var(--bb-or); margin-bottom:14px;
+  }
+  .bb-ac-suite-l{
+    display:flex; align-items:center; gap:14px; width:100%; text-align:left;
+    background:transparent; border:0; border-bottom:1px solid rgba(243,239,230,.1);
+    padding:13px 0; cursor:pointer;
+  }
+  .bb-ac-suite-l:hover .bb-ac-suite-n{ color:var(--bb-or) }
+  .bb-ac-suite-l img{
+    width:56px; height:42px; object-fit:cover; border-radius:7px; flex:none;
+    border:1px solid rgba(243,239,230,.12);
+  }
+  .bb-ac-suite-c{ min-width:0; flex:1 }
+  .bb-ac-suite-d{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:9.5px;
+    letter-spacing:.14em; text-transform:uppercase; color:#7E8A82; margin-bottom:3px;
+  }
+  .bb-ac-suite-n{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:14.5px;
+    color:#F3EFE6; line-height:1.35; transition:color .2s;
+  }
+  .bb-ac-suite-f{ flex:none; color:#7E8A82 }
+
   .bb-ac-pied{
     max-width:min(100%,860px);
     margin-top:clamp(28px,3.6vw,44px); padding-top:clamp(16px,2.2vw,22px);
     border-top:1px solid rgba(243,239,230,.16);
+  }
+  @media(max-width:640px){
+    .bb-ac-fig img{ max-height:46vh }
+    .bb-ac-sign{ gap:10px }
+    .bb-ac-part button span{ display:none }
+    .bb-ac-part button{ padding:9px 11px }
   }
   .bb-ac-vide{
     font-family:'Inter',sans-serif; font-size:14px; color:#7E8A82;
@@ -9313,7 +9440,7 @@ window.bbCloud = function(url, w){
         '<span class="bb-ac-tete-vis">' + bbAcImage(n, true) + '</span>' +
         '<span class="bb-ac-panneau">' +
           bbAcCartouche(n.published_at) +
-          '<span class="bb-ac-panneau-t">' + esc(n.title || 'Sans titre') + '</span>' +
+          '<span class="bb-ac-panneau-t">' + esc(bbTypo(n.title || 'Sans titre')) + '</span>' +
         '</span>' +
       '</button>';
   }
@@ -9328,7 +9455,7 @@ window.bbCloud = function(url, w){
         '<span class="bb-ac-no">' + ('0' + (i + 1)).slice(-2) + '</span>' +
         '<span class="bb-ac-corps-l">' +
           (q ? '<span class="bb-ac-d">' + esc(q.long) + '</span>' : '') +
-          '<span class="bb-ac-t">' + esc(n.title || 'Sans titre') + '</span>' +
+          '<span class="bb-ac-t">' + esc(bbTypo(n.title || 'Sans titre')) + '</span>' +
           (ex ? '<span class="bb-ac-ex">' + esc(ex) + '</span>' : '') +
         '</span>' +
         (n.image_url ? '<span class="bb-ac-mini">' + bbAcImage(n, false) + '</span>' : '<span></span>') +
@@ -9382,6 +9509,147 @@ window.bbCloud = function(url, w){
     goTo('actualites');
   };
 
+  // L'ESPACE INSECABLE AVANT LA PONCTUATION DOUBLE.
+  // Regle du francais, et remede a un vrai defaut : « Cap sur Nouakchott
+  // / : les Baobabs » se coupait avant les deux-points sur telephone.
+  // L'insecable interdit cette coupure.
+  //
+  // On ne touche qu'a l'espace ORDINAIRE qui precede : un texte deja
+  // saisi correctement n'en recoit pas un second.
+  function bbTypo(t){
+    return String(t == null ? '' : t)
+      .replace(/ +([:;!?»])/g, '\u00a0$1')
+      .replace(/(«) +/g, '$1\u00a0');
+  }
+
+  var BB_LOGO_AC = '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp';
+
+  // La couleur d'une rubrique vient de news_categories, lue une fois.
+  // Sans reponse, on n'invente pas de teinte : la rubrique reste un mot.
+  var bbAcRubs = null;
+  function bbAcRubCouleur(nom){
+    if (!nom || !bbAcRubs) return null;
+    return bbAcRubs[String(nom).trim().toLowerCase()] || null;
+  }
+  function bbAcRubsCharger(){
+    return sbFetch('news_categories?select=name,color')
+      .then(function(rows){
+        bbAcRubs = {};
+        (rows || []).forEach(function(r){
+          if (r.name && r.color) bbAcRubs[String(r.name).trim().toLowerCase()] = r.color;
+        });
+      })
+      .catch(function(){ bbAcRubs = null; });
+  }
+
+  // Une image plus large que haute peut prendre toute la largeur ; une
+  // affiche verticale s'y trouverait etiree ou enorme. On mesure ce que
+  // le navigateur a reellement charge, jamais un rapport suppose.
+  // On garde le rapport une fois mesure : l'image n'est pas toujours
+  // chargee au moment ou l'on dessine la page, et un rapport suppose
+  // etirerait l'affiche ou l'ecraserait.
+  var bbAcRapports = {};
+  function bbAcImageLarge(n){
+    var u = n.image_url;
+    if (!u) return false;
+    if (bbAcRapports[u] != null) return bbAcRapports[u];
+    var im = new Image();
+    im.onload = function(){
+      var large = im.naturalWidth >= im.naturalHeight * 1.2;
+      if (bbAcRapports[u] !== large){
+        bbAcRapports[u] = large;
+        // Redessiner, mais seulement si c'est encore cet article qui est
+        // ouvert : sinon on ecraserait la page du lecteur.
+        if (String(state.article) === String(n.id)) bbAcOuvrir(n.id, true);
+      }
+    };
+    im.src = u;
+    // Verticale par defaut : c'est le cas qui abime le plus la page si
+    // on se trompe, donc celui qu'on protege.
+    return false;
+  }
+
+  // « A LIRE ENSUITE » : les deux articles voisins, celui d'avant et
+  // celui d'apres dans l'ordre du site. Le lecteur qui finit ne doit pas
+  // avoir pour seule sortie le bouton « retour ».
+  function bbAcSuiteHtml(n){
+    var i = -1;
+    for (var k = 0; k < bbNews.length; k++) if (String(bbNews[k].id) === String(n.id)) { i = k; break; }
+    var voisins = [];
+    if (i >= 0){
+      if (bbNews[i + 1]) voisins.push(bbNews[i + 1]);
+      if (bbNews[i - 1]) voisins.push(bbNews[i - 1]);
+      if (voisins.length < 2){
+        for (var j = 0; j < bbNews.length && voisins.length < 2; j++){
+          if (j === i) continue;
+          if (voisins.indexOf(bbNews[j]) < 0) voisins.push(bbNews[j]);
+        }
+      }
+    }
+    if (!voisins.length) return '';
+    return '<div class="bb-ac-suite">' +
+      '<div class="bb-ac-suite-t">À lire ensuite</div>' +
+      voisins.map(function(x){
+        var qq = bbAcJour(x.published_at);
+        return '<button type="button" class="bb-ac-suite-l" data-ac="' + esc(String(x.id)) + '">' +
+          (x.image_url ? '<img src="' + window.bbSafeUrl(window.bbCloud ? window.bbCloud(x.image_url, 200) : x.image_url) + '" alt="" loading="lazy">' : '') +
+          '<span class="bb-ac-suite-c">' +
+            (qq && qq.long ? '<span class="bb-ac-suite-d">' + esc(qq.long) + '</span>' : '') +
+            '<span class="bb-ac-suite-n">' + esc(bbTypo(x.title || 'Sans titre')) + '</span>' +
+          '</span>' +
+          '<span class="bb-ac-suite-f">→</span>' +
+        '</button>';
+      }).join('') + '</div>';
+  }
+
+  // LE PARTAGE. WhatsApp d'abord : c'est par la que le club diffuse.
+  // L'adresse partagee porte le slug, elle rouvre donc l'article.
+  function bbAcPartage(n){
+    var lien = location.origin + location.pathname +
+      (n.slug ? '#actualites/' + n.slug : '#actualites-' + n.id);
+    var wa = document.querySelector('[data-ac-wa]');
+    if (wa) wa.addEventListener('click', function(){
+      var t = (n.title || '') + ' — ' + lien;
+      window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank', 'noopener');
+    });
+    var cp = document.querySelector('[data-ac-copie]');
+    if (cp) cp.addEventListener('click', function(){
+      var dit = function(m){
+        var e = document.getElementById('bb-ac-copie-t');
+        if (!e) return;
+        e.textContent = m;
+        setTimeout(function(){ e.textContent = 'Copier le lien'; }, 2200);
+      };
+      // clipboard demande un contexte securise : sans lui, on ne fait
+      // pas semblant, on affiche l'echec.
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(lien).then(function(){ dit('Lien copié'); },
+                                                 function(){ dit('Copie refusée'); });
+      } else dit('Copie indisponible');
+    });
+  }
+
+  // La barre de lecture : la part de l'article deja parcourue. On mesure
+  // l'ARTICLE, pas la page : le pied et « a lire ensuite » ne comptent
+  // pas comme du texte lu.
+  function bbAcProgBrancher(){
+    var bar = document.getElementById('bb-ac-prog');
+    var art = document.querySelector('.bb-ac-art');
+    if (!bar || !art) return;
+    function peindre(){
+      var r = art.getBoundingClientRect();
+      var h = r.height - window.innerHeight;
+      var p = h <= 0 ? 100 : Math.min(100, Math.max(0, (-r.top / h) * 100));
+      bar.style.width = p + '%';
+    }
+    peindre();
+    // On se rebranche a chaque ouverture : l'ecouteur precedent visait
+    // une barre qui n'est plus dans le document.
+    if (window.bbAcProgH) window.removeEventListener('scroll', window.bbAcProgH);
+    window.bbAcProgH = peindre;
+    window.addEventListener('scroll', peindre, { passive:true });
+  }
+
   function bbAcParId(id){
     for (var i = 0; i < bbNews.length; i++)
       if (String(bbNews[i].id) === String(id)) return bbNews[i];
@@ -9395,21 +9663,82 @@ window.bbCloud = function(url, w){
     if (state.page !== 'actualites') goTo('actualites', true);
 
     var corps = n.body ? bbRich(n.body) : '';
+
+    // LE TEMPS DE LECTURE, calcule ici. La vue articles_admin le donne a
+    // l'administration, mais le site lit « news » directement : 200 mots
+    // par minute, la meme regle des deux cotes.
+    var mots = bbAcTexte(n.body || '').split(/\s+/).filter(Boolean).length;
+    var mn = Math.max(1, Math.round(mots / 200));
+
+    // La rubrique porte sa couleur, choisie dans l'administration. Sans
+    // couleur connue, elle reste un mot : pas de teinte inventee.
+    var rubCol = bbAcRubCouleur(n.category);
+    var meta = [];
+    if (n.category) meta.push('<span class="rub">' +
+      (rubCol ? '<i style="background:' + esc(rubCol) + '"></i>' : '') + esc(n.category) + '</span>');
+    var q = bbAcJour(n.published_at);
+    if (q && q.long) meta.push('<span>' + esc(q.long) + '</span>');
+    meta.push('<span>' + mn + ' min de lecture</span>');
+
+    // Le chapo n'est pas le debut du corps : c'est « excerpt », ecrit
+    // pour etre lu seul. Sans lui, on ne met rien -- une phrase coupee
+    // au hasard dirait moins bien que rien.
+    var chapo = (n.excerpt || '').trim();
+
+    // Une affiche verticale et une photo paysage ne se posent pas
+    // pareil : la seconde peut prendre toute la largeur.
+    var large = bbAcImageLarge(n) ? ' large' : '';
+
     boite.innerHTML =
+      '<div class="bb-ac-prog" id="bb-ac-prog"></div>' +
       '<button type="button" class="bb-ac-retour" data-ac-retour>← Toutes les actualités</button>' +
       '<article class="bb-ac-art">' +
-        '<header class="bb-ac-art-h">' +
-          bbAcCartouche(n.published_at) +
-          '<h2>' + esc(n.title || 'Sans titre') + '</h2>' +
-        '</header>' +
-        (n.image_url ? '<figure class="bb-ac-fig">' + bbAcImage(n, true) + '</figure>' : '') +
+        (meta.length ? '<div class="bb-ac-meta">' + meta.join('<span class="sep"></span>') + '</div>' : '') +
+        '<h2>' + esc(bbTypo(n.title || 'Sans titre')) + '</h2>' +
+        (chapo ? '<p class="bb-ac-chapo">' + esc(bbTypo(chapo)) + '</p>' : '') +
+        '<div class="bb-ac-sign">' +
+          '<span class="bb-ac-auteur">' +
+            '<img src="' + window.bbSafeUrl(BB_LOGO_AC) + '" alt="">' +
+            '<span>' + (n.author ? 'Par <b>' + esc(n.author) + '</b>' : '<b>Baobabs Basket Club</b>') + '</span>' +
+          '</span>' +
+          '<span class="bb-ac-part">' +
+            '<button type="button" data-ac-wa title="Partager sur WhatsApp">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l4.9-1.4A10 10 0 1 0 12 2Zm5.1 14.1c-.2.6-1.2 1.1-1.7 1.2-.5 0-1 .1-1.7-.1-1-.3-2.5-1-4-2.6-1.2-1.2-2-2.7-2.2-3.2-.2-.5-.3-1-.3-1.5 0-.6.3-1.1.6-1.4.2-.2.4-.3.6-.3h.5c.2 0 .4 0 .5.4l.7 1.7c.1.2 0 .4-.1.5l-.3.4c-.1.2-.2.3 0 .5.4.7.9 1.3 1.5 1.8.5.4 1 .7 1.4.9.2.1.4.1.5-.1l.5-.6c.2-.2.3-.2.5-.1l1.6.8c.3.1.4.2.4.4 0 .2 0 .8-.2 1.3Z"/></svg>' +
+              '<span>WhatsApp</span></button>' +
+            '<button type="button" data-ac-copie title="Copier le lien">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>' +
+              '<span id="bb-ac-copie-t">Copier le lien</span></button>' +
+          '</span>' +
+        '</div>' +
+        (n.image_url
+          ? '<figure class="bb-ac-fig' + large + (large ? '' : ' zoom') + '"' +
+            (large ? '' : ' data-ac-zoom="' + esc(n.image_url) + '" data-ac-zoom-alt="' + esc(n.image_alt || n.title || '') + '"') + '>' +
+            (large ? '' :
+              '<span class="bb-ac-flou" style="background-image:url(' +
+              window.bbSafeUrl(window.bbCloud ? window.bbCloud(n.image_url, 700) : n.image_url) +
+              ')"></span><span class="bb-ac-voile"></span>') +
+            bbAcImage(n, true) +
+            (large ? '' : '<span class="bb-ac-loupe">Voir en grand</span>') +
+            '</figure>'
+          : '') +
         (corps ? '<div class="bb-ac-corps">' + corps + '</div>' : '') +
       '</article>' +
+      bbAcSuiteHtml(n) +
       '<div class="bb-ac-pied">' +
         '<button type="button" class="bb-ac-retour" style="margin:0" data-ac-retour>← Toutes les actualités</button>' +
       '</div>';
+
     boite.querySelectorAll('[data-ac-retour]').forEach(function(b){
       b.addEventListener('click', function(){ bbAcFermer(); });
+    });
+    bbAcBrancher(boite);
+    bbAcPartage(n);
+    bbAcProgBrancher();
+    // Le meme agrandissement que sur le bloc « A la une » de l'accueil :
+    // une affiche se lit en grand, pas dans une colonne de texte.
+    var zf = boite.querySelector('[data-ac-zoom]');
+    if (zf && typeof bbEvModal === 'function') zf.addEventListener('click', function(){
+      bbEvModal(zf.getAttribute('data-ac-zoom'), zf.getAttribute('data-ac-zoom-alt'));
     });
 
     document.getElementById('bb-ac-liste').classList.add('bb-hide');
@@ -9441,6 +9770,9 @@ window.bbCloud = function(url, w){
   // ---------- l'accueil ----------
   function renderActus(rows){
     if (window.bbAppFeed) bbAppFeed.news(rows || []);
+    // Les couleurs de rubrique, une fois : elles servent au bandeau de
+    // tete d'un article. Sans reponse, la rubrique reste un mot.
+    if (bbAcRubs === null) bbAcRubsCharger();
     bbNews = rows || [];
     bbAcRendreListe();
 
