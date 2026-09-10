@@ -8999,13 +8999,50 @@ window.bbCloud = function(url, w){
       if(p[1]){ var svg=el.querySelector('svg'); el.textContent=p[1]; if(svg) el.appendChild(svg); }
       bbApplyLink(el, p[2]);
     });
-    // Pastille de direct : un texte vide la masque complètement.
-    var pill=document.getElementById('bb-hs-livepill');
-    if(pill){
-      if(s.hs_live_note==='') pill.style.display='none';
-      else if(s.hs_live_note){ pill.style.display='flex'; bbSet('bb-hs-livenote', s.hs_live_note); }
-    }
+    // Pastille de direct : le calendrier decide, le reglage sert de
+    // repli. Un texte vide la masque completement.
+    window.bbLiveEtat.note = (s.hs_live_note == null) ? null : String(s.hs_live_note);
+    window.bbLivePill();
   }
+
+  // LA PASTILLE DU DIRECT SUIT LE CALENDRIER.
+  // Elle portait un texte tape a la main : un match plus proche entrait
+  // au calendrier et la pastille annoncait toujours l'ancienne date, a
+  // 200 px d'une carte qui disait la bonne. Deux affirmations
+  // contradictoires sur le meme ecran, et c'est celle du haut qu'on lit
+  // d'abord.
+  //
+  // Les deux informations arrivent par deux chemins distincts, et le
+  // prochain match est lu dans un AUTRE bloc de script : chacun depose
+  // ce qu'il a dans bbLiveEtat, puis appelle cette fonction. Aucun ordre
+  // a respecter, donc aucun ecrasement muet.
+  window.bbLiveEtat = { note:null, match:null };
+  var BB_LIVE_J = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
+
+  window.bbLivePill = function(){
+    var pill = document.getElementById('bb-hs-livepill');
+    if (!pill) return;
+    var e = window.bbLiveEtat;
+
+    // Reglage vide = pastille retiree, quoi qu'il y ait au calendrier.
+    if (e.note === ''){ pill.style.display = 'none'; return; }
+
+    var mot = null, m = e.match;
+    if (m && m.match_date){
+      var d = new Date(m.match_date + 'T12:00:00');
+      if (!isNaN(d.getTime())){
+        var h = m.match_time ? String(m.match_time).slice(0, 5) : '';
+        mot = 'Prochain direct ' + BB_LIVE_J[d.getDay()] + (h ? ' ' + h : '');
+      }
+    }
+    // Aucun match programme : c'est la que le texte de l'admin sert.
+    if (!mot) mot = e.note;
+    if (!mot){ pill.style.display = 'none'; return; }
+
+    pill.style.display = 'flex';
+    var t = document.getElementById('bb-hs-livenote');
+    if (t) t.textContent = mot;
+  };
 
   function applyHero(s){
     if(!s) return;
@@ -9735,6 +9772,13 @@ document.addEventListener('keydown', function(e){
 
   // ===== Carte "Prochain match" (accueil) =====
   function renderNextMatch(upcoming){
+    // Depose AVANT le garde-fou : sans match a venir, la pastille du
+    // direct doit repasser au texte de l'admin, pas garder une date
+    // depassee.
+    if (window.bbLiveEtat){
+      window.bbLiveEtat.match = (upcoming && upcoming.length) ? upcoming[0] : null;
+      if (window.bbLivePill) window.bbLivePill();
+    }
     var card = document.getElementById('bb-next-match');
     if (!card || !upcoming || !upcoming.length) return; // garde le contenu statique de secours
     var m = upcoming[0];
