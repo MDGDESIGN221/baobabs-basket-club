@@ -608,6 +608,34 @@
   /* Le degrade or -> vert citron laissait croire que la couleur portait
      un sens, alors qu'elle ne disait que « rempli ». Meme correction
      que sur la jauge du tableau de bord. */
+  /* ===== LES EVENEMENTS : une carte par tournoi =====
+     Meme famille que la galerie : la vignette a gauche dit de quoi on
+     parle avant qu'on lise le titre. */
+  .ev-c{display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;
+    background:var(--surface);border-top:2px solid var(--line-strong);
+    padding:16px 18px 18px;margin-bottom:14px}
+  .ev-c.on{border-top-color:var(--gold)}
+  .ev-vis{width:96px;border:1px solid var(--line-strong);background:var(--surface-2);
+    line-height:0;align-self:start}
+  .ev-vis img{display:block;width:100%;height:auto}
+  .ev-vis .ev-noimg{display:flex;align-items:center;justify-content:center;
+    aspect-ratio:5/7;font-size:10px;color:var(--faint);text-align:center;padding:6px;line-height:1.4}
+  .ev-b{min-width:0}
+  .ev-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .ev-h b{font-family:var(--font-ui);font-weight:700;font-size:15px;color:var(--text)}
+  .ev-h span{font-size:11.5px;color:var(--faint)}
+  .ev-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0 16px}
+  .ev-f{margin-bottom:12px;min-width:0}
+  .ev-f label{display:block;font-family:var(--font-ui);font-weight:600;font-size:9.5px;
+    letter-spacing:.11em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+  .ev-f input,.ev-f textarea,.ev-f select{width:100%;background:var(--surface-2);
+    border:1px solid var(--line-strong);border-radius:var(--r-sm);color:var(--text);
+    font:inherit;font-size:13px;padding:9px 10px}
+  .ev-f textarea{min-height:70px;resize:vertical;line-height:1.5}
+  .ev-large{grid-column:1/-1}
+  .ev-act{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    padding-top:12px;border-top:1px solid var(--line)}
+  .ev-act .grow{flex:1}
   .tk-gauge{height:3px;border-radius:0;background:var(--surface-3);margin:9px 0 6px;overflow:hidden}
   .tk-gauge i{display:block;height:100%;background:var(--gold);transition:width .3s ease}
   @media(prefers-reduced-motion:reduce){.tk-gauge i{transition:none}}
@@ -3751,6 +3779,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3zM11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
           Bandeau d'annonce
         </button>
+        <button class="sb-link" data-section="evenements">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4"/><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M3 11h18M8 15h5"/></svg>
+          Événements — à la une
+        </button>
       </div>
 
       <div class="sb-group">
@@ -4536,6 +4568,23 @@
     </section>
 
     <!-- ===== SECTION MÉDIATHÈQUE ===== -->
+    <!-- ===== LES EVENEMENTS MIS EN AVANT =====
+         Le bloc « A la une » de l'accueil lit cette table. Le plus petit
+         « ordre » passe en grand, les autres en une ligne dessous. -->
+    <section id="section-evenements" class="hide">
+      <div class="ds-head">
+        <span class="ds-count" id="ev-count">—</span>
+        <button type="button" class="ds-act" id="ev-refresh">Rafraîchir</button>
+        <button type="button" class="ds-mini-btn" id="ev-new">Nouvel événement</button>
+      </div>
+      <div class="gal-note hide" id="ev-note"></div>
+      <div class="callout ds-note">Ce que la page d'accueil met en avant, juste sous la carte du direct.
+        <b>Le plus petit « rang » passe en grand</b>&nbsp;; les autres s'écrivent en une ligne dessous, avec leur affiche en miniature.
+        <b>Le dernier jour d'affichage retire l'événement tout seul</b> au lendemain&nbsp;: rien à débrancher après le tournoi.</div>
+      <div id="ev-liste"><div class="empty">Lecture des événements…</div></div>
+      <div class="msg" id="ev-msg"></div>
+    </section>
+
     <section id="section-galerie" class="hide">
       <div class="ds-head">
         <span class="ds-count" id="gal-count">—</span>
@@ -5677,7 +5726,7 @@
     tickets:'billetterie',
     products:'boutique', stock:'boutique', promos:'boutique',
     orders2:'boutique', clients:'boutique',
-    banners:'contenu', announce:'contenu', articles:'contenu', categories:'contenu',
+    banners:'contenu', announce:'contenu', evenements:'contenu', articles:'contenu', categories:'contenu',
     media:'contenu', galerie:'contenu', news:'contenu', partners:'contenu', timeline:'contenu',
     c_home:'contenu', c_club:'contenu', c_tryouts:'contenu', c_inscriptions:'contenu',
     c_app:'contenu', c_promo:'contenu', c_legal:'contenu', home:'contenu',
@@ -7808,7 +7857,7 @@
     products:'boutique', stock:'boutique', promos:'boutique',
     clients:'boutique', orders2:'boutique',
     articles:'actus', categories:'actus', news:'actus', newsl:'actus',
-    announce:'actus', banners:'actus',
+    announce:'actus', banners:'actus', evenements:'actus',
     partners:'partenaires',
     home:'club', c_home:'club', c_club:'club', c_tryouts:'club',
     c_inscriptions:'club', c_app:'club', c_promo:'club', c_legal:'club',
@@ -8118,6 +8167,7 @@
     stock:{t:'Stock',d:'L\'état des réserves : ce qui est épuisé, ce qui approche du seuil, et la saisie rapide des quantités.'},
     articles:{t:'Articles',d:'Une fiche par article : rédaction, chapô, image de couverture, catégorie, référencement et publication.'},
     categories:{t:'Catégories',d:'Les rubriques des actualités, avec leur couleur. Utilisées dans l\'admin comme sur le site.'},
+    evenements:{t:'Événements — à la une',d:'Les tournois et temps forts mis en avant sur l\'accueil. Le plus petit rang passe en grand, les autres en une ligne dessous.'},
     galerie:{t:'Galerie',d:'Les photos que le site affiche dans sa galerie — leur ordre, leur légende, et celles qu\'on met de côté.'},
     media:{t:'Médiathèque',d:'Tous les visuels du site, en quatre familles : vos envois, ceux que les fiches utilisent, ceux que la page affiche, et ce qui ne sert plus à rien.'},
     calendar:{t:'Calendrier',d:'La saison en un coup d\'œil : une vue mois ou une liste chronologique de toutes les rencontres.'},
@@ -8179,6 +8229,7 @@
     stock: ["<b>L'état des réserves, par taille.</b> Saisie rapide des quantités, seuil d'alerte par produit.","« Épuisé » et « stock bas » se calculent tout seuls ; le site suit automatiquement.","Le rail de droite (grands écrans) et le tableau de bord remontent les produits à recommander."],
     articles: ["<b>La rédaction des actualités</b> : texte, chapô, image de couverture, catégorie, auteur, référencement.","Un article passe par des statuts : brouillon → publié. Seuls les publiés apparaissent sur le site.","Le chapô et la catégorie s'affichent sur les cartes d'actualité du site.","Le relevé du haut compte une chose qui ne se voyait nulle part : <b>depuis combien de jours le site n’a rien reçu</b>. Il s’allume à six semaines — le même seuil que l’alerte de la cloche, pour que les deux ne se contredisent pas."],
     categories: ["<b>Les rubriques des actualités</b>, chacune avec sa couleur.","Utilisées sur le site (étiquettes des articles) et dans l'admin pour filtrer.","C’est la <b>seule couleur libre</b> de toute l’administration : partout ailleurs l’or dit où porter la main et rien d’autre ne se peint. Ici, c’est vous qui choisissez — et elle sert de repère dans la liste des articles."],
+    evenements: ["<b>Ce que la page d'accueil met en avant</b>, juste sous la carte du direct : un tournoi, un temps fort. Une carte par événement, et la vignette à gauche dit de quoi on parle avant qu'on lise le titre.","<b>Le rang decide, pas la date.</b> Le plus petit rang passe <b>en grand</b> ; les autres s'écrivent en une ligne dessous, avec leur affiche en miniature. Un tournoi international peut donc passer devant un tournoi de quartier qui a lieu avant lui.","<b>Le dernier jour d'affichage retire l'événement tout seul</b> au lendemain. Rien à débrancher après le tournoi : un événement terminé resté en tête de page fait douter de tout le reste de la page.","<b>Le programme s'écrit une ligne par étape</b>, sous la forme <code>23 septembre | Ouverture : concert. | Entrée gratuite</code>. Les barres verticales séparent le jour, ce qui s'y passe, et ce que coûte l'entrée. Autant de lignes que vous voulez.","<b>Le bouton mène à UN article</b>, choisi dans la liste — pas retapé. Une adresse mal recopiée donnerait un bouton qui n'ouvre rien, et rien ne le signalerait.","<b>Un événement neuf arrive masqué</b>, et en dernier rang. On le remplit d'abord, on le montre ensuite avec <b>Mettre sur le site</b> : l'inverse poserait une carte vide en tête de l'accueil le temps de la saisie."],
     galerie: ["<b>Les photos que le site affiche dans sa galerie</b>, dans l’ordre où elles y sont. Le numéro sur une vignette est son rang sur le site.","Le formulaire du haut ajoute une photo : l’adresse de l’image suffit, la légende et l’album sont facultatifs.","<b>Publiée / Masquée</b> retire une photo du site sans la supprimer — elle reste ici, prête à revenir. Les flèches ‹ et › la déplacent dans l’ordre, et le site suit aussitôt.","La légende s’écrit sur la vignette et s’enregistre quand vous quittez le champ. <b>Supprimer</b> ne retire que la ligne : le fichier reste dans la Médiathèque.","<b>Film</b> ne concerne que les vidéos : l’image ajoutée au-dessus devient alors l’affiche du film."],
     media: ["<b>Tous les visuels du site, en quatre familles.</b> <b>Vos envois</b> : ce que vous déposez ici, rangé par dossier. <b>Utilisées par les fiches</b> : les images enregistrées dans les fiches (adversaires, joueuses, produits, articles…). <b>Sur le site</b> : ce que la page d’accueil affiche réellement, relevé sur la page elle-même à chaque ouverture. <b>Ce qui ne sert plus</b> : les fichiers qu’aucune fiche et aucune page n’utilise, dans <code>/media</code> comme dans vos envois.","Un clic sur une image copie son adresse — collez-la dans n'importe quel champ image.","Le téléversement ne marche que dans <b>Vos envois</b> ; les trois autres familles se modifient depuis leur source — la fiche concernée pour les images de fiches, et pour ce qui est écrit dans la page, une modification du site.","<b>Vos images sont allégées toutes seules à l’envoi</b>, et le message vous dit de combien. Une photo de 5 Mo tombe autour de 250 Ko, sans différence visible — c’est ce qui garde le site rapide sur téléphone. Le réglage sous la zone de dépôt vaut pour <b>tout l’admin</b>, pas seulement pour cet écran."],
     calendar: ["<b>La saison en un coup d'œil</b> : vue mois ou liste chronologique.","Cliquez une rencontre pour ouvrir sa fiche complète.","Les matchs sans lieu à moins de 48 h sont signalés."],
@@ -8372,6 +8423,14 @@
                  ['#ar-kpis', '#ar-filter']],
     categories: ['#ct-rows', ['#ct-rows .ct-col', '#ct-rows'],
                  ['#ct-rows .ct-dot', '#ct-rows']],
+    // Six conseils, six cibles. La carte n'existe qu'une fois un
+    // evenement cree : sans elle on designe la liste, ce qui reste vrai.
+    evenements: [['#ev-liste .ev-c', '#ev-liste'],
+                 ['#ev-liste .ev-c [data-c="ordre"]', '#ev-liste'],
+                 ['#ev-liste .ev-c [data-c="fin"]', '#ev-liste'],
+                 ['#ev-liste .ev-c [data-c="programme"]', '#ev-liste'],
+                 ['#ev-liste .ev-c [data-c="article_slug"]', '#ev-liste'],
+                 '#ev-new'],
     galerie:    ['#gal-grille', '#gal-url',
                  ['#gal-grille .gal-act', '#gal-grille'],
                  ['#gal-grille .gal-leg', '#gal-grille'],
@@ -8626,7 +8685,7 @@
   // retirés de la navigation. Leur balisage reste masqué dans la page le
   // temps du démêlage du code (loadTeams alimente encore l'ancien
   // formulaire), mais aucun chemin de l'admin n'y mène plus.
-  var ALL_SECTIONS = ['dashboard','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
+  var ALL_SECTIONS = ['dashboard','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
 
@@ -16109,6 +16168,266 @@
   // Ce qu'on voit ici, dans cet ordre, est ce qu'on verra la-bas.
   var galRows = [], galTable = true;
 
+  // =================================================================
+  // LES EVENEMENTS MIS EN AVANT
+  // =================================================================
+  // Le bloc « A la une » de l'accueil lisait 27 reglages dans
+  // site_settings : un seul evenement, et vingt-sept champs de plus a
+  // chaque tournoi. Il lit maintenant cette table.
+  //
+  // Ecrit sur le patron de la Galerie, y compris pour le detail qui
+  // compte : si la table n'existe pas, l'ecran le DIT et nomme la
+  // migration a passer. Un ecran vide sans raison fait chercher une
+  // panne la ou il n'y a qu'une migration oubliee.
+  var evRows = [], evTable = true, evArticles = [], evStarted = false;
+
+  function evInit(){
+    if (!evStarted){
+      evStarted = true;
+      document.getElementById('ev-refresh').addEventListener('click', evLoad);
+      document.getElementById('ev-new').addEventListener('click', evNouveau);
+    }
+    evLoad();
+  }
+
+  function evLoad(){
+    var box = document.getElementById('ev-liste'); if (!box) return;
+    return Promise.all([
+      fetch(SUPABASE_URL + '/rest/v1/evenements?select=*&order=ordre.asc,debut.asc', { headers: sbHeaders() })
+        .then(function(r){
+          if (r.status === 404 || r.status === 400){ evTable = false; return []; }
+          if (!r.ok) throw new Error('lecture');
+          evTable = true;
+          return r.json();
+        }),
+      // Les articles publies : le lien vers l'actualite se CHOISIT, il ne
+      // se retape pas. Une adresse mal recopiee donne un bouton qui
+      // n'ouvre rien, et rien ne le signale.
+      sbGet('news?select=slug,title&status=eq.publie&order=published_at.desc&limit=60').catch(function(){ return []; })
+    ]).then(function(res){
+      evRows = res[0] || [];
+      evArticles = res[1] || [];
+      evRender();
+    }).catch(function(){
+      box.innerHTML = '<div class="empty">Les événements n’ont pas pu être lus.</div>';
+    });
+  }
+
+  function evJourFr(iso){
+    if (!iso) return '';
+    var d = new Date(String(iso).trim().replace(' ', 'T'));
+    return isNaN(d.getTime()) ? '' : formatDateShort(String(iso).slice(0, 10));
+  }
+
+  // « datetime-local » veut aaaa-mm-jjThh:mm, sans fuseau ni secondes.
+  function evPourChamp(iso){
+    if (!iso) return '';
+    var t = String(iso).trim().replace(' ', 'T');
+    return t.slice(0, 16);
+  }
+
+  function evRender(){
+    var box = document.getElementById('ev-liste'); if (!box) return;
+    var cpt = document.getElementById('ev-count');
+    var note = document.getElementById('ev-note');
+
+    if (note){
+      note.classList.toggle('hide', evTable);
+      if (!evTable)
+        note.innerHTML = 'La table n’existe pas encore : passez <code>MIGRATION-evenements.sql</code> ' +
+          'dans Supabase. En attendant, le site retombe sur les réglages de ' +
+          '<b>Pages du site → Accueil → À la une</b> — il ne casse pas, mais il ne porte qu’un seul événement.';
+    }
+    if (cpt) cpt.textContent = evRows.length
+      ? evRows.length + (evRows.length > 1 ? ' événements' : ' événement') : '—';
+
+    if (!evTable){ box.innerHTML = ''; return; }
+    if (!evRows.length){
+      box.innerHTML = '<div class="empty">Aucun événement. <b>Nouvel événement</b> en crée un.</div>';
+      return;
+    }
+
+    var today = new Date().toISOString().slice(0, 10);
+
+    box.innerHTML = evRows.map(function(r, i){
+      var passe = r.fin && String(r.fin).slice(0, 10) < today;
+      var etat = !r.actif ? '<span class="ds-tag">Masqué</span>'
+               : passe    ? '<span class="ds-tag warn">Terminé — retiré du site</span>'
+               : i === 0  ? '<span class="ds-st act"><i></i>En grand sur l’accueil</span>'
+                          : '<span class="ds-st act"><i></i>En une ligne sur l’accueil</span>';
+
+      function champ(cle, label, type, ph, cls){
+        var v = r[cle] == null ? '' : r[cle];
+        if (cle === 'debut') v = evPourChamp(v);
+        if (cle === 'fin') v = String(v).slice(0, 10);
+        return '<div class="ev-f' + (cls ? ' ' + cls : '') + '"><label>' + esc(label) + '</label>' +
+          (type === 'textarea'
+            ? '<textarea data-c="' + cle + '" placeholder="' + esc(ph || '') + '">' + esc(v) + '</textarea>'
+            : '<input data-c="' + cle + '" type="' + (type || 'text') + '" value="' + esc(v) + '" placeholder="' + esc(ph || '') + '">') +
+        '</div>';
+      }
+
+      // Le programme sur une ligne par etape, separee par des barres.
+      // Meme forme que les categories d'inscription : le club ecrit
+      // comme il annonce, sans apprendre le JSON.
+      var etapes = r.programme;
+      if (typeof etapes === 'string'){ try { etapes = JSON.parse(etapes); } catch(e){ etapes = []; } }
+      var progTexte = (etapes || []).map(function(p){
+        return [p.jour || '', p.texte || '', p.entree || ''].join(' | ');
+      }).join('\n');
+
+      var connu = evArticles.some(function(a){ return a.slug === r.article_slug; });
+      var opts = '<option value="">Aucun : le bouton mène à la liste</option>' +
+        // L'adresse en place, quand la liste ne la porte pas : article
+        // dépublié, renommé, ou lecture en échec. Sans cette option, le
+        // premier « Enregistrer » effacerait le lien en silence.
+        (r.article_slug && !connu
+          ? '<option value="' + esc(r.article_slug) + '" selected>' +
+            esc(r.article_slug) + ' (article introuvable — gardé tel quel)</option>'
+          : '') +
+        evArticles.map(function(a){
+          return '<option value="' + esc(a.slug) + '"' + (a.slug === r.article_slug ? ' selected' : '') + '>' +
+            esc(String(a.title || a.slug).slice(0, 70)) + '</option>';
+        }).join('');
+
+      return '<div class="ev-c' + (r.actif && !passe ? ' on' : '') + '" data-id="' + esc(String(r.id)) + '">' +
+        '<span class="ev-vis">' +
+          (r.affiche_url
+            ? '<img src="' + esc(r.affiche_url) + '" alt="" loading="lazy">'
+            : '<span class="ev-noimg">Pas d’affiche</span>') +
+        '</span>' +
+        '<div class="ev-b">' +
+          '<div class="ev-h"><b>' + esc(r.titre || 'Sans titre') + '</b>' +
+            '<span>' + esc([r.dates, r.lieu].filter(Boolean).join(' · ')) + '</span>' + etat + '</div>' +
+          '<div class="ev-g">' +
+            champ('titre', 'Titre', 'text', 'CAP SUR NOUAKCHOTT') +
+            champ('kicker', 'Sur-titre', 'text', 'À la une · Tournoi international') +
+            champ('ordre', 'Rang (le plus petit passe en grand)', 'number', '10') +
+            champ('texte', 'Paragraphe', 'textarea', 'Ce qui se joue, en deux ou trois phrases.', 'ev-large') +
+            champ('dates', 'Dates (telles qu’affichées)', 'text', '23 → 29 septembre 2026') +
+            champ('lieu', 'Lieu', 'text', 'Terrain de basket de Nouakchott') +
+            champ('organisateur', 'Organisateur', 'text', 'Women Sport RIM') +
+            champ('theme', 'Thème ou objectif', 'text', 'Sport au féminin…') +
+            champ('nations', 'Nations engagées (une étoile devant la nôtre)', 'text', 'Mali, *Sénégal') +
+            champ('debut', 'Début — compte à rebours', 'datetime-local') +
+            champ('fin', 'Dernier jour d’affichage', 'date') +
+            '<div class="ev-f ev-large"><label>Programme — une ligne par étape : jour | ce qui s’y passe | entrée</label>' +
+              '<textarea data-c="programme" placeholder="23 septembre | Ouverture : concert et don du sang. | Entrée : kits scolaires">' +
+              esc(progTexte) + '</textarea></div>' +
+            champ('affiche_url', 'Affiche — vignette', 'text', '/media/img/affiche-t.webp') +
+            champ('affiche_pleine_url', 'Affiche — version pleine', 'text', '/media/img/affiche.webp') +
+            champ('affiche_alt', 'Affiche — description (lecteurs d’écran)', 'text', 'Affiche du tournoi…', 'ev-large') +
+            champ('affiche_label', 'Pastille sur l’affiche', 'text', 'Voir l’affiche') +
+            champ('cta_label', 'Bouton — libellé', 'text', 'Lire l’actualité') +
+            '<div class="ev-f"><label>Bouton — article ouvert</label>' +
+              '<select data-c="article_slug">' + opts + '</select></div>' +
+            champ('tel', 'Téléphone affiché (vide = pas de bouton)', 'text', '+222 36 84 96 31') +
+          '</div>' +
+          '<div class="ev-act">' +
+            '<button type="button" class="btn btn-primary ev-save" style="padding:9px 16px;font-size:13px">Enregistrer</button>' +
+            '<button type="button" class="ds-act ev-vu">' + (r.actif ? 'Retirer du site' : 'Mettre sur le site') + '</button>' +
+            '<span class="grow"></span>' +
+            '<button type="button" class="ds-act ev-del">Supprimer</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    box.querySelectorAll('.ev-c').forEach(function(carte){
+      var id = carte.getAttribute('data-id');
+      carte.querySelector('.ev-save').addEventListener('click', function(){ evEnregistrer(id, carte, this); });
+      carte.querySelector('.ev-vu').addEventListener('click', function(){ evBasculer(id); });
+      carte.querySelector('.ev-del').addEventListener('click', function(){ evSupprimer(id, carte); });
+    });
+  }
+
+  function evValeurs(carte){
+    var v = {};
+    carte.querySelectorAll('[data-c]').forEach(function(el){
+      v[el.getAttribute('data-c')] = el.value;
+    });
+    var p = {
+      titre: (v.titre || '').trim(),
+      kicker: (v.kicker || '').trim() || null,
+      texte: (v.texte || '').trim() || null,
+      dates: (v.dates || '').trim() || null,
+      lieu: (v.lieu || '').trim() || null,
+      organisateur: (v.organisateur || '').trim() || null,
+      theme: (v.theme || '').trim() || null,
+      nations: (v.nations || '').trim() || null,
+      debut: (v.debut || '').trim() || null,
+      fin: (v.fin || '').trim() || null,
+      affiche_url: (v.affiche_url || '').trim() || null,
+      affiche_pleine_url: (v.affiche_pleine_url || '').trim() || null,
+      affiche_alt: (v.affiche_alt || '').trim() || null,
+      affiche_label: (v.affiche_label || '').trim() || null,
+      cta_label: (v.cta_label || '').trim() || null,
+      article_slug: (v.article_slug || '').trim() || null,
+      tel: (v.tel || '').trim() || null,
+      ordre: parseInt(v.ordre, 10) || 0
+    };
+    // Le programme redevient du JSON. Une ligne sans barre reste
+    // valable : elle donne un titre d'etape et rien d'autre.
+    p.programme = String(v.programme || '').split('\n')
+      .map(function(l){ return l.trim(); }).filter(Boolean)
+      .map(function(l){
+        var c = l.split('|');
+        return { jour:(c[0]||'').trim(), texte:(c[1]||'').trim(), entree:(c[2]||'').trim() };
+      })
+      .filter(function(e){ return e.jour || e.texte; });
+    return p;
+  }
+
+  function evEnregistrer(id, carte, btn){
+    var msg = document.getElementById('ev-msg');
+    var p = evValeurs(carte);
+    if (!p.titre){ showMsg(msg, 'Le titre ne peut pas être vide.', false); return; }
+    btn.disabled = true;
+    sbUpdate('evenements', id, p, 'Événements')
+      .then(function(){ showMsg(msg, 'Enregistré. L’accueil suit.', true); return evLoad(); })
+      .catch(function(){ showMsg(msg, 'Erreur lors de l’enregistrement.', false); })
+      .finally(function(){ btn.disabled = false; });
+  }
+
+  function evBasculer(id){
+    var r = evRows.filter(function(x){ return String(x.id) === String(id); })[0];
+    if (!r) return;
+    var msg = document.getElementById('ev-msg');
+    sbUpdate('evenements', id, { actif: !r.actif }, 'Événements')
+      .then(function(){
+        showMsg(msg, r.actif ? 'Retiré du site.' : 'Mis sur le site.', true);
+        return evLoad();
+      })
+      .catch(function(){ showMsg(msg, 'Erreur.', false); });
+  }
+
+  function evSupprimer(id, carte){
+    var nom = (carte.querySelector('.ev-h b') || {}).textContent || 'cet événement';
+    if (!confirm('Supprimer « ' + nom + ' » ? Son affiche reste dans la médiathèque.')) return;
+    var msg = document.getElementById('ev-msg');
+    sbDelete('evenements', id, 'Événements')
+      .then(function(){ showMsg(msg, 'Supprimé.', true); return evLoad(); })
+      .catch(function(){ showMsg(msg, 'Suppression impossible.', false); });
+  }
+
+  // Un evenement neuf arrive MASQUE et en dernier rang : on le remplit
+  // d'abord, on le montre ensuite. L'inverse mettrait une carte vide en
+  // tete de la page d'accueil le temps de la saisie.
+  function evNouveau(){
+    var msg = document.getElementById('ev-msg');
+    var rangs = evRows.map(function(r){ return r.ordre || 0; });
+    var rang = (rangs.length ? Math.max.apply(null, rangs) : 0) + 10;
+    sbInsert('evenements', {
+      titre: 'Nouvel événement', ordre: rang, actif: false,
+      cta_label: 'Lire l’actualité', affiche_label: 'Voir l’affiche'
+    }, 'Événements')
+      .then(function(){
+        showMsg(msg, 'Créé, et masqué le temps que vous le remplissiez. Cliquez « Mettre sur le site » quand il est prêt.', true);
+        return evLoad();
+      })
+      .catch(function(){ showMsg(msg, 'La création a échoué — la table existe-t-elle ?', false); });
+  }
+
   function galInit(){ galLoad(); }
 
   function galLoad(){
@@ -21806,6 +22125,7 @@
     articles:function(){ arInit(); },
     categories:function(){ ctInit(); },
     galerie:function(){ galInit(); },
+    evenements:function(){ evInit(); },
     media:function(){ mdInit(); },
     calendar:function(){ calInit(); },
     matches2:function(){ mcInit(); },
