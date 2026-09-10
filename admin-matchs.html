@@ -6640,6 +6640,7 @@
   var STYLABLES = {
     club_intro_kicker:1, club_intro_title:1,
     ps_kicker:1, ps_title:1,
+    ev_kicker:1, ev_title:1,
     det_kicker:1, det_title:1,
     home_news_kicker:1, home_news_title:1,
     squad_home_title:1,
@@ -6652,7 +6653,7 @@
     // paragraphe trop petit ne se voit pas, il se lit mal — c'est pour lui
     // que le réglage sert vraiment.
     hs_text:1, club_intro_text:1, club_obj1_text:1, club_obj2_text:1, club_obj3_text:1,
-    ps_text:1, det_text:1, ins_text:1, ins_suivi_text:1, md_caption:1, app_text:1
+    ps_text:1, ev_text:1, det_text:1, ins_text:1, ins_suivi_text:1, md_caption:1, app_text:1
   };
   var AP_TAILLES = [
     ['',    'Normale'],
@@ -23147,6 +23148,107 @@
           '</div>'+
         '</div><p class="pv-hint">Une seule saisie met à jour les <b>4 emplacements</b> de la vidéo (accueil et page Tryouts, desktop et mobile), les <b>4 vignettes</b> d\'affiche et les images plein écran de la fenêtre d\'agrandissement. Le sur-titre et la phrase ne s\'affichent que sur mobile, à côté de la pile d\'affiches. Les textes des Tryouts (dates, heure, lieu, téléphone) se modifient dans le bloc <b>TRYOUTS</b>.</p>';
       } },
+    // Ajoute le 10/09/2026, pour le tournoi de Nouakchott.
+    // UN BLOC QUI SE PERIME. C'est la seule difference de fond avec la
+    // pre-saison : « ev_fin » porte le dernier jour ou l'evenement a un
+    // sens, et le site masque le bloc de lui-meme au lendemain. Un
+    // tournoi termine qui reste en tete de la page d'accueil fait douter
+    // de tout le reste de la page — et personne ne pense a decocher une
+    // case le jour ou la competition s'arrete.
+    //
+    // « Afficher le bloc » est a NON par defaut, la aussi a l'inverse de
+    // la pre-saison : un evenement est un cas particulier, il ne doit
+    // pas apparaitre parce qu'on a oublie de le retirer.
+    { id:'club_evenement', page:'Accueil · À la une', label:'À LA UNE — l\'événement du moment', fields:[
+        {key:'ev_show', label:'Afficher le bloc sur l\'accueil', type:'select', def:'non',
+          options:[['oui','Oui — le bloc est visible'],['non','Non — le bloc disparaît du site']]},
+        {key:'ev_fin', label:'Dernier jour d\'affichage — AAAA-MM-JJ (le bloc disparaît tout seul le lendemain)', type:'text', def:'2026-09-29'},
+        {key:'ev_kicker', label:'Sur-titre', type:'text', def:'À la une · Tournoi international'},
+        {key:'ev_title', label:'Titre', type:'text', def:'CAP SUR NOUAKCHOTT'},
+        {key:'ev_text', label:'Paragraphe', type:'textarea', def:'Du 23 au 29 septembre, les Baobabs portent les couleurs du Sénégal au Tournoi Women\'s Sport International de basketball féminin. Six nations, une semaine, un terrain : celui de Nouakchott.'},
+        {key:'ev_nations', label:'Nations engagées — séparées par des virgules. Une étoile devant la nôtre : « Mali, *Sénégal »', type:'text', def:'Mauritanie, Gambie, Tunisie, Maroc, Mali, *Sénégal'},
+        {key:'ev_dates', label:'Dates (telles qu\'affichées)', type:'text', def:'23 → 29 septembre 2026'},
+        {key:'ev_place', label:'Lieu', type:'text', def:'Terrain de basket de Nouakchott'},
+        {key:'ev_org', label:'Organisateur', type:'text', def:'Women Sport RIM'},
+        {key:'ev_theme', label:'Thème', type:'text', def:'Sport au féminin, vecteur d\'espoir et de leadership'},
+        {key:'ev_datetime', label:'Date et heure exactes du compte à rebours — AAAA-MM-JJTHH:MM (vide = pas de compte à rebours)', type:'text', def:'2026-09-23T09:00'},
+        {key:'ev_p1_jour', label:'Programme 1 — le jour', type:'text', def:'23 septembre'},
+        {key:'ev_p1_texte', label:'Programme 1 — ce qui s\'y passe', type:'text', def:'Ouverture : concert et don du sang.'},
+        {key:'ev_p1_entree', label:'Programme 1 — l\'entrée', type:'text', def:'Entrée : kits scolaires'},
+        {key:'ev_p2_jour', label:'Programme 2 — le jour', type:'text', def:'24 → 27 septembre'},
+        {key:'ev_p2_texte', label:'Programme 2 — ce qui s\'y passe', type:'text', def:'Les matchs, puis la finale.'},
+        {key:'ev_p2_entree', label:'Programme 2 — l\'entrée', type:'text', def:'Entrée gratuite'},
+        {key:'ev_p3_jour', label:'Programme 3 — le jour', type:'text', def:'28 septembre'},
+        {key:'ev_p3_texte', label:'Programme 3 — ce qui s\'y passe', type:'text', def:'Soirée de clôture à l\'hôtel Sheraton.'},
+        {key:'ev_p3_entree', label:'Programme 3 — l\'entrée', type:'text', def:'2 000 MRU'},
+        {key:'ev_poster_url', label:'Affiche — vignette du bloc', type:'image', def:'/media/img/tournoi-nouakchott-2026-t.webp'},
+        {key:'ev_poster_full_url', label:'Affiche — version pleine, ouverte au clic', type:'image', def:'/media/img/tournoi-nouakchott-2026.webp'},
+        {key:'ev_poster_alt', label:'Affiche — description pour les lecteurs d\'écran', type:'text', def:'Affiche du Tournoi Women\u2019s Sport International de basketball féminin, Nouakchott, du 23 au 29 septembre 2026'},
+        {key:'ev_affiche_label', label:'Affiche — pastille posée sur la vignette', type:'text', def:'Voir l\'affiche'},
+        {key:'ev_cta_label', label:'Bouton — libellé', type:'text', def:'Lire l\'actualité'},
+        {key:'ev_cta_nav', label:'Bouton — page du site où il mène', type:'select', def:'actualites',
+          options:[['actualites','Actualités'],['competitions','Compétitions'],['billetterie','Billetterie'],['club','Le Club'],['equipes','Équipes'],['boutique','Boutique']]},
+        {key:'ev_tel', label:'Téléphone affiché (vide = pas de bouton)', type:'text', def:'+222 36 84 96 31'}
+      ],
+      preview:function(v){
+        if(String(v.ev_show||'non')==='non') return '<div class="pv-empty">Bloc masqué : il n\'apparaît pas sur l\'accueil.</div>';
+
+        // La date de peremption est verifiee ICI. C'est le seul endroit
+        // ou l'on peut voir tout de suite qu'un bloc coche « oui » ne
+        // s'affichera pourtant pas.
+        var fin = String(v.ev_fin||'').trim(), avert = '';
+        if (fin && !/^\d{4}-\d{2}-\d{2}$/.test(fin))
+          avert = '<div style="margin-bottom:12px;font-size:11.5px;color:#E08A5B">Dernier jour d\'affichage illisible — attendu : 2026-09-29. Le bloc reste affiché.</div>';
+        else if (fin && new Date().toISOString().slice(0,10) > fin)
+          avert = '<div style="margin-bottom:12px;font-size:11.5px;color:#E08A5B">Ce dernier jour est passé : le bloc <b>ne s\'affiche plus</b> sur le site, même coché « oui ».</div>';
+
+        function info(l,t){ return '<div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-family:var(--font-ui);font-weight:500;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82">'+l+'</span><span style="font-family:var(--font-ui);font-weight:600;font-size:12px;color:#F3EFE6">'+esc(t)+'</span></div>'; }
+
+        var nats = String(v.ev_nations||'').split(',').map(function(x){ return x.trim(); }).filter(Boolean).map(function(n){
+          var nous = n.charAt(0)==='*'; if(nous) n = n.slice(1).trim();
+          return '<b style="font-family:var(--font-ui);font-weight:700;font-size:9px;letter-spacing:.11em;text-transform:uppercase;border-radius:100px;padding:4px 9px;'+
+            (nous?'color:#07130D;background:#C6A257':'color:#B9C2BB;border:1px solid rgba(243,239,230,.16)')+'">'+esc(n)+'</b>';
+        }).join('');
+
+        var cd='';
+        if(v.ev_datetime){
+          var d=new Date(String(v.ev_datetime).trim().replace(' ','T'));
+          if(isNaN(d.getTime())) cd='<div style="margin-top:12px;font-size:11.5px;color:#E08A5B">Date du compte à rebours illisible — attendu : 2026-09-23T09:00</div>';
+          else {
+            var ms=d.getTime()-Date.now();
+            cd = ms<=0
+              ? '<div style="margin-top:12px;font-size:11.5px;color:#7E8A82">Échéance passée : le compte à rebours ne s\'affiche plus.</div>'
+              : '<div style="display:flex;gap:6px;margin-top:12px">'+
+                [[Math.floor(ms/86400000),'jours'],[Math.floor(ms/3600000)%24,'heures'],[Math.floor(ms/60000)%60,'min']].map(function(p){
+                  return '<div style="min-width:52px;text-align:center;background:rgba(5,14,9,.5);border:1px solid rgba(243,239,230,.1);border-radius:9px;padding:7px 9px"><b style="display:block;font-family:var(--font-ui);font-weight:700;font-size:17px;color:#A8D93B;line-height:1">'+p[0]+'</b><span style="display:block;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#7E8A82;margin-top:4px">'+p[1]+'</span></div>';
+                }).join('')+'</div>';
+          }
+        }
+
+        var aff = v.ev_poster_url
+          ? '<div style="position:relative;width:112px;border-radius:10px;overflow:hidden;border:1px solid rgba(198,162,87,.4);flex:none"><img src="'+esc(v.ev_poster_url)+'" alt="" style="display:block;width:100%;height:auto"><span style="position:absolute;left:6px;bottom:6px;background:#C6A257;color:#07130D;font-family:var(--font-ui);font-size:7px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:100px">'+esc(v.ev_affiche_label)+'</span></div>'
+          : '<div style="width:112px;aspect-ratio:5/7;border-radius:10px;border:1px dashed rgba(243,239,230,.2);display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#7E8A82;flex:none;padding:8px">Pas d\'affiche</div>';
+
+        function volet(j,t,e){ return '<div style="min-width:0"><b style="display:block;font-family:var(--font-ui);font-weight:700;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#C6A257;margin-bottom:4px">'+esc(j)+'</b><span style="display:block;font-size:11px;line-height:1.5;color:#C7CFC8">'+esc(t)+'</span><em style="display:block;font-style:normal;font-family:var(--font-ui);font-weight:700;font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:#A8D93B;margin-top:4px">'+esc(e)+'</em></div>'; }
+
+        return avert +
+          '<div style="background:radial-gradient(130% 140% at 84% 0%,#0F3A4A 0%,#0A2430 42%,#061218 100%);border:1px solid rgba(198,162,87,.34);border-radius:14px;padding:18px;display:flex;gap:16px;align-items:flex-start">'+
+            aff+
+            '<div style="flex:1;min-width:0">'+
+              '<div style="display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;border-radius:50%;background:#C6A257"></span><span style="font-family:var(--font-ui);font-weight:700;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#C6A257">'+esc(v.ev_kicker)+'</span></div>'+
+              '<div style="font-family:var(--font-ui);font-weight:700;font-size:23px;line-height:1;color:#F3EFE6;margin:9px 0 8px">'+esc(v.ev_title)+'</div>'+
+              '<div style="font-size:12px;line-height:1.55;color:#C7CFC8">'+esc(v.ev_text)+'</div>'+
+              (nats?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:12px">'+nats+'</div>':'')+
+              '<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:13px;padding-top:11px;border-top:1px solid rgba(243,239,230,.1)">'+
+                info('Dates',v.ev_dates)+info('Lieu',v.ev_place)+info('Organisateur',v.ev_org)+info('Thème',v.ev_theme)+'</div>'+
+              cd+
+              '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:13px;padding-top:11px;border-top:1px solid rgba(243,239,230,.1)">'+
+                volet(v.ev_p1_jour,v.ev_p1_texte,v.ev_p1_entree)+
+                volet(v.ev_p2_jour,v.ev_p2_texte,v.ev_p2_entree)+
+                volet(v.ev_p3_jour,v.ev_p3_texte,v.ev_p3_entree)+'</div>'+
+            '</div></div>'+
+          '<p class="pv-hint">Ce bloc s\'affiche <b>sur la page d\'accueil</b>, juste sous la carte du direct — c\'est la place de ce qui ne durera qu\'une semaine. <b>Il se retire tout seul</b> au lendemain du « dernier jour d\'affichage ». L\'affiche s\'ouvre en grand au clic ; elle n\'est jamais recadrée, une affiche recadrée perd ses informations. L\'article que le bouton va chercher se rédige dans <b>Actualités</b>.</p>';
+      } },
     { id:'club_presaison', page:'Accueil · Bloc vidéo', label:'PRÉ-SAISON — vidéo de reprise', fields:[
         {key:'ps_show', label:'Afficher le bloc sur l\'accueil', type:'select', def:'oui',
           options:[['oui','Oui — le bloc est visible'],['non','Non — le bloc disparaît du site']]},
@@ -23639,7 +23741,7 @@
     // « Boutique — en-tête sur l'accueil » vivait dans un 3e onglet de
     // l'ancien écran Boutique, supprimé depuis. C'est un bloc de la page
     // d'accueil : sa place est ici, avec les autres.
-    c_home:['club_hero','club_faceoff','club_detection','club_stats','club_shop_home','club_media','club_home_titres'],
+    c_home:['club_hero','club_evenement','club_faceoff','club_detection','club_stats','club_shop_home','club_media','club_home_titres'],
     c_club:['club_intro','club_obj','club_camp','club_org'],
     c_tryouts:['club_tryouts','club_try_media'],
     c_inscriptions:['club_presaison','club_inscriptions','club_ins_titres'],
