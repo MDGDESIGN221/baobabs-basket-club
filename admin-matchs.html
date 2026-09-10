@@ -1948,6 +1948,17 @@
   /* La vignette d'un article dans le tableau : elle repere une ligne,
      elle n'illustre pas. 74x48 a 11px de rayon en faisaient une carte
      postale posee dans un tableau. */
+  /* Le rang : deux fleches et un numero, serres, dans une colonne
+     etroite. Un tableau se lit en colonnes -- le rang doit s'aligner
+     avec les autres, pas flotter dans la ligne du titre. */
+  .ar-rang{display:inline-flex;flex-direction:column;align-items:center;gap:1px}
+  .ar-rang b{font-family:var(--font-ui);font-weight:700;font-size:11px;color:var(--muted);
+    font-variant-numeric:tabular-nums;line-height:1}
+  .ar-mv{background:transparent;border:1px solid var(--line-strong);color:var(--muted);
+    border-radius:5px;width:22px;height:16px;line-height:1;font-size:10px;cursor:pointer;padding:0}
+  .ar-mv:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+  .ar-mv:disabled{opacity:.3;cursor:default}
+  .ar-rang-m{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
   .ar-vig{flex:none;width:46px;height:30px;border-radius:var(--r-sm);object-fit:cover;
     border:1px solid var(--line-strong);background:var(--surface-3);display:block}
   /* La couleur de rubrique est la SEULE couleur libre de l'admin : elle
@@ -4545,6 +4556,7 @@
     <section id="section-articles" class="hide">
       <div id="ar-list-view">
         <div class="ds-band" id="ar-kpis"></div>
+        <div class="callout ds-note hide" id="ar-ordre-note"></div>
         <div class="ds-head">
           <button type="button" class="ds-mini-btn" id="ar-new">Nouvel article</button>
           <span class="ds-count" id="ar-count">—</span>
@@ -14573,10 +14585,10 @@
   }
 
   function arLoad(){
-    return sbGet('articles_admin?select=*&order=published_at.desc&limit=400')
+    return sbGet('articles_admin?select=*&order=sort.asc,published_at.desc&limit=400')
       .then(function(rows){ arRows = rows || []; arRender(); })
       .catch(function(){
-        return sbGet('news?select=*&order=published_at.desc&limit=400').then(function(rows){
+        return sbGet('news?select=*&order=sort.asc,published_at.desc&limit=400').then(function(rows){
           arRows = rows || [];
           showMsg(document.getElementById('ar-msg'), 'Migration MIGRATION-publications.sql non détectée : le brouillon et le référencement ne sont pas encore disponibles.', false);
           arRender();
@@ -14628,7 +14640,7 @@
     // un tableau, une image repere, elle n'illustre pas.
     box.innerHTML =
       '<div class="ds-scroll"><table class="ds-tbl">' +
-        '<thead><tr><th class="c"></th><th>Article</th><th>Rubrique</th>' +
+        '<thead><tr><th class="c"></th><th class="c">Rang</th><th>Article</th><th>Rubrique</th>' +
         '<th>Publié le</th><th class="r">Lecture</th><th>État</th></tr></thead><tbody>' +
       rows.map(function(r){
         var cover = r.image_url
@@ -14642,8 +14654,20 @@
         var cat = r.category
           ? '<span class="ar-cat"><i style="background:' + esc(col) + '"></i>' + esc(r.category) + '</span>'
           : '<span class="m" style="margin-top:0">—</span>';
+        // Les fleches ne sont actives que dans l'ordre COMPLET : filtre
+        // ou recherche en cours, « monter » ferait sauter par-dessus des
+        // lignes qu'on ne voit pas, et l'ordre obtenu serait faux.
+        var i = arRows.indexOf(r);
+        var fleches = arFiltre()
+          ? '<span class="ar-rang-m" title="Retirez le filtre pour changer l\'ordre">' + (r.sort == null ? '—' : r.sort) + '</span>'
+          : '<span class="ar-rang">' +
+              '<button type="button" class="ar-mv" data-armv="' + r.id + '" data-sens="-1"' + (i === 0 ? ' disabled' : '') + ' title="Monter">↑</button>' +
+              '<b>' + (i + 1) + '</b>' +
+              '<button type="button" class="ar-mv" data-armv="' + r.id + '" data-sens="1"' + (i === arRows.length - 1 ? ' disabled' : '') + ' title="Descendre">↓</button>' +
+            '</span>';
         return '<tr class="ds-tr" data-id="' + r.id + '">' +
           '<td class="c">' + cover + '</td>' +
+          '<td class="c">' + fleches + '</td>' +
           '<td><div class="n">' + esc(r.title || 'Sans titre') + '</div>' +
             (r.author ? '<div class="m">' + esc(r.author) + '</div>' : '') + '</td>' +
           '<td>' + cat + '</td>' +
@@ -14655,6 +14679,101 @@
 
     box.querySelectorAll('.ds-tr').forEach(function(el){
       el.addEventListener('click', function(){ arSel = el.getAttribute('data-id'); arDirty = false; arRender(); });
+    });
+    // Le stopPropagation n'est pas un detail : sans lui, monter un
+    // article ouvrirait sa fiche dans le meme geste.
+    box.querySelectorAll('[data-armv]').forEach(function(b){
+      b.addEventListener('click', function(e){
+        e.stopPropagation();
+        arDeplacer(b.getAttribute('data-armv'), parseInt(b.getAttribute('data-sens'), 10));
+      });
+    });
+    arBandeauOrdre();
+  }
+
+  // Un filtre ou une recherche en cours : l'ordre affiche n'est plus
+  // l'ordre complet.
+  function arFiltre(){
+    var q = (document.getElementById('ar-search') || {}).value || '';
+    var fl = (document.getElementById('ar-filter') || {}).value || '';
+    return !!(q.trim() || fl);
+  }
+
+  // TOUS LES RANGS A ZERO : la date decide encore, et deplacer un
+  // article ne donnerait rien de stable. On le dit, et on propose le
+  // geste qui repare -- une fois, puis plus jamais.
+  function arRangsEgaux(){
+    var vus = {}, n = 0;
+    arRows.forEach(function(r){
+      var v = r.sort == null ? 0 : r.sort;
+      if (vus[v]) n++; else vus[v] = 1;
+    });
+    return n > 0;
+  }
+
+  function arBandeauOrdre(){
+    var el = document.getElementById('ar-ordre-note');
+    if (!el) return;
+    var besoin = arRows.length > 1 && arRangsEgaux();
+    el.classList.toggle('hide', !besoin);
+    if (besoin) el.innerHTML =
+      '<b>L’ordre d’affichage n’est pas encore fixé.</b> Plusieurs articles portent le même rang&nbsp;: ' +
+      'tant que c’est le cas, la date décide seule et les flèches ne tiennent pas. ' +
+      'Un clic range tout du plus récent au plus ancien, et l’ordre devient le vôtre. ' +
+      '<button type="button" class="ds-act" id="ar-figer">Ranger par date</button>';
+    var b = document.getElementById('ar-figer');
+    if (b) b.addEventListener('click', arFigerOrdre);
+  }
+
+  // RANGE PAR DATE, du plus recent au plus ancien. Pas dans l'ordre
+  // affiche : l'ecran trie par rang, et les rangs a egalite donnent un
+  // ordre deja decale par rapport au chronologique. Le figer graverait
+  // ce decalage.
+  //
+  // Dix par dix, pour qu'il reste de la place entre deux articles.
+  function arFigerOrdre(){
+    var msg = document.getElementById('ar-msg');
+    var b = document.getElementById('ar-figer');
+    if (b) b.disabled = true;
+    var ordre = arRows.slice().sort(function(x, y){
+      return String(y.published_at || '').localeCompare(String(x.published_at || ''));
+    });
+    Promise.all(ordre.map(function(r, i){
+      return sbUpdate('news', r.id, { sort: (i + 1) * 10 }, 'Actualités');
+    }))
+      .then(function(){ showMsg(msg, 'Rangé du plus récent au plus ancien. Les flèches changent l’ordre article par article.', true); return arLoad(); })
+      .catch(function(){ showMsg(msg, 'L’ordre n’a pas pu être enregistré.', false); if (b) b.disabled = false; })
+      .finally(function(){ arBandeauOrdre(); });
+  }
+
+  // Echanger deux rangs plutot que tout renumeroter : deux ecritures,
+  // et rien d'autre ne bouge.
+  function arDeplacer(id, sens){
+    var msg = document.getElementById('ar-msg');
+    var i = -1;
+    for (var k = 0; k < arRows.length; k++) if (String(arRows[k].id) === String(id)) { i = k; break; }
+    var j = i + sens;
+    if (i < 0 || j < 0 || j >= arRows.length) return;
+
+    var a = arRows[i], c = arRows[j];
+    var ra = a.sort == null ? 0 : a.sort, rc = c.sort == null ? 0 : c.sort;
+    // A egalite, l'echange ne changerait rien : on fixe d'abord.
+    if (ra === rc){ arFigerOrdre(); return; }
+
+    a.sort = rc; c.sort = ra;
+    arRows.sort(function(x, y){
+      var dx = (x.sort == null ? 0 : x.sort), dy = (y.sort == null ? 0 : y.sort);
+      if (dx !== dy) return dx - dy;
+      return String(y.published_at || '').localeCompare(String(x.published_at || ''));
+    });
+    arRender();  // retour visuel immediat
+
+    Promise.all([
+      sbUpdate('news', a.id, { sort: rc }, 'Actualités'),
+      sbUpdate('news', c.id, { sort: ra }, 'Actualités')
+    ]).catch(function(){
+      showMsg(msg, 'Le déplacement n’a pas pu être enregistré.', false);
+      arLoad();
     });
   }
 
