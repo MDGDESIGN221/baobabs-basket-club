@@ -2902,6 +2902,10 @@
     font-size:clamp(25px,3.2vw,33px);line-height:1;color:var(--text);margin:0}
   .ds-sub{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.7}
   .ds-sub b{color:var(--text);font-weight:600}
+  /* La suppression ne se peint pas comme les autres : c'est le seul
+     geste de la barre qu'on ne peut pas defaire. */
+  .ds-quick .ds-danger{ color:#E5837A; border-color:rgba(229,131,122,.34) }
+  .ds-quick .ds-danger:hover{ color:#F3EFE6; background:rgba(192,39,27,.22); border-color:rgba(229,131,122,.6) }
   .ds-quick{display:flex;flex-wrap:wrap;margin-top:16px;border:1px solid var(--line-strong);
     border-radius:var(--r-sm);overflow:hidden;width:fit-content;max-width:100%}
   .ds-quick a,.ds-quick button{display:inline-flex;align-items:center;gap:7px;
@@ -18096,6 +18100,56 @@
     { key:'refusee',    label:'Refusée',    color:'#C0271B' },
     { key:'archivee',   label:'Archivée',   color:'#5F6B63' }
   ];
+  // La reference, gardee a part : le reglage peut retirer un statut de
+  // l'affichage, jamais nous faire perdre la liste d'origine.
+  var CD_ST_DEF = CD_ST.slice();
+  // ============ LES BADGES DE STATUT, MODIFIABLES SANS SQL ============
+  // Une ligne par statut, comme les categories d'inscription et le
+  // programme des evenements :
+  //     a_etudier | A etudier | #C6A257
+  //
+  // La CLE est en tete et ne doit pas bouger : c'est elle qui est ecrite
+  // dans la colonne « status » de chaque dossier deja enregistre. Le
+  // libelle et la couleur se changent librement.
+  //
+  // Aucune migration. Le code garde ses valeurs -- CD_ST et IN_ST plus
+  // bas -- et le reglage ne fait que les REMPLACER quand il repond. Une
+  // ligne mal ecrite est ignoree, pas devinee : elle laisse le statut
+  // d'origine plutot que d'en inventer un.
+  function badgesLire(texte, defaut){
+    var lignes = String(texte || '').split('\n')
+      .map(function(l){ return l.trim(); }).filter(Boolean);
+    if (!lignes.length) return defaut;
+    var connus = {};
+    defaut.forEach(function(d){ connus[d.key] = d; });
+    var out = [];
+    lignes.forEach(function(l){
+      var c = l.split('|');
+      var cle = (c[0] || '').trim();
+      if (!cle || !connus[cle]) return;   // cle inconnue : on ne l'invente pas
+      out.push({
+        key: cle,
+        label: (c[1] || '').trim() || connus[cle].label,
+        color: (c[2] || '').trim() || connus[cle].color
+      });
+    });
+    return out.length ? out : defaut;
+  }
+
+  // Ecrit le texte du reglage a partir du tableau : c'est lui qui sert de
+  // « def: » dans le registre, pour que l'ecran montre l'existant plutot
+  // qu'un champ vide a remplir de memoire.
+  function badgesEcrire(tab){
+    return tab.map(function(b){ return b.key + ' | ' + b.label + ' | ' + b.color; }).join('\n');
+  }
+
+  // Appelee a l'ouverture des deux ecrans, apres loadSettings().
+  function badgesAppliquer(){
+    if (typeof settings !== 'object' || !settings) return;
+    if (settings.cd_badges) CD_ST = badgesLire(settings.cd_badges, CD_ST_DEF);
+    if (settings.in_badges) IN_ST = badgesLire(settings.in_badges, IN_ST_DEF);
+  }
+
   function cdSt(key){
     for (var i=0;i<CD_ST.length;i++) if (CD_ST[i].key===key) return CD_ST[i];
     return CD_ST[0];
@@ -18106,6 +18160,8 @@
 
   function cdInit(){
     if (cdStarted) return; cdStarted = true;
+    // Les badges viennent d'un reglage : on le lit une fois, en entrant.
+    loadSettings().then(badgesAppliquer).then(cdRender).catch(function(){});
     document.getElementById('cd-search').addEventListener('input', cdRender);
     document.getElementById('cd-filter-cat').addEventListener('change', cdRender);
     document.getElementById('cd-back').addEventListener('click', function(){ cdSel = null; cdRender(); });
@@ -19185,6 +19241,7 @@
               (r.email?'<a href="mailto:'+esc(r.email)+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 6 10-6"></path></svg>'+esc(r.email)+'</a>':'')+
               '<button type="button" id="cd-archive-toggle">'+((r.status||'nouvelle')==='archivee'?'Désarchiver':'Archiver')+'</button>'+
               '<button type="button" id="cd-pdf-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5M4 21h16"/></svg>Fiche PDF</button>'+
+              '<button type="button" id="cd-del-btn" class="ds-danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>Supprimer</button>'+
             '</div>'+
           '</div>'+
           // Deux chiffres, les seuls qu'on vient chercher en ouvrant une
@@ -19295,6 +19352,20 @@
       cdSetStatus(r.id, isArchived ? 'en_attente' : 'archivee');
     });
     // --- Fiche PDF téléchargeable ---
+    var delBtn = document.getElementById('cd-del-btn');
+    if (delBtn) delBtn.addEventListener('click', function(){
+      var msg = document.getElementById('cd-msg');
+      dossierSupprimer({
+        table:'recruitment_requests', id:r.id, module:'Candidatures',
+        nom:r.full_name, pieces:(cdDocs||[]).length, journal:(cdEvents||[]).length, paiements:0
+      }).then(function(fait){
+        if (!fait) return;
+        cdSel = null;
+        showMsg(msg, 'Dossier supprimé.', true);
+        return cdLoad();
+      }).catch(function(){ showMsg(msg, 'La suppression a échoué.', false); });
+    });
+
     var pdfBtn = document.getElementById('cd-pdf-btn');
     if (pdfBtn) pdfBtn.addEventListener('click', function(){ cdGeneratePdf(r); });
     // --- Étoiles ---
@@ -19354,6 +19425,39 @@
     });
   }
 
+  // SUPPRIMER UN DOSSIER, ET DIRE CE QUI PART AVEC.
+  //
+  // Les tables filles sont en « on delete cascade » : le journal, les
+  // pieces deposees et, pour une inscription, LES PAIEMENTS ENREGISTRES
+  // s'en vont aussi. Une inscription payee supprimee, c'est une trace
+  // d'argent perdue -- on ne peut pas demander « Supprimer ? » et en
+  // rester la.
+  //
+  // On compte donc ce qui va disparaitre, on le nomme, et on rappelle
+  // qu'archiver existe : c'est presque toujours le geste voulu.
+  function dossierSupprimer(o){
+    var parts = [];
+    if (o.pieces)    parts.push(o.pieces + ' pièce' + (o.pieces > 1 ? 's' : '') + ' déposée' + (o.pieces > 1 ? 's' : ''));
+    if (o.journal)   parts.push(o.journal + ' ligne' + (o.journal > 1 ? 's' : '') + ' de journal');
+    if (o.paiements) parts.push(o.paiements + ' paiement' + (o.paiements > 1 ? 's' : '') + ' enregistré' + (o.paiements > 1 ? 's' : ''));
+
+    var texte = 'Supprimer définitivement le dossier de ' + (o.nom || 'cette personne') + ' ?\n\n';
+    texte += parts.length
+      ? 'Partiront avec : ' + parts.join(', ') + '.\n\n'
+      : 'Le dossier ne porte encore ni pièce ni journal.\n\n';
+    if (o.paiements) texte += 'ATTENTION : les paiements enregistrés seront perdus. Le montant encaissé ne sera plus retrouvable nulle part.\n\n';
+    texte += 'Rien ne pourra être récupéré. Pour seulement le retirer du tableau, utilisez « Archiver ».';
+
+    if (!confirm(texte)) return Promise.resolve(false);
+
+    // La seconde demande n'est pas une politesse : c'est le seul geste de
+    // l'administration qui detruit de l'argent enregistre.
+    if (o.paiements && !confirm('Dernière confirmation : ' + o.paiements + ' paiement(s) vont être supprimés avec le dossier de ' + (o.nom || '') + '.')) {
+      return Promise.resolve(false);
+    }
+    return sbDelete(o.table, o.id, o.module).then(function(){ return true; });
+  }
+
   function cdSetStatus(id, key){
     var msg = document.getElementById('cd-msg');
     var row = cdRows.filter(function(r){ return String(r.id)===String(id); })[0];
@@ -19387,6 +19491,7 @@
     { key:'refusee',   label:'Refusée',   color:'#C0271B' },
     { key:'archivee',  label:'Archivée',  color:'#5F6B63' }
   ];
+  var IN_ST_DEF = IN_ST.slice();
   function inSt(key){
     for (var i=0;i<IN_ST.length;i++) if (IN_ST[i].key===key) return IN_ST[i];
     return IN_ST[0];
@@ -19457,6 +19562,7 @@
 
   function inInit(){
     if (inStarted) return; inStarted = true;
+    loadSettings().then(badgesAppliquer).then(inRender).catch(function(){});
     document.getElementById('in-search').addEventListener('input', inRender);
     document.getElementById('in-filter-cat').addEventListener('change', inRender);
     document.getElementById('in-filter-pay').addEventListener('change', inRender);
@@ -19857,6 +19963,7 @@
               // classeur, ou le coach qui n'a pas l'admin sur son
               // téléphone. Candidatures l'avait, Inscriptions non.
               '<button type="button" id="in-pdf-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5M4 21h16"/></svg>Dossier PDF</button>'+
+              '<button type="button" id="in-del-btn" class="ds-danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>Supprimer</button>'+
             '</div>'+
           '</div>'+
           '<div class="ds-hero-x">'+
@@ -20024,6 +20131,22 @@
     });
     var pdfBtn = document.getElementById('in-pdf-btn');
     if (pdfBtn) pdfBtn.addEventListener('click', function(){ inFichePdf(r); });
+
+    var inDel = document.getElementById('in-del-btn');
+    if (inDel) inDel.addEventListener('click', function(){
+      var msg = document.getElementById('in-msg');
+      dossierSupprimer({
+        table:'academy_registrations', id:r.id, module:'Inscriptions',
+        nom:[r.child_first_name, r.child_last_name].filter(Boolean).join(' ') || r.reference,
+        pieces:(inDocs||[]).length, journal:(inEvents||[]).length,
+        paiements:(inPayments||[]).length
+      }).then(function(fait){
+        if (!fait) return;
+        inSel = null;
+        showMsg(msg, 'Dossier supprimé.', true);
+        return inLoad();
+      }).catch(function(){ showMsg(msg, 'La suppression a échoué.', false); });
+    });
 
     var ta = document.getElementById('in-notes'), dn = document.getElementById('in-draft-note');
     var dk = 'bbc-in-notes-draft-' + r.id;
@@ -24019,6 +24142,42 @@
   ];
   var LOGO_DEF='/media/img/BBC_-_COLORED_LOGO_jjcrux.webp';
   var SETTINGS_BLOCKS = [
+    // Ajoute le 10/09/2026. Les quinze badges vivaient en dur, couleur
+    // comprise. AUCUNE MIGRATION : « def: » lit les valeurs du code, et
+    // l'enregistrement n'ecrit en base que ce qui a change -- comme les
+    // 306 autres champs de ce registre.
+    { id:'set_badges', page:'Réglages · Badges', label:'Badges des dossiers', fields:[
+        {key:'cd_badges', label:'Candidatures — une ligne par badge : clé | libellé | couleur', type:'textarea',
+         def:badgesEcrire(CD_ST_DEF)},
+        {key:'in_badges', label:'Inscriptions — une ligne par badge : clé | libellé | couleur', type:'textarea',
+         def:badgesEcrire(IN_ST_DEF)}
+      ],
+      preview:function(v){
+        function rangee(titre, texte, ref){
+          var b = badgesLire(texte, ref);
+          // On signale les cles ecartees : une faute de frappe ferait
+          // disparaitre une colonne du tableau sans rien dire.
+          var lues = {}; b.forEach(function(x){ lues[x.key] = 1; });
+          var perdues = ref.filter(function(x){ return !lues[x.key]; })
+                           .map(function(x){ return x.key; });
+          return '<div style="margin-bottom:16px">'+
+            '<div style="font-family:var(--font-ui);font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:8px">'+esc(titre)+'</div>'+
+            '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+              b.map(function(x){
+                return '<span style="font-family:var(--font-ui);font-weight:700;font-size:9.5px;letter-spacing:.1em;'+
+                  'text-transform:uppercase;border-radius:100px;padding:5px 11px;color:#07130D;background:'+esc(x.color)+'">'+
+                  esc(x.label)+'</span>';
+              }).join('')+
+            '</div>'+
+            (perdues.length
+              ? '<div style="margin-top:8px;font-size:11.5px;color:#E08A5B">Absents de votre liste, donc invisibles dans le tableau&nbsp;: <b>'+esc(perdues.join(', '))+'</b>. Les dossiers qui portent ces badges resteront lisibles, mais leur colonne n\'apparaîtra plus.</div>'
+              : '')+
+          '</div>';
+        }
+        return rangee('Candidatures', v.cd_badges, CD_ST_DEF) +
+          rangee('Inscriptions', v.in_badges, IN_ST_DEF) +
+          '<p class="pv-hint"><b>La clé, en tête de ligne, ne doit pas changer</b>&nbsp;: c\'est elle qui est écrite dans chaque dossier déjà enregistré. La renommer rendrait ces dossiers introuvables. Le <b>libellé</b> et la <b>couleur</b>, eux, se changent librement — la couleur s\'écrit en hexadécimal, par exemple <code>#C6A257</code>. Retirer une ligne retire la colonne du tableau&nbsp;; l\'ordre des lignes est l\'ordre des colonnes.</p>';
+      } },
     { id:'set_identity', page:'Réglages · Identité', label:'Identité du club', fields:[
         {key:'club_name', label:'Nom du club', type:'text', def:'Baobabs Basket Club'},
         {key:'club_tagline', label:'Slogan', type:'text', def:'Former, gagner, rassembler'},
@@ -24064,7 +24223,7 @@
     // « Boutique — en-tête sur l'accueil » vivait dans un 3e onglet de
     // l'ancien écran Boutique, supprimé depuis. C'est un bloc de la page
     // d'accueil : sa place est ici, avec les autres.
-    c_home:['club_hero','club_evenement','club_faceoff','club_detection','club_stats','club_shop_home','club_media','club_home_titres'],
+    c_home:['club_hero','club_faceoff','club_detection','club_stats','club_shop_home','club_media','club_home_titres'],
     c_club:['club_intro','club_obj','club_camp','club_org'],
     c_tryouts:['club_tryouts','club_try_media'],
     c_inscriptions:['club_presaison','club_inscriptions','club_ins_titres'],
