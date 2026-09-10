@@ -657,7 +657,7 @@ window.bbLienSur = function (u) {
     border:1px solid rgba(var(--bb-or-rgb),.34);
     background:radial-gradient(130% 140% at 84% 0%,#0F3A4A 0%,#0A2430 42%,#061218 100%)}
   .bb-ev-grid{position:relative;z-index:1;display:grid;
-    grid-template-columns:minmax(0,272px) minmax(0,1fr);
+    grid-template-columns:auto minmax(0,1fr);
     grid-template-areas:"aff titres" "aff corps";
     column-gap:clamp(20px,3vw,42px);row-gap:clamp(13px,1.8vw,18px);
     align-items:start;padding:clamp(20px,3vw,40px)}
@@ -668,13 +668,17 @@ window.bbLienSur = function (u) {
 
   /* L'affiche garde ses proportions reelles : une affiche recadree perd
      ses informations, et c'est justement ce qu'on vient y lire. */
-  .bb-ev-aff{position:relative;width:100%;border-radius:14px;overflow:hidden;
+  /* Une BOITE bornee, jamais une largeur imposee : l'affiche du mois
+     prochain peut etre paysage ou carree, et la place doit lui aller
+     sans qu'on y revienne. La hauteur bornee garde en plus le bloc a
+     peu pres constant d'un tournoi a l'autre. */
+  .bb-ev-aff{position:relative;max-width:280px;border-radius:14px;overflow:hidden;
     border:1px solid rgba(var(--bb-or-rgb),.4);box-shadow:0 24px 60px rgba(0,0,0,.55);
-    cursor:zoom-in;display:block;padding:0;background:#07130D;
+    cursor:zoom-in;display:block;padding:0;background:#07130D;line-height:0;
     transition:transform .3s cubic-bezier(.16,1,.3,1)}
   .bb-ev-aff:hover{transform:translateY(-3px)}
   .bb-ev-aff:focus-visible{outline:2px solid var(--bb-or);outline-offset:3px}
-  .bb-ev-aff img{display:block;width:100%;height:auto}
+  .bb-ev-aff img{display:block;width:auto;height:auto;max-width:280px;max-height:392px}
   .bb-ev-aff span{position:absolute;left:10px;bottom:10px;
     font-family:'Inter',sans-serif;font-weight:800;font-size:9.5px;letter-spacing:.16em;
     text-transform:uppercase;color:#07130D;background:var(--bb-or);
@@ -736,9 +740,11 @@ window.bbLienSur = function (u) {
   .bb-ev-s:focus-visible{outline:2px solid var(--bb-or);outline-offset:2px}
   /* La miniature : elle dit d'un coup d'oeil qu'il y a une seconde
      affiche, la ou une date seule ne disait rien. */
-  .bb-ev-s-v{flex:none;width:38px;border-radius:6px;overflow:hidden;
+  /* Hauteur constante, largeur libre : les lignes restent alignees
+     que l'affiche soit verticale, carree ou paysage. */
+  .bb-ev-s-v{flex:none;border-radius:6px;overflow:hidden;
     border:1px solid rgba(var(--bb-or-rgb),.4);background:#07130D;line-height:0}
-  .bb-ev-s-v img{display:block;width:100%;height:auto}
+  .bb-ev-s-v img{display:block;width:auto;height:auto;max-width:96px;max-height:52px}
   .bb-ev-s-d{flex:none;min-width:84px;font-family:'Inter',sans-serif;font-weight:800;
     font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--bb-or)}
   .bb-ev-s-t{flex:1;min-width:0;font-family:'Inter',sans-serif;font-weight:700;
@@ -751,10 +757,12 @@ window.bbLienSur = function (u) {
 
   @media(max-width:900px){
     /* L'affiche passe en vignette, le detail sous les deux. */
-    .bb-ev-grid{grid-template-columns:96px minmax(0,1fr);
+    .bb-ev-grid{grid-template-columns:auto minmax(0,1fr);
       grid-template-areas:"aff titres" "corps corps";
       column-gap:14px;row-gap:13px;padding:16px}
-    .bb-ev-aff{box-shadow:0 10px 26px rgba(0,0,0,.45)}
+    .bb-ev-aff{max-width:150px;box-shadow:0 10px 26px rgba(0,0,0,.45)}
+    .bb-ev-aff img{max-width:150px;max-height:140px}
+    .bb-ev-s-v img{max-width:76px;max-height:44px}
     .bb-ev-aff span{left:5px;bottom:5px;font-size:7.5px;letter-spacing:.1em;padding:3px 7px}
     .bb-ev-titres{gap:7px}
     .bb-ev-k span{font-size:10px;letter-spacing:.16em}
