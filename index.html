@@ -1847,12 +1847,21 @@ window.bbLienSur = function (u) {
     display:block; width:100%; text-align:left; padding:0; border:0; background:none;
     color:inherit; font:inherit; cursor:pointer; position:relative;
   }
-  /* 21/9 plutot que 16/9 : la tete faisait 660 px sur l'accueil pour une
-     seule actualite. Elle en fait ~380 sans rien perdre d'utile. */
+  /* LA CARTE DE TETE. Plus de panneau ivoire qui chevauche l'image :
+     l'image en haut, le texte dessous, dans un meme cadre sombre. Une
+     tache claire de 860 px au milieu d'un site sombre etait ce qui
+     datait le plus. */
+  .bb-ac-tete{
+    display:flex; flex-direction:column; width:100%; text-align:left; padding:0;
+    border:1px solid rgba(243,239,230,.1); background:#0A150F;
+    border-radius:16px; overflow:hidden; color:inherit; font:inherit; cursor:pointer;
+    position:relative; transition:border-color .25s ease;
+  }
+  .bb-ac-tete:hover{ border-color:rgba(var(--bb-or-rgb),.45) }
+  .bb-ac-tete:focus-visible{ outline:2px solid var(--bb-or); outline-offset:3px }
   .bb-ac-tete-vis{
     display:flex; align-items:center; justify-content:center;
-    position:relative; aspect-ratio:21/9; overflow:hidden;
-    border-radius:18px; background:#0F1E15;
+    position:relative; aspect-ratio:16/9; overflow:hidden; background:#0F1E15;
   }
   /* UNE PHOTO PAYSAGE remplit le cadre : c'est ce qu'elle demande. */
   .bb-ac-tete-vis.large img{
@@ -1886,14 +1895,24 @@ window.bbLienSur = function (u) {
   /* Le panneau. Un seul angle tres arrondi : c'est lui qui donne
      l'allure d'affiche, et il doit rester du meme cote que le bloc de
      date pour que l'oeil parte de la. */
+  /* Le pied de la carte : la rubrique et la date sur une ligne, puis le
+     titre, puis le chapo. Trois niveaux de lecture, pas un panneau. */
   .bb-ac-panneau{
-    display:flex; align-items:stretch; gap:clamp(14px,2vw,26px);
-    background:#F3EFE6; color:#0A1409;
-    border-radius:14px 14px 14px 64px;
-    padding:clamp(16px,2.2vw,26px) clamp(20px,3vw,40px) clamp(16px,2.2vw,26px) clamp(20px,2.6vw,34px);
-    margin:clamp(-70px,-7vw,-40px) 0 0 clamp(0px,2vw,32px);
-    max-width:min(92%,860px); position:relative; z-index:2;
-    box-shadow:0 24px 60px rgba(3,10,6,.5);
+    display:flex; flex-direction:column; gap:9px;
+    padding:clamp(15px,2vw,22px) clamp(16px,2.2vw,26px) clamp(17px,2.2vw,24px);
+    background:transparent; color:inherit; position:relative; z-index:2;
+  }
+  .bb-ac-tete-meta{
+    display:flex; align-items:center; flex-wrap:wrap; gap:7px 12px;
+    font-family:'Inter',sans-serif; font-weight:700; font-size:10px;
+    letter-spacing:.16em; text-transform:uppercase; color:#7E8A82;
+  }
+  .bb-ac-tete-meta .rub{ display:inline-flex; align-items:center; gap:6px; color:#F3EFE6 }
+  .bb-ac-tete-meta .rub i{ width:6px; height:6px; border-radius:50%; flex:none }
+  .bb-ac-tete-meta .sep{ width:3px; height:3px; border-radius:50%; background:#3E4A43; flex:none }
+  .bb-ac-tete-ex{
+    font-family:'Inter',sans-serif; font-size:14px; line-height:1.6;
+    color:#8F9A91; margin:0; max-width:60ch;
   }
   .bb-ac-quand{
     flex:none; display:flex; flex-direction:column; justify-content:center;
@@ -1909,52 +1928,61 @@ window.bbLienSur = function (u) {
     letter-spacing:.18em; text-transform:uppercase; color:#4A574E;
   }
   .bb-ac-panneau-t{
-    font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-.028em;
-    font-size:clamp(20px,2.9vw,40px); line-height:1.08; margin:0; min-width:0;
-    align-self:center;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-.026em;
+    font-size:clamp(19px,2.1vw,29px); line-height:1.14; margin:0; min-width:0;
+    color:#F3EFE6; text-wrap:balance;
   }
-  .bb-ac-tete:hover .bb-ac-panneau-t{ text-decoration:underline; text-underline-offset:4px }
+  .bb-ac-tete:hover .bb-ac-panneau-t{ color:var(--bb-or) }
   @media (max-width:640px){
-    .bb-ac-panneau{ margin:-28px 0 0; max-width:100%; border-radius:12px 12px 12px 40px;
-      flex-direction:column; gap:12px }
-    .bb-ac-quand{ flex-direction:row; align-items:baseline; gap:8px; padding:0 0 10px;
-      border-right:none; border-bottom:1px solid rgba(10,20,9,.22) }
+    /* La marge negative est retiree : elle faisait remonter le pied de
+       28 px SUR l'image, et « MATCH · 10 SEPTEMBRE » s'ecrivait
+       par-dessus l'affiche. Le pied est dans la carte, il reste dessous. */
+    .bb-ac-panneau{ margin:0; max-width:100%; gap:8px }
+    .bb-ac-panneau-t{ font-size:clamp(18px,5.4vw,23px) }
+    .bb-ac-tete-ex{ font-size:13.5px }
   }
 
   /* ---- le sommaire ---- */
-  .bb-ac-sommaire{ margin-top:clamp(30px,4vw,54px); border-top:1px solid rgba(243,239,230,.16) }
-  .bb-ac-l{
-    display:grid; grid-template-columns:auto minmax(0,1fr) auto;
-    align-items:center; gap:clamp(14px,2.4vw,30px);
-    width:100%; text-align:left; padding:clamp(16px,2.2vw,26px) 0; border:0;
-    border-bottom:1px solid rgba(243,239,230,.16); background:none; color:inherit;
-    font:inherit; cursor:pointer; transition:background .25s ease;
+  .bb-ac-sommaire{ margin-top:clamp(18px,2.4vw,26px) }
+  /* L'accueil : la carte a gauche, les suivantes a droite. Sur telephone
+     tout s'empile, et le sommaire reprend sa marge du haut. */
+  .bb-ac-deux{ display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);
+    gap:clamp(20px,3vw,40px); align-items:start }
+  .bb-ac-deux .bb-ac-sommaire{ margin-top:0 }
+  @media(max-width:900px){
+    .bb-ac-deux{ grid-template-columns:1fr; gap:clamp(16px,2.4vw,24px) }
+    .bb-ac-deux .bb-ac-sommaire{ margin-top:2px }
   }
+  .bb-ac-l{
+    display:grid; grid-template-columns:minmax(0,1fr) auto;
+    align-items:center; gap:clamp(12px,1.8vw,20px);
+    width:100%; text-align:left; padding:clamp(13px,1.7vw,17px) 0; border:0;
+    border-bottom:1px solid rgba(243,239,230,.12); background:none; color:inherit;
+    font:inherit; cursor:pointer;
+  }
+  .bb-ac-l:first-child{ padding-top:0 }
   .bb-ac-l:hover{ background:rgba(168,217,59,.05) }
   .bb-ac-l:focus-visible{ outline:2px solid #A8D93B; outline-offset:-2px }
-  .bb-ac-no{
-    font-family:'Anton',Impact,sans-serif; font-weight:400;
-    font-size:clamp(24px,3vw,40px); line-height:1; color:rgba(243,239,230,.26);
-    font-variant-numeric:tabular-nums; flex:none; min-width:1.6em;
-    transition:color .25s ease;
-  }
+  /* LE NUMERO D'ORDRE EST RETIRE. Il numerotait ce que personne ne
+     compte, en Anton 40 px, et volait la place du titre. */
+  .bb-ac-no{ display:none }
   .bb-ac-l:hover .bb-ac-no{ color:#A8D93B }
   .bb-ac-corps-l{ display:block; min-width:0 }
   .bb-ac-d{
-    display:block; font-family:'Inter',sans-serif; font-weight:800; font-size:10px;
-    letter-spacing:.18em; text-transform:uppercase; color:#A8D93B; margin-bottom:6px;
+    display:block; font-family:'Inter',sans-serif; font-weight:700; font-size:9.5px;
+    letter-spacing:.15em; text-transform:uppercase; color:#7E8A82; margin-bottom:4px;
   }
   .bb-ac-t{
-    display:block; font-family:'Space Grotesk',sans-serif; font-weight:700;
-    letter-spacing:-.024em; font-size:clamp(17px,2vw,26px); line-height:1.16; color:#F3EFE6;
+    display:block; font-family:'Inter',sans-serif; font-weight:700;
+    font-size:15px; line-height:1.35; color:#F3EFE6; transition:color .2s ease;
   }
-  .bb-ac-ex{
-    display:block; font-family:'Inter',sans-serif; font-size:14px; line-height:1.6;
-    color:#8F9A91; margin-top:7px; max-width:64ch;
-  }
+  .bb-ac-l:hover .bb-ac-t{ color:var(--bb-or) }
+  /* Le chapo quitte les lignes du sommaire : il double le titre et
+     triple la hauteur. Il reste sur la carte de tete et dans l'article. */
+  .bb-ac-ex{ display:none }
   .bb-ac-mini{
-    display:block; flex:none; width:clamp(84px,11vw,150px); aspect-ratio:4/3;
-    border-radius:10px; overflow:hidden; background:#0F1E15; position:relative;
+    display:block; flex:none; width:clamp(58px,6vw,76px); aspect-ratio:4/3;
+    border-radius:7px; overflow:hidden; background:#0F1E15; position:relative;
   }
   .bb-ac-mini img{
     position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
@@ -9517,10 +9545,25 @@ window.bbCloud = function(url, w){
             ')"></span><span class="bb-ac-tete-voile"></span>') +
           bbAcImage(n, true) + '</span>' +
         '<span class="bb-ac-panneau">' +
-          bbAcCartouche(n.published_at) +
+          bbAcTeteMeta(n) +
           '<span class="bb-ac-panneau-t">' + esc(bbTypo(n.title || 'Sans titre')) + '</span>' +
+          (bbAcChapo(n, 150) ? '<span class="bb-ac-tete-ex">' + esc(bbTypo(bbAcChapo(n, 150))) + '</span>' : '') +
         '</span>' +
       '</button>';
+  }
+
+  // La rubrique et la date sur UNE ligne. Le cartouche en colonne
+  // prenait trois lignes pour dire « 10 septembre », plus un filet
+  // vertical pour le separer du titre.
+  function bbAcTeteMeta(n){
+    var out = [];
+    var col = bbAcRubCouleur(n.category);
+    if (n.category) out.push('<span class="rub">' +
+      (col ? '<i style="background:' + esc(col) + '"></i>' : '') + esc(n.category) + '</span>');
+    var q = bbAcJour(n.published_at);
+    if (q && q.long) out.push('<span>' + esc(q.long) + '</span>');
+    if (!out.length) return '';
+    return '<span class="bb-ac-tete-meta">' + out.join('<span class="sep"></span>') + '</span>';
   }
 
   // UNE LIGNE DE SOMMAIRE. Un numero, un filet, la date, le titre, et
@@ -9859,13 +9902,19 @@ window.bbCloud = function(url, w){
     if (!el || !sec) return;
     // L'accueil montre la meme tete, puis deux lignes de sommaire. Le
     // reste vit sur la page — c'est a ca qu'elle sert.
+    // DEUX COLONNES SUR GRAND ECRAN : la carte a gauche, les suivantes en
+    // lignes fines a droite. Trois actualites dans la hauteur qu'une
+    // seule occupait, et le visiteur voit tout de suite qu'il y en a
+    // plusieurs -- ce qu'une seule grande image ne disait pas.
     el.innerHTML = bbNews.length
-      ? bbAcTete(bbNews[0]) +
-        (bbNews.length > 1
-          ? '<div class="bb-ac-sommaire" style="margin-top:clamp(22px,3vw,34px)">' +
-              bbNews.slice(1, 3).map(function(x, i){ return bbAcLigne(x, i + 1); }).join('') +
-            '</div>'
-          : '')
+      ? '<div class="bb-ac-deux">' +
+          '<div>' + bbAcTete(bbNews[0]) + '</div>' +
+          (bbNews.length > 1
+            ? '<div class="bb-ac-sommaire">' +
+                bbNews.slice(1, 4).map(function(x, i){ return bbAcLigne(x, i + 1); }).join('') +
+              '</div>'
+            : '') +
+        '</div>'
       : '';
     bbAcBrancher(el);
     if (bbNews.length) sec.classList.remove('bb-hide');
