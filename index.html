@@ -642,33 +642,44 @@ window.bbLienSur = function (u) {
   .bb-ps-cd b{display:block;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(21px,2.6vw,27px);line-height:1;color:#A8D93B;font-variant-numeric:tabular-nums}
   .bb-ps-cd span{display:block;font-family:'Inter',sans-serif;font-weight:600;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#7E8A82;margin-top:5px}
 
-  /* ===== A LA UNE — l'evenement du moment =====
-     Meme ossature que la pre-saison : une affiche a gauche, le detail a
-     droite. Ce qui change, c'est ce qu'on met au centre — ici un
-     programme sur trois jours et six nations, pas une video. */
+  /* ===== A LA UNE : l'evenement du moment =====
+     Meme ossature que la pre-saison : une affiche d'un cote, le detail
+     de l'autre. Ce qui change, c'est ce qu'on met au centre : ici un
+     programme et des nations engagees, pas une video.
+
+     TROIS ZONES QUI SE REORGANISENT SUR TELEPHONE.
+     Sur un grand ecran l'affiche tient toute la hauteur a gauche. Sur un
+     telephone elle devient une vignette a cote du titre, et le detail
+     passe dessous sur toute la largeur. Ce n'est pas un gout : mesure au
+     banc, le bloc faisait 1567 px de haut sur un 375x812, soit deux
+     ecrans entiers de defilement pour un seul evenement. */
   .bb-ev{position:relative;overflow:hidden;border-radius:22px;
     border:1px solid rgba(var(--bb-or-rgb),.34);
     background:radial-gradient(130% 140% at 84% 0%,#0F3A4A 0%,#0A2430 42%,#061218 100%)}
   .bb-ev-grid{position:relative;z-index:1;display:grid;
-    grid-template-columns:minmax(0,286px) minmax(0,1fr);
-    gap:clamp(22px,3.4vw,46px);align-items:start;padding:clamp(22px,3.4vw,44px)}
-  @media(max-width:900px){.bb-ev-grid{grid-template-columns:1fr;gap:clamp(20px,4vw,28px)}}
+    grid-template-columns:minmax(0,272px) minmax(0,1fr);
+    grid-template-areas:"aff titres" "aff corps";
+    column-gap:clamp(20px,3vw,42px);row-gap:clamp(13px,1.8vw,18px);
+    align-items:start;padding:clamp(20px,3vw,40px)}
+  .bb-ev-aff{grid-area:aff}
+  .bb-ev-titres{grid-area:titres;display:flex;flex-direction:column;gap:9px;min-width:0}
+  .bb-ev-corps{grid-area:corps;display:flex;flex-direction:column;
+    gap:clamp(13px,1.8vw,18px);min-width:0}
 
-  /* L'affiche : elle garde ses proportions reelles (904x1280), sans
-     recadrage — une affiche recadree perd ses informations. */
+  /* L'affiche garde ses proportions reelles : une affiche recadree perd
+     ses informations, et c'est justement ce qu'on vient y lire. */
   .bb-ev-aff{position:relative;width:100%;border-radius:14px;overflow:hidden;
     border:1px solid rgba(var(--bb-or-rgb),.4);box-shadow:0 24px 60px rgba(0,0,0,.55);
     cursor:zoom-in;display:block;padding:0;background:#07130D;
     transition:transform .3s cubic-bezier(.16,1,.3,1)}
   .bb-ev-aff:hover{transform:translateY(-3px)}
+  .bb-ev-aff:focus-visible{outline:2px solid var(--bb-or);outline-offset:3px}
   .bb-ev-aff img{display:block;width:100%;height:auto}
   .bb-ev-aff span{position:absolute;left:10px;bottom:10px;
     font-family:'Inter',sans-serif;font-weight:800;font-size:9.5px;letter-spacing:.16em;
     text-transform:uppercase;color:#07130D;background:var(--bb-or);
     border-radius:100px;padding:5px 11px}
-  @media(max-width:900px){.bb-ev-aff{max-width:320px;margin:0 auto}}
 
-  .bb-ev-corps{display:flex;flex-direction:column;gap:clamp(14px,2vw,20px);min-width:0}
   .bb-ev-k{display:flex;align-items:center;gap:10px}
   .bb-ev-k i{width:7px;height:7px;border-radius:50%;background:var(--bb-or);flex:none}
   .bb-ev-k span{font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;
@@ -678,9 +689,9 @@ window.bbLienSur = function (u) {
     color:#F3EFE6;margin:0;text-wrap:balance}
   .bb-ev-x{max-width:54ch;font-size:15px;line-height:1.68;color:#C7CFC8;margin:0;text-wrap:pretty}
 
-  /* Les six nations : du TEXTE, pas des emoji de drapeaux — Windows ne
-     sait pas les dessiner et afficherait « SN ». Celle du club porte
-     l'or, les cinq autres restent au filet. */
+  /* Les nations : du TEXTE, pas des emoji de drapeaux. Windows ne sait
+     pas les dessiner et afficherait « SN » a la place du drapeau
+     senegalais. Celle du club porte l'or, les autres le filet. */
   .bb-ev-nat{display:flex;flex-wrap:wrap;gap:7px}
   .bb-ev-nat b{font-family:'Inter',sans-serif;font-weight:700;font-size:11px;
     letter-spacing:.11em;text-transform:uppercase;color:#B9C2BB;
@@ -688,19 +699,19 @@ window.bbLienSur = function (u) {
   .bb-ev-nat b.nous{color:#07130D;background:var(--bb-or);border-color:var(--bb-or)}
 
   .bb-ev-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
-    gap:14px 22px;padding:18px 0;
+    gap:14px 22px;padding:16px 0;margin:0;
     border-top:1px solid rgba(243,239,230,.1);border-bottom:1px solid rgba(243,239,230,.1)}
   .bb-ev-info dt{font-family:'Inter',sans-serif;font-weight:500;font-size:10px;
     letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin:0}
   .bb-ev-info dd{font-family:'Inter',sans-serif;font-weight:600;font-size:14.5px;
     color:#F3EFE6;margin:5px 0 0;line-height:1.38}
 
-  /* Le programme : trois volets, pas un paragraphe. Le jour a gauche en
-     or, ce qui s'y passe dessous, et l'entree en derniere ligne — c'est
-     la question qu'on se pose. */
+  /* Le programme : des volets, pas un paragraphe. Le temps fort a
+     gauche en or, ce qui s'y passe dessous, et l'entree en derniere
+     ligne : c'est la question qu'on se pose. */
   .bb-ev-prog{display:grid;grid-template-columns:repeat(auto-fit,minmax(184px,1fr));
     gap:0 clamp(18px,2.6vw,32px)}
-  .bb-ev-p{padding:14px 0;border-top:1px solid rgba(243,239,230,.1)}
+  .bb-ev-p{padding:13px 0;border-top:1px solid rgba(243,239,230,.1)}
   .bb-ev-p b{display:block;font-family:'Inter',sans-serif;font-weight:800;font-size:10.5px;
     letter-spacing:.14em;text-transform:uppercase;color:var(--bb-or);margin-bottom:6px}
   .bb-ev-p span{display:block;font-family:'Inter',sans-serif;font-size:13.5px;
@@ -710,6 +721,54 @@ window.bbLienSur = function (u) {
     color:#A8D93B;margin-top:6px}
 
   .bb-ev-btns{display:flex;gap:12px;flex-wrap:wrap}
+
+  /* ---- LES EVENEMENTS SUIVANTS : UNE LIGNE CHACUN ----
+     Le bloc du dessus fait un ecran a lui seul sur telephone. En empiler
+     un second en ferait trois avant d'atteindre le reste de l'accueil :
+     le tournoi suivant tient donc sur une ligne, et prend sa place en
+     grand tout seul quand le premier est passe. */
+  .bb-ev-suite{margin-top:clamp(12px,1.6vw,18px)}
+  .bb-ev-s{display:flex;align-items:center;flex-wrap:wrap;gap:7px 18px;width:100%;
+    text-align:left;padding:13px clamp(14px,2vw,20px);cursor:pointer;
+    background:rgba(10,36,48,.5);border:1px solid rgba(var(--bb-or-rgb),.22);
+    border-radius:14px;margin-top:9px;transition:border-color .2s ease,background .2s ease}
+  .bb-ev-s:hover{border-color:rgba(var(--bb-or-rgb),.5);background:rgba(10,36,48,.78)}
+  .bb-ev-s:focus-visible{outline:2px solid var(--bb-or);outline-offset:2px}
+  .bb-ev-s-d{flex:none;min-width:84px;font-family:'Inter',sans-serif;font-weight:800;
+    font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--bb-or)}
+  .bb-ev-s-t{flex:1;min-width:0;font-family:'Inter',sans-serif;font-weight:700;
+    font-size:14.5px;color:#F3EFE6}
+  .bb-ev-s-t em{display:block;font-style:normal;font-weight:500;font-size:12.5px;
+    color:#A9B2AB;margin-top:3px}
+  .bb-ev-s-a{flex:none;font-family:'Inter',sans-serif;font-weight:800;font-size:10px;
+    letter-spacing:.14em;text-transform:uppercase;color:#07130D;background:var(--bb-or);
+    border-radius:100px;padding:8px 15px}
+
+  @media(max-width:900px){
+    /* L'affiche passe en vignette, le detail sous les deux. */
+    .bb-ev-grid{grid-template-columns:96px minmax(0,1fr);
+      grid-template-areas:"aff titres" "corps corps";
+      column-gap:14px;row-gap:13px;padding:16px}
+    .bb-ev-aff{box-shadow:0 10px 26px rgba(0,0,0,.45)}
+    .bb-ev-aff span{left:5px;bottom:5px;font-size:7.5px;letter-spacing:.1em;padding:3px 7px}
+    .bb-ev-titres{gap:7px}
+    .bb-ev-k span{font-size:10px;letter-spacing:.16em}
+    .bb-ev-t{font-size:clamp(24px,7.4vw,32px)}
+    .bb-ev-corps{gap:12px}
+    .bb-ev-x{font-size:14px;line-height:1.58}
+    .bb-ev-nat{gap:5px}
+    .bb-ev-nat b{font-size:10px;padding:5px 10px;letter-spacing:.08em}
+    .bb-ev-info{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px 14px;padding:13px 0}
+    .bb-ev-info dd{font-size:13.5px}
+    .bb-ev-prog{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+    .bb-ev-p{padding:10px 0}
+    .bb-ev-p span{font-size:12.5px;line-height:1.5}
+    .bb-ev-cd div{min-width:54px;padding:7px 9px}
+    .bb-ev-cd b{font-size:19px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .bb-ev-aff,.bb-ev-s{transition:none} .bb-ev-aff:hover{transform:none}
+  }
   @media (prefers-reduced-motion:reduce){
     .bb-ev-aff{transition:none} .bb-ev-aff:hover{transform:none}
   }
@@ -2484,56 +2543,62 @@ window.bbLienSur = function (u) {
         </div>
       </div>
 
-      <!-- ===== A LA UNE — L'EVENEMENT DU MOMENT =====
+      <!-- ===== A LA UNE : L'EVENEMENT DU MOMENT =====
            Le premier bloc apres le hero et la carte du direct : c'est la
            place de ce qui ne durera qu'une semaine.
 
-           Il se retire TOUT SEUL. « ev_fin » porte le dernier jour ou il
-           a un sens ; passe cette date, applyEvenement le masque sans
-           que personne ait a y penser. Un evenement fini qui reste en
-           tete de page fait douter de tout le reste de la page. -->
+           LE PLUS PROCHE EN GRAND, LES SUIVANTS EN UNE LIGNE. Le bloc
+           fait un ecran a lui seul sur telephone ; en empiler deux
+           donnerait trois ecrans de defilement avant le reste de
+           l'accueil. Le second tournoi prend sa place tout seul quand le
+           premier est passe.
+
+           IL SE RETIRE TOUT SEUL. Chaque evenement porte son dernier
+           jour d'affichage ; passe cette date, il disparait sans que
+           personne y pense. Un tournoi termine en tete de page fait
+           douter de tout le reste de la page. -->
       <section id="bb-evenement" class="bb-hide" style="padding:clamp(40px,6vw,72px) 0 0">
         <div class="bb-ev">
           <div class="bb-ev-grid">
-            <button type="button" class="bb-ev-aff" id="bb-ev-aff" aria-label="Voir l'affiche en grand" onclick="document.getElementById('bb-ev-modal').classList.add('open')">
-              <img id="bb-ev-poster" src="/media/img/tournoi-nouakchott-2026-t.webp" alt="Affiche du Tournoi Women's Sport International de basketball feminin, Nouakchott, 23 au 29 septembre 2026" width="520" height="736" loading="lazy" decoding="async">
-              <span data-bb="ev_affiche_label">Voir l'affiche</span>
+            <button type="button" class="bb-ev-aff" id="bb-ev-aff" aria-label="Voir l'affiche en grand">
+              <img id="bb-ev-poster" src="/media/img/tournoi-dekkil-rapatak-2026-t.webp" alt="Affiche de la premiere edition du tournoi Dekkil Rapatak, terrain de Bopp, Dakar, du 18 au 20 septembre 2026" loading="lazy" decoding="async">
+              <span id="bb-ev-aff-label" data-bb="ev_affiche_label">Voir l'affiche</span>
             </button>
 
+            <div class="bb-ev-titres">
+              <div class="bb-ev-k"><i></i><span id="bb-ev-kicker">À la une · Tournoi de Bopp</span></div>
+              <h2 class="bb-ev-t" id="bb-ev-title">DEKKIL RAPATAK</h2>
+            </div>
+
             <div class="bb-ev-corps">
-              <div class="bb-ev-k"><i></i><span id="bb-ev-kicker">À la une · Tournoi international</span></div>
-              <h2 class="bb-ev-t" id="bb-ev-title">CAP SUR NOUAKCHOTT</h2>
-              <p class="bb-ev-x" id="bb-ev-text">Du 23 au 29 septembre, les Baobabs portent les couleurs du Sénégal au Tournoi Women's Sport International de basketball féminin. Six nations, une semaine, un terrain : celui de Nouakchott.</p>
+              <p class="bb-ev-x" id="bb-ev-text">Le week-end du 18 au 20 septembre, les Baobabs jouent la première édition du Dekkil Rapatak, au terrain de Bopp. Seize équipes, huit filles et huit garçons, deux trophées.</p>
 
               <div class="bb-ev-nat" id="bb-ev-nations"></div>
 
-              <dl class="bb-ev-info">
-                <div><dt>Dates</dt><dd id="bb-ev-dates">23 → 29 septembre 2026</dd></div>
-                <div><dt>Lieu</dt><dd id="bb-ev-place">Terrain de basket de Nouakchott</dd></div>
-                <div><dt>Organisateur</dt><dd id="bb-ev-org">Women Sport RIM</dd></div>
-                <div><dt>Thème</dt><dd id="bb-ev-theme">Sport au féminin, vecteur d'espoir et de leadership</dd></div>
+              <dl class="bb-ev-info" id="bb-ev-info">
+                <div id="bb-ev-i-dates"><dt>Dates</dt><dd id="bb-ev-dates">18 → 20 septembre 2026</dd></div>
+                <div id="bb-ev-i-place"><dt>Lieu</dt><dd id="bb-ev-place">Terrain de Bopp, Dakar</dd></div>
+                <div id="bb-ev-i-org"><dt>Organisateur</dt><dd id="bb-ev-org">Dekkil Rapatak</dd></div>
+                <div id="bb-ev-i-theme"><dt>Objectif</dt><dd id="bb-ev-theme">Occuper les jeunes compétiteurs pendant les vacances</dd></div>
               </dl>
 
-              <div class="bb-ev-cd bb-ps-cd bb-hide" id="bb-ev-cd" role="timer" aria-label="Temps restant avant le tournoi"></div>
+              <div class="bb-ev-cd bb-ps-cd bb-hide" id="bb-ev-cd" role="timer" aria-label="Temps restant avant l'événement"></div>
 
-              <div class="bb-ev-prog">
-                <div class="bb-ev-p"><b id="bb-ev-p1d">23 septembre</b><span id="bb-ev-p1t">Ouverture : concert et don du sang.</span><em id="bb-ev-p1e">Entrée : kits scolaires</em></div>
-                <div class="bb-ev-p"><b id="bb-ev-p2d">24 → 27 septembre</b><span id="bb-ev-p2t">Les matchs, puis la finale.</span><em id="bb-ev-p2e">Entrée gratuite</em></div>
-                <div class="bb-ev-p"><b id="bb-ev-p3d">28 septembre</b><span id="bb-ev-p3t">Soirée de clôture à l'hôtel Sheraton.</span><em id="bb-ev-p3e">2 000 MRU</em></div>
-              </div>
+              <div class="bb-ev-prog" id="bb-ev-prog"></div>
 
               <div class="bb-ev-btns">
                 <a href="#" data-nav="actualites" class="bb-btn-solid" id="bb-ev-cta" style="display:inline-flex;align-items:center;gap:9px;text-decoration:none">Lire l'actualité
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
                 </a>
-                <a href="tel:+22236849631" class="bb-btn-ghost" id="bb-ev-tel" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none">
+                <a href="#" class="bb-btn-ghost bb-hide" id="bb-ev-tel" style="align-items:center;gap:8px;text-decoration:none">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.2-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.8 2Z"></path></svg>
-                  <span id="bb-ev-tel-text">+222 36 84 96 31</span>
+                  <span id="bb-ev-tel-text"></span>
                 </a>
               </div>
             </div>
           </div>
         </div>
+        <div class="bb-ev-suite" id="bb-ev-suite"></div>
       </section>
 
       <!-- ===== LE CINQ MAJEUR =====
@@ -7592,116 +7657,209 @@ window.bbCloud = function(url, w){
   var bbPsCdTimer = null, bbPsVideoUrl = '';
 
   // ============================================================================
-  // A LA UNE — l'evenement du moment
+  // A LA UNE : les evenements du moment
   // ============================================================================
-  // Ecrit sur le modele de la pre-saison, et pour la meme raison : un appel
-  // bbSet, identifiant d'abord puis reglage, est ce que l'ecran Coherence de
-  // l'admin relit pour savoir quel reglage alimente quel texte. Un bloc ecrit
-  // autrement lui redeviendrait invisible.
-  //
-  // DEUX DIFFERENCES AVEC LA PRE-SAISON, ET ELLES COMPTENT.
-  //   · Le bloc est masque PAR DEFAUT (ev_show absent = non). Un evenement
-  //     est par nature passager : la page d'accueil ne doit pas porter en
-  //     tete un tournoi termine le jour ou personne ne pense a decocher.
-  //   · Il se PERIME tout seul. « ev_fin » porte le dernier jour ou il a un
-  //     sens ; passe cette date, le bloc disparait sans qu'on y pense.
-  var bbEvCdTimer = null;
+  // DEUX SOURCES, UN SEUL POINT DE DECISION.
+  // La table « evenements » est la source. Les reglages ev_* ne servent
+  // plus que de repli : table absente, vide, ou lecture en echec. Les
+  // deux arrivent par deux appels reseau distincts et rien ne dit lequel
+  // repond en premier, alors chacun DEPOSE ce qu'il a recu puis appelle
+  // bbEvRendre(). Aucun ordre a respecter, donc aucun ecrasement muet.
+  var bbEvCdTimer = null, bbEvBase = null, bbEvReglages = null;
+  var BB_EV_MOIS = ['janv.','févr.','mars','avril','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 
-  function applyEvenement(s){
-    if(!s) return;
+  function applyEvenement(s){ if (s){ bbEvReglages = s; bbEvRendre(); } }
+
+  function bbEvCharger(){
+    return sbFetch('evenements?select=*&actif=eq.true&order=debut.asc,ordre.asc')
+      .then(function(rows){ bbEvBase = rows || []; bbEvRendre(); })
+      .catch(function(){ bbEvBase = null; bbEvRendre(); });
+  }
+
+  // Un evenement termine ne s'affiche plus. On compare des chaines
+  // aaaa-mm-jj entre elles : pas de fuseau, pas de surprise a minuit.
+  function bbEvEnCours(fin){
+    if (!fin) return true;
+    var f = String(fin).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return true;
+    return new Date().toISOString().slice(0, 10) <= f;
+  }
+
+  // Les reglages ramenes a la forme d'une ligne de la table : le rendu
+  // ne connait qu'UNE forme d'evenement.
+  function bbEvDesReglages(s){
+    if (!s || String(s.ev_show || 'non') === 'non') return null;
+    var prog = [];
+    for (var i = 1; i <= 3; i++){
+      var j = s['ev_p' + i + '_jour'], t = s['ev_p' + i + '_texte'], e = s['ev_p' + i + '_entree'];
+      if (j || t) prog.push({ jour:j, texte:t, entree:e });
+    }
+    return {
+      titre:s.ev_title, kicker:s.ev_kicker, texte:s.ev_text,
+      affiche_url:s.ev_poster_url, affiche_pleine_url:s.ev_poster_full_url,
+      affiche_alt:s.ev_poster_alt, affiche_label:s.ev_affiche_label,
+      dates:s.ev_dates, lieu:s.ev_place, organisateur:s.ev_org,
+      theme:s.ev_theme, nations:s.ev_nations,
+      debut:s.ev_datetime, fin:s.ev_fin, programme:prog,
+      cta_label:s.ev_cta_label, cta_nav:s.ev_cta_nav, tel:s.ev_tel
+    };
+  }
+
+  function bbEvRendre(){
     var sec = document.getElementById('bb-evenement');
-    if(!sec) return;
+    if (!sec) return;
 
-    function ranger(){ sec.classList.add('bb-hide'); clearInterval(bbEvCdTimer); }
+    var liste = (bbEvBase && bbEvBase.length)
+      ? bbEvBase.filter(function(e){ return bbEvEnCours(e.fin); })
+      : [];
+    if (!liste.length){
+      var repli = bbEvDesReglages(bbEvReglages);
+      if (repli && bbEvEnCours(repli.fin)) liste = [repli];
+    }
 
-    if (String(s.ev_show || 'non') === 'non'){ ranger(); return; }
-
-    // La date de peremption. On compare des chaines aaaa-mm-jj entre elles :
-    // pas de fuseau horaire, pas de surprise a minuit.
-    var fin = String(s.ev_fin || '').trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(fin) && new Date().toISOString().slice(0,10) > fin){ ranger(); return; }
+    var suite = document.getElementById('bb-ev-suite');
+    if (!liste.length){
+      sec.classList.add('bb-hide');
+      clearInterval(bbEvCdTimer);
+      if (suite) suite.innerHTML = '';
+      return;
+    }
     sec.classList.remove('bb-hide');
+    bbEvPeindre(liste[0]);
+    bbEvSuite(liste.slice(1));
+  }
 
-    bbSet('bb-ev-kicker', s.ev_kicker);
-    bbSet('bb-ev-title',  s.ev_title);
-    bbSet('bb-ev-text',   s.ev_text);
-    bbSet('bb-ev-dates',  s.ev_dates);
-    bbSet('bb-ev-place',  s.ev_place);
-    bbSet('bb-ev-org',    s.ev_org);
-    bbSet('bb-ev-theme',  s.ev_theme);
-    bbSet('bb-ev-p1d', s.ev_p1_jour); bbSet('bb-ev-p1t', s.ev_p1_texte); bbSet('bb-ev-p1e', s.ev_p1_entree);
-    bbSet('bb-ev-p2d', s.ev_p2_jour); bbSet('bb-ev-p2t', s.ev_p2_texte); bbSet('bb-ev-p2e', s.ev_p2_entree);
-    bbSet('bb-ev-p3d', s.ev_p3_jour); bbSet('bb-ev-p3t', s.ev_p3_texte); bbSet('bb-ev-p3e', s.ev_p3_entree);
-    bbApparence(document.getElementById('bb-ev-kicker'), s, 'ev_kicker');
-    bbApparence(document.getElementById('bb-ev-title'),  s, 'ev_title');
-    bbApparence(document.getElementById('bb-ev-text'),   s, 'ev_text');
+  function bbEvPeindre(ev){
+    bbSet('bb-ev-kicker', ev.kicker);
+    bbSet('bb-ev-title',  ev.titre);
+    bbSet('bb-ev-text',   ev.texte);
+    bbSet('bb-ev-dates',  ev.dates);
+    bbSet('bb-ev-place',  ev.lieu);
+    bbSet('bb-ev-org',    ev.organisateur);
+    bbSet('bb-ev-theme',  ev.theme);
+    bbSet('bb-ev-aff-label', ev.affiche_label);
+    // Un fait vide retire sa ligne : il ne laisse pas un intitule seul.
+    [['bb-ev-i-dates', ev.dates], ['bb-ev-i-place', ev.lieu],
+     ['bb-ev-i-org', ev.organisateur], ['bb-ev-i-theme', ev.theme]].forEach(function(p){
+      var el = document.getElementById(p[0]);
+      if (el) el.classList.toggle('bb-hide', !p[1]);
+    });
 
-    // LES NATIONS. Une liste separee par des virgules, et celle du club
-    // reconnue a l'etoile qu'on lui met devant : « Gambie, *Senegal ».
-    // Plus simple qu'un second reglage, et impossible a desynchroniser.
-    //
-    // Du TEXTE, pas des emoji de drapeaux : Windows ne sait pas les
-    // dessiner et afficherait « SN » a la place du drapeau senegalais.
+    if (bbEvReglages){
+      bbApparence(document.getElementById('bb-ev-kicker'), bbEvReglages, 'ev_kicker');
+      bbApparence(document.getElementById('bb-ev-title'),  bbEvReglages, 'ev_title');
+      bbApparence(document.getElementById('bb-ev-text'),   bbEvReglages, 'ev_text');
+    }
+
+    // LES NATIONS. Une liste separee par des virgules, l'etoile devant
+    // celle du club : « Mali, *Senegal ». Un second champ se serait
+    // desynchronise du premier. Vide, la rangee disparait.
     var boite = document.getElementById('bb-ev-nations');
     if (boite){
-      var brut = (s.ev_nations == null || s.ev_nations === '')
-        ? 'Mauritanie, Gambie, Tunisie, Maroc, Mali, *Sénégal'
-        : String(s.ev_nations);
-      boite.innerHTML = brut.split(',').map(function(x){ return x.trim(); })
-        .filter(Boolean).map(function(nom){
-          var nous = nom.charAt(0) === '*';
-          if (nous) nom = nom.slice(1).trim();
-          return '<b' + (nous ? ' class="nous"' : '') + '>' + esc(nom) + '</b>';
-        }).join('');
+      var noms = String(ev.nations || '').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+      boite.innerHTML = noms.map(function(nom){
+        var nous = nom.charAt(0) === '*';
+        if (nous) nom = nom.slice(1).trim();
+        return '<b' + (nous ? ' class="nous"' : '') + '>' + esc(nom) + '</b>';
+      }).join('');
+      boite.classList.toggle('bb-hide', !noms.length);
     }
 
-    // L'affiche : la vignette dans le bloc, la pleine au clic. Sans
-    // reglage, celles posees dans le fichier.
-    var vign = bbSafeMedia(s.ev_poster_url), plein = bbSafeMedia(s.ev_poster_full_url) || vign;
-    if (vign){
-      var im = document.getElementById('bb-ev-poster');
-      // Les attributs width/height du fichier valent pour l'affiche
-      // livree ; une autre image aurait d'autres proportions et se
-      // trouverait etiree.
-      if (im){ im.src = vign; im.removeAttribute('width'); im.removeAttribute('height'); }
+    // LE PROGRAMME. En JSON dans la base plutot qu'en trois colonnes
+    // figees : un tournoi a cinq temps forts ne demande pas de migration.
+    var prog = document.getElementById('bb-ev-prog');
+    if (prog){
+      var etapes = ev.programme;
+      if (typeof etapes === 'string'){ try { etapes = JSON.parse(etapes); } catch(e){ etapes = []; } }
+      etapes = (etapes || []).filter(function(p){ return p && (p.jour || p.texte); });
+      prog.innerHTML = etapes.map(function(p){
+        return '<div class="bb-ev-p">' +
+          (p.jour ? '<b>' + esc(p.jour) + '</b>' : '') +
+          (p.texte ? '<span>' + esc(p.texte) + '</span>' : '') +
+          (p.entree ? '<em>' + esc(p.entree) + '</em>' : '') + '</div>';
+      }).join('');
+      prog.classList.toggle('bb-hide', !etapes.length);
     }
-    if (plein){ var gr = document.getElementById('bb-ev-modal-img'); if (gr) gr.src = plein; }
-    if (s.ev_poster_alt){
-      ['bb-ev-poster','bb-ev-modal-img'].forEach(function(id){
-        var e = document.getElementById(id); if (e) e.alt = s.ev_poster_alt;
-      });
+
+    var vign = bbSafeMedia(ev.affiche_url), plein = bbSafeMedia(ev.affiche_pleine_url) || vign;
+    var im = document.getElementById('bb-ev-poster');
+    if (im && vign){
+      im.src = vign;
+      if (ev.affiche_alt) im.alt = ev.affiche_alt;
+    }
+    var aff = document.getElementById('bb-ev-aff');
+    if (aff){
+      aff.classList.toggle('bb-hide', !vign);
+      aff.onclick = plein ? function(){ bbEvModal(plein, ev.affiche_alt); } : null;
     }
 
     var cta = document.getElementById('bb-ev-cta');
-    if (cta && s.ev_cta_label){
-      var fl = cta.querySelector('svg');
-      cta.textContent = s.ev_cta_label;
-      if (fl) cta.appendChild(fl);
+    if (cta){
+      if (ev.cta_label){
+        var fl = cta.querySelector('svg');
+        cta.textContent = ev.cta_label;
+        if (fl) cta.appendChild(fl);
+      }
+      if (ev.cta_nav) cta.setAttribute('data-nav', String(ev.cta_nav).trim());
     }
-    if (cta && s.ev_cta_nav) cta.setAttribute('data-nav', String(s.ev_cta_nav).trim());
 
-    // Le telephone : un reglage vide RETIRE le bouton. Un numero affiche
-    // qui ne repond pas est pire que pas de numero.
+    // Un numero affiche qui ne repond pas est pire que pas de numero :
+    // sans valeur, le bouton n'existe pas.
     var tel = document.getElementById('bb-ev-tel');
-    if (tel && s.ev_tel != null){
-      var num = String(s.ev_tel).trim();
-      if (num){
-        tel.href = 'tel:' + num.replace(/[^\d+]/g, '');
-        bbSet('bb-ev-tel-text', num);
-        tel.style.display = 'inline-flex';
-      } else tel.style.display = 'none';
+    if (tel){
+      var num = String(ev.tel || '').trim();
+      tel.classList.toggle('bb-hide', !num);
+      if (num){ tel.href = 'tel:' + num.replace(/[^\d+]/g, ''); bbSet('bb-ev-tel-text', num); }
     }
 
-    bbEvCountdown(s.ev_datetime);
+    bbEvCountdown(ev.debut);
   }
 
-  // Meme regle que la pre-saison : passe l'echeance, le compte a rebours
-  // s'efface au lieu d'afficher un zero fige ou un nombre negatif.
+  // Les suivants : une ligne chacun, et le clic ouvre leur affiche. Ils
+  // prendront le bloc en grand tout seuls quand celui du dessus sera
+  // passe : rien a rebrancher le lendemain.
+  function bbEvSuite(liste){
+    var box = document.getElementById('bb-ev-suite');
+    if (!box) return;
+    box.innerHTML = (liste || []).map(function(ev){
+      var plein = bbSafeMedia(ev.affiche_pleine_url) || bbSafeMedia(ev.affiche_url) || '';
+      return '<button type="button" class="bb-ev-s"' +
+          (plein ? ' data-ev-aff="' + esc(plein) + '" data-ev-alt="' + esc(ev.affiche_alt || ev.titre || '') + '"' : '') +
+          ' aria-label="' + esc((ev.titre || '') + (plein ? ' : voir l\'affiche' : '')) + '">' +
+          '<span class="bb-ev-s-d">' + esc(bbEvJour(ev.debut) || ev.dates || '') + '</span>' +
+          '<span class="bb-ev-s-t">' + esc(ev.titre || '') +
+            (ev.lieu ? '<em>' + esc(ev.lieu) + '</em>' : '') + '</span>' +
+          (plein ? '<span class="bb-ev-s-a">' + esc(ev.affiche_label || 'Voir l\'affiche') + '</span>' : '') +
+        '</button>';
+    }).join('');
+    box.querySelectorAll('[data-ev-aff]').forEach(function(b){
+      b.addEventListener('click', function(){
+        bbEvModal(b.getAttribute('data-ev-aff'), b.getAttribute('data-ev-alt'));
+      });
+    });
+  }
+
+  function bbEvJour(iso){
+    if (!iso) return '';
+    var d = new Date(String(iso).trim().replace(' ', 'T'));
+    if (isNaN(d.getTime())) return '';
+    return d.getDate() + ' ' + BB_EV_MOIS[d.getMonth()];
+  }
+
+  function bbEvModal(url, alt){
+    var im = document.getElementById('bb-ev-modal-img');
+    if (im){ im.src = url; if (alt) im.alt = alt; }
+    var m = document.getElementById('bb-ev-modal');
+    if (m) m.classList.add('open');
+  }
+
+  // Passe l'echeance, le compte a rebours s'efface au lieu d'afficher un
+  // zero fige ou un nombre negatif.
   function bbEvCountdown(iso){
     var box = document.getElementById('bb-ev-cd');
-    if(!box) return;
+    if (!box) return;
     clearInterval(bbEvCdTimer);
-    var cible = iso ? new Date(String(iso).trim().replace(' ', 'T')) : new Date('2026-09-23T09:00');
+    var cible = iso ? new Date(String(iso).trim().replace(' ', 'T')) : null;
     if (!cible || isNaN(cible.getTime())){ box.classList.add('bb-hide'); return; }
 
     function peindre(){
@@ -9238,6 +9396,7 @@ window.bbCloud = function(url, w){
     initPhoneTilt();
     initFaceOff();
     bbHydrate();
+    bbEvCharger();
     // Le lien « Billetterie » doit dire le vrai des la premiere page.
     // Une lecture au demarrage, et elle sert aussi de prechauffage a
     // la page Billetterie : la premiere ouverture ne recharge rien.
