@@ -734,6 +734,11 @@ window.bbLienSur = function (u) {
     border-radius:14px;margin-top:9px;transition:border-color .2s ease,background .2s ease}
   .bb-ev-s:hover{border-color:rgba(var(--bb-or-rgb),.5);background:rgba(10,36,48,.78)}
   .bb-ev-s:focus-visible{outline:2px solid var(--bb-or);outline-offset:2px}
+  /* La miniature : elle dit d'un coup d'oeil qu'il y a une seconde
+     affiche, la ou une date seule ne disait rien. */
+  .bb-ev-s-v{flex:none;width:38px;border-radius:6px;overflow:hidden;
+    border:1px solid rgba(var(--bb-or-rgb),.4);background:#07130D;line-height:0}
+  .bb-ev-s-v img{display:block;width:100%;height:auto}
   .bb-ev-s-d{flex:none;min-width:84px;font-family:'Inter',sans-serif;font-weight:800;
     font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--bb-or)}
   .bb-ev-s-t{flex:1;min-width:0;font-family:'Inter',sans-serif;font-weight:700;
@@ -2561,25 +2566,25 @@ window.bbLienSur = function (u) {
         <div class="bb-ev">
           <div class="bb-ev-grid">
             <button type="button" class="bb-ev-aff" id="bb-ev-aff" aria-label="Voir l'affiche en grand">
-              <img id="bb-ev-poster" src="/media/img/tournoi-dekkil-rapatak-2026-t.webp" alt="Affiche de la premiere edition du tournoi Dekkil Rapatak, terrain de Bopp, Dakar, du 18 au 20 septembre 2026" loading="lazy" decoding="async">
+              <img id="bb-ev-poster" src="/media/img/tournoi-nouakchott-2026-t.webp" alt="Affiche du Tournoi Women’s Sport International de basketball feminin, Nouakchott, du 23 au 29 septembre 2026" loading="lazy" decoding="async">
               <span id="bb-ev-aff-label" data-bb="ev_affiche_label">Voir l'affiche</span>
             </button>
 
             <div class="bb-ev-titres">
-              <div class="bb-ev-k"><i></i><span id="bb-ev-kicker">À la une · Tournoi de Bopp</span></div>
-              <h2 class="bb-ev-t" id="bb-ev-title">DEKKIL RAPATAK</h2>
+              <div class="bb-ev-k"><i></i><span id="bb-ev-kicker">À la une · Tournoi international</span></div>
+              <h2 class="bb-ev-t" id="bb-ev-title">CAP SUR NOUAKCHOTT</h2>
             </div>
 
             <div class="bb-ev-corps">
-              <p class="bb-ev-x" id="bb-ev-text">Le week-end du 18 au 20 septembre, les Baobabs jouent la première édition du Dekkil Rapatak, au terrain de Bopp. Seize équipes, huit filles et huit garçons, deux trophées.</p>
+              <p class="bb-ev-x" id="bb-ev-text">Du 23 au 29 septembre, les Baobabs portent les couleurs du Sénégal au Tournoi Women’s Sport International de basketball féminin. Six nations, une semaine, un terrain : celui de Nouakchott.</p>
 
               <div class="bb-ev-nat" id="bb-ev-nations"></div>
 
               <dl class="bb-ev-info" id="bb-ev-info">
-                <div id="bb-ev-i-dates"><dt>Dates</dt><dd id="bb-ev-dates">18 → 20 septembre 2026</dd></div>
-                <div id="bb-ev-i-place"><dt>Lieu</dt><dd id="bb-ev-place">Terrain de Bopp, Dakar</dd></div>
-                <div id="bb-ev-i-org"><dt>Organisateur</dt><dd id="bb-ev-org">Dekkil Rapatak</dd></div>
-                <div id="bb-ev-i-theme"><dt>Objectif</dt><dd id="bb-ev-theme">Occuper les jeunes compétiteurs pendant les vacances</dd></div>
+                <div id="bb-ev-i-dates"><dt>Dates</dt><dd id="bb-ev-dates">23 → 29 septembre 2026</dd></div>
+                <div id="bb-ev-i-place"><dt>Lieu</dt><dd id="bb-ev-place">Terrain de basket de Nouakchott</dd></div>
+                <div id="bb-ev-i-org"><dt>Organisateur</dt><dd id="bb-ev-org">Women Sport RIM</dd></div>
+                <div id="bb-ev-i-theme"><dt>Thème</dt><dd id="bb-ev-theme">Sport au féminin, vecteur d’espoir et de leadership</dd></div>
               </dl>
 
               <div class="bb-ev-cd bb-ps-cd bb-hide" id="bb-ev-cd" role="timer" aria-label="Temps restant avant l'événement"></div>
@@ -7671,7 +7676,7 @@ window.bbCloud = function(url, w){
   function applyEvenement(s){ if (s){ bbEvReglages = s; bbEvRendre(); } }
 
   function bbEvCharger(){
-    return sbFetch('evenements?select=*&actif=eq.true&order=debut.asc,ordre.asc')
+    return sbFetch('evenements?select=*&actif=eq.true&order=ordre.asc,debut.asc')
       .then(function(rows){ bbEvBase = rows || []; bbEvRendre(); })
       .catch(function(){ bbEvBase = null; bbEvRendre(); });
   }
@@ -7800,7 +7805,15 @@ window.bbCloud = function(url, w){
         cta.textContent = ev.cta_label;
         if (fl) cta.appendChild(fl);
       }
-      if (ev.cta_nav) cta.setAttribute('data-nav', String(ev.cta_nav).trim());
+      // L'article precis quand on le connait ; sinon la page visee
+      // par le reglage, et la liste en dernier recours.
+      if (ev.article_slug){
+        cta.removeAttribute('data-nav');
+        cta.onclick = function(e){ e.preventDefault(); bbEvLire(ev.article_slug); };
+      } else {
+        cta.onclick = null;
+        cta.setAttribute('data-nav', String(ev.cta_nav || 'actualites').trim());
+      }
     }
 
     // Un numero affiche qui ne repond pas est pire que pas de numero :
@@ -7822,21 +7835,28 @@ window.bbCloud = function(url, w){
     var box = document.getElementById('bb-ev-suite');
     if (!box) return;
     box.innerHTML = (liste || []).map(function(ev){
-      var plein = bbSafeMedia(ev.affiche_pleine_url) || bbSafeMedia(ev.affiche_url) || '';
-      return '<button type="button" class="bb-ev-s"' +
-          (plein ? ' data-ev-aff="' + esc(plein) + '" data-ev-alt="' + esc(ev.affiche_alt || ev.titre || '') + '"' : '') +
-          ' aria-label="' + esc((ev.titre || '') + (plein ? ' : voir l\'affiche' : '')) + '">' +
+      var vign = bbSafeMedia(ev.affiche_url) || bbSafeMedia(ev.affiche_pleine_url) || '';
+      return '<button type="button" class="bb-ev-s" data-ev-lire="' + esc(ev.article_slug || '') + '"' +
+          ' aria-label="' + esc((ev.titre || '') + ' : voir l\'actualité') + '">' +
+          (vign ? '<span class="bb-ev-s-v"><img src="' + esc(vign) + '" alt="" loading="lazy" decoding="async"></span>' : '') +
           '<span class="bb-ev-s-d">' + esc(bbEvJour(ev.debut) || ev.dates || '') + '</span>' +
           '<span class="bb-ev-s-t">' + esc(ev.titre || '') +
             (ev.lieu ? '<em>' + esc(ev.lieu) + '</em>' : '') + '</span>' +
-          (plein ? '<span class="bb-ev-s-a">' + esc(ev.affiche_label || 'Voir l\'affiche') + '</span>' : '') +
+          '<span class="bb-ev-s-a">Voir l\'actualité</span>' +
         '</button>';
     }).join('');
-    box.querySelectorAll('[data-ev-aff]').forEach(function(b){
-      b.addEventListener('click', function(){
-        bbEvModal(b.getAttribute('data-ev-aff'), b.getAttribute('data-ev-alt'));
-      });
+    box.querySelectorAll('[data-ev-lire]').forEach(function(b){
+      b.addEventListener('click', function(){ bbEvLire(b.getAttribute('data-ev-lire')); });
     });
+  }
+
+  // Le bouton mene a SON article, pas a la liste. Sans adresse connue,
+  // il ouvre les actualites : le visiteur y trouvera l'article en tete,
+  // ce qui vaut mieux qu'un bouton mort.
+  function bbEvLire(slug){
+    slug = (slug || '').trim();
+    if (slug && typeof bbAcVoir === 'function'){ bbAcVoir(slug); return; }
+    goTo('actualites');
   }
 
   function bbEvJour(iso){
@@ -9267,6 +9287,20 @@ window.bbCloud = function(url, w){
     som.innerHTML = bbNews.slice(1).map(function(x, i){ return bbAcLigne(x, i + 1); }).join('');
     bbAcBrancher(tete); bbAcBrancher(som);
   }
+
+  // Ouvrir un article depuis ailleurs, par son adresse lisible. Si les
+  // actualites ne sont pas encore chargees, on note la cible : c'est
+  // renderActus qui l'honorera en arrivant.
+  window.bbAcVoir = function(slug){
+    slug = String(slug || '').trim();
+    if (!slug) { goTo('actualites'); return; }
+    var vise = null;
+    for (var i = 0; i < bbNews.length; i++)
+      if (bbNews[i].slug === slug || String(bbNews[i].id) === slug) { vise = bbNews[i]; break; }
+    if (vise){ bbAcOuvrir(vise.id); return; }
+    window.bbAcAOuvrir = slug;
+    goTo('actualites');
+  };
 
   function bbAcParId(id){
     for (var i = 0; i < bbNews.length; i++)
