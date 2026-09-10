@@ -41,6 +41,19 @@ update evenements set ordre = 20,
  where titre = 'DEKKIL RAPATAK';
 
 
+-- ---------------------------------------------------------------------
+--  LES CADRATINS QUITTENT LES TEXTES
+--
+--  Le tiret long est remplace par la ponctuation que la phrase demande.
+--  « update ... where » : sans effet si vous avez deja retouche le texte
+--  dans l'administration.
+-- ---------------------------------------------------------------------
+update evenements
+   set texte = 'Le week-end du 18 au 20 septembre, les Baobabs jouent la première édition du Dekkil Rapatak, au terrain de Bopp. Seize équipes, huit filles et huit garçons, deux trophées, et de quoi occuper les jeunes compétiteurs pendant les vacances.'
+ where titre = 'DEKKIL RAPATAK'
+   and texte like '%deux trophées —%';
+
+
 -- =====================================================================
 --  Verification apres execution :
 --    select ordre, titre, article_slug from evenements order by ordre;
