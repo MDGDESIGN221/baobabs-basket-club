@@ -2821,6 +2821,12 @@
   .ds-card-n{display:block;font-family:var(--font-ui);font-weight:600;font-size:13.5px;
     color:var(--text);line-height:1.25;letter-spacing:-.005em}
   .ds-card-m{display:block;font-size:11px;color:var(--faint);margin-top:4px;line-height:1.4}
+  /* La categorie, sortie de la sous-ligne. Sans couleur reglee elle
+     reste un mot gris : le reglage ajoute, il n'impose pas. */
+  .ds-cat{display:inline-block;font-family:var(--font-ui);font-weight:700;font-size:9.5px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+    border:1px solid var(--line-strong);border-radius:100px;padding:3px 9px;margin-right:7px}
+  .ds-cat.on{color:#07130D;border-color:transparent}
   .ds-card-s{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
   .ds-empty{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
     padding:16px 2px;opacity:.5}
@@ -5862,7 +5868,11 @@
     // Les listes entrent dans la meme attente que le role : un ecran
     // ne doit jamais s'ouvrir sur les valeurs du fichier pour se
     // corriger une seconde plus tard.
-    return Promise.all([role, profil(), chargerListes(), chargerProprietaire()]);
+    // Les reglages entrent ici : les badges des dossiers et les couleurs
+    // de categorie en viennent, et ils servent des le premier ecran
+    // ouvert. Une seule lecture, avant tout le monde.
+    return Promise.all([role, profil(), chargerListes(), chargerProprietaire(),
+                        loadSettings().then(badgesAppliquer)]);
   }
 
   // LES CASQUETTES VIVAIENT DANS CE FICHIER.
@@ -12037,7 +12047,14 @@
 
   // ===================== RÉGLAGES (site_settings) =====================
   var settings={};
-  function loadSettings(){ return sbGet('site_settings?select=*').then(function(rows){ settings={}; (rows||[]).forEach(function(r){ settings[r.key]=r.value; }); }).catch(function(){ settings={}; }); }
+  // L'ECHEC NE VIDE PLUS « settings ». Elle est appelee depuis plusieurs
+  // ecrans : une lecture ratee remettait la table a vide et effacait un
+  // etat deja correct -- les badges repassaient en gris sans un mot.
+  function loadSettings(){
+    return sbGet('site_settings?select=*')
+      .then(function(rows){ settings={}; (rows||[]).forEach(function(r){ settings[r.key]=r.value; }); })
+      .catch(function(){ if (!settings || !Object.keys(settings).length) settings = {}; });
+  }
 
   // ---------------------------------------------------------------------
   // LES TEXTES DU SITE, LUS SUR LE SITE
@@ -18146,6 +18163,7 @@
   // Appelee a l'ouverture des deux ecrans, apres loadSettings().
   function badgesAppliquer(){
     if (typeof settings !== 'object' || !settings) return;
+    catCouleursOublier();
     if (settings.cd_badges) CD_ST = badgesLire(settings.cd_badges, CD_ST_DEF);
     if (settings.in_badges) IN_ST = badgesLire(settings.in_badges, IN_ST_DEF);
   }
@@ -18160,8 +18178,6 @@
 
   function cdInit(){
     if (cdStarted) return; cdStarted = true;
-    // Les badges viennent d'un reglage : on le lit une fois, en entrant.
-    loadSettings().then(badgesAppliquer).then(cdRender).catch(function(){});
     document.getElementById('cd-search').addEventListener('input', cdRender);
     document.getElementById('cd-filter-cat').addEventListener('change', cdRender);
     document.getElementById('cd-back').addEventListener('click', function(){ cdSel = null; cdRender(); });
@@ -18240,7 +18256,7 @@
 
   function cdSubline(r){
     var age = r.age ? r.age+' ans' : '';
-    return [r.position, r.category, age, r.city].filter(Boolean).join(' · ');
+    return [r.position, age, r.city].filter(Boolean).join(' · ');
   }
 
   // Convertit une URL image (Cloudinary, etc.) en data URL base64 via un
@@ -19116,7 +19132,7 @@
           '<div class="ds-col-b">'+ (col.length ? col.map(function(r){
             return '<div class="ds-card" draggable="true" data-id="'+r.id+'">'+
               '<span class="ds-card-n">'+esc(r.full_name||'—')+'</span>'+
-              '<span class="ds-card-m">'+esc(cdSubline(r)||'—')+'</span>'+
+              '<span class="ds-card-m">'+catBadge(r.category)+esc(cdSubline(r)||'—')+'</span>'+
             '</div>';
           }).join('') : '<div class="ds-empty">Aucune</div>') +'</div></div>';
       }).join('');
@@ -19562,7 +19578,6 @@
 
   function inInit(){
     if (inStarted) return; inStarted = true;
-    loadSettings().then(badgesAppliquer).then(inRender).catch(function(){});
     document.getElementById('in-search').addEventListener('input', inRender);
     document.getElementById('in-filter-cat').addEventListener('change', inRender);
     document.getElementById('in-filter-pay').addEventListener('change', inRender);
@@ -19676,8 +19691,41 @@
     });
   }
 
+  // ====== LA COULEUR D'UNE CATEGORIE ======
+  // Une ligne par categorie, « nom | #couleur ». Une categorie absente
+  // du reglage reste en gris : ce reglage ajoute, il ne remplace pas, et
+  // un club qui n'y touche jamais garde l'ecran qu'il connait.
+  // PAS DE CACHE, ET C'EST VOULU. Une premiere version retenait la table
+  // et il fallait l'oublier au bon moment : apres chaque loadSettings, et
+  // seulement si les reglages etaient arrives. Deux essais au banc, deux
+  // fois des badges restes gris. Cinq lignes se relisent pour rien.
+  function catCouleur(nom){
+    var cible = String(nom || '').trim().toLowerCase();
+    if (!cible) return null;
+    var texte = (typeof settings === 'object' && settings && settings.cats_couleurs) || '';
+    var trouve = null;
+    String(texte).split('\n').forEach(function(l){
+      var c = l.split('|');
+      var n = (c[0] || '').trim().toLowerCase();
+      var col = (c[1] || '').trim();
+      if (n === cible && /^#[0-9a-fA-F]{3,8}$/.test(col)) trouve = col;
+    });
+    return trouve;
+  }
+  function catCouleursOublier(){ /* plus rien a oublier : voir ci-dessus */ }
+
+  // Le badge, ou rien du tout. Pas de couleur par defaut tiree au sort :
+  // une teinte qui ne veut rien dire fatigue l'oeil pour rien.
+  function catBadge(nom){
+    if (!nom) return '';
+    var c = catCouleur(nom);
+    if (!c) return '<span class="ds-cat">' + esc(nom) + '</span>';
+    return '<span class="ds-cat on" style="background:' + esc(c) + '">' + esc(nom) + '</span>';
+  }
+
   function inSubline(r){
-    return [r.category, (r.age?r.age+' ans':''), r.district].filter(Boolean).join(' · ');
+    // La categorie part en badge devant : elle ne se noie plus dans la ligne.
+    return [(r.age?r.age+' ans':''), r.district].filter(Boolean).join(' · ');
   }
   // Une photo absente n'est pas une couleur. L'initiale sur aplat tiré au
   // sort dans huit teintes ne disait rien de l'enfant et donnait à l'écran
@@ -19762,7 +19810,7 @@
             var m = retardPill(r);
             return '<div class="ds-card" draggable="true" data-id="'+esc(r.id)+'">'+
               '<span class="ds-card-n">'+esc(r.full_name||'—')+'</span>'+
-              '<span class="ds-card-m">'+esc(inSubline(r)||'—')+'</span>'+
+              '<span class="ds-card-m">'+catBadge(r.category)+esc(inSubline(r)||'—')+'</span>'+
               (m ? '<span class="ds-card-s">'+m+'</span>' : '')+
             '</div>';
           }).join('') : '<div class="ds-empty">Aucun</div>') +'</div></div>';
@@ -24150,7 +24198,12 @@
         {key:'cd_badges', label:'Candidatures — une ligne par badge : clé | libellé | couleur', type:'textarea',
          def:badgesEcrire(CD_ST_DEF)},
         {key:'in_badges', label:'Inscriptions — une ligne par badge : clé | libellé | couleur', type:'textarea',
-         def:badgesEcrire(IN_ST_DEF)}
+         def:badgesEcrire(IN_ST_DEF)},
+        // Les categories des deux ecrans se croisent (U15 existe des deux
+        // cotes) : une seule liste, sinon elles finiraient par se
+        // contredire. Vide, la categorie reste le mot gris d'avant.
+        {key:'cats_couleurs', label:'Couleur des catégories — une ligne par catégorie : nom | couleur (vide = gris)', type:'textarea',
+         def:'U9 | #9DB8E8\nU11 | #7DD3C0\nU13 | #C6A257\nU15 | #E08A5B\nU17 | #A8D93B'}
       ],
       preview:function(v){
         function rangee(titre, texte, ref){
@@ -24174,9 +24227,32 @@
               : '')+
           '</div>';
         }
+        // Les categories, dessinees comme elles apparaitront dans les
+        // cartes : c'est la seule facon de voir qu'une couleur ne se lit
+        // pas sur son fond.
+        var cats = String(v.cats_couleurs || '').split('\n').map(function(l){
+          var c = l.split('|');
+          return { nom:(c[0]||'').trim(), col:(c[1]||'').trim() };
+        }).filter(function(c){ return c.nom; });
+        var blocCats = '<div style="margin-bottom:16px">'+
+          '<div style="font-family:var(--font-ui);font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:8px">Catégories</div>'+
+          (cats.length
+            ? '<div style="display:flex;flex-wrap:wrap;gap:6px">'+cats.map(function(c){
+                var ok = /^#[0-9a-fA-F]{3,8}$/.test(c.col);
+                return '<span style="font-family:var(--font-ui);font-weight:700;font-size:9.5px;letter-spacing:.1em;'+
+                  'text-transform:uppercase;border-radius:100px;padding:4px 10px;'+
+                  (ok ? 'color:#07130D;background:'+esc(c.col)
+                      : 'color:var(--faint);border:1px solid var(--line-strong)')+'">'+
+                  esc(c.nom)+(ok?'':' (couleur illisible)')+'</span>';
+              }).join('')+'</div>'
+            : '<div style="font-size:11.5px;color:var(--faint)">Aucune couleur réglée : les catégories restent en gris, comme aujourd\'hui.</div>')+
+        '</div>';
+
         return rangee('Candidatures', v.cd_badges, CD_ST_DEF) +
           rangee('Inscriptions', v.in_badges, IN_ST_DEF) +
-          '<p class="pv-hint"><b>La clé, en tête de ligne, ne doit pas changer</b>&nbsp;: c\'est elle qui est écrite dans chaque dossier déjà enregistré. La renommer rendrait ces dossiers introuvables. Le <b>libellé</b> et la <b>couleur</b>, eux, se changent librement — la couleur s\'écrit en hexadécimal, par exemple <code>#C6A257</code>. Retirer une ligne retire la colonne du tableau&nbsp;; l\'ordre des lignes est l\'ordre des colonnes.</p>';
+          blocCats +
+          '<p class="pv-hint"><b>La clé, en tête de ligne, ne doit pas changer</b>&nbsp;: c\'est elle qui est écrite dans chaque dossier déjà enregistré. La renommer rendrait ces dossiers introuvables. Le <b>libellé</b> et la <b>couleur</b>, eux, se changent librement — la couleur s\'écrit en hexadécimal, par exemple <code>#C6A257</code>. Retirer une ligne retire la colonne du tableau&nbsp;; l\'ordre des lignes est l\'ordre des colonnes.</p>'+
+          '<p class="pv-hint">Les <b>catégories</b> sont la ligne du dessous, dans les cartes du tableau&nbsp;: <code>U11 | #7DD3C0</code>. Le nom doit s\'écrire comme il est enregistré dans les dossiers. Une catégorie que vous ne nommez pas ici reste en gris — c\'est l\'affichage d\'origine, rien ne casse.</p>';
       } },
     { id:'set_identity', page:'Réglages · Identité', label:'Identité du club', fields:[
         {key:'club_name', label:'Nom du club', type:'text', def:'Baobabs Basket Club'},
