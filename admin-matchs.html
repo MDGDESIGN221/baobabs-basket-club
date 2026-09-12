@@ -2714,6 +2714,36 @@
   .in-line.paid .in-line-t{color:var(--muted)}
   .in-line-t{font-size:13px;color:var(--text);font-weight:600}
   .in-line-s{font-size:11.5px;color:var(--faint);margin-top:2px}
+  /* La vignette d'une piece : on voit ce qu'on a recu sans l'ouvrir. Un
+     PDF n'a pas d'image : trois lettres sur un fond vide. */
+  .in-vignette{width:46px;height:58px;flex:none;border:1px solid var(--line-strong);border-radius:4px;
+    background:var(--surface-3);object-fit:cover;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.08em;color:var(--faint);cursor:zoom-in}
+  .in-vignette:empty{cursor:default}
+  /* L'apercu d'une piece, par-dessus l'ecran : l'image ou le PDF, sans
+     quitter le dossier. Le lien « Ouvrir dans un onglet » reste pour
+     imprimer ou enregistrer. */
+  .in-apercu{position:fixed;inset:0;z-index:500;background:rgba(6,12,9,.82);display:flex;align-items:center;justify-content:center;padding:24px}
+  .in-apercu-p{background:var(--bg);border:1px solid var(--line-strong);border-radius:var(--r-md);width:min(960px,100%);
+    max-height:100%;display:flex;flex-direction:column;overflow:hidden}
+  .in-apercu-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .in-apercu-h b{font-family:var(--font-ui);font-size:13px;color:var(--text)}
+  .in-apercu-h s{display:block;text-decoration:none;font-size:11.5px;color:var(--faint);margin-top:2px}
+  .in-apercu-h a,.in-apercu-h button{font:inherit;font-size:12px;font-weight:600;color:var(--gold);background:none;border:1px solid var(--line-strong);
+    border-radius:6px;padding:6px 10px;cursor:pointer;text-decoration:none}
+  .in-apercu-b{flex:1;min-height:240px;display:flex;align-items:center;justify-content:center;background:var(--surface);overflow:auto}
+  .in-apercu-b img{max-width:100%;max-height:78vh;object-fit:contain}
+  .in-apercu-b iframe{width:100%;height:78vh;border:none;background:#fff}
+  .in-apercu-b .in-apercu-attente{font-size:12.5px;color:var(--faint);padding:40px}
+  /* Le recadrage : la photo se deplace sous un cadre 3:4 fixe (le format
+     d'une photo d'identite), la molette ou le curseur zooment. */
+  .in-cadre-b{padding:10px;cursor:grab;user-select:none}
+  .in-cadre-b.saisi{cursor:grabbing}
+  .in-cadre-b canvas{max-width:100%;height:auto;touch-action:none;display:block}
+  .in-cadre-f{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--faint)}
+  .in-cadre-f input[type=range]{flex:1;min-width:120px}
+  .in-apercu-h button.in-cadre-ok{background:var(--gold);color:#0B1410;border-color:var(--gold)}
+  .in-apercu-h button:disabled{opacity:.5;cursor:default}
   .in-ref{font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.1em;
     color:var(--gold);background:rgba(70,191,29,.1);border:1px solid rgba(70,191,29,.26);
     border-radius:var(--r-sm);padding:3px 9px}
@@ -7708,7 +7738,7 @@
     products:'le produit', banners:'la bannière', announcements:'l’annonce',
     standings:'la ligne de classement', timeline_events:'l’étape',
     ticket_offers:'la catégorie de billet', matches:'le match',
-    promo_codes:'le code promo', academy_registrations:'le dossier',
+    promo_codes:'le code promo', academy_registrations:'le dossier', academy_documents:'la pièce du dossier',
     recruitment_requests:'la candidature', orders:'la commande',
     reservations:'la réservation', site_settings:'le réglage'
   };
@@ -10109,12 +10139,17 @@
     // --- École de basket : l'argent et la santé ---
     travaux.push(sbGet('inscriptions_admin?select=status,medical_recu,periodes_payees,fee_monthly_fcfa,created_at,jours_depuis_reception').then(function(rows){
       rows = rows||[];
+      // « 3 sans réponse » alors que l'écran en montre 4 : la quatrième est
+      // arrivée aujourd'hui, elle n'a pas encore ses 48 h. Le titre le dit,
+      // et le total des nouvelles est écrit à côté pour ne pas faire douter.
+      var toutesNouvelles = rows.filter(function(r){ return (r.status||'nouvelle')==='nouvelle'; }).length;
       var nouvelles = rows.filter(function(r){
         return (r.status||'nouvelle')==='nouvelle' && (r.jours_depuis_reception||0) >= 2;
       }).length;
       if (nouvelles) ajout('important',
-        nouvelles + ' inscription' + (nouvelles>1?'s':'') + ' sans réponse',
-        'La page annonce un rappel sous 48 h.', 'inscriptions', 'inscriptions');
+        nouvelles + ' inscription' + (nouvelles>1?'s':'') + ' sans réponse depuis plus de 48 h',
+        (toutesNouvelles > nouvelles ? toutesNouvelles + ' nouvelles en tout, dont ' + (toutesNouvelles - nouvelles) + ' reçue' + (toutesNouvelles - nouvelles > 1 ? 's' : '') + ' ces deux derniers jours. ' : '') + 'La page annonce un rappel sous 48 h.',
+        'inscriptions', 'inscriptions');
 
       var sansMed = rows.filter(function(r){ return r.status==='inscrite' && r.medical_recu === false; }).length;
       if (sansMed) ajout('urgent',
@@ -20006,7 +20041,71 @@
   // montre comme tel et attend la vraie photo.
   function inPhoto(r){
     var nom = r.full_name || '?';
-    return '<div class="ds-photo">'+esc(nom.charAt(0).toUpperCase())+'</div>';
+    // L'initiale d'abord ; la photo deposee en piece arrive apres, quand
+    // le bucket prive a signe son adresse (inPiecesPoser).
+    if (r.photo_url && /^https?:\/\//i.test(r.photo_url)) return '<img class="ds-photo" id="in-photo" src="'+esc(r.photo_url)+'" alt="'+esc(nom)+'">';
+    return '<div class="ds-photo" id="in-photo">'+esc(nom.charAt(0).toUpperCase())+'</div>';
+  }
+  // Les adresses signees valent dix minutes : on les garde huit, pour ne
+  // pas redemander au bucket a chaque rendu du dossier (il se redessine
+  // trois fois a l'ouverture, quand paiements, journal et pieces arrivent).
+  var inLiens = {};
+  function inLienPiece(d){
+    var k = String(d && d.id || '') + '|' + String(d && d.url || ''), c = inLiens[k];
+    if (c && c.jusqua > Date.now()) return Promise.resolve(c.url);
+    return inUrlPiece(d).then(function(url){ if (url) inLiens[k] = { url: url, jusqua: Date.now() + 8 * 60 * 1000 }; return url; });
+  }
+  // Apres le rendu : la photo dans l'en-tete, une vignette par piece image.
+  function inPiecesPoser(r){
+    var dPhoto = (inDocs || []).filter(function(d){ return d.kind === 'photo' && inNaturePiece(d) === 'image'; })[0];
+    if (dPhoto){
+      inLienPiece(dPhoto).then(function(url){
+        var el = document.getElementById('in-photo');
+        if (!url || !el || String(inSel) !== String(r.id)) return;
+        var img = document.createElement('img');
+        img.className = 'ds-photo'; img.id = 'in-photo'; img.alt = r.full_name || ''; img.src = url;
+        img.style.cursor = 'zoom-in'; img.title = 'Voir la photo';
+        img.addEventListener('click', function(){ inApercu(dPhoto, 'Photo d\'identité'); });
+        el.parentNode.replaceChild(img, el);
+      }).catch(function(){});
+    }
+    document.querySelectorAll('img[data-invignette]').forEach(function(img){
+      var d = (inDocs || []).filter(function(x){ return String(x.id) === img.getAttribute('data-invignette'); })[0];
+      if (!d) return;
+      inLienPiece(d).then(function(url){ if (url) img.src = url; }).catch(function(){});
+    });
+  }
+  // L'apercu : l'image, ou le PDF dans un cadre ; Echap ou le fond ferme.
+  function inApercu(d, lib){
+    var ancien = document.getElementById('in-apercu'); if (ancien) ancien.remove();
+    var nature = inNaturePiece(d);
+    var boite = document.createElement('div'); boite.className = 'in-apercu'; boite.id = 'in-apercu';
+    boite.innerHTML = '<div class="in-apercu-p" role="dialog" aria-label="'+esc(lib||'Pièce')+'">'+
+      '<div class="in-apercu-h"><div><b>'+esc(lib||'Pièce')+'</b><s>'+esc(String(d.url||'').replace(/^.*\//, ''))+(d.received_on ? ' · reçue le '+esc(String(d.received_on).split('-').reverse().join('/')) : '')+'</s></div>'+
+      '<div style="display:flex;gap:8px"><a id="in-apercu-onglet" href="#" target="_blank" rel="noopener noreferrer" hidden>Ouvrir dans un onglet</a><button type="button" id="in-apercu-fermer">Fermer</button></div></div>'+
+      '<div class="in-apercu-b"><div class="in-apercu-attente">Ouverture de la pièce…</div></div></div>';
+    document.body.appendChild(boite);
+    function fermer(){ boite.remove(); document.removeEventListener('keydown', surTouche); }
+    function surTouche(e){ if (e.key === 'Escape') fermer(); }
+    document.addEventListener('keydown', surTouche);
+    boite.addEventListener('click', function(e){ if (e.target === boite) fermer(); });
+    boite.querySelector('#in-apercu-fermer').addEventListener('click', fermer);
+    inLienPiece(d).then(function(url){
+      if (!url) throw new Error('pas de lien');
+      var corps = boite.querySelector('.in-apercu-b');
+      var lien = boite.querySelector('#in-apercu-onglet'); lien.href = url; lien.hidden = false;
+      if (nature === 'pdf' || nature === 'PDF'){
+        corps.innerHTML = '<iframe title="'+esc(lib||'Pièce')+'"></iframe>';
+        corps.querySelector('iframe').src = url;
+      } else if (nature === 'image'){
+        corps.innerHTML = '<img alt="'+esc(lib||'Pièce')+'">';
+        corps.querySelector('img').src = url;
+      } else {
+        corps.innerHTML = '<div class="in-apercu-attente">Ce type de fichier ne se montre pas ici : ouvrez-le dans un onglet.</div>';
+      }
+    }).catch(function(){
+      boite.querySelector('.in-apercu-b').innerHTML = '<div class="in-apercu-attente">La pièce n\'a pas pu être ouverte.</div>';
+    });
   }
   // Le montant sans son unité : dans l'en-tête, « FCFA » est écrit une
   // fois sous le chiffre au lieu d'être collé à chacun.
@@ -20342,21 +20441,60 @@
           '<div class="cd-sec"><div class="cd-sec-h">Pièces du dossier — '+nbPieces+' sur 4</div><div class="cd-sec-b">'+
             IN_PIECES.map(function(p){
               var d = inDocs.filter(function(x){ return x.kind===p[0]; })[0];
-              var lien = (d && /^https?:\/\//i.test(d.url||''))
-                ? '<a href="'+esc(d.url)+'" target="_blank" rel="noopener noreferrer" style="color:var(--gold);font-size:12px;font-weight:600;text-decoration:underline">Voir</a>' : '';
+              var lien = (d && d.url)
+                ? '<button type="button" data-invoir="'+esc(d.id)+'" style="background:none;border:none;color:var(--gold);font:inherit;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline">Voir</button>' : '';
+              // Une famille se trompe de case : l'extrait de naissance sous
+              // « Photo d'identite », la photo sous « Extrait ». La ligne dit
+              // ce qu'elle porte (PDF ou image) et un menu « Reclasser » remet
+              // la piece a sa place ; si l'autre case est occupee, les deux
+              // s'echangent. Le fichier ne bouge pas, seule l'etiquette change.
+              var nature = d ? inNaturePiece(d) : '';
+              var recadrer = (d && p[0] === 'photo' && nature === 'image')
+                ? '<button type="button" data-inrecadrer="'+esc(d.id)+'" style="background:none;border:none;color:var(--gold);font:inherit;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline">Recadrer</button>' : '';
+              var reclasser = d
+                ? '<select data-inreclasser="'+esc(d.id)+'" title="Ranger cette pièce sous une autre case" style="width:auto;font:inherit;font-size:12px;color:var(--faint);background:transparent;border:1px solid var(--line);border-radius:6px;padding:3px 6px;cursor:pointer">'+
+                    '<option value="">Reclasser…</option>'+
+                    IN_PIECES.filter(function(q){ return q[0] !== p[0]; }).map(function(q){
+                      var occupe = inDocs.some(function(x){ return x.kind === q[0]; });
+                      return '<option value="'+esc(q[0])+'">'+esc(q[1])+(occupe ? ' (échanger)' : '')+'</option>';
+                    }).join('')+
+                  '</select>'
+                : '';
               return '<div class="in-line'+(d?' paid':'')+'">'+
+                '<div style="display:flex;align-items:center;gap:12px">'+ (d ? inVignette(d, nature) : '') +
                 '<div><div class="in-line-t">'+esc(p[1])+'</div>'+
                 '<div class="in-line-s">'+(d
-                    ? 'Reçue le '+esc(String(d.received_on||'').split('-').reverse().join('/'))
-                    : esc(p[2]))+'</div></div>'+
-                '<div style="display:flex;align-items:center;gap:10px">'+ lien +
+                    ? 'Reçue le '+esc(String(d.received_on||'').split('-').reverse().join('/'))+(nature ? ' · '+esc(nature) : '')
+                    : esc(p[2]))+'</div></div></div>'+
+                '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">'+ lien + recadrer + reclasser +
                   (d
                     ? '<button type="button" class="ds-act" data-inpiece-del="'+esc(d.id)+'">Retirer</button>'
                     : '<label class="qg-file-btn" style="margin:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span>Téléverser</span>'+
                       '<input type="file" data-inpiece="'+p[0]+'" accept="image/*,application/pdf" style="display:none"></label>')+
                 '</div></div>';
             }).join('')+
-            '<p class="cd-prose" style="color:var(--faint);margin-top:12px">Photographiez le document avec le téléphone, il n\'a pas besoin d\'être scanné. Les pièces sont rangées dans la médiathèque, jamais accessibles depuis le site public.</p>'+
+            // Ce qui n'entre dans aucune des quatre cases (une piece garee
+            // par un echange interrompu, un envoi « autre ») reste visible :
+            // une piece qu'on ne voit pas est une piece perdue.
+            inDocs.filter(function(x){ return !IN_PIECES.some(function(p){ return p[0] === x.kind; }); }).map(function(d){
+              var nature = inNaturePiece(d);
+              return '<div class="in-line">'+
+                '<div style="display:flex;align-items:center;gap:12px">'+ inVignette(d, nature) +
+                '<div><div class="in-line-t">Autre pièce</div>'+
+                '<div class="in-line-s">Reçue le '+esc(String(d.received_on||'').split('-').reverse().join('/'))+(nature ? ' · '+esc(nature) : '')+' · '+esc(String(d.url||'').replace(/^.*\//, ''))+'</div></div></div>'+
+                '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">'+
+                  '<button type="button" data-invoir="'+esc(d.id)+'" style="background:none;border:none;color:var(--gold);font:inherit;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline">Voir</button>'+
+                  '<select data-inreclasser="'+esc(d.id)+'" title="Ranger cette pièce sous une case du dossier" style="width:auto;font:inherit;font-size:12px;color:var(--faint);background:transparent;border:1px solid var(--line);border-radius:6px;padding:3px 6px;cursor:pointer">'+
+                    '<option value="">Ranger sous…</option>'+
+                    IN_PIECES.map(function(q){
+                      var occupe = inDocs.some(function(x){ return x.kind === q[0]; });
+                      return '<option value="'+esc(q[0])+'">'+esc(q[1])+(occupe ? ' (échanger)' : '')+'</option>';
+                    }).join('')+
+                  '</select>'+
+                  '<button type="button" class="ds-act" data-inpiece-del="'+esc(d.id)+'">Retirer</button>'+
+                '</div></div>';
+            }).join('')+
+            '<p class="cd-prose" style="color:var(--faint);margin-top:12px">Photographiez le document avec le téléphone, il n\'a pas besoin d\'être scanné. Les pièces sont rangées dans un espace privé, jamais accessibles depuis le site public. Une pièce déposée dans la mauvaise case se range ailleurs avec « Reclasser… » ; si la case est prise, les deux s\'échangent.</p>'+
           '</div></div>'+
 
           '<div class="cd-sec"><div class="cd-sec-h">Le responsable légal</div><div class="cd-sec-b">'+
@@ -20414,16 +20552,37 @@
     // Pièces : téléversement puis enregistrement. L'ordre compte — on
     // n'écrit la ligne qu'une fois le fichier réellement en ligne, sinon
     // la fiche annoncerait une pièce reçue pointant vers du vide.
+    box.querySelectorAll('[data-invoir]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var d = inDocs.filter(function(x){ return String(x.id)===b.getAttribute('data-invoir'); })[0];
+        if (!d) return;
+        var lib = (IN_PIECES.filter(function(p){ return p[0] === d.kind; })[0] || [d.kind, 'Autre pièce'])[1];
+        inApercu(d, lib);
+      });
+    });
+    box.querySelectorAll('[data-inrecadrer]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var d = inDocs.filter(function(x){ return String(x.id)===b.getAttribute('data-inrecadrer'); })[0];
+        if (d) inRecadrer(d, r);
+      });
+    });
+    inPiecesPoser(r);
     box.querySelectorAll('input[data-inpiece]').forEach(function(fe){
       fe.addEventListener('change', function(){
         var file = fe.files[0]; if (!file) return;
         var kind = fe.getAttribute('data-inpiece');
         var span = fe.parentNode.querySelector('span'); if (span) span.textContent = 'Envoi…';
         // Un certificat medical d'enfant n'a rien a faire dans le tas
-        // commun, ni dans une liste d'images a poser sur une affiche.
-        uploadFile(MEDIA_BUCKET, file, 'dossiers').then(function(url){
+        // commun, ni dans une liste d'images a poser sur une affiche :
+        // il va dans le bucket PRIVE, sous le meme chemin que ce que la
+        // famille depose depuis le site, et la ligne garde ce chemin.
+        var ref = r.reference || ('INS-' + String(r.id||'').replace(/-/g,'').slice(-6).toUpperCase());
+        var ext = (file.name.match(/\.([a-z0-9]+)$/i) || [,'bin'])[1].toLowerCase();
+        var chemin = ref + '/' + kind + '-' + Date.now() + '.' + ext;
+        sb.storage.from(IN_BUCKET_PRIVE).upload(chemin, file, { contentType: file.type || 'application/octet-stream', upsert: false }).then(function(res){
+          if (res.error) throw res.error;
           return sbInsert('academy_documents', {
-            registration_id: r.id, kind: kind, url: url,
+            registration_id: r.id, kind: kind, url: chemin, received_on: new Date().toISOString().slice(0,10),
             author: (currentSession && currentSession.user && currentSession.user.email) || null
           }, 'Inscriptions');
         }).then(function(){
@@ -20432,6 +20591,39 @@
         }).catch(function(){
           if (span) span.textContent = 'Téléverser';
           showMsg(document.getElementById('in-msg'), "La pièce n'a pas pu être enregistrée.", false);
+        });
+      });
+    });
+    box.querySelectorAll('[data-inreclasser]').forEach(function(sel){
+      sel.addEventListener('change', function(){
+        var vers = sel.value; if (!vers) return;
+        var d = inDocs.filter(function(x){ return String(x.id)===sel.getAttribute('data-inreclasser'); })[0];
+        if (!d) return;
+        var autre = inDocs.filter(function(x){ return x.kind === vers && x.id !== d.id; })[0];
+        var libVers = (IN_PIECES.filter(function(q){ return q[0] === vers; })[0] || [vers, vers])[1];
+        var libDe = (IN_PIECES.filter(function(q){ return q[0] === d.kind; })[0] || [d.kind, d.kind])[1];
+        var question = autre
+          ? 'Échanger les deux pièces ? « ' + libDe + ' » et « ' + libVers + ' » prendront chacune la place de l\'autre.'
+          : 'Ranger cette pièce sous « ' + libVers + ' » ?';
+        if (!confirm(question)) { sel.value = ''; return; }
+        sel.disabled = true;
+        // La base refuse deux pieces sur la meme case d'un dossier (index
+        // unique, sauf pour « autre ») : l'echange gare d'abord l'autre
+        // piece sous « autre », deplace celle-ci, puis range l'autre a la
+        // place liberee. Si un pas echoue, la piece garee reste visible
+        // plus bas, sous « Autre piece », et se reclasse a la main.
+        var depuis = d.kind;
+        var suite = autre
+          ? sbUpdate('academy_documents', autre.id, { kind: 'autre' }, 'Inscriptions')
+              .then(function(){ return sbUpdate('academy_documents', d.id, { kind: vers }, 'Inscriptions'); })
+              .then(function(){ return sbUpdate('academy_documents', autre.id, { kind: depuis }, 'Inscriptions'); })
+          : sbUpdate('academy_documents', d.id, { kind: vers }, 'Inscriptions');
+        suite.then(function(){
+          qgToast(autre ? 'Pièces échangées ✓' : 'Pièce reclassée ✓');
+          return inLoad().then(function(){ if (inSel) inOpen(inSel); });
+        }).catch(function(){
+          sel.disabled = false; sel.value = '';
+          showMsg(document.getElementById('in-msg'), 'Le reclassement a échoué.', false);
         });
       });
     });
@@ -20680,25 +20872,200 @@
   //
   // La photo vient de la pièce « Photo d'identité » quand elle a été
   // déposée : c'est le seul portrait que le dossier possède.
+  // LES PIECES D'UN DOSSIER ONT DEUX FORMES. Celles que la famille depose
+  // depuis le site arrivent par la fonction serveur depot-piece dans le
+  // bucket PRIVE dossiers-prives, et academy_documents.url porte un
+  // CHEMIN (« INS-YCXV3/naissance-….webp »), pas une adresse. L'ecran ne
+  // savait ouvrir que les adresses http : les pieces recues etaient
+  // annoncees « Recue le… » sans aucun moyen de les voir, et la fiche
+  // PDF cherchait la photo a une adresse qui n'en etait pas une. On
+  // demande donc au bucket une adresse signee (dix minutes, avec la
+  // session de l'admin, que la politique dossiers_prives_admin_lecture
+  // autorise), ou le fichier lui-meme pour le dessiner.
+  var IN_BUCKET_PRIVE = 'dossiers-prives';
+  function inNaturePiece(d){
+    var ext = (String(d && d.url || '').split('?')[0].match(/\.([a-z0-9]{2,5})$/i) || [,''])[1].toLowerCase();
+    if (ext === 'pdf') return 'PDF';
+    if (/^(jpe?g|png|webp|gif|heic|heif|bmp)$/.test(ext)) return 'image';
+    return ext ? ext.toUpperCase() : '';
+  }
+  // ===== RECADRER LA PHOTO D'IDENTITE =====
+  // Une famille envoie l'enfant en pied, dans le couloir : la fiche et
+  // la licence veulent un visage, en 3:4. On deplace la photo sous un
+  // cadre fixe, on zoome, on pivote si le telephone l'a couchee, et le
+  // resultat (720 x 960, JPEG) remplace la piece « photo » du dossier.
+  // L'original reste dans le bucket : « Annuler le dernier geste »
+  // ramene l'ancienne adresse.
+  function inChargerImage(d){
+    var source = inPieceEstChemin(d)
+      ? sb.storage.from(IN_BUCKET_PRIVE).download(d.url).then(function(res){ if (res.error || !res.data) throw res.error || new Error('pas de fichier'); return res.data; })
+      : fetch(d.url).then(function(r){ if (!r.ok) throw new Error('http ' + r.status); return r.blob(); });
+    return source.then(function(blob){
+      // createImageBitmap respecte l'orientation EXIF : la photo prise
+      // telephone couche arrive droite.
+      if (window.createImageBitmap) return createImageBitmap(blob, { imageOrientation: 'from-image' }).catch(function(){ return inImageDepuisBlob(blob); });
+      return inImageDepuisBlob(blob);
+    });
+  }
+  function inImageDepuisBlob(blob){
+    return new Promise(function(resolve, reject){
+      var url = URL.createObjectURL(blob), img = new Image();
+      img.onload = function(){ URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('image illisible')); };
+      img.src = url;
+    });
+  }
+  function inRecadrer(d, r){
+    var ancien = document.getElementById('in-apercu'); if (ancien) ancien.remove();
+    var CW = 560, CH = 460, FW = 300, FH = 400, cx = CW / 2, cy = CH / 2, fx = cx - FW / 2, fy = cy - FH / 2;
+    var boite = document.createElement('div'); boite.className = 'in-apercu'; boite.id = 'in-apercu';
+    boite.innerHTML = '<div class="in-apercu-p" role="dialog" aria-label="Recadrer la photo">'+
+      '<div class="in-apercu-h"><div><b>Recadrer la photo d\'identité</b><s>Déplacez la photo dans le cadre ; la molette ou le curseur règlent le zoom.</s></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="in-cadre-pivoter">Pivoter</button><button type="button" id="in-cadre-annuler">Annuler</button>'+
+      '<button type="button" id="in-cadre-ok" class="in-cadre-ok" disabled>Enregistrer la photo recadrée</button></div></div>'+
+      '<div class="in-apercu-b in-cadre-b"><canvas id="in-cadre-toile" width="'+CW+'" height="'+CH+'"></canvas></div>'+
+      '<div class="in-cadre-f"><span>Zoom</span><input type="range" id="in-cadre-zoom" min="0" max="100" value="0"><span id="in-cadre-note">Chargement de la photo…</span></div></div>';
+    document.body.appendChild(boite);
+    var toile = boite.querySelector('#in-cadre-toile'), ctx = toile.getContext('2d');
+    var zoom = boite.querySelector('#in-cadre-zoom'), note = boite.querySelector('#in-cadre-note');
+    var ok = boite.querySelector('#in-cadre-ok'), corps = boite.querySelector('.in-cadre-b');
+    var img = null, rot = 0, dx = 0, dy = 0;
+    function fermer(){ boite.remove(); document.removeEventListener('keydown', surTouche); }
+    function surTouche(e){ if (e.key === 'Escape') fermer(); }
+    document.addEventListener('keydown', surTouche);
+    boite.querySelector('#in-cadre-annuler').addEventListener('click', fermer);
+    boite.addEventListener('click', function(e){ if (e.target === boite) fermer(); });
+
+    function dims(){ return rot % 2 ? { w: img.height, h: img.width } : { w: img.width, h: img.height }; }
+    function echelle(){ var q = dims(); return Math.max(FW / q.w, FH / q.h) * (1 + (parseInt(zoom.value, 10) || 0) / 100 * 3); }
+    function borner(){
+      var q = dims(), k = echelle(), W = q.w * k, H = q.h * k;
+      dx = Math.max(-(W - FW) / 2, Math.min((W - FW) / 2, dx));
+      dy = Math.max(-(H - FH) / 2, Math.min((H - FH) / 2, dy));
+    }
+    function dessiner(){
+      ctx.fillStyle = '#0B1410'; ctx.fillRect(0, 0, CW, CH);
+      if (!img) return;
+      borner();
+      var k = echelle();
+      ctx.save(); ctx.translate(cx + dx, cy + dy); ctx.rotate(rot * Math.PI / 2); ctx.scale(k, k);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2); ctx.restore();
+      ctx.fillStyle = 'rgba(6,12,9,.62)';
+      ctx.fillRect(0, 0, CW, fy); ctx.fillRect(0, fy + FH, CW, CH - fy - FH);
+      ctx.fillRect(0, fy, fx, FH); ctx.fillRect(fx + FW, fy, CW - fx - FW, FH);
+      ctx.strokeStyle = '#C6A257'; ctx.lineWidth = 2; ctx.strokeRect(fx + 1, fy + 1, FW - 2, FH - 2);
+      // le tiers superieur : la ou les yeux doivent tomber sur une photo d'identite
+      ctx.strokeStyle = 'rgba(198,162,87,.35)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(fx, fy + FH / 3); ctx.lineTo(fx + FW, fy + FH / 3); ctx.stroke();
+    }
+    // la souris et le doigt
+    var saisie = null;
+    function posToile(e){
+      var b = toile.getBoundingClientRect(), p = e.touches ? e.touches[0] : e;
+      return { x: (p.clientX - b.left) * (CW / b.width), y: (p.clientY - b.top) * (CH / b.height) };
+    }
+    function debut(e){ if (!img) return; saisie = posToile(e); saisie.dx = dx; saisie.dy = dy; corps.classList.add('saisi'); e.preventDefault(); }
+    function bouge(e){ if (!saisie) return; var p = posToile(e); dx = saisie.dx + (p.x - saisie.x); dy = saisie.dy + (p.y - saisie.y); dessiner(); e.preventDefault(); }
+    function fin(){ saisie = null; corps.classList.remove('saisi'); }
+    toile.addEventListener('mousedown', debut); window.addEventListener('mousemove', bouge); window.addEventListener('mouseup', fin);
+    toile.addEventListener('touchstart', debut, { passive: false }); toile.addEventListener('touchmove', bouge, { passive: false }); toile.addEventListener('touchend', fin);
+    toile.addEventListener('wheel', function(e){
+      e.preventDefault();
+      zoom.value = Math.max(0, Math.min(100, (parseInt(zoom.value, 10) || 0) - Math.sign(e.deltaY) * 5));
+      dessiner();
+    }, { passive: false });
+    zoom.addEventListener('input', dessiner);
+    boite.querySelector('#in-cadre-pivoter').addEventListener('click', function(){ rot = (rot + 1) % 4; dx = 0; dy = 0; dessiner(); });
+
+    dessiner();
+    inChargerImage(d).then(function(im){
+      img = im; note.textContent = im.width + ' × ' + im.height + ' px'; ok.disabled = false; dessiner();
+    }).catch(function(){
+      note.textContent = 'La photo n\'a pas pu être chargée.';
+    });
+
+    ok.addEventListener('click', function(){
+      if (!img) return;
+      ok.disabled = true; ok.textContent = 'Enregistrement…';
+      var OW = 720, OH = 960, s = OW / FW, k = echelle();
+      var sortie = document.createElement('canvas'); sortie.width = OW; sortie.height = OH;
+      var c2 = sortie.getContext('2d');
+      c2.fillStyle = '#fff'; c2.fillRect(0, 0, OW, OH);
+      c2.save(); c2.translate((cx + dx - fx) * s, (cy + dy - fy) * s); c2.rotate(rot * Math.PI / 2); c2.scale(k * s, k * s);
+      c2.drawImage(img, -img.width / 2, -img.height / 2); c2.restore();
+      new Promise(function(resolve, reject){ sortie.toBlob(function(b){ b ? resolve(b) : reject(new Error('export')); }, 'image/jpeg', 0.9); }).then(function(blob){
+        var ref = r.reference || ('INS-' + String(r.id||'').replace(/-/g,'').slice(-6).toUpperCase());
+        var chemin = ref + '/photo-' + Date.now() + '.jpg';
+        return sb.storage.from(IN_BUCKET_PRIVE).upload(chemin, blob, { contentType: 'image/jpeg', upsert: false }).then(function(res){
+          if (res.error) throw res.error;
+          return sbUpdate('academy_documents', d.id, { url: chemin }, 'Inscriptions');
+        });
+      }).then(function(){
+        inLiens = {}; fermer(); qgToast('Photo recadrée ✓');
+        return inLoad().then(function(){ if (inSel) inOpen(inSel); });
+      }).catch(function(){
+        ok.disabled = false; ok.textContent = 'Enregistrer la photo recadrée';
+        note.textContent = 'Le recadrage n\'a pas pu être enregistré.';
+      });
+    });
+  }
+  function inVignette(d, nature){
+    if (nature === 'image') return '<img class="in-vignette" data-invignette="'+esc(d.id)+'" data-invoir="'+esc(d.id)+'" alt="" title="Voir la pièce">';
+    return '<div class="in-vignette" data-invoir="'+esc(d.id)+'" title="Voir la pièce">'+esc(nature || 'DOC')+'</div>';
+  }
+  function inPieceEstChemin(d){ return !!(d && d.url) && !/^https?:\/\//i.test(d.url) && !/^data:/i.test(d.url); }
+  function inUrlPiece(d){
+    if (!d || !d.url) return Promise.resolve(null);
+    if (!inPieceEstChemin(d)) return Promise.resolve(d.url);
+    return sb.storage.from(IN_BUCKET_PRIVE).createSignedUrl(d.url, 600).then(function(res){
+      if (res.error || !res.data || !res.data.signedUrl) throw res.error || new Error('pas de lien');
+      return res.data.signedUrl;
+    });
+  }
+  function inImagePiece(d){
+    if (!d || !d.url) return Promise.resolve(null);
+    if (!inPieceEstChemin(d)) return cdImgToDataUrl(d.url, false);
+    return sb.storage.from(IN_BUCKET_PRIVE).download(d.url).then(function(res){
+      if (res.error || !res.data) throw res.error || new Error('pas de fichier');
+      if (!/^image\//.test(res.data.type || '')) return null;   // un PDF depose comme « photo » ne se dessine pas
+      return new Promise(function(resolve){
+        var fr = new FileReader();
+        fr.onload = function(){ cdImgToDataUrl(fr.result, false).then(resolve); };
+        fr.onerror = function(){ resolve(null); };
+        fr.readAsDataURL(res.data);
+      });
+    }).catch(function(){ return null; });
+  }
+
   function inFichePdf(r){
     var btn = document.getElementById('in-pdf-btn');
     var libelle = btn ? btn.innerHTML : '';
     if (btn){ btn.disabled = true; btn.innerHTML = 'Génération…'; }
     var dPhoto = inDocs.filter(function(d){ return d.kind === 'photo'; })[0];
+    // La photo : celle deposee en piece (bucket prive), sinon celle du
+    // formulaire (photo_url), sinon rien.
+    var photoEtape = dPhoto && dPhoto.url ? inImagePiece(dPhoto) : Promise.resolve(null);
+    // Chaque piece deposee (extrait de naissance, certificat, autorisation,
+    // et la photo elle-meme) part en annexe du dossier, une page par piece :
+    // le PDF tire pour une reunion porte tout ce que la famille a envoye.
+    var piecesEtape = Promise.all((inDocs || []).map(function(d){
+      var lib = (IN_PIECES.filter(function(p){ return p[0] === d.kind; })[0] || [d.kind, d.kind])[1];
+      return inImagePiece(d).then(function(img){ return { lib: lib, recue: d.received_on, img: img, chemin: d.url }; }).catch(function(){ return { lib: lib, recue: d.received_on, img: null, chemin: d.url }; });
+    }));
     Promise.all([
       cdImgToDataUrl(LOGO_DEF, true).catch(function(){ return null; }),
-      dPhoto && dPhoto.url ? cdImgToDataUrl(dPhoto.url, false).catch(function(){ return null; })
-                           : Promise.resolve(null)
+      photoEtape.then(function(p){ return p || (r.photo_url ? cdImgToDataUrl(r.photo_url, false) : null); }).catch(function(){ return null; }),
+      piecesEtape.catch(function(){ return []; })
     ]).then(function(res){
-      inFicheRendre(r, res[0], res[1]);
+      inFicheRendre(r, res[0], res[1], res[2]);
     }).catch(function(){
-      inFicheRendre(r, null, null);
+      inFicheRendre(r, null, null, []);
     }).then(function(){
       if (btn){ btn.disabled = false; btn.innerHTML = libelle; }
     });
   }
 
-  function inFicheRendre(r, logo, photo){
+  function inFicheRendre(r, logo, photo, pieces){
     var o = pdfSocle({
       titre: 'Dossier d’inscription',
       sousTitre: 'École de basket · saison ' + inSaisonLabel(r),
@@ -20864,6 +21231,28 @@
         return [fmtDateTime(e.created_at), label];
       }));
     }
+
+    // --- Les pieces, en annexe : une page par image ; un PDF depose se
+    // signale, il s'ouvre depuis l'ecran (bouton Voir) ---
+    var images = (pieces || []).filter(function(p){ return p.img && p.img.data; });
+    var autres = (pieces || []).filter(function(p){ return !(p.img && p.img.data); });
+    if (autres.length){
+      o.sectionTitle('Pièces jointes non imprimables');
+      autres.forEach(function(p){
+        o.quote(p.lib + ' : fichier ' + String(p.chemin || '').replace(/^.*\//, '') + ' · reçu le ' + String(p.recue || '').split('-').reverse().join('/') + ' · à ouvrir depuis l\'écran Inscriptions (Voir).');
+      });
+    }
+    images.forEach(function(p, i){
+      doc.addPage(); o.enTeteSuite();
+      o.sectionTitle('Pièce ' + (i + 1) + ' sur ' + images.length + ' : ' + p.lib + (p.recue ? ' · reçue le ' + String(p.recue).split('-').reverse().join('/') : ''));
+      var dispoW = PW - 2 * M, dispoH = o.PH - o.y - 24;
+      var k = Math.min(dispoW / p.img.w, dispoH / p.img.h, 1e9);
+      var w = p.img.w * k, h = p.img.h * k;
+      doc.setDrawColor(o.LINE[0], o.LINE[1], o.LINE[2]);
+      doc.rect(M + (dispoW - w) / 2 - 0.5, o.y - 0.5, w + 1, h + 1);
+      doc.addImage(p.img.data, p.img.format || 'JPEG', M + (dispoW - w) / 2, o.y, w, h);
+      o.y += h + 4;
+    });
 
     o.pied('CONFIDENTIEL');
     doc.save(o.nomFichier('dossier-inscription', r.full_name, 'inscription'));

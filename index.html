@@ -4533,7 +4533,31 @@ window.bbCloud = function(url, w){
   // Upload de la photo de candidature vers le bucket public dédié
   // recruitment-photos (policy Storage : INSERT ouvert au rôle anon,
   // volontairement séparé du bucket site-media réservé à l'admin).
-  function uploadRecruitPhoto(file){
+  // Une photo de telephone pese 4 a 10 Mo ; le bucket refuse au-dela de
+  // 5 Mo, en silence pour le candidat. On la reduit ici (1600 px de
+  // cote, JPEG), ce qui la fait passer sous le mega-octet.
+  function reduirePhoto(file){
+    return new Promise(function(resolve){
+      if (!/^image\//.test(file.type || '')) { resolve(file); return; }
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function(){
+        try{
+          var max = 1600, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+          var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          c.toBlob(function(b){
+            URL.revokeObjectURL(url);
+            if (!b) { resolve(file); return; }
+            resolve(new File([b], file.name.replace(/\.[a-z0-9]+$/i, '') + '.jpg', { type: 'image/jpeg' }));
+          }, 'image/jpeg', 0.86);
+        }catch(e){ URL.revokeObjectURL(url); resolve(file); }
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+  function uploadRecruitPhoto(fichier){
+    return reduirePhoto(fichier).then(function(file){
     var path = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     return fetch(SUPABASE_URL + '/storage/v1/object/recruitment-photos/' + path, {
       method: 'POST',
@@ -4546,6 +4570,7 @@ window.bbCloud = function(url, w){
     }).then(function(res){
       if (!res.ok) throw new Error('photo upload failed');
       return SUPABASE_URL + '/storage/v1/object/public/recruitment-photos/' + path;
+    });
     });
   }
 
@@ -5734,11 +5759,13 @@ window.bbCloud = function(url, w){
         var photoFile = photoInput && photoInput.files[0];
         // La photo est facultative : si son upload échoue, la candidature part
         // quand même sans photo plutôt que de bloquer tout l'envoi pour ça.
-        var photoStep = photoFile ? uploadRecruitPhoto(photoFile).catch(function(err){ console.warn('Upload photo \u00e9chou\u00e9', err); return null; }) : Promise.resolve(null);
+        var photoRatee = false;
+        var photoStep = photoFile ? uploadRecruitPhoto(photoFile).catch(function(err){ console.warn('Upload photo \u00e9chou\u00e9', err); photoRatee = true; return null; }) : Promise.resolve(null);
         photoStep.then(function(photoUrl){
           if (photoUrl) payload.photo_url = photoUrl;
           return sbInsert('recruitment_requests', payload);
         }).then(function(){
+          if (photoRatee) toast('Candidature envoy\u00e9e, mais la photo n\u2019est pas partie : le club pourra te la demander.');
           form.classList.add('bb-hide');
           document.getElementById('bb-recruit-success').classList.remove('bb-hide');
         }).catch(function(err){ console.warn('Candidature \u00e9chou\u00e9e', err); toast("Erreur d'envoi \u2014 r\u00e9essaie dans un instant"); }).finally(function(){ btn.disabled = false; });
