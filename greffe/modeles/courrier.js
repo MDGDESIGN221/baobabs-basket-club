@@ -56,7 +56,13 @@
         { cle: 'signNom',       lab: "Nom",     type: 'texte' },
         { cle: 'signQualite',   lab: "Qualité", type: 'texte' },
         { cle: 'avecSignature', lab: "Apposer la signature", type: 'bascule' },
-        { cle: 'avecCachet',    lab: "Apposer le cachet",    type: 'bascule' }
+        { cle: 'avecCachet',    lab: "Apposer le cachet",    type: 'bascule' },
+        { cle: 'avecSecond',    lab: "Une seconde carte de signature, à remplir à la main", type: 'bascule',
+          aide: "Un autre signataire que le président : la carte s'imprime vierge, sans encre ni cachet." },
+        { cle: 'secondPour',    lab: "Sa carte : pour qui", type: 'texte', duo: true },
+        { cle: 'secondNom',     lab: "Nom", type: 'texte', duo: true },
+        { cle: 'secondQualite', lab: "Qualité", type: 'texte', duo: true },
+        { cle: 'secondMention', lab: "Mention sous la carte", type: 'texte', duo: true }
       ]}
     ],
 
@@ -76,6 +82,7 @@
         signNom: "Antoine Jean Pierre Ndong",
         signQualite: "Président",
         avecSignature: true, avecCachet: true,
+        avecSecond: false, secondPour: "Pour la seconde partie", secondNom: "", secondQualite: "", secondMention: "Signature",
         tables: {}
       };
     },
@@ -126,8 +133,11 @@
           };
         },
         cartes: function (d) {
-          return [{ pour: "Pour Baobabs Basket Club", nom: '@signNom', qualite: '@signQualite',
-                    mention: "Signature et cachet du Président" }];
+          var cartes = [{ pour: "Pour Baobabs Basket Club", nom: '@signNom', qualite: '@signQualite',
+                          mention: "Signature et cachet du Président" }];
+          if (d.avecSecond) cartes.push({ pour: '@secondPour', nom: '@secondNom', qualite: '@secondQualite',
+                                          mention: '@secondMention', signer: false, cacheter: false });
+          return cartes;
         } }
     ],
 

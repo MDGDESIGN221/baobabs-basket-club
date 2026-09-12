@@ -160,4 +160,45 @@
     ], { dep_lignes: dep.table })
   ];
 
+  /* ================================================================
+     LES TEXTES PRÉDÉFINIS
+     Ce qu'on insère d'un geste dans un texte de la feuille, par la
+     commande « / » ou le clic droit : le président, les soussignés,
+     les formules, les mentions. Des phrases du club, pas des modèles.
+     ================================================================ */
+  G.textes = [
+    { nom: "Le président (présentation)", groupe: "Personnes",
+      texte: "Monsieur **Antoine Jean Pierre Ndong**, Président de Baobabs Basket Club, section basketball de l'ASC Baobab (récépissé n° 8280), Sicap Baobab, Dakar," },
+    { nom: "Je soussigné (le président)", groupe: "Personnes",
+      texte: "Je soussigné, **Antoine Jean Pierre Ndong**, Président de Baobabs Basket Club, " },
+    { nom: "Les soussignés (deux parties)", groupe: "Personnes",
+      texte: "Les soussignés,\n\n- **Baobabs Basket Club**, représenté par son Président, Monsieur Antoine Jean Pierre Ndong, d'une part ;\n- **(nom de l'autre partie)**, représenté(e) par (nom et qualité), d'autre part ;\n\nsont convenus de ce qui suit :" },
+    { nom: "Le club (présentation)", groupe: "Personnes",
+      texte: "**Baobabs Basket Club**, section basketball de l'ASC Baobab, club de basketball féminin de Sicap Baobab (Dakar, Sénégal), récépissé n° 8280," },
+    { nom: "Formule de politesse (Madame, Monsieur)", groupe: "Formules",
+      texte: "Veuillez agréer, Madame, Monsieur, l'expression de nos salutations distinguées." },
+    { nom: "Formule de politesse (autorité)", groupe: "Formules",
+      texte: "Nous vous prions d'agréer, Monsieur le Maire, l'expression de notre haute considération." },
+    { nom: "Formule de politesse (fédération)", groupe: "Formules",
+      texte: "Nous vous prions de croire, Monsieur le Président, à l'assurance de notre considération sportive la plus distinguée." },
+    { nom: "Dans l'attente d'une réponse", groupe: "Formules",
+      texte: "Dans l'attente de votre réponse, nous restons à votre disposition pour tout complément d'information." },
+    { nom: "Remerciements", groupe: "Formules",
+      texte: "Nous vous remercions de l'attention que vous voudrez bien porter à la présente et de votre soutien constant au basketball féminin." },
+    { nom: "Certification (liste)", groupe: "Mentions",
+      texte: "Je certifie exacte et conforme la présente liste, arrêtée à la date ci-dessous." },
+    { nom: "Pour servir et valoir ce que de droit", groupe: "Mentions",
+      texte: "La présente est délivrée à l'intéressé(e) pour servir et valoir ce que de droit." },
+    { nom: "Mention de copie", groupe: "Mentions",
+      texte: "**Copie à :** la Fédération Sénégalaise de Basketball ; la Commune de Mermoz-Sacré-Cœur ; l'ASC Baobab." },
+    { nom: "Pièces jointes", groupe: "Mentions",
+      texte: "**Pièces jointes :** liste de la délégation ; copie de l'invitation ; programme du tournoi." },
+    { nom: "Lu et approuvé", groupe: "Mentions",
+      texte: "Fait en deux exemplaires originaux, chaque partie reconnaissant avoir reçu le sien. Signature précédée de la mention manuscrite « Lu et approuvé »." },
+    { nom: "Autorisation parentale", groupe: "Mentions",
+      texte: "Je soussigné(e), **(nom du parent ou tuteur)**, autorise ma fille **(nom de la joueuse)**, née le (date), à participer au déplacement organisé par Baobabs Basket Club à (lieu) du (date) au (date), sous la responsabilité du chef de délégation, et à recevoir tout soin médical d'urgence que son état nécessiterait." },
+    { nom: "Droit à l'image", groupe: "Mentions",
+      texte: "J'autorise Baobabs Basket Club à photographier et filmer (nom) lors de ses activités, et à utiliser ces images pour la communication du club (site, réseaux, affiches), sans contrepartie et sans limitation de durée. Cette autorisation peut être retirée par écrit." }
+  ];
+
 })(window.BaobabsGreffe);

@@ -178,6 +178,11 @@
       ".bloc.th-plein p, .bloc.th-plein li, .bloc.th-plein .hero-sub, .bloc.th-plein .verbe{ color:#fff; }",
       ".bloc.th-plein li::before{ background:var(--or); }",
       ".bloc.th-plein .pill{ background:var(--or); color:var(--vert); } .bloc.th-plein .pill i{ background:var(--vert); }",
+      /* la police d'un bloc, parmi celles du club */
+      ".bloc.po-gilroy, .bloc.po-gilroy *{ font-family:'Gilroy',sans-serif !important; }",
+      ".bloc.po-inter, .bloc.po-inter *{ font-family:'InterDoc',Inter,sans-serif !important; }",
+      ".bloc.po-organetto, .bloc.po-organetto *{ font-family:'Organetto',Gilroy,sans-serif !important; }",
+      ".bloc.po-paraphe, .bloc.po-paraphe *{ font-family:'Paraphe',cursive !important; font-size:1.35em; }",
 
       /* ---- texte libre, image ---- */
       ".libre .label{ display:block; margin-bottom:3pt; }",
@@ -529,7 +534,7 @@
       tfoot = '<tfoot><tr>'
         + (numeroter ? '<td></td>' : '')
         + cols.map(function (c, i) {
-          if (!c.total) return '<td' + classeCellule(c) + '>' + (i === 0 ? 'Total' : '') + '</td>';
+          if (!c.total) return '<td' + classeCellule(c) + (i === 0 ? editChemin('fixes.' + ctx.bi + '.libelleTotal') : '') + '>' + (i === 0 ? U.ech(lire(d, 'fixes.' + ctx.bi + '.libelleTotal') || 'Total') : '') + '</td>';
           var s = lignes.reduce(function (acc, r) {
             var n = parseFloat(String(r.l[c.cle] || '').replace(/[^\d.,-]/g, '').replace(',', '.'));
             return acc + (isNaN(n) ? 0 : n);
@@ -563,7 +568,8 @@
         + '</div></div><div class="head-right">'
         + (drapeau === false ? '' :
             '<div class="flagbox"><span class="flagwrap">' + B.DRAPEAU + '</span>'
-            + '<span class="flagtxt">République<br>du Sénégal</span></div>')
+            + '<span class="flagtxt"' + slot(cfg, 'pays', d, ctx, 'République du Sénégal').a + '>'
+            + U.ech(slot(cfg, 'pays', d, ctx, 'République du Sénégal').t).replace(/^(\S+)\s/, '$1<br>') + '</span></div>')
         + '<div class="meta">' + lignes.join('<br>') + '</div>'
         + '</div></header><div class="head-rule"></div><div class="head-rule-or"></div>';
     },
@@ -687,13 +693,12 @@
         }).join('');
         return '<div class="poste avoid"><div class="poste-tete"><div class="poste-titre">'
           + '<span class="art-num">' + U.deuxChiffres(gi + 1) + '</span><b>' + U.ech(g) + '</b></div>'
-          + '<div class="poste-st"><span class="label">Sous-total</span>' + U.ech(somme(st)) + '</div></div>'
+          + '<div class="poste-st">' + ligne('span', 'label', slot(cfg, 'libelleSousTotal', d, ctx, 'Sous-total')) + U.ech(somme(st)) + '</div></div>'
           + '<table><colgroup>' + colgroup + '</colgroup><tbody>' + rows + '</tbody></table></div>';
       }).join('');
 
-      var titreTotal = val(cfg.titreTotal, d, ctx) || 'Total';
       return '<section class="postes">' + html + '</section>'
-        + '<div class="total-box avoid"><span class="label">' + U.ech(titreTotal) + '</span><b>'
+        + '<div class="total-box avoid">' + ligne('span', 'label', slot(cfg, 'titreTotal', d, ctx, 'Total')) + '<b>'
         + U.ech(somme(total)) + '</b></div>';
     },
 
@@ -751,7 +756,7 @@
         html += '<div class="closing-left">'
           + ((brutLd || ld.a) ? '<div class="place"' + ld.a + '>' + brutLd + '</div>' : '')
           + ((brutNt || nt.a) ? '<p class="closing-note"' + nt.a + '>' + brutNt + '</p>' : '')
-          + (rf.t ? '<div class="ref"><span class="label">Référence</span> ' + ligne('span', '', rf) + '</div>' : '')
+          + (rf.t ? '<div class="ref">' + ligne('span', 'label', slot(gauche, 'libelleReference', d, ctx, 'Référence', 'gauche')) + ' ' + ligne('span', '', rf) + '</div>' : '')
           + '</div>';
       }
       var htmlCartes = cartes.map(function (c, j) { return B.carteSignature(c, d, ctx, 'cartes.' + j); }).join('');
@@ -780,7 +785,7 @@
       return '<div class="closing-grid avoid" style="margin-top:12pt"><div class="certif">'
         + ligne('span', 'label', slot(cfg, 'etiquette', d, ctx, 'Certification'))
         + slotTexte(cfg, 'texte', d, ctx)
-        + (rf.t ? '<div class="ref" style="margin-top:8pt"><span class="label">Référence</span> ' + ligne('span', '', rf) + '</div>' : '')
+        + (rf.t ? '<div class="ref" style="margin-top:8pt">' + ligne('span', 'label', slot(cfg, 'libelleReference', d, ctx, 'Référence')) + ' ' + ligne('span', '', rf) + '</div>' : '')
         + '</div>' + cartes.map(function (c, j) { return B.carteSignature(c, d, ctx, 'cartes.' + j); }).join('') + '</div>';
     },
 
@@ -867,6 +872,7 @@
     if (st) {
       if (st.align && st.align !== 'gauche') classes += ' al-' + st.align;
       if (st.theme) classes += ' th-' + st.theme;
+      if (st.police) classes += ' po-' + st.police;
       if (st.taille && +st.taille !== 100) style = ' style="zoom:' + (+st.taille / 100) + '"';
     }
     return '<div class="' + classes + '"' + (cle != null ? ' data-bloc="' + cle + '"' : '') + style + '>' + html + '</div>';
