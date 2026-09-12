@@ -29,6 +29,7 @@
      de la marque et non celle de l'outil. -->
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Inter:wght@400..900&family=Anton&family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..600&family=Bebas+Neue&family=Oswald:wght@200..700&family=Teko:wght@300..700&family=Syne:wght@400..800&family=Outfit:wght@100..900&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=DM+Serif+Display:ital@0;1&family=Instrument+Serif:ital@0;1&family=Caveat:wght@400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/studio/studio.css">
+<link rel="stylesheet" href="/greffe/greffe.css">
 <link rel="stylesheet" href="/cadrage/cadrage.css">
 <link rel="stylesheet" href="/tutoriel/tutoriel.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -3503,6 +3504,16 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19a7 7 0 1 0 0-14h-1a7 7 0 0 0 0 14Z"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="15" cy="11" r="1"/><path d="M12 19c0-1.5 1-2 2-2h1a3 3 0 0 0 3-3"/></svg>
             <span class="hide-sm">Studio</span>
           </button>
+          <!-- LE GREFFE N'APPARAIT QUE POUR LE PROPRIETAIRE.
+               Le bouton part cache et n'est revele qu'apres la lecture
+               de bbc_proprietaire_email() en base : un bouton visible
+               dont chaque clic serait refuse serait pire que pas de
+               bouton du tout. Ce hidden ne PROTEGE rien -- il decide
+               seulement de ce qu'on voit. -->
+          <button type="button" class="link-btn" id="greffe-open" title="Le Greffe : actes officiels du club" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/><path d="M8.5 13h7"/><path d="M8.5 16.5h4.5"/></svg>
+            <span class="hide-sm">Greffe</span>
+          </button>
           <button class="link-btn" id="help-btn" title="Tutoriel de l’administration">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><path d="M12 17h.01"/></svg>
             <span class="hide-sm">Aide</span>
@@ -3543,6 +3554,11 @@
        première ouverture depuis /studio/studio.html, puis déposé dans
        ce conteneur. Voir studioOuvrir(). -->
   <div id="studio-host"></div>
+
+  <!-- Le Greffe se charge de la meme maniere : /greffe/greffe.html est
+       telecharge au premier clic, depose ici, puis remonte en enfant
+       direct de <body>. Voir greffeOuvrir(). -->
+  <div id="greffe-host"></div>
 
   <!-- ===== CADRAGE =====
        L'atelier de cadrage des images. Même montage que le Studio : la
@@ -5892,7 +5908,11 @@
     // de categorie en viennent, et ils servent des le premier ecran
     // ouvert. Une seule lecture, avant tout le monde.
     return Promise.all([role, profil(), chargerListes(), chargerProprietaire(),
-                        loadSettings().then(badgesAppliquer)]);
+                        loadSettings().then(badgesAppliquer)])
+      // Le bouton du Greffe n'apparait qu'ici : c'est le premier moment
+      // ou CP_PROPRIETAIRE vient de la base et non de son repli.
+      // On rend la meme valeur, pour ne rien changer a la suite.
+      .then(function(r){ try { greffeAcces(); } catch(e){} return r; });
   }
 
   // LES CASQUETTES VIVAIENT DANS CE FICHIER.
@@ -6556,6 +6576,68 @@
     }).then(function(){ studioEnCours = false; });
   }
   document.getElementById('studio-open').addEventListener('click', studioOuvrir);
+
+  // ---------------------------------------------------------------------
+  // LE GREFFE : les actes officiels du club
+  //
+  // Meme forme que le Studio, et pour les memes raisons : fichiers
+  // autonomes sous /greffe/, un seul global window.BaobabsGreffe, rien
+  // qui ne s'execute au chargement de cette page.
+  //
+  // Une difference : le Greffe appose la signature et le cachet du
+  // president. Il n'est donc pas ouvert a une casquette, mais a UNE
+  // adresse, celle que bbc_proprietaire_email() renvoie.
+  // ---------------------------------------------------------------------
+  var greffePret = false, greffeEnCours = false;
+
+  function greffeCharger(){
+    if (window.BaobabsGreffe) return Promise.resolve();
+    return fetch('/greffe/greffe.html', { cache: 'no-cache' })
+      .then(function(r){ if (!r.ok) throw new Error('fragment ' + r.status); return r.text(); })
+      .then(function(html){
+        var host = document.getElementById('greffe-host');
+        host.innerHTML = html;
+        // Surcouche plein ecran : enfant direct de <body>, sinon un
+        // ancetre en display:none annule le position:fixed et le Greffe
+        // s'ouvre a 0 x 0, sans la moindre erreur en console.
+        var el = host.querySelector('#bgreffe');
+        if (el) document.body.appendChild(el);
+        return new Promise(function(res, rej){
+          var s = document.createElement('script');
+          s.src = '/greffe/greffe.js';
+          s.onload = function(){ window.BaobabsGreffe ? res() : rej(new Error('global absent')); };
+          s.onerror = function(){ rej(new Error('script')); };
+          document.head.appendChild(s);
+        });
+      });
+  }
+
+  function greffeOuvrir(){
+    if (greffeEnCours) return;
+    if (!cpJeSuisProprio()){ qgToast('Le Greffe est reserve au proprietaire du site', true); return; }
+    if (greffePret){ window.BaobabsGreffe.open(); return; }
+    greffeEnCours = true;
+    greffeCharger().then(function(){
+      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), {});
+    }).then(function(){
+      greffePret = true;
+      window.BaobabsGreffe.open();
+    }).catch(function(e){
+      console.error('[Greffe]', e);
+      qgToast('Le Greffe n\'a pas pu se charger', true);
+    }).then(function(){ greffeEnCours = false; });
+  }
+
+  // Appelee une fois la session ET l'adresse du proprietaire lues.
+  // Avant cela, CP_PROPRIETAIRE ne vaut que son repli en dur : reveler
+  // le bouton trop tot le montrerait a la mauvaise personne.
+  function greffeAcces(){
+    var b = document.getElementById('greffe-open');
+    if (b) b.hidden = !cpJeSuisProprio();
+  }
+
+  document.getElementById('greffe-open').addEventListener('click', greffeOuvrir);
+
   imgpDemarrer();
 
   // ---------------------------------------------------------------------
