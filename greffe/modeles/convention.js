@@ -188,6 +188,14 @@
 
     articlesParDefaut: articlesParDefaut,
 
+    controles: function (d) {
+      var c = [];
+      if (!String(d.p1Nom || '').trim()) c.push({ n: 'erreur', t: 'La première partie n\'est pas nommée' });
+      if (!String(d.s1Nom || '').trim()) c.push({ n: 'avert', t: 'Pas de signataire pour la première partie' });
+      if (!String(d.objet || '').trim()) c.push({ n: 'avert', t: 'Pas de phrase d\'objet sous le titre' });
+      return c;
+    },
+
     page: [
       { b: 'entete', drapeau: false, devise: "ASC Baobab · Section Basketball · Dakar",
         droite: function (d) {

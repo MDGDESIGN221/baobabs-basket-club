@@ -22,6 +22,8 @@
     return [d.destVille, d.destPays].filter(Boolean).join(', en ');
   }
   function estStaff(v) { return !/joueu/i.test(String(v || '')); }
+  /* en gras si renseigné, sinon un rappel entre parenthèses : jamais **** */
+  function fort(v, repli) { return v ? "**" + v + "**" : repli; }
 
   /* ================================================================
      LES ARTICLES, PRÉ-ÉCRITS ET MODIFIABLES
@@ -44,10 +46,11 @@
              + "du présent ordre de mission." },
       { titre: "Durée et déplacement",
         texte: "L'arrivée de la délégation à " + (d.destVille || "destination") + " est prévue le "
-             + "**" + U.dateLongue(d.arrivee, true) + "** et son retour le "
-             + "**" + U.dateLongue(d.retour, true) + "**.\n\n"
+             + fort(U.dateLongue(d.arrivee, true), "(date d'arrivée)") + " et son retour le "
+             + fort(U.dateLongue(d.retour, true), "(date de retour)") + ".\n\n"
              + "Le présent ordre de mission couvre en conséquence la période "
-             + "**" + U.duAu(d.arrivee, d.retour) + " inclus**, jour d'arrivée et jour de retour compris." },
+             + fort(U.duAu(d.arrivee, d.retour) ? U.duAu(d.arrivee, d.retour) + " inclus" : "", "(période à préciser)")
+             + ", jour d'arrivée et jour de retour compris." },
       { titre: "Chef de délégation",
         texte: "Monsieur **" + (d.signNom || "") + "**, Président de Baobabs Basket Club, "
              + "est désigné chef de délégation.\n\n"
@@ -143,6 +146,20 @@
 
     articlesParDefaut: articlesParDefaut,
 
+    /* ce que le contrôle avant émission vérifie en plus du tronc commun */
+    controles: function (d) {
+      var c = [];
+      if (!String(d.destVille || '').trim()) c.push({ n: 'erreur', t: 'Pas de ville de destination' });
+      if (!String(d.destPays || '').trim()) c.push({ n: 'avert', t: 'Pas de pays de destination' });
+      if (!U.dateDe(d.arrivee) || !U.dateDe(d.retour)) c.push({ n: 'erreur', t: 'Dates d\'arrivée et de retour à renseigner' });
+      else if (U.dateDe(d.retour) < U.dateDe(d.arrivee)) c.push({ n: 'erreur', t: 'Le retour précède l\'arrivée' });
+      if (!U.dateDe(d.tournoiDu) || !U.dateDe(d.tournoiAu)) c.push({ n: 'avert', t: 'Dates du tournoi non renseignées' });
+      if (!String(d.organisateur || '').trim()) c.push({ n: 'avert', t: 'Organisateur non renseigné' });
+      var n = G.lignes(d, 'membres').length;
+      if (n) c.push({ n: 'ok', t: n + ' membre' + (n > 1 ? 's' : '') + ' dans la délégation' });
+      return c;
+    },
+
     /* ------------------------------- la page ------------------------------- */
     page: [
       { b: 'entete', droite: function (d) {
@@ -176,7 +193,7 @@
             + " dont les noms figurent "
             + (d.avecAnnexe ? "en **Annexe I** du présent ordre de mission" : "ci-dessous")
             + ", à l'effet de représenter Baobabs Basket Club au tournoi international de basketball "
-            + "organisé à " + lieuMission(d) + ", **" + U.duAu(d.tournoiDu, d.tournoiAu) + "**.";
+            + "organisé à " + (lieuMission(d) || "(lieu à préciser)") + ", " + fort(U.duAu(d.tournoiDu, d.tournoiAu), "(dates à préciser)") + ".";
         } },
 
       { b: 'articles', articles: function (d) {

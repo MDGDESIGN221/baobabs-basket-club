@@ -204,6 +204,13 @@
 
     articlesParDefaut: articlesParDefaut,
 
+    controles: function (d) {
+      var c = [];
+      if (/^autre/i.test(String(d.fonction || '')) && !String(d.fonctionLibre || '').trim()) c.push({ n: 'erreur', t: 'La fonction n\'est pas nommée' });
+      if (!String(d.nom || '').trim()) c.push({ n: 'avert', t: 'Fiche attachée à la fonction, sans nom de titulaire' });
+      return c;
+    },
+
     page: [
       { b: 'entete', drapeau: false, devise: "ASC Baobab · Section Basketball · Dakar",
         droite: function (d) {

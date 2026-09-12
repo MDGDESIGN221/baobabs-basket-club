@@ -67,8 +67,12 @@
       /* ---- filigrane ---- */
       ".wm{ position:absolute; left:0; right:0; top:0; bottom:0; z-index:0;",
       "  display:flex; align-items:center; justify-content:center; pointer-events:none; }",
-      ".wm div{ width:108mm; height:108mm; opacity:.022; background-size:contain;",
+      ".wm .wm-blason{ width:108mm; height:108mm; opacity:.022; background-size:contain;",
       "  background-repeat:no-repeat; background-position:center; }",
+      /* un brouillon le dit sur chaque page, à l'écran comme sur le papier */
+      ".wm-brouillon{ position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center;",
+      "  justify-content:center; pointer-events:none; font-family:'Gilroy',sans-serif; font-weight:800;",
+      "  font-size:58pt; letter-spacing:.22em; color:rgba(180,35,31,.085); transform:rotate(-28deg); }",
 
       /* ---- en-tête ---- */
       ".head{ display:flex; align-items:flex-start; justify-content:space-between; gap:14pt; }",
@@ -1015,7 +1019,8 @@
     /* le pied de page aussi s'écrit sur la feuille : fixes.pied.0, fixes.pied.1 */
     var p0 = lire(d, 'fixes.pied.0'), p1 = lire(d, 'fixes.pied.1');
     if (p0 == null) p0 = pied[0] || ''; if (p1 == null) p1 = pied[1] || '';
-    return '<div class="wm"><div' + fond(ctx) + '></div></div>'
+    return '<div class="wm"><div class="wm-blason"' + fond(ctx) + '></div>'
+      + (ctx.brouillon ? '<div class="wm-brouillon">BROUILLON</div>' : '') + '</div>'
       + '<div class="wrap">' + corps + '</div>'
       + ((pied.length || p0 || p1)
           ? '<footer class="foot"><i></i><span data-edit="fixes.pied.0">' + U.ech(p0) + '</span>'

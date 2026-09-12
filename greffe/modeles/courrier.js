@@ -80,6 +80,14 @@
       };
     },
 
+    controles: function (d) {
+      var c = [];
+      if (!String(d.destNom || '').trim()) c.push({ n: 'erreur', t: 'Pas de destinataire' });
+      if (!String(d.objet || '').trim()) c.push({ n: 'erreur', t: 'Pas d\'objet' });
+      if (String(d.corps || '').trim().length < 40) c.push({ n: 'avert', t: 'Le corps de la lettre est très court' });
+      return c;
+    },
+
     /* ------------------------------- la page ------------------------------- */
     page: [
       { b: 'entete', droite: function (d) {

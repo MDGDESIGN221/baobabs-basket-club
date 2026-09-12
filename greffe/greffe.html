@@ -4,9 +4,11 @@
      Racine unique #bgreffe, toutes les classes préfixées gf-.
      Monté par window.BaobabsGreffe.mount(root, api).
 
-     Le Greffe fabrique les actes officiels du club : ordre de mission,
-     convention, attestation... Il rend un PDF par l'impression de
-     Chrome et un HTML source autonome. Rien ne part sur un serveur.
+     Le Greffe établit les actes officiels du club et en tient le
+     registre : quatre espaces (Accueil, Registre, Paramètres, Atelier),
+     une barre de menus courte dans l'atelier, l'état de l'acte toujours
+     en clair, et un bouton principal qui dit la prochaine chose à faire.
+     Rien ne part sur un serveur.
      ===================================================================== -->
 <div id="bgreffe" role="dialog" aria-modal="true" aria-label="Le Greffe" aria-hidden="true">
 
@@ -20,82 +22,102 @@
         </svg>
       </span>
       <span class="gf-brand-word">Le<em>Greffe</em></span>
-      <span class="gf-brand-sub" id="gf-sous-titre">Actes officiels du club</span>
+    </div>
+
+    <!-- les quatre espaces ; l'atelier n'apparaît qu'avec un acte ouvert -->
+    <nav class="gf-nav" aria-label="Espaces du Greffe">
+      <button type="button" class="gf-nav-btn" data-espace="accueil">Accueil</button>
+      <button type="button" class="gf-nav-btn" data-espace="registre">Registre</button>
+      <button type="button" class="gf-nav-btn" data-espace="parametres">Paramètres</button>
+      <button type="button" class="gf-nav-btn" data-espace="atelier" id="gf-nav-atelier" hidden>Atelier</button>
+    </nav>
+
+    <!-- l'acte en cours et son état, toujours écrits en toutes lettres -->
+    <div class="gf-acte-etat" id="gf-acte-etat" hidden>
+      <span class="gf-ae-type" id="gf-ae-type"></span>
+      <span class="gf-ae-num" id="gf-ae-num"></span>
+      <span class="gf-ae-badge" id="gf-ae-badge"></span>
     </div>
 
     <div class="gf-top-r">
       <span class="gf-etat" id="gf-etat" role="status" aria-live="polite"></span>
-      <button type="button" class="gf-ico" id="gf-accueil-btn" title="Les actes et le registre">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/>
-          <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/>
-        </svg>
-      </button>
-      <button type="button" class="gf-ico" id="gf-polices-btn" title="Mes ressources">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 7V5h16v2"/><path d="M9 5v14"/><path d="M7 19h4"/><path d="M15 11v8"/><path d="M13.5 19h3"/><path d="M12.5 11h5"/>
-        </svg>
-      </button>
+      <span class="gf-brand-sub" id="gf-sous-titre" hidden></span>
       <button type="button" class="gf-ico gf-ico-close" id="gf-close" title="Quitter le Greffe" aria-label="Quitter le Greffe">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
   </header>
 
-  <!-- ===================== ÉCRAN 0 : LES ACTES =====================
-       On choisit ce qu'on vient établir, ou on rouvre un acte déjà
-       émis. Le registre garde les DONNÉES, pas le document : un acte
-       rouvert se réimprime avec la mise en page du jour. -->
+  <!-- ========================= BARRE DE MENUS =========================
+       Courte, et seulement dans l'atelier : Fichier, Édition, Acte,
+       Insertion, Affichage, Aide. Remplie par le noyau, raccourcis
+       écrits en face de chaque commande. -->
+  <div class="gf-menus" id="gf-menus" role="menubar" hidden></div>
+
+  <!-- ============================ ACCUEIL ============================ -->
   <section class="gf-ecran gf-accueil" id="gf-ecran-accueil" hidden>
     <div class="gf-acc-defile" id="gf-accueil"></div>
   </section>
 
-  <!-- ===================== ÉCRAN 1 : LES POLICES =====================
-       Les polices du club ne sont pas servies par le site : elles
-       restent sur ce poste, déposées une fois, gardées par le
-       navigateur. Aucune licence engagée, aucune bande passante. -->
+  <!-- =========================== REGISTRE ============================
+       Un espace entier : chercher, filtrer par état, ouvrir, suivre les
+       versions. Un numéro attribué ne se réattribue jamais. -->
+  <section class="gf-ecran gf-registre-ecran" id="gf-ecran-registre" hidden>
+    <div class="gf-acc-defile" id="gf-registre"></div>
+  </section>
+
+  <!-- ========================== PARAMÈTRES ===========================
+       Les ressources (polices, cachet), la sauvegarde. Rien de
+       quotidien : on y vient une fois, puis quand un poste change. -->
   <section class="gf-ecran gf-polices" id="gf-ecran-polices" hidden>
-    <div class="gf-pol-carte">
-      <h2 class="gf-pol-titre">Déposez vos polices, une seule fois</h2>
-      <p class="gf-pol-intro">
-        Les actes du club utilisent dix fichiers de police déjà installés sur ce poste.
-        Le Greffe les garde dans ce navigateur : ils ne montent jamais sur le site,
-        et personne d'autre n'y accède.
-      </p>
+    <div class="gf-param-defile">
+      <div class="gf-pol-carte">
+        <h2 class="gf-pol-titre">Les ressources : polices et cachet</h2>
+        <p class="gf-pol-intro">
+          Les actes du club utilisent dix fichiers de police déjà installés sur ce poste,
+          et le cachet de la présidence. Le Greffe les garde dans ce navigateur : ils ne
+          montent jamais sur le site, et personne d'autre n'y accède.
+        </p>
 
-      <div class="gf-depot" id="gf-depot" tabindex="0" role="button"
-           aria-label="Déposer les fichiers de police">
-        <svg class="gf-depot-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>
-        </svg>
-        <b>Glissez les fichiers ici</b>
-        <span>ou cliquez pour les choisir &middot; .ttf et .otf</span>
-        <input type="file" id="gf-depot-input" multiple accept=".ttf,.otf,.woff,.woff2" hidden>
+        <div class="gf-depot" id="gf-depot" tabindex="0" role="button"
+             aria-label="Déposer les fichiers de police et le cachet">
+          <svg class="gf-depot-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>
+          </svg>
+          <b>Glissez les fichiers ici</b>
+          <span>ou cliquez pour les choisir &middot; .ttf, .otf, et le cachet en .png</span>
+          <input type="file" id="gf-depot-input" multiple accept=".ttf,.otf,.woff,.woff2,.png,.jpg,.jpeg,.webp" hidden>
+        </div>
+
+        <p class="gf-pol-ou">
+          Les polices sont dans
+          <code>C:\Users\mdgde\AppData\Local\Microsoft\Windows\Fonts</code>
+        </p>
+
+        <ul class="gf-pol-liste" id="gf-pol-liste"></ul>
+
+        <div class="gf-pol-pied">
+          <button type="button" class="gf-btn gf-btn-fant" id="gf-pol-oublier">Tout retirer</button>
+          <button type="button" class="gf-btn gf-btn-accent" id="gf-pol-suite" disabled>Continuer</button>
+        </div>
       </div>
 
-      <p class="gf-pol-ou">
-        Ils sont dans
-        <code>C:\Users\mdgde\AppData\Local\Microsoft\Windows\Fonts</code>
-      </p>
-
-      <ul class="gf-pol-liste" id="gf-pol-liste"></ul>
-
-      <div class="gf-pol-pied">
-        <button type="button" class="gf-btn gf-btn-fant" id="gf-pol-oublier">Tout retirer</button>
-        <button type="button" class="gf-btn gf-btn-accent" id="gf-pol-suite" disabled>Continuer</button>
-      </div>
+      <div class="gf-pol-carte" id="gf-param-sauvegarde"></div>
     </div>
   </section>
 
-  <!-- ======================= ÉCRAN 2 : L'ATELIER ======================= -->
+  <!-- ============================ L'ATELIER ============================ -->
   <section class="gf-ecran gf-atelier" id="gf-ecran-atelier" hidden>
 
-    <!-- ---------------------- colonne du formulaire ---------------------- -->
+    <!-- ---------------------- le panneau de contexte ----------------------
+         Les données de l'acte, ou le contrôle avant émission, ou ce que
+         demande la sélection. Un seul panneau à la fois. -->
     <div class="gf-form" id="gf-form">
+      <div class="gf-form-tete" id="gf-form-tete" hidden></div>
       <div class="gf-form-defile" id="gf-form-defile"></div>
     </div>
 
-    <!-- ------------------------ colonne d'aperçu ------------------------ -->
+    <!-- ------------------------ la feuille ------------------------ -->
     <div class="gf-apercu">
       <div class="gf-apercu-barre">
         <span class="gf-apercu-tag">Aperçu</span>
@@ -108,16 +130,13 @@
           <button type="button" class="gf-ico gf-ico-sm" id="gf-retablir" title="Rétablir (Ctrl+Y)" aria-label="Rétablir" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
           </button>
-          <button type="button" class="gf-ico gf-ico-sm" id="gf-origine" title="Revenir aux textes d'origine du modèle" aria-label="Textes d'origine">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
-          </button>
         </div>
         <div class="gf-zoom" role="group" aria-label="Zoom de l'aperçu">
-          <button type="button" class="gf-ico gf-ico-sm" id="gf-zoom-moins" title="Réduire" aria-label="Réduire">
+          <button type="button" class="gf-ico gf-ico-sm" id="gf-zoom-moins" title="Réduire (Ctrl+moins)" aria-label="Réduire">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
           </button>
           <span class="gf-zoom-val" id="gf-zoom-val">70 %</span>
-          <button type="button" class="gf-ico gf-ico-sm" id="gf-zoom-plus" title="Agrandir" aria-label="Agrandir">
+          <button type="button" class="gf-ico gf-ico-sm" id="gf-zoom-plus" title="Agrandir (Ctrl+plus)" aria-label="Agrandir">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           </button>
         </div>
@@ -129,33 +148,11 @@
         </div>
       </div>
 
-      <div class="gf-barre-bas">
-        <p class="gf-note" id="gf-note">
-          Cliquez sur un texte de la feuille pour le modifier sur place. Les pages sont celles de l'impression.
-        </p>
-        <button type="button" class="gf-btn gf-btn-fant" id="gf-prereglage" title="Garder cet acte comme préréglage">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>
-          Préréglage
-        </button>
-        <button type="button" class="gf-btn gf-btn-fant" id="gf-enregistrer" title="Enregistrer au registre (Ctrl+S)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/>
-            <path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="6" rx="1"/>
-          </svg>
-          Enregistrer
-        </button>
-        <button type="button" class="gf-btn gf-btn-fant" id="gf-export-html">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M5 20h14"/>
-          </svg>
-          Fichier source
-        </button>
-        <button type="button" class="gf-btn gf-btn-accent" id="gf-imprimer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 9V3h12v6"/><rect x="4" y="9" width="16" height="7" rx="1.5"/><path d="M7 16h10v5H7z"/>
-          </svg>
-          Imprimer en PDF
-        </button>
+      <!-- la barre d'état : ce qui est enregistré, ce qui est sélectionné,
+           et à droite le bouton principal, qui dépend de l'état de l'acte -->
+      <div class="gf-barre-bas gf-statut">
+        <p class="gf-note" id="gf-note"></p>
+        <div class="gf-actions" id="gf-actions"></div>
       </div>
     </div>
   </section>

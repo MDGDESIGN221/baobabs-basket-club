@@ -403,6 +403,9 @@
   var modeleActif = null;
   var donnees = {};
   var acteId = null, acteSauve = true;
+  /* le cycle de vie : etat, version, versions emises, journal */
+  var acteEtat = 'brouillon', acteVersion = 1, acteVersions = [], acteJournal = [], acteEmisLe = null, acteMotif = '';
+  var controle = null, panneau = 'donnees', modeLecture = false, espace = 'accueil';
   var registre = [], prereglages = [];
   var cadre = null, cadrePret = false, minuteur = null;
   var zoom = 0.7, nbPages = 1;
@@ -423,15 +426,6 @@
   }
 
   function salir() { acteSauve = false; majTitreBarre(); histoNoter(); autoEnregistrer(); }
-
-  function majTitreBarre() {
-    if (!elt.sousTitre) return;
-    if (!modeleActif) { elt.sousTitre.textContent = 'Actes officiels du club'; return; }
-    var nom = (modeleActif.libre && String(donnees.titre || '').trim()) || modeleActif.nom;
-    elt.sousTitre.textContent = nom
-      + (donnees.numero ? ' n° ' + donnees.numero : '')
-      + (acteSauve ? '' : ' · non enregistré');
-  }
 
   /* =================================================================
      5. L'ÉCRAN DES RESSOURCES
@@ -523,10 +517,42 @@
     return 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
 
-  function enregistrer(silencieux) {
-    if (!modeleActif) return Promise.resolve();
-    if (!acteId) acteId = identifiant();
-    var fiche = {
+  /* =================================================================
+     6 bis. LE CYCLE DE VIE DE L'ACTE
+     Brouillon, émis, remplacé, annulé, archivé : l'état est écrit en
+     toutes lettres, et le bouton principal dit la prochaine chose à
+     faire. Un acte émis ne se modifie plus en silence : on en crée une
+     nouvelle version, l'ancienne reste au registre avec son empreinte.
+     Un numéro attribué ne se réattribue jamais, même annulé.
+     ================================================================= */
+  var ETATS = {
+    brouillon: { lab: 'Brouillon', cls: 'brouillon' },
+    emis:      { lab: 'Émis',      cls: 'emis' },
+    remplace:  { lab: 'Remplacé',  cls: 'remplace' },
+    annule:    { lab: 'Annulé',    cls: 'annule' },
+    archive:   { lab: 'Archivé',   cls: 'archive' }
+  };
+  function etatLabel(e) { return (ETATS[e] || ETATS.brouillon).lab; }
+
+  function lectureSeule() { return !!modeleActif && (acteEtat !== 'brouillon' || modeLecture); }
+
+  function journaliser(quoi) {
+    acteJournal.push({ t: Date.now(), quoi: quoi });
+    if (acteJournal.length > 400) acteJournal.shift();
+  }
+
+  /* SHA-256 du contenu au moment de l'émission : non pas une signature,
+     une empreinte, pour savoir plus tard si l'acte a bougé. */
+  function empreinte(obj) {
+    var s = JSON.stringify(obj);
+    if (!(window.crypto && crypto.subtle && window.TextEncoder)) return Promise.resolve('');
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function (buf) {
+      return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    }).catch(function () { return ''; });
+  }
+
+  function ficheCourante() {
+    return {
       id: acteId,
       modele: modeleActif.cle,
       nom: modeleActif.nom,
@@ -534,23 +560,45 @@
       intitule: donnees.titre || modeleActif.nom,
       date: donnees.dateActe || isoDuJour(),
       maj: Date.now(),
+      etat: acteEtat, version: acteVersion, versions: acteVersions,
+      journal: acteJournal, emisLe: acteEmisLe, motif: acteMotif,
       donnees: JSON.parse(JSON.stringify(donnees))
     };
+  }
+
+  function enregistrer(silencieux) {
+    if (!modeleActif) return Promise.resolve();
+    if (!acteId) { acteId = identifiant(); if (!acteJournal.length) journaliser('Créé'); }
+    var fiche = ficheCourante();
     return dbPoser(MAG_ACTES, fiche).then(function () {
       acteSauve = true; majTitreBarre();
       registre = registre.filter(function (a) { return a.id !== fiche.id; });
       registre.unshift(fiche);
-      if (!silencieux) dire('Acte enregistré', 'ok');
+      if (!silencieux) dire('Enregistré', 'ok');
     }).catch(function (e) {
       dire("Enregistrement impossible : " + (e && e.message ? e.message : e), 'erreur');
     });
   }
 
-  function ouvrirActe(fiche) {
+  function chargerFiche(fiche) {
+    acteEtat = fiche.etat || 'brouillon';
+    acteVersion = fiche.version || 1;
+    acteVersions = fiche.versions || [];
+    acteJournal = fiche.journal || [];
+    acteEmisLe = fiche.emisLe || null;
+    acteMotif = fiche.motif || '';
+    controle = null; panneau = 'donnees'; modeLecture = false;
+  }
+
+  function ouvrirActe(fiche, version) {
     var m = G.modeles[fiche.modele];
     if (!m) { dire("Modèle « " + fiche.modele + " » introuvable.", 'erreur'); return; }
     modeleActif = m;
-    donnees = JSON.parse(JSON.stringify(fiche.donnees));
+    chargerFiche(fiche);
+    /* une ancienne version se relit telle qu'elle a été émise */
+    var v = version ? (acteVersions.filter(function (x) { return x.v === version; })[0]) : null;
+    donnees = JSON.parse(JSON.stringify(v ? v.donnees : fiche.donnees));
+    if (v) { acteEtat = v.etat === 'emise' ? 'emis' : 'remplace'; acteVersion = v.v; modeLecture = true; }
     acteId = fiche.id; acteSauve = true;
     montrer('atelier');
     histoDepart();
@@ -568,52 +616,343 @@
       Object.keys(p).forEach(function (k) { donnees[k] = p[k]; });
     }
     donnees.tables = donnees.tables || {};
-    /* le numéro suit le registre : premier libre de l'année en cours */
+    /* le numéro suit le registre : premier libre de l'année en cours,
+       tous états confondus : un numéro annulé reste pris */
     if (m.prefixe) {
       var an = String(new Date().getFullYear()).slice(2);
-      var pris = registre.filter(function (a) { return a.modele === cle; })
+      var pris = registre.filter(function (a) { return a.modele === cle && String(a.numero || '').slice(-2) === an; })
         .map(function (a) { return parseInt(String(a.numero).split('/')[0], 10) || 0; });
       var n = 1; while (pris.indexOf(n) !== -1) n++;
       donnees.numero = deuxChiffres(n) + '/' + an;
     }
     acteId = null; acteSauve = false;
+    acteEtat = 'brouillon'; acteVersion = 1; acteVersions = []; acteJournal = []; acteEmisLe = null; acteMotif = '';
+    controle = null; panneau = 'donnees'; modeLecture = false;
+    journaliser('Créé' + (prereglage ? ' depuis le préréglage « ' + prereglage.nom + ' »' : ''));
     montrer('atelier');
     histoDepart();
   }
 
+  /* ---- le contrôle avant émission ----
+     Une liste de constats, erreurs et avertissements. Les modèles
+     peuvent y ajouter les leurs (modele.controles). */
+  function verifierActe() {
+    var c = [];
+    function erreur(t) { c.push({ n: 'erreur', t: t }); }
+    function avert(t) { c.push({ n: 'avert', t: t }); }
+    function ok(t) { c.push({ n: 'ok', t: t }); }
+
+    if (modeleActif.prefixe) { if (String(donnees.numero || '').trim()) ok('Numéro : ' + donnees.numero); else erreur('Pas de numéro'); }
+    if (dateDe(donnees.dateActe)) ok('Daté du ' + dateLongue(donnees.dateActe, false)); else erreur('Pas de date');
+    if (String(donnees.titre || '').trim()) ok('Intitulé : ' + String(donnees.titre).slice(0, 60)); else erreur('Pas d\'intitulé');
+
+    var doc = cadre && cadrePret ? cadre.contentDocument : null;
+    if (doc) {
+      var pages = doc.querySelectorAll('.page');
+      ok(pages.length + ' page' + (pages.length > 1 ? 's' : ''));
+      if (pages.length > 6) avert('Plus de six pages : est-ce voulu ?');
+      var deborde = 0;
+      Array.prototype.forEach.call(pages, function (p, i) {
+        var corps = p.querySelector('.corps');
+        if (corps && corps.scrollHeight > corps.clientHeight + 2) { deborde++; erreur('Un texte dépasse la page ' + (i + 1)); }
+      });
+      if (!deborde) ok('Aucun texte hors page');
+      var vides = Array.prototype.filter.call(doc.querySelectorAll('[data-edit]'), function (e) {
+        return !e.closest('tr') && !e.textContent.trim() && !/^fixes\./.test(e.getAttribute('data-edit'));
+      }).length;
+      if (vides) avert(vides + ' zone' + (vides > 1 ? 's' : '') + ' de texte vide' + (vides > 1 ? 's' : '') + ' sur la feuille');
+    }
+    Object.keys(donnees.tables || {}).forEach(function (k) {
+      var t = donnees.tables[k];
+      var n = G.lignes(donnees, k).length;
+      if (!n) avert('Le tableau « ' + (t.titre || k) + ' » est vide : sa grille s\'imprimera vide');
+      else ok('Tableau « ' + (t.titre || k) + ' » : ' + n + ' ligne' + (n > 1 ? 's' : ''));
+    });
+    if (donnees.avecSignature !== false && 'signNom' in donnees) {
+      if (String(donnees.signNom || '').trim()) ok('Signataire : ' + donnees.signNom); else erreur('Pas de signataire');
+    }
+    if (donnees.avecSignature !== false && !res.paraphe) avert('Police de signature non déposée : la signature ne s\'imprimera pas');
+    if (donnees.avecCachet !== false && !res.cachet) avert('Cachet non déposé : il ne s\'imprimera pas');
+    if (typeof modeleActif.controles === 'function') {
+      (modeleActif.controles(donnees) || []).forEach(function (x) {
+        if (x && x.t) c.push({ n: x.n === 'erreur' ? 'erreur' : (x.n === 'ok' ? 'ok' : 'avert'), t: x.t });
+      });
+    }
+    var erreurs = c.filter(function (x) { return x.n === 'erreur'; }).length;
+    var averts = c.filter(function (x) { return x.n === 'avert'; }).length;
+    controle = { lignes: c, erreurs: erreurs, averts: averts, t: Date.now() };
+    return controle;
+  }
+
+  function peindreControle() {
+    var hote = elt.formDefile;
+    if (!controle) verifierActe();
+    var c = controle;
+    var ico = { ok: '✓', avert: '⚠', erreur: '✕' };
+    hote.innerHTML =
+      '<div class="gf-controle">'
+      + '<div class="gf-controle-liste">' + c.lignes.map(function (l) {
+          return '<div class="gf-ctl gf-ctl-' + l.n + '"><span class="gf-ctl-ico">' + ico[l.n] + '</span><span>' + ech(l.t) + '</span></div>';
+        }).join('') + '</div>'
+      + '<div class="gf-controle-bilan ' + (c.erreurs ? 'is-ko' : (c.averts ? 'is-avert' : 'is-ok')) + '">'
+      + (c.erreurs
+          ? c.erreurs + ' erreur' + (c.erreurs > 1 ? 's' : '') + ' : émission impossible'
+          : (c.averts ? c.averts + ' avertissement' + (c.averts > 1 ? 's' : '') + ' : émission possible' : 'Tout est prêt'))
+      + '</div>'
+      + '<div class="gf-controle-actions">'
+      + '<button type="button" class="gf-btn gf-btn-fant" id="gf-ctl-retour">Retour aux données</button>'
+      + (c.erreurs ? '' : '<button type="button" class="gf-btn gf-btn-accent" id="gf-ctl-emettre">Émettre l\'acte</button>')
+      + '</div></div>';
+    $('gf-ctl-retour').addEventListener('click', function () { panneau = 'donnees'; peindreFormulaire(); majTitreBarre(); });
+    var em = $('gf-ctl-emettre');
+    if (em) em.addEventListener('click', emettreActe);
+  }
+
+  function verifier() {
+    if (!modeleActif) return;
+    if (lectureSeule()) { dire('Cet acte est ' + etatLabel(acteEtat).toLowerCase() + '.', 'ok'); return; }
+    rafraichir();
+    verifierActe();
+    panneau = 'controle';
+    peindreFormulaire();
+    majTitreBarre();
+  }
+
+  function emettreActe() {
+    if (!modeleActif || lectureSeule()) return;
+    rafraichir();
+    var c = verifierActe();
+    if (c.erreurs) { panneau = 'controle'; peindreFormulaire(); majTitreBarre(); return; }
+    var nom = (modeleActif.libre && String(donnees.titre || '').trim()) || modeleActif.nom;
+    var lignes = c.lignes.filter(function (l) { return l.n !== 'erreur'; }).slice(0, 8).map(function (l) {
+      return '<div class="gf-ctl gf-ctl-' + l.n + '"><span class="gf-ctl-ico">' + (l.n === 'ok' ? '✓' : '⚠') + '</span><span>' + ech(l.t) + '</span></div>';
+    }).join('');
+    confirmer('Émettre cet acte ?',
+      '<p class="gf-modale-aide"><b>' + ech(nom) + (donnees.numero ? ' · ' + ech(donnees.numero) : '') + '</b> · version ' + acteVersion + '</p>'
+      + '<div class="gf-controle-liste">' + lignes + '</div>'
+      + '<p class="gf-modale-aide">Une fois émis, cet acte ne se modifie plus : il se réimprime tel quel, ou reçoit une nouvelle version. Cette version reste au registre avec son empreinte.</p>',
+      'Émettre V' + acteVersion).then(function (oui) {
+      if (!oui) return;
+      return empreinte(donnees).then(function (h) {
+        var maintenant = Date.now();
+        acteVersions.forEach(function (v) { if (v.etat === 'emise') v.etat = 'remplacee'; });
+        acteVersions.push({ v: acteVersion, etat: 'emise', emisLe: maintenant, empreinte: h,
+                            donnees: JSON.parse(JSON.stringify(donnees)) });
+        acteEtat = 'emis'; acteEmisLe = maintenant; controle = null; panneau = 'donnees';
+        journaliser('Émis V' + acteVersion + (h ? ' · empreinte ' + h.slice(0, 12) + '…' : ''));
+        return enregistrer(true).then(function () {
+          peindreFormulaire(); rafraichir(); majTitreBarre();
+          dire('Acte émis · V' + acteVersion, 'ok');
+        });
+      });
+    });
+  }
+
+  function nouvelleVersion() {
+    if (!modeleActif || acteEtat !== 'emis') return;
+    confirmer('Créer une nouvelle version ?',
+      '<p class="gf-modale-aide">La version ' + acteVersion + ' émise reste au registre telle quelle. '
+      + 'Vous travaillez sur la version ' + (acteVersion + 1) + ', qui la remplacera une fois émise.</p>',
+      'Créer V' + (acteVersion + 1)).then(function (oui) {
+      if (!oui) return;
+      acteVersion++; acteEtat = 'brouillon'; acteEmisLe = null; controle = null; panneau = 'donnees'; modeLecture = false;
+      journaliser('Nouvelle version V' + acteVersion);
+      salir();
+      return enregistrer(true).then(function () { peindreFormulaire(); rafraichir(); majTitreBarre(); histoDepart(); });
+    });
+  }
+
+  function annulerActe() {
+    if (!modeleActif || acteEtat === 'annule') return;
+    demander('Annuler cet acte', 'Le motif, pour le registre. Le numéro ' + (donnees.numero || '') + ' reste pris : il ne sera jamais réattribué.', 'Erreur de rédaction')
+      .then(function (motif) {
+        if (motif == null) return;
+        acteEtat = 'annule'; acteMotif = motif; controle = null; panneau = 'donnees';
+        journaliser('Annulé' + (motif ? ' : ' + motif : ''));
+        return enregistrer(true).then(function () { peindreFormulaire(); rafraichir(); majTitreBarre(); dire('Acte annulé', 'ok'); });
+      });
+  }
+
+  function archiverActe() {
+    if (!modeleActif || acteEtat !== 'emis') return;
+    acteEtat = 'archive'; journaliser('Archivé');
+    enregistrer(true).then(function () { peindreFormulaire(); rafraichir(); majTitreBarre(); dire('Acte archivé', 'ok'); });
+  }
+  function desarchiverActe() {
+    if (!modeleActif || acteEtat !== 'archive') return;
+    acteEtat = 'emis'; journaliser('Sorti des archives');
+    enregistrer(true).then(function () { peindreFormulaire(); rafraichir(); majTitreBarre(); dire('Acte de retour au registre', 'ok'); });
+  }
+
+  function dateHeure(t) {
+    var d = new Date(t), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function historiqueActe(fiche) {
+    var f = fiche || (modeleActif ? ficheCourante() : null);
+    if (!f) return;
+    var versions = (f.versions || []).slice().reverse().map(function (v) {
+      return '<div class="gf-ctl gf-ctl-' + (v.etat === 'emise' ? 'ok' : 'avert') + '"><span class="gf-ctl-ico">V' + v.v + '</span>'
+        + '<span>' + (v.etat === 'emise' ? 'Émise' : 'Remplacée') + ' le ' + ech(dateHeure(v.emisLe))
+        + (v.empreinte ? ' · <code>' + ech(v.empreinte.slice(0, 16)) + '…</code>' : '') + '</span>'
+        + '<button type="button" class="gf-mini" data-version="' + v.v + '">Ouvrir</button></div>';
+    }).join('') || '<p class="gf-vide">Aucune version émise.</p>';
+    var journal = (f.journal || []).slice().reverse().map(function (j) {
+      return '<div class="gf-journal-ligne"><span class="gf-journal-t">' + ech(dateHeure(j.t)) + '</span><span>' + ech(j.quoi) + '</span></div>';
+    }).join('') || '<p class="gf-vide">Rien encore.</p>';
+    modale('Historique · ' + ech(f.intitule || f.nom) + (f.numero ? ' n° ' + ech(f.numero) : ''),
+      '<h4 class="gf-modale-h4">Versions</h4><div class="gf-controle-liste">' + versions + '</div>'
+      + '<h4 class="gf-modale-h4">Journal</h4><div class="gf-journal">' + journal + '</div>',
+      [{ lab: 'Fermer', accent: false }]).then(function () {});
+    Array.prototype.forEach.call(racine.querySelectorAll('.gf-voile [data-version]'), function (b) {
+      b.addEventListener('click', function () {
+        var v = +b.getAttribute('data-version');
+        racine.querySelector('.gf-voile').remove();
+        ouvrirActe(f, v);
+      });
+    });
+  }
+
+  function informationsActe() {
+    if (!modeleActif) return;
+    var f = ficheCourante();
+    var derniere = acteVersions.length ? acteVersions[acteVersions.length - 1] : null;
+    modale('Informations sur l\'acte',
+      '<div class="gf-infos">'
+      + '<div><span class="gf-lab">Acte</span><b>' + ech(f.intitule) + '</b></div>'
+      + '<div><span class="gf-lab">Modèle</span><b>' + ech(modeleActif.nom) + '</b></div>'
+      + '<div><span class="gf-lab">Numéro</span><b>' + ech(f.numero || 'aucun') + '</b></div>'
+      + '<div><span class="gf-lab">État</span><b>' + ech(etatLabel(acteEtat)) + ' · version ' + acteVersion + '</b></div>'
+      + '<div><span class="gf-lab">Daté du</span><b>' + ech(dateLongue(f.date, true)) + '</b></div>'
+      + (acteEmisLe ? '<div><span class="gf-lab">Émis le</span><b>' + ech(dateHeure(acteEmisLe)) + '</b></div>' : '')
+      + (derniere && derniere.empreinte ? '<div><span class="gf-lab">Empreinte SHA-256 de la V' + derniere.v + '</span><code>' + ech(derniere.empreinte) + '</code></div>' : '')
+      + (acteMotif ? '<div><span class="gf-lab">Motif d\'annulation</span><b>' + ech(acteMotif) + '</b></div>' : '')
+      + '<div><span class="gf-lab">Identifiant</span><code>' + ech(acteId || 'pas encore enregistré') + '</code></div>'
+      + '</div>'
+      + '<p class="gf-modale-aide">L\'empreinte dit si le contenu a bougé depuis l\'émission ; ce n\'est pas une signature électronique.</p>',
+      [{ lab: 'Fermer' }]);
+  }
+
+  /* ---- les boîtes de dialogue ----
+     confirmer() rend vrai ou faux ; modale() affiche et attend qu'on
+     ferme. Toutes dans la charte, aucune de window.* */
+  function modale(titre, html, boutons) {
+    return new Promise(function (res) {
+      var voile = document.createElement('div');
+      voile.className = 'gf-voile';
+      voile.innerHTML =
+        '<div class="gf-modale" role="dialog" aria-modal="true">'
+        + '<header class="gf-modale-top"><h3>' + titre + '</h3>'
+        + '<button type="button" class="gf-ico gf-ico-close" data-x aria-label="Fermer">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>'
+        + '<div class="gf-modale-corps">' + html + '</div>'
+        + '<footer class="gf-modale-pied">' + (boutons || [{ lab: 'Fermer' }]).map(function (b, i) {
+            return '<button type="button" class="gf-btn ' + (b.accent ? 'gf-btn-accent' : 'gf-btn-fant') + '" data-b="' + i + '">' + ech(b.lab) + '</button>';
+          }).join('') + '</footer></div>';
+      function fin(v) { if (voile.parentNode) voile.remove(); res(v); }
+      voile.querySelector('[data-x]').addEventListener('click', function () { fin(null); });
+      Array.prototype.forEach.call(voile.querySelectorAll('[data-b]'), function (b) {
+        b.addEventListener('click', function () { fin((boutons || [])[+b.getAttribute('data-b')]); });
+      });
+      voile.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fin(null); } });
+      racine.appendChild(voile);
+      var premier = voile.querySelector('.gf-btn-accent') || voile.querySelector('[data-b]');
+      if (premier) premier.focus();
+    });
+  }
+  function confirmer(titre, html, oui) {
+    return modale(titre, html, [{ lab: 'Retour', accent: false }, { lab: oui || 'Confirmer', accent: true, oui: true }])
+      .then(function (b) { return !!(b && b.oui); });
+  }
+
+  /* =================================================================
+     6 ter. LES ESPACES : ACCUEIL, REGISTRE, PARAMÈTRES, ET LE CHOIX D'UN ACTE
+     ================================================================= */
+  function badgeEtat(e, version) {
+    var x = ETATS[e] || ETATS.brouillon;
+    return '<span class="gf-badge gf-badge-' + x.cls + '">' + ech(x.lab.toUpperCase()) + (version > 1 || e === 'emis' ? ' · V' + (version || 1) : '') + '</span>';
+  }
+  function ligneActe(a) {
+    return '<button type="button" class="gf-acte-ligne" data-acte="' + ech(a.id) + '">'
+      + '<span class="gf-al-num">' + ech(a.numero || '·') + '</span>'
+      + '<span class="gf-al-txt"><b>' + ech(a.intitule || a.nom) + '</b><span>' + ech(a.nom) + ' · ' + ech(dateLongue(a.date, false) || '') + '</span></span>'
+      + badgeEtat(a.etat || 'brouillon', a.version) + '</button>';
+  }
+  function brancherLignesActes(hote) {
+    hote.querySelectorAll('.gf-acte-ligne').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var f = registre.filter(function (a) { return a.id === b.getAttribute('data-acte'); })[0];
+        if (f) ouvrirActe(f);
+      });
+    });
+  }
+
+  /* ---- l'accueil : que voulez-vous faire ? ---- */
   function peindreAccueil() {
     var hote = elt.accueil;
     if (!hote) return;
+    var brouillons = registre.filter(function (a) { return (a.etat || 'brouillon') === 'brouillon'; });
+    var emis = registre.filter(function (a) { return a.etat === 'emis'; });
+    var recents = registre.slice(0, 6);
+    var pres = tousPrereglages().slice(0, 6);
+    var h = new Date().getHours();
+    var salut = h < 18 ? 'Bonjour' : 'Bonsoir';
 
+    hote.innerHTML =
+      '<div class="gf-acc-carte gf-acc-hero">'
+      + '<h2 class="gf-acc-titre">' + salut + '.</h2>'
+      + '<p class="gf-acc-intro">Que voulez-vous faire ?</p>'
+      + '<div class="gf-acc-actions">'
+      + '<button type="button" class="gf-btn gf-btn-accent gf-btn-grand" id="gf-acc-nouveau">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nouvel acte <kbd>Ctrl+N</kbd></button>'
+      + (brouillons.length ? '<button type="button" class="gf-btn gf-btn-fant gf-btn-grand" id="gf-acc-brouillon">Reprendre un brouillon <span class="gf-compte">' + brouillons.length + '</span></button>' : '')
+      + '</div></div>'
+      + (recents.length
+          ? '<div class="gf-acc-carte"><h2 class="gf-acc-titre gf-acc-titre-sm">Récents</h2><div class="gf-actes-liste">' + recents.map(ligneActe).join('') + '</div>'
+            + '<button type="button" class="gf-lien" id="gf-acc-registre">Ouvrir le registre · ' + registre.length + ' acte' + (registre.length > 1 ? 's' : '')
+            + (brouillons.length ? ' · ' + brouillons.length + ' brouillon' + (brouillons.length > 1 ? 's' : '') : '')
+            + (emis.length ? ' · ' + emis.length + ' émis' : '') + '</button></div>'
+          : '')
+      + '<div class="gf-acc-carte"><h2 class="gf-acc-titre gf-acc-titre-sm">Préréglages</h2>'
+      + '<p class="gf-acc-intro">Un acte déjà composé : ouvrez-le, il ne reste qu\'à écrire.</p>'
+      + '<div class="gf-puces">' + pres.map(function (p, i) {
+          return '<button type="button" class="gf-puce" data-pre="' + i + '">' + ech(p.nom) + '</button>';
+        }).join('') + '<button type="button" class="gf-puce gf-puce-plus" id="gf-acc-tous-pre">Tous les préréglages…</button></div></div>'
+      + '<p class="gf-acc-pied"><button type="button" class="gf-lien" data-espace="parametres">Paramètres</button> · '
+      + '<button type="button" class="gf-lien" id="gf-acc-sauver">Sauvegarder le Greffe</button></p>';
+
+    $('gf-acc-nouveau').addEventListener('click', function () { ouvrirNouveau(); });
+    var b = $('gf-acc-brouillon');
+    if (b) b.addEventListener('click', function () { montrer('registre', 'brouillon'); });
+    var r = $('gf-acc-registre');
+    if (r) r.addEventListener('click', function () { montrer('registre'); });
+    hote.querySelectorAll('[data-pre]').forEach(function (x) {
+      x.addEventListener('click', function () { var p = pres[+x.getAttribute('data-pre')]; nouvelActe(p.modele, p); });
+    });
+    $('gf-acc-tous-pre').addEventListener('click', function () { ouvrirNouveau('prereglages'); });
+    hote.querySelectorAll('[data-espace]').forEach(function (x) {
+      x.addEventListener('click', function () { montrer(x.getAttribute('data-espace')); });
+    });
+    $('gf-acc-sauver').addEventListener('click', sauvegarderGreffe);
+    brancherLignesActes(hote);
+  }
+
+  /* ---- le choix d'un acte nouveau : modèles et préréglages ---- */
+  function ouvrirNouveau(onglet) {
     var familles = {};
     MODELES.forEach(function (k) {
       var m = G.modeles[k];
       if (!m) return;
       (familles[m.famille || 'Actes'] = familles[m.famille || 'Actes'] || []).push(m);
     });
-
     var htmlModeles = Object.keys(familles).map(function (f) {
       return '<div class="gf-fam"><span class="gf-lab">' + ech(f) + '</span><div class="gf-cartes">'
         + familles[f].map(function (m) {
             return '<button type="button" class="gf-carte" data-modele="' + ech(m.cle) + '">'
               + '<b>' + ech(m.nom) + '</b><span>' + ech(m.resume || '') + '</span></button>';
-          }).join('')
-        + '</div></div>';
+          }).join('') + '</div></div>';
     }).join('');
-
-    var htmlRegistre = registre.length
-      ? '<ul class="gf-registre">' + registre.slice(0, 40).map(function (a) {
-          return '<li data-acte="' + ech(a.id) + '">'
-            + '<button type="button" class="gf-reg-ouvrir">'
-            + '<b>' + ech(a.intitule || a.nom) + (a.numero ? ' n° ' + ech(a.numero) : '') + '</b>'
-            + '<span>' + ech(a.nom) + ' · ' + ech(dateLongue(a.date, false) || '') + '</span>'
-            + '</button>'
-            + '<button type="button" class="gf-reg-sup" title="Retirer du registre" aria-label="Retirer">'
-            + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
-            + '</button></li>';
-        }).join('') + '</ul>'
-      : '<p class="gf-vide">Aucun acte enregistré pour l\'instant.</p>';
-
     var pres = tousPrereglages();
     var htmlPre = '<div class="gf-cartes">' + pres.map(function (p, i) {
         var m = G.modeles[p.modele];
@@ -631,34 +970,37 @@
       + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9M6 15l6 6 6-6M4 3h16"/></svg>'
       + 'Déposer un préréglage (.json)</label><input type="file" id="gf-pre-fichier" accept=".json,application/json" multiple hidden></div>';
 
-    hote.innerHTML =
-      '<div class="gf-acc-carte"><h2 class="gf-acc-titre">Quel acte voulez-vous établir ?</h2>'
-      + htmlModeles + '</div>'
-      + '<div class="gf-acc-carte"><h2 class="gf-acc-titre">Les préréglages</h2>'
-      + '<p class="gf-acc-intro">Un acte déjà composé : ouvrez-le, il ne reste qu\'à écrire. '
-      + 'Depuis l\'atelier, « Préréglage » garde l\'acte en cours sous cette forme.</p>'
-      + htmlPre + '</div>'
-      + '<div class="gf-acc-carte"><h2 class="gf-acc-titre">Le registre</h2>'
-      + '<p class="gf-acc-intro">Chaque acte est gardé sous forme de données. '
-      + 'Rouvrez-le pour le corriger, le renuméroter ou le réimprimer.</p>'
-      + htmlRegistre
-      + '<div class="gf-sauvegarde"><button type="button" class="gf-mini" id="gf-sauver">'
-      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 9l6-6 6 6M4 21h16"/></svg>'
-      + 'Sauvegarder le Greffe</button>'
-      + '<label class="gf-mini" for="gf-restaurer">'
-      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9M6 15l6 6 6-6M4 3h16"/></svg>'
-      + 'Restaurer une sauvegarde</label><input type="file" id="gf-restaurer" accept=".json,.greffe,application/json" hidden>'
-      + '<p class="gf-aide">Le registre vit dans ce navigateur. Un fichier de sauvegarde le met à l\'abri et le fait passer d\'un poste à l\'autre ; il ne contient jamais le cachet ni les polices.</p></div>'
+    var voile = document.createElement('div');
+    voile.className = 'gf-voile';
+    voile.innerHTML =
+      '<div class="gf-modale gf-modale-large" role="dialog" aria-modal="true">'
+      + '<header class="gf-modale-top"><h3>Quel acte voulez-vous établir ?</h3>'
+      + '<div class="gf-onglets"><button type="button" class="gf-onglet is-actif" data-onglet="modeles">Modèles</button>'
+      + '<button type="button" class="gf-onglet" data-onglet="prereglages">Préréglages</button></div>'
+      + '<button type="button" class="gf-ico gf-ico-close" data-x aria-label="Fermer">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>'
+      + '<div class="gf-modale-corps"><div data-page="modeles">' + htmlModeles + '</div>'
+      + '<div data-page="prereglages" hidden><p class="gf-modale-aide">Depuis l\'atelier, « Préréglage » garde l\'acte en cours sous cette forme ; un fichier .json le fait voyager d\'un poste à l\'autre.</p>' + htmlPre + '</div></div>'
       + '</div>';
-
-    hote.querySelectorAll('[data-modele]').forEach(function (b) {
-      b.addEventListener('click', function () { nouvelActe(b.getAttribute('data-modele')); });
+    racine.appendChild(voile);
+    function fermer() { if (voile.parentNode) voile.remove(); }
+    voile.querySelector('[data-x]').addEventListener('click', fermer);
+    voile.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fermer(); } });
+    voile.querySelectorAll('.gf-onglet').forEach(function (o) {
+      o.addEventListener('click', function () {
+        voile.querySelectorAll('.gf-onglet').forEach(function (x) { x.classList.toggle('is-actif', x === o); });
+        voile.querySelectorAll('[data-page]').forEach(function (p) { p.hidden = p.getAttribute('data-page') !== o.getAttribute('data-onglet'); });
+      });
     });
-    hote.querySelectorAll('.gf-carte-pre').forEach(function (c) {
+    if (onglet === 'prereglages') voile.querySelector('[data-onglet="prereglages"]').click();
+    voile.querySelectorAll('[data-modele]').forEach(function (b) {
+      b.addEventListener('click', function () { fermer(); nouvelActe(b.getAttribute('data-modele')); });
+    });
+    voile.querySelectorAll('.gf-carte-pre').forEach(function (c) {
       var p = pres[+c.getAttribute('data-pre')];
       c.querySelector('.gf-carte-ouvrir').addEventListener('click', function () {
         if (!G.modeles[p.modele]) { dire('Modèle « ' + p.modele + ' » introuvable.', 'erreur'); return; }
-        nouvelActe(p.modele, p);
+        fermer(); nouvelActe(p.modele, p);
       });
       var ex = c.querySelector('[data-exporter]');
       if (ex) ex.addEventListener('click', function () { exporterPrereglage(p); });
@@ -666,29 +1008,333 @@
       if (ret) ret.addEventListener('click', function () {
         dbOter(MAG_PRE, p.id).then(function () {
           prereglages = prereglages.filter(function (q) { return q.id !== p.id; });
-          peindreAccueil(); dire('Préréglage retiré', 'ok');
+          fermer(); ouvrirNouveau('prereglages'); dire('Préréglage retiré', 'ok');
         });
       });
     });
-    var depot = $('gf-pre-fichier');
-    if (depot) depot.addEventListener('change', function () { deposerPrereglages(depot.files); depot.value = ''; });
-    var sauver = $('gf-sauver');
-    if (sauver) sauver.addEventListener('click', sauvegarderGreffe);
+    var depot = voile.querySelector('#gf-pre-fichier');
+    if (depot) depot.addEventListener('change', function () {
+      deposerPrereglages(depot.files); depot.value = '';
+      setTimeout(function () { fermer(); ouvrirNouveau('prereglages'); }, 600);
+    });
+    var premier = voile.querySelector('[data-modele]');
+    if (premier) premier.focus();
+  }
+
+  /* ---- le registre : chercher, filtrer, ouvrir ---- */
+  var registreFiltre = 'tous', registreRecherche = '';
+  function peindreRegistre() {
+    var hote = elt.registre;
+    if (!hote) return;
+    var q = registreRecherche.trim().toLowerCase();
+    var normal = function (s) { return String(s || '').toLowerCase(); };
+    var liste = registre.filter(function (a) {
+      var e = a.etat || 'brouillon';
+      if (registreFiltre === 'archive') { if (e !== 'archive') return false; }
+      else if (e === 'archive') return false;
+      else if (registreFiltre !== 'tous' && e !== registreFiltre) return false;
+      if (!q) return true;
+      /* la recherche va jusque dans la donnée : un nom de joueuse, une ville */
+      var corps = normal(a.intitule) + ' ' + normal(a.nom) + ' ' + normal(a.numero) + ' ' + normal(a.date) + ' ' + normal(JSON.stringify(a.donnees || {}));
+      return q.split(/\s+/).every(function (mot) { return corps.indexOf(mot) !== -1; });
+    });
+    var compte = {};
+    registre.forEach(function (a) { var e = a.etat || 'brouillon'; compte[e] = (compte[e] || 0) + 1; });
+    var filtres = [['tous', 'Tous'], ['brouillon', 'Brouillons'], ['emis', 'Émis'], ['remplace', 'Remplacés'], ['annule', 'Annulés'], ['archive', 'Archivés']];
+
+    hote.innerHTML =
+      '<div class="gf-acc-carte">'
+      + '<div class="gf-reg-tete"><h2 class="gf-acc-titre">Le registre</h2>'
+      + '<input class="gf-in gf-reg-recherche" id="gf-reg-recherche" type="search" placeholder="Rechercher : un numéro, un nom, une ville, un objet…" value="' + ech(registreRecherche) + '"></div>'
+      + '<div class="gf-puces gf-reg-filtres">' + filtres.map(function (f) {
+          var n = f[0] === 'tous' ? registre.filter(function (a) { return (a.etat || 'brouillon') !== 'archive'; }).length : (compte[f[0]] || 0);
+          return '<button type="button" class="gf-puce' + (registreFiltre === f[0] ? ' is-actif' : '') + '" data-filtre="' + f[0] + '">' + f[1] + ' <span class="gf-compte">' + n + '</span></button>';
+        }).join('') + '</div>'
+      + (liste.length
+          ? '<div class="gf-reg-table">' + liste.map(function (a) {
+              var e = a.etat || 'brouillon';
+              return '<div class="gf-reg-ligne">' + ligneActe(a)
+                + '<div class="gf-reg-actions">'
+                + '<button type="button" class="gf-mini" data-histo="' + ech(a.id) + '">Historique</button>'
+                + (e === 'emis' ? '<button type="button" class="gf-mini" data-version="' + ech(a.id) + '">Nouvelle version</button>' : '')
+                + (e === 'emis' ? '<button type="button" class="gf-mini" data-archiver="' + ech(a.id) + '">Archiver</button>' : '')
+                + (e === 'archive' ? '<button type="button" class="gf-mini" data-desarchiver="' + ech(a.id) + '">Sortir des archives</button>' : '')
+                + (e === 'brouillon' || e === 'emis' ? '<button type="button" class="gf-mini" data-annuler="' + ech(a.id) + '">Annuler l\'acte</button>' : '')
+                + (e === 'brouillon' ? '<button type="button" class="gf-mini gf-mini-danger" data-retirer="' + ech(a.id) + '">Retirer</button>' : '')
+                + '</div></div>';
+            }).join('') + '</div>'
+          : '<p class="gf-vide">' + (q ? 'Rien ne correspond à « ' + ech(registreRecherche) + ' ».' : 'Aucun acte ici.') + '</p>')
+      + '</div>';
+
+    var rech = $('gf-reg-recherche');
+    rech.addEventListener('input', function () { registreRecherche = rech.value; peindreRegistre(); var r2 = $('gf-reg-recherche'); r2.focus(); r2.setSelectionRange(r2.value.length, r2.value.length); });
+    hote.querySelectorAll('[data-filtre]').forEach(function (b) {
+      b.addEventListener('click', function () { registreFiltre = b.getAttribute('data-filtre'); peindreRegistre(); });
+    });
+    brancherLignesActes(hote);
+    function fiche(id) { return registre.filter(function (a) { return a.id === id; })[0]; }
+    function avecFiche(attr, fn) {
+      hote.querySelectorAll('[' + attr + ']').forEach(function (b) {
+        b.addEventListener('click', function () { var f = fiche(b.getAttribute(attr)); if (f) fn(f); });
+      });
+    }
+    avecFiche('data-histo', function (f) { historiqueActe(f); });
+    avecFiche('data-version', function (f) { ouvrirActe(f); setTimeout(nouvelleVersion, 400); });
+    avecFiche('data-archiver', function (f) { f.etat = 'archive'; (f.journal = f.journal || []).push({ t: Date.now(), quoi: 'Archivé' }); f.maj = Date.now(); dbPoser(MAG_ACTES, f).then(peindreRegistre); });
+    avecFiche('data-desarchiver', function (f) { f.etat = 'emis'; (f.journal = f.journal || []).push({ t: Date.now(), quoi: 'Sorti des archives' }); f.maj = Date.now(); dbPoser(MAG_ACTES, f).then(peindreRegistre); });
+    avecFiche('data-annuler', function (f) {
+      demander('Annuler cet acte', 'Le motif, pour le registre. Le numéro ' + (f.numero || '') + ' reste pris.', 'Erreur de rédaction').then(function (motif) {
+        if (motif == null) return;
+        f.etat = 'annule'; f.motif = motif; (f.journal = f.journal || []).push({ t: Date.now(), quoi: 'Annulé' + (motif ? ' : ' + motif : '') }); f.maj = Date.now();
+        dbPoser(MAG_ACTES, f).then(function () { peindreRegistre(); dire('Acte annulé', 'ok'); });
+      });
+    });
+    avecFiche('data-retirer', function (f) {
+      confirmer('Retirer ce brouillon ?', '<p class="gf-modale-aide"><b>' + ech(f.intitule || f.nom) + (f.numero ? ' · ' + ech(f.numero) : '') + '</b> sera retiré du registre. Son numéro reste pris.</p>', 'Retirer').then(function (oui) {
+        if (!oui) return;
+        dbOter(MAG_ACTES, f.id).then(function () {
+          registre = registre.filter(function (a) { return a.id !== f.id; });
+          peindreRegistre(); dire('Brouillon retiré', 'ok');
+        });
+      });
+    });
+  }
+
+  /* ---- les paramètres : la carte de sauvegarde ---- */
+  function peindreParametres() {
+    peindreListeRessources();
+    var hote = $('gf-param-sauvegarde');
+    if (!hote) return;
+    hote.innerHTML =
+      '<h2 class="gf-pol-titre">La sauvegarde</h2>'
+      + '<p class="gf-pol-intro">Le registre vit dans ce navigateur : un profil réinitialisé, un disque perdu, un poste changé, et tout s\'en va. '
+      + 'Un fichier de sauvegarde le met à l\'abri et le fait passer d\'un poste à l\'autre. Il ne contient jamais le cachet ni les polices : ils se redéposent.</p>'
+      + '<div class="gf-sauvegarde"><button type="button" class="gf-btn gf-btn-accent" id="gf-sauver">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 9l6-6 6 6M4 21h16"/></svg>'
+      + 'Sauvegarder le Greffe <kbd>Ctrl+Maj+S</kbd></button>'
+      + '<label class="gf-btn gf-btn-fant" for="gf-restaurer">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9M6 15l6 6 6-6M4 3h16"/></svg>'
+      + 'Restaurer une sauvegarde</label><input type="file" id="gf-restaurer" accept=".json,.greffe,application/json" hidden>'
+      + '<p class="gf-aide">' + registre.length + ' acte' + (registre.length > 1 ? 's' : '') + ' et ' + prereglages.length + ' préréglage' + (prereglages.length > 1 ? 's' : '') + ' sur ce poste.</p></div>';
+    $('gf-sauver').addEventListener('click', sauvegarderGreffe);
     var rest = $('gf-restaurer');
-    if (rest) rest.addEventListener('change', function () { restaurerGreffe(rest.files && rest.files[0]); rest.value = ''; });
-    hote.querySelectorAll('.gf-registre li').forEach(function (li) {
-      var id = li.getAttribute('data-acte');
-      li.querySelector('.gf-reg-ouvrir').addEventListener('click', function () {
-        var f = registre.filter(function (a) { return a.id === id; })[0];
-        if (f) ouvrirActe(f);
-      });
-      li.querySelector('.gf-reg-sup').addEventListener('click', function () {
-        dbOter(MAG_ACTES, id).then(function () {
-          registre = registre.filter(function (a) { return a.id !== id; });
-          peindreAccueil(); dire('Acte retiré du registre', 'ok');
-        });
+    rest.addEventListener('change', function () { restaurerGreffe(rest.files && rest.files[0]); rest.value = ''; });
+  }
+
+  /* =================================================================
+     6 quater. LA BARRE DE MENUS, L'ÉTAT DE L'ACTE, LE BOUTON PRINCIPAL
+     ================================================================= */
+  function menus() {
+    var libre = !!(modeleActif && modeleActif.libre);
+    var lect = lectureSeule();
+    var enAtelier = !!modeleActif && espace === 'atelier';
+    return [
+      { nom: 'Fichier', items: [
+        { lab: 'Nouvel acte…', rac: 'Ctrl+N', act: function () { ouvrirNouveau(); } },
+        { lab: 'Ouvrir le registre', rac: 'Ctrl+O', act: function () { montrer('registre'); } },
+        { sep: true },
+        { lab: 'Enregistrer', rac: 'Ctrl+S', off: !enAtelier, act: function () { enregistrer(false); } },
+        { lab: 'Garder comme préréglage…', off: !enAtelier, act: garderPrereglage },
+        { lab: 'Fichier source (sans cachet)', off: !enAtelier, act: exporterHtml },
+        { lab: 'Imprimer en PDF', rac: 'Ctrl+P', off: !enAtelier, act: imprimer },
+        { sep: true },
+        { lab: 'Sauvegarder le Greffe', rac: 'Ctrl+Maj+S', act: sauvegarderGreffe },
+        { lab: 'Restaurer une sauvegarde…', act: function () { montrer('parametres'); } },
+        { sep: true },
+        { lab: 'Fermer l\'acte', off: !enAtelier, act: function () { fermerActe(); } }
+      ]},
+      { nom: 'Édition', items: [
+        { lab: 'Annuler', rac: 'Ctrl+Z', off: !enAtelier || histoI <= 0, act: annuler },
+        { lab: 'Rétablir', rac: 'Ctrl+Y', off: !enAtelier || histoI >= histo.length - 1, act: retablir },
+        { sep: true },
+        { lab: 'Textes d\'origine du modèle', off: !enAtelier || lect, act: textesOrigine }
+      ]},
+      { nom: 'Acte', items: [
+        { lab: 'Informations…', off: !enAtelier, act: informationsActe },
+        { lab: 'Historique…', off: !enAtelier, act: function () { historiqueActe(); } },
+        { sep: true },
+        { lab: 'Vérifier', rac: 'Ctrl+Entrée', off: !enAtelier || lect, act: verifier },
+        { lab: 'Émettre…', rac: 'Ctrl+Maj+E', off: !enAtelier || lect, act: emettreActe },
+        { lab: 'Nouvelle version…', off: !enAtelier || acteEtat !== 'emis', act: nouvelleVersion },
+        { sep: true },
+        { lab: 'Archiver', off: !enAtelier || acteEtat !== 'emis', act: archiverActe },
+        { lab: 'Sortir des archives', off: !enAtelier || acteEtat !== 'archive', act: desarchiverActe },
+        { lab: 'Annuler l\'acte…', off: !enAtelier || acteEtat === 'annule', act: annulerActe }
+      ]},
+      { nom: 'Insertion', items: (libre && !lect && modeleActif.catalogue
+          ? modeleActif.catalogue.map(function (e) { return { lab: e.nom, act: function () { poserBloc(e); } }; })
+          : [{ lab: enAtelier ? 'Dans un acte libre seulement' : 'Ouvrez un acte', off: true }]) },
+      { nom: 'Affichage', items: [
+        { lab: 'Zoom avant', rac: 'Ctrl+Plus', off: !enAtelier, act: function () { zoom = Math.min(1.5, zoom + 0.1); appliquerZoom(); } },
+        { lab: 'Zoom arrière', rac: 'Ctrl+Moins', off: !enAtelier, act: function () { zoom = Math.max(0.25, zoom - 0.1); appliquerZoom(); } },
+        { lab: 'Taille réelle', rac: 'Ctrl+0', off: !enAtelier, act: function () { zoom = 1; appliquerZoom(); } },
+        { sep: true },
+        { lab: (racine.classList.contains('gf-sans-panneau') ? 'Montrer' : 'Masquer') + ' le panneau', rac: 'Ctrl+Maj+P', off: !enAtelier, act: basculerPanneau },
+        { lab: (modeLecture ? 'Quitter le' : 'Passer en') + ' mode lecture', rac: 'Ctrl+Maj+R', off: !enAtelier, act: basculerLecture }
+      ]},
+      { nom: 'Aide', items: [
+        { lab: 'Raccourcis…', act: aideRaccourcis },
+        { lab: 'Guide rapide…', act: aideGuide },
+        { lab: 'À propos du Greffe…', act: aideAPropos }
+      ]}
+    ];
+  }
+
+  function peindreMenus() {
+    var hote = $('gf-menus');
+    if (!hote) return;
+    hote.innerHTML = menus().map(function (m, i) {
+      return '<button type="button" class="gf-menu-btn" data-menu="' + i + '" aria-haspopup="true">' + ech(m.nom) + '</button>';
+    }).join('');
+    hote.querySelectorAll('.gf-menu-btn').forEach(function (b) {
+      b.addEventListener('click', function () { ouvrirMenu(+b.getAttribute('data-menu'), b); });
+      b.addEventListener('mouseenter', function () { if (menuOuvert != null && menuOuvert !== +b.getAttribute('data-menu')) ouvrirMenu(+b.getAttribute('data-menu'), b); });
+    });
+  }
+  var menuOuvert = null;
+  function fermerMenus() {
+    menuOuvert = null;
+    racine.querySelectorAll('.gf-menu-liste').forEach(function (l) { l.remove(); });
+    racine.querySelectorAll('.gf-menu-btn.is-ouvert').forEach(function (b) { b.classList.remove('is-ouvert'); });
+  }
+  function ouvrirMenu(i, bouton) {
+    var dejaOuvert = menuOuvert === i;
+    fermerMenus();
+    if (dejaOuvert) return;
+    menuOuvert = i;
+    bouton.classList.add('is-ouvert');
+    var m = menus()[i];
+    var liste = document.createElement('div');
+    liste.className = 'gf-menu-liste';
+    liste.setAttribute('role', 'menu');
+    liste.innerHTML = m.items.map(function (it, j) {
+      if (it.sep) return '<div class="gf-menu-sep"></div>';
+      return '<button type="button" class="gf-menu-item" role="menuitem" data-item="' + j + '"' + (it.off ? ' disabled' : '') + '>'
+        + '<span>' + ech(it.lab) + '</span>' + (it.rac ? '<kbd>' + ech(it.rac) + '</kbd>' : '') + '</button>';
+    }).join('');
+    var r = bouton.getBoundingClientRect(), rr = racine.getBoundingClientRect();
+    liste.style.left = (r.left - rr.left) + 'px';
+    liste.style.top = (r.bottom - rr.top) + 'px';
+    racine.appendChild(liste);
+    liste.querySelectorAll('.gf-menu-item').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var it = m.items[+b.getAttribute('data-item')];
+        fermerMenus();
+        if (it && it.act) it.act();
       });
     });
+  }
+
+  /* l'état de l'acte, en clair, et le bouton principal qui va avec */
+  function majTitreBarre() {
+    var comp = $('gf-acte-etat');
+    if (!comp) return;
+    var enAtelier = !!modeleActif && espace === 'atelier';
+    comp.hidden = !enAtelier;
+    var nav = $('gf-nav-atelier');
+    if (nav) nav.hidden = !modeleActif;
+    if (!enAtelier) { if (elt.sousTitre) elt.sousTitre.textContent = ''; return; }
+    var nom = (modeleActif.libre && String(donnees.titre || '').trim()) || modeleActif.nom;
+    $('gf-ae-type').textContent = nom;
+    $('gf-ae-num').textContent = donnees.numero ? donnees.numero : '';
+    var badge = $('gf-ae-badge');
+    var x = ETATS[acteEtat] || ETATS.brouillon;
+    badge.className = 'gf-ae-badge gf-badge gf-badge-' + x.cls;
+    badge.textContent = x.lab.toUpperCase() + (acteVersion > 1 || acteEtat !== 'brouillon' ? ' · V' + acteVersion : '')
+      + (modeLecture && acteEtat === 'brouillon' ? ' · LECTURE' : '');
+    if (elt.sousTitre) elt.sousTitre.textContent = nom + (donnees.numero ? ' n° ' + donnees.numero : '');
+    majActions();
+  }
+
+  function majActions() {
+    var hote = $('gf-actions'), note = $('gf-note');
+    if (!hote) return;
+    var lect = lectureSeule();
+    var etatTexte;
+    if (acteEtat === 'brouillon') etatTexte = acteSauve ? '✓ Enregistré' : (acteId ? '● Modifié · enregistrement automatique' : '● Nouveau · pas encore enregistré');
+    else if (acteEtat === 'emis') etatTexte = 'Émis le ' + dateHeure(acteEmisLe || Date.now()) + ' · pour le modifier, créez une nouvelle version';
+    else if (acteEtat === 'remplace') etatTexte = 'Version remplacée : elle se relit et se réimprime, elle ne se modifie plus';
+    else if (acteEtat === 'annule') etatTexte = 'Acte annulé' + (acteMotif ? ' : ' + acteMotif : '');
+    else etatTexte = 'Acte archivé';
+    if (modeLecture && acteEtat === 'brouillon') etatTexte = 'Mode lecture : la feuille telle qu\'elle sortira · Ctrl+Maj+R pour revenir';
+    note.textContent = etatTexte + ' · ' + nbPages + ' page' + (nbPages > 1 ? 's' : '');
+
+    var b = [];
+    function bouton(lab, cls, fn, rac) {
+      b.push({ lab: lab, cls: cls, fn: fn, rac: rac });
+    }
+    if (acteEtat === 'brouillon' && !modeLecture) {
+      if (panneau === 'controle' && controle && !controle.erreurs) bouton('Émettre l\'acte', 'gf-btn-accent', emettreActe, 'Ctrl+Maj+E');
+      else bouton('Vérifier l\'acte', 'gf-btn-accent', verifier, 'Ctrl+Entrée');
+      bouton('Enregistrer', 'gf-btn-fant', function () { enregistrer(false); }, 'Ctrl+S');
+      bouton('Imprimer', 'gf-btn-fant', imprimer, 'Ctrl+P');
+    } else if (acteEtat === 'emis') {
+      bouton('Imprimer en PDF', 'gf-btn-accent', imprimer, 'Ctrl+P');
+      bouton('Nouvelle version', 'gf-btn-fant', nouvelleVersion);
+    } else if (modeLecture && acteEtat === 'brouillon') {
+      bouton('Modifier', 'gf-btn-accent', basculerLecture, 'Ctrl+Maj+R');
+      bouton('Imprimer', 'gf-btn-fant', imprimer, 'Ctrl+P');
+    } else {
+      bouton('Imprimer', 'gf-btn-fant', imprimer, 'Ctrl+P');
+      if (acteEtat === 'archive') bouton('Sortir des archives', 'gf-btn-fant', desarchiverActe);
+    }
+    hote.innerHTML = b.map(function (x, i) {
+      return '<button type="button" class="gf-btn ' + x.cls + '" data-a="' + i + '"' + (x.rac ? ' title="' + ech(x.rac) + '"' : '') + '>' + ech(x.lab) + '</button>';
+    }).join('');
+    hote.querySelectorAll('[data-a]').forEach(function (x) { x.addEventListener('click', b[+x.getAttribute('data-a')].fn); });
+  }
+
+  function fermerActe() {
+    if (!modeleActif) return;
+    if (!acteSauve && acteEtat === 'brouillon') enregistrer(true);
+    modeleActif = null; donnees = {}; acteId = null; acteSauve = true; controle = null; modeLecture = false;
+    montrer('accueil');
+  }
+
+  function basculerPanneau() {
+    racine.classList.toggle('gf-sans-panneau');
+    setTimeout(function () { if (cadre && cadrePret) mesurer(cadre.contentDocument); }, 50);
+  }
+  function basculerLecture() {
+    modeLecture = !modeLecture;
+    if (modeLecture) panneau = 'donnees';
+    peindreFormulaire(); rafraichir(); majTitreBarre();
+  }
+
+  /* ---- l'aide ---- */
+  function aideRaccourcis() {
+    var groupes = [
+      ['Document', [['Ctrl+N', 'Nouvel acte'], ['Ctrl+O', 'Ouvrir le registre'], ['Ctrl+S', 'Enregistrer'], ['Ctrl+P', 'Imprimer en PDF'], ['Ctrl+Maj+S', 'Sauvegarder le Greffe']]],
+      ['Édition', [['Ctrl+Z', 'Annuler'], ['Ctrl+Y', 'Rétablir'], ['Entrée', 'Valider un champ d\'une ligne'], ['Échap', 'Quitter le texte, fermer une boîte']]],
+      ['Acte', [['Ctrl+Entrée', 'Vérifier, puis émettre'], ['Ctrl+Maj+E', 'Émettre'], ['Ctrl+Maj+R', 'Mode lecture'], ['Ctrl+Maj+P', 'Masquer ou montrer le panneau']]],
+      ['Affichage', [['Ctrl+Plus', 'Zoom avant'], ['Ctrl+Moins', 'Zoom arrière'], ['Ctrl+0', 'Taille réelle']]]
+    ];
+    modale('Raccourcis du Greffe', groupes.map(function (g) {
+      return '<h4 class="gf-modale-h4">' + g[0] + '</h4><div class="gf-raccourcis">' + g[1].map(function (r) {
+        return '<div><kbd>' + ech(r[0]) + '</kbd><span>' + ech(r[1]) + '</span></div>';
+      }).join('') + '</div>';
+    }).join(''), [{ lab: 'Fermer' }]);
+  }
+  function aideGuide() {
+    modale('Le Greffe en huit gestes',
+      '<ol class="gf-guide">'
+      + '<li><b>Nouvel acte</b> : choisissez un modèle, ou un préréglage déjà composé.</li>'
+      + '<li>Le <b>panneau</b> à gauche porte les données de l\'acte ; la <b>feuille</b> à droite se met à jour à chaque frappe.</li>'
+      + '<li>Cliquez sur un texte de la feuille pour l\'<b>écrire sur place</b>. Une liste reçue par message se <b>colle</b> d\'un coup dans un tableau.</li>'
+      + '<li>L\'acte s\'<b>enregistre</b> de lui-même ; Ctrl+Z revient en arrière.</li>'
+      + '<li><b>Vérifier</b> : le panneau dit ce qui manque et ce qui dépasse.</li>'
+      + '<li><b>Émettre</b> : la version est figée au registre, avec son empreinte. Pour changer quelque chose, une <b>nouvelle version</b>.</li>'
+      + '<li><b>Imprimer en PDF</b> : la feuille, exactement.</li>'
+      + '<li>De temps en temps, <b>Sauvegarder le Greffe</b> dans un fichier, à mettre à l\'abri.</li>'
+      + '</ol>', [{ lab: 'Compris' }]);
+  }
+  function aideAPropos() {
+    modale('À propos du Greffe',
+      '<p class="gf-modale-aide">Le Greffe établit les actes officiels de Baobabs Basket Club et en tient le registre, sur ce poste, sans serveur. '
+      + 'Il prépare, met en page, suit et archive des documents ; l\'image d\'une signature ou d\'un cachet qu\'il appose n\'est pas une signature électronique certifiée. '
+      + 'La valeur d\'un document dépend de son destinataire et de la réglementation qui s\'y applique.</p>'
+      + '<p class="gf-modale-aide">' + registre.length + ' acte' + (registre.length > 1 ? 's' : '') + ' au registre · ' + (G.prereglages || []).length + ' préréglages livrés · ' + MODELES.length + ' modèles.</p>',
+      [{ lab: 'Fermer' }]);
   }
 
   /* =================================================================
@@ -729,6 +1375,26 @@
     var hote = elt.formDefile;
     hote.innerHTML = '';
     if (!modeleActif) return;
+    var tete = elt.formTete;
+    if (panneau === 'controle' && !lectureSeule()) {
+      if (tete) { tete.hidden = false; tete.innerHTML = '<span class="gf-lab">Contrôle avant émission</span>'; }
+      peindreControle();
+      return;
+    }
+    if (tete) {
+      var lect = lectureSeule();
+      tete.hidden = !lect;
+      if (lect) {
+        tete.innerHTML = '<span class="gf-lab">' + (modeLecture && acteEtat === 'brouillon' ? 'Mode lecture' : ech(etatLabel(acteEtat))) + '</span>'
+          + '<p>' + (acteEtat === 'emis' ? 'Émis le ' + ech(dateHeure(acteEmisLe || Date.now())) + '. Cet acte ne se modifie plus : pour le changer, créez une nouvelle version.'
+                   : acteEtat === 'brouillon' ? 'La feuille telle qu\'elle sortira. Cliquez sur Modifier pour reprendre la main.'
+                   : 'Cette version se relit et se réimprime ; elle ne se modifie plus.') + '</p>'
+          + (acteEtat === 'emis' ? '<button type="button" class="gf-btn gf-btn-fant" id="gf-tete-version">Nouvelle version</button>' : '')
+          + (modeLecture && acteEtat === 'brouillon' ? '<button type="button" class="gf-btn gf-btn-accent" id="gf-tete-modifier">Modifier</button>' : '');
+        var bv = $('gf-tete-version'); if (bv) bv.addEventListener('click', nouvelleVersion);
+        var bm = $('gf-tete-modifier'); if (bm) bm.addEventListener('click', basculerLecture);
+      }
+    }
 
     (G.blocs.val(modeleActif.sections, donnees, {}) || []).forEach(function (s, i) {
       var sect = document.createElement('section');
@@ -794,6 +1460,11 @@
     });
     peindreArticles();
     peindreBlocs();
+    /* en lecture seule, le panneau se regarde et ne se touche pas */
+    if (lectureSeule()) {
+      hote.querySelectorAll('input, textarea, select, button').forEach(function (n) { n.disabled = true; });
+      hote.classList.add('is-fige');
+    } else hote.classList.remove('is-fige');
   }
 
   /* ------------------- LES TABLEAUX, COLONNES COMPRISES -------------------
@@ -1021,19 +1692,26 @@
     $('gf-palette-plus').addEventListener('click', function () {
       var nom = $('gf-palette-choix').value;
       var e = cat.filter(function (c) { return c.nom === nom; })[0];
-      if (!e) return;
-      if (e.type === 'articles' && donnees.blocs.some(function (x) { return x.b === 'articles'; })) {
-        dire('Un seul bloc d\'articles par acte.', 'erreur'); return;
-      }
-      var x = e.neuf();
-      if (x._table) { donnees.tables = donnees.tables || {}; donnees.tables[x.source] = x._table; delete x._table; }
-      /* un bloc neuf se pose avant les signatures, si elles ferment l'acte */
-      var k = donnees.blocs.length;
-      if (k && donnees.blocs[k - 1].b === 'signatures' && x.b !== 'signatures' && x.b !== 'saut') k--;
-      donnees.blocs.splice(k, 0, x);
-      refaire();
-      dire('Bloc « ' + e.nom + ' » posé', 'ok');
+      if (e) poserBloc(e);
     });
+  }
+
+  /* Poser un bloc du catalogue dans l'acte libre en cours : depuis la
+     palette du panneau, le menu Insertion, ou plus tard la commande /. */
+  function poserBloc(e) {
+    if (!modeleActif || !modeleActif.libre || lectureSeule()) return;
+    donnees.blocs = donnees.blocs || [];
+    if (e.type === 'articles' && donnees.blocs.some(function (x) { return x.b === 'articles'; })) {
+      dire('Un seul bloc d\'articles par acte.', 'erreur'); return;
+    }
+    var x = e.neuf();
+    if (x._table) { donnees.tables = donnees.tables || {}; donnees.tables[x.source] = x._table; delete x._table; }
+    /* un bloc neuf se pose avant les signatures, si elles ferment l'acte */
+    var k = donnees.blocs.length;
+    if (k && donnees.blocs[k - 1].b === 'signatures' && x.b !== 'signatures' && x.b !== 'saut') k--;
+    donnees.blocs.splice(k, 0, x);
+    salir(); peindreFormulaire(); planifier();
+    dire('Bloc « ' + e.nom + ' » posé', 'ok');
   }
 
   /* --------------------------------- DEMANDER ---------------------------------
@@ -1313,7 +1991,7 @@
   }
 
   function corpsDocument() {
-    return G.blocs.assembler(modeleActif, donnees, { res: res });
+    return G.blocs.assembler(modeleActif, donnees, { res: res, brouillon: acteEtat === 'brouillon' });
   }
 
   /* À l'écran seulement : le cadre est transparent (la scène de
@@ -1330,6 +2008,8 @@
     '  .txt[data-edit]{ min-height:1.2em; }',
     '  td[data-edit]:empty::after{ content:"\\00a0"; }',
     '  tr.tr-suite td{ border-bottom-style:dashed; }',
+    '  body.lecture [data-edit]{ outline:none; cursor:default; }',
+    '  body.lecture tr.tr-suite{ display:none; }',
     '}'
   ].join('\n');
 
@@ -1386,6 +2066,7 @@
       cadre.style.height = Math.ceil(h + 2) + 'px';
       appliquerZoom();
       elt.pages.textContent = nbPages + ' page' + (nbPages > 1 ? 's' : '');
+      majActions();
     } catch (e) { /* le cadre a pu être remplacé entre deux passes */ }
   }
 
@@ -1413,7 +2094,10 @@
   var editMinuteur = null;
 
   function brancherEdition(doc) {
+    var lect = lectureSeule();
+    doc.body.classList.toggle('lecture', lect);
     Array.prototype.forEach.call(doc.querySelectorAll('[data-edit]'), function (el) {
+      if (lect) { el.removeAttribute('contenteditable'); return; }
       el.setAttribute('contenteditable', 'true');
       el.setAttribute('spellcheck', 'false');
     });
@@ -1449,9 +2133,7 @@
     var el = cibleEdit(e);
     if (!el) return;
     if (e.key === 'Escape') { e.preventDefault(); el.blur(); return; }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) retablir(); else annuler(); return; }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); retablir(); return; }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); enregistrer(false); return; }
+    if (e.ctrlKey || e.metaKey) { raccourci(e); return; }
     /* un champ d'une ligne : Entrée valide, elle n'ouvre pas de ligne */
     if (e.key === 'Enter' && !el.classList.contains('txt')) { e.preventDefault(); el.blur(); }
   }
@@ -1766,7 +2448,7 @@
       /* Le fichier source est un fichier de travail : il ne porte ni le
          cachet ni la signature, qui ne vont que sur le PDF imprimé ici.
          Sinon ce fichier serait une copie du cachet, bonne à recopier. */
-      Array.prototype.forEach.call(clone.querySelectorAll('tr.tr-suite, .pill-vide, .sig-ink, .sig-cachet'), function (n) { n.parentNode.removeChild(n); });
+      Array.prototype.forEach.call(clone.querySelectorAll('tr.tr-suite, .pill-vide, .sig-ink, .sig-cachet, .wm-brouillon'), function (n) { n.parentNode.removeChild(n); });
       Array.prototype.forEach.call(clone.querySelectorAll('[data-edit]'), function (n) {
         n.removeAttribute('data-edit'); n.removeAttribute('contenteditable'); n.removeAttribute('spellcheck');
       });
@@ -1793,6 +2475,7 @@
     a.href = u; a.download = nomFichier() + '.html';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
+    journaliser('Fichier source exporté');
     dire('Fichier source téléchargé, sans signature ni cachet', 'ok');
   }
 
@@ -1801,6 +2484,7 @@
     /* Le titre du document devient le nom proposé par Chrome dans la
        boîte « Enregistrer au format PDF ». */
     try { cadre.contentDocument.title = nomFichier(); } catch (e) {}
+    journaliser('Imprimé' + (acteEtat === 'brouillon' ? ' (brouillon)' : ' V' + acteVersion));
     enregistrer(true);
     cadre.contentWindow.focus();
     cadre.contentWindow.print();
@@ -1813,7 +2497,9 @@
     elt = {
       etat: $('gf-etat'), sousTitre: $('gf-sous-titre'),
       ecranAcc: $('gf-ecran-accueil'), accueil: $('gf-accueil'),
+      ecranReg: $('gf-ecran-registre'), registre: $('gf-registre'),
       ecranPol: $('gf-ecran-polices'), ecranAtl: $('gf-ecran-atelier'),
+      formTete: $('gf-form-tete'),
       polListe: $('gf-pol-liste'), polSuite: $('gf-pol-suite'), polOublier: $('gf-pol-oublier'),
       depot: $('gf-depot'), depotInput: $('gf-depot-input'),
       formDefile: $('gf-form-defile'),
@@ -1825,9 +2511,13 @@
     cadre = $('gf-cadre');
 
     $('gf-close').addEventListener('click', fermer);
-    $('gf-accueil-btn').addEventListener('click', function () { montrer('accueil'); });
-    $('gf-polices-btn').addEventListener('click', function () { montrer('polices'); });
-    $('gf-enregistrer').addEventListener('click', function () { enregistrer(false); });
+    racine.querySelectorAll('.gf-nav-btn').forEach(function (b) {
+      b.addEventListener('click', function () { montrer(b.getAttribute('data-espace')); });
+    });
+    /* un clic hors des menus les referme */
+    racine.addEventListener('mousedown', function (e) {
+      if (menuOuvert != null && !e.target.closest('.gf-menu-liste') && !e.target.closest('.gf-menu-btn')) fermerMenus();
+    });
 
     elt.depot.addEventListener('click', function () { elt.depotInput.click(); });
     elt.depot.addEventListener('keydown', function (e) {
@@ -1854,12 +2544,8 @@
 
     $('gf-zoom-moins').addEventListener('click', function () { zoom = Math.max(0.25, zoom - 0.1); appliquerZoom(); });
     $('gf-zoom-plus').addEventListener('click', function () { zoom = Math.min(1.5, zoom + 0.1); appliquerZoom(); });
-    $('gf-export-html').addEventListener('click', exporterHtml);
-    $('gf-prereglage').addEventListener('click', garderPrereglage);
-    $('gf-origine').addEventListener('click', textesOrigine);
     $('gf-annuler').addEventListener('click', annuler);
     $('gf-retablir').addEventListener('click', retablir);
-    $('gf-imprimer').addEventListener('click', imprimer);
 
     racine.querySelectorAll('[data-fermer-modale]').forEach(function (b) {
       b.addEventListener('click', fermerColler);
@@ -1880,37 +2566,65 @@
       dire(l.length + ' lignes reprises', 'ok');
     });
 
-    racine.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        if (!elt.voile.hidden) { fermerColler(); return; }
-        fermer(); return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault(); enregistrer(false);
-      }
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); annuler(); }
-      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); retablir(); }
-    });
+    racine.addEventListener('keydown', raccourci);
   }
 
-  function montrer(quoi) {
+  /* Les raccourcis, les memes dans l'admin et dans la feuille. */
+  function raccourci(e) {
+    var ctrl = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+    if (e.key === 'Escape') {
+      if (menuOuvert != null) { fermerMenus(); return; }
+      if (elt.voile && !elt.voile.hidden) { fermerColler(); return; }
+      if (racine.querySelector('.gf-voile:not([hidden])')) return;   /* la boite ouverte s'en charge */
+      if (espace === 'atelier' && document.activeElement && document.activeElement !== document.body) { document.activeElement.blur(); return; }
+      fermer(); return;
+    }
+    if (!ctrl) return;
+    var enAtelier = !!modeleActif && espace === 'atelier';
+    if (k === 'n') { e.preventDefault(); ouvrirNouveau(); }
+    else if (k === 'o') { e.preventDefault(); montrer('registre'); }
+    else if (k === 's' && e.shiftKey) { e.preventDefault(); sauvegarderGreffe(); }
+    else if (k === 's') { e.preventDefault(); if (enAtelier) enregistrer(false); }
+    else if (k === 'p' && e.shiftKey) { e.preventDefault(); if (enAtelier) basculerPanneau(); }
+    else if (k === 'p') { e.preventDefault(); if (enAtelier) imprimer(); }
+    else if (k === 'z' && !e.shiftKey) { e.preventDefault(); if (enAtelier) annuler(); }
+    else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); if (enAtelier) retablir(); }
+    else if (k === 'e' && e.shiftKey) { e.preventDefault(); if (enAtelier) emettreActe(); }
+    else if (k === 'r' && e.shiftKey) { e.preventDefault(); if (enAtelier) basculerLecture(); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (enAtelier) { if (panneau === 'controle' && controle && !controle.erreurs) emettreActe(); else verifier(); } }
+    else if (k === '+' || k === '=') { e.preventDefault(); if (enAtelier) { zoom = Math.min(1.5, zoom + 0.1); appliquerZoom(); } }
+    else if (k === '-') { e.preventDefault(); if (enAtelier) { zoom = Math.max(0.25, zoom - 0.1); appliquerZoom(); } }
+    else if (k === '0') { e.preventDefault(); if (enAtelier) { zoom = 1; appliquerZoom(); } }
+  }
+
+  function montrer(quoi, filtre) {
+    if (quoi === 'polices') quoi = 'parametres';
+    if (quoi === 'atelier' && !modeleActif) quoi = 'accueil';
+    espace = quoi;
+    fermerMenus();
     elt.ecranAcc.hidden = (quoi !== 'accueil');
-    elt.ecranPol.hidden = (quoi !== 'polices');
+    elt.ecranReg.hidden = (quoi !== 'registre');
+    elt.ecranPol.hidden = (quoi !== 'parametres');
     elt.ecranAtl.hidden = (quoi !== 'atelier');
     racine.classList.toggle('gf-en-atelier', quoi === 'atelier');
+    racine.querySelectorAll('.gf-nav-btn').forEach(function (b) { b.classList.toggle('is-actif', b.getAttribute('data-espace') === quoi); });
+    var menus = $('gf-menus');
+    if (menus) { menus.hidden = (quoi !== 'atelier'); if (quoi === 'atelier') peindreMenus(); }
 
     if (quoi === 'accueil') {
-      elt.sousTitre.textContent = 'Actes officiels du club';
       peindreAccueil();
-    } else if (quoi === 'polices') {
-      elt.sousTitre.textContent = 'Mes ressources';
-      peindreListeRessources();
+    } else if (quoi === 'registre') {
+      if (filtre) registreFiltre = filtre;
+      peindreRegistre();
+      var r = $('gf-reg-recherche'); if (r) r.focus();
+    } else if (quoi === 'parametres') {
+      peindreParametres();
     } else {
-      majTitreBarre();
       cadrePret = false;
       peindreFormulaire();
       rafraichir();
     }
+    majTitreBarre();
   }
 
   /* Le blason est public : il est déjà sur le site. On le lit une fois
@@ -1975,7 +2689,7 @@
 
   function fermer() {
     if (!racine) return;
-    if (!acteSauve && modeleActif) enregistrer(true);
+    if (!acteSauve && modeleActif && acteEtat === 'brouillon') enregistrer(true);
     ouvert = false;
     racine.classList.remove('is-open');
     racine.setAttribute('aria-hidden', 'true');

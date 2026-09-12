@@ -192,6 +192,14 @@
 
     articlesParDefaut: articlesParDefaut,
 
+    controles: function (d) {
+      var c = [];
+      if (!String(d.nom || '').trim()) c.push({ n: 'avert', t: 'Identité de la joueuse vide : à compléter au stylo, en pointillé' });
+      if (!U.dateDe(d.du) || !U.dateDe(d.au)) c.push({ n: 'avert', t: 'Dates du contrat non renseignées (article 1)' });
+      if (!String(d.package || '').trim()) c.push({ n: 'erreur', t: 'Pas de package financier' });
+      return c;
+    },
+
     page: [
       { b: 'entete', drapeau: false,
         devise: function (d) { return "Section Basketball · " + v(d.sousTitre, "Joueuse") + " · Dakar"; },

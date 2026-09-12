@@ -134,6 +134,16 @@
       };
     },
 
+    controles: function (d) {
+      var c = [];
+      if (!String(d.saison || '').trim()) c.push({ n: 'erreur', t: 'Pas de saison' });
+      var n = G.lignes(d, 'lignes').length;
+      if (!n) c.push({ n: 'erreur', t: 'Aucune ligne de budget' });
+      var sansMontant = G.lignes(d, 'lignes').filter(function (l) { return !String(l.montant || '').trim(); }).length;
+      if (sansMontant) c.push({ n: 'avert', t: sansMontant + ' ligne' + (sansMontant > 1 ? 's' : '') + ' sans montant' });
+      return c;
+    },
+
     page: [
       { b: 'entete', drapeau: false, devise: "Section Basketball · Budget · Dakar",
         droite: function (d) {

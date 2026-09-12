@@ -313,6 +313,14 @@
 
     articlesParDefaut: articlesParDefaut,
 
+    controles: function (d) {
+      var c = [];
+      if (!(d.blocs || []).length) c.push({ n: 'erreur', t: 'La feuille est vide' });
+      if (!(d.blocs || []).some(function (x) { return x.b === 'signatures'; })) c.push({ n: 'avert', t: 'Aucun bloc de signatures' });
+      if (!(d.blocs || []).some(function (x) { return x.b === 'entete'; })) c.push({ n: 'avert', t: 'Pas d\'en-tête du club' });
+      return c;
+    },
+
     /* la page est la liste des blocs, rendue à chaque fois */
     page: function (d) {
       return (d.blocs || []).map(function (x, i) {
