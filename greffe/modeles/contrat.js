@@ -215,7 +215,7 @@
             { label: "Le Club", nom: "Baobabs Basket Club",
               texte: "Représenté par son Président, Monsieur " + v(d.signNom, "Antoine Jean Pierre Ndong") + ".",
               tag: "Ci-après dénommé « le Club »" },
-            { label: LaJoueuse(d), nom: v(d.nom, ""), champs: champs,
+            { label: LaJoueuse(d), nom: '@nom', champs: champs,
               tag: "Ci-après dénommé" + e(d) + " « " + laJoueuse(d) + " »" }
           ];
         } },
@@ -223,7 +223,7 @@
       { b: 'titre',
         etiquette: function (d) { return "Baobabs Basket Club · " + v(d.sousTitre, "Engagement sportif"); },
         pastille: function (d) { return d.numero ? "N° " + d.numero : ""; },
-        texte: function (d) { return d.titre; },
+        texte: '@titre',
         sous: "Le présent contrat fixe les engagements sportifs et financiers du Club et de la personne "
             + "engagée, ainsi que les conditions de leur collaboration pendant la durée convenue." },
 
@@ -244,7 +244,7 @@
         },
         cartes: function (d) {
           return [
-            { pour: "Pour Baobabs Basket Club", nom: d.signNom, qualite: d.signQualite,
+            { pour: "Pour Baobabs Basket Club", nom: '@signNom', qualite: '@signQualite',
               mention: "Signature et cachet du Président" },
             { pour: LaJoueuse(d), nom: v(d.nom, "Nom et prénom(s) :"), qualite: "",
               mention: "Lu et approuvé · Signature", signer: false, cacheter: false }

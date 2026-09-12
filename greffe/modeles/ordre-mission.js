@@ -152,7 +152,7 @@
       { b: 'titre',
         etiquette: "Document officiel du club",
         pastille: function (d) { return d.numero ? "N° " + d.numero : ""; },
-        texte: function (d) { return d.titre; },
+        texte: '@titre',
         sous: function (d) {
           return (d.objet || '') + (lieuMission(d) ? " à " + lieuMission(d) : "");
         } },
@@ -163,7 +163,7 @@
             { label: "Destination",     valeur: d.destVille, sous: d.destPays },
             { label: "Tournoi",         valeur: U.duAuCourt(d.tournoiDu, d.tournoiAu), sous: d.organisateur },
             { label: "Période couverte", valeur: U.duAuCourt(d.arrivee, d.retour), sous: "Arrivée et retour compris" },
-            { label: "Délégation",      valeur: c.total ? c.total + " membres" : "", sous: U.enonceCourt(c) }
+            { label: "Délégation",      valeur: c.total ? c.total + " membre" + (c.total > 1 ? "s" : "") : "", sous: U.enonceCourt(c) }
           ];
         } },
 
@@ -195,7 +195,7 @@
           };
         },
         cartes: function (d) {
-          return [{ pour: "Pour Baobabs Basket Club", nom: d.signNom, qualite: d.signQualite,
+          return [{ pour: "Pour Baobabs Basket Club", nom: '@signNom', qualite: '@signQualite',
                     mention: "Signature et cachet du Président" }];
         } },
 
@@ -213,7 +213,7 @@
           { b: 'chips', chips: function (d) {
               var c = U.compter(G.lignes(d, 'membres'));
               return [
-                { label: "Total",              valeur: c.total ? c.total + " membres" : "" },
+                { label: "Total",              valeur: c.total ? c.total + " membre" + (c.total > 1 ? "s" : "") : "" },
                 { label: "Joueuses",           valeur: c.joueuses || "" },
                 { label: "Coachs",             valeur: c.coachs || "" },
                 { label: "Chef de délégation", valeur: c.chefs || "" }
@@ -234,7 +234,7 @@
             },
             reference: function (d) { return ref(d) + " · Annexe I"; },
             cartes: function (d) {
-              return [{ pour: "Pour Baobabs Basket Club", nom: d.signNom, qualite: d.signQualite,
+              return [{ pour: "Pour Baobabs Basket Club", nom: '@signNom', qualite: '@signQualite',
                         mention: "Signature et cachet du Président" }];
             } }
         ] }

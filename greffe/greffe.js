@@ -37,7 +37,6 @@
   if (window.BaobabsGreffe) return;
 
   var MM = 96 / 25.4;                    /* 1 mm en pixels CSS */
-  var H_PAGE = 297 * MM;                 /* hauteur d'une A4 */
 
   /* AJOUTER UN TYPE D'ACTE : un fichier dans modeles/, son nom ici. */
   var MODELES = ['ordre-mission', 'courrier',
@@ -393,7 +392,9 @@
   var acteId = null, acteSauve = true;
   var registre = [];
   var cadre = null, cadrePret = false, minuteur = null;
-  var zoom = 0.7;
+  var zoom = 0.7, nbPages = 1;
+  /* 210 mm de feuille et 5 mm de part et d'autre pour son ombre */
+  var LARGEUR_CADRE = 220;
   var elt = {};
 
   function $(id) { return racine ? racine.querySelector('#' + id) : null; }
@@ -1041,18 +1042,20 @@
     return G.blocs.assembler(modeleActif, donnees, { res: res });
   }
 
-  /* À l'écran seulement : le pied et le filigrane sont en
-     position:fixed pour se répéter à chaque page imprimée. Dans un
-     cadre qui défile, « fixed » les colle au hublot. On les repose
-     pour l'aperçu, sans toucher à l'impression. */
+  /* À l'écran seulement : le cadre est transparent (la scène de
+     l'atelier fournit son fond), et tout ce qui porte data-edit se
+     signale sous la souris. Rien de ceci ne part à l'impression ni dans
+     le fichier exporté. */
   var CSS_ECRAN = [
     '@media screen{',
-    '  html{ background:#fff;',
-    '    background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(297mm - 1px),',
-    '      #D8DEDA calc(297mm - 1px),#D8DEDA 297mm); }',
-    '  body{ padding:11mm 13mm 12mm 13mm; }',
-    '  .wm{ position:absolute; }',
-    '  .foot{ position:static; margin-top:10mm; }',
+    '  html,body{ background:transparent; }',
+    '  [data-edit]{ outline:1px dashed transparent; outline-offset:2px; border-radius:2pt;',
+    '    transition:outline-color .15s, background-color .15s; cursor:text; }',
+    '  [data-edit]:hover{ outline-color:rgba(70,191,29,.75); }',
+    '  [data-edit]:focus{ outline:2px solid #46BF1D; background:rgba(70,191,29,.07); }',
+    '  .txt[data-edit]{ min-height:1.2em; }',
+    '  td[data-edit]:empty::after{ content:"\\00a0"; }',
+    '  tr.tr-suite td{ border-bottom-style:dashed; }',
     '}'
   ].join('\n');
 
@@ -1063,7 +1066,7 @@
       + '<style id="gf-polices">' + cssPolices() + '</style>'
       + '<style id="gf-style">' + cssDocument() + '</style>'
       + '<style id="gf-ecran">' + CSS_ECRAN + '</style>'
-      + '</head><body></body></html>');
+      + '</head><body class="pagine"></body></html>');
     doc.close();
     cadrePret = true;
   }
@@ -1073,71 +1076,51 @@
     minuteur = setTimeout(rafraichir, 220);
   }
 
-  function rafraichir() {
+  /* Rendre, mettre en pages, brancher l'écriture directe, mesurer.
+     Avec « caret » à vrai, on retrouve ensuite le curseur là où il
+     était : c'est ce qui permet de refaire la feuille sous les doigts
+     de celui qui la modifie sans lui couper la parole. */
+  function rafraichir(caret) {
     if (!modeleActif || !cadre) return;
     if (!cadrePret) preparerCadre();
     var doc = cadre.contentDocument;
+    var c = caret === true ? caretSauver(doc) : null;
     try {
       doc.body.innerHTML = corpsDocument();
+      nbPages = G.blocs.paginer(doc);
     } catch (e) {
       dire('Le modèle a buté : ' + (e && e.message ? e.message : e), 'erreur');
       return;
     }
-    /* Pas de requestAnimationFrame ici. Il ne se déclenche pas dans un
-       onglet qui n'est pas rendu : la hauteur du cadre restait vide et
-       le compteur de pages muet, sans la moindre erreur en console.
-       Lire scrollHeight force le calcul de la mise en page tout seul.
-       La seconde passe rattrape l'arrivée des polices, qui change les
-       hauteurs de ligne. */
+    brancherEdition(doc);
     mesurer(doc);
-    clearTimeout(rafraichir._t);
-    rafraichir._t = setTimeout(function () { mesurer(doc); }, 140);
+    if (c) caretRestaurer(doc, c);
+    /* Les polices arrivent parfois après la première mise en page : les
+       hauteurs de ligne changent, les coupures aussi. Une seconde passe
+       quand elles sont là, et seulement s'il en manquait. Pas de
+       requestAnimationFrame : il ne se déclenche pas dans un onglet qui
+       n'est pas rendu, et le compteur restait muet. */
+    if (doc.fonts && doc.fonts.status === 'loading') {
+      doc.fonts.ready.then(function () { rafraichir(caret === true); });
+    }
   }
 
   function mesurer(doc) {
     try {
-      var h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
-      cadre.style.height = (h + 4) + 'px';
+      var pages = doc.querySelector('.pages');
+      var h = pages ? pages.getBoundingClientRect().height : doc.body.scrollHeight;
+      cadre.style.height = Math.ceil(h + 2) + 'px';
       appliquerZoom();
-      elt.pages.textContent = compterPages(doc) + ' page(s)';
+      elt.pages.textContent = nbPages + ' page' + (nbPages > 1 ? 's' : '');
     } catch (e) { /* le cadre a pu être remplacé entre deux passes */ }
   }
 
-  /* Les sauts forcés (une annexe) découpent le document ; chaque tronçon
-     occupe ensuite autant de pages que sa hauteur le demande.
-
-     Tout se mesure en « hauteur de contenu » : origine au premier
-     pixel imprimable, marges de page retirées. Un offsetTop ne
-     convient pas ici, il se compte depuis .wrap qui est positionné. */
-  function compterPages(doc) {
-    var hUtile = H_PAGE - (11 + 12) * MM;
-    var rBody = doc.body.getBoundingClientRect();
-    var zero = rBody.top + 11 * MM;
-    var fin = doc.body.scrollHeight - (11 + 12) * MM;
-
-    var coupes = [];
-    Array.prototype.forEach.call(doc.querySelectorAll('.wrap > *'), function (n) {
-      var st = cadre.contentWindow.getComputedStyle(n);
-      if (st.breakBefore === 'page' || st.pageBreakBefore === 'always') {
-        coupes.push(n.getBoundingClientRect().top - zero);
-      }
-    });
-
-    var bornes = [0].concat(coupes.sort(function (a, b) { return a - b; }), [fin]);
-    var pages = 0;
-    for (var i = 0; i < bornes.length - 1; i++) {
-      var h = bornes[i + 1] - bornes[i];
-      if (h > 2) pages += Math.max(1, Math.ceil(h / hUtile));
-    }
-    return Math.max(1, pages);
-  }
-
-  /* Le zoom porte sur le cadre, pas sur la feuille : un transform ne
+  /* Le zoom porte sur le CADRE, pas sur la feuille : un transform ne
      change pas la place qu'un élément occupe dans la mise en page.
      Mise sur la feuille, la réduction laissait 794 px de large réservés
      pour 556 px affichés, et l'aperçu défilait latéralement pour rien. */
   function appliquerZoom() {
-    var w = 210 * MM;
+    var w = LARGEUR_CADRE * MM;
     var h = parseFloat(cadre.style.height) || (w * 1.414);
     cadre.style.transform = 'scale(' + zoom + ')';
     elt.feuille.style.width = Math.round(w * zoom) + 'px';
@@ -1146,16 +1129,212 @@
   }
 
   /* =================================================================
+     9 bis. ÉCRIRE SUR LA FEUILLE
+     Tout ce que le moteur a marqué data-edit devient modifiable en
+     place. Chaque frappe réécrit la donnée au chemin indiqué, met le
+     formulaire d'accord, et la feuille se refait une fois qu'on a fini
+     d'écrire, curseur retrouvé. La donnée reste la seule vérité : la
+     feuille n'est jamais lue autrement que pour la réécrire.
+     ================================================================= */
+  var editMinuteur = null;
+
+  function brancherEdition(doc) {
+    Array.prototype.forEach.call(doc.querySelectorAll('[data-edit]'), function (el) {
+      el.setAttribute('contenteditable', 'true');
+      el.setAttribute('spellcheck', 'false');
+    });
+    if (doc.body.getAttribute('data-branche')) return;
+    doc.body.setAttribute('data-branche', '1');
+    doc.body.addEventListener('input', surSaisie);
+    doc.body.addEventListener('keydown', surTouche);
+    doc.body.addEventListener('paste', surCollage);
+    doc.body.addEventListener('focusout', surSortie);
+  }
+
+  function cibleEdit(e) {
+    var t = e.target;
+    if (t && t.nodeType !== 1) t = t.parentNode;
+    return (t && t.closest) ? t.closest('[data-edit]') : null;
+  }
+
+  function surSaisie(e) {
+    var el = cibleEdit(e);
+    if (!el) return;
+    var chemin = el.getAttribute('data-edit');
+    var valeur = el.classList.contains('txt')
+      ? depuisDom(el)
+      : el.innerText.replace(/\n+$/, '').replace(/\n/g, ' ');
+    ecrire(chemin, valeur);
+    salir();
+    synchroniserFormulaire(chemin);
+    clearTimeout(editMinuteur);
+    editMinuteur = setTimeout(function () { rafraichir(true); }, 900);
+  }
+
+  function surTouche(e) {
+    var el = cibleEdit(e);
+    if (!el) return;
+    if (e.key === 'Escape') { e.preventDefault(); el.blur(); return; }
+    /* un champ d'une ligne : Entrée valide, elle n'ouvre pas de ligne */
+    if (e.key === 'Enter' && !el.classList.contains('txt')) { e.preventDefault(); el.blur(); }
+  }
+
+  /* Coller ne fait entrer que du texte : la mise en forme d'un mail ou
+     d'un Word n'a rien à faire dans un acte. */
+  function surCollage(e) {
+    var el = cibleEdit(e);
+    if (!el) return;
+    e.preventDefault();
+    var t = (e.clipboardData || window.clipboardData).getData('text/plain');
+    cadre.contentDocument.execCommand('insertText', false, t);
+  }
+
+  function surSortie(e) {
+    if (!cibleEdit(e)) return;
+    clearTimeout(editMinuteur);
+    /* un court délai : si le clic est parti vers un autre texte de la
+       feuille, c'est lui que le curseur doit retrouver après la remise
+       au propre */
+    editMinuteur = setTimeout(function () { rafraichir(true); }, 120);
+  }
+
+  /* « titre », « articles.2.texte », « tables.membres.lignes.4.nom » :
+     le chemin dit où écrire. Deux cas demandent une préparation : des
+     articles encore automatiques deviennent des articles à la main, et
+     une ligne de tableau qui n'existe pas encore est créée, avec celles
+     qui la précèdent. */
+  function ecrire(chemin, valeur) {
+    var p = chemin.split('.');
+    if (p[0] === 'articles' && !donnees.articles) {
+      donnees.articles = articlesAuto().map(function (a) { return { titre: a.titre, texte: a.texte }; });
+    }
+    if (p[0] === 'tables') {
+      var t = table(p[1]), i = +p[3];
+      while (t.lignes.length <= i) {
+        var l = {}; t.colonnes.forEach(function (c) { l[c.cle] = ''; }); t.lignes.push(l);
+      }
+    }
+    var o = donnees;
+    for (var k = 0; k < p.length - 1; k++) {
+      if (o[p[k]] == null) o[p[k]] = /^\d+$/.test(p[k + 1]) ? [] : {};
+      o = o[p[k]];
+    }
+    o[p[p.length - 1]] = valeur;
+  }
+
+  function synchroniserFormulaire(chemin) {
+    var p = chemin.split('.');
+    clearTimeout(synchroniserFormulaire._t);
+    if (p[0] === 'tables') {
+      synchroniserFormulaire._t = setTimeout(function () { peindreTable(p[1]); }, 400);
+      return;
+    }
+    if (p[0] === 'articles') {
+      synchroniserFormulaire._t = setTimeout(peindreArticles, 400);
+      return;
+    }
+    var n = elt.formDefile.querySelector('[data-cle="' + p[0] + '"]');
+    if (n && n.type !== 'checkbox') n.value = donnees[p[0]] == null ? '' : donnees[p[0]];
+    majTitreBarre();
+  }
+
+  /* La feuille redevient du texte : un paragraphe par bloc, « - » devant
+     chaque puce, « > » devant une note, **gras** autour du gras. C'est
+     exactement la grammaire que paragraphes() lit. */
+  function depuisDom(el) {
+    function enLigne(n) {
+      var s = '';
+      Array.prototype.forEach.call(n.childNodes, function (c) {
+        if (c.nodeType === 3) { s += c.nodeValue; return; }
+        if (c.nodeType !== 1) return;
+        if (c.tagName === 'BR') { s += '\n'; return; }
+        if (c.tagName === 'B' || c.tagName === 'STRONG') {
+          var t = enLigne(c); s += t.trim() ? '**' + t.trim() + '**' : t; return;
+        }
+        s += enLigne(c);
+      });
+      return s;
+    }
+    var out = [];
+    Array.prototype.forEach.call(el.childNodes, function (n) {
+      if (n.nodeType === 3) { if (n.nodeValue.trim()) out.push(n.nodeValue.trim()); return; }
+      if (n.nodeType !== 1) return;
+      if (n.tagName === 'UL' || n.tagName === 'OL') {
+        out.push(Array.prototype.map.call(n.children, function (li) {
+          return '- ' + enLigne(li).replace(/\s+/g, ' ').trim();
+        }).join('\n'));
+      } else if (n.classList.contains('note')) {
+        out.push('> ' + enLigne(n).replace(/\s+/g, ' ').trim());
+      } else {
+        var t = enLigne(n).replace(/\n+$/, '');
+        if (t.trim()) out.push(t);
+      }
+    });
+    return out.join('\n\n');
+  }
+
+  /* Le curseur se retient comme un chemin et un rang de caractère : la
+     feuille refaite depuis la donnée a la même forme, on l'y remet. */
+  function caretSauver(doc) {
+    try {
+      var sel = doc.getSelection();
+      if (!sel || !sel.rangeCount) return null;
+      var r = sel.getRangeAt(0);
+      var el = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentNode;
+      el = el && el.closest ? el.closest('[data-edit]') : null;
+      if (!el) return null;
+      var avant = r.cloneRange();
+      avant.selectNodeContents(el);
+      avant.setEnd(r.startContainer, r.startOffset);
+      return { chemin: el.getAttribute('data-edit'), rang: avant.toString().length };
+    } catch (e) { return null; }
+  }
+
+  function caretRestaurer(doc, c) {
+    var el = doc.querySelector('[data-edit="' + c.chemin + '"]');
+    if (!el) return;
+    el.focus();
+    var walker = doc.createTreeWalker(el, 4 /* NodeFilter.SHOW_TEXT */, null);
+    var n, reste = c.rang, dernier = null;
+    while ((n = walker.nextNode())) {
+      dernier = n;
+      if (reste <= n.nodeValue.length) { poserCaret(doc, n, reste); return; }
+      reste -= n.nodeValue.length;
+    }
+    if (dernier) poserCaret(doc, dernier, dernier.nodeValue.length);
+  }
+
+  function poserCaret(doc, noeud, rang) {
+    var r = doc.createRange();
+    r.setStart(noeud, rang); r.collapse(true);
+    var s = doc.getSelection();
+    s.removeAllRanges(); s.addRange(r);
+  }
+
+  /* =================================================================
      10. SORTIR L'ACTE
+     Le fichier exporté est la feuille telle qu'on la voit, pages
+     comprises, moins ce qui n'appartient qu'à l'écran.
      ================================================================= */
   function documentComplet() {
+    var titre = ech(donnees.titre || modeleActif.nom)
+      + (donnees.numero ? ' n° ' + ech(donnees.numero) : '') + ' &middot; Baobabs Basket Club';
+    var corps;
+    if (cadre && cadrePret && cadre.contentDocument.querySelector('.pages')) {
+      var clone = cadre.contentDocument.body.cloneNode(true);
+      Array.prototype.forEach.call(clone.querySelectorAll('tr.tr-suite'), function (n) { n.parentNode.removeChild(n); });
+      Array.prototype.forEach.call(clone.querySelectorAll('[data-edit]'), function (n) {
+        n.removeAttribute('data-edit'); n.removeAttribute('contenteditable'); n.removeAttribute('spellcheck');
+      });
+      corps = clone.innerHTML;
+    } else {
+      corps = corpsDocument();
+    }
     return '<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n'
-      + '<title>' + ech(donnees.titre || modeleActif.nom)
-      + (donnees.numero ? ' n° ' + ech(donnees.numero) : '')
-      + ' &middot; Baobabs Basket Club</title>\n'
+      + '<title>' + titre + '</title>\n'
       + '<style>\n' + cssPolices() + '\n</style>\n'
       + '<style>\n' + cssDocument() + '\n</style>\n'
-      + '</head>\n<body>\n' + corpsDocument() + '\n</body>\n</html>\n';
+      + '</head>\n<body class="pagine">\n' + corps + '\n</body>\n</html>\n';
   }
 
   function nomFichier() {

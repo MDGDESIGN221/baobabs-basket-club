@@ -92,7 +92,7 @@
         parties: function (d) {
           return [{
             label: "Destinataire",
-            nom: d.destNom,
+            nom: '@destNom',
             texte: [d.destLigne, d.destAdresse].filter(Boolean).join("\n\n"),
             tag: ''
           }];
@@ -101,13 +101,13 @@
       { b: 'encadre',
         si: function (d) { return !!String(d.objet || '').trim(); },
         etiquette: "Objet",
-        titre: function (d) { return d.objet; },
-        apres: function (d) { return d.chapeau; } },
+        titre: '@objet',
+        apres: '@chapeau' },
 
       { b: 'lettre',
-        salutation: function (d) { return d.salutation; },
-        texte: function (d) { return d.corps; },
-        formule: function (d) { return d.formule; } },
+        salutation: '@salutation',
+        texte: '@corps',
+        formule: '@formule' },
 
       { b: 'signatures',
         gauche: function (d) {
@@ -118,7 +118,7 @@
           };
         },
         cartes: function (d) {
-          return [{ pour: "Pour Baobabs Basket Club", nom: d.signNom, qualite: d.signQualite,
+          return [{ pour: "Pour Baobabs Basket Club", nom: '@signNom', qualite: '@signQualite',
                     mention: "Signature et cachet du Président" }];
         } }
     ],

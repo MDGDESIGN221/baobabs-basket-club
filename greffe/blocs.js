@@ -38,7 +38,7 @@
       "  --gris:#8C948F; --gris-clair:#A9B0AB; --filet:#DFE3E0;",
       "  --fond-bloc:#F3F5F3; --fond-tint:#F7F9F7;",
       "}",
-      "@page{ size:A4; margin:11mm 13mm 12mm 13mm; }",
+      "@page{ size:A4; margin:0; }",
       "*{ box-sizing:border-box; margin:0; padding:0; }",
       "html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }",
       "body{ font-family:'InterDoc',Inter,Arial,sans-serif; font-size:7.8pt;",
@@ -51,10 +51,21 @@
       ".avoid{ break-inside:avoid; }",
       /* l'unique bouton de l'auto-ajustement : tout se resserre d'un bloc */
       ".wrap{ position:relative; z-index:1; zoom:var(--gf-d, 1); }",
+      /* ---- les feuilles ---- */
+      ".page{ position:relative; width:210mm; height:297mm; padding:11mm 13mm 12mm 13mm;",
+      "  background:#fff; overflow:hidden; }",
+      ".page .corps{ position:relative; z-index:1; height:calc(297mm - 11mm - 12mm - 8mm);",
+      "  overflow:hidden; zoom:var(--gf-d, 1); }",
+      "@media print{ html,body{ margin:0; padding:0; background:#fff; }",
+      "  .pages{ display:block; } .page{ break-after:page; margin:0; box-shadow:none; border-radius:0; }",
+      "  .page:last-child{ break-after:auto; } tr.tr-suite{ display:none; } }",
+      "@media screen{ body{ background:#E9EBE8; }",
+      "  .pages{ display:flex; flex-direction:column; align-items:center; gap:6mm; padding:5mm; }",
+      "  .page{ box-shadow:0 10px 30px rgba(0,0,0,.35), 0 0 0 1px rgba(0,0,0,.18); border-radius:1.5pt; } }",
       ".bloc + .bloc{ margin-top:7pt; }",
 
       /* ---- filigrane ---- */
-      ".wm{ position:fixed; left:0; right:0; top:0; bottom:0; z-index:0;",
+      ".wm{ position:absolute; left:0; right:0; top:0; bottom:0; z-index:0;",
       "  display:flex; align-items:center; justify-content:center; pointer-events:none; }",
       ".wm div{ width:108mm; height:108mm; opacity:.022; background-size:contain;",
       "  background-repeat:no-repeat; background-position:center; }",
@@ -266,7 +277,7 @@
       ".certif p{ font-size:7.9pt; line-height:1.5; max-width:84mm; }",
 
       /* ---- pied de page, répété à chaque page ---- */
-      ".foot{ position:fixed; left:0; right:0; bottom:0; z-index:2; background:#fff;",
+      ".foot{ position:absolute; left:13mm; right:13mm; bottom:12mm; z-index:2;",
       "  padding-top:3pt; border-top:1px solid var(--filet); display:flex; align-items:center; gap:6pt;",
       "  font-size:6.1pt; color:var(--gris-clair); letter-spacing:.03em; }",
       ".foot i{ width:3.4pt; height:3.4pt; border-radius:99pt; background:var(--or); display:block; flex:0 0 3.4pt; }",
@@ -300,9 +311,33 @@
      c'est ce qui permet à un modèle de calculer un libellé sans écrire
      de HTML. On la résout ici, une fois pour toutes. */
   function val(v, d, ctx) {
-    return (typeof v === 'function') ? v(d, ctx) : v;
+    if (typeof v === 'function') return v(d, ctx);
+    /* « @titre » : la valeur de d.titre, ET le droit de la modifier
+       directement sur la feuille. Un modèle qui écrit '@objet' au lieu
+       de function (d) { return d.objet; } obtient les deux d'un coup. */
+    if (typeof v === 'string' && v.charAt(0) === '@') return d[v.slice(1)];
+    return v;
   }
   B.val = val;
+
+  /* L'attribut qui relie un morceau de feuille à sa donnée. Le noyau
+     rend modifiable tout ce qui le porte, et réécrit la donnée au
+     chemin indiqué : « titre », « articles.2.texte »,
+     « tables.membres.lignes.4.nom ». */
+  function edit(v) {
+    return (typeof v === 'string' && v.charAt(0) === '@') ? ' data-edit="' + v.slice(1) + '"' : '';
+  }
+  function editChemin(chemin) { return chemin ? ' data-edit="' + chemin + '"' : ''; }
+  B.edit = edit;
+
+  /* Un texte riche (paragraphes, puces, notes) dans son enveloppe
+     modifiable quand il vient d'une donnée. */
+  function texte(v, d, ctx, chemin) {
+    var t = val(v, d, ctx);
+    var attr = chemin ? editChemin(chemin) : edit(v);
+    if (!attr) return U.paragraphes(t || '');
+    return '<div class="txt"' + attr + '>' + U.paragraphes(t || '') + '</div>';
+  }
 
   function fond(ctx) {
     return ctx.res && ctx.res.blason
@@ -343,17 +378,31 @@
     return U.ech(v);
   }
 
+  /* Les lignes utiles d'une table, chacune avec son rang d'origine :
+     c'est ce rang qui sert de chemin d'édition, pas la place à l'écran. */
+  function lignesUtiles(table) {
+    var out = [];
+    (table.lignes || []).forEach(function (l, i) {
+      if (l && Object.keys(l).some(function (k) { return String(l[k] || '').trim(); })) out.push({ l: l, i: i });
+    });
+    return out;
+  }
+
   B.tableau = function (cfg, d, ctx) {
     var table = (d.tables && d.tables[cfg.source]) || { colonnes: [], lignes: [] };
     var cols = (table.colonnes || []).filter(function (c) { return c && c.cle; });
-    var lignes = (table.lignes || []).filter(function (l) {
-      return Object.keys(l).some(function (k) { return String(l[k] || '').trim(); });
-    });
+    var lignes = lignesUtiles(table);
     if (!cols.length) return '';
-    /* Sans une seule ligne, la grille se montre quand même, vide : on voit
-       la forme du tableau avant d'avoir quoi que ce soit à y mettre. */
-    if (!lignes.length && cfg.vide) {
-      for (var k = 0; k < cfg.vide; k++) lignes.push({});
+    var nReelles = lignes.length;
+    var suivant = (table.lignes || []).length;
+    /* Sans une seule ligne, la grille se montre quand même, vide, et elle
+       s'imprime ainsi : un acte sans liste est un formulaire à remplir.
+       Avec des lignes, une seule ligne vide suit la dernière, à l'écran
+       seulement : c'est là qu'on tape la suivante. */
+    if (!nReelles && cfg.vide) {
+      for (var k = 0; k < cfg.vide; k++) lignes.push({ l: {}, i: suivant + k, vide: true });
+    } else if (nReelles && cfg.vide) {
+      lignes.push({ l: {}, i: suivant, vide: true, suite: true });
     }
 
     var numeroter = cfg.numeroter !== false;
@@ -372,25 +421,30 @@
         return '<th' + a + '>' + U.ech(c.titre || '') + '</th>';
       }).join('') + '</tr>';
 
-    var tbody = lignes.map(function (l, i) {
-      var cl = (Object.keys(l).length && cfg.enAvant && cfg.enAvant(l)) ? ' class="enc"' : '';
-      return '<tr' + cl + '>'
-        + (numeroter ? '<td class="f-rang a-centre">' + U.deuxChiffres(i + 1) + '</td>' : '')
+    var chemin = 'tables.' + cfg.source + '.lignes.';
+    var tbody = lignes.map(function (r, k) {
+      var l = r.l;
+      var cls = [];
+      if (!r.vide && cfg.enAvant && cfg.enAvant(l)) cls.push('enc');
+      if (r.vide) cls.push('tr-vide');
+      if (r.suite) cls.push('tr-suite');
+      return '<tr' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + '>'
+        + (numeroter ? '<td class="f-rang a-centre">' + U.deuxChiffres(k + 1) + '</td>' : '')
         + cols.map(function (c) {
-          return '<td' + classeCellule(c) + '>' + cellule(c, l, cfg) + '</td>';
+          return '<td' + classeCellule(c) + editChemin(chemin + r.i + '.' + c.cle) + '>' + cellule(c, l, cfg) + '</td>';
         }).join('') + '</tr>';
     }).join('');
 
     /* Un pied de tableau : la somme des colonnes marquées « total ». */
     var tfoot = '';
     var aTotal = cols.some(function (c) { return c.total; });
-    if (aTotal && lignes.length) {
+    if (aTotal && nReelles) {
       tfoot = '<tfoot><tr>'
         + (numeroter ? '<td></td>' : '')
         + cols.map(function (c, i) {
           if (!c.total) return '<td' + classeCellule(c) + '>' + (i === 0 ? 'Total' : '') + '</td>';
-          var s = lignes.reduce(function (acc, l) {
-            var n = parseFloat(String(l[c.cle] || '').replace(/[^\d.,-]/g, '').replace(',', '.'));
+          var s = lignes.reduce(function (acc, r) {
+            var n = parseFloat(String(r.l[c.cle] || '').replace(/[^\d.,-]/g, '').replace(',', '.'));
             return acc + (isNaN(n) ? 0 : n);
           }, 0);
           return '<td' + classeCellule(c) + '>' + U.ech(U.nombre(s)) + '</td>';
@@ -432,8 +486,9 @@
             + '<span class="label">' + U.ech(etiq || '') + '</span>'
             + (pastille ? '<span class="pill"><i></i>' + U.ech(pastille) + '</span>' : '')
             + '</div>' : '')
-        + '<h1>' + U.ech(val(cfg.texte, d, ctx) || '') + '</h1>'
-        + (val(cfg.sous, d, ctx) ? '<p class="hero-sub">' + U.ech(val(cfg.sous, d, ctx)) + '</p>' : '')
+        + '<h1' + edit(cfg.texte) + '>' + U.ech(val(cfg.texte, d, ctx) || '') + '</h1>'
+        + ((val(cfg.sous, d, ctx) || edit(cfg.sous))
+            ? '<p class="hero-sub"' + edit(cfg.sous) + '>' + U.ech(val(cfg.sous, d, ctx) || '') + '</p>' : '')
         + '</section>';
     },
 
@@ -452,10 +507,10 @@
       var av = val(cfg.avant, d, ctx), vb = val(cfg.verbe, d, ctx), ap = val(cfg.apres, d, ctx);
       return '<section class="encadre avoid">'
         + (cfg.etiquette ? '<span class="label">' + U.ech(val(cfg.etiquette, d, ctx)) + '</span>' : '')
-        + (t ? '<h2>' + U.ech(t) + '</h2>' : '')
-        + (av ? U.paragraphes(av) : '')
-        + (vb ? '<div class="verbe">' + U.ech(vb) + '</div>' : '')
-        + (ap ? U.paragraphes(ap) : '')
+        + ((t || edit(cfg.titre)) ? '<h2' + edit(cfg.titre) + '>' + U.ech(t || '') + '</h2>' : '')
+        + ((av || edit(cfg.avant)) ? texte(cfg.avant, d, ctx) : '')
+        + (vb ? '<div class="verbe"' + edit(cfg.verbe) + '>' + U.ech(vb) + '</div>' : '')
+        + ((ap || edit(cfg.apres)) ? texte(cfg.apres, d, ctx) : '')
         + '</section>';
     },
 
@@ -472,11 +527,12 @@
             + (v ? '<span class="v">' + U.ech(v) + '</span>' : '<span class="pointille"></span>')
             + '</div>';
         }).join('');
-        return '<div class="party"><span class="label">' + U.ech(p.label || '') + '</span>'
-          + '<div class="party-nom">' + U.ech(p.nom || '') + '</div>'
-          + U.paragraphes(p.texte || '')
+        var nom = val(p.nom, d, ctx), tag = val(p.tag, d, ctx);
+        return '<div class="party"><span class="label">' + U.ech(val(p.label, d, ctx) || '') + '</span>'
+          + '<div class="party-nom"' + edit(p.nom) + '>' + U.ech(nom || '') + '</div>'
+          + ((val(p.texte, d, ctx) || edit(p.texte)) ? texte(p.texte, d, ctx) : '')
           + (champs ? '<div class="party-champs">' + champs + '</div>' : '')
-          + (p.tag ? '<div class="party-tag">' + U.ech(p.tag) + '</div>' : '')
+          + ((tag || edit(p.tag)) ? '<div class="party-tag"' + edit(p.tag) + '>' + U.ech(tag || '') + '</div>' : '')
           + '</div>';
       }).join('') + '</section>';
     },
@@ -484,7 +540,7 @@
     /* La phrase qui ouvre les articles : « Il est convenu ce qui suit : ». */
     phrase: function (cfg, d, ctx) {
       var t = val(cfg.texte, d, ctx);
-      return t ? '<p class="lead">' + U.ech(t) + '</p>' : '';
+      return (t || edit(cfg.texte)) ? '<p class="lead"' + edit(cfg.texte) + '>' + U.ech(t || '') + '</p>' : '';
     },
 
     /* Un budget, un devis, un bilan : les lignes d'UN tableau, groupées
@@ -494,10 +550,9 @@
     postes: function (cfg, d, ctx) {
       var table = (d.tables && d.tables[cfg.source]) || { colonnes: [], lignes: [] };
       var cols = (table.colonnes || []).filter(function (c) { return c && c.cle; });
-      var lignes = (table.lignes || []).filter(function (l) {
-        return Object.keys(l).some(function (k) { return String(l[k] || '').trim(); });
-      });
+      var lignes = lignesUtiles(table);
       var cleG = cfg.groupe, cleT = cfg.total;
+      var chemin = 'tables.' + cfg.source + '.lignes.';
       var visibles = cols.filter(function (c) { return c.cle !== cleG; });
       if (!visibles.length || !lignes.length) return '';
 
@@ -509,10 +564,10 @@
       function somme(n) { return U.nombre(n) + (unite ? ' ' + unite : ''); }
 
       var ordre = [], groupes = {};
-      lignes.forEach(function (l) {
-        var g = String(l[cleG] || '').trim() || (val(cfg.sansGroupe, d, ctx) || 'Divers');
+      lignes.forEach(function (r) {
+        var g = String(r.l[cleG] || '').trim() || (val(cfg.sansGroupe, d, ctx) || 'Divers');
         if (!groupes[g]) { groupes[g] = []; ordre.push(g); }
-        groupes[g].push(l);
+        groupes[g].push(r);
       });
 
       var poidsTotal = visibles.reduce(function (s, c) { return s + (+c.poids || B.COLONNE_DEFAUT.poids); }, 0);
@@ -522,14 +577,15 @@
 
       var total = 0;
       var html = ordre.map(function (g, gi) {
-        var st = groupes[g].reduce(function (s, l) { return s + montant(l); }, 0);
+        var st = groupes[g].reduce(function (s, r) { return s + montant(r.l); }, 0);
         total += st;
-        var rows = groupes[g].map(function (l) {
+        var rows = groupes[g].map(function (r) {
+          var l = r.l;
           return '<tr>' + visibles.map(function (c) {
             var cl = c.cle === cleT ? ' class="f-montant a-droite"' : (c.forme === 'calc' ? ' class="f-calc"' : classeCellule(c));
             var v = String(l[c.cle] == null ? '' : l[c.cle]);
             if (c.cle === cleT && v.trim() && unite && v.indexOf(unite) === -1) v = U.nombre(montant(l)) + ' ' + unite;
-            return '<td' + cl + '>' + U.ech(v) + '</td>';
+            return '<td' + cl + editChemin(chemin + r.i + '.' + c.cle) + '>' + U.ech(v) + '</td>';
           }).join('') + '</tr>';
         }).join('');
         return '<div class="poste avoid"><div class="poste-tete"><div class="poste-titre">'
@@ -548,19 +604,21 @@
       var s = val(cfg.salutation, d, ctx);
       var g = val(cfg.formule, d, ctx);
       return '<section class="lettre">'
-        + (s ? '<p class="salut">' + U.ech(s) + '</p>' : '')
-        + U.paragraphes(val(cfg.texte, d, ctx) || '')
-        + (g ? '<p class="greet">' + U.ech(g) + '</p>' : '')
+        + ((s || edit(cfg.salutation)) ? '<p class="salut"' + edit(cfg.salutation) + '>' + U.ech(s || '') + '</p>' : '')
+        + texte(cfg.texte, d, ctx)
+        + ((g || edit(cfg.formule)) ? '<p class="greet"' + edit(cfg.formule) + '>' + U.ech(g || '') + '</p>' : '')
         + '</section>';
     },
 
     articles: function (cfg, d, ctx) {
       var arts = val(cfg.articles, d, ctx) || [];
       if (!arts.length) return '';
+      var fixe = cfg.fige === true;   /* des articles calculés, sans chemin d'édition */
       return '<section class="arts">' + arts.map(function (a, i) {
+        var ch = fixe ? '' : 'articles.' + i + '.';
         return '<article class="art avoid"><div class="art-num">' + U.deuxChiffres(i + 1) + '</div>'
-          + '<div class="art-body"><div class="art-title">' + U.ech(a.titre) + '</div>'
-          + U.paragraphes(a.texte) + '</div></article>';
+          + '<div class="art-body"><div class="art-title"' + (ch ? editChemin(ch + 'titre') : '') + '>' + U.ech(a.titre) + '</div>'
+          + texte(a.texte, d, ctx, ch ? ch + 'texte' : '') + '</div></article>';
       }).join('') + '</section>';
     },
 
@@ -632,21 +690,23 @@
   /* La carte de signature, partagée par « signatures » et
      « certification » : une seule définition de l'encre. */
   B.carteSignature = function (c, d, ctx) {
+    var nom = val(c.nom, d, ctx) || '', qualite = val(c.qualite, d, ctx) || '';
+    var pour = val(c.pour, d, ctx) || '', mention = val(c.mention, d, ctx) || 'Signature et cachet';
     var encre = '';
     if (d.avecSignature !== false && c.signer !== false) {
       encre += '<div class="sig-ink"><div class="sig-name">'
-        + U.ech(U.initialeNom(c.nom)) + '</div>'
+        + U.ech(U.initialeNom(nom)) + '</div>'
         + '<div class="sig-paraphe">' + B.PARAPHE + '</div></div>';
     }
     if (d.avecCachet !== false && c.cacheter !== false && ctx.res && ctx.res.cachet) {
       encre += '<div class="sig-cachet" style="background-image:url(' + ctx.res.cachet + ')"></div>';
     }
     return '<div class="sign-card">'
-      + '<span class="label">' + U.ech(c.pour || '') + '</span>'
-      + '<div class="sign-who"><span class="sign-name">' + U.ech(c.nom || '') + '</span>'
-      + '<span class="sign-role">' + U.ech(c.qualite || '') + '</span></div>'
+      + '<span class="label"' + edit(c.pour) + '>' + U.ech(pour) + '</span>'
+      + '<div class="sign-who"><span class="sign-name"' + edit(c.nom) + '>' + U.ech(nom) + '</span>'
+      + '<span class="sign-role"' + edit(c.qualite) + '>' + U.ech(qualite) + '</span></div>'
       + '<div class="ink-zone">' + encre + '</div>'
-      + '<div class="sign-cta">' + U.ech(c.mention || 'Signature et cachet') + '</div>'
+      + '<div class="sign-cta"' + edit(c.mention) + '>' + U.ech(mention) + '</div>'
       + '</div>';
   };
 
@@ -661,6 +721,146 @@
     var html = f(bloc, d, ctx);
     if (!html) return '';
     return bloc.b === 'annexe' ? html : '<div class="bloc">' + html + '</div>';
+  };
+
+  /* ==================================================================
+     LA MISE EN PAGES
+     Le navigateur sait couper un flux en pages à l'impression, mais il
+     ne montre pas ces pages à l'écran et ne dit pas où il coupe. On
+     coupe donc nous-mêmes : le document devient une suite de feuilles
+     A4 explicites, les mêmes à l'écran et sur le papier, chacune avec
+     son filigrane et son pied.
+
+     Les unités de coupe : un bloc entier, sauf pour les articles (un
+     article), les postes (un poste), les tableaux (une ligne, l'en-tête
+     étant repris sur chaque page) et les annexes (qui ouvrent une
+     page). Une unité qui ne tient pas part sur la page suivante ; si
+     elle dépasse une page entière, elle reste et déborde : on ne coupe
+     jamais dans un texte.
+     ================================================================== */
+  B.PAGE = { l: 210, h: 297, haut: 11, droite: 13, bas: 12, gauche: 13 };
+
+  B.paginer = function (doc) {
+    var wrap = doc.querySelector('.wrap');
+    if (!wrap) return doc.querySelectorAll('.page').length || 1;
+    var foot = doc.querySelector('footer.foot');
+    var wm = doc.querySelector('.wm');
+
+    var pages = doc.createElement('div');
+    pages.className = 'pages';
+    doc.body.appendChild(pages);
+    var corps = null, courant = null, groupes = [];
+
+    function nouvellePage() {
+      var page = doc.createElement('section');
+      page.className = 'page';
+      if (wm) page.appendChild(wm.cloneNode(true));
+      corps = doc.createElement('div');
+      corps.className = 'corps';
+      page.appendChild(corps);
+      if (foot) page.appendChild(foot.cloneNode(true));
+      pages.appendChild(page);
+      courant = null;
+    }
+    function deborde() { return corps.scrollHeight > corps.clientHeight + 1; }
+    function vide() { return corps.children.length === 0; }
+
+    /* ---- les unités, dans l'ordre de lecture ---- */
+    var unites = [];
+    function pousser(el, g) { unites.push({ el: el, g: g || null }); }
+
+    function groupe(bloc, chercher, selecteur) {
+      var cont = chercher(bloc);
+      var g = { bloc: bloc, chercher: chercher, n: 0, tfoot: null, derniere: null };
+      groupes.push(g);
+      Array.prototype.slice.call(cont.querySelectorAll(selecteur)).forEach(function (e) { pousser(e, g); });
+    }
+    function enveloppe(el) {
+      var w = doc.createElement('div'); w.className = 'bloc'; w.appendChild(el); return w;
+    }
+    function eclater(bloc) {
+      if (bloc.querySelector(':scope > .arts')) {
+        return groupe(bloc, function (b) { return b.querySelector(':scope > .arts'); }, ':scope > .art');
+      }
+      if (bloc.querySelector(':scope > .postes')) {
+        var total = bloc.querySelector(':scope > .total-box');
+        groupe(bloc, function (b) { return b.querySelector(':scope > .postes'); }, ':scope > .poste');
+        if (total) pousser(enveloppe(total));
+        return;
+      }
+      if (bloc.querySelector(':scope > table')) {
+        return groupe(bloc, function (b) { return b.querySelector(':scope > table > tbody'); }, ':scope > tr');
+      }
+      pousser(bloc);
+    }
+    function eclaterAnnexe(section) {
+      unites.push({ saut: true });
+      Array.prototype.slice.call(section.children).forEach(function (c) {
+        if (c.classList.contains('bloc')) eclater(c); else pousser(enveloppe(c));
+      });
+    }
+    Array.prototype.slice.call(wrap.children).forEach(function (n) {
+      if (n.classList.contains('annexe')) eclaterAnnexe(n);
+      else if (n.classList.contains('bloc')) eclater(n);
+      else pousser(n);
+    });
+
+    /* ---- poser chaque unité, page après page ---- */
+    function cibleDe(u) {
+      if (!u.g) return corps;
+      var g = u.g;
+      if (courant && courant.g === g) return courant.cible;
+      var sq = g.bloc.cloneNode(true);
+      var cont = g.chercher(sq);
+      while (cont.firstChild) cont.removeChild(cont.firstChild);
+      /* la suite d'un tableau ne répète ni son titre ni son total */
+      if (g.n > 0) {
+        var titre = sq.querySelector('.tab-titre');
+        if (titre) titre.parentNode.removeChild(titre);
+      }
+      var tf = sq.querySelector('tfoot');
+      if (tf) { if (!g.tfoot) g.tfoot = tf; tf.parentNode.removeChild(tf); }
+      corps.appendChild(sq);
+      courant = { g: g, cible: cont, sq: sq };
+      g.n++;
+      g.derniere = cont;
+      return cont;
+    }
+    function retirer(u, cible) {
+      cible.removeChild(u.el);
+      if (u.g && cible.children.length === 0) {
+        corps.removeChild(courant.sq);
+        u.g.n--; courant = null;
+      }
+    }
+    function placer(u) {
+      var cible = cibleDe(u);
+      cible.appendChild(u.el);
+      if (!deborde()) return;
+      retirer(u, cible);
+      if (vide()) {
+        /* seule sur une page vide et trop haute quand même : elle reste */
+        cibleDe(u).appendChild(u.el);
+        return;
+      }
+      nouvellePage();
+      cibleDe(u).appendChild(u.el);
+    }
+
+    nouvellePage();
+    unites.forEach(function (u) {
+      if (u.saut) { if (!vide()) nouvellePage(); return; }
+      placer(u);
+    });
+    groupes.forEach(function (g) {
+      if (g.tfoot && g.derniere && g.derniere.parentNode) g.derniere.parentNode.appendChild(g.tfoot);
+    });
+
+    doc.body.removeChild(wrap);
+    if (foot) doc.body.removeChild(foot);
+    if (wm) doc.body.removeChild(wm);
+    doc.body.classList.add('pagine');
+    return pages.children.length;
   };
 
   B.assembler = function (modele, d, ctx) {

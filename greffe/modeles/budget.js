@@ -143,10 +143,10 @@
       { b: 'titre',
         etiquette: function (d) { return v(d.titre, "Budget prévisionnel"); },
         pastille: function (d) { return "Saison " + v(d.saison, ""); },
-        texte: function (d) { return d.titre; },
-        sous: function (d) { return d.objet; } },
+        texte: '@titre',
+        sous: '@objet' },
 
-      { b: 'phrase', texte: function (d) { return d.phrase; } },
+      { b: 'phrase', texte: '@phrase' },
 
       { b: 'postes', source: 'lignes', groupe: 'poste', total: 'montant',
         unite: function (d) { return v(d.unite, ""); },
@@ -157,7 +157,7 @@
         si: function (d) { return !!d.avecAvances; },
         etiquette: "Situation des avances",
         titre: function (d) { return "Avances du Président · Saison " + v(d.saison, ""); },
-        apres: function (d) { return d.avancesTexte; } },
+        apres: '@avancesTexte' },
 
       { b: 'reperes',
         si: function (d) { return !!d.avecAvances; },
@@ -178,7 +178,7 @@
           };
         },
         cartes: function (d) {
-          return [{ pour: "Pour Baobabs Basket Club", nom: d.signNom, qualite: d.signQualite,
+          return [{ pour: "Pour Baobabs Basket Club", nom: '@signNom', qualite: '@signQualite',
                     mention: "Visa du Président" }];
         } }
     ],

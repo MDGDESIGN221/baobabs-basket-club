@@ -236,7 +236,7 @@
           return [
             { pour: "Président de l'ASC", nom: String(d.v1Nom || '').trim() || "Le Président de l'ASC",
               qualite: d.v1Qualite, mention: "Visa / Approbation", signer: false, cacheter: false },
-            { pour: "Président de la Section Basket", nom: d.signNom, qualite: d.signQualite,
+            { pour: "Président de la Section Basket", nom: '@signNom', qualite: '@signQualite',
               mention: "Signature et cachet" },
             { pour: fonction(d), nom: String(d.nom || '').trim() || leTitulaire(d),
               qualite: "Baobabs Basket Club", mention: "Lu et approuvé · Signature",

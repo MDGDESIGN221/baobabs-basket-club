@@ -198,16 +198,16 @@
 
       { b: 'parties', parties: function (d) {
           return [
-            { label: d.p1Label, nom: d.p1Nom, texte: d.p1Repr, tag: d.p1Tag },
-            { label: d.p2Label, nom: d.p2Nom, texte: d.p2Repr, tag: d.p2Tag }
+            { label: '@p1Label', nom: '@p1Nom', texte: '@p1Repr', tag: '@p1Tag' },
+            { label: '@p2Label', nom: '@p2Nom', texte: '@p2Repr', tag: '@p2Tag' }
           ];
         } },
 
       { b: 'titre',
         etiquette: "Objet",
         pastille: function (d) { return d.numero ? "Convention n° " + d.numero : "Convention"; },
-        texte: function (d) { return d.titre; },
-        sous: function (d) { return d.objet; } },
+        texte: '@titre',
+        sous: '@objet' },
 
       { b: 'phrase', texte: "Il est convenu ce qui suit :" },
 
@@ -225,9 +225,9 @@
         },
         cartes: function (d) {
           return [
-            { pour: "Pour " + court(d.p1Nom, "la première partie"), nom: d.s1Nom, qualite: d.s1Qualite,
+            { pour: "Pour " + court(d.p1Nom, "la première partie"), nom: '@s1Nom', qualite: '@s1Qualite',
               mention: "Signature et cachet", signer: false, cacheter: false },
-            { pour: "Pour " + court(d.p2Nom, "Baobabs Basket Club"), nom: d.s2Nom, qualite: d.s2Qualite,
+            { pour: "Pour " + court(d.p2Nom, "Baobabs Basket Club"), nom: '@s2Nom', qualite: '@s2Qualite',
               mention: "Signature et cachet du Président" }
           ];
         } }
