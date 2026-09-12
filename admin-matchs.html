@@ -6617,8 +6617,12 @@
     if (!cpJeSuisProprio()){ qgToast('Le Greffe est reserve au proprietaire du site', true); return; }
     if (greffePret){ window.BaobabsGreffe.open(); return; }
     greffeEnCours = true;
+    // ?greffe=<id d'acte> : une deuxieme fenetre, ouverte par le Greffe
+    // lui-meme, arrive directement sur cet acte.
+    var demande = null;
+    try { demande = new URLSearchParams(location.search).get('greffe'); } catch(e){}
     greffeCharger().then(function(){
-      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), {});
+      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), { acte: demande });
     }).then(function(){
       greffePret = true;
       window.BaobabsGreffe.open();
@@ -6638,7 +6642,7 @@
     // a note ou il en etait (localStorage), on le rouvre au meme endroit.
     // La cle disparait quand on quitte le Greffe soi-meme.
     var reprise = false;
-    try { reprise = !!localStorage.getItem('bbc-greffe-reprise'); } catch(e){}
+    try { reprise = !!localStorage.getItem('bbc-greffe-reprise') || /[?&]greffe=/.test(location.search); } catch(e){}
     if (reprise && cpJeSuisProprio()) setTimeout(greffeOuvrir, 400);
   }
 

@@ -1102,6 +1102,7 @@
               return '<div class="gf-reg-ligne">' + ligneActe(a)
                 + '<div class="gf-reg-actions">'
                 + '<button type="button" class="gf-mini" data-histo="' + ech(a.id) + '">Historique</button>'
+                + '<button type="button" class="gf-mini" data-fenetre="' + ech(a.id) + '" title="Ouvrir cet acte dans une nouvelle fenêtre">Nouvelle fenêtre</button>'
                 + (e === 'emis' ? '<button type="button" class="gf-mini" data-version="' + ech(a.id) + '">Nouvelle version</button>' : '')
                 + (e === 'emis' ? '<button type="button" class="gf-mini" data-archiver="' + ech(a.id) + '">Archiver</button>' : '')
                 + (e === 'archive' ? '<button type="button" class="gf-mini" data-desarchiver="' + ech(a.id) + '">Sortir des archives</button>' : '')
@@ -1125,6 +1126,7 @@
       });
     }
     avecFiche('data-histo', function (f) { historiqueActe(f); });
+    avecFiche('data-fenetre', function (f) { nouvelleFenetre(f.id); });
     avecFiche('data-version', function (f) { ouvrirActe(f); setTimeout(nouvelleVersion, 400); });
     avecFiche('data-archiver', function (f) { f.etat = 'archive'; (f.journal = f.journal || []).push({ t: Date.now(), quoi: 'Archivé' }); f.maj = Date.now(); dbPoser(MAG_ACTES, f).then(peindreRegistre); });
     avecFiche('data-desarchiver', function (f) { f.etat = 'emis'; (f.journal = f.journal || []).push({ t: Date.now(), quoi: 'Sorti des archives' }); f.maj = Date.now(); dbPoser(MAG_ACTES, f).then(peindreRegistre); });
@@ -1178,6 +1180,7 @@
       { nom: 'Fichier', items: [
         { lab: 'Nouvel acte…', rac: 'Ctrl+N', act: function () { ouvrirNouveau(); } },
         { lab: 'Ouvrir le registre', rac: 'Ctrl+O', act: function () { montrer('registre'); } },
+        { lab: 'Ouvrir dans une nouvelle fenêtre', rac: 'Ctrl+Maj+N', act: function () { nouvelleFenetre(); } },
         { sep: true },
         { lab: 'Enregistrer', rac: 'Ctrl+S', off: !enAtelier, act: function () { enregistrer(false); } },
         { lab: 'Garder comme préréglage…', off: !enAtelier, act: garderPrereglage },
@@ -1343,6 +1346,17 @@
     hote.querySelectorAll('[data-a]').forEach(function (x) { x.addEventListener('click', b[+x.getAttribute('data-a')].fn); });
   }
 
+  /* Une deuxième fenêtre : le même admin, le Greffe ouvert sur l'acte
+     voulu (?greffe=<id>). Le presse-papiers passe de l'une à l'autre. */
+  function nouvelleFenetre(id) {
+    var cible = id || (acteId && acteEtat ? acteId : 'accueil');
+    if (modeleActif && !acteSauve && acteEtat === 'brouillon') enregistrer(true);
+    var url = location.pathname + '?greffe=' + encodeURIComponent(cible);
+    var w = window.open(url, '_blank');
+    if (!w) dire('Le navigateur a bloqué la nouvelle fenêtre : autorisez les fenêtres surgissantes pour ce site.', 'erreur');
+    else dire('Nouvelle fenêtre ouverte' + (cible !== 'accueil' ? ' sur cet acte' : ''), 'ok');
+  }
+
   function fermerActe() {
     if (!modeleActif) return;
     if (!acteSauve && acteEtat === 'brouillon') enregistrer(true);
@@ -1364,7 +1378,8 @@
   /* ---- l'aide ---- */
   function aideRaccourcis() {
     var groupes = [
-      ['Document', [['Ctrl+N', 'Nouvel acte'], ['Ctrl+O', 'Ouvrir le registre'], ['Ctrl+S', 'Enregistrer'], ['Ctrl+P', 'Imprimer en PDF'], ['Ctrl+Maj+S', 'Sauvegarder le Greffe']]],
+      ['Document', [['Ctrl+N', 'Nouvel acte'], ['Ctrl+O', 'Ouvrir le registre'], ['Ctrl+Maj+N', 'Nouvelle fenêtre'], ['Ctrl+S', 'Enregistrer'], ['Ctrl+P', 'Imprimer en PDF'], ['Ctrl+Maj+S', 'Sauvegarder le Greffe']]],
+      ['Objets et blocs', [['Ctrl+C', 'Copier l\'objet ou le bloc'], ['Ctrl+V', 'Coller'], ['Suppr', 'Retirer l\'objet'], ['Flèches', 'Déplacer l\'objet d\'un mm (Maj : 5)'], ['Alt+Haut / Bas', 'Monter, descendre le bloc']]],
       ['Édition', [['Ctrl+Z', 'Annuler'], ['Ctrl+Y', 'Rétablir'], ['Entrée', 'Valider un champ d\'une ligne'], ['Échap', 'Quitter le texte, fermer une boîte']]],
       ['Acte', [['Ctrl+Entrée', 'Vérifier, puis émettre'], ['Ctrl+Maj+E', 'Émettre'], ['Ctrl+Maj+R', 'Mode lecture'], ['Ctrl+Maj+P', 'Masquer ou montrer le panneau']]],
       ['Affichage', [['Ctrl+Plus', 'Zoom avant'], ['Ctrl+Moins', 'Zoom arrière'], ['Ctrl+0', 'Taille réelle']]]
@@ -3499,7 +3514,8 @@
     var enAtelier = !!modeleActif && espace === 'atelier';
     if (enAtelier && k === 'c' && copierElement()) { e.preventDefault(); return; }
     if (enAtelier && k === 'v' && collerElement()) { e.preventDefault(); return; }
-    if (k === 'n') { e.preventDefault(); ouvrirNouveau(); }
+    if (k === 'n' && e.shiftKey) { e.preventDefault(); nouvelleFenetre(); }
+    else if (k === 'n') { e.preventDefault(); ouvrirNouveau(); }
     else if (k === 'o') { e.preventDefault(); montrer('registre'); }
     else if (k === 's' && e.shiftKey) { e.preventDefault(); sauvegarderGreffe(); }
     else if (k === 's') { e.preventDefault(); if (enAtelier) enregistrer(false); }
@@ -3591,8 +3607,9 @@
       (r[0] || []).forEach(function (o) { res[o.cle] = o.uri; });
       registre = (r[1] || []).sort(function (a, b) { return b.maj - a.maj; });
       prereglages = (r[3] || []).sort(function (a, b) { return b.maj - a.maj; });
-      var rep = lireReprise();
-      var fiche = rep ? registre.filter(function (a) { return a.id === rep.acte; })[0] : null;
+      var demande = api && api.acte ? String(api.acte) : null;
+      var rep = demande ? { acte: demande } : lireReprise();
+      var fiche = rep && rep.acte !== 'accueil' ? registre.filter(function (a) { return a.id === rep.acte; })[0] : null;
       if (fiche && ressourcesCompletes()) { ouvrirActe(fiche); dire('Reprise : ' + (fiche.intitule || fiche.nom) + (fiche.numero ? ' n° ' + fiche.numero : ''), 'ok'); }
       else montrer(ressourcesCompletes() ? 'accueil' : 'polices');
       /* l'onglet qui se ferme ou se rafraîchit : l'acte part au registre avant */
