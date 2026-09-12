@@ -3076,7 +3076,7 @@
     b.style.left = Math.max(4, Math.min(p.x, elt.scene.clientWidth - 300)) + 'px';
     b.style.top = (p.y + p.h + 6) + 'px';
   }
-  var slashRange = null;
+  var slashRange = null, menuRange = null;
   function insererTexte(texte, filtre) {
     var doc = cadre.contentDocument;
     cadre.contentWindow.focus();
@@ -3126,6 +3126,12 @@
     if (!el || lectureSeule()) return;
     e.preventDefault();
     var doc = cadre.contentDocument, sel = doc.getSelection();
+    /* le texte se posera sous le clic droit, pas là où le curseur traînait */
+    try {
+      var sous = doc.caretRangeFromPoint ? doc.caretRangeFromPoint(e.clientX, e.clientY) : null;
+      if (sous && el.contains(sous.startContainer) && (!sel.rangeCount || sel.isCollapsed)) { sel.removeAllRanges(); sel.addRange(sous); }
+      menuRange = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+    } catch (err) { menuRange = null; }
     var b = boite('menu', 'gf-flot-slash');
     var textes = listeTextes('');
     var groupes = {};
@@ -3139,6 +3145,7 @@
     b.querySelectorAll('[data-t]').forEach(function (x) {
       x.addEventListener('click', function () {
         cadre.contentWindow.focus();
+        if (menuRange) { try { var s1 = doc.getSelection(); s1.removeAllRanges(); s1.addRange(menuRange); } catch (err) {} menuRange = null; }
         doc.execCommand('insertText', false, textes[+x.getAttribute('data-t')].texte);
         cacher('menu');
       });
@@ -3765,7 +3772,7 @@
     } else {
       cadrePret = false;
       peindreFormulaire();
-      if (!zoomChoisi) { zoom = zoomLargeur(); }
+      if (!zoomChoisi && elt.scene.clientWidth > 0) { zoom = zoomLargeur(); }
       rafraichir();
     }
     majTitreBarre();
@@ -3839,8 +3846,15 @@
     racine.classList.add('is-open');
     racine.setAttribute('aria-hidden', 'false');
     document.documentElement.style.overflow = 'hidden';
+    /* le zoom « largeur » calcule pendant que le Greffe etait cache valait
+       25 % (scene sans largeur) : on le refait ici, la scene visible */
+    if (!zoomChoisi && modeleActif && elt.scene.clientWidth > 0) zoom = zoomLargeur();
     if (!elt.ecranAtl.hidden) rafraichir();
   };
+  window.addEventListener('resize', function () {
+    if (!ouvert || zoomChoisi || !modeleActif || elt.ecranAtl.hidden || elt.scene.clientWidth <= 0) return;
+    zoom = zoomLargeur(); appliquerZoom();
+  });
 
   function fermer() {
     if (!racine) return;
