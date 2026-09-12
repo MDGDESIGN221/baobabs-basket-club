@@ -193,7 +193,19 @@
        - texte        un point d'une liste (une fiche de fonction en est faite)
        > texte        une note en retrait, en plus petit
      Une ligne vide sépare deux paragraphes. */
-  function gras(t) { return t.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>'); }
+  /* Les variations dans une ligne, dans l'ordre où l'on doit les lire :
+       **gras**   *italique*   __souligné__   ==surligné==
+       {{or|texte}} {{vert|…}} {{rouge|…}} {{gris|…}} {{grand|…}} {{petit|…}} {{maj|…}}
+     Le texte est déjà échappé quand il arrive ici. */
+  var TEINTES = /^(or|vert|rouge|gris|grand|petit|maj)$/;
+  function gras(t) {
+    return t
+      .replace(/\{\{(or|vert|rouge|gris|grand|petit|maj)\|([^}]+)\}\}/g, '<span class="s-$1">$2</span>')
+      .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+      .replace(/__([^_\n]+)__/g, '<u>$1</u>')
+      .replace(/==([^=\n]+)==/g, '<mark>$1</mark>')
+      .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<i>$2</i>');
+  }
 
   function paragraphes(texte) {
     var out = [], genre = null, run = [];
@@ -410,7 +422,7 @@
     }
   }
 
-  function salir() { acteSauve = false; majTitreBarre(); }
+  function salir() { acteSauve = false; majTitreBarre(); histoNoter(); autoEnregistrer(); }
 
   function majTitreBarre() {
     if (!elt.sousTitre) return;
@@ -541,6 +553,7 @@
     donnees = JSON.parse(JSON.stringify(fiche.donnees));
     acteId = fiche.id; acteSauve = true;
     montrer('atelier');
+    histoDepart();
   }
 
   function nouvelActe(cle, prereglage) {
@@ -565,6 +578,7 @@
     }
     acteId = null; acteSauve = false;
     montrer('atelier');
+    histoDepart();
   }
 
   function peindreAccueil() {
@@ -627,7 +641,15 @@
       + '<div class="gf-acc-carte"><h2 class="gf-acc-titre">Le registre</h2>'
       + '<p class="gf-acc-intro">Chaque acte est gardé sous forme de données. '
       + 'Rouvrez-le pour le corriger, le renuméroter ou le réimprimer.</p>'
-      + htmlRegistre + '</div>';
+      + htmlRegistre
+      + '<div class="gf-sauvegarde"><button type="button" class="gf-mini" id="gf-sauver">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 9l6-6 6 6M4 21h16"/></svg>'
+      + 'Sauvegarder le Greffe</button>'
+      + '<label class="gf-mini" for="gf-restaurer">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9M6 15l6 6 6-6M4 3h16"/></svg>'
+      + 'Restaurer une sauvegarde</label><input type="file" id="gf-restaurer" accept=".json,.greffe,application/json" hidden>'
+      + '<p class="gf-aide">Le registre vit dans ce navigateur. Un fichier de sauvegarde le met à l\'abri et le fait passer d\'un poste à l\'autre ; il ne contient jamais le cachet ni les polices.</p></div>'
+      + '</div>';
 
     hote.querySelectorAll('[data-modele]').forEach(function (b) {
       b.addEventListener('click', function () { nouvelActe(b.getAttribute('data-modele')); });
@@ -650,6 +672,10 @@
     });
     var depot = $('gf-pre-fichier');
     if (depot) depot.addEventListener('change', function () { deposerPrereglages(depot.files); depot.value = ''; });
+    var sauver = $('gf-sauver');
+    if (sauver) sauver.addEventListener('click', sauvegarderGreffe);
+    var rest = $('gf-restaurer');
+    if (rest) rest.addEventListener('change', function () { restaurerGreffe(rest.files && rest.files[0]); rest.value = ''; });
     hote.querySelectorAll('.gf-registre li').forEach(function (li) {
       var id = li.getAttribute('data-acte');
       li.querySelector('.gf-reg-ouvrir').addEventListener('click', function () {
@@ -1275,8 +1301,8 @@
   /* =================================================================
      9. L'APERÇU
      ================================================================= */
-  function cssPolices() {
-    return BESOINS.filter(function (b) { return !b.image && res[b.cle]; }).map(function (b) {
+  function cssPolices(sansParaphe) {
+    return BESOINS.filter(function (b) { return !b.image && res[b.cle] && !(sansParaphe && b.cle === 'paraphe'); }).map(function (b) {
       return "@font-face{font-family:'" + b.famille + "';src:url(" + res[b.cle] + ");"
            + "font-weight:" + b.graisse + ";font-style:" + (b.italique ? 'italic' : 'normal') + ";}";
     }).join('\n');
@@ -1423,6 +1449,9 @@
     var el = cibleEdit(e);
     if (!el) return;
     if (e.key === 'Escape') { e.preventDefault(); el.blur(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) retablir(); else annuler(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); retablir(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); enregistrer(false); return; }
     /* un champ d'une ligne : Entrée valide, elle n'ouvre pas de ligne */
     if (e.key === 'Enter' && !el.classList.contains('txt')) { e.preventDefault(); el.blur(); }
   }
@@ -1502,10 +1531,24 @@
         if (c.nodeType === 3) { s += c.nodeValue; return; }
         if (c.nodeType !== 1) return;
         if (c.tagName === 'BR') { s += '\n'; return; }
-        if (c.tagName === 'B' || c.tagName === 'STRONG') {
-          var t = enLigne(c); s += t.trim() ? '**' + t.trim() + '**' : t; return;
-        }
-        s += enLigne(c);
+        var t = enLigne(c), tag = c.tagName;
+        if (!t.trim()) { s += t; return; }
+        var st = c.style || {};
+        var fond = st.backgroundColor || (tag === 'MARK' ? 'mark' : '');
+        var couleur = st.color || (tag === 'FONT' && c.getAttribute('color')) || '';
+        var taille = st.fontSize || (tag === 'FONT' && c.getAttribute('size')) || '';
+        var cls = c.className || '';
+        /* dans l'ordre inverse du décor : couleur / taille autour, puis marque, souligné, italique, gras */
+        if (tag === 'B' || tag === 'STRONG' || st.fontWeight === 'bold' || +st.fontWeight >= 600) t = '**' + t.trim() + '**';
+        if (tag === 'I' || tag === 'EM' || st.fontStyle === 'italic') t = '*' + t.trim() + '*';
+        if (tag === 'U' || /underline/.test(st.textDecoration || st.textDecorationLine || '')) t = '__' + t.trim() + '__';
+        if (fond) t = '==' + t.trim() + '==';
+        var teinte = (cls.match(/\bs-(or|vert|rouge|gris)\b/) || [])[1] || teinteDe(couleur);
+        if (teinte) t = '{{' + teinte + '|' + t.trim() + '}}';
+        var dim = (cls.match(/\bs-(grand|petit)\b/) || [])[1] || tailleDe(taille);
+        if (dim) t = '{{' + dim + '|' + t.trim() + '}}';
+        if (/\bs-maj\b/.test(cls)) t = '{{maj|' + t.trim() + '}}';
+        s += t;
       });
       return s;
     }
@@ -1525,6 +1568,31 @@
       }
     });
     return out.join('\n\n');
+  }
+
+  /* Une couleur posée par le navigateur (rgb(...) ou #hex) vers l'une des
+     teintes de la charte ; rien si elle n'en est pas. */
+  function teinteDe(c) {
+    if (!c) return '';
+    var m = String(c).match(/(\d+)\D+(\d+)\D+(\d+)/), h = String(c).match(/^#([0-9a-f]{6})$/i);
+    var r, g, b;
+    if (h) { r = parseInt(h[1].slice(0, 2), 16); g = parseInt(h[1].slice(2, 4), 16); b = parseInt(h[1].slice(4, 6), 16); }
+    else if (m) { r = +m[1]; g = +m[2]; b = +m[3]; }
+    else return '';
+    var proches = { or: [193, 164, 98], vert: [15, 67, 43], rouge: [180, 35, 31], gris: [140, 148, 143] };
+    var meilleur = '', dist = 1e9;
+    Object.keys(proches).forEach(function (k) {
+      var p = proches[k], dd = (p[0] - r) * (p[0] - r) + (p[1] - g) * (p[1] - g) + (p[2] - b) * (p[2] - b);
+      if (dd < dist) { dist = dd; meilleur = k; }
+    });
+    return dist < 2500 ? meilleur : '';
+  }
+  function tailleDe(t) {
+    if (!t) return '';
+    var n = parseFloat(t);
+    if (/^\d+$/.test(String(t))) return n >= 4 ? 'grand' : (n <= 2 ? 'petit' : '');   /* <font size> */
+    if (/em|%/.test(String(t))) return n > 1.1 ? 'grand' : (n < 0.95 ? 'petit' : '');
+    return '';
   }
 
   /* Le curseur se retient comme un chemin et un rang de caractère : la
@@ -1566,6 +1634,125 @@
   }
 
   /* =================================================================
+     9 ter. ANNULER, RÉTABLIR, ET NE RIEN PERDRE
+     Une pile d'états de la donnée, pas du DOM : chaque geste (frappe sur
+     la feuille, champ du formulaire, bloc posé) laisse un état, les
+     frappes rapprochées n'en laissent qu'un. Ctrl+Z revient, Ctrl+Y
+     avance, et la feuille comme le formulaire se refont depuis l'état.
+     ================================================================= */
+  var histo = [], histoI = -1, histoMinuteur = null;
+
+  function histoDepart() {
+    histo = [JSON.stringify(donnees)]; histoI = 0;
+    histoBoutons();
+  }
+  function histoNoter() {
+    clearTimeout(histoMinuteur);
+    histoMinuteur = setTimeout(function () {
+      var s = JSON.stringify(donnees);
+      if (histo[histoI] === s) return;
+      histo = histo.slice(0, histoI + 1);
+      histo.push(s);
+      if (histo.length > 80) histo.shift();
+      histoI = histo.length - 1;
+      histoBoutons();
+    }, 500);
+  }
+  function histoAller(i) {
+    if (i < 0 || i >= histo.length) return;
+    clearTimeout(histoMinuteur);
+    histoI = i;
+    donnees = JSON.parse(histo[i]);
+    acteSauve = false; majTitreBarre();
+    peindreFormulaire();
+    rafraichir();
+    histoBoutons();
+  }
+  function annuler() { histoAller(histoI - 1); }
+  function retablir() { histoAller(histoI + 1); }
+  function histoBoutons() {
+    var a = $('gf-annuler'), r = $('gf-retablir');
+    if (a) a.disabled = histoI <= 0;
+    if (r) r.disabled = histoI >= histo.length - 1;
+  }
+
+  /* L'enregistrement automatique : un acte déjà au registre s'y remet
+     tout seul, 20 s après le dernier geste. Un acte neuf attend son
+     premier enregistrement (Ctrl+S, impression, ou fermeture). */
+  var autoMinuteur = null;
+  function autoEnregistrer() {
+    clearTimeout(autoMinuteur);
+    autoMinuteur = setTimeout(function () {
+      if (modeleActif && acteId && !acteSauve) enregistrer(true);
+    }, 20000);
+  }
+
+  /* Revenir aux textes tels que le modèle les écrit : les surcharges
+     faites sur la feuille s'effacent, les articles redeviennent
+     automatiques. La donnée (noms, dates, lignes) reste. */
+  function textesOrigine() {
+    var n = Object.keys(donnees.fixes || {}).length + (donnees.articles ? 1 : 0);
+    if (!n) { dire('Rien n\'a été réécrit sur cet acte.', 'ok'); return; }
+    donnees.fixes = {}; donnees.articles = null;
+    salir(); peindreFormulaire(); planifier();
+    dire('Textes d\'origine rétablis', 'ok');
+  }
+
+  /* =================================================================
+     9 quater. SAUVEGARDER LE GREFFE, LE RESTAURER
+     IndexedDB est un rangement commode, pas une archive : un profil
+     Chrome réinitialisé, un disque perdu, un poste changé, et tout
+     s'en va. D'où un fichier : registre, actes, préréglages. Jamais le
+     cachet ni les polices : ils se redéposent, ils ne voyagent pas.
+     ================================================================= */
+  function sauvegarderGreffe() {
+    var contenu = {
+      greffe: 'sauvegarde', version: 1, date: new Date().toISOString(),
+      actes: registre, prereglages: prereglages
+    };
+    var b = new Blob([JSON.stringify(contenu)], { type: 'application/json;charset=utf-8' });
+    var u = URL.createObjectURL(b), a = document.createElement('a');
+    a.href = u; a.download = 'BAOBABS_GREFFE_' + isoDuJour() + '.greffe.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
+    dire('Sauvegarde téléchargée : ' + registre.length + ' acte' + (registre.length > 1 ? 's' : '')
+       + ', ' + prereglages.length + ' préréglage' + (prereglages.length > 1 ? 's' : ''), 'ok');
+  }
+
+  function restaurerGreffe(fichier) {
+    if (!fichier) return;
+    fichier.text().then(function (txt) {
+      var o = JSON.parse(txt);
+      if (!o || o.greffe !== 'sauvegarde' || !o.actes) throw new Error('Ce fichier n\'est pas une sauvegarde du Greffe.');
+      var nA = 0, nP = 0;
+      var p = Promise.resolve();
+      (o.actes || []).forEach(function (f) {
+        if (!f || !f.id) return;
+        var local = registre.filter(function (a) { return a.id === f.id; })[0];
+        if (local && (local.maj || 0) >= (f.maj || 0)) return;   /* le plus récent gagne */
+        p = p.then(function () { return dbPoser(MAG_ACTES, f); }).then(function () {
+          registre = registre.filter(function (a) { return a.id !== f.id; }); registre.push(f); nA++;
+        });
+      });
+      (o.prereglages || []).forEach(function (q) {
+        if (!q || !q.id) return;
+        var local = prereglages.filter(function (a) { return a.id === q.id; })[0];
+        if (local && (local.maj || 0) >= (q.maj || 0)) return;
+        p = p.then(function () { return dbPoser(MAG_PRE, q); }).then(function () {
+          prereglages = prereglages.filter(function (a) { return a.id !== q.id; }); prereglages.push(q); nP++;
+        });
+      });
+      return p.then(function () {
+        registre.sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); });
+        prereglages.sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); });
+        peindreAccueil();
+        dire('Restauré : ' + nA + ' acte' + (nA > 1 ? 's' : '') + ', ' + nP + ' préréglage' + (nP > 1 ? 's' : '')
+           + (nA + nP ? '' : ' (rien de plus récent que ce poste)'), 'ok');
+      });
+    }).catch(function (e) { dire(e && e.message ? e.message : String(e), 'erreur'); });
+  }
+
+  /* =================================================================
      10. SORTIR L'ACTE
      Le fichier exporté est la feuille telle qu'on la voit, pages
      comprises, moins ce qui n'appartient qu'à l'écran.
@@ -1576,7 +1763,10 @@
     var corps;
     if (cadre && cadrePret && cadre.contentDocument.querySelector('.pages')) {
       var clone = cadre.contentDocument.body.cloneNode(true);
-      Array.prototype.forEach.call(clone.querySelectorAll('tr.tr-suite, .pill-vide'), function (n) { n.parentNode.removeChild(n); });
+      /* Le fichier source est un fichier de travail : il ne porte ni le
+         cachet ni la signature, qui ne vont que sur le PDF imprimé ici.
+         Sinon ce fichier serait une copie du cachet, bonne à recopier. */
+      Array.prototype.forEach.call(clone.querySelectorAll('tr.tr-suite, .pill-vide, .sig-ink, .sig-cachet'), function (n) { n.parentNode.removeChild(n); });
       Array.prototype.forEach.call(clone.querySelectorAll('[data-edit]'), function (n) {
         n.removeAttribute('data-edit'); n.removeAttribute('contenteditable'); n.removeAttribute('spellcheck');
       });
@@ -1586,7 +1776,7 @@
     }
     return '<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n'
       + '<title>' + titre + '</title>\n'
-      + '<style>\n' + cssPolices() + '\n</style>\n'
+      + '<style>\n' + cssPolices(true) + '\n</style>\n'
       + '<style>\n' + cssDocument() + '\n</style>\n'
       + '</head>\n<body class="pagine">\n' + corps + '\n</body>\n</html>\n';
   }
@@ -1603,7 +1793,7 @@
     a.href = u; a.download = nomFichier() + '.html';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
-    dire('Fichier source téléchargé', 'ok');
+    dire('Fichier source téléchargé, sans signature ni cachet', 'ok');
   }
 
   function imprimer() {
@@ -1666,6 +1856,9 @@
     $('gf-zoom-plus').addEventListener('click', function () { zoom = Math.min(1.5, zoom + 0.1); appliquerZoom(); });
     $('gf-export-html').addEventListener('click', exporterHtml);
     $('gf-prereglage').addEventListener('click', garderPrereglage);
+    $('gf-origine').addEventListener('click', textesOrigine);
+    $('gf-annuler').addEventListener('click', annuler);
+    $('gf-retablir').addEventListener('click', retablir);
     $('gf-imprimer').addEventListener('click', imprimer);
 
     racine.querySelectorAll('[data-fermer-modale]').forEach(function (b) {
@@ -1695,6 +1888,8 @@
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault(); enregistrer(false);
       }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); annuler(); }
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); retablir(); }
     });
   }
 

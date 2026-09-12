@@ -150,6 +150,31 @@
       "  border-left:2pt solid var(--or); }",
       ".note p{ font-size:7.3pt; color:var(--gris); font-style:italic; }",
 
+      /* ---- variations dans le texte ---- */
+      "i,em{ font-style:italic; }",
+      "u{ text-decoration:underline; text-underline-offset:1.6pt; text-decoration-thickness:.6pt; }",
+      "mark{ background:#FFF0B3; color:inherit; padding:0 1.5pt; border-radius:1.5pt; }",
+      ".s-or{ color:var(--or); } .s-vert{ color:var(--vert); } .s-rouge{ color:#B4231F; } .s-gris{ color:var(--gris); }",
+      ".s-grand{ font-size:1.22em; } .s-petit{ font-size:.85em; }",
+      ".s-maj{ text-transform:uppercase; letter-spacing:.06em; font-size:.92em; }",
+
+      /* ---- le style d'un bloc : alignement, thème de couleur ---- */
+      ".bloc.al-centre{ text-align:center; }",
+      ".bloc.al-centre p, .bloc.al-centre li, .bloc.al-centre .hero-sub, .bloc.al-centre .libre p{ margin-left:auto; margin-right:auto; }",
+      ".bloc.al-centre .fig{ align-items:center; } .bloc.al-centre .parties, .bloc.al-centre .facts{ text-align:left; }",
+      ".bloc.al-droite{ text-align:right; }",
+      ".bloc.al-droite p, .bloc.al-droite .hero-sub{ margin-left:auto; }",
+      ".bloc.th-vert{ --fond-bloc:#E3EDE7; --fond-tint:#EDF3EF; --or:#0F432B; }",
+      ".bloc.th-rouge{ --fond-bloc:#F8E7E6; --fond-tint:#FBF1F0; --or:#B4231F; --vert:#8E1B18; }",
+      ".bloc.th-neutre{ --fond-bloc:#EEF0EF; --fond-tint:#F4F5F4; --or:#8C948F; --vert:#33403A; }",
+      ".bloc.th-plein > .encadre, .bloc.th-plein > .libre, .bloc.th-plein > .hero{ background:var(--vert); color:#fff;",
+      "  border-radius:8pt; padding:7pt 12pt 8pt 12pt; }",
+      ".bloc.th-plein > .encadre::before{ background:var(--or); }",
+      ".bloc.th-plein .label, .bloc.th-plein h1, .bloc.th-plein h2, .bloc.th-plein h3, .bloc.th-plein b, .bloc.th-plein strong,",
+      ".bloc.th-plein p, .bloc.th-plein li, .bloc.th-plein .hero-sub, .bloc.th-plein .verbe{ color:#fff; }",
+      ".bloc.th-plein li::before{ background:var(--or); }",
+      ".bloc.th-plein .pill{ background:var(--or); color:var(--vert); } .bloc.th-plein .pill i{ background:var(--vert); }",
+
       /* ---- texte libre, image ---- */
       ".libre .label{ display:block; margin-bottom:3pt; }",
       ".libre-titre{ font-family:'Gilroy',sans-serif; font-weight:700; font-size:9.6pt; line-height:1.25;",
@@ -362,6 +387,40 @@
     if (!attr) return U.paragraphes(t || '');
     return '<div class="txt"' + attr + '>' + U.paragraphes(t || '') + '</div>';
   }
+  /* Un texte de bloc, d'où qu'il vienne, s'écrit sur la feuille :
+       '@chemin'          la donnée elle-même, au chemin dit ;
+       calculé, constant  une surcharge dans d.fixes, au chemin
+                          « fixes.<bloc>.<champ> » ; le texte d'origine
+                          reste disponible, et revient si l'on efface.
+     C'est ce qui rend TOUT modifiable, sans exception, y compris le
+     mandatement d'un ordre de mission ou la certification d'une annexe. */
+  function slot(obj, cle, d, ctx, defaut, prefixe) {
+    var v = obj ? obj[cle] : undefined;
+    var declare = v !== undefined;
+    if (typeof v === 'string' && v.charAt(0) === '@') return { t: val(v, d, ctx), a: edit(v), declare: true };
+    var calc = val(v, d, ctx);
+    if (calc == null || calc === '') calc = (defaut == null ? '' : defaut);
+    if (ctx.bi == null) return { t: calc, a: '', declare: declare };
+    var chemin = ctx.bi + '.' + (prefixe ? prefixe + '.' : '') + cle;
+    var fixe = lire(d, 'fixes.' + chemin);
+    return { t: fixe != null ? fixe : calc, a: editChemin('fixes.' + chemin), fixe: fixe != null, declare: declare };
+  }
+  B.slot = slot;
+
+  /* Le même, pour un texte riche : paragraphes, puces, notes. */
+  function slotTexte(obj, cle, d, ctx, defaut, prefixe) {
+    var s = slot(obj, cle, d, ctx, defaut, prefixe);
+    if (!s.a) return U.paragraphes(s.t || '');
+    return '<div class="txt"' + s.a + '>' + U.paragraphes(s.t || '') + '</div>';
+  }
+  /* Un élément d'une ligne : <tag class="x" data-edit="…">texte</tag>, ou rien
+     si le texte est vide et qu'aucun chemin ne permet d'en écrire un. */
+  function ligne(tag, classe, s) {
+    /* un texte vide ne s'affiche que s'il est déclaré par le modèle : on
+       peut alors y écrire ; un texte que le modèle ne prévoit pas n'existe pas */
+    if (!s.t && !(s.a && s.declare)) return '';
+    return '<' + tag + (classe ? ' class="' + classe + '"' : '') + s.a + '>' + U.ech(s.t || '') + '</' + tag + '>';
+  }
 
   function fond(ctx) {
     return ctx.res && ctx.res.blason
@@ -475,8 +534,7 @@
         }).join('') + '</tr></tfoot>';
     }
 
-    var titre = val(cfg.titre, d, ctx);
-    return ((titre || edit(cfg.titre)) ? '<div class="tab-titre"' + edit(cfg.titre) + '>' + U.ech(titre || '') + '</div>' : '')
+    return ligne('div', 'tab-titre', slot(cfg, 'titre', d, ctx))
       + '<table><colgroup>' + colgroup + '</colgroup>'
       + '<thead>' + thead + '</thead><tbody>' + tbody + '</tbody>' + tfoot + '</table>';
   };
@@ -489,16 +547,15 @@
 
     entete: function (cfg, d, ctx) {
       var droite = val(cfg.droite, d, ctx) || [];
-      /* droite peut être un tableau de chaînes, ou de '@chemins' modifiables */
+      /* droite : un tableau de chaînes, ou de '@chemins' ; chaque ligne est un slot */
       var lignes = droite.map(function (l, i) {
-        var t = val(l, d, ctx);
-        var e = edit(l);
-        return (i === 0 ? '<b' + e + '>' : '<span' + e + '>') + U.ech(t || '') + (i === 0 ? '</b>' : '</span>');
+        var s = slot({ l: l }, 'l', d, ctx, '', 'droite.' + i);
+        return ligne(i === 0 ? 'b' : 'span', '', s);
       });
       var drapeau = val(cfg.drapeau, d, ctx);
       return '<header class="head"><div class="head-left"><div class="crest"' + fond(ctx) + '></div><div>'
-        + '<div class="wordmark"' + edit(cfg.nom) + '>' + U.ech(val(cfg.nom, d, ctx) || 'BAOBABS BASKET CLUB') + '</div>'
-        + '<div class="tagline"' + edit(cfg.devise) + '>' + U.ech(val(cfg.devise, d, ctx) || 'Grandir ici. Régner partout.') + '</div>'
+        + ligne('div', 'wordmark', slot(cfg, 'nom', d, ctx, 'BAOBABS BASKET CLUB'))
+        + ligne('div', 'tagline', slot(cfg, 'devise', d, ctx, 'Grandir ici. Régner partout.'))
         + '</div></div><div class="head-right">'
         + (drapeau === false ? '' :
             '<div class="flagbox"><span class="flagwrap">' + B.DRAPEAU + '</span>'
@@ -508,16 +565,16 @@
     },
 
     titre: function (cfg, d, ctx) {
-      var etiq = val(cfg.etiquette, d, ctx);
-      var pastille = val(cfg.pastille, d, ctx);
+      var etiq = slot(cfg, 'etiquette', d, ctx), pastille = slot(cfg, 'pastille', d, ctx);
+      var t = slot(cfg, 'texte', d, ctx), sous = slot(cfg, 'sous', d, ctx);
       return '<section class="hero avoid">'
-        + ((etiq || pastille || edit(cfg.etiquette) || edit(cfg.pastille)) ? '<div class="hero-top">'
-            + '<span class="label"' + edit(cfg.etiquette) + '>' + U.ech(etiq || '') + '</span>'
-            + ((pastille || edit(cfg.pastille)) ? '<span class="pill' + (pastille ? '' : ' pill-vide') + '"><i></i><span' + edit(cfg.pastille) + '>' + U.ech(pastille || '') + '</span></span>' : '')
+        + ((etiq.t || pastille.t || etiq.a || pastille.a) ? '<div class="hero-top">'
+            + ligne('span', 'label', etiq)
+            + ((pastille.t || pastille.a) ? '<span class="pill' + (pastille.t ? '' : ' pill-vide') + '"><i></i>'
+                + ligne('span', '', pastille) + '</span>' : '')
             + '</div>' : '')
-        + '<h1' + edit(cfg.texte) + '>' + U.ech(val(cfg.texte, d, ctx) || '') + '</h1>'
-        + ((val(cfg.sous, d, ctx) || edit(cfg.sous))
-            ? '<p class="hero-sub"' + edit(cfg.sous) + '>' + U.ech(val(cfg.sous, d, ctx) || '') + '</p>' : '')
+        + '<h1' + t.a + '>' + U.ech(t.t || '') + '</h1>'
+        + ligne('p', 'hero-sub', sous)
         + '</section>';
     },
 
@@ -526,25 +583,27 @@
         return c && (c.chemin || String(c.valeur || '').trim());
       });
       if (!cells.length) return '';
-      return '<section class="facts avoid">' + cells.map(function (c) {
-        if (!c.chemin) return U.fait(c.label, c.valeur, c.sous);
-        /* une case libre : ses trois textes s'écrivent sur la feuille */
-        var ch = c.chemin + '.';
-        return '<div class="fact"><span class="label"' + editChemin(ch + 'label') + '>' + U.ech(c.label || '') + '</span>'
-          + '<b' + editChemin(ch + 'valeur') + '>' + U.ech(c.valeur || '') + '</b>'
-          + '<em' + editChemin(ch + 'sous') + '>' + U.ech(c.sous || '') + '</em></div>';
+      return '<section class="facts avoid">' + cells.map(function (c, j) {
+        /* une case libre écrit dans sa donnée ; une case calculée, dans fixes */
+        var L, V, S;
+        if (c.chemin) {
+          var ch = c.chemin + '.';
+          L = { t: c.label, a: editChemin(ch + 'label') }; V = { t: c.valeur, a: editChemin(ch + 'valeur') }; S = { t: c.sous, a: editChemin(ch + 'sous') };
+        } else {
+          L = slot(c, 'label', d, ctx, '', 'cellules.' + j); V = slot(c, 'valeur', d, ctx, '', 'cellules.' + j); S = slot(c, 'sous', d, ctx, '', 'cellules.' + j);
+        }
+        return '<div class="fact">' + ligne('span', 'label', L) + ligne('b', '', V) + ligne('em', '', S) + '</div>';
       }).join('') + '</section>';
     },
 
     encadre: function (cfg, d, ctx) {
-      var t = val(cfg.titre, d, ctx);
-      var av = val(cfg.avant, d, ctx), vb = val(cfg.verbe, d, ctx), ap = val(cfg.apres, d, ctx);
+      var av = slot(cfg, 'avant', d, ctx), ap = slot(cfg, 'apres', d, ctx);
       return '<section class="encadre avoid">'
-        + (cfg.etiquette ? '<span class="label"' + edit(cfg.etiquette) + '>' + U.ech(val(cfg.etiquette, d, ctx) || '') + '</span>' : '')
-        + ((t || edit(cfg.titre)) ? '<h2' + edit(cfg.titre) + '>' + U.ech(t || '') + '</h2>' : '')
-        + ((av || edit(cfg.avant)) ? texte(cfg.avant, d, ctx) : '')
-        + (vb ? '<div class="verbe"' + edit(cfg.verbe) + '>' + U.ech(vb) + '</div>' : '')
-        + ((ap || edit(cfg.apres)) ? texte(cfg.apres, d, ctx) : '')
+        + (cfg.etiquette != null ? ligne('span', 'label', slot(cfg, 'etiquette', d, ctx)) : '')
+        + ligne('h2', '', slot(cfg, 'titre', d, ctx))
+        + ((av.t || cfg.avant != null) ? slotTexte(cfg, 'avant', d, ctx) : '')
+        + (cfg.verbe != null ? ligne('div', 'verbe', slot(cfg, 'verbe', d, ctx)) : '')
+        + ((ap.t || cfg.apres != null) ? slotTexte(cfg, 'apres', d, ctx) : '')
         + '</section>';
     },
 
@@ -553,7 +612,8 @@
        pointillé, à compléter au stylo sur l'exemplaire signé. */
     parties: function (cfg, d, ctx) {
       var ps = val(cfg.parties, d, ctx) || [];
-      return '<section class="parties avoid">' + ps.map(function (p) {
+      return '<section class="parties avoid">' + ps.map(function (p, j) {
+        var pre = 'parties.' + j;
         var champs = (p.champs || []).map(function (c) {
           var v = String(c.valeur == null ? '' : c.valeur).trim();
           return '<div class="party-champ' + (c.large ? ' large' : '') + '">'
@@ -561,20 +621,19 @@
             + (v ? '<span class="v">' + U.ech(v) + '</span>' : '<span class="pointille"></span>')
             + '</div>';
         }).join('');
-        var nom = val(p.nom, d, ctx), tag = val(p.tag, d, ctx);
-        return '<div class="party"><span class="label">' + U.ech(val(p.label, d, ctx) || '') + '</span>'
-          + '<div class="party-nom"' + edit(p.nom) + '>' + U.ech(nom || '') + '</div>'
-          + ((val(p.texte, d, ctx) || edit(p.texte)) ? texte(p.texte, d, ctx) : '')
+        var tx = slot(p, 'texte', d, ctx, '', pre);
+        return '<div class="party">' + ligne('span', 'label', slot(p, 'label', d, ctx, '', pre))
+          + ligne('div', 'party-nom', slot(p, 'nom', d, ctx, '', pre))
+          + ((tx.t || p.texte != null) ? slotTexte(p, 'texte', d, ctx, '', pre) : '')
           + (champs ? '<div class="party-champs">' + champs + '</div>' : '')
-          + ((tag || edit(p.tag)) ? '<div class="party-tag"' + edit(p.tag) + '>' + U.ech(tag || '') + '</div>' : '')
+          + ligne('div', 'party-tag', slot(p, 'tag', d, ctx, '', pre))
           + '</div>';
       }).join('') + '</section>';
     },
 
     /* La phrase qui ouvre les articles : « Il est convenu ce qui suit : ». */
     phrase: function (cfg, d, ctx) {
-      var t = val(cfg.texte, d, ctx);
-      return (t || edit(cfg.texte)) ? '<p class="lead"' + edit(cfg.texte) + '>' + U.ech(t || '') + '</p>' : '';
+      return ligne('p', 'lead', slot(cfg, 'texte', d, ctx));
     },
 
     /* Un budget, un devis, un bilan : les lignes d'UN tableau, groupées
@@ -635,12 +694,10 @@
     },
 
     lettre: function (cfg, d, ctx) {
-      var s = val(cfg.salutation, d, ctx);
-      var g = val(cfg.formule, d, ctx);
       return '<section class="lettre">'
-        + ((s || edit(cfg.salutation)) ? '<p class="salut"' + edit(cfg.salutation) + '>' + U.ech(s || '') + '</p>' : '')
-        + texte(cfg.texte, d, ctx)
-        + ((g || edit(cfg.formule)) ? '<p class="greet"' + edit(cfg.formule) + '>' + U.ech(g || '') + '</p>' : '')
+        + ligne('p', 'salut', slot(cfg, 'salutation', d, ctx))
+        + slotTexte(cfg, 'texte', d, ctx)
+        + ligne('p', 'greet', slot(cfg, 'formule', d, ctx))
         + '</section>';
     },
 
@@ -659,10 +716,11 @@
     chips: function (cfg, d, ctx) {
       var cs = (val(cfg.chips, d, ctx) || []).filter(function (c) { return c && (c.valeur || c.chemin); });
       if (!cs.length) return '';
-      return '<div class="chips">' + cs.map(function (c) {
-        var ch = c.chemin ? c.chemin + '.' : '';
-        return '<div class="chip"><span class="label"' + (ch ? editChemin(ch + 'label') : '') + '>' + U.ech(c.label || '') + '</span><b'
-          + (ch ? editChemin(ch + 'valeur') : '') + '>' + U.ech(c.valeur || '') + '</b></div>';
+      return '<div class="chips">' + cs.map(function (c, j) {
+        var L, V;
+        if (c.chemin) { L = { t: c.label, a: editChemin(c.chemin + '.label') }; V = { t: c.valeur, a: editChemin(c.chemin + '.valeur') }; }
+        else { L = slot(c, 'label', d, ctx, '', 'chips.' + j); V = slot(c, 'valeur', d, ctx, '', 'chips.' + j); }
+        return '<div class="chip">' + ligne('span', 'label', L) + ligne('b', '', V) + '</div>';
       }).join('') + '</div>';
     },
 
@@ -680,45 +738,46 @@
         + (enColonne ? ' closing-col' : (cartes.length > 1 ? ' signs-2' : '')) + '">';
       if (gauche) {
         /* lieuDate et note sont du HTML quand un modèle les calcule (un
-           <b> autour de la date), du texte échappé quand ils viennent
-           d'une donnée modifiable */
-        var lieuDate = edit(gauche.lieuDate) ? U.ech(val(gauche.lieuDate, d, ctx) || '') : gauche.lieuDate;
-        var note = edit(gauche.note) ? U.ech(val(gauche.note, d, ctx) || '') : gauche.note;
-        var reference = val(gauche.reference, d, ctx);
+           <b> autour de la date) : ils s'affichent tels quels tant qu'on
+           ne les a pas réécrits ; réécrits, ce sont des textes */
+        var ld = slot(gauche, 'lieuDate', d, ctx, '', 'gauche'), nt = slot(gauche, 'note', d, ctx, '', 'gauche');
+        var rf = slot(gauche, 'reference', d, ctx, '', 'gauche');
+        var brutLd = (!ld.fixe && !edit(gauche.lieuDate)) ? (ld.t || '') : U.ech(ld.t || '');
+        var brutNt = (!nt.fixe && !edit(gauche.note)) ? (nt.t || '') : U.ech(nt.t || '');
         html += '<div class="closing-left">'
-          + ((lieuDate || edit(gauche.lieuDate)) ? '<div class="place"' + edit(gauche.lieuDate) + '>' + (lieuDate || '') + '</div>' : '')
-          + ((note || edit(gauche.note)) ? '<p class="closing-note"' + edit(gauche.note) + '>' + (note || '') + '</p>' : '')
-          + (reference ? '<div class="ref"><span class="label">Référence</span> <span' + edit(gauche.reference) + '>'
-              + U.ech(reference) + '</span></div>' : '')
+          + ((brutLd || ld.a) ? '<div class="place"' + ld.a + '>' + brutLd + '</div>' : '')
+          + ((brutNt || nt.a) ? '<p class="closing-note"' + nt.a + '>' + brutNt + '</p>' : '')
+          + (rf.t ? '<div class="ref"><span class="label">Référence</span> ' + ligne('span', '', rf) + '</div>' : '')
           + '</div>';
       }
-      var htmlCartes = cartes.map(function (c) { return B.carteSignature(c, d, ctx); }).join('');
+      var htmlCartes = cartes.map(function (c, j) { return B.carteSignature(c, d, ctx, 'cartes.' + j); }).join('');
       html += enColonne ? '<div class="signs-row">' + htmlCartes + '</div>' : htmlCartes;
       return html + '</div></section>';
     },
 
     annexe: function (cfg, d, ctx) {
-      var inner = (cfg.contenu || []).map(function (b) { return B.rendre(b, d, ctx); }).join('');
+      var inner = (cfg.contenu || []).map(function (b, j) { return B.rendre(b, d, ctx, ctx.bi + '_' + j); }).join('');
       if (!String(inner).replace(/<[^>]*>/g, '').trim() && !/table/.test(inner)) return '';
       var meta = val(cfg.meta, d, ctx) || [];
+      var tt = slot(cfg, 'titre', d, ctx), ss = slot(cfg, 'sous', d, ctx);
       return '<section class="annexe">'
         + '<div class="ann-head"><div class="ann-head-left"><div class="crest"' + fond(ctx) + '></div>'
-        + '<div class="ann-title">' + U.ech(val(cfg.titre, d, ctx) || '')
-        + '<span>' + U.ech(val(cfg.sous, d, ctx) || '') + '</span></div></div>'
+        + '<div class="ann-title"><span class="ann-t"' + tt.a + '>' + U.ech(tt.t || '') + '</span>'
+        + ligne('span', '', ss) + '</div></div>'
         + (meta.length ? '<div class="ann-meta">' + meta.map(function (l, i) {
-            return i === 0 ? '<b>' + U.ech(l) + '</b>' : U.ech(l);
+            return ligne(i === 0 ? 'b' : 'span', '', slot({ l: l }, 'l', d, ctx, '', 'meta.' + i));
           }).join('<br>') + '</div>' : '')
         + '</div>' + inner + '</section>';
     },
 
     certification: function (cfg, d, ctx) {
       var cartes = val(cfg.cartes, d, ctx) || [];
+      var rf = slot(cfg, 'reference', d, ctx);
       return '<div class="closing-grid avoid" style="margin-top:12pt"><div class="certif">'
-        + '<span class="label">' + U.ech(val(cfg.etiquette, d, ctx) || 'Certification') + '</span>'
-        + U.paragraphes(val(cfg.texte, d, ctx) || '')
-        + (val(cfg.reference, d, ctx) ? '<div class="ref" style="margin-top:8pt">'
-            + '<span class="label">Référence</span> ' + U.ech(val(cfg.reference, d, ctx)) + '</div>' : '')
-        + '</div>' + cartes.map(function (c) { return B.carteSignature(c, d, ctx); }).join('') + '</div>';
+        + ligne('span', 'label', slot(cfg, 'etiquette', d, ctx, 'Certification'))
+        + slotTexte(cfg, 'texte', d, ctx)
+        + (rf.t ? '<div class="ref" style="margin-top:8pt"><span class="label">Référence</span> ' + ligne('span', '', rf) + '</div>' : '')
+        + '</div>' + cartes.map(function (c, j) { return B.carteSignature(c, d, ctx, 'cartes.' + j); }).join('') + '</div>';
     },
 
     espace: function (cfg, d, ctx) {
@@ -728,12 +787,10 @@
     /* Un texte libre : des paragraphes, des puces, des notes, et c'est
        tout. Le corps d'une attestation, d'une décision, d'une note. */
     texte: function (cfg, d, ctx) {
-      var etiq = val(cfg.etiquette, d, ctx);
-      var t = val(cfg.titre, d, ctx);
       return '<section class="libre">'
-        + ((etiq || edit(cfg.etiquette)) ? '<span class="label"' + edit(cfg.etiquette) + '>' + U.ech(etiq || '') + '</span>' : '')
-        + ((t || edit(cfg.titre)) ? '<h3 class="libre-titre"' + edit(cfg.titre) + '>' + U.ech(t || '') + '</h3>' : '')
-        + texte(cfg.texte, d, ctx)
+        + ligne('span', 'label', slot(cfg, 'etiquette', d, ctx))
+        + ligne('h3', 'libre-titre', slot(cfg, 'titre', d, ctx))
+        + slotTexte(cfg, 'texte', d, ctx)
         + '</section>';
     },
 
@@ -749,7 +806,7 @@
       return '<figure class="fig cal-' + U.ech(cal) + '">'
         + (src ? '<img src="' + src + '" style="' + style + '" alt="">'
                : '<div class="fig-vide" style="' + style + 'height:' + Math.round(l * 0.6) + 'mm"></div>')
-        + ((legende || edit(cfg.legende)) ? '<figcaption' + edit(cfg.legende) + '>' + U.ech(legende || '') + '</figcaption>' : '')
+        + ligne('figcaption', '', slot(cfg, 'legende', d, ctx))
         + '</figure>';
     },
 
@@ -762,38 +819,53 @@
 
   /* La carte de signature, partagée par « signatures » et
      « certification » : une seule définition de l'encre. */
-  B.carteSignature = function (c, d, ctx) {
-    var nom = val(c.nom, d, ctx) || '', qualite = val(c.qualite, d, ctx) || '';
-    var pour = val(c.pour, d, ctx) || '', mention = val(c.mention, d, ctx) || 'Signature et cachet';
+  B.carteSignature = function (c, d, ctx, prefixe) {
+    var nom = slot(c, 'nom', d, ctx, '', prefixe), qualite = slot(c, 'qualite', d, ctx, '', prefixe);
+    var pour = slot(c, 'pour', d, ctx, '', prefixe), mention = slot(c, 'mention', d, ctx, 'Signature et cachet', prefixe);
     var encre = '';
     if (d.avecSignature !== false && c.signer !== false) {
       encre += '<div class="sig-ink"><div class="sig-name">'
-        + U.ech(U.initialeNom(nom)) + '</div>'
+        + U.ech(U.initialeNom(nom.t)) + '</div>'
         + '<div class="sig-paraphe">' + B.PARAPHE + '</div></div>';
     }
     if (d.avecCachet !== false && c.cacheter !== false && ctx.res && ctx.res.cachet) {
       encre += '<div class="sig-cachet" style="background-image:url(' + ctx.res.cachet + ')"></div>';
     }
     return '<div class="sign-card">'
-      + '<span class="label"' + edit(c.pour) + '>' + U.ech(pour) + '</span>'
-      + '<div class="sign-who"><span class="sign-name"' + edit(c.nom) + '>' + U.ech(nom) + '</span>'
-      + '<span class="sign-role"' + edit(c.qualite) + '>' + U.ech(qualite) + '</span></div>'
+      + '<span class="label"' + pour.a + '>' + U.ech(pour.t || '') + '</span>'
+      + '<div class="sign-who"><span class="sign-name"' + nom.a + '>' + U.ech(nom.t || '') + '</span>'
+      + '<span class="sign-role"' + qualite.a + '>' + U.ech(qualite.t || '') + '</span></div>'
       + '<div class="ink-zone">' + encre + '</div>'
-      + '<div class="sign-cta"' + edit(c.mention) + '>' + U.ech(mention) + '</div>'
+      + '<div class="sign-cta"' + mention.a + '>' + U.ech(mention.t || '') + '</div>'
       + '</div>';
   };
 
   /* ==================================================================
      LE MONTAGE
      ================================================================== */
-  B.rendre = function (bloc, d, ctx) {
+  /* Chaque bloc porte son index (b3, b5_2 dans une annexe) : c'est la
+     clé de ses surcharges de texte (fixes) et de son style (styles). */
+  B.rendre = function (bloc, d, ctx, bi) {
     if (!bloc || !bloc.b) return '';
     if (bloc.si && !val(bloc.si, d, ctx)) return '';
     var f = B.rendus[bloc.b];
     if (!f) return '<!-- bloc inconnu : ' + U.ech(bloc.b) + ' -->';
+    var avant = ctx.bi;
+    ctx.bi = bi != null ? bi : ctx.bi;
     var html = f(bloc, d, ctx);
+    var cle = ctx.bi;
+    ctx.bi = avant;
     if (!html) return '';
-    return bloc.b === 'annexe' ? html : '<div class="bloc">' + html + '</div>';
+    if (bloc.b === 'annexe') return html;
+    var st = (d.styles && cle != null) ? d.styles[cle] : null;
+    var classes = 'bloc';
+    var style = '';
+    if (st) {
+      if (st.align && st.align !== 'gauche') classes += ' al-' + st.align;
+      if (st.theme) classes += ' th-' + st.theme;
+      if (st.taille && +st.taille !== 100) style = ' style="zoom:' + (+st.taille / 100) + '"';
+    }
+    return '<div class="' + classes + '"' + (cle != null ? ' data-bloc="' + cle + '"' : '') + style + '>' + html + '</div>';
   };
 
   /* ==================================================================
@@ -938,13 +1010,16 @@
   };
 
   B.assembler = function (modele, d, ctx) {
-    var corps = (val(modele.page, d, ctx) || []).map(function (b) { return B.rendre(b, d, ctx); }).join('\n');
+    var corps = (val(modele.page, d, ctx) || []).map(function (b, i) { return B.rendre(b, d, ctx, 'b' + i); }).join('\n');
     var pied = val(modele.pied, d, ctx) || [];
+    /* le pied de page aussi s'écrit sur la feuille : fixes.pied.0, fixes.pied.1 */
+    var p0 = lire(d, 'fixes.pied.0'), p1 = lire(d, 'fixes.pied.1');
+    if (p0 == null) p0 = pied[0] || ''; if (p1 == null) p1 = pied[1] || '';
     return '<div class="wm"><div' + fond(ctx) + '></div></div>'
       + '<div class="wrap">' + corps + '</div>'
-      + (pied.length
-          ? '<footer class="foot"><i></i><span>' + U.ech(pied[0] || '') + '</span>'
-            + '<span class="right">' + U.ech(pied[1] || '') + '</span></footer>'
+      + ((pied.length || p0 || p1)
+          ? '<footer class="foot"><i></i><span data-edit="fixes.pied.0">' + U.ech(p0) + '</span>'
+            + '<span class="right" data-edit="fixes.pied.1">' + U.ech(p1) + '</span></footer>'
           : '');
   };
 
