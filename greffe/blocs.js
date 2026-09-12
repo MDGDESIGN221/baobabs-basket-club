@@ -440,7 +440,7 @@
     /* un texte vide ne s'affiche que s'il est déclaré par le modèle : on
        peut alors y écrire ; un texte que le modèle ne prévoit pas n'existe pas */
     if (!s.t && !(s.a && s.declare)) return '';
-    return '<' + tag + (classe ? ' class="' + classe + '"' : '') + s.a + '>' + U.ech(s.t || '') + '</' + tag + '>';
+    return '<' + tag + (classe ? ' class="' + classe + '"' : '') + s.a + '>' + U.enLigne(s.t || '') + '</' + tag + '>';
   }
 
   function fond(ctx) {
@@ -477,9 +477,9 @@
     v = (v == null ? '' : String(v));
     if (col.forme === 'pastille' && v) {
       var ton = (cfg.tonPastille && cfg.tonPastille(v, ligne)) || 'ton-doux';
-      return '<span class="q ' + ton + '">' + U.ech(v) + '</span>';
+      return '<span class="q ' + ton + '">' + U.enLigne(v) + '</span>';
     }
-    return U.ech(v);
+    return U.enLigne(v);
   }
 
   /* Les lignes utiles d'une table, chacune avec son rang d'origine :
@@ -521,7 +521,7 @@
     var thead = '<tr>' + (numeroter ? '<th class="a-centre th-rang">N°</th>' : '')
       + cols.map(function (c, j) {
         var a = c.align === 'centre' ? ' class="a-centre"' : (c.align === 'droite' ? ' class="a-droite"' : '');
-        return '<th' + a + editChemin('tables.' + cfg.source + '.colonnes.' + j + '.titre') + '>' + U.ech(c.titre || '') + '</th>';
+        return '<th' + a + editChemin('tables.' + cfg.source + '.colonnes.' + j + '.titre') + '>' + U.enLigne(c.titre || '') + '</th>';
       }).join('') + '</tr>';
 
     var chemin = 'tables.' + cfg.source + '.lignes.';
@@ -545,7 +545,7 @@
       tfoot = '<tfoot><tr>'
         + (numeroter ? '<td></td>' : '')
         + cols.map(function (c, i) {
-          if (!c.total) return '<td' + classeCellule(c) + (i === 0 ? editChemin('fixes.' + ctx.bi + '.libelleTotal') : '') + '>' + (i === 0 ? U.ech(lire(d, 'fixes.' + ctx.bi + '.libelleTotal') || 'Total') : '') + '</td>';
+          if (!c.total) return '<td' + classeCellule(c) + (i === 0 ? editChemin('fixes.' + ctx.bi + '.libelleTotal') : '') + '>' + (i === 0 ? U.enLigne(lire(d, 'fixes.' + ctx.bi + '.libelleTotal') || 'Total') : '') + '</td>';
           var s = lignes.reduce(function (acc, r) {
             var n = parseFloat(String(r.l[c.cle] || '').replace(/[^\d.,-]/g, '').replace(',', '.'));
             return acc + (isNaN(n) ? 0 : n);
@@ -594,7 +594,7 @@
             + ((pastille.t || pastille.a) ? '<span class="pill' + (pastille.t ? '' : ' pill-vide') + '"><i></i>'
                 + ligne('span', '', pastille) + '</span>' : '')
             + '</div>' : '')
-        + '<h1' + t.a + '>' + U.ech(t.t || '') + '</h1>'
+        + '<h1' + t.a + '>' + U.enLigne(t.t || '') + '</h1>'
         + ligne('p', 'hero-sub', sous)
         + '</section>';
     },
@@ -638,8 +638,8 @@
         var champs = (p.champs || []).map(function (c) {
           var v = String(c.valeur == null ? '' : c.valeur).trim();
           return '<div class="party-champ' + (c.large ? ' large' : '') + '">'
-            + '<span class="k">' + U.ech(c.label) + ' :</span>'
-            + (v ? '<span class="v">' + U.ech(v) + '</span>' : '<span class="pointille"></span>')
+            + '<span class="k">' + U.enLigne(c.label) + ' :</span>'
+            + (v ? '<span class="v">' + U.enLigne(v) + '</span>' : '<span class="pointille"></span>')
             + '</div>';
         }).join('');
         var tx = slot(p, 'texte', d, ctx, '', pre);
@@ -699,11 +699,11 @@
             var cl = c.cle === cleT ? ' class="f-montant a-droite"' : (c.forme === 'calc' ? ' class="f-calc"' : classeCellule(c));
             var v = String(l[c.cle] == null ? '' : l[c.cle]);
             if (c.cle === cleT && v.trim() && unite && v.indexOf(unite) === -1) v = U.nombre(montant(l)) + ' ' + unite;
-            return '<td' + cl + editChemin(chemin + r.i + '.' + c.cle) + '>' + U.ech(v) + '</td>';
+            return '<td' + cl + editChemin(chemin + r.i + '.' + c.cle) + '>' + U.enLigne(v) + '</td>';
           }).join('') + '</tr>';
         }).join('');
         return '<div class="poste avoid"><div class="poste-tete"><div class="poste-titre">'
-          + '<span class="art-num">' + U.deuxChiffres(gi + 1) + '</span><b>' + U.ech(g) + '</b></div>'
+          + '<span class="art-num">' + U.deuxChiffres(gi + 1) + '</span><b>' + U.enLigne(g) + '</b></div>'
           + '<div class="poste-st">' + ligne('span', 'label', slot(cfg, 'libelleSousTotal', d, ctx, 'Sous-total')) + U.ech(somme(st)) + '</div></div>'
           + '<table><colgroup>' + colgroup + '</colgroup><tbody>' + rows + '</tbody></table></div>';
       }).join('');
@@ -728,7 +728,7 @@
       return '<section class="arts">' + arts.map(function (a, i) {
         var ch = fixe ? '' : 'articles.' + i + '.';
         return '<article class="art avoid"><div class="art-num">' + U.deuxChiffres(i + 1) + '</div>'
-          + '<div class="art-body"><div class="art-title"' + (ch ? editChemin(ch + 'titre') : '') + '>' + U.ech(a.titre) + '</div>'
+          + '<div class="art-body"><div class="art-title"' + (ch ? editChemin(ch + 'titre') : '') + '>' + U.enLigne(a.titre) + '</div>'
           + texte(a.texte, d, ctx, ch ? ch + 'texte' : '') + '</div></article>';
       }).join('') + '</section>';
     },
@@ -782,7 +782,7 @@
       var tt = slot(cfg, 'titre', d, ctx), ss = slot(cfg, 'sous', d, ctx);
       return '<section class="annexe">'
         + '<div class="ann-head"><div class="ann-head-left"><div class="crest"' + fond(ctx) + '></div>'
-        + '<div class="ann-title"><span class="ann-t"' + tt.a + '>' + U.ech(tt.t || '') + '</span>'
+        + '<div class="ann-title"><span class="ann-t"' + tt.a + '>' + U.enLigne(tt.t || '') + '</span>'
         + ligne('span', '', ss) + '</div></div>'
         + (meta.length ? '<div class="ann-meta">' + meta.map(function (l, i) {
             return ligne(i === 0 ? 'b' : 'span', '', slot({ l: l }, 'l', d, ctx, '', 'meta.' + i));
@@ -853,11 +853,11 @@
       encre += '<div class="sig-cachet" style="background-image:url(' + ctx.res.cachet + ')"></div>';
     }
     return '<div class="sign-card">'
-      + '<span class="label"' + pour.a + '>' + U.ech(pour.t || '') + '</span>'
-      + '<div class="sign-who"><span class="sign-name"' + nom.a + '>' + U.ech(nom.t || '') + '</span>'
-      + '<span class="sign-role"' + qualite.a + '>' + U.ech(qualite.t || '') + '</span></div>'
+      + '<span class="label"' + pour.a + '>' + U.enLigne(pour.t || '') + '</span>'
+      + '<div class="sign-who"><span class="sign-name"' + nom.a + '>' + U.enLigne(nom.t || '') + '</span>'
+      + '<span class="sign-role"' + qualite.a + '>' + U.enLigne(qualite.t || '') + '</span></div>'
       + '<div class="ink-zone">' + encre + '</div>'
-      + '<div class="sign-cta"' + mention.a + '>' + U.ech(mention.t || '') + '</div>'
+      + '<div class="sign-cta"' + mention.a + '>' + U.enLigne(mention.t || '') + '</div>'
       + '</div>';
   };
 
@@ -959,6 +959,19 @@
       if (bloc.querySelector(':scope > table')) {
         return groupe(bloc, function (b) { return b.querySelector(':scope > table > tbody'); }, ':scope > tr');
       }
+      /* Un texte riche (le corps d'une lettre, d'une attestation, d'une
+         note) se coupe entre deux paragraphes : ce qui ne tient plus au
+         pied de la page continue sur la suivante, dans la même enveloppe,
+         sans son titre. Ce qui suit le texte (une formule de politesse)
+         attend le dernier morceau. */
+      var txt = bloc.querySelector('.txt');
+      if (txt && txt.children.length > 1) {
+        txt.setAttribute('data-pg', 'txt');
+        var g = { bloc: bloc, chercher: function (b) { return b.querySelector('[data-pg="txt"]'); }, n: 0, tfoot: null, derniere: null, texte: txt };
+        groupes.push(g);
+        Array.prototype.slice.call(txt.children).forEach(function (e) { pousser(e, g); });
+        return;
+      }
       pousser(bloc);
     }
     function eclaterAnnexe(section) {
@@ -988,6 +1001,16 @@
       }
       var tf = sq.querySelector('tfoot');
       if (tf) { if (!g.tfoot) g.tfoot = tf; tf.parentNode.removeChild(tf); }
+      if (g.texte) {
+        /* à chaque niveau entre le texte et le bloc : ce qui suit part
+           (il reviendra au dernier morceau), et, en suite, ce qui précède aussi */
+        var noeud = cont;
+        while (noeud && noeud !== sq) {
+          var parent = noeud.parentNode, freres = Array.prototype.slice.call(parent.children), i = freres.indexOf(noeud);
+          freres.forEach(function (k, j) { if (j > i || (j < i && g.n > 0)) parent.removeChild(k); });
+          noeud = parent;
+        }
+      }
       corps.appendChild(sq);
       courant = { g: g, cible: cont, sq: sq };
       g.n++;
@@ -1022,6 +1045,17 @@
     });
     groupes.forEach(function (g) {
       if (g.tfoot && g.derniere && g.derniere.parentNode) g.derniere.parentNode.appendChild(g.tfoot);
+      if (g.texte && g.derniere) {
+        /* ce qui suivait le texte dans le bloc d'origine rejoint le dernier morceau */
+        var orig = g.texte, noeud = g.derniere;
+        while (orig && orig !== g.bloc && noeud && noeud.parentNode) {
+          var suivants = [], s = orig.nextElementSibling;
+          while (s) { suivants.push(s); s = s.nextElementSibling; }
+          var pNoeud = noeud.parentNode;
+          suivants.forEach(function (x) { pNoeud.appendChild(x); });
+          orig = orig.parentNode; noeud = pNoeud;
+        }
+      }
     });
 
     doc.body.removeChild(wrap);
@@ -1041,8 +1075,8 @@
       + (ctx.brouillon ? '<div class="wm-brouillon">BROUILLON</div>' : '') + '</div>'
       + '<div class="wrap">' + corps + '</div>'
       + ((pied.length || p0 || p1)
-          ? '<footer class="foot"><i></i><span data-edit="fixes.pied.0">' + U.ech(p0) + '</span>'
-            + '<span class="right" data-edit="fixes.pied.1">' + U.ech(p1) + '</span></footer>'
+          ? '<footer class="foot"><i></i><span data-edit="fixes.pied.0">' + U.enLigne(p0) + '</span>'
+            + '<span class="right" data-edit="fixes.pied.1">' + U.enLigne(p1) + '</span></footer>'
           : '');
   };
 

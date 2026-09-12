@@ -183,7 +183,7 @@
 
   /* "Antoine Jean Pierre Ndong" -> "A. Ndong" */
   function initialeNom(nom) {
-    var p = String(nom || '').trim().split(/\s+/).filter(Boolean);
+    var p = sansMarques(nom || '').trim().split(/\s+/).filter(Boolean);
     if (!p.length) return '';
     if (p.length === 1) return p[0];
     return p[0].charAt(0).toUpperCase() + '. ' + p[p.length - 1];
@@ -203,12 +203,31 @@
      Le texte est déjà échappé quand il arrive ici. */
   var TEINTES = /^(or|vert|rouge|gris|grand|petit|maj)$/;
   function gras(t) {
+    /* les teintes et tailles s'emboîtent ({{or|{{grand|…}}}}) : on résout
+       la plus intérieure d'abord, jusqu'à ce qu'il n'en reste plus */
+    for (var n = 0; n < 6 && /\{\{(or|vert|rouge|gris|grand|petit|maj)\|[^{}]+\}\}/.test(t); n++) {
+      t = t.replace(/\{\{(or|vert|rouge|gris|grand|petit|maj)\|([^{}]+)\}\}/g, '<span class="s-$1">$2</span>');
+    }
     return t
-      .replace(/\{\{(or|vert|rouge|gris|grand|petit|maj)\|([^}]+)\}\}/g, '<span class="s-$1">$2</span>')
-      .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+      .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
       .replace(/__([^_\n]+)__/g, '<u>$1</u>')
       .replace(/==([^=\n]+)==/g, '<mark>$1</mark>')
-      .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<i>$2</i>');
+      .replace(/(^|[^*])\*(\S(?:[^*\n]*?\S)?)\*(?!\*)/g, '$1<i>$2</i>');
+  }
+
+  /* La même chose sur une seule ligne : un titre, un libellé, un nom
+     peuvent porter du gras, une teinte, une taille. */
+  function enLigne(texte) { return gras(ech(String(texte == null ? '' : texte))); }
+  /* Le texte nu, sans ses marques : pour une initiale, un nom de fichier,
+     un intitulé de registre. */
+  function sansMarques(texte) {
+    var t = String(texte == null ? '' : texte);
+    for (var n = 0; n < 6 && /\{\{(?:or|vert|rouge|gris|grand|petit|maj)\|[^{}]+\}\}/.test(t); n++) {
+      t = t.replace(/\{\{(?:or|vert|rouge|gris|grand|petit|maj)\|([^{}]+)\}\}/g, '$1');
+    }
+    return t
+      .replace(/\*\*(.+?)\*\*/g, '$1').replace(/__([^_\n]+)__/g, '$1').replace(/==([^=\n]+)==/g, '$1')
+      .replace(/(^|[^*])\*(\S(?:[^*\n]*?\S)?)\*(?!\*)/g, '$1$2');
   }
 
   function paragraphes(texte) {
@@ -259,7 +278,7 @@
       duAu: duAu, duAuCourt: duAuCourt, lettres: lettres, nombre: nombre,
       deuxChiffres: deuxChiffres, compter: compter, enonce: enonce,
       enonceCourt: enonceCourt, initialeNom: initialeNom,
-      paragraphes: paragraphes, fait: fait, normaliser: normaliser
+      paragraphes: paragraphes, enLigne: enLigne, sansMarques: sansMarques, fait: fait, normaliser: normaliser
     }
   };
   window.BaobabsGreffe = G;
@@ -409,6 +428,11 @@
   var modeleActif = null;
   var donnees = {};
   var acteId = null, acteSauve = true;
+  /* La référence : la fiche telle qu'elle était à l'ouverture ou au dernier
+     Enregistrer voulu (Ctrl+S, menu, émission…). L'enregistrement
+     automatique ne la touche pas : c'est ce qui permet, en quittant, de
+     choisir entre garder ce qu'on a fait et revenir à la référence. */
+  var acteReference = null;
   /* le cycle de vie : etat, version, versions emises, journal */
   var acteEtat = 'brouillon', acteVersion = 1, acteVersions = [], acteJournal = [], acteEmisLe = null, acteMotif = '';
   var controle = null, panneau = 'donnees', modeLecture = false, espace = 'accueil';
@@ -563,7 +587,7 @@
       modele: modeleActif.cle,
       nom: modeleActif.nom,
       numero: donnees.numero || '',
-      intitule: donnees.titre || modeleActif.nom,
+      intitule: sansMarques((modeleActif.libre ? donnees.titre : donnees.nomActe) || donnees.titre || modeleActif.nom),
       date: donnees.dateActe || isoDuJour(),
       maj: Date.now(),
       etat: acteEtat, version: acteVersion, versions: acteVersions,
@@ -572,12 +596,13 @@
     };
   }
 
-  function enregistrer(silencieux) {
+  function enregistrer(silencieux, automatique) {
     if (!modeleActif) return Promise.resolve();
     if (!acteId) { acteId = identifiant(); if (!acteJournal.length) journaliser('Créé'); }
     var fiche = ficheCourante();
     return dbPoser(MAG_ACTES, fiche).then(function () {
       acteSauve = true; majTitreBarre();
+      if (!automatique) acteReference = JSON.stringify(fiche);
       registre = registre.filter(function (a) { return a.id !== fiche.id; });
       registre.unshift(fiche);
       noterReprise();
@@ -598,6 +623,7 @@
   }
 
   function ouvrirActe(fiche, version) {
+    if (modeleActif && fiche.id !== acteId) { avantDeQuitter(function () { modeleActif = null; ouvrirActe(fiche, version); }); return; }
     var m = G.modeles[fiche.modele];
     if (!m) { dire("Modèle « " + fiche.modele + " » introuvable.", 'erreur'); return; }
     modeleActif = m;
@@ -607,12 +633,14 @@
     donnees = JSON.parse(JSON.stringify(v ? v.donnees : fiche.donnees));
     if (v) { acteEtat = v.etat === 'emise' ? 'emis' : 'remplace'; acteVersion = v.v; modeLecture = true; }
     acteId = fiche.id; acteSauve = true;
+    acteReference = JSON.stringify(fiche);
     montrer('atelier');
     histoDepart();
     noterReprise();
   }
 
   function nouvelActe(cle, prereglage) {
+    if (modeleActif) { avantDeQuitter(function () { modeleActif = null; nouvelActe(cle, prereglage); }); return; }
     var m = G.modeles[cle];
     if (!m) return;
     modeleActif = m;
@@ -633,7 +661,7 @@
       var n = 1; while (pris.indexOf(n) !== -1) n++;
       donnees.numero = deuxChiffres(n) + '/' + an;
     }
-    acteId = null; acteSauve = false;
+    acteId = null; acteSauve = false; acteReference = null;
     acteEtat = 'brouillon'; acteVersion = 1; acteVersions = []; acteJournal = []; acteEmisLe = null; acteMotif = '';
     controle = null; panneau = 'donnees'; modeLecture = false; objetSel = null; blocSel = null;
     journaliser('Créé' + (prereglage ? ' depuis le préréglage « ' + prereglage.nom + ' »' : ''));
@@ -1183,6 +1211,7 @@
         { lab: 'Ouvrir dans une nouvelle fenêtre', rac: 'Ctrl+Maj+N', act: function () { nouvelleFenetre(); } },
         { sep: true },
         { lab: 'Enregistrer', rac: 'Ctrl+S', off: !enAtelier, act: function () { enregistrer(false); } },
+        { lab: 'Renommer l\'acte…', rac: 'F2', off: !enAtelier || lect, act: renommerActe },
         { lab: 'Garder comme préréglage…', off: !enAtelier, act: garderPrereglage },
         { lab: 'Fichier source (sans cachet)', off: !enAtelier, act: exporterHtml },
         { lab: 'Imprimer en PDF', rac: 'Ctrl+P', off: !enAtelier, act: imprimer },
@@ -1296,7 +1325,7 @@
     var nav = $('gf-nav-atelier');
     if (nav) nav.hidden = !modeleActif;
     if (!enAtelier) { if (elt.sousTitre) elt.sousTitre.textContent = ''; return; }
-    var nom = (modeleActif.libre && String(donnees.titre || '').trim()) || modeleActif.nom;
+    var nom = (modeleActif.libre && String(donnees.titre || '').trim()) || String(donnees.nomActe || '').trim() || modeleActif.nom;
     $('gf-ae-type').textContent = nom;
     $('gf-ae-num').textContent = donnees.numero ? donnees.numero : '';
     var badge = $('gf-ae-badge');
@@ -1359,10 +1388,30 @@
 
   function fermerActe() {
     if (!modeleActif) return;
-    if (!acteSauve && acteEtat === 'brouillon') enregistrer(true);
-    oublierReprise();
-    modeleActif = null; donnees = {}; acteId = null; acteSauve = true; controle = null; modeLecture = false;
-    montrer('accueil');
+    avantDeQuitter(function () {
+      oublierReprise();
+      modeleActif = null; donnees = {}; acteId = null; acteSauve = true; acteReference = null; controle = null; modeLecture = false;
+      montrer('accueil');
+    });
+  }
+
+  /* renommer : le nom que porte l'acte au registre, dans la barre et dans la
+     reprise. Le titre imprimé, lui, se change sur la feuille ; un acte libre
+     n'a que celui-là. */
+  function renommerActe() {
+    if (!modeleActif || lectureSeule()) return;
+    if (modeleActif.libre) {
+      demander('Renommer l\'acte', 'Le titre de l\'acte, tel qu\'il s\'imprime et se lit au registre.', donnees.titre || '').then(function (v) {
+        if (v == null) return;
+        donnees.titre = v; salir(); peindreFormulaire(); rafraichir(); majTitreBarre();
+      });
+      return;
+    }
+    demander('Renommer l\'acte', 'Le nom sous lequel le registre le range. Vide : le nom du modèle. Le titre imprimé ne change pas.', donnees.nomActe || '').then(function (v) {
+      if (v == null) return;
+      donnees.nomActe = v; salir(); majTitreBarre();
+      dire(v ? 'Acte renommé « ' + v + ' »' : 'L\'acte reprend le nom du modèle', 'ok');
+    });
   }
 
   function basculerPanneau() {
@@ -1378,7 +1427,7 @@
   /* ---- l'aide ---- */
   function aideRaccourcis() {
     var groupes = [
-      ['Document', [['Ctrl+N', 'Nouvel acte'], ['Ctrl+O', 'Ouvrir le registre'], ['Ctrl+Maj+N', 'Nouvelle fenêtre'], ['Ctrl+S', 'Enregistrer'], ['Ctrl+P', 'Imprimer en PDF'], ['Ctrl+Maj+S', 'Sauvegarder le Greffe']]],
+      ['Document', [['Ctrl+N', 'Nouvel acte'], ['Ctrl+O', 'Ouvrir le registre'], ['Ctrl+Maj+N', 'Nouvelle fenêtre'], ['Ctrl+S', 'Enregistrer'], ['F2', 'Renommer l\'acte'], ['Ctrl+P', 'Imprimer en PDF'], ['Ctrl+Maj+S', 'Sauvegarder le Greffe']]],
       ['Objets et blocs', [['Ctrl+C', 'Copier l\'objet ou le bloc'], ['Ctrl+V', 'Coller'], ['Suppr', 'Retirer l\'objet'], ['Flèches', 'Déplacer l\'objet d\'un mm (Maj : 5)'], ['Alt+Haut / Bas', 'Monter, descendre le bloc']]],
       ['Édition', [['Ctrl+Z', 'Annuler'], ['Ctrl+Y', 'Rétablir'], ['Entrée', 'Valider un champ d\'une ligne'], ['Échap', 'Quitter le texte, fermer une boîte']]],
       ['Acte', [['Ctrl+Entrée', 'Vérifier, puis émettre'], ['Ctrl+Maj+E', 'Émettre'], ['Ctrl+Maj+R', 'Mode lecture'], ['Ctrl+Maj+P', 'Masquer ou montrer le panneau']]],
@@ -2137,6 +2186,9 @@
     '  .objet-rotation{ position:absolute; left:50%; top:-22px; width:14px; height:14px; margin-left:-7px; border-radius:99px;',
     '    background:#fff; border:2px solid #46BF1D; cursor:grab; box-shadow:0 1px 4px rgba(0,0,0,.4); }',
     '  .objet-rotation::after{ content:""; position:absolute; left:50%; top:12px; width:2px; height:8px; margin-left:-1px; background:#46BF1D; }',
+    '  .objet-guide{ position:absolute; z-index:40; pointer-events:none; }',
+    '  .objet-guide-v{ top:0; bottom:0; width:0; border-left:1px dashed #E0483F; }',
+    '  .objet-guide-h{ left:0; right:0; height:0; border-top:1px dashed #E0483F; }',
     '  body.lecture .objet{ cursor:default; }',
     '  body.lecture tr.tr-suite{ display:none; }',
     '}'
@@ -2282,6 +2334,15 @@
       var doc = cadre && cadrePret ? cadre.contentDocument : null;
       var sel = doc ? doc.getSelection() : null;
       if (sourisEnfoncee || (sel && sel.rangeCount && !sel.isCollapsed && sel.toString())) { refaireQuandCalme(); return; }
+      /* Entrée vient d'ouvrir un paragraphe vide et le curseur y est : la
+         donnée ne connaît pas les paragraphes vides, la feuille refaite le
+         ferait disparaître sous les doigts. On attend qu'on y écrive, ou
+         qu'on le quitte. */
+      if (sel && sel.rangeCount && sel.isCollapsed && doc.activeElement && doc.activeElement.closest && doc.activeElement.closest('[data-edit]')) {
+        var an = sel.anchorNode, bloc = an && (an.nodeType === 3 ? an.parentNode : an);
+        var para = bloc && bloc.closest ? bloc.closest('p, li, div.note') : null;
+        if (para && !para.textContent.replace(/\u00a0/g, ' ').trim() && doc.activeElement.contains(para)) { refaireQuandCalme(); return; }
+      }
       if (!feuilleSale) return;
       feuilleSale = false;
       rafraichir(true);
@@ -2308,7 +2369,7 @@
     doc.addEventListener('mousemove', surSourisBouge);
     doc.addEventListener('mouseup', surSourisLache);
     /* hors d'un texte, les raccourcis valent aussi sur la feuille (Ctrl+V d'un objet, Ctrl+S, Ctrl+P...) */
-    doc.addEventListener('keydown', function (e) { if (!surToucheObjet(e) && (e.ctrlKey || e.metaKey) && !cibleEdit(e)) raccourci(e); });
+    doc.addEventListener('keydown', function (e) { if (!surToucheObjet(e) && (e.ctrlKey || e.metaKey || e.key === 'F2') && !cibleEdit(e)) raccourci(e); });
     doc.body.addEventListener('mouseup', function () { sourisEnfoncee = false; });
     doc.addEventListener('mouseleave', function () { sourisEnfoncee = false; });
     doc.addEventListener('selectionchange', function () {
@@ -2337,8 +2398,8 @@
     if (!el) return;
     var chemin = el.getAttribute('data-edit');
     var valeur = el.classList.contains('txt')
-      ? depuisDom(el)
-      : el.innerText.replace(/\n+$/, '').replace(/\n/g, ' ').replace(/\u00a0/g, ' ');
+      ? depuisDomMorceaux(el.ownerDocument, chemin)
+      : depuisDomLigne(el);
     ecrire(chemin, valeur);
     salir();
     synchroniserFormulaire(chemin);
@@ -2428,15 +2489,23 @@
   /* La feuille redevient du texte : un paragraphe par bloc, « - » devant
      chaque puce, « > » devant une note, **gras** autour du gras. C'est
      exactement la grammaire que paragraphes() lit. */
-  function depuisDom(el) {
-    function enLigne(n) {
+  /* Un champ d'une ligne : le texte, ses marques (gras, teinte…), et
+     l'espace qu'on vient de taper au bout, qui attend le mot suivant. */
+  function depuisDomLigne(el) {
+    return enLigneDom(el).replace(/\n+$/, '').replace(/\n/g, ' ').replace(/\u00a0/g, ' ');
+  }
+  function enLigneDom(n) {
       var s = '';
       Array.prototype.forEach.call(n.childNodes, function (c) {
         if (c.nodeType === 3) { s += c.nodeValue.replace(/\u00a0/g, ' '); return; }
         if (c.nodeType !== 1) return;
         if (c.tagName === 'BR') { s += '\n'; return; }
-        var t = enLigne(c), tag = c.tagName;
+        var t = enLigneDom(c), tag = c.tagName;
         if (!t.trim()) { s += t; return; }
+        /* « <b>Antoine </b>Ndong » : l'espace appartient à la ligne, pas au
+           gras. Il sort des marques, sinon les mots se collent. */
+        var bords = /^(\s*)([\s\S]*?)(\s*)$/.exec(t);
+        var avant = bords[1], apres = bords[3]; t = bords[2];
         var st = c.style || {};
         var fond = st.backgroundColor || (tag === 'MARK' ? 'mark' : '');
         var couleur = st.color || (tag === 'FONT' && c.getAttribute('color')) || '';
@@ -2452,22 +2521,32 @@
         var dim = (cls.match(/\bs-(grand|petit)\b/) || [])[1] || tailleDe(taille);
         if (dim) t = '{{' + dim + '|' + t.trim() + '}}';
         if (/\bs-maj\b/.test(cls)) t = '{{maj|' + t.trim() + '}}';
-        s += t;
+        s += avant + t + apres;
       });
       return s;
-    }
+  }
+  /* Le paginateur peut couper un texte sur deux pages : deux éléments
+     portent alors le même chemin. La donnée, elle, est une : on relit
+     les morceaux dans l'ordre. */
+  function morceauxDe(doc, chemin) {
+    return Array.prototype.slice.call(doc.querySelectorAll('[data-edit="' + chemin + '"]'));
+  }
+  function depuisDomMorceaux(doc, chemin) {
+    return morceauxDe(doc, chemin).map(depuisDom).filter(function (t) { return t !== ''; }).join('\n\n');
+  }
+  function depuisDom(el) {
     var out = [];
     Array.prototype.forEach.call(el.childNodes, function (n) {
       if (n.nodeType === 3) { if (n.nodeValue.trim()) out.push(n.nodeValue.trim()); return; }
       if (n.nodeType !== 1) return;
       if (n.tagName === 'UL' || n.tagName === 'OL') {
         out.push(Array.prototype.map.call(n.children, function (li) {
-          return '- ' + enLigne(li).replace(/\s+/g, ' ').trim();
+          return '- ' + enLigneDom(li).replace(/\s+/g, ' ').trim();
         }).join('\n'));
       } else if (n.classList.contains('note')) {
-        out.push('> ' + enLigne(n).replace(/\s+/g, ' ').trim());
+        out.push('> ' + enLigneDom(n).replace(/\s+/g, ' ').trim());
       } else {
-        var t = enLigne(n).replace(/\n+$/, '');
+        var t = enLigneDom(n).replace(/\n+$/, '');
         if (t.trim()) out.push(t);
       }
     });
@@ -2493,9 +2572,14 @@
   }
   function tailleDe(t) {
     if (!t) return '';
-    var n = parseFloat(t);
-    if (/^\d+$/.test(String(t))) return n >= 4 ? 'grand' : (n <= 2 ? 'petit' : '');   /* <font size> */
-    if (/em|%/.test(String(t))) return n > 1.1 ? 'grand' : (n < 0.95 ? 'petit' : '');
+    var s = String(t).trim().toLowerCase(), n = parseFloat(s);
+    if (/^\d+$/.test(s)) return n >= 4 ? 'grand' : (n <= 2 ? 'petit' : '');   /* <font size> */
+    /* execCommand('fontSize') avec styleWithCSS écrit un mot-clé : x-large, small… */
+    if (/^(x+-)?large(r)?$/.test(s)) return 'grand';
+    if (/^(x+-)?small(er)?$/.test(s)) return 'petit';
+    if (/em|%/.test(s)) return n > 1.1 ? 'grand' : (n < 0.95 ? 'petit' : '');
+    if (/px$/.test(s)) return n >= 15 ? 'grand' : (n <= 10 ? 'petit' : '');
+    if (/pt$/.test(s)) return n >= 11 ? 'grand' : (n <= 7 ? 'petit' : '');
     return '';
   }
 
@@ -2512,22 +2596,44 @@
       var avant = r.cloneRange();
       avant.selectNodeContents(el);
       avant.setEnd(r.startContainer, r.startOffset);
-      return { chemin: el.getAttribute('data-edit'), rang: avant.toString().length };
+      var rang = avant.toString().length, chemin = el.getAttribute('data-edit');
+      /* les morceaux qui précèdent celui-ci comptent aussi */
+      var morceaux = morceauxDe(doc, chemin);
+      for (var i = 0; i < morceaux.length && morceaux[i] !== el; i++) rang += morceaux[i].textContent.length;
+      return { chemin: chemin, rang: rang };
     } catch (e) { return null; }
   }
 
   function caretRestaurer(doc, c) {
-    var el = doc.querySelector('[data-edit="' + c.chemin + '"]');
-    if (!el) return;
-    el.focus();
-    var walker = doc.createTreeWalker(el, 4 /* NodeFilter.SHOW_TEXT */, null);
-    var n, reste = c.rang, dernier = null;
-    while ((n = walker.nextNode())) {
-      dernier = n;
-      if (reste <= n.nodeValue.length) { poserCaret(doc, n, reste); return; }
-      reste -= n.nodeValue.length;
+    var morceaux = morceauxDe(doc, c.chemin);
+    if (!morceaux.length) return;
+    var reste = c.rang, dernier = null, elDernier = null;
+    for (var i = 0; i < morceaux.length; i++) {
+      var el = morceaux[i];
+      var walker = doc.createTreeWalker(el, 4 /* NodeFilter.SHOW_TEXT */, null), n;
+      while ((n = walker.nextNode())) {
+        dernier = n; elDernier = el;
+        if (reste <= n.nodeValue.length) { el.focus(); poserCaret(doc, n, reste); caretVisible(doc); return; }
+        reste -= n.nodeValue.length;
+      }
     }
+    var cible = elDernier || morceaux[morceaux.length - 1];
+    cible.focus();
     if (dernier) poserCaret(doc, dernier, dernier.nodeValue.length);
+    caretVisible(doc);
+  }
+  /* le curseur, remis sur une autre page après une coupure, doit se voir */
+  function caretVisible(doc) {
+    try {
+      var sel = doc.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      var r = sel.getRangeAt(0).getBoundingClientRect();
+      if (!r || (!r.height && !r.width)) return;
+      var p = enScene(r), sc = elt.scene;
+      var haut = sc.scrollTop, bas = haut + sc.clientHeight;
+      if (p.y < haut + 40) sc.scrollTop = Math.max(0, p.y - 80);
+      else if (p.y + p.h > bas - 40) sc.scrollTop = p.y + p.h - sc.clientHeight + 80;
+    } catch (e) {}
   }
 
   function poserCaret(doc, noeud, rang) {
@@ -2587,8 +2693,44 @@
   function autoEnregistrer() {
     clearTimeout(autoMinuteur);
     autoMinuteur = setTimeout(function () {
-      if (modeleActif && !acteSauve && acteEtat === 'brouillon') enregistrer(true);
+      if (modeleActif && !acteSauve && acteEtat === 'brouillon') enregistrer(true, true);
     }, 4000);
+  }
+
+  /* ---- avant de quitter : ce qui n'a pas été voulu se choisit ---- */
+  function changementsNonValides() {
+    if (!modeleActif || acteEtat !== 'brouillon' || modeLecture) return false;
+    var f = ficheCourante(); delete f.maj;
+    if (acteReference == null) return !!acteId || !acteSauve;
+    var r = JSON.parse(acteReference); delete r.maj;
+    return JSON.stringify(f) !== JSON.stringify(r);
+  }
+  /* revenir à la référence : l'acte reprend sa dernière forme voulue ;
+     un acte jamais enregistré de la main disparaît du registre */
+  function revenirALaReference() {
+    clearTimeout(autoMinuteur);
+    if (acteReference == null) {
+      if (!acteId) return Promise.resolve();
+      var id = acteId;
+      registre = registre.filter(function (a) { return a.id !== id; });
+      return dbOter(MAG_ACTES, id).catch(function () {});
+    }
+    var fiche = JSON.parse(acteReference);
+    registre = registre.filter(function (a) { return a.id !== fiche.id; });
+    registre.unshift(fiche);
+    return dbPoser(MAG_ACTES, fiche).catch(function () {});
+  }
+  function avantDeQuitter(suite) {
+    if (!changementsNonValides()) { suite(); return; }
+    var nom = (modeleActif.libre && String(donnees.titre || '').trim()) || String(donnees.nomActe || '').trim() || modeleActif.nom;
+    modale('Acte non enregistré',
+      '<p class="gf-modale-aide"><b>' + ech(nom) + (donnees.numero ? ' n° ' + ech(donnees.numero) : '') + '</b> a été modifié depuis son dernier enregistrement. Que faire de ces modifications ?</p>',
+      [{ lab: 'Rester', rester: true }, { lab: 'Quitter sans enregistrer', abandon: true }, { lab: 'Enregistrer et quitter', accent: true, garder: true }]
+    ).then(function (b) {
+      if (!b || b.rester) return;
+      if (b.garder) enregistrer(true).then(suite);
+      else revenirALaReference().then(suite);
+    });
   }
 
   /* La reprise : où l'on en était, pour rouvrir au même endroit après un
@@ -2919,6 +3061,7 @@
     var sel = doc.getSelection();
     if (!sel || !sel.rangeCount) return;
     slashEl = el;
+    try { slashRange = sel.getRangeAt(0).cloneRange(); } catch (e) { slashRange = null; }
     var b = boite('slash', 'gf-flot-slash');
     var items = listeTextes(filtre);
     b.innerHTML = '<div class="gf-slash-tete">Insérer un texte' + (filtre ? ' · ' + ech(filtre) : '') + '</div>'
@@ -2933,9 +3076,14 @@
     b.style.left = Math.max(4, Math.min(p.x, elt.scene.clientWidth - 300)) + 'px';
     b.style.top = (p.y + p.h + 6) + 'px';
   }
+  var slashRange = null;
   function insererTexte(texte, filtre) {
     var doc = cadre.contentDocument;
     cadre.contentWindow.focus();
+    if (slashRange) {
+      try { var s0 = doc.getSelection(); s0.removeAllRanges(); s0.addRange(slashRange); } catch (e) {}
+      slashRange = null;
+    }
     /* retirer le « / » et ce qui a été tapé après, puis poser le texte */
     var n = 1 + (filtre ? filtre.length : 0);
     for (var k = 0; k < n; k++) doc.execCommand('delete');
@@ -3130,13 +3278,59 @@
     if (!note) return;
     if (!o) { majActions(); return; }
     note.textContent = (TYPES_OBJET[o.type] || {}).nom + ' · page ' + o.page + ' · ' + Math.round(o.w) + ' × ' + Math.round(o.h) + ' mm' + (o.rotation ? ' · ' + o.rotation + '°' : '')
-      + (o.verrou ? ' · verrouillé' : ' · glissez pour déplacer, la poignée pour redimensionner, Suppr pour retirer');
+      + (o.verrou ? ' · verrouillé' : ' · glissez pour déplacer (Alt : sans aimant), la poignée pour redimensionner, Suppr pour retirer');
   }
   function selectionnerObjet(id) {
     objetSel = id;
     marquerSelection();
     if (id) { panneau = 'objet'; peindreFormulaire(); }
     else if (panneau === 'objet') { panneau = 'donnees'; peindreFormulaire(); }
+  }
+
+  /* ---- les guides : les marges, le milieu de la page, les bords des autres
+     objets. À moins de 1,8 mm, l'objet s'y colle et une ligne le dit ;
+     Alt enfoncé laisse la main libre. ---- */
+  var GUIDE_TOL = 1.8;
+  var PAGE_GUIDES = { v: [13, 105, 197], h: [11, 148.5, 285] };
+  function guidesPour(o) {
+    var v = PAGE_GUIDES.v.slice(), h = PAGE_GUIDES.h.slice();
+    (donnees.objets || []).forEach(function (a) {
+      if (a.id === o.id || a.page !== o.page) return;
+      v.push(a.x, a.x + a.w / 2, a.x + a.w);
+      h.push(a.y, a.y + a.h / 2, a.y + a.h);
+    });
+    return { v: v, h: h };
+  }
+  function aimanter(o, mode) {
+    var g = guidesPour(o), res = { v: null, h: null };
+    function meilleur(lignes, bords) {
+      var best = null;
+      lignes.forEach(function (l) {
+        bords.forEach(function (b) {
+          var d = l - b;
+          if (Math.abs(d) <= GUIDE_TOL && (!best || Math.abs(d) < Math.abs(best.d))) best = { d: d, ligne: l };
+        });
+      });
+      return best;
+    }
+    var bx = mode === 'taille' ? [o.x + o.w] : [o.x, o.x + o.w / 2, o.x + o.w];
+    var by = mode === 'taille' ? [o.y + o.h] : [o.y, o.y + o.h / 2, o.y + o.h];
+    var mx = meilleur(g.v, bx), my = meilleur(g.h, by);
+    if (mx) { if (mode === 'taille') o.w += mx.d; else o.x += mx.d; res.v = mx.ligne; }
+    if (my) { if (mode === 'taille') o.h += my.d; else o.y += my.d; res.h = my.ligne; }
+    return res;
+  }
+  function montrerGuides(page, res) {
+    effacerGuides();
+    if (!page) return;
+    var d = page.ownerDocument;
+    if (res.v != null) { var v = d.createElement('div'); v.className = 'objet-guide objet-guide-v'; v.style.left = res.v + 'mm'; page.appendChild(v); }
+    if (res.h != null) { var h = d.createElement('div'); h.className = 'objet-guide objet-guide-h'; h.style.top = res.h + 'mm'; page.appendChild(h); }
+  }
+  function effacerGuides() {
+    var doc = cadre && cadrePret ? cadre.contentDocument : null;
+    if (!doc) return;
+    Array.prototype.forEach.call(doc.querySelectorAll('.objet-guide'), function (e) { e.remove(); });
   }
 
   /* la souris : sélection, glissement, poignée */
@@ -3183,6 +3377,11 @@
       /* l'angle entre le centre de l'objet et la souris ; la poignée est en haut */
       var a = Math.atan2(e.clientY - glisse.cy, e.clientX - glisse.cx) * 180 / Math.PI + 90;
       if (e.shiftKey) a = Math.round(a / 15) * 15;
+      else if (!e.altKey) {
+        /* près d'un quart de tour, l'objet s'y pose : droit, couché, retourné */
+        var q = Math.round(a / 90) * 90;
+        if (Math.abs(a - q) <= 4) a = q;
+      }
       o.rotation = Math.round(((a + 180) % 360 + 360) % 360 - 180);
       el.style.transform = o.rotation ? 'rotate(' + o.rotation + 'deg)' : '';
       majNoteObjet(o);
@@ -3190,18 +3389,27 @@
     }
     if (glisse.poignee) {
       var w = Math.max(5, glisse.ow + dx), h = Math.max(3, glisse.oh + dy);
-      if (o.ratio || o.type === 'cachet') { h = w / (o.ratio || 1); }
-      o.w = Math.round(w * 10) / 10; o.h = Math.round(h * 10) / 10;
+      var lie = !!(o.ratio || o.type === 'cachet');
+      if (lie) { h = w / (o.ratio || 1); }
+      o.w = w; o.h = h;
+      var gt = e.altKey ? { v: null, h: null } : aimanter(o, 'taille');
+      if (lie) { o.h = o.w / (o.ratio || 1); gt.h = null; }
+      o.w = Math.round(Math.max(5, o.w) * 10) / 10; o.h = Math.round(Math.max(3, o.h) * 10) / 10;
       el.style.width = o.w + 'mm'; el.style.height = o.h + 'mm';
+      montrerGuides(el.closest('.page'), gt);
     } else {
-      o.x = Math.round((glisse.ox + dx) * 10) / 10; o.y = Math.round((glisse.oy + dy) * 10) / 10;
+      o.x = glisse.ox + dx; o.y = glisse.oy + dy;
+      var gd = e.altKey ? { v: null, h: null } : aimanter(o, 'deplacer');
+      o.x = Math.round(o.x * 10) / 10; o.y = Math.round(o.y * 10) / 10;
       el.style.left = o.x + 'mm'; el.style.top = o.y + 'mm';
+      montrerGuides(el.closest('.page'), gd);
     }
     majNoteObjet(o);
   }
   function surSourisLache() {
     if (!glisse) return;
     glisse = null;
+    effacerGuides();
     salir();
     if (panneau === 'objet') peindreFormulaire();
   }
@@ -3510,6 +3718,7 @@
       if (espace === 'atelier' && document.activeElement && document.activeElement !== document.body) { document.activeElement.blur(); return; }
       fermer(); return;
     }
+    if (e.key === 'F2' && modeleActif && espace === 'atelier') { e.preventDefault(); renommerActe(); return; }
     if (!ctrl) return;
     var enAtelier = !!modeleActif && espace === 'atelier';
     if (enAtelier && k === 'c' && copierElement()) { e.preventDefault(); return; }
@@ -3635,14 +3844,19 @@
 
   function fermer() {
     if (!racine) return;
-    if (!acteSauve && modeleActif && acteEtat === 'brouillon') enregistrer(true);
-    oublierReprise();
-    ouvert = false;
-    racine.classList.remove('is-open');
-    racine.setAttribute('aria-hidden', 'true');
-    document.documentElement.style.overflow = '';
-    if (api && typeof api.onClose === 'function') { try { api.onClose(); } catch (e) {} }
+    avantDeQuitter(function () {
+      oublierReprise();
+      ouvert = false;
+      racine.classList.remove('is-open');
+      racine.setAttribute('aria-hidden', 'true');
+      document.documentElement.style.overflow = '';
+      if (api && typeof api.onClose === 'function') { try { api.onClose(); } catch (e) {} }
+    });
   }
+  /* l'onglet qu'on ferme : le navigateur pose sa propre question */
+  window.addEventListener('beforeunload', function (e) {
+    if (ouvert && changementsNonValides()) { e.preventDefault(); e.returnValue = ''; }
+  });
   G.close = fermer;
   G.isOpen = function () { return ouvert; };
 
