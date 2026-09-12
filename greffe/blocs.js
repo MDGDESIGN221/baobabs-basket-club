@@ -253,9 +253,13 @@
       ".diplome .diplome-motif{ margin:10pt auto 0 auto; max-width:130mm; font-size:9.4pt; line-height:1.5; }",
       ".diplome .diplome-date{ margin-top:16pt; font-size:8pt; color:var(--gris); letter-spacing:.08em; text-transform:uppercase; }",
       ".diplome .diplome-signs{ display:flex; justify-content:space-around; gap:20pt; margin-top:22pt; }",
-      ".diplome .diplome-sign{ flex:1; max-width:70mm; border-top:1px solid var(--encre); padding-top:4pt; font-size:7.4pt; }",
+      ".diplome .diplome-sign{ flex:1; max-width:70mm; font-size:7.4pt; }",
+      ".diplome .diplome-sign .diplome-sign-nom{ border-top:1px solid var(--encre); padding-top:4pt; }",
       ".diplome .diplome-sign b{ display:block; font-size:8pt; }",
-      ".diplome .diplome-sign .ink-zone{ height:34pt; position:relative; margin-top:-40pt; margin-bottom:4pt; }",
+      ".diplome .diplome-sign .ink-zone{ height:16mm; position:relative; margin:0; }",
+      ".diplome .diplome-sign .sig-ink{ left:50%; transform:translateX(-50%); bottom:2pt; width:40mm; }",
+      ".diplome .diplome-sign .sig-name{ font-size:17pt; }",
+      ".diplome .diplome-sign .sig-paraphe{ width:30mm; }",
 
       /* ---- cartes : plusieurs par page, format carte de membre ---- */
       ".cartes{ display:flex; flex-wrap:wrap; gap:6mm 6mm; align-content:flex-start; }",
@@ -268,7 +272,7 @@
       ".carte .carte-corps{ display:flex; gap:4mm; flex:1; }",
       ".carte .carte-photo{ width:22mm; height:28mm; border:1px dashed var(--gris-clair); border-radius:2mm; background:var(--fond-tint); display:flex; align-items:center; justify-content:center; font-size:5.5pt; color:var(--gris); text-align:center; padding:2mm; }",
       ".carte .carte-id{ flex:1; display:flex; flex-direction:column; gap:1.6mm; }",
-      ".carte .carte-nom{ font-family:'Gilroy',sans-serif; font-weight:800; font-size:11pt; line-height:1.05; color:var(--encre); }",
+      ".carte .carte-nom{ font-family:'Gilroy',sans-serif; font-weight:800; font-size:11pt; line-height:1.05; color:var(--encre); min-height:11pt; }",
       ".carte .carte-ligne{ font-size:6.6pt; color:var(--texte); } .carte .carte-ligne .k{ color:var(--gris); letter-spacing:.1em; text-transform:uppercase; font-size:5.4pt; margin-right:2pt; }",
       ".carte .carte-pied{ display:flex; justify-content:space-between; align-items:flex-end; font-size:5.6pt; color:var(--gris); margin-top:auto; }",
       ".carte .carte-pied b{ font-family:'Gilroy',sans-serif; color:var(--vert); font-size:7pt; }",
@@ -1067,7 +1071,7 @@
             var pre = 'signatures.' + j;
             var encre = (s.signer !== false && d.avecSignature !== false && !d.signatureDetachee)
               ? '<div class="ink-zone"><div class="sig-ink"><div class="sig-name">' + U.ech(U.initialeNom(slot(s, 'nom', d, ctx, '', pre).t)) + '</div><div class="sig-paraphe">' + B.PARAPHE + '</div></div></div>' : '<div class="ink-zone"></div>';
-            return '<div class="diplome-sign">' + encre + ligne('b', '', slot(s, 'nom', d, ctx, '', pre)) + ligne('span', '', slot(s, 'qualite', d, ctx, '', pre)) + '</div>';
+            return '<div class="diplome-sign">' + encre + '<div class="diplome-sign-nom">' + ligne('b', '', slot(s, 'nom', d, ctx, '', pre)) + ligne('span', '', slot(s, 'qualite', d, ctx, '', pre)) + '</div></div>';
           }).join('') + '</div>' : '')
         + '</section>';
     },
@@ -1084,7 +1088,7 @@
       var club = val(cfg.club, d, ctx) || 'Baobabs Basket Club', saison = val(cfg.saison, d, ctx) || '';
       var role = val(cfg.role, d, ctx) || 'Carte de membre';
       return '<section class="cartes pg-groupe">' + lignes.map(function (l) {
-        var nom = [l.prenom, l.nom].filter(Boolean).join(' ') || '&nbsp;';
+        var nom = [l.prenom, l.nom].filter(Boolean).join(' ');
         return '<div class="carte"><div class="carte-tete"><div class="crest"' + fond(ctx) + '></div><b>' + U.ech(club) + '</b><span>' + U.ech(role) + '</span></div>'
           + '<div class="carte-corps"><div class="carte-photo">' + (l.photo ? '<img src="' + l.photo + '" style="width:100%;height:100%;object-fit:cover;border-radius:1.5mm" alt="">' : 'Photo') + '</div>'
           + '<div class="carte-id"><div class="carte-nom">' + U.enLigne(nom) + '</div>'

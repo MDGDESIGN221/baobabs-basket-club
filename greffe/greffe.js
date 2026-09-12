@@ -40,7 +40,10 @@
 
   /* AJOUTER UN TYPE D'ACTE : un fichier dans modeles/, son nom ici. */
   var MODELES = ['ordre-mission', 'acte-libre', 'courrier',
-                 'convention', 'contrat', 'fiche-fonction', 'budget'];
+                 'convention', 'contrat', 'fiche-fonction', 'budget',
+                 'pv-reunion', 'ordre-du-jour', 'recu', 'note-frais', 'demande-subvention',
+                 'convocation', 'feuille-presence', 'planning', 'fiche-joueuse', 'cartes-membre',
+                 'autorisation-parentale', 'decharge', 'certificat', 'communique', 'invitation'];
 
   /* =================================================================
      1. LES PETITS OUTILS, PARTAGÉS AVEC LES BLOCS ET LES MODÈLES
