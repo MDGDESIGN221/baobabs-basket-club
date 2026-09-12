@@ -184,6 +184,18 @@
       ".bloc.po-organetto, .bloc.po-organetto *{ font-family:'Organetto',Gilroy,sans-serif !important; }",
       ".bloc.po-paraphe, .bloc.po-paraphe *{ font-family:'Paraphe',cursive !important; font-size:1.35em; }",
 
+      /* ---- les objets posés sur la page ---- */
+      ".objet{ position:absolute; z-index:3; box-sizing:border-box; }",
+      ".objet-cachet{ background-size:contain; background-repeat:no-repeat; background-position:center; mix-blend-mode:multiply; }",
+      ".objet-signature{ mix-blend-mode:multiply; }",
+      ".objet-signature .sig-ink{ transform:none; }",
+      ".objet-image img{ display:block; width:100%; height:100%; object-fit:contain; }",
+      ".objet-annotation{ border:1pt solid var(--or); border-radius:3pt; padding:2.5pt 5pt; font-size:7.6pt; line-height:1.35;",
+      "  background:rgba(255,255,255,.85); overflow:hidden; }",
+      ".objet-annotation p{ margin:0; }",
+      ".objet-cadre{ border:1.2pt solid var(--or); border-radius:3pt; }",
+      ".objet-fleche{ overflow:visible; }",
+
       /* ---- texte libre, image ---- */
       ".libre .label{ display:block; margin-bottom:3pt; }",
       ".libre-titre{ font-family:'Gilroy',sans-serif; font-weight:700; font-size:9.6pt; line-height:1.25;",
@@ -487,15 +499,14 @@
     if (!cols.length) return '';
     var nReelles = lignes.length;
     var suivant = (table.lignes || []).length;
-    /* Sans une seule ligne, la grille se montre quand même, vide, et elle
-       s'imprime ainsi : un acte sans liste est un formulaire à remplir.
-       Avec des lignes, une seule ligne vide suit la dernière, à l'écran
+    /* La grille s'imprime avec au moins « vide » lignes, remplies ou non :
+       un tableau tiré vide ou à moitié se complète à la main. Le nombre
+       est celui de la table (réglable depuis l'écran), sinon celui du
+       modèle. Au-delà, une seule ligne vide suit la dernière, à l'écran
        seulement : c'est là qu'on tape la suivante. */
-    if (!nReelles && cfg.vide) {
-      for (var k = 0; k < cfg.vide; k++) lignes.push({ l: {}, i: suivant + k, vide: true });
-    } else if (nReelles && cfg.vide) {
-      lignes.push({ l: {}, i: suivant, vide: true, suite: true });
-    }
+    var minimum = table.vide != null ? (parseInt(table.vide, 10) || 0) : (parseInt(cfg.vide, 10) || 0);
+    for (var k = nReelles; k < minimum; k++) lignes.push({ l: {}, i: suivant + (k - nReelles), vide: true });
+    if (nReelles >= minimum && (minimum || nReelles)) lignes.push({ l: {}, i: suivant, vide: true, suite: true });
 
     var numeroter = cfg.numeroter !== false;
     var poidsTotal = cols.reduce(function (s, c) { return s + (+c.poids || B.COLONNE_DEFAUT.poids); }, 0);
@@ -832,12 +843,13 @@
     var nom = slot(c, 'nom', d, ctx, '', prefixe), qualite = slot(c, 'qualite', d, ctx, '', prefixe);
     var pour = slot(c, 'pour', d, ctx, '', prefixe), mention = slot(c, 'mention', d, ctx, 'Signature et cachet', prefixe);
     var encre = '';
-    if (d.avecSignature !== false && c.signer !== false) {
+    /* détachés de la carte à la souris, l'encre et le cachet vivent en objets posés */
+    if (d.avecSignature !== false && c.signer !== false && !d.signatureDetachee) {
       encre += '<div class="sig-ink"><div class="sig-name">'
         + U.ech(U.initialeNom(nom.t)) + '</div>'
         + '<div class="sig-paraphe">' + B.PARAPHE + '</div></div>';
     }
-    if (d.avecCachet !== false && c.cacheter !== false && ctx.res && ctx.res.cachet) {
+    if (d.avecCachet !== false && c.cacheter !== false && ctx.res && ctx.res.cachet && !d.cachetDetache) {
       encre += '<div class="sig-cachet" style="background-image:url(' + ctx.res.cachet + ')"></div>';
     }
     return '<div class="sign-card">'

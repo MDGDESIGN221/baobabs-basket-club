@@ -137,6 +137,7 @@
           membres: {
             titre: "La délégation",
             singulier: "membre",
+            vide: 12,
             colonnes: [
               { cle: 'nom',       titre: "Nom et prénom(s)",      poids: 49, forme: 'fort' },
               { cle: 'qualite',   titre: "Qualité",               poids: 39, forme: 'pastille',

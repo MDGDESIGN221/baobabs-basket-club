@@ -54,10 +54,14 @@
                 'onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf'];
   var DIZAINES = ['','','vingt','trente','quarante','cinquante','soixante'];
 
+  /* Un espace en fin de texte devient une espace insécable : HTML l'aurait
+     avalé, et le mot suivant serait venu se coller au précédent quand la
+     feuille se refait pendant la frappe. */
   function ech(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      .replace(/ $/, '\u00a0');
   }
 
   /* "YYYY-MM-DD" -> Date locale. On construit à la main : passer la
@@ -221,7 +225,9 @@
       if (!l) { vider(); return; }
       var m = /^([-•*]|>)\s+(.*)$/.exec(l);
       var g = m ? (m[1] === '>' ? 'note' : 'liste') : 'para';
-      var contenu = gras(ech(m ? m[2] : l));
+      var brut = m ? m[2] : ligne.replace(/^\s+/, '');
+      if (/ $/.test(ligne) && !/ $/.test(brut)) brut += ' ';
+      var contenu = gras(ech(brut));
       if (genre && genre !== g) vider();
       genre = g; run.push(contenu);
     });
@@ -588,7 +594,7 @@
     acteJournal = fiche.journal || [];
     acteEmisLe = fiche.emisLe || null;
     acteMotif = fiche.motif || '';
-    controle = null; panneau = 'donnees'; modeLecture = false;
+    controle = null; panneau = 'donnees'; modeLecture = false; objetSel = null; blocSel = null;
   }
 
   function ouvrirActe(fiche, version) {
@@ -629,7 +635,7 @@
     }
     acteId = null; acteSauve = false;
     acteEtat = 'brouillon'; acteVersion = 1; acteVersions = []; acteJournal = []; acteEmisLe = null; acteMotif = '';
-    controle = null; panneau = 'donnees'; modeLecture = false;
+    controle = null; panneau = 'donnees'; modeLecture = false; objetSel = null; blocSel = null;
     journaliser('Créé' + (prereglage ? ' depuis le préréglage « ' + prereglage.nom + ' »' : ''));
     montrer('atelier');
     histoDepart();
@@ -667,7 +673,8 @@
     Object.keys(donnees.tables || {}).forEach(function (k) {
       var t = donnees.tables[k];
       var n = G.lignes(donnees, k).length;
-      if (!n) avert('Le tableau « ' + (t.titre || k) + ' » est vide : sa grille s\'imprimera vide');
+      if (!n && t.vide) ok('Tableau « ' + (t.titre || k) + ' » : grille de ' + t.vide + ' lignes à remplir à la main');
+      else if (!n) avert('Le tableau « ' + (t.titre || k) + ' » est vide : sa grille s\'imprimera vide');
       else ok('Tableau « ' + (t.titre || k) + ' » : ' + n + ' ligne' + (n > 1 ? 's' : ''));
     });
     if (donnees.avecSignature !== false && 'signNom' in donnees) {
@@ -916,7 +923,7 @@
               postes: '<div class="gm-table"><b></b><i></i><i></i><i></i></div>', tableau: '<div class="gm-table"><b></b><i></i><i></i><i></i></div>',
               signatures: '<div class="gm-sign"><i></i></div>', certification: '<div class="gm-sign"><i></i></div>',
               image: '<div class="gm-img"></div>', espace: '<div class="gm-esp"></div>', saut: '<div class="gm-sep"></div>', annexe: '<div class="gm-sep"></div>' };
-    return '<div class="gf-mini"><div class="gf-mini-page">' + (types || []).slice(0, 9).map(function (t) { return g[t] || ''; }).join('') + '</div></div>';
+    return '<div class="gf-schema"><div class="gf-schema-page">' + (types || []).slice(0, 9).map(function (t) { return g[t] || ''; }).join('') + '</div></div>';
   }
   function apercuModele(m) { return apercuSchema(typesDeBlocs(m)); }
   function apercuPrereglage(p) {
@@ -1186,6 +1193,9 @@
         { lab: 'Annuler', rac: 'Ctrl+Z', off: !enAtelier || histoI <= 0, act: annuler },
         { lab: 'Rétablir', rac: 'Ctrl+Y', off: !enAtelier || histoI >= histo.length - 1, act: retablir },
         { sep: true },
+        { lab: 'Copier l\'objet ou le bloc', rac: 'Ctrl+C', off: !enAtelier || !(objetSel || blocCourant), act: copierElement },
+        { lab: 'Coller', rac: 'Ctrl+V', off: !enAtelier || lect, act: collerElement },
+        { sep: true },
         { lab: 'Textes d\'origine du modèle', off: !enAtelier || lect, act: textesOrigine }
       ]},
       { nom: 'Acte', items: [
@@ -1200,13 +1210,23 @@
         { lab: 'Sortir des archives', off: !enAtelier || acteEtat !== 'archive', act: desarchiverActe },
         { lab: 'Annuler l\'acte…', off: !enAtelier || acteEtat === 'annule', act: annulerActe }
       ]},
-      { nom: 'Insertion', items: (libre && !lect && modeleActif.catalogue
-          ? modeleActif.catalogue.map(function (e) { return { lab: e.nom, act: function () { poserBloc(e); } }; })
-          : [{ lab: enAtelier ? 'Dans un acte libre seulement' : 'Ouvrez un acte', off: true }]) },
+      { nom: 'Insertion', items: [
+        { lab: 'Signature posée', off: !enAtelier || lect, act: function () { poserObjet('signature'); } },
+        { lab: 'Cachet posé', off: !enAtelier || lect, act: function () { poserObjet('cachet'); } },
+        { lab: 'Image…', off: !enAtelier || lect, act: poserImageObjet },
+        { lab: 'Annotation', off: !enAtelier || lect, act: function () { poserObjet('annotation'); } },
+        { lab: 'Cadre', off: !enAtelier || lect, act: function () { poserObjet('cadre'); } },
+        { lab: 'Flèche', off: !enAtelier || lect, act: function () { poserObjet('fleche'); } },
+        { sep: true }
+      ].concat(libre && !lect && modeleActif.catalogue
+          ? modeleActif.catalogue.map(function (e) { return { lab: 'Bloc : ' + e.nom, act: function () { poserBloc(e); } }; })
+          : [{ lab: 'Les blocs se posent dans un acte libre', off: true }]) },
       { nom: 'Affichage', items: [
         { lab: 'Zoom avant', rac: 'Ctrl+Plus', off: !enAtelier, act: function () { zoom = Math.min(1.5, zoom + 0.1); appliquerZoom(); } },
         { lab: 'Zoom arrière', rac: 'Ctrl+Moins', off: !enAtelier, act: function () { zoom = Math.max(0.25, zoom - 0.1); appliquerZoom(); } },
-        { lab: 'Taille réelle', rac: 'Ctrl+0', off: !enAtelier, act: function () { zoom = 1; appliquerZoom(); } },
+        { lab: 'Taille réelle', rac: 'Ctrl+0', off: !enAtelier, act: function () { zoomer(1); } },
+        { lab: 'Ajuster à la largeur', off: !enAtelier, act: function () { zoomer('largeur'); } },
+        { lab: 'Page entière', off: !enAtelier, act: function () { zoomer('page'); } },
         { sep: true },
         { lab: (racine.classList.contains('gf-sans-panneau') ? 'Montrer' : 'Masquer') + ' le panneau', rac: 'Ctrl+Maj+P', off: !enAtelier, act: basculerPanneau },
         { lab: (modeLecture ? 'Quitter le' : 'Passer en') + ' mode lecture', rac: 'Ctrl+Maj+R', off: !enAtelier, act: basculerLecture }
@@ -1426,6 +1446,11 @@
       peindreBloc();
       return;
     }
+    if (panneau === 'objet' && !lectureSeule()) {
+      if (tete) { tete.hidden = false; tete.innerHTML = '<span class="gf-lab">Objet posé sur la page</span>'; }
+      peindreObjet();
+      return;
+    }
     if (tete) {
       var lect = lectureSeule();
       tete.hidden = !lect;
@@ -1539,8 +1564,11 @@
     var utiles = G.lignes(donnees, source);
     var sing = t.singulier || 'ligne';
 
+    var minimum = t.vide != null ? t.vide : '';
     var barre = '<div class="gf-tab-barre">'
       + '<span class="gf-tab-compte">' + utiles.length + ' ' + ech(sing) + (utiles.length > 1 ? 's' : '') + '</span>'
+      + '<label class="gf-tab-min" title="La grille s\'imprime avec au moins ce nombre de lignes, remplies ou non : pour la compléter à la main">'
+      + 'lignes imprimées, au moins <input class="gf-in gf-in-min" type="number" min="0" max="60" data-act="minimum" value="' + ech(minimum) + '" placeholder="auto"></label>'
       + '<button type="button" class="gf-mini" data-act="coller">'
       + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
       + '<rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/></svg>'
@@ -1601,6 +1629,11 @@
       t.lignes.push(l); salir(); peindreTable(source); majArticlesSiAuto(); planifier();
     });
     hote.querySelector('[data-act="coller"]').addEventListener('click', function () { ouvrirColler(source); });
+    hote.querySelector('[data-act="minimum"]').addEventListener('change', function () {
+      var v = this.value === '' ? null : Math.max(0, Math.min(60, parseInt(this.value, 10) || 0));
+      if (v == null) delete t.vide; else t.vide = v;
+      salir(); planifier();
+    });
 
     hote.querySelector('[data-act="col-plus"]').addEventListener('click', function () {
       demander('Nouvelle colonne', 'Son titre, tel qu\'il s\'imprimera en tête du tableau. Choisissez dans la liste ou écrivez le vôtre.', 'Taille',
@@ -2082,6 +2115,14 @@
     '  td[data-edit]:empty::after{ content:"\\00a0"; }',
     '  tr.tr-suite td{ border-bottom-style:dashed; }',
     '  body.lecture [data-edit]{ outline:none; cursor:default; }',
+    '  .objet{ cursor:move; }',
+    '  .objet.is-sel{ outline:2px solid #46BF1D; outline-offset:2px; }',
+    '  .objet-poignee{ position:absolute; right:-6px; bottom:-6px; width:12px; height:12px; border-radius:99px;',
+    '    background:#46BF1D; border:2px solid #fff; cursor:nwse-resize; box-shadow:0 1px 4px rgba(0,0,0,.4); }',
+    '  .objet-rotation{ position:absolute; left:50%; top:-22px; width:14px; height:14px; margin-left:-7px; border-radius:99px;',
+    '    background:#fff; border:2px solid #46BF1D; cursor:grab; box-shadow:0 1px 4px rgba(0,0,0,.4); }',
+    '  .objet-rotation::after{ content:""; position:absolute; left:50%; top:12px; width:2px; height:8px; margin-left:-1px; background:#46BF1D; }',
+    '  body.lecture .objet{ cursor:default; }',
     '  body.lecture tr.tr-suite{ display:none; }',
     '}'
   ].join('\n');
@@ -2116,6 +2157,7 @@
     try {
       doc.body.innerHTML = corpsDocument();
       nbPages = G.blocs.paginer(doc);
+      poserObjets(doc);
     } catch (e) {
       dire('Le modèle a buté : ' + (e && e.message ? e.message : e), 'erreur');
       return;
@@ -2125,6 +2167,7 @@
     if (c) caretRestaurer(doc, c);
     cacher('texte');
     majBarreBloc(c ? doc.activeElement : null);
+    marquerSelection();
     /* Les polices arrivent parfois après la première mise en page : les
        hauteurs de ligne changent, les coupures aussi. Une seconde passe
        quand elles sont là, et seulement s'il en manquait. Pas de
@@ -2150,6 +2193,49 @@
      change pas la place qu'un élément occupe dans la mise en page.
      Mise sur la feuille, la réduction laissait 794 px de large réservés
      pour 556 px affichés, et l'aperçu défilait latéralement pour rien. */
+  function zoomLargeur() {
+    /* la feuille prend la largeur de la scène, marges comprises */
+    var dispo = elt.scene.clientWidth - 44;
+    return Math.max(0.25, Math.min(2, dispo / (LARGEUR_CADRE * MM)));
+  }
+  function zoomPage() {
+    var dispo = elt.scene.clientHeight - 44;
+    return Math.max(0.25, Math.min(2, dispo / ((297 + 12) * MM)));
+  }
+  function zoomer(v) {
+    zoomChoisi = true;
+    zoom = v === 'largeur' ? zoomLargeur() : (v === 'page' ? zoomPage() : Math.max(0.25, Math.min(2, +v)));
+    appliquerZoom();
+  }
+  function pageVisible() {
+    /* la page qui occupe le milieu de la scène */
+    var doc = cadre && cadrePret ? cadre.contentDocument : null;
+    if (!doc) return 1;
+    var pages = doc.querySelectorAll('.page'), milieu = elt.scene.scrollTop + elt.scene.clientHeight / 2;
+    var cadreTop = cadre.getBoundingClientRect().top - elt.scene.getBoundingClientRect().top + elt.scene.scrollTop;
+    for (var i = 0; i < pages.length; i++) {
+      var r = pages[i].getBoundingClientRect();
+      var bas = cadreTop + (r.top + r.height) * zoom;
+      if (milieu <= bas) return i + 1;
+    }
+    return pages.length || 1;
+  }
+  function allerPage(n) {
+    var doc = cadre && cadrePret ? cadre.contentDocument : null;
+    if (!doc) return;
+    var pages = doc.querySelectorAll('.page');
+    n = Math.max(1, Math.min(pages.length, n));
+    var p = pages[n - 1];
+    if (!p) return;
+    var cadreTop = cadre.getBoundingClientRect().top - elt.scene.getBoundingClientRect().top + elt.scene.scrollTop;
+    elt.scene.scrollTop = cadreTop + p.getBoundingClientRect().top * zoom - 12;
+    majPointeurPage();
+  }
+  function majPointeurPage() {
+    var p = $('gf-page-cour');
+    if (p) p.textContent = pageVisible() + ' / ' + nbPages;
+  }
+
   function appliquerZoom() {
     var w = LARGEUR_CADRE * MM;
     var h = parseFloat(cadre.style.height) || (w * 1.414);
@@ -2157,6 +2243,9 @@
     elt.feuille.style.width = Math.round(w * zoom) + 'px';
     elt.feuille.style.height = Math.round(h * zoom) + 'px';
     elt.zoomVal.textContent = Math.round(zoom * 100) + ' %';
+    var sel = $('gf-zoom-choix');
+    if (sel) sel.value = '';
+    majPointeurPage();
   }
 
   /* =================================================================
@@ -2200,7 +2289,11 @@
     doc.body.addEventListener('focusout', surSortie);
     doc.body.addEventListener('focusin', function (e) { majBarreBloc(cibleEdit(e)); });
     doc.body.addEventListener('contextmenu', surClicDroit);
-    doc.body.addEventListener('mousedown', function () { sourisEnfoncee = true; cacher('slash'); cacher('menu'); });
+    doc.body.addEventListener('mousedown', function (e) { sourisEnfoncee = true; cacher('slash'); cacher('menu'); surSourisObjet(e); });
+    doc.addEventListener('mousemove', surSourisBouge);
+    doc.addEventListener('mouseup', surSourisLache);
+    /* hors d'un texte, les raccourcis valent aussi sur la feuille (Ctrl+V d'un objet, Ctrl+S, Ctrl+P...) */
+    doc.addEventListener('keydown', function (e) { if (!surToucheObjet(e) && (e.ctrlKey || e.metaKey) && !cibleEdit(e)) raccourci(e); });
     doc.body.addEventListener('mouseup', function () { sourisEnfoncee = false; });
     doc.addEventListener('mouseleave', function () { sourisEnfoncee = false; });
     doc.addEventListener('selectionchange', function () {
@@ -2230,7 +2323,7 @@
     var chemin = el.getAttribute('data-edit');
     var valeur = el.classList.contains('txt')
       ? depuisDom(el)
-      : el.innerText.replace(/\n+$/, '').replace(/\n/g, ' ');
+      : el.innerText.replace(/\n+$/, '').replace(/\n/g, ' ').replace(/\u00a0/g, ' ');
     ecrire(chemin, valeur);
     salir();
     synchroniserFormulaire(chemin);
@@ -2324,7 +2417,7 @@
     function enLigne(n) {
       var s = '';
       Array.prototype.forEach.call(n.childNodes, function (c) {
-        if (c.nodeType === 3) { s += c.nodeValue; return; }
+        if (c.nodeType === 3) { s += c.nodeValue.replace(/\u00a0/g, ' '); return; }
         if (c.nodeType !== 1) return;
         if (c.tagName === 'BR') { s += '\n'; return; }
         var t = enLigne(c), tag = c.tagName;
@@ -2894,6 +2987,359 @@
   }
 
   /* =================================================================
+     9 sexies. LES OBJETS POSÉS SUR LA PAGE
+     Le troisième niveau, au-dessus du document et de ses blocs : une
+     signature, un cachet, une image, une annotation, un cadre, une
+     flèche, posés à un endroit d'une page, en millimètres depuis son
+     coin haut gauche. Ils se déplacent à la souris, se redimensionnent
+     par leur poignée, se règlent dans le panneau, et s'enregistrent
+     avec l'acte (donnees.objets). Le cachet naît verrouillé : un
+     élément sensible ne se déplace pas par mégarde.
+     ================================================================= */
+  var objetSel = null, glisse = null;
+  var TYPES_OBJET = {
+    signature:  { nom: 'Signature',  w: 48, h: 22, sensible: true },
+    cachet:     { nom: 'Cachet',     w: 26, h: 26, sensible: true, verrou: true },
+    image:      { nom: 'Image',      w: 50, h: 35 },
+    annotation: { nom: 'Annotation', w: 60, h: 14, texte: 'Annotation' },
+    cadre:      { nom: 'Cadre',      w: 60, h: 30 },
+    fleche:     { nom: 'Flèche',     w: 40, h: 10 }
+  };
+
+  function poserObjet(type, extra) {
+    if (!modeleActif || lectureSeule()) return;
+    var T = TYPES_OBJET[type];
+    if (!T) return;
+    if (type === 'cachet' && !res.cachet) { dire('Déposez d\'abord le cachet dans les paramètres.', 'erreur'); return; }
+    if (type === 'signature' && !res.paraphe) { dire('Déposez d\'abord la police de signature dans les paramètres.', 'erreur'); return; }
+    donnees.objets = donnees.objets || [];
+    var page = 1;
+    try {
+      var doc = cadre.contentDocument, act = doc.activeElement;
+      var p = act && act.closest ? act.closest('.page') : null;
+      if (p) page = Array.prototype.indexOf.call(doc.querySelectorAll('.page'), p) + 1;
+    } catch (e) {}
+    var o = Object.assign({ id: 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), type: type, page: page,
+                            x: 120, y: 200, w: T.w, h: T.h, rotation: 0, opacite: 100, texte: T.texte || '', couleur: 'or',
+                            verrou: !!T.verrou }, extra || {});
+    donnees.objets.push(o);
+    salir(); rafraichir();
+    objetSel = o.id; panneau = 'objet'; peindreFormulaire();
+    setTimeout(function () { marquerSelection(); }, 50);
+    dire(T.nom + ' posé' + (type === 'annotation' ? 'e' : '') + ' sur la page ' + page + (o.verrou ? ' · verrouillé' : ''), 'ok');
+  }
+  function poserImageObjet() {
+    var input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*'; input.hidden = true;
+    document.body.appendChild(input);
+    input.addEventListener('change', function () {
+      var f = input.files && input.files[0];
+      input.remove();
+      if (!f) return;
+      lireFichier(f).then(function (uri) { return alleger(uri, 1600); }).then(function (uri) {
+        var img = new Image();
+        img.onload = function () {
+          var w = 50, h = Math.round(w * img.height / img.width * 10) / 10;
+          poserObjet('image', { src: uri, w: w, h: h, ratio: img.width / img.height });
+        };
+        img.onerror = function () { poserObjet('image', { src: uri }); };
+        img.src = uri;
+      }).catch(function () { dire('Image illisible', 'erreur'); });
+    });
+    input.click();
+  }
+
+  function objetDe(id) { return (donnees.objets || []).filter(function (o) { return o.id === id; })[0] || null; }
+
+  /* le rendu : appelé après la mise en pages, sur le document de la feuille */
+  function poserObjets(doc) {
+    var objets = donnees.objets || [];
+    var pages = doc.querySelectorAll('.page');
+    if (!pages.length) return;
+    objets.forEach(function (o) {
+      var page = pages[Math.min(Math.max(1, o.page || 1), pages.length) - 1];
+      var el = doc.createElement('div');
+      el.className = 'objet objet-' + o.type + (TYPES_OBJET[o.type] && TYPES_OBJET[o.type].sensible ? ' objet-sensible' : '');
+      el.setAttribute('data-objet', o.id);
+      el.style.left = o.x + 'mm'; el.style.top = o.y + 'mm';
+      el.style.width = o.w + 'mm'; el.style.height = o.h + 'mm';
+      el.style.opacity = (o.opacite == null ? 100 : o.opacite) / 100;
+      if (o.rotation) el.style.transform = 'rotate(' + o.rotation + 'deg)';
+      var couleurs = { or: '#C1A462', vert: '#0F432B', rouge: '#B4231F', gris: '#8C948F', noir: '#15201A', bleu: '#152E72' };
+      var c = couleurs[o.couleur] || couleurs.or;
+      if (o.type === 'cachet') {
+        el.style.backgroundImage = res.cachet ? 'url(' + res.cachet + ')' : '';
+      } else if (o.type === 'signature') {
+        var nom = o.texte || donnees.signNom || 'Antoine Jean Pierre Ndong';
+        el.innerHTML = '<div class="sig-ink" style="position:static;width:100%;transform:none"><div class="sig-name">' + ech(initialeNom(nom)) + '</div>'
+          + '<div class="sig-paraphe">' + G.blocs.PARAPHE + '</div></div>';
+      } else if (o.type === 'image') {
+        el.innerHTML = o.src ? '<img src="' + o.src + '" alt="">' : '<div class="fig-vide" style="width:100%;height:100%"></div>';
+      } else if (o.type === 'annotation') {
+        el.style.borderColor = c; el.style.color = c;
+        el.innerHTML = '<div class="objet-txt">' + U_paragraphes(o.texte || '') + '</div>';
+      } else if (o.type === 'cadre') {
+        el.style.borderColor = c;
+        if (o.fond) el.style.background = c + '18';
+      } else if (o.type === 'fleche') {
+        el.innerHTML = '<svg viewBox="0 0 100 20" preserveAspectRatio="none" style="width:100%;height:100%;display:block;overflow:visible">'
+          + '<line x1="2" y1="10" x2="86" y2="10" stroke="' + c + '" stroke-width="2.2" vector-effect="non-scaling-stroke"/>'
+          + '<polygon points="84,3 98,10 84,17" fill="' + c + '"/></svg>';
+      }
+      page.appendChild(el);
+    });
+  }
+  function U_paragraphes(t) { return paragraphes(t); }
+
+  /* la sélection : un contour et une poignée, à l'écran seulement */
+  function marquerSelection() {
+    var doc = cadre && cadrePret ? cadre.contentDocument : null;
+    if (!doc) return;
+    Array.prototype.forEach.call(doc.querySelectorAll('.objet.is-sel'), function (e) { e.classList.remove('is-sel'); });
+    Array.prototype.forEach.call(doc.querySelectorAll('.objet-poignee'), function (e) { e.remove(); });
+    if (!objetSel) { majNoteObjet(null); return; }
+    var el = doc.querySelector('[data-objet="' + objetSel + '"]');
+    var o = objetDe(objetSel);
+    if (!el || !o) { objetSel = null; majNoteObjet(null); return; }
+    el.classList.add('is-sel');
+    if (!o.verrou && !lectureSeule()) {
+      var p = doc.createElement('div'); p.className = 'objet-poignee'; p.setAttribute('data-poignee', o.id);
+      el.appendChild(p);
+      var r = doc.createElement('div'); r.className = 'objet-rotation'; r.setAttribute('data-rotation', o.id); r.title = 'Tourner';
+      el.appendChild(r);
+    }
+    majNoteObjet(o);
+  }
+  function majNoteObjet(o) {
+    var note = $('gf-note');
+    if (!note) return;
+    if (!o) { majActions(); return; }
+    note.textContent = (TYPES_OBJET[o.type] || {}).nom + ' · page ' + o.page + ' · ' + Math.round(o.w) + ' × ' + Math.round(o.h) + ' mm' + (o.rotation ? ' · ' + o.rotation + '°' : '')
+      + (o.verrou ? ' · verrouillé' : ' · glissez pour déplacer, la poignée pour redimensionner, Suppr pour retirer');
+  }
+  function selectionnerObjet(id) {
+    objetSel = id;
+    marquerSelection();
+    if (id) { panneau = 'objet'; peindreFormulaire(); }
+    else if (panneau === 'objet') { panneau = 'donnees'; peindreFormulaire(); }
+  }
+
+  /* la souris : sélection, glissement, poignée */
+  function surSourisObjet(e) {
+    if (lectureSeule()) return;
+    var poignee = e.target.closest ? e.target.closest('.objet-poignee') : null;
+    var rotation = e.target.closest ? e.target.closest('.objet-rotation') : null;
+    var el = e.target.closest ? e.target.closest('.objet') : null;
+    /* le cachet ou l'encre d'une carte : on le détache, il devient un objet à la même place */
+    var encre = !el && e.target.closest ? e.target.closest('.sign-card .sig-cachet, .sign-card .sig-ink') : null;
+    if (encre) {
+      e.preventDefault();
+      var doc = cadre.contentDocument, page = encre.closest('.page');
+      var rp = page.getBoundingClientRect(), re = encre.getBoundingClientRect();
+      var type = encre.classList.contains('sig-cachet') ? 'cachet' : 'signature';
+      var num = Array.prototype.indexOf.call(doc.querySelectorAll('.page'), page) + 1;
+      donnees[type === 'cachet' ? 'cachetDetache' : 'signatureDetachee'] = true;
+      poserObjet(type, { page: num, x: Math.round((re.left - rp.left) / MM * 10) / 10, y: Math.round((re.top - rp.top) / MM * 10) / 10,
+                         w: Math.round(re.width / MM * 10) / 10, h: Math.round(re.height / MM * 10) / 10, verrou: false });
+      dire((type === 'cachet' ? 'Cachet' : 'Signature') + ' détaché' + (type === 'cachet' ? '' : 'e') + ' de la carte : déplacez-le, ou retirez-le pour le rendre à la carte', 'ok');
+      return;
+    }
+    if (!el && !poignee) {
+      if (objetSel && !(e.target.closest && e.target.closest('[data-edit]'))) selectionnerObjet(null);
+      return;
+    }
+    e.preventDefault();
+    var id = poignee ? poignee.getAttribute('data-poignee') : (rotation ? rotation.getAttribute('data-rotation') : el.getAttribute('data-objet'));
+    var o = objetDe(id);
+    if (!o) return;
+    if (objetSel !== id) selectionnerObjet(id);
+    if (o.verrou) return;
+    var rc = (el || rotation.closest('.objet')).getBoundingClientRect();
+    glisse = { id: id, poignee: !!poignee, rotation: !!rotation, x0: e.clientX, y0: e.clientY, ox: o.x, oy: o.y, ow: o.w, oh: o.h,
+               cx: rc.left + rc.width / 2, cy: rc.top + rc.height / 2 };
+  }
+  function surSourisBouge(e) {
+    if (!glisse) return;
+    var o = objetDe(glisse.id), doc = cadre.contentDocument;
+    var el = doc.querySelector('[data-objet="' + glisse.id + '"]');
+    if (!o || !el) { glisse = null; return; }
+    var dx = (e.clientX - glisse.x0) / MM, dy = (e.clientY - glisse.y0) / MM;
+    if (glisse.rotation) {
+      /* l'angle entre le centre de l'objet et la souris ; la poignée est en haut */
+      var a = Math.atan2(e.clientY - glisse.cy, e.clientX - glisse.cx) * 180 / Math.PI + 90;
+      if (e.shiftKey) a = Math.round(a / 15) * 15;
+      o.rotation = Math.round(((a + 180) % 360 + 360) % 360 - 180);
+      el.style.transform = o.rotation ? 'rotate(' + o.rotation + 'deg)' : '';
+      majNoteObjet(o);
+      return;
+    }
+    if (glisse.poignee) {
+      var w = Math.max(5, glisse.ow + dx), h = Math.max(3, glisse.oh + dy);
+      if (o.ratio || o.type === 'cachet') { h = w / (o.ratio || 1); }
+      o.w = Math.round(w * 10) / 10; o.h = Math.round(h * 10) / 10;
+      el.style.width = o.w + 'mm'; el.style.height = o.h + 'mm';
+    } else {
+      o.x = Math.round((glisse.ox + dx) * 10) / 10; o.y = Math.round((glisse.oy + dy) * 10) / 10;
+      el.style.left = o.x + 'mm'; el.style.top = o.y + 'mm';
+    }
+    majNoteObjet(o);
+  }
+  function surSourisLache() {
+    if (!glisse) return;
+    glisse = null;
+    salir();
+    if (panneau === 'objet') peindreFormulaire();
+  }
+  function surToucheObjet(e) {
+    if (!objetSel || lectureSeule()) return false;
+    var doc = cadre.contentDocument;
+    if (doc.activeElement && doc.activeElement.closest && doc.activeElement.closest('[data-edit]')) return false;
+    var o = objetDe(objetSel);
+    if (!o) return false;
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); retirerObjet(objetSel); return true; }
+    if (e.key === 'Escape') { e.preventDefault(); selectionnerObjet(null); return true; }
+    var pas = e.shiftKey ? 5 : 1, bouge = true;
+    if (o.verrou) return false;
+    if (e.key === 'ArrowLeft') o.x -= pas; else if (e.key === 'ArrowRight') o.x += pas;
+    else if (e.key === 'ArrowUp') o.y -= pas; else if (e.key === 'ArrowDown') o.y += pas;
+    else bouge = false;
+    if (!bouge) return false;
+    e.preventDefault();
+    var el = doc.querySelector('[data-objet="' + o.id + '"]');
+    if (el) { el.style.left = o.x + 'mm'; el.style.top = o.y + 'mm'; }
+    salir(); majNoteObjet(o);
+    return true;
+  }
+  function retirerObjet(id) {
+    var o = objetDe(id);
+    donnees.objets = (donnees.objets || []).filter(function (x) { return x.id !== id; });
+    if (o && o.type === 'cachet' && !donnees.objets.some(function (x) { return x.type === 'cachet'; })) delete donnees.cachetDetache;
+    if (o && o.type === 'signature' && !donnees.objets.some(function (x) { return x.type === 'signature'; })) delete donnees.signatureDetachee;
+    if (objetSel === id) objetSel = null;
+    panneau = 'donnees';
+    salir(); peindreFormulaire(); rafraichir();
+    dire('Objet retiré', 'ok');
+  }
+  function reglerObjet(id, cle, valeur) {
+    var o = objetDe(id);
+    if (!o) return;
+    o[cle] = valeur;
+    salir(); rafraichir();
+    setTimeout(marquerSelection, 40);
+  }
+
+  /* le panneau : position, taille, rotation, opacité, texte, couleur, verrou */
+  function peindreObjet() {
+    var hote = elt.formDefile, o = objetDe(objetSel);
+    if (!o) { panneau = 'donnees'; peindreFormulaire(); return; }
+    var T = TYPES_OBJET[o.type] || { nom: o.type };
+    function nombre(cle, lab, min, max, pas) {
+      return '<div class="gf-champ"><label class="gf-lab">' + lab + '</label><input class="gf-in" type="number" data-o="' + cle + '" value="' + (o[cle] == null ? '' : o[cle]) + '" min="' + min + '" max="' + max + '" step="' + (pas || 1) + '"></div>';
+    }
+    var couleurs = [['or', 'Or'], ['vert', 'Vert'], ['rouge', 'Rouge'], ['gris', 'Gris'], ['noir', 'Noir'], ['bleu', 'Bleu encre']];
+    hote.innerHTML =
+      '<div class="gf-controle">'
+      + '<p class="gf-acc-intro">' + ech(T.nom) + (T.sensible ? ' · <span class="gf-badge gf-badge-annule">élément sensible</span>' : '') + '</p>'
+      + '<div class="gf-duo"><div>' + nombre('x', 'Depuis la gauche (mm)', 0, 210, 0.5) + '</div><div>' + nombre('y', 'Depuis le haut (mm)', 0, 297, 0.5) + '</div></div>'
+      + '<div class="gf-duo"><div>' + nombre('w', 'Largeur (mm)', 3, 210, 0.5) + '</div><div>' + nombre('h', 'Hauteur (mm)', 2, 297, 0.5) + '</div></div>'
+      + '<div class="gf-duo"><div>' + nombre('rotation', 'Rotation (°)', -180, 180, 1) + '</div><div>' + nombre('opacite', 'Opacité (%)', 5, 100, 5) + '</div></div>'
+      + '<div class="gf-champ"><label class="gf-lab">Page</label><input class="gf-in" type="number" data-o="page" value="' + o.page + '" min="1" max="' + nbPages + '"></div>'
+      + (o.type === 'annotation' || o.type === 'signature' ? '<div class="gf-champ"><label class="gf-lab">' + (o.type === 'signature' ? 'Nom signé' : 'Texte') + '</label><textarea class="gf-ta" data-o="texte" rows="3">' + ech(o.texte || '') + '</textarea></div>' : '')
+      + (o.type === 'annotation' || o.type === 'cadre' || o.type === 'fleche'
+          ? '<span class="gf-lab">Couleur</span><div class="gf-puces">' + couleurs.map(function (c) {
+              return '<button type="button" class="gf-puce' + ((o.couleur || 'or') === c[0] ? ' is-actif' : '') + '" data-oc="' + c[0] + '">' + c[1] + '</button>';
+            }).join('') + '</div>' : '')
+      + (o.type === 'cadre' ? '<div class="gf-champ"><label class="gf-bascule"><input type="checkbox" data-ob="fond"' + (o.fond ? ' checked' : '') + '><span class="gf-bascule-piste"></span><span class="gf-bascule-txt">Fond teinté</span></label></div>' : '')
+      + '<div class="gf-champ"><label class="gf-bascule"><input type="checkbox" data-ob="verrou"' + (o.verrou ? ' checked' : '') + '><span class="gf-bascule-piste"></span><span class="gf-bascule-txt">Verrouillé : ne se déplace pas à la souris</span></label></div>'
+      + '<div class="gf-controle-actions" style="margin-top:14px;justify-content:flex-start;flex-wrap:wrap">'
+      + '<button type="button" class="gf-mini" data-oa="dupliquer">Dupliquer</button>'
+      + '<button type="button" class="gf-mini" data-oa="devant">Devant</button>'
+      + '<button type="button" class="gf-mini" data-oa="derriere">Derrière</button>'
+      + '<button type="button" class="gf-mini gf-mini-danger" data-oa="retirer">Retirer</button>'
+      + '</div>'
+      + '<div class="gf-controle-actions" style="margin-top:14px"><button type="button" class="gf-btn gf-btn-fant" id="gf-objet-retour">Retour aux données</button></div>'
+      + '</div>';
+    hote.querySelectorAll('[data-o]').forEach(function (n) {
+      n.addEventListener('change', function () {
+        var v = n.type === 'number' ? parseFloat(n.value) : n.value;
+        if (n.type === 'number' && isNaN(v)) return;
+        reglerObjet(o.id, n.getAttribute('data-o'), v);
+      });
+    });
+    hote.querySelectorAll('[data-ob]').forEach(function (n) {
+      n.addEventListener('change', function () { reglerObjet(o.id, n.getAttribute('data-ob'), n.checked); });
+    });
+    hote.querySelectorAll('[data-oc]').forEach(function (b) {
+      b.addEventListener('click', function () { reglerObjet(o.id, 'couleur', b.getAttribute('data-oc')); peindreObjet(); });
+    });
+    hote.querySelectorAll('[data-oa]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var a = b.getAttribute('data-oa'), list = donnees.objets, i = list.indexOf(o);
+        if (a === 'retirer') { retirerObjet(o.id); return; }
+        if (a === 'dupliquer') {
+          var c = JSON.parse(JSON.stringify(o)); c.id = 'o' + Date.now().toString(36); c.x += 6; c.y += 6; c.verrou = false;
+          list.splice(i + 1, 0, c); objetSel = c.id;
+        } else if (a === 'devant' && i < list.length - 1) { list.splice(i, 1); list.push(o); }
+        else if (a === 'derriere' && i > 0) { list.splice(i, 1); list.unshift(o); }
+        salir(); rafraichir(); peindreFormulaire(); setTimeout(marquerSelection, 40);
+      });
+    });
+    $('gf-objet-retour').addEventListener('click', function () { selectionnerObjet(null); });
+  }
+
+  /* =================================================================
+     9 septies. LE PRESSE-PAPIERS DU GREFFE
+     Ctrl+C sur un objet posé ou sur le bloc où l'on écrit (sans texte
+     sélectionné) le copie ; Ctrl+V le recolle, dans cet acte ou dans un
+     autre, dans cette fenêtre ou dans une autre : il passe par le
+     localStorage. Le texte sélectionné, lui, se copie comme partout.
+     ================================================================= */
+  var CLE_PRESSE = 'bbc-greffe-presse-papiers';
+  function copierElement() {
+    var doc = cadre && cadrePret ? cadre.contentDocument : null;
+    if (!doc) return false;
+    var sel = doc.getSelection();
+    if (sel && sel.rangeCount && !sel.isCollapsed && sel.toString()) return false;   /* du texte : le navigateur s'en charge */
+    var contenu = null;
+    if (objetSel && objetDe(objetSel)) contenu = { genre: 'objet', objet: JSON.parse(JSON.stringify(objetDe(objetSel))) };
+    else if (blocCourant && modeleActif.libre && /^b\d+$/.test(blocCourant)) {
+      var x = (donnees.blocs || [])[+blocCourant.slice(1)];
+      if (x) contenu = { genre: 'bloc', bloc: JSON.parse(JSON.stringify(x)), table: x.source && donnees.tables ? JSON.parse(JSON.stringify(donnees.tables[x.source] || null)) : null };
+    }
+    if (!contenu) return false;
+    try { localStorage.setItem(CLE_PRESSE, JSON.stringify(contenu)); } catch (e) {}
+    dire((contenu.genre === 'objet' ? (TYPES_OBJET[contenu.objet.type] || {}).nom : 'Bloc') + ' copié', 'ok');
+    return true;
+  }
+  function collerElement() {
+    if (lectureSeule()) return false;
+    var doc = cadre && cadrePret ? cadre.contentDocument : null;
+    if (doc && doc.activeElement && doc.activeElement.closest && doc.activeElement.closest('[data-edit]')) return false;  /* dans un texte : coller du texte */
+    var contenu = null;
+    try { contenu = JSON.parse(localStorage.getItem(CLE_PRESSE) || 'null'); } catch (e) {}
+    if (!contenu) return false;
+    if (contenu.genre === 'objet') {
+      var o = contenu.objet; o.id = 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); o.x += 6; o.y += 6; o.verrou = false;
+      if (o.type === 'cachet' && !res.cachet) { dire('Le cachet n\'est pas déposé sur ce poste.', 'erreur'); return true; }
+      donnees.objets = donnees.objets || []; donnees.objets.push(o);
+      salir(); rafraichir(); objetSel = o.id; panneau = 'objet'; peindreFormulaire(); setTimeout(marquerSelection, 50);
+      dire('Objet collé', 'ok'); return true;
+    }
+    if (contenu.genre === 'bloc') {
+      if (!modeleActif.libre) { dire('Un bloc se colle dans un acte libre.', 'erreur'); return true; }
+      var b = contenu.bloc;
+      if (b.b === 'articles' && (donnees.blocs || []).some(function (y) { return y.b === 'articles'; })) { dire('Un seul bloc d\'articles par acte.', 'erreur'); return true; }
+      if (b.source) { var src = 't' + Date.now().toString(36); donnees.tables = donnees.tables || {}; donnees.tables[src] = contenu.table || { colonnes: [], lignes: [] }; b.source = src; }
+      donnees.blocs = donnees.blocs || [];
+      var i = blocCourant && /^b\d+$/.test(blocCourant) ? +blocCourant.slice(1) + 1 : donnees.blocs.length;
+      donnees.blocs.splice(i, 0, b);
+      salir(); peindreFormulaire(); rafraichir();
+      dire('Bloc collé', 'ok'); return true;
+    }
+    return false;
+  }
+
+  /* =================================================================
      10. SORTIR L'ACTE
      Le fichier exporté est la feuille telle qu'on la voit, pages
      comprises, moins ce qui n'appartient qu'à l'écran.
@@ -2907,7 +3353,8 @@
       /* Le fichier source est un fichier de travail : il ne porte ni le
          cachet ni la signature, qui ne vont que sur le PDF imprimé ici.
          Sinon ce fichier serait une copie du cachet, bonne à recopier. */
-      Array.prototype.forEach.call(clone.querySelectorAll('tr.tr-suite, .pill-vide, .sig-ink, .sig-cachet, .wm-brouillon'), function (n) { n.parentNode.removeChild(n); });
+      Array.prototype.forEach.call(clone.querySelectorAll('tr.tr-suite, .pill-vide, .sig-ink, .sig-cachet, .wm-brouillon, .objet-sensible, .objet-poignee, .objet-rotation'), function (n) { n.parentNode.removeChild(n); });
+      Array.prototype.forEach.call(clone.querySelectorAll('.objet.is-sel'), function (n) { n.classList.remove('is-sel'); });
       Array.prototype.forEach.call(clone.querySelectorAll('[data-edit]'), function (n) {
         n.removeAttribute('data-edit'); n.removeAttribute('contenteditable'); n.removeAttribute('spellcheck');
       });
@@ -3001,8 +3448,17 @@
       montrer(modeleActif ? 'atelier' : 'accueil');
     });
 
-    $('gf-zoom-moins').addEventListener('click', function () { zoom = Math.max(0.25, zoom - 0.1); appliquerZoom(); });
-    $('gf-zoom-plus').addEventListener('click', function () { zoom = Math.min(1.5, zoom + 0.1); appliquerZoom(); });
+    $('gf-zoom-moins').addEventListener('click', function () { zoomer(zoom - 0.1); });
+    $('gf-zoom-plus').addEventListener('click', function () { zoomer(zoom + 0.1); });
+    $('gf-zoom-choix').addEventListener('change', function () { if (this.value) zoomer(this.value); });
+    $('gf-page-prec').addEventListener('click', function () { allerPage(pageVisible() - 1); });
+    $('gf-page-suiv').addEventListener('click', function () { allerPage(pageVisible() + 1); });
+    /* Ctrl + molette : le zoom, pas celui du navigateur */
+    elt.scene.addEventListener('wheel', function (e) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault(); zoomer(zoom + (e.deltaY < 0 ? 0.1 : -0.1));
+    }, { passive: false });
+    elt.scene.addEventListener('scroll', function () { clearTimeout(majPointeurPage._t); majPointeurPage._t = setTimeout(majPointeurPage, 60); });
     $('gf-annuler').addEventListener('click', annuler);
     $('gf-retablir').addEventListener('click', retablir);
 
@@ -3030,6 +3486,7 @@
 
   /* Les raccourcis, les memes dans l'admin et dans la feuille. */
   function raccourci(e) {
+    if (espace === 'atelier' && objetSel && surToucheObjet(e)) return;
     var ctrl = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (e.key === 'Escape') {
       if (menuOuvert != null) { fermerMenus(); return; }
@@ -3040,6 +3497,8 @@
     }
     if (!ctrl) return;
     var enAtelier = !!modeleActif && espace === 'atelier';
+    if (enAtelier && k === 'c' && copierElement()) { e.preventDefault(); return; }
+    if (enAtelier && k === 'v' && collerElement()) { e.preventDefault(); return; }
     if (k === 'n') { e.preventDefault(); ouvrirNouveau(); }
     else if (k === 'o') { e.preventDefault(); montrer('registre'); }
     else if (k === 's' && e.shiftKey) { e.preventDefault(); sauvegarderGreffe(); }
@@ -3081,10 +3540,12 @@
     } else {
       cadrePret = false;
       peindreFormulaire();
+      if (!zoomChoisi) { zoom = zoomLargeur(); }
       rafraichir();
     }
     majTitreBarre();
   }
+  var zoomChoisi = false;
 
   /* Le blason est public : il est déjà sur le site. On le lit une fois
      et on le garde en base64, pour que le fichier source exporté

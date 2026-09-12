@@ -77,6 +77,12 @@
     { cle: 'etat', titre: "État", poids: 22, align: 'centre', forme: 'pastille', choix: ['Bon', 'Usé', 'À remplacer', 'Manquant'] },
     { cle: 'lieu', titre: "Rangement", poids: 24 },
     { cle: 'observations', titre: "Observations", poids: 30 }], 10);
+  var fdm = tableau('fdm_joueuses', "Les joueuses", [
+    { cle: 'maillot', titre: "N°", poids: 12, align: 'centre', forme: 'nombre' },
+    { cle: 'nom', titre: "Nom et prénom(s)", poids: 46, forme: 'fort' },
+    { cle: 'licence', titre: "Licence", poids: 24, forme: 'code' },
+    { cle: 'points', titre: "Points", poids: 14, align: 'centre', forme: 'nombre' },
+    { cle: 'fautes', titre: "Fautes", poids: 14, align: 'centre', forme: 'nombre' }], 12, false);
   var dep = tableau('dep_lignes', "Les dépenses", [
     { cle: 'date', titre: "Date", poids: 18, align: 'centre', forme: 'code' },
     { cle: 'libelle', titre: "Libellé", poids: 50, forme: 'fort' },
@@ -148,6 +154,49 @@
       signatures([{ pour: "Le responsable du matériel", nom: "", qualite: "", mention: "Signature", encre: false },
                   { pour: "Pour Baobabs Basket Club", nom: "Antoine Jean Pierre Ndong", qualite: "Président", mention: "Signature et cachet du Président", encre: true }])
     ], { inv_materiel: inv.table }),
+
+    libre("Communiqué", [
+      entete(),
+      titre("Communication du club", "Communiqué", "", "Communiqué"),
+      reperes([["Date", aujourdhui], ["De", "Le Président"], ["Diffusion", "Joueuses, staff, parents, partenaires"]]),
+      texte("Baobabs Basket Club informe "),
+      signatures([{}])
+    ]),
+
+    libre("Message aux parents", [
+      entete("Bureau de la Section Basketball", "Dakar, le " + aujourdhui, false),
+      titre("Aux parents et tuteurs", "Message aux parents", "", "Information"),
+      texte("Chers parents,\n\nBaobabs Basket Club vous informe que \n\nNous comptons sur votre soutien et restons à votre disposition pour toute question.", "", ""),
+      texte("**Contact du club :** (téléphone) · (courriel)"),
+      signatures([{}])
+    ]),
+
+    libre("Feuille de match", [
+      entete("Section Basketball", "Dakar, le " + aujourdhui, false),
+      titre("Compétition", "Feuille de match", "", "Match"),
+      reperes([["Date", ""], ["Lieu", ""], ["Adversaire", ""], ["Résultat", ""]]),
+      fdm.bloc,
+      texte("**Coach :** \n\n**Arbitres :** \n\n**Observations :** "),
+      signatures([{ pour: "Le coach", nom: "", qualite: "Coach", mention: "Signature", encre: false },
+                  { pour: "Pour Baobabs Basket Club", nom: "Antoine Jean Pierre Ndong", qualite: "Président", mention: "Signature et cachet du Président", encre: true }])
+    ], { fdm_joueuses: fdm.table }),
+
+    libre("Demande d'autorisation parentale", [
+      entete(),
+      titre("Document officiel du club", "Demande d'autorisation parentale", "À retourner au club, signée, avant le déplacement"),
+      reperes([["Déplacement", ""], ["Lieu", ""], ["Du", ""], ["Au", ""]]),
+      texte("Je soussigné(e), **(nom du parent ou tuteur)**, autorise ma fille **(nom de la joueuse)**, née le (date), à participer au déplacement organisé par Baobabs Basket Club ci-dessus, sous la responsabilité du chef de délégation, et à recevoir tout soin médical d'urgence que son état nécessiterait.\n\n**Téléphone du parent :** \n\n**Personne à prévenir en cas d'urgence :** "),
+      signatures([{ pour: "Le parent ou tuteur", nom: "", qualite: "", mention: "Signature, précédée de « Lu et approuvé »", encre: false },
+                  { pour: "Pour Baobabs Basket Club", nom: "Antoine Jean Pierre Ndong", qualite: "Président", mention: "Signature et cachet du Président", encre: true }])
+    ]),
+
+    libre("Autorisation de déplacement (mineure)", [
+      entete(),
+      titre("Document officiel du club", "Autorisation de déplacement", ""),
+      reperes([["Joueuse", ""], ["Née le", ""], ["Déplacement", ""], ["Dates", ""]]),
+      texte("Baobabs Basket Club atteste que la joueuse ci-dessus fait partie de sa délégation pour le déplacement indiqué, et qu'elle voyage sous la responsabilité du chef de délégation, Monsieur **Antoine Jean Pierre Ndong**, Président du club, muni de l'autorisation parentale jointe.\n\nLa présente est délivrée pour servir et valoir ce que de droit auprès des autorités de transport, de frontière et d'accueil."),
+      signatures([{}])
+    ]),
 
     libre("État des dépenses", [
       entete("Bureau de la Section Basketball", "Dakar, le " + aujourdhui, false),
