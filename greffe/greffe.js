@@ -3599,6 +3599,10 @@
   }
 
   G.mount = function (root, contexte) {
+    /* Le Greffe est réservé au propriétaire du site : l'admin le dit au
+       montage, après avoir comparé la session à bbc_proprietaire_email().
+       Sans ce mot, rien ne se monte, même si un bouton a fui. */
+    if (!contexte || contexte.proprietaire !== true) return Promise.reject(new Error('Le Greffe est réservé au propriétaire du site'));
     racine = root; api = contexte || {};
     brancher();
     return chargerMoteur().then(function () {
