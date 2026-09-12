@@ -189,6 +189,89 @@
     return p[0].charAt(0).toUpperCase() + '. ' + p[p.length - 1];
   }
 
+  /* =================================================================
+     1 bis. L'IDENTITÉ DU CLUB ET LES VARIABLES
+     Le nom, le président, l'adresse, le récépissé vivent en un seul
+     endroit (Paramètres). Les modèles ont leurs textes par défaut ; si
+     l'identité change, la feuille suit. Dans n'importe quel texte,
+     {{club.nom}}, {{club.president}}, {{acte.numero}}, {{acte.date}},
+     {{aujourdhui}}, {{total.<tableau>}} et {{col.<colonne>}} (série) se
+     remplacent à l'affichage et restent des variables dans la donnée.
+     ================================================================= */
+  var CLUB_DEFAUT = {
+    nom: 'Baobabs Basket Club', sigle: 'BBC', devise: 'Grandir ici. Régner partout.',
+    president: 'Antoine Jean Pierre Ndong', qualitePresident: 'Président',
+    adresse: 'Sicap Baobab, Dakar, Sénégal', ville: 'Dakar', recepisse: '8280',
+    telephone: '', email: '', site: 'baobabsbasketclub.com', pays: 'République du Sénégal'
+  };
+  var CLUB_CHAMPS = [
+    ['nom', 'Nom du club'], ['sigle', 'Sigle'], ['devise', 'Devise'],
+    ['president', 'Président (nom complet)'], ['qualitePresident', 'Qualité du signataire'],
+    ['adresse', 'Adresse'], ['ville', 'Ville (« Fait à »)'], ['recepisse', 'Récépissé n°'],
+    ['telephone', 'Téléphone'], ['email', 'E-mail'], ['site', 'Site'], ['pays', 'Pays (en-tête)']
+  ];
+  var VAR_RE = /\{\{(club|acte|aujourdhui|total|col)(?:\.([A-Za-z0-9_.\-]+))?\}\}/g;
+  var VARIABLES = [
+    ['{{club.nom}}', 'Nom du club'], ['{{club.president}}', 'Président'], ['{{club.qualitePresident}}', 'Qualité du président'],
+    ['{{club.adresse}}', 'Adresse du club'], ['{{club.ville}}', 'Ville'], ['{{club.recepisse}}', 'Récépissé'],
+    ['{{club.telephone}}', 'Téléphone'], ['{{club.email}}', 'E-mail'], ['{{club.site}}', 'Site'],
+    ['{{acte.numero}}', 'Numéro de l\'acte'], ['{{acte.date}}', 'Date de l\'acte (en toutes lettres)'],
+    ['{{acte.titre}}', 'Intitulé de l\'acte'], ['{{aujourdhui}}', 'Date du jour'],
+    ['{{total.<tableau>}}', 'Total d\'un tableau'], ['{{col.<colonne>}}', 'Colonne d\'une série']
+  ];
+  function valeurVariable(racineV, chemin) {
+    var C = G.club || CLUB_DEFAUT;
+    if (racineV === 'club') return chemin ? (C[chemin] == null ? '' : C[chemin]) : C.nom;
+    if (racineV === 'aujourdhui') return dateLongue(isoDuJour(), false);
+    if (racineV === 'acte') {
+      var d = donnees || {};
+      if (chemin === 'numero') return d.numero || '';
+      if (chemin === 'date') return dateLongue(d.dateActe, false) || '';
+      if (chemin === 'titre') return d.titre || (modeleActif ? modeleActif.nom : '');
+      if (chemin === 'lieu') return d.lieu || C.ville || '';
+      if (chemin === 'version') return String(acteVersion || 1);
+      return '';
+    }
+    if (racineV === 'col') return (donnees && donnees.serie && chemin in donnees.serie) ? donnees.serie[chemin] : '';
+    if (racineV === 'total') {
+      var p = String(chemin || '').split('.'), source = p[0], cle = p[1];
+      var t = donnees && donnees.tables && donnees.tables[source];
+      if (!t) return '';
+      var cols = (t.colonnes || []).filter(function (c) { return cle ? c.cle === cle : c.total; });
+      if (!cols.length) return '';
+      var somme = 0;
+      G.lignes(donnees, source).forEach(function (l) {
+        cols.forEach(function (c) { var n = G.blocs.valeurCellule ? G.blocs.valeurCellule(t, l, c) : parseFloat(String(l[c.cle] || '').replace(/[^\d.,-]/g, '').replace(',', '.')); if (!isNaN(n)) somme += n; });
+      });
+      return nombre(somme) + (t.unite ? ' ' + t.unite : '');
+    }
+    return '';
+  }
+  /* le texte est déjà échappé et décoré : les variables deviennent des
+     pastilles non modifiables, qui se relisent telles quelles */
+  function variables(html) {
+    return html.replace(VAR_RE, function (m, r, ch) {
+      var v = valeurVariable(r, ch);
+      var nom = r + (ch ? '.' + ch : '');
+      return '<span class="s-var' + (v === '' ? ' s-var-vide' : '') + '" data-var="' + ech(nom) + '" contenteditable="false" title="' + ech(nom) + '">' + (v === '' ? ech('{{' + nom + '}}') : ech(String(v))) + '</span>';
+    });
+  }
+  /* Les modèles écrivent l'identité par défaut ; si le club en a changé,
+     la feuille suit sans que les modèles y touchent. */
+  function identiteAppliquee(html) {
+    var C = G.club || CLUB_DEFAUT, D = CLUB_DEFAUT;
+    function rempl(de, vers) { if (de && vers && de !== vers) html = html.split(ech(de)).join(ech(vers)); }
+    rempl('Récépissé n° ' + D.recepisse, 'Récépissé n° ' + (C.recepisse || D.recepisse));
+    rempl(D.nom.toUpperCase(), (C.nom || D.nom).toUpperCase());
+    rempl(D.nom, C.nom || D.nom);
+    rempl(D.president, C.president || D.president);
+    rempl(initialeNom(D.president), initialeNom(C.president || D.president));
+    rempl(D.adresse, C.adresse || D.adresse);
+    rempl(D.devise, C.devise || D.devise);
+    rempl(D.pays, C.pays || D.pays);
+    return html;
+  }
+
   /* Mise en paragraphes, avec **gras**. On échappe d'abord, on
      décore ensuite : l'inverse laisserait passer du HTML.
 
@@ -217,7 +300,7 @@
 
   /* La même chose sur une seule ligne : un titre, un libellé, un nom
      peuvent porter du gras, une teinte, une taille. */
-  function enLigne(texte) { return gras(ech(String(texte == null ? '' : texte))); }
+  function enLigne(texte) { return variables(gras(ech(String(texte == null ? '' : texte)))); }
   /* Le texte nu, sans ses marques : pour une initiale, un nom de fichier,
      un intitulé de registre. */
   function sansMarques(texte) {
@@ -246,7 +329,7 @@
       var g = m ? (m[1] === '>' ? 'note' : 'liste') : 'para';
       var brut = m ? m[2] : ligne.replace(/^\s+/, '');
       if (/ $/.test(ligne) && !/ $/.test(brut)) brut += ' ';
-      var contenu = gras(ech(brut));
+      var contenu = variables(gras(ech(brut)));
       if (genre && genre !== g) vider();
       genre = g; run.push(contenu);
     });
@@ -326,7 +409,7 @@
     { cle: 'cachet',    groupe: 'Cachet',  nom: 'Cachet de la présidence', jeton: null, image: true }
   ];
 
-  var DB_NOM = 'bbc-greffe', DB_VER = 3, MAG_RES = 'ressources', MAG_ACTES = 'actes', MAG_PRE = 'prereglages';
+  var DB_NOM = 'bbc-greffe', DB_VER = 4, MAG_RES = 'ressources', MAG_ACTES = 'actes', MAG_PRE = 'prereglages', MAG_REG = 'reglages';
 
   function dbOuvrir() {
     return new Promise(function (res, rej) {
@@ -336,6 +419,7 @@
         if (!db.objectStoreNames.contains(MAG_RES)) db.createObjectStore(MAG_RES, { keyPath: 'cle' });
         if (!db.objectStoreNames.contains(MAG_ACTES)) db.createObjectStore(MAG_ACTES, { keyPath: 'id' });
         if (!db.objectStoreNames.contains(MAG_PRE)) db.createObjectStore(MAG_PRE, { keyPath: 'id' });
+        if (!db.objectStoreNames.contains(MAG_REG)) db.createObjectStore(MAG_REG, { keyPath: 'cle' });
       };
       r.onsuccess = function () { res(r.result); };
       r.onerror = function () { rej(r.error); };
@@ -587,7 +671,7 @@
       modele: modeleActif.cle,
       nom: modeleActif.nom,
       numero: donnees.numero || '',
-      intitule: sansMarques((modeleActif.libre ? donnees.titre : donnees.nomActe) || donnees.titre || modeleActif.nom),
+      intitule: sansMarques(donnees.nomActe || donnees.titre || modeleActif.nom),
       date: donnees.dateActe || isoDuJour(),
       maj: Date.now(),
       etat: acteEtat, version: acteVersion, versions: acteVersions,
@@ -652,6 +736,8 @@
       Object.keys(p).forEach(function (k) { donnees[k] = p[k]; });
     }
     donnees.tables = donnees.tables || {};
+    if (G.club && donnees.signNom === CLUB_DEFAUT.president && G.club.president) donnees.signNom = G.club.president;
+    if (G.club && donnees.lieu === CLUB_DEFAUT.ville && G.club.ville) donnees.lieu = G.club.ville;
     /* le numéro suit le registre : premier libre de l'année en cours,
        tous états confondus : un numéro annulé reste pris */
     if (m.prefixe) {
@@ -697,7 +783,24 @@
         return !e.closest('tr') && !e.textContent.trim() && !/^fixes\./.test(e.getAttribute('data-edit'));
       }).length;
       if (vides) avert(vides + ' zone' + (vides > 1 ? 's' : '') + ' de texte vide' + (vides > 1 ? 's' : '') + ' sur la feuille');
+      /* les variables qui n'ont rien trouvé : {{club.telephone}} sans téléphone, {{col.x}} hors série */
+      var varsVides = doc.querySelectorAll('.s-var-vide');
+      if (varsVides.length) avert(varsVides.length + ' variable' + (varsVides.length > 1 ? 's' : '') + ' sans valeur : '
+        + Array.prototype.slice.call(varsVides, 0, 4).map(function (v) { return '{{' + v.getAttribute('data-var') + '}}'; }).join(', ') + ' (Paramètres, ou la série)');
+      /* les images encore vides */
+      var figs = doc.querySelectorAll('.fig-vide');
+      if (figs.length) avert(figs.length + ' image' + (figs.length > 1 ? 's' : '') + ' sans fichier : un cadre gris s\'imprimera');
+      /* une colonne calculée qui ne calcule pas */
+      if (doc.querySelector('td[data-calc] .ton-alerte')) erreur('Une colonne calculée a une formule illisible');
     }
+    /* les objets posés hors de la page (ou presque) */
+    var hors = (donnees.objets || []).filter(function (o) {
+      return o.x + o.w < 2 || o.y + o.h < 2 || o.x > 208 || o.y > 295 || (o.page || 1) > nbPages;
+    });
+    if (hors.length) avert(hors.length + ' objet' + (hors.length > 1 ? 's' : '') + ' hors de la page : ' + hors.map(function (o) { return (TYPES_OBJET[o.type] || {}).nom || o.type; }).join(', '));
+    else if ((donnees.objets || []).length) ok((donnees.objets || []).length + ' objet' + (donnees.objets.length > 1 ? 's' : '') + ' posé' + (donnees.objets.length > 1 ? 's' : '') + ' sur la page');
+    var chevauche = (donnees.objets || []).filter(function (o) { return !o.verrou && (o.type === 'cachet' || o.type === 'signature') && (o.x + o.w > 199 || o.y + o.h > 287); });
+    if (chevauche.length) avert('Un cachet ou une signature touche la marge : vérifiez à l\'impression');
     Object.keys(donnees.tables || {}).forEach(function (k) {
       var t = donnees.tables[k];
       var n = G.lignes(donnees, k).length;
@@ -1177,8 +1280,37 @@
   }
 
   /* ---- les paramètres : la carte de sauvegarde ---- */
+  function peindreIdentite() {
+    var hote = $('gf-param-club');
+    if (!hote) return;
+    var C = G.club || CLUB_DEFAUT;
+    hote.innerHTML =
+      '<h2 class="gf-pol-titre">L\'identité du club</h2>'
+      + '<p class="gf-pol-intro">Ce que les actes disent du club : le nom, le président qui signe, l\'adresse, le récépissé. Changez-les ici, tous les modèles suivent. '
+      + 'Dans un texte, tapez <code>{{club.president}}</code>, <code>{{acte.numero}}</code>, <code>{{aujourdhui}}</code> ou <code>{{total.membres}}</code> : la feuille écrit la valeur, la donnée garde la variable.</p>'
+      + '<div class="gf-grille2">' + CLUB_CHAMPS.map(function (c) {
+          return '<label class="gf-champ"><span>' + ech(c[1]) + '</span><input class="gf-in" type="text" data-club="' + c[0] + '" value="' + ech(C[c[0]] || '') + '"></label>';
+        }).join('') + '</div>'
+      + '<div class="gf-pol-pied"><button type="button" class="gf-btn gf-btn-accent" id="gf-club-garder">Enregistrer l\'identité</button>'
+      + '<button type="button" class="gf-btn gf-btn-fant" id="gf-club-defaut">Revenir aux valeurs d\'origine</button></div>';
+    $('gf-club-garder').addEventListener('click', function () {
+      var v = {};
+      hote.querySelectorAll('[data-club]').forEach(function (i) { v[i.getAttribute('data-club')] = i.value.trim(); });
+      G.club = Object.assign({}, CLUB_DEFAUT, v);
+      dbPoser(MAG_REG, { cle: 'club', valeur: G.club }).then(function () {
+        dire('Identité du club enregistrée', 'ok');
+        if (modeleActif) { cadrePret = false; }
+      }).catch(function (e) { dire('Enregistrement impossible : ' + (e && e.message ? e.message : e), 'erreur'); });
+    });
+    $('gf-club-defaut').addEventListener('click', function () {
+      G.club = Object.assign({}, CLUB_DEFAUT);
+      dbOter(MAG_REG, 'club').then(function () { peindreIdentite(); dire('Identité d\'origine', 'ok'); if (modeleActif) cadrePret = false; });
+    });
+  }
+
   function peindreParametres() {
     peindreListeRessources();
+    peindreIdentite();
     var hote = $('gf-param-sauvegarde');
     if (!hote) return;
     hote.innerHTML =
@@ -1213,6 +1345,7 @@
         { lab: 'Enregistrer', rac: 'Ctrl+S', off: !enAtelier, act: function () { enregistrer(false); } },
         { lab: 'Renommer l\'acte…', rac: 'F2', off: !enAtelier || lect, act: renommerActe },
         { lab: 'Garder comme préréglage…', off: !enAtelier, act: garderPrereglage },
+        { lab: 'Série depuis une liste…', off: !enAtelier || lect, act: ouvrirSerie },
         { lab: 'Fichier source (sans cachet)', off: !enAtelier, act: exporterHtml },
         { lab: 'Imprimer en PDF', rac: 'Ctrl+P', off: !enAtelier, act: imprimer },
         { sep: true },
@@ -1325,7 +1458,7 @@
     var nav = $('gf-nav-atelier');
     if (nav) nav.hidden = !modeleActif;
     if (!enAtelier) { if (elt.sousTitre) elt.sousTitre.textContent = ''; return; }
-    var nom = (modeleActif.libre && String(donnees.titre || '').trim()) || String(donnees.nomActe || '').trim() || modeleActif.nom;
+    var nom = String(donnees.nomActe || '').trim() || (modeleActif.libre && String(donnees.titre || '').trim()) || modeleActif.nom;
     $('gf-ae-type').textContent = nom;
     $('gf-ae-num').textContent = donnees.numero ? donnees.numero : '';
     var badge = $('gf-ae-badge');
@@ -1400,7 +1533,7 @@
      n'a que celui-là. */
   function renommerActe() {
     if (!modeleActif || lectureSeule()) return;
-    if (modeleActif.libre) {
+    if (modeleActif.libre && !donnees.nomActe) {
       demander('Renommer l\'acte', 'Le titre de l\'acte, tel qu\'il s\'imprime et se lit au registre.', donnees.titre || '').then(function (v) {
         if (v == null) return;
         donnees.titre = v; salir(); peindreFormulaire(); rafraichir(); majTitreBarre();
@@ -1653,6 +1786,7 @@
             + (i === 0 ? ' disabled' : '') + '>'
             + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button>'
             + '<input class="gf-col-nom" value="' + ech(c.titre || '') + '" aria-label="Titre de la colonne">'
+            + '<button type="button" class="gf-col-fx' + (c.formule ? ' is-actif' : '') + '" title="' + (c.formule ? 'Formule : ' + ech(c.formule) : 'Calculer cette colonne à partir des autres (quantité × prix…)') + '" aria-label="Formule">ƒ</button>'
             + '<button type="button" class="gf-col-mv" data-mv="1" title="Vers la droite" aria-label="Vers la droite"'
             + (i === t.colonnes.length - 1 ? ' disabled' : '') + '>'
             + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6 6 6-6 6"/></svg></button>'
@@ -1714,6 +1848,24 @@
       var i = +d.getAttribute('data-ci');
       d.querySelector('.gf-col-nom').addEventListener('input', function () {
         t.colonnes[i].titre = this.value; salir(); planifier();
+      });
+      d.querySelector('.gf-col-fx').addEventListener('click', function () {
+        var c = t.colonnes[i];
+        var cles = t.colonnes.filter(function (x) { return x !== c; }).map(function (x) { return x.cle + ' (' + (x.titre || x.cle) + ')'; }).join(', ');
+        demander('Formule de la colonne « ' + (c.titre || c.cle) + ' »',
+                 'Les autres colonnes s\'appellent : ' + cles + '. Écrivez par exemple quantite * prix, ou montant * 0,18. Vide : la colonne redevient libre.',
+                 c.formule || '', t.colonnes.filter(function (x) { return x !== c; }).map(function (x) { return x.cle; })).then(function (f) {
+          if (f == null) return;
+          f = f.trim();
+          if (f) {
+            var essai = { cle: c.cle, formule: f };
+            if (!G.blocs.formuleValide(t, essai)) { dire('Formule illisible : ' + f, 'erreur'); return; }
+            c.formule = f; if (c.forme === 'texte') c.forme = 'nombre'; if (c.align === 'gauche') c.align = 'droite';
+            if (c.total == null) c.total = true;
+            dire('Colonne « ' + (c.titre || c.cle) + ' » calculée : ' + f, 'ok');
+          } else { delete c.formule; }
+          salir(); peindreTable(source); planifier();
+        });
       });
       d.querySelectorAll('.gf-col-mv').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -1875,6 +2027,9 @@
     'Observations':         { poids: 34, forme: 'texte', align: 'gauche' },
     'Montant':              { poids: 24, forme: 'nombre', align: 'droite', total: true },
     'Quantité':             { poids: 16, forme: 'nombre', align: 'centre' },
+    'Prix unitaire':        { poids: 22, forme: 'nombre', align: 'droite' },
+    'Total (quantité × prix)': { poids: 24, forme: 'nombre', align: 'droite', total: true, formule: 'quantite * prixunitaire' },
+    'TVA 18 %':             { poids: 20, forme: 'nombre', align: 'droite', total: true, formule: 'montant * 0.18' },
     'Date':                 { poids: 20, forme: 'code', align: 'centre' }
   };
 
@@ -2162,7 +2317,7 @@
   }
 
   function corpsDocument() {
-    return G.blocs.assembler(modeleActif, donnees, { res: res, brouillon: acteEtat === 'brouillon' });
+    return identiteAppliquee(G.blocs.assembler(modeleActif, donnees, { res: res, brouillon: acteEtat === 'brouillon' }));
   }
 
   /* À l'écran seulement : le cadre est transparent (la scène de
@@ -2186,6 +2341,8 @@
     '  .objet-rotation{ position:absolute; left:50%; top:-22px; width:14px; height:14px; margin-left:-7px; border-radius:99px;',
     '    background:#fff; border:2px solid #46BF1D; cursor:grab; box-shadow:0 1px 4px rgba(0,0,0,.4); }',
     '  .objet-rotation::after{ content:""; position:absolute; left:50%; top:12px; width:2px; height:8px; margin-left:-1px; background:#46BF1D; }',
+    '  .s-var{ background:rgba(70,191,29,.12); border-radius:2pt; box-shadow:0 0 0 1px rgba(70,191,29,.25); }',
+    '  .s-var-vide{ background:rgba(224,72,63,.12); box-shadow:0 0 0 1px rgba(224,72,63,.35); }',
     '  .objet-guide{ position:absolute; z-index:40; pointer-events:none; }',
     '  .objet-guide-v{ top:0; bottom:0; width:0; border-left:1px dashed #E0483F; }',
     '  .objet-guide-h{ left:0; right:0; height:0; border-top:1px dashed #E0483F; }',
@@ -2500,6 +2657,7 @@
         if (c.nodeType === 3) { s += c.nodeValue.replace(/\u00a0/g, ' '); return; }
         if (c.nodeType !== 1) return;
         if (c.tagName === 'BR') { s += '\n'; return; }
+        if (c.hasAttribute && c.hasAttribute('data-var')) { s += '{{' + c.getAttribute('data-var') + '}}'; return; }
         var t = enLigneDom(c), tag = c.tagName;
         if (!t.trim()) { s += t; return; }
         /* « <b>Antoine </b>Ndong » : l'espace appartient à la ligne, pas au
@@ -2770,8 +2928,8 @@
      ================================================================= */
   function sauvegarderGreffe() {
     var contenu = {
-      greffe: 'sauvegarde', version: 1, date: new Date().toISOString(),
-      actes: registre, prereglages: prereglages
+      greffe: 'sauvegarde', version: 2, date: new Date().toISOString(),
+      actes: registre, prereglages: prereglages, club: G.club
     };
     var b = new Blob([JSON.stringify(contenu)], { type: 'application/json;charset=utf-8' });
     var u = URL.createObjectURL(b), a = document.createElement('a');
@@ -2805,6 +2963,9 @@
           prereglages = prereglages.filter(function (a) { return a.id !== q.id; }); prereglages.push(q); nP++;
         });
       });
+      if (o.club && typeof o.club === 'object') {
+        p = p.then(function () { G.club = Object.assign({}, CLUB_DEFAUT, o.club); return dbPoser(MAG_REG, { cle: 'club', valeur: G.club }); });
+      }
       return p.then(function () {
         registre.sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); });
         prereglages.sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); });
@@ -3054,7 +3215,15 @@
   /* ---- « / » et le clic droit : les textes prédéfinis ---- */
   function listeTextes(filtre) {
     var q = String(filtre || '').toLowerCase();
-    return (G.textes || []).filter(function (t) { return !q || t.nom.toLowerCase().indexOf(q) !== -1 || (t.groupe || '').toLowerCase().indexOf(q) !== -1; });
+    var vars = VARIABLES.filter(function (v) { return v[0].indexOf('<') === -1; }).map(function (v) { return { nom: v[1] + ' ' + v[0], groupe: 'Variables', texte: v[0] }; });
+    Object.keys((donnees && donnees.tables) || {}).forEach(function (k) {
+      var t = donnees.tables[k];
+      if ((t.colonnes || []).some(function (c) { return c.total; })) vars.push({ nom: 'Total du tableau « ' + (t.titre || k) + ' » {{total.' + k + '}}', groupe: 'Variables', texte: '{{total.' + k + '}}' });
+    });
+    Object.keys((donnees && donnees.serie) || {}).forEach(function (k) {
+      vars.push({ nom: 'Série : ' + k + ' {{col.' + k + '}}', groupe: 'Variables', texte: '{{col.' + k + '}}' });
+    });
+    return (G.textes || []).concat(vars).filter(function (t) { return !q || t.nom.toLowerCase().indexOf(q) !== -1 || (t.groupe || '').toLowerCase().indexOf(q) !== -1; });
   }
   function ouvrirSlash(el, filtre) {
     var doc = cadre.contentDocument;
@@ -3626,6 +3795,181 @@
     cadre.contentWindow.print();
   }
 
+
+  /* =================================================================
+     10 bis. LA SÉRIE : UN ACTE PAR LIGNE D'UNE LISTE
+     Une convocation par joueuse, une autorisation par mineure, une
+     attestation par membre : l'acte ouvert sert de modèle, ses textes
+     portent {{col.nom}}, {{col.categorie}}… ; on colle la liste (depuis
+     Excel, Google Sheets, ou l'admin), et le Greffe fabrique un acte
+     par ligne, numéroté à la suite, chacun gardant sa ligne : la donnée
+     reste une donnée, la variable une variable. Puis tout s'imprime
+     d'un coup, dans un seul PDF.
+     ================================================================= */
+  function cleSerie(titre) {
+    var s = String(titre || '').toLowerCase();
+    if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return s.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'col';
+  }
+  function lireListe(texte) {
+    var lignes = String(texte || '').replace(/\r/g, '').split('\n').filter(function (l) { return l.trim(); });
+    if (!lignes.length) return { colonnes: [], lignes: [] };
+    var sep = lignes[0].indexOf('\t') !== -1 ? '\t' : (lignes[0].split(';').length > lignes[0].split(',').length ? ';' : ',');
+    function champs(l) {
+      if (sep === '\t') return l.split('\t');
+      var out = [], cur = '', q = false;
+      for (var i = 0; i < l.length; i++) {
+        var ch = l[i];
+        if (ch === '"') { if (q && l[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+        else if (ch === sep && !q) { out.push(cur); cur = ''; }
+        else cur += ch;
+      }
+      out.push(cur);
+      return out;
+    }
+    var tetes = champs(lignes[0]).map(function (t) { return t.trim(); });
+    var cles = tetes.map(cleSerie);
+    var rows = lignes.slice(1).map(function (l) {
+      var v = champs(l), o = {};
+      cles.forEach(function (c, i) { o[c] = (v[i] == null ? '' : String(v[i])).trim(); });
+      return o;
+    }).filter(function (o) { return Object.keys(o).some(function (k) { return o[k]; }); });
+    return { colonnes: tetes.map(function (t, i) { return { titre: t, cle: cles[i] }; }), lignes: rows };
+  }
+  function prochainNumero(cle, pris) {
+    var m = G.modeles[cle];
+    if (!m || !m.prefixe) return '';
+    var an = String(new Date().getFullYear()).slice(2);
+    var occupes = registre.filter(function (a) { return a.modele === cle && String(a.numero || '').slice(-2) === an; })
+      .map(function (a) { return parseInt(String(a.numero).split('/')[0], 10) || 0; }).concat(pris || []);
+    var n = 1; while (occupes.indexOf(n) !== -1) n++;
+    return deuxChiffres(n) + '/' + an;
+  }
+  function ouvrirSerie() {
+    if (!modeleActif || lectureSeule()) return;
+    var recu = null;
+    try { recu = JSON.parse(localStorage.getItem('bbc-greffe-serie') || 'null'); } catch (e) {}
+    var voile = document.createElement('div');
+    voile.className = 'gf-voile';
+    voile.innerHTML =
+      '<div class="gf-modale gf-modale-large" role="dialog" aria-modal="true">'
+      + '<header class="gf-modale-top"><h3>Une série d\'actes depuis une liste</h3>'
+      + '<button type="button" class="gf-ico gf-ico-close" data-x aria-label="Fermer">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>'
+      + '<div class="gf-modale-corps">'
+      + '<p class="gf-modale-aide">L\'acte ouvert sert de modèle. Dans ses textes, écrivez <code>{{col.nom}}</code>, <code>{{col.categorie}}</code>… (les noms viennent de la première ligne de la liste). '
+      + 'Puis collez la liste : depuis Excel ou Google Sheets, sélectionnez les cellules, en-têtes compris, et Ctrl+C.</p>'
+      + (recu && recu.lignes && recu.lignes.length ? '<div class="gf-serie-recu"><b>' + ech(recu.titre || 'Liste reçue de l\'administration') + '</b> · ' + recu.lignes.length + ' ligne' + (recu.lignes.length > 1 ? 's' : '')
+          + ' <button type="button" class="gf-mini" data-recu>Utiliser cette liste</button></div>' : '')
+      + '<textarea class="gf-in gf-serie-texte" data-liste rows="7" placeholder="Nom&#9;Catégorie&#9;Parent&#10;Awa Diop&#9;U14&#9;Mme Fall&#10;…"></textarea>'
+      + '<label class="gf-mini" style="display:inline-flex;margin-top:8px" for="gf-serie-fichier">Ou déposer un fichier .csv / .txt</label><input type="file" id="gf-serie-fichier" accept=".csv,.tsv,.txt,text/csv,text/plain" hidden>'
+      + '<div class="gf-serie-apercu" data-apercu></div>'
+      + '<div class="gf-grille2" style="margin-top:10px">'
+      + '<label class="gf-champ"><span>Nom de chaque acte au registre</span><input class="gf-in" type="text" data-nom placeholder="{{col.nom}}"></label>'
+      + '<label class="gf-champ"><span>Après la création</span><select class="gf-sel" data-apres><option value="registre">Ouvrir le registre</option><option value="imprimer">Tout imprimer en un PDF</option><option value="rester">Rester sur le modèle</option></select></label>'
+      + '</div></div>'
+      + '<footer class="gf-modale-pied"><button type="button" class="gf-btn gf-btn-fant" data-x>Annuler</button>'
+      + '<button type="button" class="gf-btn gf-btn-accent" data-creer disabled>Créer les actes</button></footer></div>';
+    racine.appendChild(voile);
+    var zone = voile.querySelector('[data-liste]'), apercu = voile.querySelector('[data-apercu]'), creer = voile.querySelector('[data-creer]'), nomIn = voile.querySelector('[data-nom]');
+    var liste = { colonnes: [], lignes: [] };
+    function fermer() { if (voile.parentNode) voile.remove(); }
+    function montrerListe() {
+      if (!liste.lignes.length) { apercu.innerHTML = ''; creer.disabled = true; creer.textContent = 'Créer les actes'; return; }
+      apercu.innerHTML = '<p class="gf-aide">' + liste.lignes.length + ' ligne' + (liste.lignes.length > 1 ? 's' : '') + ' · les variables : '
+        + liste.colonnes.map(function (c) { return '<button type="button" class="gf-puce" data-var="{{col.' + ech(c.cle) + '}}" title="Copier">{{col.' + ech(c.cle) + '}}</button>'; }).join(' ') + '</p>'
+        + '<div class="gf-serie-table"><table><thead><tr>' + liste.colonnes.map(function (c) { return '<th>' + ech(c.titre) + '</th>'; }).join('') + '</tr></thead><tbody>'
+        + liste.lignes.slice(0, 5).map(function (l) { return '<tr>' + liste.colonnes.map(function (c) { return '<td>' + ech(l[c.cle]) + '</td>'; }).join('') + '</tr>'; }).join('')
+        + (liste.lignes.length > 5 ? '<tr><td colspan="' + liste.colonnes.length + '">… et ' + (liste.lignes.length - 5) + ' de plus</td></tr>' : '') + '</tbody></table></div>';
+      apercu.querySelectorAll('[data-var]').forEach(function (b) {
+        b.addEventListener('click', function () { try { navigator.clipboard.writeText(b.getAttribute('data-var')); } catch (e) {} dire(b.getAttribute('data-var') + ' copié : collez-le dans le texte de l\'acte', 'ok'); });
+      });
+      if (!nomIn.value && liste.colonnes.length) nomIn.value = '{{col.' + liste.colonnes[0].cle + '}}';
+      creer.disabled = false; creer.textContent = 'Créer ' + liste.lignes.length + ' acte' + (liste.lignes.length > 1 ? 's' : '');
+    }
+    zone.addEventListener('input', function () { liste = lireListe(zone.value); montrerListe(); });
+    voile.querySelector('#gf-serie-fichier').addEventListener('change', function () {
+      var f = this.files && this.files[0]; if (!f) return;
+      f.text().then(function (t) { zone.value = t; liste = lireListe(t); montrerListe(); });
+    });
+    var br = voile.querySelector('[data-recu]');
+    if (br) br.addEventListener('click', function () {
+      liste = { colonnes: (recu.colonnes || []).map(function (c) { return typeof c === 'string' ? { titre: c, cle: cleSerie(c) } : c; }), lignes: recu.lignes };
+      if (!liste.colonnes.length && liste.lignes.length) liste.colonnes = Object.keys(liste.lignes[0]).map(function (k) { return { titre: k, cle: cleSerie(k) }; });
+      liste.lignes = liste.lignes.map(function (l) { var o = {}; Object.keys(l).forEach(function (k) { o[cleSerie(k)] = String(l[k] == null ? '' : l[k]); }); return o; });
+      zone.value = ''; montrerListe();
+    });
+    voile.querySelectorAll('[data-x]').forEach(function (b) { b.addEventListener('click', fermer); });
+    voile.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fermer(); } });
+    creer.addEventListener('click', function () {
+      if (!liste.lignes.length) return;
+      creer.disabled = true; creer.textContent = 'Création…';
+      var apres = voile.querySelector('[data-apres]').value;
+      var gabaritNom = nomIn.value.trim() || ('{{col.' + liste.colonnes[0].cle + '}}');
+      var pris = [], ids = [], p = Promise.resolve();
+      liste.lignes.forEach(function (l, i) {
+        var d = JSON.parse(JSON.stringify(donnees));
+        d.serie = l;
+        delete d.numero;
+        var numero = prochainNumero(modeleActif.cle, pris);
+        if (numero) { d.numero = numero; pris.push(parseInt(numero.split('/')[0], 10)); }
+        d.nomActe = gabaritNom.replace(/\{\{col\.([A-Za-z0-9_\-]+)\}\}/g, function (m, k) { return l[k] == null ? '' : l[k]; }).trim() || (modeleActif.nom + ' ' + (i + 1));
+        var fiche = {
+          id: identifiant(), modele: modeleActif.cle, nom: modeleActif.nom, numero: d.numero || '',
+          intitule: sansMarques(d.nomActe || d.titre || modeleActif.nom), date: d.dateActe || isoDuJour(), maj: Date.now() + i,
+          etat: 'brouillon', version: 1, versions: [], journal: [{ t: Date.now(), quoi: 'Créé en série (' + (i + 1) + '/' + liste.lignes.length + ')' }],
+          emisLe: null, motif: '', donnees: d
+        };
+        ids.push(fiche.id);
+        p = p.then(function () { return dbPoser(MAG_ACTES, fiche); }).then(function () { registre.unshift(fiche); });
+      });
+      p.then(function () {
+        fermer();
+        try { localStorage.removeItem('bbc-greffe-serie'); } catch (e) {}
+        dire(ids.length + ' acte' + (ids.length > 1 ? 's' : '') + ' créé' + (ids.length > 1 ? 's' : '') + ' en série', 'ok');
+        if (apres === 'imprimer') imprimerSerie(ids);
+        else if (apres === 'registre') montrer('registre');
+      }).catch(function (e) { creer.disabled = false; creer.textContent = 'Créer les actes'; dire('La série a buté : ' + (e && e.message ? e.message : e), 'erreur'); });
+    });
+    zone.focus();
+  }
+
+  /* Tous les actes d'une série (ou d'une sélection) dans un seul PDF :
+     chacun est rendu et mis en pages dans un cadre à part, les pages
+     s'enchaînent, puis Chrome imprime. */
+  function imprimerSerie(ids) {
+    var fiches = ids.map(function (id) { return registre.filter(function (a) { return a.id === id; })[0]; }).filter(Boolean);
+    if (!fiches.length) return;
+    var sauve = { modeleActif: modeleActif, donnees: donnees, acteEtat: acteEtat, acteVersion: acteVersion };
+    var f = document.createElement('iframe');
+    f.setAttribute('aria-hidden', 'true');
+    f.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + Math.ceil(LARGEUR_CADRE * MM) + 'px;height:1200px;border:0;';
+    document.body.appendChild(f);
+    var doc = f.contentDocument;
+    doc.open();
+    doc.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>' + ech('Série · ' + fiches.length + ' actes') + '</title>'
+      + '<style>' + cssPolices() + '</style><style>' + cssDocument() + '</style></head><body class="pagine"></body></html>');
+    doc.close();
+    var pages = [];
+    try {
+      fiches.forEach(function (fi) {
+        modeleActif = G.modeles[fi.modele]; donnees = fi.donnees; acteEtat = fi.etat || 'brouillon'; acteVersion = fi.version || 1;
+        doc.body.innerHTML = corpsDocument();
+        G.blocs.paginer(doc);
+        poserObjets(doc);
+        Array.prototype.forEach.call(doc.querySelectorAll('.objet-sensible-ecran, .objet-poignee, .objet-rotation'), function (n) { n.remove(); });
+        pages.push(doc.body.innerHTML);
+      });
+    } catch (e) { dire('La série n\'a pas pu être mise en pages : ' + (e && e.message ? e.message : e), 'erreur'); }
+    modeleActif = sauve.modeleActif; donnees = sauve.donnees; acteEtat = sauve.acteEtat; acteVersion = sauve.acteVersion;
+    doc.body.innerHTML = pages.join('');
+    var lancer = function () {
+      try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { dire('Impression impossible : ' + (e && e.message ? e.message : e), 'erreur'); }
+      setTimeout(function () { if (f.parentNode) f.remove(); }, 60000);
+    };
+    if (doc.fonts && doc.fonts.status === 'loading') doc.fonts.ready.then(lancer); else setTimeout(lancer, 300);
+  }
+
   /* =================================================================
      11. MONTAGE
      ================================================================= */
@@ -3822,9 +4166,11 @@
     racine = root; api = contexte || {};
     brancher();
     return chargerMoteur().then(function () {
-      return Promise.all([dbTout(MAG_RES), dbTout(MAG_ACTES), chargerBlason(), dbTout(MAG_PRE)]);
+      return Promise.all([dbTout(MAG_RES), dbTout(MAG_ACTES), chargerBlason(), dbTout(MAG_PRE), dbTout(MAG_REG)]);
     }).then(function (r) {
       (r[0] || []).forEach(function (o) { res[o.cle] = o.uri; });
+      var regClub = (r[4] || []).filter(function (x) { return x.cle === 'club'; })[0];
+      G.club = Object.assign({}, CLUB_DEFAUT, regClub && regClub.valeur ? regClub.valeur : {});
       registre = (r[1] || []).sort(function (a, b) { return b.maj - a.maj; });
       prereglages = (r[3] || []).sort(function (a, b) { return b.maj - a.maj; });
       var demande = api && api.acte ? String(api.acte) : null;

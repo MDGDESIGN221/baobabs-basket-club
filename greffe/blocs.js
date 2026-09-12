@@ -472,8 +472,64 @@
     return c.length ? ' class="' + c.join(' ') + '"' : '';
   }
 
+
+  /* ==================================================================
+     LES COLONNES CALCULÉES
+     Une colonne peut porter une formule sur les autres colonnes de la
+     ligne : « quantite * prix », « montant * 0.18 », « (a + b) / 2 ».
+     Les noms sont les clés des colonnes ; les nombres se lisent comme
+     on les écrit (« 12 000 », « 3,5 »). Pas d'eval : une petite
+     grammaire, quatre opérations et des parenthèses.
+     ================================================================== */
+  function nombreDe(v) {
+    var n = parseFloat(String(v == null ? '' : v).replace(/[^\d.,-]/g, '').replace(',', '.'));
+    return isNaN(n) ? 0 : n;
+  }
+  function calculer(formule, valeurs) {
+    var src = String(formule || ''), i = 0;
+    function saute() { while (i < src.length && /\s/.test(src[i])) i++; }
+    function facteur() {
+      saute();
+      if (src[i] === '(') { i++; var v = expr(); saute(); if (src[i] === ')') i++; return v; }
+      if (src[i] === '-') { i++; return -facteur(); }
+      var m = /^(\d+(?:[.,]\d+)?)/.exec(src.slice(i));
+      if (m) { i += m[1].length; return parseFloat(m[1].replace(',', '.')); }
+      var k = /^([A-Za-z_][A-Za-z0-9_]*)/.exec(src.slice(i));
+      if (k) { i += k[1].length; return nombreDe(valeurs[k[1]]); }
+      throw new Error('formule');
+    }
+    function terme() {
+      var v = facteur();
+      for (;;) { saute(); var op = src[i]; if (op !== '*' && op !== '/' && op !== '×') break; i++; var w = facteur(); v = (op === '/') ? (w ? v / w : 0) : v * w; }
+      return v;
+    }
+    function expr() {
+      var v = terme();
+      for (;;) { saute(); var op = src[i]; if (op !== '+' && op !== '-') break; i++; var w = terme(); v = op === '+' ? v + w : v - w; }
+      return v;
+    }
+    if (!src.trim()) return 0;
+    var r = expr(); saute();
+    if (i < src.length) throw new Error('formule');
+    return Math.round(r * 100) / 100;
+  }
+  B.calculer = calculer;
+  /* la valeur d'une cellule, calculée si la colonne a une formule */
+  B.valeurCellule = function (table, ligne, col) {
+    if (col && col.formule) { try { return calculer(col.formule, ligne || {}); } catch (e) { return NaN; } }
+    return nombreDe(ligne ? ligne[col.cle] : '');
+  };
+  B.formuleValide = function (table, col) {
+    try { var v = {}; (table.colonnes || []).forEach(function (c) { v[c.cle] = 1; }); calculer(col.formule, v); return true; } catch (e) { return false; }
+  };
+
   function cellule(col, ligne, cfg) {
     var v = ligne[col.cle];
+    if (col.formule) {
+      /* une colonne calculée ne se tape pas : elle se lit */
+      if (!Object.keys(ligne).some(function (k) { return String(ligne[k] == null ? '' : ligne[k]).trim(); })) return '';
+      try { var n = calculer(col.formule, ligne); return U.ech(U.nombre(n)); } catch (e) { return '<span class="q ton-alerte">formule ?</span>'; }
+    }
     v = (v == null ? '' : String(v));
     if (col.forme === 'pastille' && v) {
       var ton = (cfg.tonPastille && cfg.tonPastille(v, ligne)) || 'ton-doux';
@@ -534,7 +590,7 @@
       return '<tr' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + '>'
         + (numeroter ? '<td class="f-rang a-centre">' + U.deuxChiffres(k + 1) + '</td>' : '')
         + cols.map(function (c) {
-          return '<td' + classeCellule(c) + editChemin(chemin + r.i + '.' + c.cle) + '>' + cellule(c, l, cfg) + '</td>';
+          return '<td' + classeCellule(c) + (c.formule ? ' data-calc="1"' : editChemin(chemin + r.i + '.' + c.cle)) + '>' + cellule(c, l, cfg) + '</td>';
         }).join('') + '</tr>';
     }).join('');
 
@@ -547,7 +603,8 @@
         + cols.map(function (c, i) {
           if (!c.total) return '<td' + classeCellule(c) + (i === 0 ? editChemin('fixes.' + ctx.bi + '.libelleTotal') : '') + '>' + (i === 0 ? U.enLigne(lire(d, 'fixes.' + ctx.bi + '.libelleTotal') || 'Total') : '') + '</td>';
           var s = lignes.reduce(function (acc, r) {
-            var n = parseFloat(String(r.l[c.cle] || '').replace(/[^\d.,-]/g, '').replace(',', '.'));
+            if (r.vide) return acc;
+            var n = B.valeurCellule(table, r.l, c);
             return acc + (isNaN(n) ? 0 : n);
           }, 0);
           return '<td' + classeCellule(c) + '>' + U.ech(U.nombre(s)) + '</td>';
