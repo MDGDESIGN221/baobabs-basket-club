@@ -292,6 +292,7 @@
       t = t.replace(/\{\{(or|vert|rouge|gris|grand|petit|maj)\|([^{}]+)\}\}/g, '<span class="s-$1">$2</span>');
     }
     return t
+      .replace(/\*\*\*(.+?)\*\*\*/g, '<b><i>$1</i></b>')
       .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
       .replace(/__([^_\n]+)__/g, '<u>$1</u>')
       .replace(/==([^=\n]+)==/g, '<mark>$1</mark>')
@@ -309,6 +310,7 @@
       t = t.replace(/\{\{(?:or|vert|rouge|gris|grand|petit|maj)\|([^{}]+)\}\}/g, '$1');
     }
     return t
+      .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
       .replace(/\*\*(.+?)\*\*/g, '$1').replace(/__([^_\n]+)__/g, '$1').replace(/==([^=\n]+)==/g, '$1')
       .replace(/(^|[^*])\*(\S(?:[^*\n]*?\S)?)\*(?!\*)/g, '$1$2');
   }
@@ -319,7 +321,10 @@
       if (!run.length) return;
       if (genre === 'liste') out.push('<ul>' + run.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul>');
       else if (genre === 'note') out.push('<div class="note"><p>' + run.join(' ') + '</p></div>');
-      else out.push('<p>' + run.join(' ') + '</p>');
+      /* deux lignes qui se suivent sans ligne vide : un retour à la ligne
+         dans le même paragraphe (Maj+Entrée sur la feuille, Entrée dans le
+         formulaire), pas un espace */
+      else out.push('<p>' + run.join('<br>') + '</p>');
       run = []; genre = null;
     }
     String(texte || '').split(/\r?\n/).forEach(function (ligne) {
@@ -1053,7 +1058,11 @@
               parties: '<div class="gm-parties"><i></i><i></i></div>', articles: '<div class="gm-arts"><i></i><i></i><i></i></div>',
               postes: '<div class="gm-table"><b></b><i></i><i></i><i></i></div>', tableau: '<div class="gm-table"><b></b><i></i><i></i><i></i></div>',
               signatures: '<div class="gm-sign"><i></i></div>', certification: '<div class="gm-sign"><i></i></div>',
-              image: '<div class="gm-img"></div>', espace: '<div class="gm-esp"></div>', saut: '<div class="gm-sep"></div>', annexe: '<div class="gm-sep"></div>' };
+              image: '<div class="gm-img"></div>', espace: '<div class="gm-esp"></div>', saut: '<div class="gm-sep"></div>', annexe: '<div class="gm-sep"></div>',
+              bandeau: '<div class="gm-titre gm-bande"></div>', grille: '<div class="gm-cases"><i></i><i></i><i></i><i></i><i></i><i></i></div>',
+              cases: '<div class="gm-txt"><i style="width:55%"></i><i style="width:45%"></i><i style="width:60%"></i></div>', signatureLibre: '<div class="gm-sign"><i></i><i></i></div>',
+              diplome: '<div class="gm-diplome"><b></b><i></i></div>', cartes: '<div class="gm-cartes"><i></i><i></i><i></i><i></i></div>',
+              talon: '<div class="gm-sep"></div>', ordreDuJour: '<div class="gm-arts"><i></i><i></i><i></i></div>' };
     return '<div class="gf-schema"><div class="gf-schema-page">' + (types || []).slice(0, 9).map(function (t) { return g[t] || ''; }).join('') + '</div></div>';
   }
   function apercuModele(m) { return apercuSchema(typesDeBlocs(m)); }
@@ -2651,37 +2660,71 @@
   function depuisDomLigne(el) {
     return enLigneDom(el).replace(/\n+$/, '').replace(/\n/g, ' ').replace(/\u00a0/g, ' ');
   }
-  function enLigneDom(n) {
-      var s = '';
+  /* Relire une ligne de la feuille : on marche le DOM avec le style
+     hérité (gras, italique, souligné, surligné, teinte, taille), un
+     enfant qui dit « font-weight: normal » ou « background: transparent »
+     ANNULE ce que son parent posait : c'est ainsi que le navigateur
+     retire un gras ou un surlignage, et c'est ce qui ne se relisait pas.
+     Les morceaux voisins de même style se recollent ; les espaces
+     restent hors des marques. */
+  function styleHerite(el, herite) {
+    var s = { b: herite.b, i: herite.i, u: herite.u, m: herite.m, teinte: herite.teinte, dim: herite.dim, maj: herite.maj };
+    var st = el.style || {}, tag = el.tagName, cls = el.className || '';
+    if (tag === 'B' || tag === 'STRONG') s.b = true;
+    if (st.fontWeight) { var fw = String(st.fontWeight).toLowerCase(); s.b = fw === 'bold' || fw === 'bolder' || (+fw >= 600); }
+    if (tag === 'I' || tag === 'EM') s.i = true;
+    if (st.fontStyle) s.i = /italic|oblique/.test(st.fontStyle);
+    if (tag === 'U') s.u = true;
+    var td = st.textDecorationLine || st.textDecoration || '';
+    if (td) s.u = /underline/.test(td);
+    if (tag === 'MARK') s.m = true;
+    if (st.backgroundColor) s.m = !/transparent|rgba\(0,\s*0,\s*0,\s*0\)|initial|inherit|unset|^$/.test(st.backgroundColor);
+    var clsTeinte = (cls.match(/\bs-(or|vert|rouge|gris)\b/) || [])[1];
+    var couleur = st.color || (tag === 'FONT' && el.getAttribute('color')) || '';
+    if (clsTeinte) s.teinte = clsTeinte; else if (couleur) s.teinte = teinteDe(couleur) || '';
+    var clsDim = (cls.match(/\bs-(grand|petit)\b/) || [])[1];
+    var taille = st.fontSize || (tag === 'FONT' && el.getAttribute('size')) || '';
+    if (clsDim) s.dim = clsDim; else if (taille) s.dim = tailleDe(taille) || '';
+    if (/\bs-maj\b/.test(cls)) s.maj = true;
+    return s;
+  }
+  function cleStyle(s) { return [s.b ? 1 : 0, s.i ? 1 : 0, s.u ? 1 : 0, s.m ? 1 : 0, s.teinte || '', s.dim || '', s.maj ? 1 : 0].join('|'); }
+  function decorer(t, s) {
+    if (!t.trim()) return t;
+    var m = /^(\s*)([\s\S]*?)(\s*)$/.exec(t), av = m[1], ap = m[3];
+    t = m[2];
+    if (s.b) t = '**' + t + '**';
+    if (s.i) t = '*' + t + '*';
+    if (s.u) t = '__' + t + '__';
+    if (s.m) t = '==' + t + '==';
+    if (s.teinte) t = '{{' + s.teinte + '|' + t + '}}';
+    if (s.dim) t = '{{' + s.dim + '|' + t + '}}';
+    if (s.maj) t = '{{maj|' + t + '}}';
+    return av + t + ap;
+  }
+  function enLigneDom(racine) {
+    var runs = [];
+    function marcher(n, st) {
       Array.prototype.forEach.call(n.childNodes, function (c) {
-        if (c.nodeType === 3) { s += c.nodeValue.replace(/\u00a0/g, ' '); return; }
+        if (c.nodeType === 3) { if (c.nodeValue) runs.push({ t: c.nodeValue.replace(/\u00a0/g, ' '), s: st }); return; }
         if (c.nodeType !== 1) return;
-        if (c.tagName === 'BR') { s += '\n'; return; }
-        if (c.hasAttribute && c.hasAttribute('data-var')) { s += '{{' + c.getAttribute('data-var') + '}}'; return; }
-        var t = enLigneDom(c), tag = c.tagName;
-        if (!t.trim()) { s += t; return; }
-        /* « <b>Antoine </b>Ndong » : l'espace appartient à la ligne, pas au
-           gras. Il sort des marques, sinon les mots se collent. */
-        var bords = /^(\s*)([\s\S]*?)(\s*)$/.exec(t);
-        var avant = bords[1], apres = bords[3]; t = bords[2];
-        var st = c.style || {};
-        var fond = st.backgroundColor || (tag === 'MARK' ? 'mark' : '');
-        var couleur = st.color || (tag === 'FONT' && c.getAttribute('color')) || '';
-        var taille = st.fontSize || (tag === 'FONT' && c.getAttribute('size')) || '';
-        var cls = c.className || '';
-        /* dans l'ordre inverse du décor : couleur / taille autour, puis marque, souligné, italique, gras */
-        if (tag === 'B' || tag === 'STRONG' || st.fontWeight === 'bold' || +st.fontWeight >= 600) t = '**' + t.trim() + '**';
-        if (tag === 'I' || tag === 'EM' || st.fontStyle === 'italic') t = '*' + t.trim() + '*';
-        if (tag === 'U' || /underline/.test(st.textDecoration || st.textDecorationLine || '')) t = '__' + t.trim() + '__';
-        if (fond) t = '==' + t.trim() + '==';
-        var teinte = (cls.match(/\bs-(or|vert|rouge|gris)\b/) || [])[1] || teinteDe(couleur);
-        if (teinte) t = '{{' + teinte + '|' + t.trim() + '}}';
-        var dim = (cls.match(/\bs-(grand|petit)\b/) || [])[1] || tailleDe(taille);
-        if (dim) t = '{{' + dim + '|' + t.trim() + '}}';
-        if (/\bs-maj\b/.test(cls)) t = '{{maj|' + t.trim() + '}}';
-        s += avant + t + apres;
+        if (c.tagName === 'BR') { runs.push({ br: true }); return; }
+        if (c.hasAttribute && c.hasAttribute('data-var')) { runs.push({ v: c.getAttribute('data-var') }); return; }
+        marcher(c, styleHerite(c, st));
       });
-      return s;
+    }
+    marcher(racine, {});
+    var out = '', i = 0;
+    while (i < runs.length) {
+      var r = runs[i];
+      if (r.br) { out += '\n'; i++; continue; }
+      if (r.v) { out += '{{' + r.v + '}}'; i++; continue; }
+      var k = cleStyle(r.s), txt = r.t;
+      while (i + 1 < runs.length && runs[i + 1].t != null && cleStyle(runs[i + 1].s) === k) { i++; txt += runs[i].t; }
+      out += decorer(txt, r.s);
+      i++;
+    }
+    return out;
   }
   /* Le paginateur peut couper un texte sur deux pages : deux éléments
      portent alors le même chemin. La donnée, elle, est une : on relit
@@ -3038,16 +3081,49 @@
     });
     return b;
   }
+  /* envelopper la sélection d'un style neutre : ce que le navigateur ne
+     sait pas défaire (une taille, une teinte posées par une classe) */
+  function envelopperSelection(doc, style) {
+    var sel = doc.getSelection();
+    if (!sel || !sel.rangeCount || sel.isCollapsed) return;
+    var r = sel.getRangeAt(0), tmp = doc.createElement('div');
+    tmp.appendChild(r.cloneContents());
+    doc.execCommand('insertHTML', false, '<span style="' + style + '">' + tmp.innerHTML + '</span>');
+  }
   function commandeTexte(cmd, arg) {
     var doc = cadre.contentDocument, win = cadre.contentWindow;
     if (!doc) return;
     win.focus();
     try { doc.execCommand('styleWithCSS', false, true); } catch (e) {}
+    /* ce que porte déjà la sélection : le second clic retire */
+    function dejaSous(regle) {
+      try {
+        var sel = doc.getSelection(); if (!sel || !sel.rangeCount) return false;
+        var n = sel.getRangeAt(0).commonAncestorContainer; if (n.nodeType === 3) n = n.parentNode;
+        var el = n && n.closest ? n.closest('[data-edit]') : null;
+        for (var x = n; x && x !== el; x = x.parentNode) { if (regle(x)) return true; }
+      } catch (e) {}
+      return false;
+    }
     if (cmd === 'bold' || cmd === 'italic' || cmd === 'underline') doc.execCommand(cmd);
-    else if (cmd === 'surligner') doc.execCommand('hiliteColor', false, '#FFF0B3');
-    else if (cmd === 'teinte') doc.execCommand('foreColor', false, arg);
-    else if (cmd === 'grand') doc.execCommand('fontSize', false, '5');
-    else if (cmd === 'petit') doc.execCommand('fontSize', false, '2');
+    else if (cmd === 'surligner') {
+      var surligne = dejaSous(function (x) { return x.tagName === 'MARK' || (x.style && x.style.backgroundColor && !/transparent/.test(x.style.backgroundColor)); });
+      doc.execCommand('hiliteColor', false, surligne ? 'transparent' : '#FFF0B3');
+    }
+    else if (cmd === 'teinte') {
+      var meme = dejaSous(function (x) { return (x.style && x.style.color && teinteDe(x.style.color) === teinteDe(arg)) || /\bs-(or|vert|rouge|gris)\b/.test(x.className || ''); });
+      if (meme) envelopperSelection(doc, 'color:inherit'); else doc.execCommand('foreColor', false, arg);
+    }
+    else if (cmd === 'grand') {
+      /* le navigateur ne sait pas « retirer » une taille posée par une classe :
+         on enveloppe la sélection d'une taille neutre, que la relecture efface */
+      var grand = dejaSous(function (x) { return /\bs-grand\b/.test(x.className || '') || (x.style && tailleDe(x.style.fontSize) === 'grand'); });
+      if (grand) envelopperSelection(doc, 'font-size:1em'); else doc.execCommand('fontSize', false, '5');
+    }
+    else if (cmd === 'petit') {
+      var petit = dejaSous(function (x) { return /\bs-petit\b/.test(x.className || '') || (x.style && tailleDe(x.style.fontSize) === 'petit'); });
+      if (petit) envelopperSelection(doc, 'font-size:1em'); else doc.execCommand('fontSize', false, '2');
+    }
     else if (cmd === 'effacer') doc.execCommand('removeFormat');
     /* execCommand a déclenché « input » : la donnée est déjà réécrite */
     majBarreTexte();

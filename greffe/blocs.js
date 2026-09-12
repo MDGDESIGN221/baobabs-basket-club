@@ -208,6 +208,86 @@
       ".fig figcaption{ font-size:6.8pt; color:var(--gris); font-style:italic; }",
       ".saut{ height:0; }",
 
+
+      /* ---- bandeau : une bande pleine, un grand mot ---- */
+      ".bandeau{ display:flex; align-items:flex-end; justify-content:space-between; gap:12pt; padding:12pt 14pt 11pt 14pt;",
+      "  border-radius:8pt; background:var(--vert); color:#fff; }",
+      ".bandeau.ton-or{ background:var(--or); color:var(--encre); } .bandeau.ton-noir{ background:#15201A; }",
+      ".bandeau.ton-clair{ background:var(--fond-bloc); color:var(--encre); }",
+      ".bandeau .label{ color:inherit; opacity:.8; display:block; margin-bottom:4pt; }",
+      ".bandeau h1{ font-family:'Gilroy',sans-serif; font-weight:800; font-size:22pt; line-height:1; letter-spacing:-.02em; text-transform:uppercase; color:inherit; }",
+      ".bandeau .bandeau-sous{ font-size:8.6pt; margin-top:5pt; opacity:.9; max-width:120mm; }",
+      ".bandeau .bandeau-droite{ text-align:right; font-family:'Gilroy',sans-serif; font-weight:700; font-size:9pt; line-height:1.3; white-space:nowrap; }",
+      ".bandeau .bandeau-droite span{ display:block; font-family:'InterDoc',Inter,sans-serif; font-weight:400; font-size:7pt; opacity:.8; }",
+
+      /* ---- grille : des lignes a completer, au clavier ou au stylo ---- */
+      ".grille{ display:grid; grid-template-columns:1fr 1fr; gap:6pt 16pt; }",
+      ".grille.col-1{ grid-template-columns:1fr; } .grille.col-3{ grid-template-columns:1fr 1fr 1fr; }",
+      ".grille-champ{ display:flex; align-items:baseline; gap:5pt; border-bottom:1px dotted var(--gris-clair); padding-bottom:2.5pt; min-height:14pt; }",
+      ".grille-champ.large{ grid-column:1 / -1; }",
+      ".grille-champ .k{ font-size:6.4pt; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--gris); white-space:nowrap; }",
+      ".grille-champ .v{ flex:1; font-weight:500; color:var(--encre); min-height:1em; }",
+
+      /* ---- cases : a cocher, sur la feuille ou au stylo ---- */
+      ".cases{ display:flex; flex-direction:column; gap:4pt; }",
+      ".cases.en-ligne{ flex-direction:row; flex-wrap:wrap; gap:6pt 18pt; }",
+      ".case{ display:flex; align-items:flex-start; gap:6pt; }",
+      ".case i{ flex:0 0 auto; width:9pt; height:9pt; border:1.1pt solid var(--encre); border-radius:2pt; margin-top:1.5pt; position:relative; }",
+      ".case.cochee i::after{ content:''; position:absolute; left:2pt; top:0; width:3pt; height:5.5pt; border:solid var(--encre); border-width:0 1.4pt 1.4pt 0; transform:rotate(40deg); }",
+      ".case span{ flex:1; }",
+
+      /* ---- signature libre : un cadre vide, une mention ---- */
+      ".sig-libre{ display:flex; gap:12pt; }",
+      ".sig-libre-boite{ flex:1; border:1px solid var(--filet); border-radius:6pt; padding:6pt 8pt; min-height:58pt; display:flex; flex-direction:column; justify-content:space-between; }",
+      ".sig-libre-boite .label{ display:block; }",
+      ".sig-libre-boite .mention{ font-size:6.6pt; color:var(--gris); font-style:italic; }",
+
+      /* ---- diplome : un cadre double, un grand titre, un nom ---- */
+      ".diplome{ border:2pt solid var(--or); outline:1px solid var(--or); outline-offset:3pt; padding:26pt 30pt 24pt 30pt; text-align:center; position:relative; }",
+      ".diplome .crest{ width:52pt; height:52pt; margin:0 auto 8pt auto; background-size:contain; background-repeat:no-repeat; background-position:center; }",
+      ".diplome .diplome-club{ font-family:'Gilroy',sans-serif; font-weight:800; letter-spacing:.32em; text-transform:uppercase; font-size:8pt; color:var(--vert); }",
+      ".diplome h1{ font-family:'Gilroy',sans-serif; font-weight:800; font-size:30pt; letter-spacing:.06em; text-transform:uppercase; color:var(--encre); margin:14pt 0 4pt 0; line-height:1; }",
+      ".diplome .diplome-sous{ font-size:9pt; color:var(--gris); font-style:italic; }",
+      ".diplome .diplome-prelude{ margin-top:18pt; font-size:9pt; color:var(--texte); }",
+      ".diplome .diplome-nom{ font-family:'Gilroy',sans-serif; font-weight:700; font-size:22pt; color:var(--vert); margin:6pt 0 2pt 0; border-bottom:1px solid var(--or); display:inline-block; padding:0 18pt 3pt 18pt; min-width:90mm; }",
+      ".diplome .diplome-motif{ margin:10pt auto 0 auto; max-width:130mm; font-size:9.4pt; line-height:1.5; }",
+      ".diplome .diplome-date{ margin-top:16pt; font-size:8pt; color:var(--gris); letter-spacing:.08em; text-transform:uppercase; }",
+      ".diplome .diplome-signs{ display:flex; justify-content:space-around; gap:20pt; margin-top:22pt; }",
+      ".diplome .diplome-sign{ flex:1; max-width:70mm; border-top:1px solid var(--encre); padding-top:4pt; font-size:7.4pt; }",
+      ".diplome .diplome-sign b{ display:block; font-size:8pt; }",
+      ".diplome .diplome-sign .ink-zone{ height:34pt; position:relative; margin-top:-40pt; margin-bottom:4pt; }",
+
+      /* ---- cartes : plusieurs par page, format carte de membre ---- */
+      ".cartes{ display:flex; flex-wrap:wrap; gap:6mm 6mm; align-content:flex-start; }",
+      ".carte{ width:85.6mm; height:54mm; border:1px solid var(--filet); border-radius:3mm; padding:4mm 4.5mm; position:relative; overflow:hidden; background:#fff; break-inside:avoid; display:flex; flex-direction:column; }",
+      ".carte::before{ content:''; position:absolute; left:0; top:0; right:0; height:9mm; background:var(--vert); }",
+      ".carte .carte-tete{ position:relative; color:#fff; display:flex; align-items:center; gap:3mm; height:5mm; margin:-1mm 0 3mm 0; }",
+      ".carte .carte-tete .crest{ width:6mm; height:6mm; background-size:contain; background-repeat:no-repeat; background-position:center; filter:brightness(0) invert(1); }",
+      ".carte .carte-tete b{ font-family:'Gilroy',sans-serif; font-weight:800; font-size:7.2pt; letter-spacing:.14em; text-transform:uppercase; color:#fff; }",
+      ".carte .carte-tete span{ margin-left:auto; font-size:5.8pt; letter-spacing:.14em; text-transform:uppercase; color:var(--or); }",
+      ".carte .carte-corps{ display:flex; gap:4mm; flex:1; }",
+      ".carte .carte-photo{ width:22mm; height:28mm; border:1px dashed var(--gris-clair); border-radius:2mm; background:var(--fond-tint); display:flex; align-items:center; justify-content:center; font-size:5.5pt; color:var(--gris); text-align:center; padding:2mm; }",
+      ".carte .carte-id{ flex:1; display:flex; flex-direction:column; gap:1.6mm; }",
+      ".carte .carte-nom{ font-family:'Gilroy',sans-serif; font-weight:800; font-size:11pt; line-height:1.05; color:var(--encre); }",
+      ".carte .carte-ligne{ font-size:6.6pt; color:var(--texte); } .carte .carte-ligne .k{ color:var(--gris); letter-spacing:.1em; text-transform:uppercase; font-size:5.4pt; margin-right:2pt; }",
+      ".carte .carte-pied{ display:flex; justify-content:space-between; align-items:flex-end; font-size:5.6pt; color:var(--gris); margin-top:auto; }",
+      ".carte .carte-pied b{ font-family:'Gilroy',sans-serif; color:var(--vert); font-size:7pt; }",
+
+      /* ---- talon : la partie a detacher d'un recu ---- */
+      ".talon{ margin-top:14pt; border-top:1px dashed var(--gris-clair); padding-top:10pt; position:relative; }",
+      ".talon::before{ content:'\\2702'; position:absolute; left:-2pt; top:-7pt; background:#fff; padding:0 3pt; color:var(--gris); font-size:9pt; }",
+      ".talon-grille{ display:flex; gap:12pt; align-items:flex-start; }",
+      ".talon-grille .talon-col{ flex:1; }",
+      ".talon .label{ display:block; margin-bottom:2pt; }",
+      ".talon b{ font-family:'Gilroy',sans-serif; font-size:9pt; }",
+
+      /* ---- ligne de temps : les points d'un ordre du jour ---- */
+      ".odj{ display:flex; flex-direction:column; }",
+      ".odj-point{ display:flex; gap:10pt; padding:5pt 0; border-bottom:1px solid var(--filet); align-items:baseline; }",
+      ".odj-point .art-num{ flex:0 0 auto; }",
+      ".odj-point .odj-txt{ flex:1; } .odj-point .odj-txt b{ display:block; font-family:'Gilroy',sans-serif; font-size:8.8pt; }",
+      ".odj-point .odj-duree{ flex:0 0 auto; font-size:6.6pt; color:var(--gris); letter-spacing:.1em; text-transform:uppercase; white-space:nowrap; }",
+
       /* ---- texte libre (lettres) ---- */
       ".lettre p{ max-width:158mm; margin-bottom:4.5pt; }",
       ".lettre .salut{ margin-bottom:5pt; }",
@@ -275,6 +355,7 @@
       ".poste tbody td{ padding:2.6pt 5pt; font-size:7.5pt; border-bottom:1px solid var(--filet); }",
       ".poste tbody tr:last-child td{ border-bottom:0; }",
       ".poste td.f-calc{ color:var(--gris); font-size:7.1pt; }",
+      ".f-calcule{ color:var(--gris); font-style:italic; }",
       ".poste td.f-montant{ font-family:'InterDoc',Inter,sans-serif; font-weight:600; color:var(--encre); white-space:nowrap; }",
       ".total-box{ display:flex; align-items:center; justify-content:space-between; gap:10pt;",
       "  background:var(--vert); color:#fff; border-radius:8pt; padding:7pt 13pt; margin-top:2pt; }",
@@ -514,9 +595,34 @@
     return Math.round(r * 100) / 100;
   }
   B.calculer = calculer;
+  /* « 15 000 × 9 », « 5 000 × 12 joueuses × 20 matchs », « 3,5 x 4 » :
+     ce qu'on écrit dans une colonne Calcul devient un nombre. Les mots
+     (unités, commentaires) tombent, × et x multiplient, l'espace des
+     milliers disparaît, la virgule est décimale. */
+  function evaluerCalcul(expr) {
+    var e = String(expr == null ? '' : expr)
+      .replace(/(\d)[ \u00a0\u202f]+(?=\d)/g, '$1')
+      .replace(/[×xX]/g, '*').replace(/[÷:]/g, '/').replace(/,/g, '.')
+      .replace(/[^\d.+\-*/() ]+/g, ' ')
+      .replace(/\s+/g, ' ').trim();
+    if (!e || !/\d/.test(e)) return NaN;
+    try { return calculer(e, {}); } catch (err) { return NaN; }
+  }
+  B.evaluerCalcul = evaluerCalcul;
+  /* le montant d'une ligne : la colonne montant si elle est écrite,
+     sinon ce que dit sa colonne Calcul */
+  B.montantLigne = function (table, l, cleMontant) {
+    var brut = String(l[cleMontant] == null ? '' : l[cleMontant]).trim();
+    if (brut) return nombreDe(brut);
+    var calc = (table.colonnes || []).filter(function (c) { return c.forme === 'calc'; })[0];
+    if (!calc) return 0;
+    var n = evaluerCalcul(l[calc.cle]);
+    return isNaN(n) ? 0 : n;
+  };
   /* la valeur d'une cellule, calculée si la colonne a une formule */
   B.valeurCellule = function (table, ligne, col) {
     if (col && col.formule) { try { return calculer(col.formule, ligne || {}); } catch (e) { return NaN; } }
+    if (col && col.total && B.montantLigne) return B.montantLigne(table || {}, ligne || {}, col.cle);
     return nombreDe(ligne ? ligne[col.cle] : '');
   };
   B.formuleValide = function (table, col) {
@@ -590,7 +696,9 @@
       return '<tr' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + '>'
         + (numeroter ? '<td class="f-rang a-centre">' + U.deuxChiffres(k + 1) + '</td>' : '')
         + cols.map(function (c) {
-          return '<td' + classeCellule(c) + (c.formule ? ' data-calc="1"' : editChemin(chemin + r.i + '.' + c.cle)) + '>' + cellule(c, l, cfg) + '</td>';
+          var contenu = cellule(c, l, cfg);
+          if (c.total && !r.vide && !String(l[c.cle] == null ? '' : l[c.cle]).trim()) { var nCalc = B.montantLigne(table, l, c.cle); if (nCalc) contenu = '<span class="f-calcule">' + U.ech(U.nombre(nCalc)) + '</span>'; }
+          return '<td' + classeCellule(c) + (c.formule ? ' data-calc="1"' : editChemin(chemin + r.i + '.' + c.cle)) + '>' + contenu + '</td>';
         }).join('') + '</tr>';
     }).join('');
 
@@ -727,10 +835,8 @@
       var visibles = cols.filter(function (c) { return c.cle !== cleG; });
       if (!visibles.length || !lignes.length) return '';
 
-      function montant(l) {
-        var n = parseFloat(String(l[cleT] || '').replace(/[^\d.,-]/g, '').replace(',', '.'));
-        return isNaN(n) ? 0 : n;
-      }
+      function montant(l) { return B.montantLigne(table, l, cleT); }
+      function montantCalcule(l) { return !String(l[cleT] == null ? '' : l[cleT]).trim() && montant(l) > 0; }
       var unite = val(cfg.unite, d, ctx) || '';
       function somme(n) { return U.nombre(n) + (unite ? ' ' + unite : ''); }
 
@@ -756,6 +862,8 @@
             var cl = c.cle === cleT ? ' class="f-montant a-droite"' : (c.forme === 'calc' ? ' class="f-calc"' : classeCellule(c));
             var v = String(l[c.cle] == null ? '' : l[c.cle]);
             if (c.cle === cleT && v.trim() && unite && v.indexOf(unite) === -1) v = U.nombre(montant(l)) + ' ' + unite;
+            /* montant vide, calcul écrit : le montant se lit, en gris, et se remplace si on l'écrit */
+            if (c.cle === cleT && montantCalcule(l)) return '<td' + cl.replace('"', '" data-calcule="1" ') + editChemin(chemin + r.i + '.' + c.cle) + '><span class="f-calcule">' + U.ech(U.nombre(montant(l)) + (unite ? ' ' + unite : '')) + '</span></td>';
             return '<td' + cl + editChemin(chemin + r.i + '.' + c.cle) + '>' + U.enLigne(v) + '</td>';
           }).join('') + '</tr>';
         }).join('');
@@ -891,6 +999,125 @@
        feuille neuve. Rien ne s'imprime. */
     saut: function () { return '<div class="saut"></div>'; },
 
+
+    /* Une bande pleine avec un grand mot : convocation, communiqué,
+       feuille de présence. Ton : vert (défaut), or, noir, clair. */
+    bandeau: function (cfg, d, ctx) {
+      var ton = val(cfg.ton, d, ctx) || 'vert';
+      var droite = val(cfg.droite, d, ctx) || [];
+      return '<section class="bandeau avoid ton-' + U.ech(ton) + '"><div>'
+        + ligne('span', 'label', slot(cfg, 'etiquette', d, ctx))
+        + ligne('h1', '', slot(cfg, 'texte', d, ctx))
+        + ligne('div', 'bandeau-sous', slot(cfg, 'sous', d, ctx))
+        + '</div>' + (droite.length ? '<div class="bandeau-droite">' + droite.map(function (l, i) {
+            return ligne(i === 0 ? 'div' : 'span', '', slot({ l: l }, 'l', d, ctx, '', 'droite.' + i));
+          }).join('') + '</div>' : '') + '</section>';
+    },
+
+    /* Des lignes « Étiquette : valeur », à compléter sur la feuille ou au
+       stylo (une ligne pointillée quand c'est vide). champs : [{label,
+       chemin|valeur, large}] ; colonnes : 1, 2 (défaut) ou 3. */
+    grille: function (cfg, d, ctx) {
+      var champs = val(cfg.champs, d, ctx) || [];
+      var colonnes = parseInt(val(cfg.colonnes, d, ctx), 10) || 2;
+      return '<section class="grille avoid col-' + colonnes + '">' + champs.map(function (c, j) {
+        var L, V;
+        if (c.chemin) { L = { t: c.label, a: '' }; V = { t: lire(d, c.chemin), a: editChemin(c.chemin), declare: true }; }
+        else { L = slot(c, 'label', d, ctx, '', 'champs.' + j); V = slot(c, 'valeur', d, ctx, '', 'champs.' + j); V.declare = true; }
+        return '<div class="grille-champ' + (c.large ? ' large' : '') + '"><span class="k">' + U.enLigne(L.t || '') + '</span>'
+          + '<span class="v"' + V.a + '>' + U.enLigne(V.t || '') + '</span></div>';
+      }).join('') + '</section>';
+    },
+
+    /* Des cases à cocher : cases : [{texte, chemin (booléen)}] ; cochée
+       depuis la donnée, sinon vide, à cocher au stylo. enLigne : côte à côte. */
+    cases: function (cfg, d, ctx) {
+      var cs = val(cfg.cases, d, ctx) || [];
+      return '<section class="cases avoid' + (val(cfg.enLigne, d, ctx) ? ' en-ligne' : '') + '">'
+        + ligne('span', 'label', slot(cfg, 'etiquette', d, ctx))
+        + cs.map(function (c, j) {
+          var coche = c.chemin ? !!lire(d, c.chemin) : !!c.cochee;
+          return '<div class="case' + (coche ? ' cochee' : '') + '"><i></i>' + ligne('span', '', slot(c, 'texte', d, ctx, '', 'cases.' + j)) + '</div>';
+        }).join('') + '</section>';
+    },
+
+    /* Une ou deux boîtes de signature vides, pour un parent, un tiers :
+       boites : [{label, mention}]. */
+    signatureLibre: function (cfg, d, ctx) {
+      var boites = val(cfg.boites, d, ctx) || [{ label: 'Signature', mention: '' }];
+      return '<section class="sig-libre avoid">' + boites.map(function (b, j) {
+        return '<div class="sig-libre-boite">' + ligne('span', 'label', slot(b, 'label', d, ctx, '', 'boites.' + j))
+          + ligne('span', 'mention', slot(b, 'mention', d, ctx, '', 'boites.' + j)) + '</div>';
+      }).join('') + '</section>';
+    },
+
+    /* Un certificat, un diplôme : cadre double, blason, grand titre, le
+       nom en évidence, le motif, la date, deux signatures. */
+    diplome: function (cfg, d, ctx) {
+      var signs = val(cfg.signatures, d, ctx) || [];
+      return '<section class="diplome"><div class="crest"' + fond(ctx) + '></div>'
+        + ligne('div', 'diplome-club', slot(cfg, 'club', d, ctx, 'Baobabs Basket Club'))
+        + ligne('h1', '', slot(cfg, 'titre', d, ctx, 'Certificat'))
+        + ligne('div', 'diplome-sous', slot(cfg, 'sous', d, ctx))
+        + ligne('div', 'diplome-prelude', slot(cfg, 'prelude', d, ctx, 'est décerné à'))
+        + '<div>' + ligne('span', 'diplome-nom', slot(cfg, 'nom', d, ctx)) + '</div>'
+        + ligne('div', 'diplome-motif', slot(cfg, 'motif', d, ctx))
+        + ligne('div', 'diplome-date', slot(cfg, 'date', d, ctx))
+        + (signs.length ? '<div class="diplome-signs">' + signs.map(function (s, j) {
+            var pre = 'signatures.' + j;
+            var encre = (s.signer !== false && d.avecSignature !== false && !d.signatureDetachee)
+              ? '<div class="ink-zone"><div class="sig-ink"><div class="sig-name">' + U.ech(U.initialeNom(slot(s, 'nom', d, ctx, '', pre).t)) + '</div><div class="sig-paraphe">' + B.PARAPHE + '</div></div></div>' : '<div class="ink-zone"></div>';
+            return '<div class="diplome-sign">' + encre + ligne('b', '', slot(s, 'nom', d, ctx, '', pre)) + ligne('span', '', slot(s, 'qualite', d, ctx, '', pre)) + '</div>';
+          }).join('') + '</div>' : '')
+        + '</section>';
+    },
+
+    /* Des cartes au format carte de membre (85,6 × 54 mm), une par ligne
+       d'un tableau : source, et les clés nom, prenom, categorie, licence,
+       saison. Huit par page, à découper. */
+    cartes: function (cfg, d, ctx) {
+      var t = (d.tables && d.tables[cfg.source]) || { lignes: [] };
+      var lignes = (t.lignes || []).filter(function (l) { return l && Object.keys(l).some(function (k) { return String(l[k] || '').trim(); }); });
+      var min = parseInt(val(cfg.vide, d, ctx), 10) || 0;
+      while (lignes.length < min) lignes.push({});
+      if (!lignes.length) return '';
+      var club = val(cfg.club, d, ctx) || 'Baobabs Basket Club', saison = val(cfg.saison, d, ctx) || '';
+      var role = val(cfg.role, d, ctx) || 'Carte de membre';
+      return '<section class="cartes pg-groupe">' + lignes.map(function (l) {
+        var nom = [l.prenom, l.nom].filter(Boolean).join(' ') || '&nbsp;';
+        return '<div class="carte"><div class="carte-tete"><div class="crest"' + fond(ctx) + '></div><b>' + U.ech(club) + '</b><span>' + U.ech(role) + '</span></div>'
+          + '<div class="carte-corps"><div class="carte-photo">' + (l.photo ? '<img src="' + l.photo + '" style="width:100%;height:100%;object-fit:cover;border-radius:1.5mm" alt="">' : 'Photo') + '</div>'
+          + '<div class="carte-id"><div class="carte-nom">' + U.enLigne(nom) + '</div>'
+          + '<div class="carte-ligne"><span class="k">Catégorie</span>' + U.enLigne(l.categorie || '') + '</div>'
+          + '<div class="carte-ligne"><span class="k">Licence</span>' + U.enLigne(l.licence || '') + '</div>'
+          + '<div class="carte-ligne"><span class="k">Née le</span>' + U.enLigne(l.naissance || '') + '</div>'
+          + '</div></div>'
+          + '<div class="carte-pied"><span>' + U.ech(val(cfg.pied, d, ctx) || '') + '</span><b>' + U.ech(saison) + '</b></div></div>';
+      }).join('') + '</section>';
+    },
+
+    /* Le talon d'un reçu : la même information, à détacher pour le club. */
+    talon: function (cfg, d, ctx) {
+      var cols = val(cfg.colonnes, d, ctx) || [];
+      return '<section class="talon avoid">'
+        + ligne('span', 'label', slot(cfg, 'etiquette', d, ctx, 'Talon à conserver par le club'))
+        + '<div class="talon-grille">' + cols.map(function (c, j) {
+          return '<div class="talon-col">' + ligne('span', 'label', slot(c, 'label', d, ctx, '', 'colonnes.' + j)) + ligne('b', '', slot(c, 'valeur', d, ctx, '', 'colonnes.' + j)) + '</div>';
+        }).join('') + '</div></section>';
+    },
+
+    /* Les points d'un ordre du jour, numérotés, avec leur durée. */
+    ordreDuJour: function (cfg, d, ctx) {
+      var pts = val(cfg.points, d, ctx) || [];
+      if (!pts.length) return '';
+      return '<section class="odj">' + pts.map(function (p, i) {
+        var pre = 'points.' + i;
+        return '<div class="odj-point avoid"><span class="art-num">' + U.deuxChiffres(i + 1) + '</span><div class="odj-txt">'
+          + ligne('b', '', slot(p, 'titre', d, ctx, '', pre)) + ligne('span', '', slot(p, 'texte', d, ctx, '', pre)) + '</div>'
+          + ligne('span', 'odj-duree', slot(p, 'duree', d, ctx, '', pre)) + '</div>';
+      }).join('') + '</section>';
+    },
+
     html: function (cfg, d, ctx) { return val(cfg.contenu, d, ctx) || ''; }
   };
 
@@ -1021,7 +1248,7 @@
          pied de la page continue sur la suivante, dans la même enveloppe,
          sans son titre. Ce qui suit le texte (une formule de politesse)
          attend le dernier morceau. */
-      var txt = bloc.querySelector('.txt');
+      var txt = bloc.querySelector('.txt, .pg-groupe');
       if (txt && txt.children.length > 1) {
         txt.setAttribute('data-pg', 'txt');
         var g = { bloc: bloc, chercher: function (b) { return b.querySelector('[data-pg="txt"]'); }, n: 0, tfoot: null, derniere: null, texte: txt };
