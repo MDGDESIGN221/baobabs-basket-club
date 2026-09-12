@@ -4004,6 +4004,11 @@
       });
       p.then(function () {
         fermer();
+        /* le modele, s'il n'est pas encore au registre, portait un numero
+           que la serie vient de prendre : il passe au suivant */
+        if (modeleActif.prefixe && donnees.numero && pris.indexOf(parseInt(String(donnees.numero).split('/')[0], 10)) !== -1) {
+          donnees.numero = prochainNumero(modeleActif.cle, pris); salir(); peindreFormulaire(); rafraichir(); majTitreBarre();
+        }
         try { localStorage.removeItem('bbc-greffe-serie'); } catch (e) {}
         dire(ids.length + ' acte' + (ids.length > 1 ? 's' : '') + ' créé' + (ids.length > 1 ? 's' : '') + ' en série', 'ok');
         if (apres === 'imprimer') imprimerSerie(ids);

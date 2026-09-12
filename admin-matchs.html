@@ -4919,6 +4919,7 @@
             <button type="button" data-inview="list">Liste</button>
           </div>
           <button type="button" class="ds-act" id="in-export">Exporter CSV</button>
+          <button type="button" class="ds-act" id="in-greffe" hidden title="Une autorisation, une convocation, une fiche par enfant : la liste part au Greffe">Série au Greffe</button>
         </div>
         <div class="callout ds-note" id="in-callout">Chaque enfant est un dossier&nbsp;: cliquez une carte pour l'ouvrir et y enregistrer les paiements. Faites glisser une carte d'une colonne à l'autre pour changer son statut — chaque mouvement est écrit dans le journal du dossier.</div>
         <div id="in-board" class="ds-board"></div>
@@ -6669,6 +6670,15 @@
   // Appelee une fois la session ET l'adresse du proprietaire lues.
   // Avant cela, CP_PROPRIETAIRE ne vaut que son repli en dur : reveler
   // le bouton trop tot le montrerait a la mauvaise personne.
+  function greffeSerie(titre, lignes){
+    if (!cpJeSuisProprio()){ qgToast('Le Greffe est reserve au proprietaire du site', true); return; }
+    if (!lignes || !lignes.length){ qgToast('Aucune ligne a envoyer', true); return; }
+    try {
+      localStorage.setItem('bbc-greffe-serie', JSON.stringify({ titre: titre, colonnes: Object.keys(lignes[0]), lignes: lignes, quand: Date.now() }));
+    } catch(e){ qgToast('La liste n\'a pas pu etre transmise', true); return; }
+    qgToast(lignes.length + ' ligne' + (lignes.length > 1 ? 's' : '') + ' transmise' + (lignes.length > 1 ? 's' : '') + ' au Greffe : ouvrez un modele, puis Fichier > Serie depuis une liste > Utiliser cette liste');
+    greffeOuvrir();
+  }
   function greffeAcces(){
     var b = document.getElementById('greffe-open');
     if (b) b.hidden = !cpJeSuisProprio();
@@ -19895,6 +19905,23 @@
     document.getElementById('in-filter-pay').addEventListener('change', inRender);
     document.getElementById('in-back').addEventListener('click', function(){ inSel = null; inRender(); });
     document.getElementById('in-export').addEventListener('click', inExportCsv);
+    // LA SERIE AU GREFFE. Le Greffe fabrique un acte par ligne d'une liste
+    // (Fichier > Serie) : les dossiers affiches partent avec l'enfant, la
+    // naissance, la categorie, le responsable, le telephone, pour une
+    // autorisation parentale, une convocation ou une fiche par enfant.
+    // Reserve au proprietaire, comme le Greffe.
+    var inGreffe = document.getElementById('in-greffe');
+    if (inGreffe){
+      inGreffe.hidden = !cpJeSuisProprio();
+      inGreffe.addEventListener('click', function(){
+        var rows = inVisible();
+        greffeSerie('Inscriptions (' + rows.length + ' enfant' + (rows.length > 1 ? 's' : '') + ')', rows.map(function(r){
+          return { 'Enfant': r.full_name || '', 'Naissance': r.birth_date ? String(r.birth_date).split('-').reverse().join('/') : '', 'Categorie': r.category || '',
+                   'Sexe': r.gender === 'F' ? 'fille' : (r.gender === 'M' ? 'garçon' : ''), 'Etablissement': r.school || '', 'Quartier': r.district || '',
+                   'Responsable': r.guardian_name || '', 'Lien': r.guardian_relation || '', 'Telephone': r.guardian_phone || '', 'Email': r.guardian_email || '', 'Reference': r.reference || '' };
+        }));
+      });
+    }
     document.querySelectorAll('#in-view-switch button').forEach(function(b){
       b.addEventListener('click', function(){
         inView = b.getAttribute('data-inview');
@@ -23458,7 +23485,7 @@
         '<div>'+
           '<div class="qg-canvas-head">'+
             '<div class="k">L\'effectif féminin</div>'+
-            '<h3>Nos joueuses</h3>'+
+            '<h3>Nos joueuses'+(cpJeSuisProprio() ? ' <button type="button" class="ds-act" id="qg-greffe" style="margin-left:12px;vertical-align:middle" title="Une convocation, une carte, une fiche par joueuse : l\'effectif part au Greffe">Série au Greffe</button>' : '')+'</h3>'+
             '<p><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 20 9-9-4-4-9 9v4h4Z"/><path d="M14 6l4 4"/></svg>Clique une carte pour l\'éditer · glisse pour réordonner · le rendu est celui du site.</p>'+
           '</div>'+
           '<div class="qg-canvas"><div class="qg-grid" id="qg-grid"><div class="qg-loading">Chargement de l\'effectif…</div></div></div>'+
@@ -23466,6 +23493,12 @@
         '<aside class="qg-inspector" id="qg-inspector"></aside>'+
       '</div>';
     document.querySelectorAll('#section-roster .qg-tab').forEach(function(b){ b.addEventListener('click',function(){ qgSetTab(b.getAttribute('data-qg-tab')); }); });
+    var qgG = document.getElementById('qg-greffe');
+    if (qgG) qgG.addEventListener('click', function(){
+      greffeSerie('Effectif (' + QG.rows.length + ' joueuse' + (QG.rows.length > 1 ? 's' : '') + ')', QG.rows.map(function(r){
+        return { 'Nom': r.name || '', 'Numero': r.jersey_number == null ? '' : String(r.jersey_number), 'Poste': r.position || '' };
+      }));
+    });
     qgRenderInspector();
   }
   function qgLoad(){
