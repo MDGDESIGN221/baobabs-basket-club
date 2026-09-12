@@ -118,6 +118,22 @@
       ".party-nom{ font-family:'Gilroy',sans-serif; font-weight:700; font-size:9.6pt;",
       "  line-height:1.26; color:var(--encre); letter-spacing:-.005em; margin-bottom:3pt; }",
       ".party-tag{ margin-top:3pt; font-size:7pt; color:var(--gris); font-style:italic; }",
+      /* les champs d'identité d'une partie : renseignés, ou en pointillé
+         pour être complétés à la main sur l'exemplaire imprimé */
+      ".party-champs{ display:grid; grid-template-columns:1fr 1fr; gap:2.5pt 10pt; margin:3pt 0 2pt 0; }",
+      ".party-champ{ display:flex; align-items:baseline; gap:4pt; font-size:7.4pt; white-space:nowrap; }",
+      ".party-champ.large{ grid-column:1 / -1; }",
+      ".party-champ .k{ color:var(--gris); flex:0 0 auto; }",
+      ".party-champ .v{ color:var(--encre); font-weight:500; overflow:hidden; text-overflow:ellipsis; }",
+      ".party-champ .pointille{ flex:1 1 auto; min-width:18mm; border-bottom:1px dotted var(--gris-clair); height:7pt; }",
+
+      /* ---- phrase de liaison (« Il est convenu ce qui suit : ») ---- */
+      ".lead{ font-family:'Gilroy',sans-serif; font-weight:700; font-size:8.6pt; color:var(--encre); }",
+
+      /* ---- note en retrait, dans un article ---- */
+      ".note{ margin-top:3.5pt; padding:4.5pt 8pt; background:var(--fond-tint); border-radius:5pt;",
+      "  border-left:2pt solid var(--or); }",
+      ".note p{ font-size:7.3pt; color:var(--gris); font-style:italic; }",
 
       /* ---- texte libre (lettres) ---- */
       ".lettre p{ max-width:158mm; margin-bottom:4.5pt; }",
@@ -162,8 +178,9 @@
       "  color:var(--vert); border-top:1.4pt solid var(--vert); }",
       "td.a-centre,th.a-centre{ text-align:center; }",
       "td.a-droite,th.a-droite{ text-align:right; }",
+      "th.th-rang{ padding-left:3pt; padding-right:3pt; text-overflow:clip; }",
       "td.f-rang{ font-family:'Gilroy',sans-serif; font-weight:700; font-size:7.6pt;",
-      "  color:var(--or); letter-spacing:.04em; }",
+      "  color:var(--or); letter-spacing:.04em; white-space:nowrap; padding-left:3pt; padding-right:3pt; }",
       "td.f-fort{ font-weight:500; color:var(--encre); font-size:8.2pt; }",
       "td.f-code{ letter-spacing:.035em; white-space:nowrap; font-size:8pt; }",
       "td.f-nombre{ font-family:'Gilroy',sans-serif; font-weight:700; color:var(--encre); }",
@@ -172,9 +189,39 @@
       ".q.ton-plein{ background:var(--vert); color:#fff; }",
       ".q.ton-doux{ background:#EDF1EE; color:var(--vert); }",
 
+      /* ---- postes (un budget : des groupes de lignes, chacun son sous-total) ---- */
+      ".poste{ border-top:1px solid var(--filet); padding:4pt 0 5pt 0; }",
+      ".poste:last-of-type{ border-bottom:1px solid var(--filet); }",
+      ".poste-tete{ display:flex; align-items:baseline; justify-content:space-between; gap:10pt; margin-bottom:3pt; }",
+      ".poste-titre{ display:flex; align-items:baseline; gap:8pt; }",
+      ".poste-titre .art-num{ flex:0 0 auto; }",
+      ".poste-titre b{ font-family:'Gilroy',sans-serif; font-weight:700; font-size:8.7pt; color:var(--encre); }",
+      ".poste-st{ font-family:'InterDoc',Inter,sans-serif; font-weight:600; font-size:8.2pt; color:var(--vert); white-space:nowrap; }",
+      ".poste-st .label{ margin-right:5pt; }",
+      ".poste table{ margin-left:27pt; width:calc(100% - 27pt); }",
+      ".poste tbody td{ padding:2.6pt 5pt; font-size:7.5pt; border-bottom:1px solid var(--filet); }",
+      ".poste tbody tr:last-child td{ border-bottom:0; }",
+      ".poste td.f-calc{ color:var(--gris); font-size:7.1pt; }",
+      ".poste td.f-montant{ font-family:'InterDoc',Inter,sans-serif; font-weight:600; color:var(--encre); white-space:nowrap; }",
+      ".total-box{ display:flex; align-items:center; justify-content:space-between; gap:10pt;",
+      "  background:var(--vert); color:#fff; border-radius:8pt; padding:7pt 13pt; margin-top:2pt; }",
+      ".total-box .label{ color:rgba(255,255,255,.72); }",
+      ".total-box b{ font-family:'Gilroy',sans-serif; font-weight:800; font-size:12pt; color:#fff; white-space:nowrap; }",
+
       /* ---- signatures ---- */
       ".closing-grid{ display:flex; gap:12pt; align-items:stretch; }",
       ".closing-left{ flex:1; padding-top:2pt; }",
+      /* trois signataires ou plus : le lieu et la date passent au-dessus,
+         les cartes se partagent la largeur, l'encre se fait plus petite */
+      ".closing-col{ display:block; }",
+      ".closing-col .closing-left{ margin-bottom:6pt; }",
+      ".signs-row{ display:flex; gap:8pt; align-items:stretch; }",
+      ".signs-row .sign-card{ flex:1 1 0; padding:6pt 8pt 5pt 8pt; }",
+      ".signs-row .sign-who{ flex-direction:column; gap:1pt; white-space:normal; }",
+      ".signs-row .sig-ink{ width:38mm; }",
+      ".signs-row .sig-name{ font-size:16pt; }",
+      ".signs-row .sig-paraphe{ width:30mm; }",
+      ".signs-row .sig-cachet{ width:21mm; height:21mm; right:2mm; }",
       ".place{ font-size:8.6pt; color:var(--encre); }",
       ".closing-note{ margin-top:4pt; font-size:7.1pt; line-height:1.45; color:var(--gris); max-width:80mm; }",
       ".ref{ margin-top:6pt; display:inline-flex; align-items:center; gap:6pt;",
@@ -303,10 +350,15 @@
       return Object.keys(l).some(function (k) { return String(l[k] || '').trim(); });
     });
     if (!cols.length) return '';
+    /* Sans une seule ligne, la grille se montre quand même, vide : on voit
+       la forme du tableau avant d'avoir quoi que ce soit à y mettre. */
+    if (!lignes.length && cfg.vide) {
+      for (var k = 0; k < cfg.vide; k++) lignes.push({});
+    }
 
     var numeroter = cfg.numeroter !== false;
     var poidsTotal = cols.reduce(function (s, c) { return s + (+c.poids || B.COLONNE_DEFAUT.poids); }, 0);
-    var partRang = numeroter ? 4 : 0;
+    var partRang = numeroter ? 6 : 0;
     var base = 100 / (poidsTotal + partRang);
 
     var colgroup = (numeroter ? '<col style="width:' + (partRang * base).toFixed(3) + '%">' : '')
@@ -314,14 +366,14 @@
         return '<col style="width:' + (((+c.poids || B.COLONNE_DEFAUT.poids)) * base).toFixed(3) + '%">';
       }).join('');
 
-    var thead = '<tr>' + (numeroter ? '<th class="a-centre">N°</th>' : '')
+    var thead = '<tr>' + (numeroter ? '<th class="a-centre th-rang">N°</th>' : '')
       + cols.map(function (c) {
         var a = c.align === 'centre' ? ' class="a-centre"' : (c.align === 'droite' ? ' class="a-droite"' : '');
         return '<th' + a + '>' + U.ech(c.titre || '') + '</th>';
       }).join('') + '</tr>';
 
     var tbody = lignes.map(function (l, i) {
-      var cl = (cfg.enAvant && cfg.enAvant(l)) ? ' class="enc"' : '';
+      var cl = (Object.keys(l).length && cfg.enAvant && cfg.enAvant(l)) ? ' class="enc"' : '';
       return '<tr' + cl + '>'
         + (numeroter ? '<td class="f-rang a-centre">' + U.deuxChiffres(i + 1) + '</td>' : '')
         + cols.map(function (c) {
@@ -407,15 +459,89 @@
         + '</section>';
     },
 
+    /* Une partie peut porter des champs d'identité (« Née le », « CNI »).
+       Renseigné, le champ s'imprime ; vide, il devient une ligne en
+       pointillé, à compléter au stylo sur l'exemplaire signé. */
     parties: function (cfg, d, ctx) {
       var ps = val(cfg.parties, d, ctx) || [];
       return '<section class="parties avoid">' + ps.map(function (p) {
+        var champs = (p.champs || []).map(function (c) {
+          var v = String(c.valeur == null ? '' : c.valeur).trim();
+          return '<div class="party-champ' + (c.large ? ' large' : '') + '">'
+            + '<span class="k">' + U.ech(c.label) + ' :</span>'
+            + (v ? '<span class="v">' + U.ech(v) + '</span>' : '<span class="pointille"></span>')
+            + '</div>';
+        }).join('');
         return '<div class="party"><span class="label">' + U.ech(p.label || '') + '</span>'
           + '<div class="party-nom">' + U.ech(p.nom || '') + '</div>'
           + U.paragraphes(p.texte || '')
+          + (champs ? '<div class="party-champs">' + champs + '</div>' : '')
           + (p.tag ? '<div class="party-tag">' + U.ech(p.tag) + '</div>' : '')
           + '</div>';
       }).join('') + '</section>';
+    },
+
+    /* La phrase qui ouvre les articles : « Il est convenu ce qui suit : ». */
+    phrase: function (cfg, d, ctx) {
+      var t = val(cfg.texte, d, ctx);
+      return t ? '<p class="lead">' + U.ech(t) + '</p>' : '';
+    },
+
+    /* Un budget, un devis, un bilan : les lignes d'UN tableau, groupées
+       par la colonne « groupe », chaque groupe avec son sous-total et le
+       tout avec son total. Les autres colonnes s'affichent telles quelles :
+       en ajouter une depuis l'écran suffit, comme pour tout tableau. */
+    postes: function (cfg, d, ctx) {
+      var table = (d.tables && d.tables[cfg.source]) || { colonnes: [], lignes: [] };
+      var cols = (table.colonnes || []).filter(function (c) { return c && c.cle; });
+      var lignes = (table.lignes || []).filter(function (l) {
+        return Object.keys(l).some(function (k) { return String(l[k] || '').trim(); });
+      });
+      var cleG = cfg.groupe, cleT = cfg.total;
+      var visibles = cols.filter(function (c) { return c.cle !== cleG; });
+      if (!visibles.length || !lignes.length) return '';
+
+      function montant(l) {
+        var n = parseFloat(String(l[cleT] || '').replace(/[^\d.,-]/g, '').replace(',', '.'));
+        return isNaN(n) ? 0 : n;
+      }
+      var unite = val(cfg.unite, d, ctx) || '';
+      function somme(n) { return U.nombre(n) + (unite ? ' ' + unite : ''); }
+
+      var ordre = [], groupes = {};
+      lignes.forEach(function (l) {
+        var g = String(l[cleG] || '').trim() || (val(cfg.sansGroupe, d, ctx) || 'Divers');
+        if (!groupes[g]) { groupes[g] = []; ordre.push(g); }
+        groupes[g].push(l);
+      });
+
+      var poidsTotal = visibles.reduce(function (s, c) { return s + (+c.poids || B.COLONNE_DEFAUT.poids); }, 0);
+      var colgroup = visibles.map(function (c) {
+        return '<col style="width:' + (((+c.poids || B.COLONNE_DEFAUT.poids)) * 100 / poidsTotal).toFixed(3) + '%">';
+      }).join('');
+
+      var total = 0;
+      var html = ordre.map(function (g, gi) {
+        var st = groupes[g].reduce(function (s, l) { return s + montant(l); }, 0);
+        total += st;
+        var rows = groupes[g].map(function (l) {
+          return '<tr>' + visibles.map(function (c) {
+            var cl = c.cle === cleT ? ' class="f-montant a-droite"' : (c.forme === 'calc' ? ' class="f-calc"' : classeCellule(c));
+            var v = String(l[c.cle] == null ? '' : l[c.cle]);
+            if (c.cle === cleT && v.trim() && unite && v.indexOf(unite) === -1) v = U.nombre(montant(l)) + ' ' + unite;
+            return '<td' + cl + '>' + U.ech(v) + '</td>';
+          }).join('') + '</tr>';
+        }).join('');
+        return '<div class="poste avoid"><div class="poste-tete"><div class="poste-titre">'
+          + '<span class="art-num">' + U.deuxChiffres(gi + 1) + '</span><b>' + U.ech(g) + '</b></div>'
+          + '<div class="poste-st"><span class="label">Sous-total</span>' + U.ech(somme(st)) + '</div></div>'
+          + '<table><colgroup>' + colgroup + '</colgroup><tbody>' + rows + '</tbody></table></div>';
+      }).join('');
+
+      var titreTotal = val(cfg.titreTotal, d, ctx) || 'Total';
+      return '<section class="postes">' + html + '</section>'
+        + '<div class="total-box avoid"><span class="label">' + U.ech(titreTotal) + '</span><b>'
+        + U.ech(somme(total)) + '</b></div>';
     },
 
     lettre: function (cfg, d, ctx) {
@@ -449,10 +575,16 @@
 
     tableau: function (cfg, d, ctx) { return B.tableau(cfg, d, ctx); },
 
+    /* Une carte : le lieu à gauche, la carte à droite. Deux cartes : elles
+       se partagent la droite. Trois et plus (visa, signature, « lu et
+       approuvé ») : le lieu passe au-dessus et les cartes prennent toute
+       la largeur, sinon l'encre n'aurait plus la place de s'étaler. */
     signatures: function (cfg, d, ctx) {
       var gauche = val(cfg.gauche, d, ctx);
       var cartes = (val(cfg.cartes, d, ctx) || []);
-      var html = '<section class="closing avoid"><div class="closing-grid' + (cartes.length > 1 ? ' signs-2' : '') + '">';
+      var enColonne = cartes.length > 2;
+      var html = '<section class="closing avoid"><div class="closing-grid'
+        + (enColonne ? ' closing-col' : (cartes.length > 1 ? ' signs-2' : '')) + '">';
       if (gauche) {
         html += '<div class="closing-left">'
           + (gauche.lieuDate ? '<div class="place">' + gauche.lieuDate + '</div>' : '')
@@ -461,7 +593,8 @@
               + U.ech(gauche.reference) + '</div>' : '')
           + '</div>';
       }
-      html += cartes.map(function (c) { return B.carteSignature(c, d, ctx); }).join('');
+      var htmlCartes = cartes.map(function (c) { return B.carteSignature(c, d, ctx); }).join('');
+      html += enColonne ? '<div class="signs-row">' + htmlCartes + '</div>' : htmlCartes;
       return html + '</div></section>';
     },
 

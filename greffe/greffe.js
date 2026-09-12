@@ -40,7 +40,8 @@
   var H_PAGE = 297 * MM;                 /* hauteur d'une A4 */
 
   /* AJOUTER UN TYPE D'ACTE : un fichier dans modeles/, son nom ici. */
-  var MODELES = ['ordre-mission', 'courrier'];
+  var MODELES = ['ordre-mission', 'courrier',
+                 'convention', 'contrat', 'fiche-fonction', 'budget'];
 
   /* =================================================================
      1. LES PETITS OUTILS, PARTAGÉS AVEC LES BLOCS ET LES MODÈLES
@@ -186,13 +187,35 @@
   }
 
   /* Mise en paragraphes, avec **gras**. On échappe d'abord, on
-     décore ensuite : l'inverse laisserait passer du HTML. */
+     décore ensuite : l'inverse laisserait passer du HTML.
+
+     Trois formes de ligne, et rien d'autre à apprendre :
+       texte          un paragraphe (les lignes qui se suivent se joignent)
+       - texte        un point d'une liste (une fiche de fonction en est faite)
+       > texte        une note en retrait, en plus petit
+     Une ligne vide sépare deux paragraphes. */
+  function gras(t) { return t.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>'); }
+
   function paragraphes(texte) {
-    return String(texte || '').split(/\n\s*\n/).map(function (bloc) {
-      var t = ech(bloc.trim()).replace(/\n/g, ' ');
-      t = t.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
-      return t ? '<p>' + t + '</p>' : '';
-    }).join('');
+    var out = [], genre = null, run = [];
+    function vider() {
+      if (!run.length) return;
+      if (genre === 'liste') out.push('<ul>' + run.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul>');
+      else if (genre === 'note') out.push('<div class="note"><p>' + run.join(' ') + '</p></div>');
+      else out.push('<p>' + run.join(' ') + '</p>');
+      run = []; genre = null;
+    }
+    String(texte || '').split(/\r?\n/).forEach(function (ligne) {
+      var l = ligne.trim();
+      if (!l) { vider(); return; }
+      var m = /^([-•*]|>)\s+(.*)$/.exec(l);
+      var g = m ? (m[1] === '>' ? 'note' : 'liste') : 'para';
+      var contenu = gras(ech(m ? m[2] : l));
+      if (genre && genre !== g) vider();
+      genre = g; run.push(contenu);
+    });
+    vider();
+    return out.join('');
   }
 
   function fait(label, valeur, sous) {
@@ -607,7 +630,13 @@
     }
     var saisie;
     if (c.type === 'zone') {
-      saisie = '<textarea class="gf-ta" id="' + id + '" data-cle="' + c.cle + '" rows="2"></textarea>';
+      saisie = '<textarea class="gf-ta" id="' + id + '" data-cle="' + c.cle + '" rows="'
+             + (c.lignes || 2) + '"></textarea>';
+    } else if (c.type === 'choix') {
+      /* une liste fermée : la fonction d'une fiche, le genre d'un contrat */
+      saisie = '<select class="gf-sel" id="' + id + '" data-cle="' + c.cle + '">'
+             + (c.choix || []).map(function (o) { return '<option>' + ech(o) + '</option>'; }).join('')
+             + '</select>';
     } else {
       saisie = '<input class="gf-in" type="' + (c.type === 'date' ? 'date' : 'text')
              + '" id="' + id + '" data-cle="' + c.cle + '">';

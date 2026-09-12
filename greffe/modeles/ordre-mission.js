@@ -199,12 +199,14 @@
                     mention: "Signature et cachet du Président" }];
         } },
 
+      /* L'annexe se montre dès l'ouverture, grille vide comprise : la page 2
+         existe avant la première ligne, on voit ce qu'on va remplir. */
       { b: 'annexe',
-        si: function (d) { return d.avecAnnexe && G.lignes(d, 'membres').length > 0; },
+        si: function (d) { return !!d.avecAnnexe; },
         titre: "Annexe I · Liste complète de la délégation",
         sous: function (d) { return (d.titre || '') + " n° " + (d.numero || '') + " · Baobabs Basket Club"; },
         meta: function (d) {
-          return [ (d.destVille || '') + " · " + U.duAuCourt(d.arrivee, d.retour),
+          return [ [d.destVille, U.duAuCourt(d.arrivee, d.retour)].filter(Boolean).join(" · "),
                    d.organisateur ? "Tournoi international · " + d.organisateur : "Tournoi international" ];
         },
         contenu: [
@@ -217,16 +219,17 @@
                 { label: "Chef de délégation", valeur: c.chefs || "" }
               ];
             } },
-          { b: 'tableau', source: 'membres',
+          { b: 'tableau', source: 'membres', vide: 12,
             enAvant: function (l) { return estStaff(l.qualite); },
             tonPastille: function (v) { return estStaff(v) ? 'ton-plein' : 'ton-doux'; } },
           { b: 'certification',
             texte: function (d) {
               var c = U.compter(G.lignes(d, 'membres'));
               return "Je soussigné **" + (d.signNom || '') + "**, Président de Baobabs Basket Club, "
-                + "certifie exacte et conforme la présente liste des " + U.lettres(c.total)
-                + " (" + c.total + ") membres composant la délégation du club au tournoi "
-                + "international de " + (d.destVille || '') + ".\n\n"
+                + "certifie exacte et conforme la présente liste des "
+                + (c.total ? U.lettres(c.total) + " (" + c.total + ") " : "")
+                + "membres composant la délégation du club au tournoi international"
+                + (d.destVille ? " de " + d.destVille : "") + ".\n\n"
                 + "Fait à " + (d.lieu || '') + ", le **" + U.dateLongue(d.dateActe, true) + "**.";
             },
             reference: function (d) { return ref(d) + " · Annexe I"; },
