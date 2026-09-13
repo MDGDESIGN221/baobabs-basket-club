@@ -64,3 +64,21 @@ drop trigger if exists orders_stock on public.orders;
 create trigger orders_stock
   before update of status on public.orders
   for each row execute function public.bbc_orders_stock();
+
+-- =====================================================================
+--  CLASSEMENT APRES SUPPRESSION D'UN MATCH (applique le 13/09/2026)
+--  Le declencheur matches_apres_score ne joue qu'a la mise a jour : un
+--  match joue puis supprime restait compte dans la ligne des Baobabs.
+-- =====================================================================
+create or replace function public.bbc_matches_apres_suppression()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if old.score_baobabs is not null and old.score_opponent is not null then
+    perform bbc_recalculer_classement();
+  end if;
+  return old;
+end;
+$$;
+drop trigger if exists matches_apres_suppression on public.matches;
+create trigger matches_apres_suppression after delete on public.matches
+  for each row execute function public.bbc_matches_apres_suppression();

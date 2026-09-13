@@ -17428,6 +17428,13 @@
     if (!mcCompo.mid) return;
     pid = String(pid);
     if (mcCompoEtat(pid) === etat) return;
+    // LE CINQ EST UN CINQ. Une sixieme titulaire etait acceptee avec un
+    // simple avertissement, et le site n'en montrait que cinq : la sixieme
+    // disparaissait de la planche sans que personne ne le voie ici.
+    if (etat === 'titu' && mcCompo.cinq.length >= 5 && mcCompo.cinq.indexOf(pid) < 0){
+      qgToast('Le cinq est complet : passez d\'abord une titulaire au banc.', true);
+      return;
+    }
     mcCompoOter(pid);
     if (etat === 'titu') mcCompo.cinq.push(pid);
     if (etat === 'banc') mcCompo.banc.push(pid);
@@ -17569,6 +17576,13 @@
             '<h2 class="ds-name" style="font-size:clamp(20px,2.6vw,27px)">'+esc(mcLabel(m))+'</h2>'+
             '<div class="ds-sub">'+esc(formatDateLong(m.match_date))+(m.match_time?' · '+esc(String(m.match_time).slice(0,5)):'')+
               (m.venue?'<br>'+esc(m.venue):'')+(m.competition?' — '+esc(m.competition):'')+'</div>'+
+            // Dupliquer et supprimer ne vivaient plus que dans l'ancien ecran
+            // Matchs, retire du menu : une rencontre ne pouvait ni se copier
+            // (aller-retour d'une meme affiche) ni disparaitre.
+            '<div class="ds-quick" style="margin-top:10px">'+
+              '<button type="button" id="mc-dup">Dupliquer (J+7)</button>'+
+              '<button type="button" id="mc-del" class="ds-danger">Supprimer ce match</button>'+
+            '</div>'+
           '</div>'+
         '</div>'+
         '<div class="mc-tabs">'+ TABS.map(function(t){
@@ -17583,6 +17597,19 @@
         if (mcDirty && !confirm('Des modifications ne sont pas enregistrées. Changer d\'onglet quand même ?')) return;
         mcTab = b.getAttribute('data-mc-tab'); mcDirty = null; mcRenderDoc();
       });
+    });
+    var bDup = document.getElementById('mc-dup');
+    if (bDup) bDup.addEventListener('click', function(){ bDup.disabled = true; gmDuplicate(m.id); setTimeout(function(){ bDup.disabled = false; }, 1500); });
+    var bDel = document.getElementById('mc-del');
+    if (bDel) bDel.addEventListener('click', function(){
+      var quoi = mcLabel(m) + ' — ' + formatDateLong(m.match_date);
+      var hasS = m.score_baobabs != null && m.score_opponent != null;
+      if (!confirm('Supprimer ce match ?\n\n' + quoi + (hasS ? '\n\nSon score, sa feuille de match et ses statistiques partent avec lui, et le classement sera recalculé.' : '\n\nSa billetterie et sa feuille de match partent avec lui.'))) return;
+      bDel.disabled = true;
+      sbDelete('matches', m.id, 'Matchs')
+        .then(function(){ qgToast('Match supprimé ✓'); mcSel = null; mcDirty = null; return mcLoad(); })
+        .then(function(){ if (typeof loadMatches === 'function') loadMatches(); })
+        .catch(function(){ bDel.disabled = false; qgToast('La suppression a échoué.', true); });
     });
     mcRenderPanel(m);
   }
@@ -17849,14 +17876,30 @@
     var btn = document.getElementById('mc-save');
     if (!btn) return;
     btn.addEventListener('click', function(){
+      var charge = buildPayload();
+      // UN SCORE SUR UN MATCH A VENIR. Publier 70-65 sur une rencontre
+      // prevue samedi la fait passer « Terminee » sur le site, classement
+      // compris. Ca arrive (une saisie dans la mauvaise fiche) : on
+      // demande, une fois, plutot que de le decouvrir sur le site.
+      var aVenir = m.match_date && String(m.match_date) > new Date().toISOString().slice(0, 10);
+      var avecScore = charge.score_baobabs != null && charge.score_opponent != null;
+      var dejaScore = m.score_baobabs != null && m.score_opponent != null;
+      if (aVenir && avecScore && !dejaScore &&
+          !confirm('Ce match est prévu le ' + formatDateLong(m.match_date) + ' : publier un score maintenant le fera passer « Terminé » sur le site, et le classement bougera.\n\nPublier quand même ?')) return;
       btn.disabled = true; if (note) note.textContent = 'Enregistrement…';
-      sbUpdate('matches', m.id, buildPayload(), 'Matchs')
+      sbUpdate('matches', m.id, charge, 'Matchs')
         .then(function(){
           mcDirty = null;
-          if (note) note.textContent = 'Enregistré.';
           return mcLoad();
         })
-        .then(function(){ btn.disabled = false; if (mcSel) mcRenderDoc(); })
+        .then(function(){
+          btn.disabled = false;
+          if (mcSel) mcRenderDoc();
+          // Le redessin vient de remplacer la note : ecrire « Enregistre. »
+          // avant lui, c'etait l'ecrire sur un noeud jete. On l'ecrit apres.
+          var n2 = document.getElementById('mc-save-note'); if (n2) n2.textContent = 'Enregistré.';
+          qgToast('Match enregistré ✓');
+        })
         .catch(function(){ btn.disabled = false; if (note) note.textContent = "L'enregistrement a échoué."; });
     });
   }
