@@ -1339,6 +1339,37 @@
         u.g.n--; courant = null;
       }
     }
+    /* Un paragraphe plus haut que la page entière : on le coupe entre deux
+       lignes, comme un traitement de texte. Le premier mot qui commence
+       sous le bord bas part avec la suite dans un second <p data-suite>, que
+       la relecture recolle au premier sans rien ajouter. */
+    function couperParagraphe(u) {
+      var p = u.el;
+      if (!u.g || !u.g.texte || p.tagName !== 'P' || !p.parentNode) return null;
+      var rc = corps.getBoundingClientRect();
+      var limite = rc.bottom - parseFloat(doc.defaultView.getComputedStyle(corps).paddingBottom || 0);
+      var walker = doc.createTreeWalker(p, 4, null), n, coupe = null, premier = true;
+      var r = doc.createRange();
+      while ((n = walker.nextNode()) && !coupe) {
+        var s = n.nodeValue;
+        for (var i = 0; i < s.length; i++) {
+          /* un début de mot : le premier caractère, ou celui qui suit une espace */
+          if (!(i === 0 && premier) && !(i > 0 && s[i - 1] === ' ' && s[i] !== ' ')) continue;
+          if (i === 0 && premier) { premier = false; continue; }
+          r.setStart(n, i); r.setEnd(n, Math.min(i + 1, s.length));
+          var box = r.getBoundingClientRect();
+          if (box && box.bottom > limite + 0.5) { coupe = { n: n, i: i }; break; }
+        }
+      }
+      if (!coupe) return null;
+      r.setStart(coupe.n, coupe.i); r.setEndAfter(p.lastChild);
+      var frag = r.extractContents();
+      if (!frag.textContent.trim()) { p.appendChild(frag); return null; }
+      var p2 = p.cloneNode(false);
+      p2.setAttribute('data-suite', '1');
+      p2.appendChild(frag);
+      return { el: p2, g: u.g };
+    }
     var precedent = null;
     function placer(u) {
       var cible = cibleDe(u);
@@ -1346,9 +1377,12 @@
       if (!deborde()) { precedent = u; return; }
       retirer(u, cible);
       if (vide()) {
-        /* seule sur une page vide et trop haute quand même : elle reste */
+        /* seule sur une page vide et trop haute quand même : un paragraphe se
+           coupe entre deux lignes, le reste demeure tel quel */
         cibleDe(u).appendChild(u.el);
         precedent = u;
+        var suite = deborde() ? couperParagraphe(u) : null;
+        if (suite) placer(suite);
         return;
       }
       /* le titre posé juste avant, dernier de sa page, suit sur la nouvelle */
@@ -1359,6 +1393,9 @@
       if (emporte) corps.appendChild(emporte.el);
       cibleDe(u).appendChild(u.el);
       precedent = u;
+      /* seule (ou presque) sur sa page neuve et trop haute quand même : un
+         paragraphe se coupe entre deux lignes, le reste continue derrière */
+      if (deborde()) { var suite2 = couperParagraphe(u); if (suite2) placer(suite2); }
     }
 
     nouvellePage();

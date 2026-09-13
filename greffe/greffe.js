@@ -595,7 +595,7 @@
   }
 
   var acteTouche = false;
-  function salir() { acteSauve = false; acteTouche = true; majTitreBarre(); histoNoter(); autoEnregistrer(); }
+  function salir() { if (lectureSeule()) return; acteSauve = false; acteTouche = true; majTitreBarre(); histoNoter(); autoEnregistrer(); }
 
   /* =================================================================
      5. L'ÉCRAN DES RESSOURCES
@@ -865,7 +865,7 @@
       ok(pages.length + ' page' + (pages.length > 1 ? 's' : ''));
       if (pages.length > 6) avert('Plus de six pages : est-ce voulu ?');
       Array.prototype.forEach.call(doc.querySelectorAll('.page .corps > *, .page .corps .txt > *'), function (el) {
-        var c = el.closest('.corps'); if (c && el.offsetHeight > c.clientHeight + 1) erreur('Un élément est plus haut qu\'une page entière (' + (el.textContent || '').trim().slice(0, 40) + '…) : coupez-le en deux paragraphes.');
+        var c = el.closest('.corps'); if (c && el.offsetHeight > c.clientHeight + 1) erreur('Un élément est plus haut qu\'une page entière (' + (el.textContent || '').trim().slice(0, 40) + '…) : il ne peut pas se couper, réduisez-le.');
       });
       var deborde = 0;
       Array.prototype.forEach.call(pages, function (p, i) {
@@ -1037,6 +1037,7 @@
     }).join('') || '<p class="gf-vide">Rien encore.</p>';
     modale('Historique · ' + ech(f.intitule || f.nom) + (f.numero ? ' n° ' + ech(f.numero) : ''),
       '<h4 class="gf-modale-h4">Versions</h4><div class="gf-controle-liste">' + versions + '</div>'
+      + ((f.versions || []).length ? '<p style="margin:8px 0 0"><button type="button" class="gf-mini" data-comparer>Comparer deux versions…</button></p>' : '')
       + '<h4 class="gf-modale-h4">Journal</h4><div class="gf-journal">' + journal + '</div>',
       [{ lab: 'Fermer', accent: false }]).then(function () {});
     Array.prototype.forEach.call(racine.querySelectorAll('.gf-voile [data-version]'), function (b) {
@@ -1046,6 +1047,93 @@
         ouvrirActe(f, v);
       });
     });
+    var bc = racine.querySelector('.gf-voile [data-comparer]');
+    if (bc) bc.addEventListener('click', function () { bc.closest('.gf-voile').remove(); comparerVersions(fiche || null); });
+  }
+
+  /* ---------------------------- COMPARER DEUX VERSIONS ----------------------------
+     Les données de deux versions (ou la version en cours) mises à plat,
+     champ par champ ; ce qui a changé s'affiche mot à mot, retiré en rouge,
+     ajouté en vert. Les images ne se comparent pas, on dit seulement si
+     elles ont changé. */
+  function aplatir(d, prefixe, out) {
+    out = out || {};
+    if (d == null) return out;
+    if (typeof d !== 'object') { out[prefixe] = String(d); return out; }
+    Object.keys(d).sort().forEach(function (k) {
+      var v = d[k], ch = prefixe ? prefixe + '.' + k : k;
+      if (typeof v === 'string' && /^data:/.test(v)) { out[ch] = '[image ' + Math.round(v.length / 1024) + ' Ko · ' + v.length + ']'; return; }
+      if (v && typeof v === 'object') aplatir(v, ch, out);
+      else if (v !== '' && v != null) out[ch] = typeof v === 'boolean' ? (v ? 'oui' : 'non') : String(v);
+    });
+    return out;
+  }
+  function libelleChemin(chemin, m) {
+    var p = chemin.split('.'), noms = [];
+    function lab(cle) {
+      var r = null;
+      (m && m.sections || []).forEach(function (s) { (s.champs || []).forEach(function (c) { if (c.cle === cle && !r) r = c.lab; }); });
+      return r;
+    }
+    if (p[0] === 'tables') { noms.push('Tableau « ' + ((donnees.tables && donnees.tables[p[1]] && donnees.tables[p[1]].titre) || p[1]) + ' »'); if (p[2] === 'lignes') noms.push('ligne ' + (+p[3] + 1)); if (p[2] === 'colonnes') noms.push('colonne ' + (+p[3] + 1)); noms.push(p.slice(4).join(' · ') || p.slice(2).join(' · ')); }
+    else if (p[0] === 'blocs') { noms.push('Bloc ' + (+p[1] + 1)); noms.push(p.slice(2).join(' · ')); }
+    else if (p[0] === 'fixes') { noms.push('Sur la feuille'); noms.push(p.slice(1).join(' · ')); }
+    else if (p[0] === 'objets') { noms.push('Objet posé ' + (+p[1] + 1)); noms.push(p.slice(2).join(' · ')); }
+    else if (p[0] === 'articles') { noms.push('Article ' + (+p[1] + 1)); noms.push(p.slice(2).join(' · ')); }
+    else { noms.push(lab(p[0]) || p[0]); if (p.length > 1) noms.push(p.slice(1).join(' · ')); }
+    return noms.filter(Boolean).join(' · ');
+  }
+  function diffMots(a, b) {
+    var A = a.split(/(\s+)/).filter(function (x) { return x !== ''; }), B = b.split(/(\s+)/).filter(function (x) { return x !== ''; });
+    if (A.length * B.length > 4000000) return '<del>' + ech(a) + '</del> <ins>' + ech(b) + '</ins>';
+    var n = A.length, m = B.length, L = new Uint16Array((n + 1) * (m + 1)), W = m + 1;
+    for (var i = n - 1; i >= 0; i--) for (var j = m - 1; j >= 0; j--) L[i * W + j] = A[i] === B[j] ? L[(i + 1) * W + j + 1] + 1 : Math.max(L[(i + 1) * W + j], L[i * W + j + 1]);
+    var out = [], x = 0, y = 0;
+    function pousser(genre, s) { if (out.length && out[out.length - 1].g === genre) out[out.length - 1].s += s; else out.push({ g: genre, s: s }); }
+    while (x < n && y < m) {
+      if (A[x] === B[y]) { pousser('=', A[x]); x++; y++; }
+      else if (L[(x + 1) * W + y] >= L[x * W + y + 1]) { pousser('-', A[x]); x++; }
+      else { pousser('+', B[y]); y++; }
+    }
+    while (x < n) { pousser('-', A[x++]); }
+    while (y < m) { pousser('+', B[y++]); }
+    return out.map(function (o) { var s = ech(o.s); if (!o.s.trim()) return s; return o.g === '-' ? '<del>' + s + '</del>' : (o.g === '+' ? '<ins>' + s + '</ins>' : s); }).join('');
+  }
+  function comparerVersions(fiche, choixA, choixB) {
+    var f = fiche || (modeleActif ? ficheCourante() : null);
+    if (!f) return;
+    var m = G.modeles[f.modele] || modeleActif;
+    var choix = (f.versions || []).map(function (v) { return { id: 'v' + v.v, lab: 'V' + v.v + ' · ' + (v.etat === 'emise' ? 'émise' : 'remplacée') + ' le ' + dateHeure(v.emisLe), d: v.donnees }; });
+    /* un acte émis est sa dernière version : la « version en cours » n'a de sens qu'en brouillon */
+    if (f.id === acteId && modeleActif) { if (acteEtat === 'brouillon') choix.push({ id: 'courante', lab: 'Version en cours (brouillon V' + acteVersion + ')', d: donnees }); }
+    else if ((f.etat || 'brouillon') === 'brouillon') choix.push({ id: 'courante', lab: 'Brouillon en cours (V' + (f.version || 1) + ')', d: f.donnees });
+    if (choix.length < 2) { dire('Rien à comparer : cet acte n\'a pas encore de version émise.', 'erreur'); return; }
+    var idA = choixA || choix[choix.length - 2].id, idB = choixB || choix[choix.length - 1].id;
+    function de(id) { return choix.filter(function (c) { return c.id === id; })[0] || choix[0]; }
+    var A = aplatir(de(idA).d, ''), B = aplatir(de(idB).d, '');
+    var chemins = Object.keys(A).concat(Object.keys(B)).filter(function (c, i, arr) { return arr.indexOf(c) === i; }).sort();
+    var lignes = [], nb = { plus: 0, moins: 0, change: 0 };
+    chemins.forEach(function (c) {
+      var a = A[c], b = B[c];
+      if (a === b) return;
+      var genre = a == null ? 'plus' : (b == null ? 'moins' : 'change');
+      nb[genre]++;
+      var corps = genre === 'plus' ? '<ins>' + ech(b) + '</ins>' : (genre === 'moins' ? '<del>' + ech(a) + '</del>' : (/^\[image/.test(a) || /^\[image/.test(b) ? '<del>' + ech(a) + '</del> → <ins>' + ech(b) + '</ins>' : diffMots(a, b)));
+      lignes.push('<div class="gf-diff gf-diff-' + genre + '"><div class="gf-diff-ou">' + ech(libelleChemin(c, m)) + '<small>' + ech(c) + '</small></div><div class="gf-diff-txt">' + corps + '</div></div>');
+    });
+    var opts = function (sel) { return choix.map(function (c) { return '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + ech(c.lab) + '</option>'; }).join(''); };
+    var resume = lignes.length ? (nb.change ? nb.change + ' modifié' + (nb.change > 1 ? 's' : '') : '') + (nb.plus ? (nb.change ? ', ' : '') + nb.plus + ' ajouté' + (nb.plus > 1 ? 's' : '') : '') + (nb.moins ? (nb.change || nb.plus ? ', ' : '') + nb.moins + ' retiré' + (nb.moins > 1 ? 's' : '') : '') : 'Aucune différence';
+    modale('Comparer · ' + ech(f.intitule || f.nom) + (f.numero ? ' n° ' + ech(f.numero) : ''),
+      '<div class="gf-grille2"><label class="gf-champ"><span>Avant</span><select class="gf-sel" data-cmp-a>' + opts(idA) + '</select></label>'
+      + '<label class="gf-champ"><span>Après</span><select class="gf-sel" data-cmp-b>' + opts(idB) + '</select></label></div>'
+      + '<p class="gf-modale-aide">' + ech(resume) + '. <del>Retiré</del>, <ins>ajouté</ins>, mot à mot ; les images se signalent sans se montrer.</p>'
+      + '<div class="gf-diff-liste">' + (lignes.join('') || '<p class="gf-vide">Les deux versions ont exactement les mêmes données.</p>') + '</div>',
+      [{ lab: 'Fermer' }]);
+    var vs = racine.querySelectorAll('.gf-voile'), v = vs[vs.length - 1]; if (!v) return;
+    v.querySelector('.gf-modale').classList.add('gf-modale-large');
+    ['a', 'b'].forEach(function (k) { v.querySelector('[data-cmp-' + k + ']').addEventListener('change', function () {
+      var na = v.querySelector('[data-cmp-a]').value, nb2 = v.querySelector('[data-cmp-b]').value; v.remove(); comparerVersions(fiche, na, nb2);
+    }); });
   }
 
   function informationsActe() {
@@ -1462,6 +1550,7 @@
                 + '<button type="button" class="gf-mini" data-histo="' + ech(a.id) + '">Historique</button>'
                 + '<button type="button" class="gf-mini" data-fenetre="' + ech(a.id) + '" title="Ouvrir cet acte dans une nouvelle fenêtre">Nouvelle fenêtre</button>'
                 + (e === 'emis' ? '<button type="button" class="gf-mini" data-version="' + ech(a.id) + '">Nouvelle version</button>' : '')
+                + ((a.versions || []).length && a.version > 1 ? '<button type="button" class="gf-mini" data-comparer-acte="' + ech(a.id) + '">Comparer les versions</button>' : '')
                 + (e === 'emis' ? '<button type="button" class="gf-mini" data-archiver="' + ech(a.id) + '">Archiver</button>' : '')
                 + (e === 'archive' ? '<button type="button" class="gf-mini" data-desarchiver="' + ech(a.id) + '">Sortir des archives</button>' : '')
                 + (e === 'brouillon' || e === 'emis' ? '<button type="button" class="gf-mini" data-annuler="' + ech(a.id) + '">Annuler l\'acte</button>' : '')
@@ -1516,6 +1605,7 @@
       });
     }
     avecFiche('data-histo', function (f) { historiqueActe(f); });
+    avecFiche('data-comparer-acte', function (f) { comparerVersions(f); });
     avecFiche('data-ranger', function (f) { choisirDossier([f], 'Ranger cet acte').then(function (d) { if (!d) return; peindreRegistre(); dire(d.id ? 'Rangé dans « ' + d.nom + ' »' : 'Sorti de son dossier', 'ok'); }); });
     avecFiche('data-retirer-onglet', function (f) { fermerOnglet(f.id); });
     avecFiche('data-fenetre', function (f) { nouvelleFenetre(f.id); });
@@ -1630,6 +1720,7 @@
       { nom: 'Acte', items: [
         { lab: 'Informations…', off: !enAtelier, act: informationsActe },
         { lab: 'Historique…', off: !enAtelier, act: function () { historiqueActe(); } },
+        { lab: 'Comparer deux versions…', off: !enAtelier || !acteVersions.length, act: function () { comparerVersions(); } },
         { lab: (acteDossier && dossierDe(acteDossier) ? 'Dossier : ' + nomDossier(acteDossier) + '…' : 'Ranger dans un dossier…'), off: !enAtelier, act: rangerActeCourant },
         { sep: true },
         { lab: 'Vérifier', rac: 'Ctrl+Entrée', off: !enAtelier || lect, act: verifier },
@@ -3064,6 +3155,8 @@
      une ligne de tableau qui n'existe pas encore est créée, avec celles
      qui la précèdent. */
   function ecrire(chemin, valeur) {
+    /* un acte émis, ou en lecture, ne s'écrit pas, même par un champ atteint au clavier */
+    if (lectureSeule()) return;
     var p = chemin.split('.');
     if (p[0] === 'articles' && !donnees.articles) {
       donnees.articles = articlesAuto().map(function (a) { return { titre: a.titre, texte: a.texte }; });
@@ -3201,7 +3294,11 @@
     return Array.prototype.slice.call(doc.querySelectorAll('[data-edit="' + chemin + '"]'));
   }
   function depuisDomMorceaux(doc, chemin) {
-    return morceauxDe(doc, chemin).map(depuisDom).filter(function (t) { return t !== ''; }).join('\n\n');
+    /* un morceau qui commence par la suite d'un paragraphe coupé se recolle au précédent, sans saut */
+    return morceauxDe(doc, chemin).map(function (m) {
+      var t = depuisDom(m), prem = m.firstElementChild;
+      return (t !== '' && prem && prem.hasAttribute('data-suite')) ? '\u0001' + t : t;
+    }).filter(function (t) { return t !== ''; }).join('\n\n').replace(/\n\n\u0001/g, '').replace(/\u0001/g, '');
   }
   function depuisDom(el) {
     var out = [];
@@ -3216,7 +3313,7 @@
         out.push('> ' + enLigneDom(n).replace(/\s+/g, ' ').trim());
       } else {
         var t = enLigneDom(n).replace(/\n+$/, '');
-        if (t.trim()) out.push(t);
+        if (t.trim()) { if (n.hasAttribute('data-suite') && out.length) out[out.length - 1] += t; else out.push(t); }
       }
     });
     return out.join('\n\n');
