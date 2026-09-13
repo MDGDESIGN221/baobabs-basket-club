@@ -492,21 +492,33 @@
      dans CHAQUE acte exporté. À 25 mm sur le papier, 620 px font déjà
      630 points par pouce, le double de ce qu'une imprimerie demande.
      On réduit donc une fois, au dépôt. */
-  function alleger(uri, cote) {
+  /* Une image entre dans l'acte, donc dans le registre et dans chaque
+     sauvegarde : on la borne en pixels ET en poids. Un PNG (cachet, logo
+     à fond transparent) reste PNG ; une photo (JPEG) reste JPEG, et si
+     elle pèse encore trop, on la réduit d'un cran. */
+  function alleger(uri, cote, poidsMax) {
+    poidsMax = poidsMax || 1500000;
     return new Promise(function (res) {
       var img = new Image();
       img.onload = function () {
         try {
-          if (Math.max(img.width, img.height) <= cote) return res(uri);
-          var c = document.createElement('canvas');
-          var k = cote / Math.max(img.width, img.height);
-          c.width = Math.round(img.width * k);
-          c.height = Math.round(img.height * k);
-          var x = c.getContext('2d');
-          x.imageSmoothingEnabled = true;
-          x.imageSmoothingQuality = 'high';
-          x.drawImage(img, 0, 0, c.width, c.height);
-          res(c.toDataURL('image/png'));
+          var png = /^data:image\/png/i.test(uri);
+          if (Math.max(img.width, img.height) <= cote && uri.length <= poidsMax) return res(uri);
+          function rendre(bord, q) {
+            var c = document.createElement('canvas');
+            var k = Math.min(1, bord / Math.max(img.width, img.height));
+            c.width = Math.max(1, Math.round(img.width * k));
+            c.height = Math.max(1, Math.round(img.height * k));
+            var x = c.getContext('2d');
+            x.imageSmoothingEnabled = true;
+            x.imageSmoothingQuality = 'high';
+            x.drawImage(img, 0, 0, c.width, c.height);
+            return png ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', q);
+          }
+          var sortie = rendre(cote, 0.85), bord = cote, q = 0.85;
+          /* encore trop lourd : un cran de moins, jusqu'à 800 px */
+          while (sortie.length > poidsMax && bord > 800) { bord = Math.round(bord * 0.75); q = Math.max(0.7, q - 0.05); sortie = rendre(bord, q); }
+          res(sortie);
         } catch (e) { res(uri); }
       };
       img.onerror = function () { res(uri); };
@@ -533,6 +545,35 @@
      dans un dossier au plus ; le dossier ne contient rien d'autre que
      ce lien, les actes restent au registre quand on le retire. */
   var dossiers = [], acteDossier = null;
+  /* Deux fenêtres du Greffe (Alt+Maj+N) partagent la même base : quand
+     l'une enregistre, l'autre relit son registre ; si c'est l'acte qu'elle
+     a ouvert, elle prévient plutôt que d'écraser sans le dire. */
+  var canal = null, derniereSauvegarde = 0, stockagePersistant = null;
+  try { canal = new BroadcastChannel('bbc-greffe'); } catch (e) { canal = null; }
+  function ecouterCanal() {
+    if (!canal) return;
+    canal.onmessage = function (ev) {
+      var m = ev.data || {};
+      if (m.quoi !== 'acte' && m.quoi !== 'dossiers') return;
+      Promise.all([dbTout(MAG_ACTES), dbTout(MAG_DOS)]).then(function (r) {
+        var mien = modeleActif && acteId ? registre.filter(function (a) { return a.id === acteId; })[0] : null;
+        registre = (r[0] || []).sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); });
+        dossiers = (r[1] || []).sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); });
+        if (m.quoi === 'acte' && modeleActif && m.id === acteId && acteEtat === 'brouillon') {
+          var autre = registre.filter(function (a) { return a.id === acteId; })[0];
+          if (autre && (!mien || (autre.maj || 0) > (mien.maj || 0))) {
+            if (!acteTouche || acteSauve) {
+              /* rien de mien en attente : je prends la version de l'autre fenêtre */
+              donnees = JSON.parse(JSON.stringify(autre.donnees)); chargerFiche(autre); acteReference = JSON.stringify(autre); acteTouche = false; acteSauve = true;
+              cadrePret = false; rafraichir(); peindreFormulaire(); majTitreBarre();
+              dire('Cet acte vient d\'être modifié dans une autre fenêtre : la feuille est à jour', 'ok');
+            } else dire('Attention : cet acte vient d\'être enregistré dans une autre fenêtre. Ce que vous enregistrerez ici l\'écrasera.', 'erreur');
+          }
+        }
+        if (espace === 'registre') peindreRegistre(); else if (espace === 'accueil') peindreAccueil();
+      });
+    };
+  }
   var controle = null, panneau = 'donnees', modeLecture = false, espace = 'accueil';
   var registre = [], prereglages = [];
   var cadre = null, cadrePret = false, minuteur = null;
@@ -698,15 +739,32 @@
   function enregistrer(silencieux, automatique) {
     if (!modeleActif) return Promise.resolve();
     if (!acteId) { acteId = identifiant(); if (!acteJournal.length) journaliser('Créé'); }
+    /* une autre fenêtre a pu prendre le même numéro entre-temps : on relit la
+       base, et si le numéro est à un autre acte, celui-ci avance au suivant */
+    var premiere = !registre.some(function (a) { return a.id === acteId; }), collision = null;
+    var avant = (modeleActif.prefixe && donnees.numero && acteEtat === 'brouillon' && (premiere || !automatique)) ? dbTout(MAG_ACTES).then(function (tous) {
+      tous.forEach(function (a) { if (!registre.some(function (r) { return r.id === a.id; })) registre.push(a); });
+      var pris = tous.filter(function (a) { return a.id !== acteId && a.modele === modeleActif.cle && a.numero === donnees.numero; })[0];
+      if (pris) {
+        var ancien = donnees.numero; collision = ancien;
+        donnees.numero = prochainNumero(modeleActif.cle);
+        journaliser('Numéro ' + ancien + ' déjà pris par « ' + (pris.intitule || pris.nom) + ' » : devient ' + donnees.numero);
+        peindreFormulaire(); rafraichir(); majTitreBarre();
+      }
+    }).catch(function () {}) : Promise.resolve();
+    return avant.then(function () {
     var fiche = ficheCourante();
     return dbPoser(MAG_ACTES, fiche).then(function () {
+      if (canal) { try { canal.postMessage({ quoi: 'acte', id: fiche.id, maj: fiche.maj }); } catch (e) {} }
       acteSauve = true; majTitreBarre();
       if (!automatique) acteReference = JSON.stringify(fiche);
       ongletRenommer();
       registre = registre.filter(function (a) { return a.id !== fiche.id; });
       registre.unshift(fiche);
       noterReprise();
-      if (!silencieux) dire('Enregistré', 'ok');
+      if (collision) dire('Enregistré sous le numéro ' + donnees.numero + ' : le ' + collision + ' venait d\'être pris dans une autre fenêtre', 'erreur');
+      else if (!silencieux) dire('Enregistré', 'ok');
+    });
     }).catch(function (e) {
       dire("Enregistrement impossible : " + (e && e.message ? e.message : e), 'erreur');
     });
@@ -806,6 +864,9 @@
       var pages = doc.querySelectorAll('.page');
       ok(pages.length + ' page' + (pages.length > 1 ? 's' : ''));
       if (pages.length > 6) avert('Plus de six pages : est-ce voulu ?');
+      Array.prototype.forEach.call(doc.querySelectorAll('.page .corps > *, .page .corps .txt > *'), function (el) {
+        var c = el.closest('.corps'); if (c && el.offsetHeight > c.clientHeight + 1) erreur('Un élément est plus haut qu\'une page entière (' + (el.textContent || '').trim().slice(0, 40) + '…) : coupez-le en deux paragraphes.');
+      });
       var deborde = 0;
       Array.prototype.forEach.call(pages, function (p, i) {
         var corps = p.querySelector('.corps');
@@ -1104,6 +1165,17 @@
   }
 
   /* ---- l'accueil : que voulez-vous faire ? ---- */
+  /* Le registre vit dans CE navigateur : sans sauvegarde, un profil vidé
+     ou un autre poste ne le connaît pas. L'accueil le rappelle quand il faut. */
+  function rappelSauvegarde() {
+    if (registre.length < 3) return '';
+    var jours = derniereSauvegarde ? Math.floor((Date.now() - derniereSauvegarde) / 86400000) : null;
+    var recents = registre.filter(function (a) { return (a.maj || 0) > (derniereSauvegarde || 0); }).length;
+    if (jours !== null && jours < 14 && recents < 10) return '';
+    var texte = jours === null ? 'Le registre n\'a jamais été sauvegardé' : ('Dernière sauvegarde il y a ' + jours + ' jour' + (jours > 1 ? 's' : ''));
+    texte += ' · ' + (recents ? recents + ' acte' + (recents > 1 ? 's' : '') + ' modifié' + (recents > 1 ? 's' : '') + ' depuis' : 'rien de nouveau depuis') + '. Le registre vit dans ce navigateur : un profil vidé ou un autre ordinateur ne le connaît pas.';
+    return '<div class="gf-acc-carte gf-acc-rappel"><b>Sauvegarde</b><span>' + ech(texte) + '</span><button type="button" class="gf-btn gf-btn-accent" id="gf-acc-sauver-2">Sauvegarder maintenant</button></div>';
+  }
   function peindreAccueil() {
     var hote = elt.accueil;
     if (!hote) return;
@@ -1139,10 +1211,12 @@
       + '<div class="gf-cartes gf-cartes-mini">' + pres.map(function (p, i) {
           return '<button type="button" class="gf-carte gf-carte-mini" data-pre="' + i + '">' + apercuPrereglage(p) + '<b>' + ech(p.nom) + '</b></button>';
         }).join('') + '</div><button type="button" class="gf-lien" id="gf-acc-tous-pre">Tous les préréglages…</button></div>'
+      + rappelSauvegarde()
       + '<p class="gf-acc-pied"><button type="button" class="gf-lien" data-espace="parametres">Paramètres</button> · '
       + '<button type="button" class="gf-lien" id="gf-acc-sauver">Sauvegarder le Greffe</button></p>';
 
     $('gf-acc-nouveau').addEventListener('click', function () { ouvrirNouveau(); });
+    var s2 = $('gf-acc-sauver-2'); if (s2) s2.addEventListener('click', sauvegarderGreffe);
     elt.accueil.querySelectorAll('[data-acc-dossier]').forEach(function (x) { x.addEventListener('click', function () { registreDossier = x.getAttribute('data-acc-dossier'); montrer('registre'); }); });
     var b = $('gf-acc-brouillon');
     if (b) b.addEventListener('click', function () { montrer('registre', 'brouillon'); });
@@ -1247,7 +1321,7 @@
   function dossierDe(id) { return id ? dossiers.filter(function (d) { return d.id === id; })[0] || null : null; }
   function nomDossier(id) { var d = dossierDe(id); return d ? d.nom : ''; }
   function actesDuDossier(id) { return registre.filter(function (a) { return (a.dossier || null) === id; }); }
-  function poserDossier(d) { d.maj = Date.now(); return dbPoser(MAG_DOS, d).then(function () { dossiers = dossiers.filter(function (x) { return x.id !== d.id; }); dossiers.unshift(d); }); }
+  function poserDossier(d) { d.maj = Date.now(); return dbPoser(MAG_DOS, d).then(function () { dossiers = dossiers.filter(function (x) { return x.id !== d.id; }); dossiers.unshift(d); if (canal) { try { canal.postMessage({ quoi: 'dossiers' }); } catch (e) {} } }); }
   function creerDossier(nom, note) {
     nom = String(nom || '').trim(); if (!nom) return Promise.resolve(null);
     var deja = dossiers.filter(function (d) { return d.nom.toLowerCase() === nom.toLowerCase(); })[0];
@@ -1586,7 +1660,10 @@
         { sep: true }
       ].concat(onglets.map(function (o, i) {
         return { lab: (o.id === ongletCourant ? '● ' : '') + o.nom, rac: i < 9 ? 'Alt+' + (i + 1) : '', act: function () { activerOnglet(o.id); } };
-      })).concat([{ sep: true }, { lab: 'Fermer cet onglet', rac: 'Alt+W', off: !modeleActif, act: function () { fermerActe(); } }]) },
+      })).concat([{ sep: true },
+        { lab: 'Fermer cet onglet', rac: 'Alt+W', off: !modeleActif, act: function () { fermerActe(); } },
+        { lab: 'Fermer les autres onglets', off: onglets.length < 2, act: function () { fermerOnglets(true); } },
+        { lab: 'Fermer tous les onglets', off: !onglets.length, act: function () { fermerOnglets(false); } }]) },
       { nom: 'Affichage', items: [
         { lab: 'Zoom avant', rac: 'Ctrl+Plus', off: !enAtelier, act: function () { zoom = Math.min(1.5, zoom + 0.1); appliquerZoom(); } },
         { lab: 'Zoom arrière', rac: 'Ctrl+Moins', off: !enAtelier, act: function () { zoom = Math.max(0.25, zoom - 0.1); appliquerZoom(); } },
@@ -3370,6 +3447,8 @@
     var u = URL.createObjectURL(b), a = document.createElement('a');
     a.href = u; a.download = 'BAOBABS_GREFFE_' + isoDuJour() + '.greffe.json';
     document.body.appendChild(a); a.click(); a.remove();
+    derniereSauvegarde = Date.now();
+    dbPoser(MAG_REG, { cle: 'sauvegarde', valeur: derniereSauvegarde }).then(function () { if (espace === 'accueil') peindreAccueil(); });
     setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
     dire('Sauvegarde téléchargée : ' + registre.length + ' acte' + (registre.length > 1 ? 's' : '')
        + ', ' + prereglages.length + ' préréglage' + (prereglages.length > 1 ? 's' : ''), 'ok');
@@ -4447,8 +4526,10 @@
     try { cadre.contentDocument.title = nomFichier(); } catch (e) {}
     journaliser('Imprimé' + (acteEtat === 'brouillon' ? ' (brouillon)' : ' V' + acteVersion));
     enregistrer(true);
-    cadre.contentWindow.focus();
-    cadre.contentWindow.print();
+    var w = cadre.contentWindow, d = cadre.contentDocument;
+    /* les polices posées en data: se chargent vite, mais pas toujours avant la boîte d'impression */
+    var pret = d.fonts && d.fonts.ready ? d.fonts.ready : Promise.resolve();
+    Promise.race([pret, new Promise(function (r) { setTimeout(r, 1500); })]).then(function () { w.focus(); w.print(); });
   }
 
 
@@ -4510,6 +4591,26 @@
     peindreOnglets();
     majTitreBarre();
     noterReprise();
+  }
+  /* Fermer les autres (ou tous) : les onglets non touchés partent tout de
+     suite ; ceux qui portent des changements non enregistrés restent, et on
+     le dit, plutôt que de poser dix questions d'affilée. */
+  function fermerOnglets(autres) {
+    var gardes = [];
+    onglets.slice().forEach(function (o) {
+      if (autres && o.id === ongletCourant) return;
+      var touche = o.id === ongletCourant ? (acteTouche && !acteSauve && acteEtat === 'brouillon') : !!(o.etat && o.etat.acteTouche && !o.etat.acteSauve && o.etat.acteEtat === 'brouillon');
+      if (touche) { gardes.push(o.nom); return; }
+      if (o.id === ongletCourant) {
+        oublierReprise(); modeleActif = null; donnees = {}; acteId = null; acteSauve = true; acteReference = null; acteTouche = false; controle = null; modeLecture = false;
+        onglets = onglets.filter(function (x) { return x.id !== o.id; }); ongletCourant = null;
+      } else onglets = onglets.filter(function (x) { return x.id !== o.id; });
+    });
+    if (!modeleActif) {
+      if (onglets.length) activerOnglet(onglets[0].id); else montrer('accueil');
+    }
+    peindreOnglets(); majTitreBarre();
+    dire(gardes.length ? gardes.length + ' onglet' + (gardes.length > 1 ? 's' : '') + ' gardé' + (gardes.length > 1 ? 's' : '') + ' (modifications non enregistrées) : ' + gardes.join(', ') : 'Onglets fermés', gardes.length ? 'erreur' : 'ok');
   }
   function fermerOnglet(id) {
     onglets = onglets.filter(function (o) { return o.id !== id; });
@@ -5141,6 +5242,11 @@
       return Promise.all([dbTout(MAG_RES), dbTout(MAG_ACTES), chargerBlason(), dbTout(MAG_PRE), dbTout(MAG_REG), dbTout(MAG_DOS)]);
     }).then(function (r) {
       dossiers = (r[5] || []).sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); });
+      var regSauve = (r[4] || []).filter(function (x) { return x.cle === 'sauvegarde'; })[0];
+      derniereSauvegarde = regSauve && regSauve.valeur ? +regSauve.valeur : 0;
+      ecouterCanal();
+      /* le navigateur peut vider IndexedDB sous pression : on demande qu'il ne le fasse pas */
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().then(function (ok) { stockagePersistant = ok; }); } catch (e) {}
       (r[0] || []).forEach(function (o) { res[o.cle] = o.uri; });
       var regClub = (r[4] || []).filter(function (x) { return x.cle === 'club'; })[0];
       G.club = Object.assign({}, CLUB_DEFAUT, regClub && regClub.valeur ? regClub.valeur : {});
@@ -5193,6 +5299,6 @@
   G.close = fermer;
   G.isOpen = function () { return ouvert; };
   /* pour le banc d'essai : ce que la boîte « acte non enregistré » compare */
-  G.diagnostic = function () { var f = modeleActif ? ficheCourante() : null; if (f) delete f.maj; var r = acteReference ? JSON.parse(acteReference) : null; if (r) delete r.maj; return { courante: f ? JSON.stringify(f) : null, reference: r ? JSON.stringify(r) : null, change: changementsNonValides() }; };
+  G.diagnostic = function () { var f = modeleActif ? ficheCourante() : null; if (f) delete f.maj; var r = acteReference ? JSON.parse(acteReference) : null; if (r) delete r.maj; return { courante: f ? JSON.stringify(f) : null, reference: r ? JSON.stringify(r) : null, change: changementsNonValides(), derniereSauvegarde: derniereSauvegarde, stockagePersistant: stockagePersistant }; };
 
 })();

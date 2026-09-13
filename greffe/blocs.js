@@ -1284,7 +1284,10 @@
         Array.prototype.slice.call(txt.children).forEach(function (e) { pousser(e, g); });
         return;
       }
-      pousser(bloc);
+      /* un titre, un bandeau : il part avec ce qui le suit si ce qui le
+         suit change de page (« keep with next ») */
+      pousser(bloc, null);
+      if (bloc.querySelector(':scope > .hero, :scope > .bandeau, :scope > .facts')) unites[unites.length - 1].colle = true;
     }
     function eclaterAnnexe(section) {
       unites.push({ saut: true });
@@ -1336,18 +1339,26 @@
         u.g.n--; courant = null;
       }
     }
+    var precedent = null;
     function placer(u) {
       var cible = cibleDe(u);
       cible.appendChild(u.el);
-      if (!deborde()) return;
+      if (!deborde()) { precedent = u; return; }
       retirer(u, cible);
       if (vide()) {
         /* seule sur une page vide et trop haute quand même : elle reste */
         cibleDe(u).appendChild(u.el);
+        precedent = u;
         return;
       }
+      /* le titre posé juste avant, dernier de sa page, suit sur la nouvelle */
+      var emporte = (precedent && precedent.colle && !precedent.g && precedent.el.parentNode === corps
+                     && corps.lastElementChild === precedent.el && corps.children.length > 1) ? precedent : null;
+      if (emporte) corps.removeChild(emporte.el);
       nouvellePage();
+      if (emporte) corps.appendChild(emporte.el);
       cibleDe(u).appendChild(u.el);
+      precedent = u;
     }
 
     nouvellePage();
