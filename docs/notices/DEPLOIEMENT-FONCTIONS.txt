@@ -57,7 +57,40 @@ LE PIÈGE, ET IL EXPLIQUE TOUT
   du script de admin-matchs.html.
 
 
-LA SEULE CHOSE QUI BLOQUE VRAIMENT AUJOURD'HUI — LA NEWSLETTER
+LA NEWSLETTER : DÉPLOYÉE LE 13 SEPTEMBRE 2026, IL RESTE LA CONFIGURATION
+
+  Ce jour-là, la fonction a été déployée sous le slug « envoi-newsletter »
+  (version 2, avec _shared/courriel.ts) : l'admin la trouve, la sonde
+  de l'écran n'affiche plus « fonction absente ». La section ci-dessous
+  raconte comment on en est arrivé là ; elle reste vraie pour l'histoire.
+
+  CE QUI RESTE, ET QUE PERSONNE NE PEUT FAIRE À VOTRE PLACE : deux
+  secrets et un domaine. L'écran Newsletter le dit lui-même à chaque
+  ouverture (il demande { action:"etat" } à la fonction, rien ne part) :
+  une pastille pour la clé Resend, une pour l'adresse d'expédition, une
+  pour le domaine, puis la liste des pas restants.
+    1. resend.com, Domains, Add domain : baobabsbasketclub.com. Resend
+       donne des enregistrements DNS (DKIM, SPF) à poser chez l'hébergeur
+       du nom de domaine, puis « Verify ». Statut attendu : verified.
+    2. Supabase, Edge Functions, Secrets : BBC_SENDER_EMAIL =
+       club@baobabsbasketclub.com (n'importe quelle adresse du domaine
+       vérifié ; la boîte n'a pas besoin d'exister, les réponses partent
+       sur baobabsbasketclub@gmail.com). Facultatif : BBC_SENDER_NAME,
+       BBC_REPLY_TO.
+    3. Admin, Newsletter : le bandeau passe au vert avec l'adresse que
+       les abonnés verront. « Envoyer le test » sur votre adresse, puis
+       « Envoyer à tous ».
+
+  Tant que le domaine n'est pas vérifié, Resend n'accepte que
+  onboarding@resend.dev, qui n'envoie qu'à l'adresse du compte Resend :
+  les abonnés ne recevraient rien. Il n'y a pas de raccourci.
+
+  L'e-mail de commande (send-order-confirmation) envoie encore depuis
+  onboarding@resend.dev : il ne peut atteindre que le propriétaire du
+  compte Resend. Une fois BBC_SENDER_EMAIL posé, il suffit de le
+  redéployer pour qu'il prenne la même adresse (voir le fichier).
+
+  --- ce qui suit date d'avant le 13 septembre 2026 ---
 
   L'écran Newsletter est complet et la liste des inscrits se remplit,
   mais AUCUN envoi ne peut partir : la fonction n'est pas branchée.

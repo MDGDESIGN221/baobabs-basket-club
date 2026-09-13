@@ -1,14 +1,18 @@
 // =====================================================================
 //  Baobabs Basket Club — fonction serveur : envoi de la newsletter
 //
-//  OÙ LA COLLER : Supabase → Edge Functions → Deploy a new function
-//    Nom EXACT : envoi-newsletter
-//    Collez tout ce fichier, puis Deploy.
+//  DÉPLOYÉE LE 13 SEPTEMBRE 2026 sous le slug « envoi-newsletter »,
+//  celui que l'admin appelle (FN.newsletter). Pour la redéployer après
+//  une modification, avec ce fichier ET ../_shared/courriel.ts :
+//    npx supabase functions deploy envoi-newsletter --project-ref lmwbwasupqkvswukieav
+//  Jamais par « Deploy a new function » du tableau de bord : le slug y
+//  est tiré au sort et l'admin ne la trouverait plus.
 //
 //  SECRETS : les mêmes que les autres envois du club —
 //    RESEND_API_KEY (existe déjà), BBC_SENDER_EMAIL,
 //    BBC_SENDER_NAME (facultatif). L'envoi vit dans
-//    ../_shared/courriel.ts.
+//    ../_shared/courriel.ts. L'écran Newsletter demande { action:"etat" }
+//    à l'ouverture et affiche ce qui manque, secret par secret.
 //
 //  SÉCURITÉ : seul un compte administrateur (table admin_users) peut
 //  déclencher un envoi — la fonction vérifie le jeton de session de
@@ -16,7 +20,7 @@
 //  entre eux : un message par personne, pas de liste apparente.
 // =====================================================================
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { envoyer, envoyerLot, destinataire, LOT_MAX, CourrielNonConfigure } from "../_shared/courriel.ts";
+import { envoyer, envoyerLot, destinataire, etat, LOT_MAX, CourrielNonConfigure } from "../_shared/courriel.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -52,9 +56,7 @@ function buildHtml(subject: string, body: string): string {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
-    const { subject, body, test_email } = await req.json().catch(() => ({}));
-    if (!subject || !String(subject).trim()) return reply(400, { error: "sujet manquant" });
-    if (!body || !String(body).trim()) return reply(400, { error: "message manquant" });
+    const { action, subject, body, test_email } = await req.json().catch(() => ({}));
 
     // --- L'appelant est-il administrateur ? ---
     const auth = req.headers.get("Authorization") || "";
@@ -63,6 +65,16 @@ Deno.serve(async (req) => {
     });
     const { data: isAdmin } = await caller.rpc("is_admin");
     if (!isAdmin) return reply(403, { error: "réservé aux administrateurs" });
+
+    // --- L'état de l'envoi, demandé par l'écran Newsletter à l'ouverture.
+    // Rien ne part : on dit seulement ce qui est en place et ce qui
+    // manque, pour ne pas rédiger un message entier avant d'apprendre
+    // qu'aucune adresse d'expédition n'existe. Voir etat() dans
+    // _shared/courriel.ts.
+    if (action === "etat") return reply(200, await etat());
+
+    if (!subject || !String(subject).trim()) return reply(400, { error: "sujet manquant" });
+    if (!body || !String(body).trim()) return reply(400, { error: "message manquant" });
 
     // La configuration de l'envoi est vérifiée par _shared/courriel.ts,
     // qui lève CourrielNonConfigure — attrapé plus bas.
@@ -117,7 +129,12 @@ Deno.serve(async (req) => {
     // Le prénom de l'abonné part avec l'adresse (destinataire()), comme
     // avec Brevo : sans lui, le message arrive adressé à une adresse nue
     // dans le client de messagerie plutôt qu'à une personne.
-    let sent = 0, failed = 0;
+    //
+    // Un paquet refusé l'est pour une raison que Resend écrit en clair
+    // (domaine non vérifié, quota du jour atteint, clé refusée). On la
+    // garde pour la rendre à l'écran : « 3 échecs » sans la cause, c'est
+    // une heure de recherche.
+    let sent = 0, failed = 0, detail = "";
     for (let i = 0; i < list.length; i += LOT_MAX) {
       const batch = list.slice(i, i + LOT_MAX);
       const env = await envoyerLot(batch.map((s) => ({
@@ -125,7 +142,7 @@ Deno.serve(async (req) => {
         subject: String(subject),
         html,
       })));
-      if (env.ok) sent += batch.length; else failed += batch.length;
+      if (env.ok) sent += batch.length; else { failed += batch.length; detail = env.detail; }
     }
 
     await db.from("newsletter_sends").insert({
@@ -136,7 +153,7 @@ Deno.serve(async (req) => {
       failed,
     });
 
-    return reply(200, { sent, failed, recipients: list.length });
+    return reply(200, { sent, failed, recipients: list.length, detail });
   } catch (e) {
     if (e instanceof CourrielNonConfigure) return reply(500, { error: String(e.message) });
     return reply(500, { error: String(e) });

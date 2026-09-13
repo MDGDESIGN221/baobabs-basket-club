@@ -7,7 +7,11 @@ Mise en place : 5 minutes si l'e-mail de confirmation est déjà installé
   Supabase → SQL Editor → exécutez sql/migrations/MIGRATION-newsletter.sql
   (le journal des envois).
 
-ÉTAPE 2 — LA FONCTION, EN LIGNE DE COMMANDE ET PAS AUTREMENT
+ÉTAPE 2 — LA FONCTION : FAITE LE 13 SEPTEMBRE 2026
+  Déployée sous le slug « envoi-newsletter », version 2. Ce qui suit ne
+  sert plus que si elle doit être redéployée après une modification.
+
+ÉTAPE 2 (pour mémoire) — LA FONCTION, EN LIGNE DE COMMANDE ET PAS AUTREMENT
 
   NE PASSEZ PAS PAR « Deploy a new function » DANS LE TABLEAU DE BORD.
   Le nom qu'on y tape n'est qu'une étiquette : l'adresse réelle reçoit un
@@ -31,8 +35,21 @@ Mise en place : 5 minutes si l'e-mail de confirmation est déjà installé
   Sans BBC_SENDER_EMAIL, la fonction répond mais Resend refuse d'envoyer.
 
   COMMENT SAVOIR QUE C'EST BON, SANS ENVOYER UN SEUL E-MAIL : ouvrez
-  Admin → Newsletter. Un bandeau orange s'affiche tant que la fonction
-  n'est pas joignable, et disparaît tout seul dès qu'elle l'est.
+  Admin → Newsletter. Le bandeau du haut interroge la fonction à chaque
+  ouverture : une pastille pour la clé Resend, une pour l'adresse
+  d'expédition, une pour le domaine (vérifié ou non chez Resend), et la
+  liste exacte de ce qui reste à faire. Vert quand tout est en place,
+  avec l'adresse que les abonnés verront.
+
+ÉTAPE 2 BIS — CE QUI RESTE LE 13 SEPTEMBRE 2026 : L'ADRESSE D'EXPÉDITION
+  1. resend.com → Domains → Add domain → baobabsbasketclub.com. Poser les
+     enregistrements DNS donnés (DKIM, SPF) chez l'hébergeur du nom de
+     domaine, puis « Verify ». Statut attendu : verified.
+  2. Supabase → Edge Functions → Secrets → BBC_SENDER_EMAIL =
+     club@baobabsbasketclub.com (une adresse du domaine vérifié ; la
+     boîte n'a pas besoin d'exister). Facultatif : BBC_SENDER_NAME,
+     BBC_REPLY_TO (par défaut baobabsbasketclub@gmail.com).
+  3. Rouvrir Admin → Newsletter : bandeau vert, puis l'étape 3.
 
 ÉTAPE 3 — TESTER SANS RISQUE
   Admin → Newsletter :

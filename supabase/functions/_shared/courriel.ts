@@ -74,8 +74,20 @@ export function destinataire(email: string, nom?: string | null): string {
 // de contact publique, pas une clé. BBC_REPLY_TO permet de la remplacer
 // sans toucher au code, si le club change un jour de boîte de réception.
 const REPONDRE_A_PAR_DEFAUT = "baobabsbasketclub@gmail.com";
-function repondreA(): string {
+export function repondreA(): string {
   return Deno.env.get("BBC_REPLY_TO") || REPONDRE_A_PAR_DEFAUT;
+}
+
+// L'ADRESSE DE TEST DE RESEND, POUR L'E-MAIL DE COMMANDE SEULEMENT.
+// Elle n'atteint que le propriétaire du compte Resend : un client, lui,
+// ne reçoit rien. send-order-confirmation l'utilisait en dur ; il prend
+// désormais BBC_SENDER_EMAIL dès que le secret existe, et ne retombe sur
+// l'adresse de test qu'en son absence, pour ne pas casser le webhook.
+// La newsletter, elle, refuse d'envoyer sans vraie adresse (expediteur()) :
+// un envoi à cent abonnés depuis l'adresse de test serait cent silences.
+export const EXPEDITEUR_TEST = "Baobabs Basket Club <onboarding@resend.dev>";
+export function expediteurOuTest(): string {
+  try { return expediteur(); } catch { return EXPEDITEUR_TEST; }
 }
 
 function corps(m: Courriel) {
@@ -118,4 +130,89 @@ export async function envoyerLot(messages: Courriel[]): Promise<{ ok: boolean; d
     body: JSON.stringify(messages.map(corps)),
   });
   return { ok: r.ok, detail: r.ok ? "" : await r.text() };
+}
+
+// =====================================================================
+//  L'ÉTAT DE L'ENVOI, DIT PAR CELUI QUI ENVOIE.
+//
+//  Personne ne peut lire les secrets d'une fonction depuis l'extérieur :
+//  ni l'admin, ni l'outillage. On ne sait donc pas, depuis l'écran
+//  Newsletter, si la clé Resend est posée, si l'adresse d'expédition
+//  existe, ni si son domaine est vérifié. On l'apprenait au premier
+//  envoi, par un 500 sec.
+//
+//  Cette fonction répond à ces questions sans rien révéler : elle dit si
+//  chaque secret est là, et demande à Resend la liste des domaines et
+//  leur statut (GET /domains). L'adresse d'expédition est rendue telle
+//  quelle, c'est celle que chaque abonné verra dans sa boîte.
+//
+//  Une clé Resend « sending only » ne peut pas lister les domaines :
+//  Resend répond 401 avec un message qui le dit. On le distingue d'une
+//  clé refusée pour ne pas accuser une clé qui marche.
+// =====================================================================
+export interface EtatDomaine { nom: string; statut: string }
+export interface EtatCourriel {
+  cle: "absente" | "invalide" | "restreinte" | "valide";
+  cle_detail: string;
+  domaines: EtatDomaine[];
+  expediteur: string | null;
+  nom: string;
+  repondre_a: string;
+  domaine_expediteur: string | null;
+  expediteur_verifie: boolean | null;   // null : la clé n'a pas pu lister
+  test_seulement: boolean;              // onboarding@resend.dev
+  pret: boolean;
+  manque: string[];
+}
+
+export async function etat(): Promise<EtatCourriel> {
+  const e: EtatCourriel = {
+    cle: "absente", cle_detail: "", domaines: [],
+    expediteur: (Deno.env.get("BBC_SENDER_EMAIL") || "").trim() || null,
+    nom: Deno.env.get("BBC_SENDER_NAME") || "Baobabs Basket Club",
+    repondre_a: repondreA(),
+    domaine_expediteur: null, expediteur_verifie: null, test_seulement: false,
+    pret: false, manque: [],
+  };
+  const k = Deno.env.get("RESEND_API_KEY");
+  if (k) {
+    try {
+      const r = await fetch("https://api.resend.com/domains", { headers: { Authorization: `Bearer ${k}` } });
+      const txt = await r.text();
+      if (r.ok) {
+        e.cle = "valide";
+        let j: { data?: { name?: string; status?: string }[] } = {};
+        try { j = JSON.parse(txt); } catch { /* corps inattendu : liste vide */ }
+        e.domaines = (j.data || []).map((d) => ({ nom: String(d.name || ""), statut: String(d.status || "") }));
+      } else if (/restricted|only send/i.test(txt)) {
+        e.cle = "restreinte"; e.cle_detail = txt.slice(0, 300);
+      } else {
+        e.cle = "invalide"; e.cle_detail = txt.slice(0, 300);
+      }
+    } catch (err) {
+      e.cle = "restreinte"; e.cle_detail = "Resend injoignable : " + String(err);
+    }
+  }
+  if (e.expediteur) {
+    const m = /@([^>\s]+)>?$/.exec(e.expediteur);
+    e.domaine_expediteur = m ? m[1].toLowerCase() : null;
+    e.test_seulement = e.domaine_expediteur === "resend.dev";
+    if (e.cle === "valide" && e.domaine_expediteur) {
+      const d = e.domaines.find((x) => x.nom.toLowerCase() === e.domaine_expediteur);
+      e.expediteur_verifie = !!d && d.statut === "verified";
+    }
+  }
+
+  if (e.cle === "absente") e.manque.push("Ajouter le secret RESEND_API_KEY dans Supabase (Edge Functions, Secrets) : la clé se crée sur resend.com, API Keys.");
+  else if (e.cle === "invalide") e.manque.push("Resend refuse la clé RESEND_API_KEY : la recréer sur resend.com, API Keys, puis remplacer le secret dans Supabase.");
+  if (!e.expediteur) e.manque.push("Ajouter le secret BBC_SENDER_EMAIL : une adresse sur un domaine vérifié dans Resend, par exemple club@baobabsbasketclub.com.");
+  else if (e.test_seulement) e.manque.push("L'adresse onboarding@resend.dev n'envoie qu'au propriétaire du compte Resend : les abonnés ne recevront rien. Il faut une adresse sur le domaine du club.");
+  else if (!e.domaine_expediteur) e.manque.push("BBC_SENDER_EMAIL n'est pas une adresse valable : attendu quelque chose comme club@baobabsbasketclub.com.");
+  else if (e.cle === "valide") {
+    const d = e.domaines.find((x) => x.nom.toLowerCase() === e.domaine_expediteur);
+    if (!d) e.manque.push(`Le domaine ${e.domaine_expediteur} n'est pas ajouté dans Resend : resend.com, Domains, Add domain, puis poser les enregistrements DNS donnés (DKIM, SPF) chez l'hébergeur du nom de domaine.`);
+    else if (d.statut !== "verified") e.manque.push(`Le domaine ${e.domaine_expediteur} est ajouté dans Resend mais pas vérifié (statut : ${d.statut}) : contrôler les enregistrements DNS chez l'hébergeur, puis « Verify » dans Resend.`);
+  }
+  e.pret = e.manque.length === 0 && (e.cle === "valide" || e.cle === "restreinte");
+  return e;
 }

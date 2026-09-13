@@ -4528,7 +4528,16 @@ window.bbCloud = function(url, w){
         'Prefer': 'return=minimal'
       },
       body: JSON.stringify(payload)
-    }).then(function(res){ if (!res.ok) throw new Error('insert failed: ' + table); });
+    }).then(function(res){
+      if (!res.ok){
+        // Le code HTTP voyage avec l'erreur : un 409 sur la newsletter
+        // veut dire « cette adresse est deja inscrite », ce n'est pas
+        // une panne, et l'appelant doit pouvoir le distinguer.
+        var err = new Error('insert failed: ' + table);
+        err.status = res.status;
+        throw err;
+      }
+    });
   }
   // Upload de la photo de candidature vers le bucket public dédié
   // recruitment-photos (policy Storage : INSERT ouvert au rôle anon,
@@ -5784,11 +5793,15 @@ window.bbCloud = function(url, w){
       var req = (ctaKey === 'subscribe')
         ? sbInsert('newsletter_subscribers', { email: email, name: name || null })
         : sbInsert('contact_messages', { name: name, email: email, message: msg || null });
-      req.then(function(){
+      function reussi(){
         form.classList.add('bb-hide');
         document.getElementById('bb-cta-success-text').textContent = c.successText || '';
         document.getElementById('bb-cta-success').classList.remove('bb-hide');
-      }).catch(function(err){
+      }
+      req.then(reussi).catch(function(err){
+        // Deja inscrit (index unique sur l'adresse) : la personne est bien
+        // sur la liste, on le lui dit comme un succes, pas comme une panne.
+        if (ctaKey === 'subscribe' && err && err.status === 409){ reussi(); return; }
         console.warn('Envoi formulaire échoué', err);
         toast("Erreur d'envoi — réessaie dans un instant");
       }).finally(function(){ submitBtn.disabled = false; });
@@ -5801,12 +5814,17 @@ window.bbCloud = function(url, w){
       var email = document.getElementById('bb-news-email').value.trim();
       var btn = form.querySelector('button[type=submit]');
       btn.disabled = true;
+      function reussi(){
+        form.classList.add('bb-hide');
+        document.getElementById('bb-news-ok').classList.remove('bb-hide');
+      }
       sbInsert('newsletter_subscribers', { email: email, name: null })
-        .then(function(){
-          form.classList.add('bb-hide');
-          document.getElementById('bb-news-ok').classList.remove('bb-hide');
+        .then(reussi)
+        .catch(function(err){
+          // Deja inscrit : un succes, pas une panne (index unique sur l'adresse).
+          if (err && err.status === 409){ reussi(); return; }
+          console.warn('Inscription newsletter échouée', err); toast("Erreur d'envoi — réessaie dans un instant");
         })
-        .catch(function(err){ console.warn('Inscription newsletter échouée', err); toast("Erreur d'envoi — réessaie dans un instant"); })
         .finally(function(){ btn.disabled = false; });
     });
 
