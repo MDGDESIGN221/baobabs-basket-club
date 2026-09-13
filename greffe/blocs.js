@@ -142,7 +142,7 @@
       ".party-champs{ display:grid; grid-template-columns:1fr 1fr; gap:2.5pt 10pt; margin:3pt 0 2pt 0; }",
       ".party-champ{ display:flex; align-items:baseline; gap:4pt; font-size:7.4pt; white-space:nowrap; }",
       ".party-champ.large{ grid-column:1 / -1; }",
-      ".party-champ .k{ color:var(--gris); flex:0 0 auto; }",
+      ".party-champ .k{ color:var(--gris); flex:0 0 auto; } .party-champ .k::after{ content:' :'; }",
       ".party-champ .v{ color:var(--encre); font-weight:500; overflow:hidden; text-overflow:ellipsis; }",
       ".party-champ .pointille{ flex:1 1 auto; min-width:18mm; border-bottom:1px dotted var(--gris-clair); min-height:7pt; }",
 
@@ -818,7 +818,7 @@
           var v = String(V.t == null ? '' : V.t).trim();
           /* vide : une ligne pointillée, à remplir au stylo ; mais elle s'écrit aussi sur la feuille */
           return '<div class="party-champ' + (c.large ? ' large' : '') + '">'
-            + '<span class="k"' + L.a + '>' + U.enLigne(L.t || '') + '</span><span class="k"> :</span>'
+            + '<span class="k"' + L.a + '>' + U.enLigne(L.t || '') + '</span>'
             + '<span class="' + (v ? 'v' : 'pointille') + '"' + V.a + '>' + U.enLigne(v) + '</span>'
             + '</div>';
         }).join('');

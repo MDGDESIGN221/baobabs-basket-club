@@ -345,6 +345,100 @@
   var CATALOGUE = PALETTE.concat(TABLEAUX);
   var PAR_TYPE = {};
   CATALOGUE.forEach(function (e) { PAR_TYPE[e.type] = PAR_TYPE[e.type] || e; });
+  var PRETS = [
+    /* ---- prêts à poser : des blocs déjà remplis avec ce que le club sait ---- */
+    { type: 'entete', nom: "En-tête du club", famille: "Prêts à poser",
+      resume: "Le blason, le nom, la devise, le drapeau, le récépissé et la date : en haut de la feuille.",
+      neuf: function () {
+        var C = G.club || {};
+        return { b: 'entete', nom: (C.nom || "Baobabs Basket Club").toUpperCase(), devise: C.devise || "Grandir ici. Régner partout.",
+                 ligne1: "Récépissé n° " + (C.recepisse || "8280"), ligne2: (C.ville || "Dakar") + ", le " + U.dateLongue(U.isoDuJour(), false), drapeau: true };
+      },
+      reglages: [{ cle: 'drapeau', lab: "Drapeau du Sénégal", type: 'bascule' }],
+      bloc: function (x, ch) {
+        return { b: 'entete', nom: '@' + ch + 'nom', devise: '@' + ch + 'devise',
+                 droite: ['@' + ch + 'ligne1', '@' + ch + 'ligne2'], drapeau: '@' + ch + 'drapeau' };
+      } },
+    { type: 'signatures', nom: "Signature du président", famille: "Prêts à poser",
+      resume: "« Fait à Dakar, le… », la carte du président avec son encre et le cachet.",
+      neuf: function () {
+        var C = G.club || {};
+        return { b: 'signatures', nb: 1, lieuDate: "Fait à " + (C.ville || "Dakar") + ", le **" + U.dateLongue(U.isoDuJour(), true) + "**", note: "", reference: "",
+                 cartes: [{ pour: "Pour " + (C.nom || "Baobabs Basket Club"), nom: C.president || "Antoine Jean Pierre Ndong", qualite: C.qualitePresident || "Président", mention: "Signature et cachet du Président", encre: true }] };
+      },
+      reglages: [{ cle: 'nb', lab: "Signataires", type: 'choix', choix: ['1', '2', '3'] }],
+      bloc: function (x, ch) { return PAR_TYPE.signatures.bloc(x, ch); } },
+    { type: 'signatures', nom: "Président et un second signataire", famille: "Prêts à poser",
+      resume: "Deux cartes : le président avec l'encre, et une carte vierge pour l'autre partie.",
+      neuf: function () {
+        var C = G.club || {};
+        return { b: 'signatures', nb: 2, lieuDate: "Fait à " + (C.ville || "Dakar") + ", le **" + U.dateLongue(U.isoDuJour(), true) + "**, en deux exemplaires", note: "", reference: "",
+                 cartes: [{ pour: "Pour " + (C.nom || "Baobabs Basket Club"), nom: C.president || "Antoine Jean Pierre Ndong", qualite: C.qualitePresident || "Président", mention: "Signature et cachet du Président", encre: true },
+                          { pour: "Pour la seconde partie", nom: "", qualite: "", mention: "Lu et approuvé · Signature", encre: false }] };
+      },
+      reglages: [{ cle: 'nb', lab: "Signataires", type: 'choix', choix: ['1', '2', '3'] }],
+      bloc: function (x, ch) { return PAR_TYPE.signatures.bloc(x, ch); } },
+    { type: 'tableau', nom: "Le staff", famille: "Prêts à poser",
+      resume: "Nom, fonction, téléphone, e-mail : le bureau et les coachs, à compléter ou à coller.",
+      neuf: function () {
+        return { b: 'tableau', source: id('t'), titre: "", numeroter: true, vide: 6,
+                 _table: { titre: "Le staff", singulier: "membre",
+                           colonnes: [{ cle: 'nom', titre: "Nom et prénom(s)", poids: 44, forme: 'fort' },
+                                      { cle: 'fonction', titre: "Fonction", poids: 30, forme: 'pastille', choix: ['Président', 'Vice-président', 'Secrétaire', 'Trésorier', 'Coach', 'Coach assistant', 'Médecin', 'Bénévole'] },
+                                      { cle: 'telephone', titre: "Téléphone", poids: 26, forme: 'code' },
+                                      { cle: 'email', titre: "E-mail", poids: 34, forme: 'code' }],
+                           lignes: [{ nom: (G.club && G.club.president) || "Antoine Jean Pierre Ndong", fonction: "Président", telephone: (G.club && G.club.telephone) || "", email: (G.club && G.club.email) || "" }] } };
+      },
+      reglages: [{ cle: 'numeroter', lab: "Numéroter les lignes", type: 'bascule' }, { cle: 'vide', lab: "Lignes vides quand la liste est vide", type: 'texte' }],
+      bloc: function (x, ch) { return PAR_TYPE.tableau.bloc(x, ch); } },
+    { type: 'tableau', nom: "L'équipe (joueuses)", famille: "Prêts à poser",
+      resume: "Nom, catégorie, poste, numéro de maillot, licence : la liste de l'équipe, à coller depuis l'admin.",
+      neuf: function () {
+        return { b: 'tableau', source: id('t'), titre: "", numeroter: true, vide: 12,
+                 _table: { titre: "L'équipe", singulier: "joueuse",
+                           colonnes: [{ cle: 'nom', titre: "Nom et prénom(s)", poids: 46, forme: 'fort' },
+                                      { cle: 'categorie', titre: "Catégorie", poids: 20, forme: 'pastille', align: 'centre', choix: ['U12', 'U14', 'U16', 'U18', 'Senior'] },
+                                      { cle: 'poste', titre: "Poste", poids: 22, align: 'centre' },
+                                      { cle: 'maillot', titre: "N°", poids: 12, forme: 'nombre', align: 'centre' },
+                                      { cle: 'licence', titre: "Licence", poids: 24, forme: 'code' }],
+                           lignes: [] } };
+      },
+      reglages: [{ cle: 'numeroter', lab: "Numéroter les lignes", type: 'bascule' }, { cle: 'vide', lab: "Lignes vides quand la liste est vide", type: 'texte' }],
+      bloc: function (x, ch) { return PAR_TYPE.tableau.bloc(x, ch); } },
+    { type: 'grille', nom: "Les parents", famille: "Prêts à poser",
+      resume: "Parent ou tuteur, lien, téléphone, adresse, personne à prévenir : des lignes à compléter.",
+      neuf: function () {
+        return { b: 'grille', nb: 6, colonnes: 2, champs: [
+          { label: "Parent ou tuteur", valeur: "" }, { label: "Lien avec l'enfant", valeur: "" },
+          { label: "Téléphone", valeur: "" }, { label: "E-mail", valeur: "" },
+          { label: "Adresse", valeur: "", large: true }, { label: "À prévenir en urgence", valeur: "" }] };
+      },
+      reglages: [{ cle: 'nb', lab: "Nombre de lignes", type: 'choix', choix: ['1', '2', '3', '4', '5', '6', '8', '10'] }, { cle: 'colonnes', lab: "Colonnes", type: 'choix', choix: ['1', '2', '3'], duo: true }],
+      bloc: function (x, ch) { return PAR_TYPE.grille.bloc(x, ch); } },
+    { type: 'texte', nom: "Coordonnées du club", famille: "Prêts à poser",
+      resume: "Nom, adresse, récépissé, téléphone, e-mail, site : un bloc de contact.",
+      neuf: function () {
+        var C = G.club || {};
+        var l = [(C.nom || "Baobabs Basket Club"), C.adresse || "Sicap Baobab, Dakar, Sénégal", "Récépissé n° " + (C.recepisse || "8280"), C.telephone ? "Tél. " + C.telephone : "", C.email || "", C.site || "baobabsbasketclub.com"].filter(Boolean);
+        return { b: 'texte', etiquette: "Le club", titre: "", texte: l.join("\n") };
+      },
+      reglages: [],
+      bloc: function (x, ch) { return PAR_TYPE.texte.bloc(x, ch); } },
+    { type: 'texte', nom: "Le président (présentation)", famille: "Prêts à poser",
+      resume: "« Monsieur …, Président de …, agissant au nom et pour le compte du club » : la phrase qui ouvre un acte.",
+      neuf: function () {
+        var C = G.club || {};
+        return { b: 'texte', etiquette: "", titre: "", texte: "Monsieur **" + (C.president || "Antoine Jean Pierre Ndong") + "**, " + (C.qualitePresident || "Président") + " de " + (C.nom || "Baobabs Basket Club") + ", agissant au nom et pour le compte du club, " };
+      },
+      reglages: [],
+      bloc: function (x, ch) { return PAR_TYPE.texte.bloc(x, ch); } },
+    { type: 'cases', nom: "Cachet et signature à apposer", famille: "Prêts à poser",
+      resume: "Une liste à cocher : signé, cacheté, daté, copie remise.",
+      neuf: function () { return { b: 'cases', nb: 4, enLigne: true, etiquette: "Avant de remettre l'acte", cases: [{ texte: "Signé", cochee: false }, { texte: "Cacheté", cochee: false }, { texte: "Daté", cochee: false }, { texte: "Copie remise", cochee: false }] }; },
+      reglages: [{ cle: 'nb', lab: "Nombre de cases", type: 'choix', choix: ['1', '2', '3', '4', '5', '6', '8'] }, { cle: 'enLigne', lab: "Côte à côte", type: 'bascule', duo: true }],
+      bloc: function (x, ch) { return PAR_TYPE.cases.bloc(x, ch); } },
+  ];
+  CATALOGUE = CATALOGUE.concat(PRETS);
 
   function entree(x) {
     /* un tableau instancié retrouve le gabarit par son type ; ses

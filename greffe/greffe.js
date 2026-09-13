@@ -39,7 +39,7 @@
   var MM = 96 / 25.4;                    /* 1 mm en pixels CSS */
 
   /* AJOUTER UN TYPE D'ACTE : un fichier dans modeles/, son nom ici. */
-  var MODELES = ['ordre-mission', 'acte-libre', 'courrier',
+  var MODELES = ['ordre-mission', 'acte-libre', 'page-blanche', 'courrier',
                  'convention', 'contrat', 'fiche-fonction', 'budget',
                  'pv-reunion', 'ordre-du-jour', 'recu', 'note-frais', 'demande-subvention',
                  'convocation', 'feuille-presence', 'planning', 'fiche-joueuse', 'cartes-membre',
@@ -547,7 +547,8 @@
     }
   }
 
-  function salir() { acteSauve = false; majTitreBarre(); histoNoter(); autoEnregistrer(); }
+  var acteTouche = false;
+  function salir() { acteSauve = false; acteTouche = true; majTitreBarre(); histoNoter(); autoEnregistrer(); }
 
   /* =================================================================
      5. L'ÉCRAN DES RESSOURCES
@@ -695,6 +696,7 @@
     return dbPoser(MAG_ACTES, fiche).then(function () {
       acteSauve = true; majTitreBarre();
       if (!automatique) acteReference = JSON.stringify(fiche);
+      ongletRenommer();
       registre = registre.filter(function (a) { return a.id !== fiche.id; });
       registre.unshift(fiche);
       noterReprise();
@@ -715,7 +717,15 @@
   }
 
   function ouvrirActe(fiche, version) {
-    if (modeleActif && fiche.id !== acteId) { avantDeQuitter(function () { modeleActif = null; ouvrirActe(fiche, version); }); return; }
+    /* déjà ouvert dans un onglet : on y retourne */
+    if (!version && fiche.id !== acteId && ongletDe(fiche.id) && ongletDe(fiche.id).etat) { activerOnglet(fiche.id); return; }
+    /* un autre acte est ouvert : il garde son onglet, celui-ci en prend un neuf */
+    if (modeleActif && fiche.id !== acteId) {
+      var cour = ongletDe(ongletCourant);
+      if (acteTouche && !acteSauve && acteEtat === 'brouillon') enregistrer(true, true);
+      if (cour) { cour.etat = etatCourant(); cour.nom = nomOnglet(); }
+      modeleActif = null;
+    }
     var m = G.modeles[fiche.modele];
     if (!m) { dire("Modèle « " + fiche.modele + " » introuvable.", 'erreur'); return; }
     modeleActif = m;
@@ -724,15 +734,21 @@
     var v = version ? (acteVersions.filter(function (x) { return x.v === version; })[0]) : null;
     donnees = JSON.parse(JSON.stringify(v ? v.donnees : fiche.donnees));
     if (v) { acteEtat = v.etat === 'emise' ? 'emis' : 'remplace'; acteVersion = v.v; modeLecture = true; }
-    acteId = fiche.id; acteSauve = true;
+    acteId = fiche.id; acteSauve = true; acteTouche = false;
     acteReference = JSON.stringify(fiche);
+    ongletPourActeCourant();
     montrer('atelier');
     histoDepart();
     noterReprise();
   }
 
   function nouvelActe(cle, prereglage) {
-    if (modeleActif) { avantDeQuitter(function () { modeleActif = null; nouvelActe(cle, prereglage); }); return; }
+    if (modeleActif) {
+      var cour = ongletDe(ongletCourant);
+      if (acteTouche && !acteSauve && acteEtat === 'brouillon') enregistrer(true, true);
+      if (cour) { cour.etat = etatCourant(); cour.nom = nomOnglet(); }
+      modeleActif = null;
+    }
     var m = G.modeles[cle];
     if (!m) return;
     modeleActif = m;
@@ -755,10 +771,11 @@
       var n = 1; while (pris.indexOf(n) !== -1) n++;
       donnees.numero = deuxChiffres(n) + '/' + an;
     }
-    acteId = null; acteSauve = false; acteReference = null;
+    acteId = null; acteSauve = false; acteReference = null; acteTouche = false;
     acteEtat = 'brouillon'; acteVersion = 1; acteVersions = []; acteJournal = []; acteEmisLe = null; acteMotif = '';
-    controle = null; panneau = 'donnees'; modeLecture = false; objetSel = null; blocSel = null;
+    controle = null; panneau = 'donnees'; modeLecture = false; objetSel = null; objetsSel = []; blocSel = null;
     journaliser('Créé' + (prereglage ? ' depuis le préréglage « ' + prereglage.nom + ' »' : ''));
+    ongletPourActeCourant();
     montrer('atelier');
     histoDepart();
   }
@@ -1269,6 +1286,7 @@
       });
     }
     avecFiche('data-histo', function (f) { historiqueActe(f); });
+    avecFiche('data-retirer-onglet', function (f) { fermerOnglet(f.id); });
     avecFiche('data-fenetre', function (f) { nouvelleFenetre(f.id); });
     avecFiche('data-version', function (f) { ouvrirActe(f); setTimeout(nouvelleVersion, 400); });
     avecFiche('data-archiver', function (f) { f.etat = 'archive'; (f.journal = f.journal || []).push({ t: Date.now(), quoi: 'Archivé' }); f.maj = Date.now(); dbPoser(MAG_ACTES, f).then(peindreRegistre); });
@@ -1373,6 +1391,9 @@
         { lab: 'Copier l\'objet ou le bloc', rac: 'Ctrl+C', off: !enAtelier || !(objetSel || blocCourant), act: copierElement },
         { lab: 'Coller', rac: 'Ctrl+V', off: !enAtelier || lect, act: collerElement },
         { sep: true },
+        { lab: 'Tous les objets de la page', rac: 'Ctrl+A', off: !enAtelier || lect, act: selectionnerTout },
+        { lab: 'Aligner et répartir…', off: !enAtelier || lect || objetsSel.length < 2, act: function () { propsOnglet = 'proprietes'; racine.classList.remove('gf-sans-props'); racine.classList.add('gf-avec-props'); peindreProps(); } },
+        { sep: true },
         { lab: 'Textes d\'origine du modèle', off: !enAtelier || lect, act: textesOrigine }
       ]},
       { nom: 'Acte', items: [
@@ -1400,6 +1421,14 @@
       ].concat(libre && !lect && modeleActif.catalogue
           ? modeleActif.catalogue.map(function (e) { return { lab: 'Bloc : ' + e.nom, act: function () { poserBloc(e); } }; })
           : [{ lab: 'Les blocs se posent dans un acte libre', off: true }]) },
+      { nom: 'Fenêtre', items: [
+        { lab: 'Nouvel onglet : nouvel acte…', rac: 'Ctrl+N', act: function () { ouvrirNouveau(); } },
+        { lab: 'Ouvrir cet acte dans une nouvelle fenêtre du navigateur', rac: 'Ctrl+Maj+N', off: !modeleActif, act: function () { nouvelleFenetre(); } },
+        { lab: 'Ouvrir le Greffe dans une nouvelle fenêtre du navigateur', act: function () { nouvelleFenetre('accueil'); } },
+        { sep: true }
+      ].concat(onglets.map(function (o, i) {
+        return { lab: (o.id === ongletCourant ? '● ' : '') + o.nom, rac: i < 9 ? 'Alt+' + (i + 1) : '', act: function () { activerOnglet(o.id); } };
+      })).concat([{ sep: true }, { lab: 'Fermer cet onglet', rac: 'Alt+W', off: !modeleActif, act: function () { fermerActe(); } }]) },
       { nom: 'Affichage', items: [
         { lab: 'Zoom avant', rac: 'Ctrl+Plus', off: !enAtelier, act: function () { zoom = Math.min(1.5, zoom + 0.1); appliquerZoom(); } },
         { lab: 'Zoom arrière', rac: 'Ctrl+Moins', off: !enAtelier, act: function () { zoom = Math.max(0.25, zoom - 0.1); appliquerZoom(); } },
@@ -1411,6 +1440,7 @@
         { lab: (modeLecture ? 'Quitter le' : 'Passer en') + ' mode lecture', rac: 'Ctrl+Maj+R', off: !enAtelier, act: basculerLecture }
       ]},
       { nom: 'Aide', items: [
+        { lab: 'Palette de commandes…', rac: 'Ctrl+K', act: palette },
         { lab: 'Raccourcis…', act: aideRaccourcis },
         { lab: 'Guide rapide…', act: aideGuide },
         { lab: 'À propos du Greffe…', act: aideAPropos }
@@ -1483,6 +1513,7 @@
     if (elt.sousTitre) elt.sousTitre.textContent = nom + (donnees.numero ? ' n° ' + donnees.numero : '');
     majActions();
     if (typeof majOutils === 'function') majOutils();
+    var oc = ongletDe(ongletCourant); if (oc && oc.nom !== nomOnglet()) { oc.nom = nomOnglet(); peindreOnglets(); } else peindreOnglets();
   }
 
   function majActions() {
@@ -1538,7 +1569,11 @@
     if (!modeleActif) return;
     avantDeQuitter(function () {
       oublierReprise();
-      modeleActif = null; donnees = {}; acteId = null; acteSauve = true; acteReference = null; controle = null; modeLecture = false;
+      var ferme = ongletCourant;
+      modeleActif = null; donnees = {}; acteId = null; acteSauve = true; acteReference = null; acteTouche = false; controle = null; modeLecture = false;
+      fermerOnglet(ferme);
+      var reste = onglets[onglets.length - 1];
+      if (reste && reste.etat) { activerOnglet(reste.id); return; }
       montrer('accueil');
     });
   }
@@ -1575,7 +1610,7 @@
   /* ---- l'aide ---- */
   function aideRaccourcis() {
     var groupes = [
-      ['Document', [['Ctrl+N', 'Nouvel acte'], ['Ctrl+O', 'Ouvrir le registre'], ['Ctrl+Maj+N', 'Nouvelle fenêtre'], ['Ctrl+S', 'Enregistrer'], ['F2', 'Renommer l\'acte'], ['Ctrl+P', 'Imprimer en PDF'], ['Ctrl+Maj+S', 'Sauvegarder le Greffe']]],
+      ['Document', [['Ctrl+N', 'Nouvel acte'], ['Ctrl+O', 'Ouvrir le registre'], ['Alt+1 … 9', 'Passer à l\'onglet'], ['Alt+W', 'Fermer l\'onglet'], ['Ctrl+Maj+N', 'Nouvelle fenêtre du navigateur'], ['Ctrl+S', 'Enregistrer'], ['F2', 'Renommer l\'acte'], ['Ctrl+P', 'Imprimer en PDF'], ['Ctrl+Maj+S', 'Sauvegarder le Greffe']]],
       ['Objets et blocs', [['Ctrl+C', 'Copier l\'objet ou le bloc'], ['Ctrl+V', 'Coller'], ['Suppr', 'Retirer l\'objet'], ['Flèches', 'Déplacer l\'objet d\'un mm (Maj : 5)'], ['Alt+Haut / Bas', 'Monter, descendre le bloc']]],
       ['Édition', [['Ctrl+Z', 'Annuler'], ['Ctrl+Y', 'Rétablir'], ['Entrée', 'Valider un champ d\'une ligne'], ['Échap', 'Quitter le texte, fermer une boîte']]],
       ['Acte', [['Ctrl+Entrée', 'Vérifier, puis émettre'], ['Ctrl+Maj+E', 'Émettre'], ['Ctrl+Maj+R', 'Mode lecture'], ['Ctrl+Maj+P', 'Masquer ou montrer le panneau']]],
@@ -1612,6 +1647,36 @@
   /* =================================================================
      7. LE FORMULAIRE
      ================================================================= */
+  /* Un champ riche du formulaire : la même grammaire que la feuille, dans
+     les deux sens. On y voit ce qu'on écrit, jamais une marque. */
+  function peindreChampRiche(n, v) {
+    var t = v == null ? '' : String(v);
+    n.innerHTML = n.getAttribute('data-riche') === 'zone' ? paragraphes(t) : enLigne(t);
+  }
+  function lireChampRiche(n) {
+    return n.getAttribute('data-riche') === 'zone' ? depuisDom(n) : depuisDomLigne(n);
+  }
+  function brancherChampRiche(n, chemin, apres) {
+    peindreChampRiche(n, G.blocs.lire(donnees, chemin));
+    n.addEventListener('input', function () {
+      ecrire(chemin, lireChampRiche(n)); salir(); if (apres) apres(); planifier();
+      if (chemin === 'titre' || chemin === 'nomActe') majTitreBarre();
+    });
+    n.addEventListener('paste', function (e) {
+      e.preventDefault();
+      var t = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, t);
+    });
+    n.addEventListener('keydown', function (e) {
+      if (n.getAttribute('data-riche') === 'ligne' && e.key === 'Enter') { e.preventDefault(); n.blur(); return; }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && /^[biu]$/.test(e.key.toLowerCase())) {
+        e.preventDefault(); document.execCommand('styleWithCSS', false, true);
+        document.execCommand({ b: 'bold', i: 'italic', u: 'underline' }[e.key.toLowerCase()]);
+      }
+    });
+    /* la feuille refaite rend le champ propre (marques relues, variables posées) */
+    n.addEventListener('blur', function () { peindreChampRiche(n, G.blocs.lire(donnees, chemin)); });
+  }
   function champHtml(c) {
     var id = 'gf-c-' + c.cle;
     if (c.type === 'bascule') {
@@ -1628,8 +1693,11 @@
            + (c.aide ? '<p class="gf-aide">' + ech(c.aide) + '</p>' : '');
     }
     if (c.type === 'zone') {
-      saisie = '<textarea class="gf-ta" id="' + id + '" data-cle="' + c.cle + '" rows="'
-             + (c.lignes || 2) + '"></textarea>';
+      /* un texte riche se montre tel qu'il s'imprime (gras, puces, variables),
+         jamais avec ses marques : le champ est une petite feuille */
+      saisie = '<div class="gf-ta gf-riche" id="' + id + '" data-cle="' + c.cle + '" data-riche="zone" contenteditable="true" spellcheck="false" data-vide="' + ech(c.lab) + '"></div>';
+    } else if (c.type === 'texte') {
+      saisie = '<div class="gf-in gf-riche gf-riche-ligne" id="' + id + '" data-cle="' + c.cle + '" data-riche="ligne" contenteditable="true" spellcheck="false"></div>';
     } else if (c.type === 'choix') {
       /* une liste fermée : la fonction d'une fiche, le genre d'un contrat */
       saisie = '<select class="gf-sel" id="' + id + '" data-cle="' + c.cle + '">'
@@ -1713,6 +1781,8 @@
       if (n.type === 'checkbox') {
         n.checked = !!v;
         n.addEventListener('change', function () { ecrire(c, n.checked); salir(); majArticlesSiAuto(); planifier(); });
+      } else if (n.hasAttribute('data-riche')) {
+        brancherChampRiche(n, c, function () { majArticlesSiAuto(); });
       } else {
         n.value = v == null ? '' : v;
         n.addEventListener('input', function () { ecrire(c, n.value); salir(); majArticlesSiAuto(); planifier(); });
@@ -2009,12 +2079,19 @@
     }
     var x = e.neuf();
     if (x._table) { donnees.tables = donnees.tables || {}; donnees.tables[x.source] = x._table; delete x._table; }
-    /* un bloc neuf se pose avant les signatures, si elles ferment l'acte */
-    var k = donnees.blocs.length;
-    if (k && donnees.blocs[k - 1].b === 'signatures' && x.b !== 'signatures' && x.b !== 'saut') k--;
-    donnees.blocs.splice(k, 0, x);
+    /* Un bloc sait où aller : un en-tête en haut de la feuille, des
+       signatures en bas, tout le reste juste après le bloc où l'on est,
+       sinon avant les signatures qui ferment l'acte, sinon à la fin. */
+    var blocs = donnees.blocs, k, ou;
+    if (x.b === 'entete' || x.b === 'bandeau' && !blocs.length) { k = 0; ou = 'en haut de la feuille'; }
+    else if (x.b === 'signatures' || x.b === 'signatureLibre' || x.b === 'talon') { k = blocs.length; ou = 'à la fin'; }
+    else if (blocCourant && /^b\d+$/.test(blocCourant) && +blocCourant.slice(1) < blocs.length) { k = +blocCourant.slice(1) + 1; ou = 'après « ' + nomDuBloc(blocCourant) + ' »'; }
+    else { k = blocs.length; if (k && blocs[k - 1].b === 'signatures' && x.b !== 'saut') k--; ou = k === blocs.length ? 'à la fin' : 'avant les signatures'; }
+    if (x.b === 'entete' && blocs.some(function (y) { return y.b === 'entete'; })) { dire('La feuille a déjà un en-tête : modifiez-le sur place.', 'erreur'); return; }
+    blocs.splice(k, 0, x);
     salir(); peindreFormulaire(); planifier();
-    dire('Bloc « ' + e.nom + ' » posé', 'ok');
+    blocSel = 'b' + k;
+    dire('Bloc « ' + e.nom + ' » posé ' + ou + ' · Alt+Haut / Alt+Bas pour le déplacer', 'ok');
   }
 
   /* Les colonnes qu'un club ajoute le plus souvent, avec leur forme : on les
@@ -2039,6 +2116,103 @@
     'TVA 18 %':             { poids: 20, forme: 'nombre', align: 'droite', total: true, formule: 'montant * 0.18' },
     'Date':                 { poids: 20, forme: 'code', align: 'centre' }
   };
+
+  /* ---------------------------------- PALETTE ----------------------------------
+     Ctrl+K : une ligne, on tape, on choisit. Toutes les commandes des
+     menus, les modèles, les préréglages, les blocs à poser et les actes
+     du registre : la même chose que les menus, sans la souris. */
+  function sansAccents(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  function entreesPalette(plume) {
+    var out = [];
+    /* la plume est dans un texte de la feuille : les textes du club et les variables s'y posent */
+    if (plume) {
+      listeTextes('').forEach(function (t) {
+        out.push({ g: 'Insérer dans le texte', lab: t.nom, sous: t.groupe || '', act: function () {
+          var doc = cadre.contentDocument;
+          cadre.contentWindow.focus();
+          try { var s = doc.getSelection(); s.removeAllRanges(); s.addRange(plume); } catch (x) {}
+          doc.execCommand('insertText', false, t.texte);
+        } });
+      });
+    }
+    menus().forEach(function (m) {
+      m.items.forEach(function (it) {
+        if (it.sep || it.off || !it.act) return;
+        if (/^Bloc : /.test(it.lab)) return;   /* les blocs ont leur propre groupe */
+        out.push({ g: m.nom, lab: it.lab.replace(/…$/, ''), rac: it.rac || '', act: it.act });
+      });
+    });
+    MODELES.forEach(function (k) {
+      var m = G.modeles[k]; if (!m) return;
+      out.push({ g: 'Nouvel acte', lab: m.nom, sous: m.resume || m.famille || '', act: function () { nouvelActe(k); } });
+    });
+    tousPrereglages().forEach(function (p) {
+      if (!G.modeles[p.modele]) return;
+      out.push({ g: 'Préréglage', lab: p.nom, sous: (G.modeles[p.modele] || {}).nom || '', act: function () { nouvelActe(p.modele, p); } });
+    });
+    if (modeleActif && modeleActif.libre && !lectureSeule() && modeleActif.catalogue) {
+      modeleActif.catalogue.forEach(function (e) { out.push({ g: 'Poser un bloc', lab: e.nom, sous: e.aide || '', act: function () { poserBloc(e); } }); });
+    }
+    registre.slice().sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); }).forEach(function (a) {
+      out.push({ g: 'Registre', lab: (a.numero ? a.numero + ' · ' : '') + (a.intitule || a.nom), sous: a.nom + ' · ' + (dateLongue(a.date, false) || '') + ' · ' + (a.etat || 'brouillon'),
+                 act: function () { ouvrirActe(a); } });
+    });
+    return out;
+  }
+  var paletteOuverte = null;
+  function palette() {
+    if (paletteOuverte) { paletteOuverte.remove(); paletteOuverte = null; return; }
+    fermerMenus();
+    var plume = null;
+    try {
+      var dP = cadre && cadrePret ? cadre.contentDocument : null, sP = dP && dP.getSelection();
+      if (sP && sP.rangeCount) { var nP = sP.anchorNode.nodeType === 3 ? sP.anchorNode.parentNode : sP.anchorNode; if (nP && nP.closest && nP.closest('[data-edit]') && !lectureSeule()) plume = sP.getRangeAt(0).cloneRange(); }
+    } catch (x) {}
+    var entrees = entreesPalette(plume), vues = [], sel = 0;
+    var voile = document.createElement('div');
+    voile.className = 'gf-voile gf-voile-cmd';
+    voile.innerHTML = '<div class="gf-cmd" role="dialog" aria-modal="true" aria-label="Palette de commandes">'
+      + '<input class="gf-cmd-in" type="text" placeholder="Tapez une commande, un modèle, un bloc, un acte du registre…" spellcheck="false">'
+      + '<div class="gf-cmd-liste" role="listbox"></div>'
+      + '<div class="gf-cmd-pied"><span><kbd>↑</kbd><kbd>↓</kbd> choisir</span><span><kbd>Entrée</kbd> faire</span><span><kbd>Échap</kbd> fermer</span><span>' + entrees.length + ' entrées</span></div></div>';
+    var input = voile.querySelector('.gf-cmd-in'), liste = voile.querySelector('.gf-cmd-liste');
+    function fermerP() { if (voile.parentNode) voile.remove(); paletteOuverte = null; }
+    function faire(i) { var e = vues[i]; if (!e) return; fermerP(); try { e.act(); } catch (x) { dire(String(x && x.message || x), 'erreur'); } }
+    function filtrer() {
+      var q = sansAccents(input.value.trim()), mots = q ? q.split(/\s+/) : [];
+      vues = entrees.filter(function (e) {
+        if (!mots.length) return true;
+        var t = sansAccents(e.g + ' ' + e.lab + ' ' + (e.sous || ''));
+        return mots.every(function (m) { return t.indexOf(m) !== -1; });
+      });
+      if (!mots.length) vues = vues.slice(0, 40); else vues = vues.slice(0, 60);
+      sel = 0; peindreP();
+    }
+    function peindreP() {
+      if (!vues.length) { liste.innerHTML = '<div class="gf-cmd-vide">Rien ne correspond.</div>'; return; }
+      var g = null;
+      liste.innerHTML = vues.map(function (e, i) {
+        var h = '';
+        if (e.g !== g) { g = e.g; h += '<div class="gf-cmd-groupe">' + ech(g) + '</div>'; }
+        return h + '<button type="button" class="gf-cmd-item' + (i === sel ? ' is-sel' : '') + '" role="option" data-i="' + i + '"><span class="gf-cmd-lab">' + ech(e.lab) + (e.sous ? '<small>' + ech(e.sous) + '</small>' : '') + '</span>' + (e.rac ? '<kbd>' + ech(e.rac) + '</kbd>' : '') + '</button>';
+      }).join('');
+      var s = liste.querySelector('.is-sel'); if (s && s.scrollIntoView) s.scrollIntoView({ block: 'nearest' });
+    }
+    input.addEventListener('input', filtrer);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(vues.length - 1, sel + 1); peindreP(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); peindreP(); }
+      else if (e.key === 'Enter') { e.preventDefault(); faire(sel); }
+      else if (e.key === 'Escape') { e.preventDefault(); fermerP(); }
+      e.stopPropagation();
+    });
+    liste.addEventListener('click', function (e) { var b = e.target.closest('[data-i]'); if (b) faire(+b.getAttribute('data-i')); });
+    liste.addEventListener('mousemove', function (e) { var b = e.target.closest('[data-i]'); if (b && +b.getAttribute('data-i') !== sel) { sel = +b.getAttribute('data-i'); liste.querySelectorAll('.gf-cmd-item').forEach(function (x) { x.classList.toggle('is-sel', +x.getAttribute('data-i') === sel); }); } });
+    voile.addEventListener('mousedown', function (e) { if (e.target === voile) fermerP(); });
+    racine.appendChild(voile);
+    paletteOuverte = voile;
+    filtrer(); input.focus();
+  }
 
   /* --------------------------------- DEMANDER ---------------------------------
      Une question, une réponse, sans window.prompt : le navigateur
@@ -2156,17 +2330,16 @@
     var liste = arts.map(function (a, i) {
       return '<div class="gf-art" data-i="' + i + '">'
         + '<div class="gf-art-tete"><span class="gf-art-num">' + deuxChiffres(i + 1) + '</span>'
-        + '<input class="gf-in" data-ch="titre" value="' + ech(a.titre) + '" placeholder="Titre de l\'article">'
+        + '<div class="gf-in gf-riche gf-riche-ligne" data-ch="titre" data-riche="ligne" contenteditable="true" spellcheck="false" data-vide="Titre de l\'article">' + enLigne(a.titre || '') + '</div>'
         + '<button type="button" class="gf-rang-sup" title="Retirer" aria-label="Retirer">'
         + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
         + '</button></div>'
-        + '<textarea class="gf-ta" data-ch="texte" rows="4">' + ech(a.texte) + '</textarea>'
+        + '<div class="gf-ta gf-riche" data-ch="texte" data-riche="zone" contenteditable="true" spellcheck="false" data-vide="Texte de l\'article">' + paragraphes(a.texte || '') + '</div>'
         + '</div>';
     }).join('');
 
     hote.innerHTML = barre + liste
-      + '<p class="gf-aide">Une ligne vide sépare deux paragraphes. Entourez un passage de '
-      + '<b>**deux étoiles**</b> pour le mettre en gras.</p>';
+      + '<p class="gf-aide">Entrée : un nouveau paragraphe ; Maj+Entrée : à la ligne ; Ctrl+B, I, U : gras, italique, souligné. Les articles s\'écrivent aussi sur la feuille.</p>';
 
     function figer() {
       if (!donnees.articles) donnees.articles = articlesAuto().map(function (a) {
@@ -2178,8 +2351,16 @@
       var i = +d.getAttribute('data-i');
       d.querySelectorAll('[data-ch]').forEach(function (n) {
         n.addEventListener('input', function () {
-          figer(); donnees.articles[i][n.getAttribute('data-ch')] = n.value; salir(); planifier();
+          figer(); donnees.articles[i][n.getAttribute('data-ch')] = n.hasAttribute('data-riche') ? lireChampRiche(n) : n.value; salir(); planifier();
         });
+        if (n.hasAttribute('data-riche')) {
+          n.addEventListener('paste', function (e) { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain')); });
+          n.addEventListener('keydown', function (e) {
+            if (n.getAttribute('data-riche') === 'ligne' && e.key === 'Enter') { e.preventDefault(); n.blur(); return; }
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && /^[biu]$/.test(e.key.toLowerCase())) { e.preventDefault(); document.execCommand('styleWithCSS', false, true); document.execCommand({ b: 'bold', i: 'italic', u: 'underline' }[e.key.toLowerCase()]); }
+          });
+          n.addEventListener('blur', function () { var a2 = (donnees.articles || articlesAuto())[i]; if (a2) peindreChampRiche(n, a2[n.getAttribute('data-ch')]); });
+        }
       });
       d.querySelector('.gf-rang-sup').addEventListener('click', function () {
         figer(); donnees.articles.splice(i, 1); salir(); peindreArticles(); planifier();
@@ -2351,6 +2532,8 @@
     '  .s-var{ background:rgba(70,191,29,.12); border-radius:2pt; box-shadow:0 0 0 1px rgba(70,191,29,.25); }',
     '  .s-var-vide{ background:rgba(224,72,63,.12); box-shadow:0 0 0 1px rgba(224,72,63,.35); }',
     '  body.grille .page{ background-image:linear-gradient(to right, rgba(15,67,43,.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,67,43,.12) 1px, transparent 1px); background-size:5mm 5mm; background-position:13mm 11mm; }',
+    '  .objet-cadre-sel{ position:absolute; z-index:45; pointer-events:none; border:1px dashed #46BF1D; background:rgba(70,191,29,.08); }',
+    '  body.sel-cadre, body.sel-cadre *{ user-select:none; -webkit-user-select:none; }',
     '  .objet-guide{ position:absolute; z-index:40; pointer-events:none; }',
     '  .objet-guide-v{ top:0; bottom:0; width:0; border-left:1px dashed #E0483F; }',
     '  .objet-guide-h{ left:0; right:0; height:0; border-top:1px dashed #E0483F; }',
@@ -2566,8 +2749,9 @@
     doc.addEventListener('mouseup', surSourisLache);
     /* hors d'un texte, les raccourcis valent aussi sur la feuille (Ctrl+V d'un objet, Ctrl+S, Ctrl+P...) */
     doc.addEventListener('keydown', function (e) { if (!surToucheObjet(e) && (e.ctrlKey || e.metaKey || e.key === 'F2') && !cibleEdit(e)) raccourci(e); });
-    doc.body.addEventListener('mouseup', function () { sourisEnfoncee = false; });
+    doc.addEventListener('mouseup', function () { sourisEnfoncee = false; });
     doc.addEventListener('mouseleave', function () { sourisEnfoncee = false; });
+    doc.defaultView.addEventListener('blur', function () { sourisEnfoncee = false; });
     doc.addEventListener('selectionchange', function () {
       clearTimeout(majBarreTexte._t); majBarreTexte._t = setTimeout(majBarreTexte, 120);
     });
@@ -2679,6 +2863,7 @@
     }
     var n = elt.formDefile.querySelector('[data-cle="' + p[0] + '"]');
     if (n && n.type === 'checkbox') n.checked = !!donnees[p[0]];
+    else if (n && n.hasAttribute('data-riche')) { if (document.activeElement !== n) peindreChampRiche(n, donnees[p[0]]); }
     else if (n) n.value = donnees[p[0]] == null ? '' : donnees[p[0]];
     majTitreBarre();
   }
@@ -2939,7 +3124,7 @@
   function autoEnregistrer() {
     clearTimeout(autoMinuteur);
     autoMinuteur = setTimeout(function () {
-      if (modeleActif && !acteSauve && acteEtat === 'brouillon') enregistrer(true, true);
+      if (modeleActif && !acteSauve && acteTouche && acteEtat === 'brouillon') enregistrer(true, true);
     }, 4000);
   }
 
@@ -2947,7 +3132,8 @@
   function changementsNonValides() {
     if (!modeleActif || acteEtat !== 'brouillon' || modeLecture) return false;
     var f = ficheCourante(); delete f.maj;
-    if (acteReference == null) return !!acteId || !acteSauve;
+    /* un acte neuf : rien a demander tant qu'on n'y a rien ecrit */
+    if (acteReference == null) return acteTouche;
     var r = JSON.parse(acteReference); delete r.maj;
     return JSON.stringify(f) !== JSON.stringify(r);
   }
@@ -3324,6 +3510,7 @@
       var c = n.getAttribute('data-cle');
       var v = G.blocs.lire(donnees, c);
       if (n.type === 'checkbox') { n.checked = !!v; n.addEventListener('change', function () { ecrire(c, n.checked); salir(); planifier(); }); }
+      else if (n.hasAttribute('data-riche')) { brancherChampRiche(n, c, null); }
       else { n.value = v == null ? '' : v; n.addEventListener('input', function () { ecrire(c, n.value); salir(); planifier(); }); }
     });
     hote.querySelectorAll('[data-image]').forEach(function (n) {
@@ -3501,7 +3688,7 @@
                             verrou: !!T.verrou }, extra || {});
     donnees.objets.push(o);
     salir(); rafraichir();
-    objetSel = o.id; panneau = 'objet'; peindreFormulaire();
+    objetSel = o.id; objetsSel = [o.id]; panneau = 'objet'; peindreFormulaire();
     setTimeout(function () { marquerSelection(); }, 50);
     dire(T.nom + ' posé' + (type === 'annotation' ? 'e' : '') + ' sur la page ' + page + (o.verrou ? ' · verrouillé' : ''), 'ok');
   }
@@ -3578,9 +3765,11 @@
     Array.prototype.forEach.call(doc.querySelectorAll('.objet.is-sel'), function (e) { e.classList.remove('is-sel'); });
     Array.prototype.forEach.call(doc.querySelectorAll('.objet-poignee'), function (e) { e.remove(); });
     if (!objetSel) { majNoteObjet(null); return; }
+    objetsSel = objetsSel.filter(objetDe);
+    objetsSel.forEach(function (id) { var x = doc.querySelector('[data-objet="' + id + '"]'); if (x) x.classList.add('is-sel'); });
     var el = doc.querySelector('[data-objet="' + objetSel + '"]');
     var o = objetDe(objetSel);
-    if (!el || !o) { objetSel = null; majNoteObjet(null); return; }
+    if (!el || !o) { objetSel = null; objetsSel = []; majNoteObjet(null); return; }
     el.classList.add('is-sel');
     if (!o.verrou && !lectureSeule()) {
       var p = doc.createElement('div'); p.className = 'objet-poignee'; p.setAttribute('data-poignee', o.id);
@@ -3594,15 +3783,36 @@
     var note = $('gf-note');
     if (!note) return;
     if (!o) { majActions(); return; }
+    if (objetsSel.length > 1) { note.textContent = objetsSel.length + ' objets sélectionnés · glissez ou flèches pour les déplacer ensemble, Suppr pour les retirer, panneau de droite pour les aligner'; return; }
     note.textContent = (TYPES_OBJET[o.type] || {}).nom + ' · page ' + o.page + ' · ' + Math.round(o.w) + ' × ' + Math.round(o.h) + ' mm' + (o.rotation ? ' · ' + o.rotation + '°' : '')
       + (o.verrou ? ' · verrouillé' : ' · glissez pour déplacer (Alt : sans aimant), la poignée pour redimensionner, Suppr pour retirer');
   }
-  function selectionnerObjet(id) {
-    objetSel = id;
+  /* Plusieurs objets à la fois : Maj ou Ctrl + clic ajoute ou retire ; un
+     cadre tracé sur une zone vide de la page prend ce qu'il touche ;
+     Ctrl+A prend tout. Ils se déplacent, s'alignent, se retirent et se
+     copient ensemble ; l'objet principal (le dernier pris) porte les
+     poignées et guide l'aimant. */
+  var objetsSel = [];
+  function selectionnerObjet(id, ajouter) {
+    if (!id) { objetSel = null; objetsSel = []; }
+    else if (ajouter) {
+      var i = objetsSel.indexOf(id);
+      if (i === -1) objetsSel.push(id); else objetsSel.splice(i, 1);
+      objetSel = objetsSel.length ? objetsSel[objetsSel.length - 1] : null;
+    } else { objetSel = id; objetsSel = [id]; }
     marquerSelection();
-    if (id) { propsOnglet = 'proprietes'; racine.classList.remove('gf-sans-props'); racine.classList.add('gf-avec-props'); }
+    if (objetSel) { propsOnglet = 'proprietes'; racine.classList.remove('gf-sans-props'); racine.classList.add('gf-avec-props'); }
     peindreProps(); majOutils();
   }
+  function selectionnerTout() {
+    var page = pageVisible();
+    var ids = (donnees.objets || []).filter(function (o) { return (o.page || 1) === page; }).map(function (o) { return o.id; });
+    if (!ids.length) { dire('Aucun objet posé sur cette page.', 'erreur'); return; }
+    objetsSel = ids; objetSel = ids[ids.length - 1];
+    marquerSelection(); peindreProps(); majOutils();
+    dire(ids.length + ' objet' + (ids.length > 1 ? 's' : '') + ' sélectionné' + (ids.length > 1 ? 's' : ''), 'ok');
+  }
+  function objetsSelectionnes() { return objetsSel.map(objetDe).filter(Boolean); }
 
   /* ---- les guides : les marges, le milieu de la page, les bords des autres
      objets. À moins de 1,8 mm, l'objet s'y colle et une ligne le dit ;
@@ -3671,21 +3881,50 @@
       return;
     }
     if (!el && !poignee) {
-      if (objetSel && !(e.target.closest && e.target.closest('[data-edit]'))) selectionnerObjet(null);
+      var dansTexte = !!(e.target.closest && e.target.closest('[data-edit], [contenteditable="true"]'));
+      var page = e.target.closest ? e.target.closest('.page') : null;
+      /* du vide : la page, son corps, l'enveloppe d'un bloc, le pied, le filigrane, un espace */
+      var surDuVide = !!page && (e.target === page || /^(corps|bloc|espace|wm|foot|pages)$/.test(e.target.className || '') || !!(e.target.closest && e.target.closest('footer.foot, .wm, .espace')));
+      if (surDuVide && !lectureSeule() && e.button === 0) {
+        /* sur du vide : un cadre de sélection */
+        var rp = page.getBoundingClientRect();
+        cadreSel = { page: page, num: Array.prototype.indexOf.call(cadre.contentDocument.querySelectorAll('.page'), page) + 1,
+                     x0: (e.clientX - rp.left) / MM, y0: (e.clientY - rp.top) / MM, el: null, ajouter: e.shiftKey || e.ctrlKey || e.metaKey };
+        return;
+      }
+      if (objetSel && !dansTexte) selectionnerObjet(null);
       return;
     }
     e.preventDefault();
     var id = poignee ? poignee.getAttribute('data-poignee') : (rotation ? rotation.getAttribute('data-rotation') : el.getAttribute('data-objet'));
     var o = objetDe(id);
     if (!o) return;
-    if (objetSel !== id) selectionnerObjet(id);
+    if (e.shiftKey || e.ctrlKey || e.metaKey) { selectionnerObjet(id, true); return; }
+    if (objetsSel.indexOf(id) === -1) selectionnerObjet(id);
+    else if (objetSel !== id) { objetSel = id; marquerSelection(); peindreProps(); }
     if (o.verrou) return;
     var rc = (el || rotation.closest('.objet')).getBoundingClientRect();
     glisseADeplace = false;
     glisse = { id: id, poignee: !!poignee, rotation: !!rotation, x0: e.clientX, y0: e.clientY, ox: o.x, oy: o.y, ow: o.w, oh: o.h,
-               cx: rc.left + rc.width / 2, cy: rc.top + rc.height / 2 };
+               cx: rc.left + rc.width / 2, cy: rc.top + rc.height / 2,
+               groupe: (!poignee && !rotation && objetsSel.length > 1) ? objetsSelectionnes().filter(function (x) { return !x.verrou; }).map(function (x) { return { o: x, ox: x.x, oy: x.y }; }) : null };
   }
+  var cadreSel = null;
   function surSourisBouge(e) {
+    if (cadreSel) {
+      var rp = cadreSel.page.getBoundingClientRect();
+      var x1 = (e.clientX - rp.left) / MM, y1 = (e.clientY - rp.top) / MM;
+      var x = Math.min(cadreSel.x0, x1), y = Math.min(cadreSel.y0, y1), w = Math.abs(x1 - cadreSel.x0), h = Math.abs(y1 - cadreSel.y0);
+      if (!cadreSel.el && (w > 1.5 || h > 1.5)) {
+        var dc = cadre.contentDocument;
+        cadreSel.el = dc.createElement('div'); cadreSel.el.className = 'objet-cadre-sel'; cadreSel.page.appendChild(cadreSel.el);
+        dc.body.classList.add('sel-cadre');
+        try { if (dc.activeElement && dc.activeElement.blur) dc.activeElement.blur(); dc.getSelection().removeAllRanges(); } catch (x) {}
+      }
+      if (cadreSel.el) { cadreSel.el.style.left = x + 'mm'; cadreSel.el.style.top = y + 'mm'; cadreSel.el.style.width = w + 'mm'; cadreSel.el.style.height = h + 'mm'; }
+      cadreSel.rect = { x: x, y: y, w: w, h: h };
+      return;
+    }
     if (!glisse) return;
     var o = objetDe(glisse.id), doc = cadre.contentDocument;
     var el = doc.querySelector('[data-objet="' + glisse.id + '"]');
@@ -3721,12 +3960,37 @@
       var gd = (e.altKey || !aimantActif) ? { v: null, h: null } : aimanter(o, 'deplacer');
       o.x = Math.round(o.x * 10) / 10; o.y = Math.round(o.y * 10) / 10;
       el.style.left = o.x + 'mm'; el.style.top = o.y + 'mm';
+      if (glisse.groupe) {
+        /* les autres suivent du même déplacement, aimant compris */
+        var ddx = o.x - glisse.ox, ddy = o.y - glisse.oy;
+        glisse.groupe.forEach(function (g) {
+          if (g.o === o) return;
+          g.o.x = Math.round((g.ox + ddx) * 10) / 10; g.o.y = Math.round((g.oy + ddy) * 10) / 10;
+          var ge = doc.querySelector('[data-objet="' + g.o.id + '"]'); if (ge) { ge.style.left = g.o.x + 'mm'; ge.style.top = g.o.y + 'mm'; }
+        });
+      }
       montrerGuides(el.closest('.page'), gd);
     }
     majNoteObjet(o);
   }
   var glisseADeplace = false;
   function surSourisLache() {
+    if (cadreSel) {
+      var c = cadreSel; cadreSel = null;
+      if (c.el) c.el.remove();
+      cadre.contentDocument.body.classList.remove('sel-cadre');
+      if (c.rect && (c.rect.w > 1.5 || c.rect.h > 1.5)) {
+        var pris = (donnees.objets || []).filter(function (o) {
+          return (o.page || 1) === c.num && o.x < c.rect.x + c.rect.w && o.x + o.w > c.rect.x && o.y < c.rect.y + c.rect.h && o.y + o.h > c.rect.y;
+        }).map(function (o) { return o.id; });
+        if (c.ajouter) pris.forEach(function (id) { if (objetsSel.indexOf(id) === -1) objetsSel.push(id); });
+        else objetsSel = pris;
+        objetSel = objetsSel.length ? objetsSel[objetsSel.length - 1] : null;
+        marquerSelection(); peindreProps(); majOutils();
+        if (pris.length) dire(pris.length + ' objet' + (pris.length > 1 ? 's' : '') + ' pris', 'ok');
+      } else if (objetSel && !c.ajouter) selectionnerObjet(null);
+      return;
+    }
     if (!glisse) return;
     glisse = null;
     effacerGuides();
@@ -3739,19 +4003,59 @@
     if (doc.activeElement && doc.activeElement.closest && doc.activeElement.closest('[data-edit]')) return false;
     var o = objetDe(objetSel);
     if (!o) return false;
-    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); retirerObjet(objetSel); return true; }
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); retirerObjets(objetsSel.slice()); return true; }
     if (e.key === 'Escape') { e.preventDefault(); selectionnerObjet(null); return true; }
-    var pas = e.shiftKey ? 5 : 1, bouge = true;
-    if (o.verrou) return false;
-    if (e.key === 'ArrowLeft') o.x -= pas; else if (e.key === 'ArrowRight') o.x += pas;
-    else if (e.key === 'ArrowUp') o.y -= pas; else if (e.key === 'ArrowDown') o.y += pas;
-    else bouge = false;
-    if (!bouge) return false;
+    var pas = e.shiftKey ? 5 : 1, ddx = 0, ddy = 0;
+    if (e.key === 'ArrowLeft') ddx = -pas; else if (e.key === 'ArrowRight') ddx = pas;
+    else if (e.key === 'ArrowUp') ddy = -pas; else if (e.key === 'ArrowDown') ddy = pas;
+    else return false;
     e.preventDefault();
-    var el = doc.querySelector('[data-objet="' + o.id + '"]');
-    if (el) { el.style.left = o.x + 'mm'; el.style.top = o.y + 'mm'; }
+    objetsSelectionnes().forEach(function (x) {
+      if (x.verrou) return;
+      x.x = Math.round((x.x + ddx) * 10) / 10; x.y = Math.round((x.y + ddy) * 10) / 10;
+      var el = doc.querySelector('[data-objet="' + x.id + '"]');
+      if (el) { el.style.left = x.x + 'mm'; el.style.top = x.y + 'mm'; }
+    });
     salir(); majNoteObjet(o);
     return true;
+  }
+  function retirerObjets(ids) {
+    if (!ids.length) return;
+    if (ids.length === 1) { retirerObjet(ids[0]); return; }
+    ids.forEach(function (id) {
+      var o = objetDe(id);
+      donnees.objets = (donnees.objets || []).filter(function (x) { return x.id !== id; });
+      if (o && o.type === 'cachet' && !donnees.objets.some(function (x) { return x.type === 'cachet'; })) delete donnees.cachetDetache;
+      if (o && o.type === 'signature' && !donnees.objets.some(function (x) { return x.type === 'signature'; })) delete donnees.signatureDetachee;
+    });
+    objetSel = null; objetsSel = [];
+    salir(); rafraichir(); peindreProps(); majOutils();
+    dire(ids.length + ' objets retirés', 'ok');
+  }
+  /* aligner et répartir les objets sélectionnés, sur l'objet principal */
+  function alignerObjets(mode) {
+    var os = objetsSelectionnes().filter(function (x) { return !x.verrou; });
+    if (os.length < 2) return;
+    var p = objetDe(objetSel) || os[0];
+    if (mode === 'gauche') os.forEach(function (x) { x.x = p.x; });
+    else if (mode === 'droite') os.forEach(function (x) { x.x = p.x + p.w - x.w; });
+    else if (mode === 'centre') os.forEach(function (x) { x.x = p.x + p.w / 2 - x.w / 2; });
+    else if (mode === 'haut') os.forEach(function (x) { x.y = p.y; });
+    else if (mode === 'bas') os.forEach(function (x) { x.y = p.y + p.h - x.h; });
+    else if (mode === 'milieu') os.forEach(function (x) { x.y = p.y + p.h / 2 - x.h / 2; });
+    else if (mode === 'largeur') os.forEach(function (x) { x.w = p.w; if (x.ratio || x.type === 'cachet') x.h = x.w / (x.ratio || 1); });
+    else if (mode === 'hauteur') os.forEach(function (x) { x.h = p.h; });
+    else if (mode === 'horizontal' || mode === 'vertical') {
+      var h = mode === 'horizontal';
+      os.sort(function (a, b) { return h ? a.x - b.x : a.y - b.y; });
+      var premier = os[0], dernier = os[os.length - 1];
+      var total = h ? (dernier.x + dernier.w - premier.x) : (dernier.y + dernier.h - premier.y);
+      var occupe = os.reduce(function (s, x) { return s + (h ? x.w : x.h); }, 0);
+      var ecart = (total - occupe) / (os.length - 1), cur = h ? premier.x : premier.y;
+      os.forEach(function (x) { if (h) x.x = cur, cur += x.w + ecart; else x.y = cur, cur += x.h + ecart; });
+    }
+    os.forEach(function (x) { x.x = Math.round(x.x * 10) / 10; x.y = Math.round(x.y * 10) / 10; x.w = Math.round(x.w * 10) / 10; x.h = Math.round(x.h * 10) / 10; });
+    salir(); rafraichir(); setTimeout(function () { marquerSelection(); peindreProps(); }, 40);
   }
   function retirerObjet(id) {
     var o = objetDe(id);
@@ -3759,6 +4063,7 @@
     if (o && o.type === 'cachet' && !donnees.objets.some(function (x) { return x.type === 'cachet'; })) delete donnees.cachetDetache;
     if (o && o.type === 'signature' && !donnees.objets.some(function (x) { return x.type === 'signature'; })) delete donnees.signatureDetachee;
     if (objetSel === id) objetSel = null;
+    objetsSel = objetsSel.filter(function (x) { return x !== id; });
     panneau = 'donnees';
     salir(); peindreFormulaire(); rafraichir();
     dire('Objet retiré', 'ok');
@@ -3772,8 +4077,31 @@
   }
 
   /* le panneau : position, taille, rotation, opacité, texte, couleur, verrou */
+  function peindreGroupe(hote) {
+    var os = objetsSelectionnes();
+    function b(mode, lab, titre) { return '<button type="button" data-al="' + mode + '" title="' + titre + '">' + lab + '</button>'; }
+    hote.innerHTML = '<div class="gf-controle"><p class="gf-acc-intro">' + os.length + ' objets sélectionnés</p>'
+      + '<p class="gf-props-vide">Ils se déplacent ensemble (souris, flèches). L\'alignement se fait sur l\'objet principal, le dernier pris : ' + ech((TYPES_OBJET[(objetDe(objetSel) || {}).type] || {}).nom || '') + '.</p>'
+      + '<div class="gf-props-titre">Aligner</div><div class="gf-typo">' + b('gauche', '⇤', 'Bords gauches') + b('centre', '↔', 'Centres') + b('droite', '⇥', 'Bords droits') + b('haut', '⤒', 'Bords hauts') + b('milieu', '↕', 'Milieux') + b('bas', '⤓', 'Bords bas') + '</div>'
+      + '<div class="gf-props-titre">Répartir, égaliser</div><div class="gf-typo">' + b('horizontal', 'Répartir ↔', 'Même espace entre eux, de gauche à droite') + b('vertical', 'Répartir ↕', 'Même espace entre eux, de haut en bas') + b('largeur', 'Même largeur', 'La largeur du principal') + b('hauteur', 'Même hauteur', 'La hauteur du principal') + '</div>'
+      + '<div class="gf-controle-actions" style="margin-top:14px;justify-content:flex-start;flex-wrap:wrap">'
+      + '<button type="button" class="gf-mini" data-ga="copier">Copier</button><button type="button" class="gf-mini" data-ga="verrou">Verrouiller</button><button type="button" class="gf-mini" data-ga="liberer">Déverrouiller</button>'
+      + '<button type="button" class="gf-mini gf-mini-danger" data-ga="retirer">Retirer</button></div>'
+      + '<div class="gf-controle-actions" style="margin-top:14px"><button type="button" class="gf-btn gf-btn-fant" data-ga="rien">Désélectionner</button></div></div>';
+    hote.querySelectorAll('[data-al]').forEach(function (x) { x.addEventListener('click', function () { alignerObjets(x.getAttribute('data-al')); }); });
+    hote.querySelectorAll('[data-ga]').forEach(function (x) {
+      x.addEventListener('click', function () {
+        var a = x.getAttribute('data-ga');
+        if (a === 'retirer') retirerObjets(objetsSel.slice());
+        else if (a === 'copier') copierElement();
+        else if (a === 'verrou' || a === 'liberer') { objetsSelectionnes().forEach(function (o) { o.verrou = a === 'verrou'; }); salir(); rafraichir(); setTimeout(function () { marquerSelection(); peindreProps(); }, 40); }
+        else selectionnerObjet(null);
+      });
+    });
+  }
   function peindreObjet(hote) {
     hote = hote || $('gf-props-corps') || elt.formDefile;
+    if (objetsSel.length > 1) { peindreGroupe(hote); return; }
     var o = objetDe(objetSel);
     if (!o) { objetSel = null; peindreProps(); return; }
     var T = TYPES_OBJET[o.type] || { nom: o.type };
@@ -3823,7 +4151,7 @@
         if (a === 'retirer') { retirerObjet(o.id); return; }
         if (a === 'dupliquer') {
           var c = JSON.parse(JSON.stringify(o)); c.id = 'o' + Date.now().toString(36); c.x += 6; c.y += 6; c.verrou = false;
-          list.splice(i + 1, 0, c); objetSel = c.id;
+          list.splice(i + 1, 0, c); objetSel = c.id; objetsSel = [c.id];
         } else if (a === 'devant' && i < list.length - 1) { list.splice(i, 1); list.push(o); }
         else if (a === 'derriere' && i > 0) { list.splice(i, 1); list.unshift(o); }
         salir(); rafraichir(); peindreProps(); setTimeout(marquerSelection, 40);
@@ -3846,14 +4174,15 @@
     var sel = doc.getSelection();
     if (sel && sel.rangeCount && !sel.isCollapsed && sel.toString()) return false;   /* du texte : le navigateur s'en charge */
     var contenu = null;
-    if (objetSel && objetDe(objetSel)) contenu = { genre: 'objet', objet: JSON.parse(JSON.stringify(objetDe(objetSel))) };
+    if (objetsSel.length > 1) contenu = { genre: 'objets', objets: JSON.parse(JSON.stringify(objetsSelectionnes())) };
+    else if (objetSel && objetDe(objetSel)) contenu = { genre: 'objet', objet: JSON.parse(JSON.stringify(objetDe(objetSel))) };
     else if (blocCourant && modeleActif.libre && /^b\d+$/.test(blocCourant)) {
       var x = (donnees.blocs || [])[+blocCourant.slice(1)];
       if (x) contenu = { genre: 'bloc', bloc: JSON.parse(JSON.stringify(x)), table: x.source && donnees.tables ? JSON.parse(JSON.stringify(donnees.tables[x.source] || null)) : null };
     }
     if (!contenu) return false;
     try { localStorage.setItem(CLE_PRESSE, JSON.stringify(contenu)); } catch (e) {}
-    dire((contenu.genre === 'objet' ? (TYPES_OBJET[contenu.objet.type] || {}).nom : 'Bloc') + ' copié', 'ok');
+    dire((contenu.genre === 'objet' ? (TYPES_OBJET[contenu.objet.type] || {}).nom : (contenu.genre === 'objets' ? contenu.objets.length + ' objets' : 'Bloc')) + ' copié' + (contenu.genre === 'objets' ? 's' : ''), 'ok');
     return true;
   }
   function collerElement() {
@@ -3867,8 +4196,19 @@
       var o = contenu.objet; o.id = 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); o.x += 6; o.y += 6; o.verrou = false;
       if (o.type === 'cachet' && !res.cachet) { dire('Le cachet n\'est pas déposé sur ce poste.', 'erreur'); return true; }
       donnees.objets = donnees.objets || []; donnees.objets.push(o);
-      salir(); rafraichir(); objetSel = o.id; panneau = 'objet'; peindreFormulaire(); setTimeout(marquerSelection, 50);
+      salir(); rafraichir(); objetSel = o.id; objetsSel = [o.id]; panneau = 'objet'; peindreFormulaire(); setTimeout(marquerSelection, 50);
       dire('Objet collé', 'ok'); return true;
+    }
+    if (contenu.genre === 'objets') {
+      donnees.objets = donnees.objets || []; objetsSel = [];
+      contenu.objets.forEach(function (o) {
+        if (o.type === 'cachet' && !res.cachet) return;
+        o.id = 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); o.x += 6; o.y += 6; o.verrou = false;
+        donnees.objets.push(o); objetsSel.push(o.id);
+      });
+      objetSel = objetsSel[objetsSel.length - 1] || null;
+      salir(); rafraichir(); setTimeout(function () { marquerSelection(); peindreProps(); }, 50);
+      dire(objetsSel.length + ' objets collés', 'ok'); return true;
     }
     if (contenu.genre === 'bloc') {
       if (!modeleActif.libre) { dire('Un bloc se colle dans un acte libre.', 'erreur'); return true; }
@@ -3943,6 +4283,95 @@
 
 
 
+
+  /* =================================================================
+     6 sexies. LES ONGLETS : PLUSIEURS ACTES OUVERTS À LA FOIS
+     Chaque acte ouvert garde son état (donnée, historique, référence,
+     zoom) dans un onglet ; on passe de l'un à l'autre d'un clic, sans
+     rien fermer, et le presse-papiers passe de l'un à l'autre. Ouvrir
+     un acte déjà ouvert ramène à son onglet. Fermer un onglet demande
+     s'il reste des changements non voulus ; quitter l'onglet en cours
+     pour un autre enregistre ce qui a été touché.
+     ================================================================= */
+  var onglets = [], ongletCourant = null;
+  function etatCourant() {
+    return { modeleActif: modeleActif, donnees: donnees, acteEtat: acteEtat, acteVersion: acteVersion, acteVersions: acteVersions,
+             acteJournal: acteJournal, acteEmisLe: acteEmisLe, acteMotif: acteMotif, acteId: acteId, acteSauve: acteSauve,
+             acteReference: acteReference, acteTouche: acteTouche, modeLecture: modeLecture, histo: histo, histoI: histoI, zoom: zoom };
+  }
+  function restaurerEtat(s) {
+    modeleActif = s.modeleActif; donnees = s.donnees; acteEtat = s.acteEtat; acteVersion = s.acteVersion; acteVersions = s.acteVersions;
+    acteJournal = s.acteJournal; acteEmisLe = s.acteEmisLe; acteMotif = s.acteMotif; acteId = s.acteId; acteSauve = s.acteSauve;
+    acteReference = s.acteReference; acteTouche = s.acteTouche; modeLecture = s.modeLecture; histo = s.histo; histoI = s.histoI; zoom = s.zoom || zoom;
+    controle = null; panneau = 'donnees'; objetSel = null; objetsSel = []; blocSel = null; blocCourant = null; cadrePret = false;
+  }
+  function nomOnglet() {
+    if (!modeleActif) return '';
+    return (String(donnees.nomActe || '').trim() || (modeleActif.libre && String(donnees.titre || '').trim()) || modeleActif.nom) + (donnees.numero ? ' ' + donnees.numero : '');
+  }
+  function ongletDe(id) { return onglets.filter(function (o) { return o.id === id; })[0]; }
+  /* l'acte qui vient d'être ouvert ou créé prend son onglet (ou le retrouve) */
+  function ongletPourActeCourant() {
+    var cle = acteId || ('neuf-' + Date.now().toString(36));
+    var o = ongletDe(cle);
+    if (!o) { o = { id: cle, nom: nomOnglet() }; onglets.push(o); }
+    o.nom = nomOnglet();
+    ongletCourant = o.id;
+    peindreOnglets();
+  }
+  function ongletRenommer() {
+    var o = ongletDe(ongletCourant);
+    if (o) { if (acteId && o.id !== acteId) o.id = acteId, ongletCourant = acteId; o.nom = nomOnglet(); peindreOnglets(); }
+  }
+  function activerOnglet(id) {
+    if (id === ongletCourant || !ongletDe(id)) return;
+    var cour = ongletDe(ongletCourant);
+    if (cour && modeleActif) {
+      /* ce qui a été touché s'enregistre avant de changer d'onglet */
+      if (acteTouche && !acteSauve && acteEtat === 'brouillon') enregistrer(true, true);
+      cour.etat = etatCourant(); cour.nom = nomOnglet();
+    }
+    var cible = ongletDe(id);
+    if (!cible.etat) return;
+    restaurerEtat(cible.etat);
+    ongletCourant = id;
+    montrer('atelier');
+    histoBoutons();
+    peindreOnglets();
+    majTitreBarre();
+    noterReprise();
+  }
+  function fermerOnglet(id) {
+    onglets = onglets.filter(function (o) { return o.id !== id; });
+    if (ongletCourant === id) ongletCourant = null;
+    peindreOnglets();
+  }
+  function peindreOnglets() {
+    var hote = $('gf-onglets');
+    if (!hote) return;
+    hote.hidden = !onglets.length || espace !== 'atelier';
+    hote.innerHTML = onglets.map(function (o) {
+      var actif = o.id === ongletCourant;
+      var touche = actif ? (acteTouche && !acteSauve) : !!(o.etat && o.etat.acteTouche && !o.etat.acteSauve);
+      return '<div class="gf-onglet' + (actif ? ' is-actif' : '') + '" data-onglet="' + ech(o.id) + '" role="tab" aria-selected="' + actif + '">'
+        + '<span class="gf-onglet-nom">' + ech(o.nom || 'Acte') + '</span>' + (touche ? '<i class="gf-onglet-pt" title="Modifié"></i>' : '')
+        + '<button type="button" class="gf-onglet-x" data-onglet-x="' + ech(o.id) + '" title="Fermer cet onglet" aria-label="Fermer">×</button></div>';
+    }).join('') + '<button type="button" class="gf-onglet-plus" id="gf-onglet-plus" title="Nouvel acte dans un nouvel onglet (Ctrl+N)">+</button>';
+    hote.querySelectorAll('[data-onglet]').forEach(function (b) {
+      b.addEventListener('click', function (e) { if (e.target.closest('[data-onglet-x]')) return; activerOnglet(b.getAttribute('data-onglet')); });
+    });
+    hote.querySelectorAll('[data-onglet-x]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-onglet-x');
+        if (id === ongletCourant) { fermerActe(); return; }
+        var o = ongletDe(id);
+        if (o && o.etat && o.etat.acteTouche && !o.etat.acteSauve) { activerOnglet(id); fermerActe(); return; }
+        fermerOnglet(id);
+      });
+    });
+    var plus = $('gf-onglet-plus'); if (plus) plus.addEventListener('click', function () { ouvrirNouveau(); });
+  }
+
   /* =================================================================
      6 quinquies. LA BARRE D'OUTILS ET LE PANNEAU DE PROPRIÉTÉS
      Ce que demandait l'espace de travail : à gauche de la feuille, les
@@ -4012,7 +4441,7 @@
     cat.forEach(function (e) { (familles[e.famille || 'Blocs'] = familles[e.famille || 'Blocs'] || []).push(e); });
     var html = Object.keys(familles).map(function (f) {
       return '<div class="gf-fam"><span class="gf-lab">' + ech(f) + '</span><div class="gf-cartes gf-cartes-mini">' + familles[f].map(function (e) {
-        return '<button type="button" class="gf-carte gf-carte-mini" data-bloc="' + ech(e.type) + '" title="' + ech(e.resume || '') + '"><b>' + ech(e.nom) + '</b></button>';
+        return '<button type="button" class="gf-carte gf-carte-mini" data-bloc="' + ech(e.type) + '" data-bloc-i="' + cat.indexOf(e) + '" title="' + ech(e.resume || '') + '"><b>' + ech(e.nom) + '</b></button>';
       }).join('') + '</div></div>';
     }).join('');
     modale('Poser un bloc', html, [{ lab: 'Fermer' }]);
@@ -4020,7 +4449,7 @@
     if (!voile) return;
     voile.querySelectorAll('[data-bloc]').forEach(function (b) {
       b.addEventListener('click', function () {
-        var e = cat.filter(function (x) { return x.type === b.getAttribute('data-bloc'); })[0];
+        var e = cat[+b.getAttribute('data-bloc-i')];
         voile.remove();
         if (e) poserBloc(e);
       });
@@ -4417,9 +4846,13 @@
       if (espace === 'atelier' && document.activeElement && document.activeElement !== document.body) { document.activeElement.blur(); return; }
       fermer(); return;
     }
+    if (ctrl && k === 'k') { e.preventDefault(); palette(); return; }
     if (e.key === 'F2' && modeleActif && espace === 'atelier') { e.preventDefault(); renommerActe(); return; }
+    if (e.altKey && !ctrl && /^[1-9]$/.test(e.key) && onglets[+e.key - 1]) { e.preventDefault(); activerOnglet(onglets[+e.key - 1].id); return; }
+    if (e.altKey && !ctrl && k === 'w' && modeleActif) { e.preventDefault(); fermerActe(); return; }
     if (!ctrl) return;
     var enAtelier = !!modeleActif && espace === 'atelier';
+    if (enAtelier && k === 'a' && !e.shiftKey) { var dA = cadre && cadrePret ? cadre.contentDocument : null; if (!(dA && dA.activeElement && dA.activeElement.closest && dA.activeElement.closest('[data-edit]')) && !(document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName) || (document.activeElement && document.activeElement.isContentEditable))) { e.preventDefault(); selectionnerTout(); return; } }
     if (enAtelier && k === 'c' && copierElement()) { e.preventDefault(); return; }
     if (enAtelier && k === 'v' && collerElement()) { e.preventDefault(); return; }
     if (k === 'n' && e.shiftKey) { e.preventDefault(); nouvelleFenetre(); }
@@ -4468,6 +4901,7 @@
       rafraichir();
     }
     majTitreBarre();
+    peindreOnglets();
   }
   var zoomChoisi = false;
 
@@ -4569,5 +5003,7 @@
   });
   G.close = fermer;
   G.isOpen = function () { return ouvert; };
+  /* pour le banc d'essai : ce que la boîte « acte non enregistré » compare */
+  G.diagnostic = function () { var f = modeleActif ? ficheCourante() : null; if (f) delete f.maj; var r = acteReference ? JSON.parse(acteReference) : null; if (r) delete r.maj; return { courante: f ? JSON.stringify(f) : null, reference: r ? JSON.stringify(r) : null, change: changementsNonValides() }; };
 
 })();

@@ -184,6 +184,19 @@
 .gf-sect.is-ouvert .gf-sect-corps{ display:block; }
 
 .gf-champ{ margin-bottom:11px; }
+/* les champs riches du formulaire : une petite feuille, avec la grammaire rendue */
+.gf-riche{ white-space:normal; overflow-wrap:anywhere; cursor:text; }
+.gf-riche:empty::before{ content:attr(data-vide); color:var(--gf-pale); opacity:.6; }
+.gf-riche p{ margin:0 0 5px 0; } .gf-riche p:last-child{ margin-bottom:0; }
+.gf-riche ul{ margin:0 0 5px 16px; padding:0; } .gf-riche li{ margin:0 0 2px 0; }
+.gf-riche .note{ font-size:12px; color:var(--gf-pale); border-left:2px solid var(--gf-line-fort); padding-left:8px; }
+.gf-riche b, .gf-riche strong{ font-weight:700; } .gf-riche mark{ background:#FFF0B3; color:#15201A; border-radius:2px; }
+.gf-riche .s-or{ color:#C1A462; } .gf-riche .s-vert{ color:#46BF1D; } .gf-riche .s-rouge{ color:#E0483F; } .gf-riche .s-gris{ color:var(--gf-pale); }
+.gf-riche .s-grand{ font-size:1.15em; } .gf-riche .s-petit{ font-size:.88em; } .gf-riche .s-maj{ text-transform:uppercase; letter-spacing:.05em; }
+.gf-riche .s-fin{ font-weight:400; } .gf-riche .s-droit{ font-style:normal; }
+.gf-riche .s-var{ background:rgba(70,191,29,.14); border-radius:3px; padding:0 3px; }
+.gf-riche-ligne{ min-height:38px; display:flex; align-items:center; }
+.gf-ta.gf-riche{ min-height:64px; }
 .gf-grille2{ display:grid; grid-template-columns:1fr 1fr; gap:0 16px; }
 .gf-grille2 .gf-champ span{ display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--gf-muted,#9aa39c); margin-bottom:4px; }
 .gf-pol-intro code{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; background:var(--gf-surf3); padding:1px 5px; border-radius:4px; }
@@ -468,13 +481,29 @@
 .gf-depot-pre{ margin-top:10px; }
 .gf-depot-pre .gf-mini{ display:inline-flex; cursor:pointer; }
 .gf-modale-courte{ max-width:440px; }
+/* la palette de commandes (Ctrl+K) */
+.gf-voile-cmd{ align-items:flex-start; padding-top:9vh; }
+.gf-cmd{ width:min(640px, 94vw); background:var(--gf-surf); color:var(--gf-texte); border:1px solid var(--gf-line-fort); border-radius:12px; box-shadow:0 24px 60px rgba(0,0,0,.35); overflow:hidden; display:flex; flex-direction:column; max-height:72vh; }
+.gf-cmd-in{ border:0; border-bottom:1px solid var(--gf-line); background:transparent; color:inherit; font:inherit; font-size:15px; padding:14px 16px; outline:none; }
+.gf-cmd-liste{ overflow:auto; padding:6px; }
+.gf-cmd-groupe{ font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--gf-pale); padding:8px 10px 3px; }
+.gf-cmd-item{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; text-align:left; border:0; background:transparent; color:inherit; font:inherit; padding:8px 10px; border-radius:7px; cursor:pointer; }
+.gf-cmd-item.is-sel{ background:rgba(70,191,29,.14); }
+.gf-cmd-lab{ display:flex; flex-direction:column; min-width:0; } .gf-cmd-lab small{ font-size:11.5px; color:var(--gf-pale); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gf-cmd-item kbd, .gf-cmd-pied kbd{ font:inherit; font-size:11px; color:var(--gf-pale); border:1px solid var(--gf-line); border-radius:4px; padding:1px 5px; margin-left:2px; }
+.gf-cmd-vide{ padding:18px; color:var(--gf-pale); text-align:center; }
+.gf-cmd-pied{ display:flex; gap:14px; padding:8px 14px; border-top:1px solid var(--gf-line); font-size:11.5px; color:var(--gf-pale); }
+.gf-cmd-pied span:last-child{ margin-left:auto; }
 .gf-sauvegarde{ margin-top:14px; padding-top:12px; border-top:1px solid var(--gf-line); display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
 .gf-sauvegarde .gf-mini{ display:inline-flex; cursor:pointer; }
 .gf-sauvegarde .gf-aide{ flex:1 0 100%; margin:4px 0 0 0; }
 .gf-ico:disabled{ opacity:.35; cursor:not-allowed; }
 
 /* ============================== LES ESPACES ============================== */
-.gf-nav{ display:flex; gap:2px; margin-left:18px; }
+/* les espaces au centre de la barre, quelle que soit la largeur de la marque et de l'état */
+.gf-top{ position:relative; }
+.gf-nav{ display:flex; gap:2px; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
+@media (max-width:1100px){ .gf-nav{ position:static; transform:none; margin-left:12px; } }
 .gf-nav-btn{
   padding:7px 12px; border-radius:8px; border:1px solid transparent; background:transparent;
   color:var(--gf-doux); font:inherit; font-size:13px; font-weight:500; cursor:pointer;
@@ -500,7 +529,7 @@
 
 /* la barre de menus, courte */
 .gf-menus{
-  flex:0 0 auto; display:flex; gap:2px; padding:3px 12px; border-bottom:1px solid var(--gf-line);
+  flex:0 0 auto; display:flex; gap:2px; padding:3px 12px; border-bottom:1px solid var(--gf-line); justify-content:center;
   background:var(--gf-surf);
 }
 .gf-menu-btn{
@@ -535,6 +564,17 @@
 .gf-form-tete p{ margin:6px 0 10px 0; font-size:12.5px; color:var(--gf-doux); line-height:1.5; }
 .gf-form-defile.is-fige{ opacity:.55; pointer-events:none; }
 .gf-sans-panneau .gf-form{ display:none; }
+/* ------------------------- les onglets ------------------------- */
+.gf-onglets{ flex:0 0 auto; display:flex; align-items:flex-end; gap:4px; padding:6px 12px 0 12px; background:var(--gf-surf); border-bottom:1px solid var(--gf-line); overflow-x:auto; }
+.gf-onglet{ display:flex; align-items:center; gap:6px; padding:7px 8px 7px 12px; border:1px solid var(--gf-line); border-bottom:none; border-radius:9px 9px 0 0; background:transparent; color:var(--gf-doux); font-size:12.5px; cursor:pointer; max-width:240px; white-space:nowrap; }
+.gf-onglet:hover{ color:var(--gf-texte); background:var(--gf-surf3); }
+.gf-onglet.is-actif{ color:var(--gf-texte); background:var(--gf-bg); border-color:var(--gf-line-fort); font-weight:600; margin-bottom:-1px; padding-bottom:8px; }
+.gf-onglet-nom{ overflow:hidden; text-overflow:ellipsis; }
+.gf-onglet-pt{ width:7px; height:7px; border-radius:99px; background:var(--gf-accent); flex:none; }
+.gf-onglet-x{ width:18px; height:18px; border-radius:5px; border:0; background:transparent; color:var(--gf-pale); font:inherit; font-size:14px; line-height:1; cursor:pointer; }
+.gf-onglet-x:hover{ background:var(--gf-surf3); color:var(--gf-rouge); }
+.gf-onglet-plus{ width:28px; height:28px; margin-bottom:4px; border-radius:7px; border:1px solid var(--gf-line); background:transparent; color:var(--gf-pale); font:inherit; font-size:16px; cursor:pointer; }
+.gf-onglet-plus:hover{ color:var(--gf-texte); border-color:var(--gf-line-fort); }
 
 /* ------------------------- la barre d'outils ------------------------- */
 .gf-rail{
