@@ -11487,6 +11487,46 @@ window.BaobabsStudio = (function () {
     }).catch(function () { toast('Envoi impossible', true); });
   }
 
+  /* POSER SUR LE SITE. Publier dans la médiathèque laissait l affiche
+     dans un tiroir : il fallait ensuite la retrouver dans Bannières, ou
+     Galerie, ou la fiche du match. Ici l affiche part directement à sa
+     place : une bannière (créée désactivée, on l allume quand elle est
+     prête), une photo dans la galerie, la photo du match affiché, ou
+     l image d un article en brouillon. L hôte fait les écritures ; le
+     Studio ne connaît aucune table. */
+  function poserSurLeSite() {
+    if (!api || !api.uploadImage || !api.poserSurLeSite) { toast('Ouvrez le Studio depuis l administration', true); return; }
+    var mm = (data.matchs || [])[data.matchIdx || 0] || {};
+    var choix = [
+      { c: 'banniere', t: 'Bannière du site', s: 'Dans le slider de l accueil, désactivée : vous l allumez quand elle est prête.' + (doc.format === 'banniere' ? '' : ' Le format Bannière (1600 × 900) lui va mieux.') },
+      { c: 'galerie',  t: 'Galerie', s: 'Une photo de plus dans la galerie de l accueil, album « Affiches ».' },
+      { c: 'match',    t: 'Photo du match' + (mm.opponent ? ' contre ' + mm.opponent : ''), s: 'La fiche du match la reprend ; l accueil aussi quand ce match est le prochain.', off: !mm.id },
+      { c: 'article',  t: 'Image d un nouvel article', s: 'Un article en brouillon, titré comme l affiche, avec cette image.' }
+    ];
+    modal('Poser sur le site',
+      '<p style="font-size:12.5px;color:var(--bs-fg-2);line-height:1.6;margin:0 0 12px">L affiche est exportée en PNG, envoyée dans la médiathèque, puis posée là où vous choisissez.</p>' +
+      '<div class="bs-list">' + choix.map(function (x) {
+        return '<button type="button" class="bs-item" data-act="siteCible" data-c="' + x.c + '"' + (x.off ? ' disabled' : '') + '>' +
+          '<span class="bs-item-txt"><b>' + esc(x.t) + '</b><small>' + esc(x.s) + '</small></span></button>';
+      }).join('') + '</div>',
+      '<button type="button" class="bs-btn bs-btn-ghost" data-act="closeModal">Annuler</button>');
+  }
+  function poserSurLeSiteVers(cible) {
+    closeModal();
+    var mm = (data.matchs || [])[data.matchIdx || 0] || {};
+    toast('Envoi de l affiche…');
+    exportBlob(2, 'image/png').then(function (blob) {
+      var name = slug(doc.name || 'affiche') + '-' + today() + '.png';
+      return api.uploadImage(new File([blob], name, { type: 'image/png' }));
+    }).then(function (url) {
+      if (!url) throw new Error('upload');
+      medias.unshift({ url: url, nom: doc.name || 'Affiche' });
+      return api.poserSurLeSite(cible, url, { nom: doc.name || 'Affiche', titre: doc.name || '', matchId: mm.id || null });
+    }).then(function (r) {
+      toast((r && r.message) || 'Posée sur le site', false, true);
+    }).catch(function (e) { console.warn('[Studio] site', e); toast('Impossible de poser l affiche sur le site', true); });
+  }
+
   /* ===================================================================
      35. PROJETS
      =================================================================== */
@@ -12352,6 +12392,7 @@ window.BaobabsStudio = (function () {
       case 'doExportJpg': doExport(num(el.getAttribute('data-s'), 2), 'image/jpeg'); return true;
       case 'doExportJson': exportJson(); return true;
       case 'closeModal': closeModal(); return true;
+      case 'siteCible': poserSurLeSiteVers(el.getAttribute('data-c')); return true;
       case 'delProjectOk': delProjectConfirmed(el.getAttribute('data-id')); return true;
       case 'discardGo': { var f = pendingNav; closeModal(); markDirty(false); if (f) f(); return true; }
       case 'saveThenGo': { var g = pendingNav; closeModal(); saveProject(false).then(function () { if (g) g(); }); return true; }
@@ -13185,6 +13226,7 @@ window.BaobabsStudio = (function () {
         SEP,
         M('Partager sur les réseaux…', 'm.partage', 'Ctrl ⇧ P'),
         M('Publier dans la médiathèque', 'm.publish'),
+        M('Poser sur le site…', 'm.site', null, { off: !(api && api.poserSurLeSite), why: 'Ouvrez le Studio depuis l administration' }),
         M('Copier la légende seule', 'm.share'),
         SEP,
         M('Retour à l’accueil', 'm.home'),
@@ -14502,6 +14544,7 @@ window.BaobabsStudio = (function () {
       case 'm.json':     exportJson(); return;
       case 'm.partage':  partager(); return;
       case 'm.publish':  publish(); return;
+      case 'm.site':     poserSurLeSite(); return;
       case 'm.share':    sharePublication(); return;
       case 'm.home':     quitterVers(showHome); return;
       case 'm.close':    close(); return;

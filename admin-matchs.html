@@ -4260,7 +4260,8 @@
               <div class="db-meta" id="db-meta"></div>
               <div class="db-cd" id="db-cd"></div>
               <div class="db-cta">
-                <button class="btn btn-primary" data-go="gameday">Ouvrir Soir de match</button>
+                <button class="btn btn-primary" data-go="parcours" title="Convocation, cinq, affiche, billetterie, direct, résultat : ce qui est fait et ce qui reste">Préparer le match</button>
+                <button class="btn btn-ghost" data-go="gameday">Soir de match</button>
                 <button class="btn btn-ghost" id="db-open-match">Fiche du match</button>
               </div>
             </div>
@@ -8088,6 +8089,33 @@
 
       toast: function(m, err){ qgToast(m, !!err); },
 
+      // POSER SUR LE SITE. Le Studio a exporte et televerse l'affiche ;
+      // ici on l'ecrit la ou elle va. Une banniere nait desactivee : le
+      // slider de l'accueil ne change pas sans qu'on l'ait voulu.
+      poserSurLeSite: function(cible, url, meta){
+        meta = meta || {};
+        var nom = meta.nom || 'Affiche';
+        if (cible === 'banniere'){
+          return sbGet('banners?select=sort&order=sort.desc&limit=1').then(function(r){
+            var s = ((r||[])[0]||{}).sort;
+            return sbInsert('banners', { title: meta.titre || nom, image_url: url, image_alt: nom, is_active: false, sort: (s == null ? 0 : Number(s) + 10) }, 'Bannières');
+          }).then(function(){ if (typeof bnLoad === 'function' && bnStarted) bnLoad(); return { message: 'Bannière créée, désactivée : activez-la dans Bannières & slider quand elle est prête.' }; });
+        }
+        if (cible === 'galerie'){
+          return sbInsert('gallery', { image_url: url, caption: nom, album: 'Affiches', sort: 9999, published: true, match_id: meta.matchId || null }, 'Galerie')
+            .then(function(){ if (typeof galLoad === 'function') galLoad(); return { message: 'Ajoutée à la galerie du site, album « Affiches ».' }; });
+        }
+        if (cible === 'match'){
+          if (!meta.matchId) return Promise.reject(new Error('match'));
+          return sbUpdate('matches', meta.matchId, { photo_url: url }, 'Matchs').then(function(){ if (typeof mcLoad === 'function' && mcStarted) mcLoad(); return { message: 'Posée comme photo du match.' }; });
+        }
+        if (cible === 'article'){
+          return sbInsert('news', { title: meta.titre || nom, body: '', status: 'brouillon', published_at: todayISO(), image_url: url, match_id: meta.matchId || null }, 'Articles')
+            .then(function(){ if (typeof arLoad === 'function' && arStarted) arLoad(); return { message: 'Article créé en brouillon avec cette image : il vous attend dans Articles.' }; });
+        }
+        return Promise.reject(new Error('cible'));
+      },
+
       // Recherche de photos Unsplash dans le Studio. Laissez vide pour
       // la désactiver — le Studio le dit alors clairement au lieu de
       // faire semblant. La clé « Access Key » est prévue pour vivre
@@ -8775,7 +8803,7 @@
   }
 
   var SECTION_HELP = {
-    dashboard: ["<b>Deux colonnes qui ne disent pas la même chose.</b> « Ce qui vous attend » dit <b>quoi faire</b> : seulement ce sur quoi vous pouvez agir aujourd’hui, le plus pressé en haut, et chaque ligne ouvre l’écran où ça se règle. « En un coup d’œil » dit <b>combien</b>.","Les jours où rien ne réclame de décision, la liste le dit et la page se replie sur une seule colonne. C’est bon signe — pas un écran inachevé.","Les <b>six chiffres</b> d’« En un coup d’œil » ouvrent leur écran d’un clic : matchs à venir, matchs joués, commandes, candidatures, messages, abonnés à la newsletter. En dessous, <b>Accès rapide</b> fait la même chose pour les gestes de création.","L’affiche du haut est le <b>prochain match</b>. <b>Ouvrir Soir de match</b> mène à la table de marque et au guichet ; <b>Fiche du match</b> à tout le reste — feuille, résultat, billetterie, diffusion. La jauge à droite dit où en est la vente.","<b>Ctrl+K</b> (ou la loupe en haut) cherche partout : un match, un club, une joueuse, une référence de billet, un écran."],
+    dashboard: ["<b>Deux colonnes qui ne disent pas la même chose.</b> « Ce qui vous attend » dit <b>quoi faire</b> : seulement ce sur quoi vous pouvez agir aujourd’hui, le plus pressé en haut, et chaque ligne ouvre l’écran où ça se règle. « En un coup d’œil » dit <b>combien</b>.","Les jours où rien ne réclame de décision, la liste le dit et la page se replie sur une seule colonne. C’est bon signe — pas un écran inachevé.","Les <b>six chiffres</b> d’« En un coup d’œil » ouvrent leur écran d’un clic : matchs à venir, matchs joués, commandes, candidatures, messages, abonnés à la newsletter. En dessous, <b>Accès rapide</b> fait la même chose pour les gestes de création.","L’affiche du haut est le <b>prochain match</b>. <b>Préparer le match</b> ouvre le parcours de J-7 à J+1 (convocation, cinq, affiche, billetterie, direct, résultat, article) ; <b>Soir de match</b> mène à la table de marque et au guichet ; <b>Fiche du match</b> à la feuille, au résultat, à la billetterie et à la diffusion. La jauge à droite dit où en est la vente.","<b>Ctrl+K</b> (ou la loupe en haut) cherche partout : un match, un club, une joueuse, une référence de billet, un écran."],
     newsl: ["<b>Écrire à tous les inscrits de la newsletter.</b> Chaque personne reçoit son propre e-mail — jamais de liste visible.","<b>Testez d'abord</b> : votre adresse dans « M'envoyer un test », le message arrive avec [TEST] devant le sujet.","« Envoyer à tous » demande confirmation, et deux envois à moins de 10 minutes d'écart sont refusés.","À l'ouverture, l'écran interroge la fonction serveur : clé Resend, adresse d'expédition, domaine vérifié. Le bandeau du haut dit ce qui est en place et ce qui manque, pas à pas.","Un inscrit qui répond « STOP » se retire dans Messages → Newsletter."],
     promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b>, dans la barre : un clic ajoute le club, logo compris. Pour un club absent, <b>Ajouter un adversaire</b> ouvre un formulaire — les deux panneaux se ferment l’un l’autre, la liste ne part jamais à deux écrans de défilement.","<b>Changer le logo</b> sur une ligne — ou <b>Ajouter un logo</b> si elle n’en a pas — ouvre l’éditeur. Les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo.","La colonne <b>Logo</b> est la seule chose de cet écran qui appelle un geste : elle dit d’un coup d’œil combien de clubs en attendent un. La recherche filtre par nom, et <b>Confrontations</b> compte les matchs déjà joués contre chacun."],
