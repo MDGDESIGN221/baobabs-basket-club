@@ -2,14 +2,18 @@
    LE GREFFE : noyau
    ---------------------------------------------------------------------
    Fabrique les actes officiels du club. Le PDF sort par l'impression de
-   Chrome, le fichier source par un téléchargement. Rien ne part sur un
-   serveur : pas de fonction, pas d'API, pas un franc.
+   Chrome, le fichier source par un téléchargement. Depuis le 13 septembre
+   2026, le REGISTRE (actes, dossiers, pré-réglages) est aussi en base, dans
+   trois tables réservées au propriétaire : un cache vidé ou un autre
+   ordinateur ne le perdent plus. Les polices et le cachet, eux, ne partent
+   toujours pas (voir « LE MIROIR EN BASE »).
 
    QUATRE COUCHES, ET CHACUNE IGNORE LA SUIVANTE :
      greffe.js          le noyau  : écrans, formulaire, aperçu, registre
      blocs.js           les blocs : en-tête, articles, tableaux, signature
      modeles/*.js       les actes : une DÉCLARATION, jamais du HTML
      IndexedDB          le poste  : polices, cachet, actes enregistrés
+     greffe_*           la base   : le registre, miroir du poste
 
    Ajouter un type d'acte = un fichier dans modeles/ et son nom dans
    MODELES. Ajouter une colonne à un tableau = un clic, et elle est
@@ -446,7 +450,7 @@
     }).catch(function () { return []; });
   }
 
-  function dbPoser(magasin, obj) {
+  function dbPoserLocal(magasin, obj) {
     return dbOuvrir().then(function (db) {
       return new Promise(function (res, rej) {
         var tx = db.transaction(magasin, 'readwrite');
@@ -457,7 +461,7 @@
     });
   }
 
-  function dbOter(magasin, cle) {
+  function dbOterLocal(magasin, cle) {
     return dbOuvrir().then(function (db) {
       return new Promise(function (res, rej) {
         var tx = db.transaction(magasin, 'readwrite');
@@ -477,6 +481,71 @@
         tx.onerror = function () { rej(tx.error); };
       });
     });
+  }
+
+  /* =================================================================
+     LE MIROIR EN BASE : le registre survit au navigateur
+     -----------------------------------------------------------------
+     IndexedDB reste le poste de travail (il marche hors ligne, il est
+     instantane). Mais un cache vide ou un autre ordinateur, et le
+     registre du club n'existait plus. Chaque ecriture d'acte, de
+     dossier ou de pre-reglage part donc aussi en base (greffe_actes,
+     greffe_dossiers, greffe_prereglages, reservees au proprietaire), et
+     l'ouverture ramene ce que ce poste n'a pas : le plus recent (maj)
+     l'emporte. Une suppression est une pierre tombale (fiche.supprime)
+     et non un effacement : sinon l'autre poste, qui a encore la copie,
+     la remonterait. Les polices et le cachet ne montent jamais.
+     L'hote fournit api.base = { tout, poser, oter } ; sans lui, rien ne
+     change et le Greffe reste local, comme avant.
+     ================================================================= */
+  var MIROIR = {};
+  MIROIR[MAG_ACTES] = 'greffe_actes'; MIROIR[MAG_DOS] = 'greffe_dossiers'; MIROIR[MAG_PRE] = 'greffe_prereglages';
+  var baseEtat = { hors: false, synchro: null };
+  function baseDispo() { return !!(api && api.base && typeof api.base.tout === 'function'); }
+  function ligneMiroir(magasin, obj) {
+    var l = { id: obj.id, fiche: obj, maj: obj.maj || Date.now() };
+    if (magasin === MAG_ACTES) {
+      l.modele = obj.modele || null; l.numero = obj.numero || null; l.etat = obj.etat || null;
+      l.intitule = obj.intitule || obj.nom || null; l.dossier = obj.dossier || null;
+    }
+    return l;
+  }
+  function miroirPoser(magasin, obj) {
+    if (!baseDispo() || !MIROIR[magasin] || !obj || !obj.id) return Promise.resolve();
+    return Promise.resolve(api.base.poser(MIROIR[magasin], ligneMiroir(magasin, obj)))
+      .then(function () { if (baseEtat.hors) { baseEtat.hors = false; dire('Registre en base : de nouveau joignable', 'ok'); } },
+            function (e) { if (!baseEtat.hors) dire('Registre en base injoignable : l\'acte reste sur ce poste', 'erreur'); baseEtat.hors = true; console.warn('[Greffe] miroir', e); });
+  }
+  function miroirOter(magasin, id) {
+    if (!baseDispo() || !MIROIR[magasin] || !id) return Promise.resolve();
+    return miroirPoser(magasin, { id: id, supprime: true, maj: Date.now() });
+  }
+  function synchroniser() {
+    if (!baseDispo()) return Promise.resolve();
+    return Promise.all(Object.keys(MIROIR).map(function (mag) {
+      return Promise.resolve(api.base.tout(MIROIR[mag])).then(function (lignes) {
+        return dbTout(mag).then(function (locaux) {
+          var parId = {}; locaux.forEach(function (o) { parId[o.id] = o; });
+          var p = Promise.resolve();
+          (lignes || []).forEach(function (l) {
+            var o = l && l.fiche; if (!o || !o.id) return;
+            var loc = parId[o.id]; delete parId[o.id];
+            if (o.supprime) { if (loc) p = p.then(function () { return dbOterLocal(mag, o.id); }); return; }
+            if (!loc || (o.maj || 0) > (loc.maj || 0)) p = p.then(function () { return dbPoserLocal(mag, o); });
+            else if ((loc.maj || 0) > (o.maj || 0)) p = p.then(function () { return miroirPoser(mag, loc); });
+          });
+          /* ce qui n'existe que sur ce poste monte */
+          Object.keys(parId).forEach(function (id) { p = p.then(function () { return miroirPoser(mag, parId[id]); }); });
+          return p;
+        });
+      }).catch(function (e) { baseEtat.hors = true; console.warn('[Greffe] synchro', e); });
+    })).then(function () { baseEtat.synchro = Date.now(); });
+  }
+  function dbPoser(magasin, obj) {
+    return dbPoserLocal(magasin, obj).then(function () { return miroirPoser(magasin, obj); });
+  }
+  function dbOter(magasin, cle) {
+    return dbOterLocal(magasin, cle).then(function () { return miroirOter(magasin, cle); });
   }
 
   function lireFichier(f) {
@@ -5339,7 +5408,9 @@
     if (!contexte || contexte.proprietaire !== true) return Promise.reject(new Error('Le Greffe est réservé au propriétaire du site'));
     racine = root; api = contexte || {};
     brancher();
-    return chargerMoteur().then(function () {
+    /* le registre en base d'abord : ce poste recoit ce qu'il n'a pas,
+       et seulement ensuite on lit le poste */
+    return chargerMoteur().then(synchroniser).then(function () {
       return Promise.all([dbTout(MAG_RES), dbTout(MAG_ACTES), chargerBlason(), dbTout(MAG_PRE), dbTout(MAG_REG), dbTout(MAG_DOS)]);
     }).then(function (r) {
       dossiers = (r[5] || []).sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); });
@@ -5358,6 +5429,7 @@
       var fiche = rep && rep.acte !== 'accueil' ? registre.filter(function (a) { return a.id === rep.acte; })[0] : null;
       if (fiche && ressourcesCompletes()) { ouvrirActe(fiche); dire('Reprise : ' + (fiche.intitule || fiche.nom) + (fiche.numero ? ' n° ' + fiche.numero : ''), 'ok'); }
       else montrer(ressourcesCompletes() ? 'accueil' : 'polices');
+      if (baseDispo() && baseEtat.hors) dire('Registre en base injoignable : les actes restent sur ce poste pour l\'instant', 'erreur');
       /* l'onglet qui se ferme ou se rafraîchit : l'acte part au registre avant */
       window.addEventListener('pagehide', function () { if (modeleActif && !acteSauve && acteEtat === 'brouillon') enregistrer(true); });
     }).catch(function (e) {

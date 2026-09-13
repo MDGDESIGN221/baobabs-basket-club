@@ -6985,6 +6985,22 @@
       });
   }
 
+  // LE REGISTRE DU GREFFE EN BASE. Trois tables reservees au proprietaire
+  // (greffe_actes, greffe_dossiers, greffe_prereglages) : le Greffe y
+  // pousse chaque acte et ramene ce que ce poste n'a pas. Pas par sbUpsert :
+  // le journal d'audit recopierait la fiche entiere a chaque frappe.
+  function greffeBase(){
+    var ok = function(r){ if (!r.ok) throw new Error('registre ' + r.status); return r; };
+    return {
+      tout: function(table){ return sbGetAll(table + '?select=id,fiche,maj&order=maj.desc'); },
+      poser: function(table, ligne){
+        return fetch(SUPABASE_URL + '/rest/v1/' + table, { method:'POST', headers: sbHeaders({ 'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates,return=minimal' }), body: JSON.stringify(ligne) }).then(ok);
+      },
+      oter: function(table, id){
+        return fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + encodeURIComponent(id), { method:'DELETE', headers: sbHeaders() }).then(ok);
+      }
+    };
+  }
   function greffeOuvrir(){
     if (greffeEnCours) return;
     if (!cpJeSuisProprio()){ qgToast('Le Greffe est reserve au proprietaire du site', true); return; }
@@ -6995,7 +7011,7 @@
     var demande = null;
     try { demande = new URLSearchParams(location.search).get('greffe'); } catch(e){}
     greffeCharger().then(function(){
-      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), { acte: demande, proprietaire: cpJeSuisProprio() });
+      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), { acte: demande, proprietaire: cpJeSuisProprio(), base: greffeBase() });
     }).then(function(){
       greffePret = true;
       window.BaobabsGreffe.open();
