@@ -1111,7 +1111,7 @@
       + '<p class="gf-acc-intro">Que voulez-vous faire ?</p>'
       + '<div class="gf-acc-actions">'
       + '<button type="button" class="gf-btn gf-btn-accent gf-btn-grand" id="gf-acc-nouveau">'
-      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nouvel acte <kbd>Ctrl+N</kbd></button>'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nouvel acte <kbd>Alt+N</kbd></button>'
       + (brouillons.length ? '<button type="button" class="gf-btn gf-btn-fant gf-btn-grand" id="gf-acc-brouillon">Reprendre un brouillon <span class="gf-compte">' + brouillons.length + '</span></button>' : '')
       + '</div></div>'
       + (recents.length
@@ -1368,9 +1368,9 @@
     var enAtelier = !!modeleActif && espace === 'atelier';
     return [
       { nom: 'Fichier', items: [
-        { lab: 'Nouvel acte…', rac: 'Ctrl+N', act: function () { ouvrirNouveau(); } },
+        { lab: 'Nouvel acte…', rac: 'Alt+N', act: function () { ouvrirNouveau(); } },
         { lab: 'Ouvrir le registre', rac: 'Ctrl+O', act: function () { montrer('registre'); } },
-        { lab: 'Ouvrir dans une nouvelle fenêtre', rac: 'Ctrl+Maj+N', act: function () { nouvelleFenetre(); } },
+        { lab: 'Ouvrir dans une nouvelle fenêtre', rac: 'Alt+Maj+N', act: function () { nouvelleFenetre(); } },
         { sep: true },
         { lab: 'Enregistrer', rac: 'Ctrl+S', off: !enAtelier, act: function () { enregistrer(false); } },
         { lab: 'Renommer l\'acte…', rac: 'F2', off: !enAtelier || lect, act: renommerActe },
@@ -1422,8 +1422,8 @@
           ? modeleActif.catalogue.map(function (e) { return { lab: 'Bloc : ' + e.nom, act: function () { poserBloc(e); } }; })
           : [{ lab: 'Les blocs se posent dans un acte libre', off: true }]) },
       { nom: 'Fenêtre', items: [
-        { lab: 'Nouvel onglet : nouvel acte…', rac: 'Ctrl+N', act: function () { ouvrirNouveau(); } },
-        { lab: 'Ouvrir cet acte dans une nouvelle fenêtre du navigateur', rac: 'Ctrl+Maj+N', off: !modeleActif, act: function () { nouvelleFenetre(); } },
+        { lab: 'Nouvel onglet : nouvel acte…', rac: 'Alt+N', act: function () { ouvrirNouveau(); } },
+        { lab: 'Ouvrir cet acte dans une nouvelle fenêtre du navigateur', rac: 'Alt+Maj+N', off: !modeleActif, act: function () { nouvelleFenetre(); } },
         { lab: 'Ouvrir le Greffe dans une nouvelle fenêtre du navigateur', act: function () { nouvelleFenetre('accueil'); } },
         { sep: true }
       ].concat(onglets.map(function (o, i) {
@@ -1610,7 +1610,7 @@
   /* ---- l'aide ---- */
   function aideRaccourcis() {
     var groupes = [
-      ['Document', [['Ctrl+N', 'Nouvel acte'], ['Ctrl+O', 'Ouvrir le registre'], ['Alt+1 … 9', 'Passer à l\'onglet'], ['Alt+W', 'Fermer l\'onglet'], ['Ctrl+Maj+N', 'Nouvelle fenêtre du navigateur'], ['Ctrl+S', 'Enregistrer'], ['F2', 'Renommer l\'acte'], ['Ctrl+P', 'Imprimer en PDF'], ['Ctrl+Maj+S', 'Sauvegarder le Greffe']]],
+      ['Document', [['Alt+N', 'Nouvel acte'], ['Ctrl+O', 'Ouvrir le registre'], ['Alt+1 … 9', 'Passer à l\'onglet'], ['Alt+W', 'Fermer l\'onglet'], ['Alt+Maj+N', 'Nouvelle fenêtre du navigateur'], ['Ctrl+K', 'Palette de commandes'], ['Ctrl+S', 'Enregistrer'], ['F2', 'Renommer l\'acte'], ['Ctrl+P', 'Imprimer en PDF'], ['Ctrl+Maj+S', 'Sauvegarder le Greffe']]],
       ['Objets et blocs', [['Ctrl+C', 'Copier l\'objet ou le bloc'], ['Ctrl+V', 'Coller'], ['Suppr', 'Retirer l\'objet'], ['Flèches', 'Déplacer l\'objet d\'un mm (Maj : 5)'], ['Alt+Haut / Bas', 'Monter, descendre le bloc']]],
       ['Édition', [['Ctrl+Z', 'Annuler'], ['Ctrl+Y', 'Rétablir'], ['Entrée', 'Valider un champ d\'une ligne'], ['Échap', 'Quitter le texte, fermer une boîte']]],
       ['Acte', [['Ctrl+Entrée', 'Vérifier, puis émettre'], ['Ctrl+Maj+E', 'Émettre'], ['Ctrl+Maj+R', 'Mode lecture'], ['Ctrl+Maj+P', 'Masquer ou montrer le panneau']]],
@@ -2748,7 +2748,7 @@
     doc.addEventListener('mousemove', surSourisBouge);
     doc.addEventListener('mouseup', surSourisLache);
     /* hors d'un texte, les raccourcis valent aussi sur la feuille (Ctrl+V d'un objet, Ctrl+S, Ctrl+P...) */
-    doc.addEventListener('keydown', function (e) { if (!surToucheObjet(e) && (e.ctrlKey || e.metaKey || e.key === 'F2') && !cibleEdit(e)) raccourci(e); });
+    doc.addEventListener('keydown', function (e) { if (!surToucheObjet(e) && (e.ctrlKey || e.metaKey || e.altKey || e.key === 'F2') && !cibleEdit(e)) raccourci(e); });
     doc.addEventListener('mouseup', function () { sourisEnfoncee = false; });
     doc.addEventListener('mouseleave', function () { sourisEnfoncee = false; });
     doc.defaultView.addEventListener('blur', function () { sourisEnfoncee = false; });
@@ -2798,7 +2798,7 @@
     if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && blocCourant && modeleActif.libre) {
       e.preventDefault(); commandeBloc(e.key === 'ArrowUp' ? 'monter' : 'descendre', blocCourant); return;
     }
-    if (e.ctrlKey || e.metaKey) { raccourci(e); return; }
+    if (e.ctrlKey || e.metaKey || (e.altKey && /^([1-9]|[nw])$/i.test(e.key))) { raccourci(e); return; }
     /* un champ d'une ligne : Entrée valide, elle n'ouvre pas de ligne */
     if (e.key === 'Enter' && !el.classList.contains('txt')) { e.preventDefault(); el.blur(); }
   }
@@ -4359,7 +4359,7 @@
       return '<div class="gf-onglet' + (actif ? ' is-actif' : '') + '" data-onglet="' + ech(o.id) + '" role="tab" aria-selected="' + actif + '">'
         + '<span class="gf-onglet-nom">' + ech(o.nom || 'Acte') + '</span>' + (touche ? '<i class="gf-onglet-pt" title="Modifié"></i>' : '')
         + '<button type="button" class="gf-onglet-x" data-onglet-x="' + ech(o.id) + '" title="Fermer cet onglet" aria-label="Fermer">×</button></div>';
-    }).join('') + '<button type="button" class="gf-onglet-plus" id="gf-onglet-plus" title="Nouvel acte dans un nouvel onglet (Ctrl+N)">+</button>';
+    }).join('') + '<button type="button" class="gf-onglet-plus" id="gf-onglet-plus" title="Nouvel acte dans un nouvel onglet (Alt+N)">+</button>';
     hote.querySelectorAll('[data-onglet]').forEach(function (b) {
       b.addEventListener('click', function (e) { if (e.target.closest('[data-onglet-x]')) return; activerOnglet(b.getAttribute('data-onglet')); });
     });
@@ -4835,7 +4835,9 @@
       dire(l.length + ' lignes reprises', 'ok');
     });
 
-    racine.addEventListener('keydown', raccourci);
+    /* sur le document entier : un clic sur une zone sans focus laisse le
+       focus au corps de la page, et la racine n'entendrait plus rien */
+    document.addEventListener('keydown', function (e) { if (ouvert) raccourci(e); });
   }
 
   /* Les raccourcis, les memes dans l'admin et dans la feuille. */
@@ -4847,12 +4849,19 @@
       if (elt.voile && !elt.voile.hidden) { fermerColler(); return; }
       if (racine.querySelector('.gf-voile:not([hidden])')) return;   /* la boite ouverte s'en charge */
       if (espace === 'atelier' && document.activeElement && document.activeElement !== document.body) { document.activeElement.blur(); return; }
+      /* un acte ouvert : Échap lâche la sélection, il ne ferme pas le Greffe */
+      if (modeleActif) { if (objetSel) selectionnerObjet(null); return; }
       fermer(); return;
     }
     if (ctrl && k === 'k') { e.preventDefault(); palette(); return; }
     if (e.key === 'F2' && modeleActif && espace === 'atelier') { e.preventDefault(); renommerActe(); return; }
+    /* AltGr (Ctrl+Alt sur un clavier français : @, €, ~…) n'est jamais un raccourci */
+    if (ctrl && e.altKey) return;
+    /* Chrome garde Ctrl+N, Ctrl+Maj+N, Ctrl+T, Ctrl+W et Ctrl+1..9 pour ses propres
+       onglets et fenêtres, une page ne les reçoit pas : ici c'est Alt. */
     if (e.altKey && !ctrl && /^[1-9]$/.test(e.key) && onglets[+e.key - 1]) { e.preventDefault(); activerOnglet(onglets[+e.key - 1].id); return; }
     if (e.altKey && !ctrl && k === 'w' && modeleActif) { e.preventDefault(); fermerActe(); return; }
+    if (e.altKey && !ctrl && k === 'n') { e.preventDefault(); if (e.shiftKey) nouvelleFenetre(); else ouvrirNouveau(); return; }
     if (!ctrl) return;
     var enAtelier = !!modeleActif && espace === 'atelier';
     if (enAtelier && k === 'a' && !e.shiftKey) { var dA = cadre && cadrePret ? cadre.contentDocument : null; if (!(dA && dA.activeElement && dA.activeElement.closest && dA.activeElement.closest('[data-edit]')) && !(document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName) || (document.activeElement && document.activeElement.isContentEditable))) { e.preventDefault(); selectionnerTout(); return; } }
