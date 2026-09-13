@@ -162,6 +162,96 @@
                  cartes: cartes };
       } },
 
+
+    { type: 'bandeau', nom: "Bandeau", famille: "Structure",
+      resume: "Une bande pleine (vert, or, noir, clair) et un grand mot : convocation, communiqué.",
+      neuf: function () { return { b: 'bandeau', ton: 'vert', etiquette: "Le club", texte: "Grand titre", sous: "", droite1: "", droite2: "" }; },
+      reglages: [{ cle: 'ton', lab: "Couleur", type: 'choix', choix: ['vert', 'or', 'noir', 'clair'] }],
+      bloc: function (x, ch) {
+        return { b: 'bandeau', ton: '@' + ch + 'ton', etiquette: '@' + ch + 'etiquette', texte: '@' + ch + 'texte', sous: '@' + ch + 'sous',
+                 droite: ['@' + ch + 'droite1', '@' + ch + 'droite2'] };
+      } },
+
+    { type: 'grille', nom: "Lignes à compléter", famille: "Cases",
+      resume: "« Nom : ……… », « Né le : ……… » : des lignes pointillées, au clavier ou au stylo.",
+      neuf: function () {
+        return { b: 'grille', nb: 4, colonnes: 2, champs: [
+          { label: "Nom", valeur: "" }, { label: "Prénom(s)", valeur: "" }, { label: "Né(e) le", valeur: "" }, { label: "Téléphone", valeur: "" }] };
+      },
+      reglages: [
+        { cle: 'nb', lab: "Nombre de lignes", type: 'choix', choix: ['1', '2', '3', '4', '5', '6', '8', '10'] },
+        { cle: 'colonnes', lab: "Colonnes", type: 'choix', choix: ['1', '2', '3'], duo: true }],
+      bloc: function (x, ch) {
+        return { b: 'grille', colonnes: '@' + ch + 'colonnes', champs: function () {
+          var n = Math.max(1, Math.min(12, parseInt(x.nb, 10) || 4)), out = [];
+          for (var j = 0; j < n; j++) {
+            var c = (x.champs && x.champs[j]) || {};
+            out.push({ label: c.label == null ? 'Libellé' : c.label, chemin: ch + 'champs.' + j + '.valeur', labelChemin: ch + 'champs.' + j + '.label', large: !!c.large });
+          }
+          return out;
+        } };
+      } },
+
+    { type: 'cases', nom: "Cases à cocher", famille: "Cases",
+      resume: "Des cases qui se cochent d'un clic sur la feuille, ou au stylo sur le papier.",
+      neuf: function () {
+        return { b: 'cases', nb: 3, enLigne: false, etiquette: "", cases: [
+          { texte: "Première case", cochee: false }, { texte: "Deuxième case", cochee: false }, { texte: "Troisième case", cochee: false }] };
+      },
+      reglages: [
+        { cle: 'nb', lab: "Nombre de cases", type: 'choix', choix: ['1', '2', '3', '4', '5', '6', '8'] },
+        { cle: 'enLigne', lab: "Côte à côte", type: 'bascule', duo: true }],
+      bloc: function (x, ch) {
+        return { b: 'cases', enLigne: '@' + ch + 'enLigne', etiquette: '@' + ch + 'etiquette', cases: function () {
+          var n = Math.max(1, Math.min(12, parseInt(x.nb, 10) || 3)), out = [];
+          for (var j = 0; j < n; j++) {
+            var c = (x.cases && x.cases[j]) || {};
+            out.push({ texte: '@' + ch + 'cases.' + j + '.texte', chemin: ch + 'cases.' + j + '.cochee' });
+          }
+          return out;
+        } };
+      } },
+
+    { type: 'signatureLibre', nom: "Boîte de signature vide", famille: "Structure",
+      resume: "Un cadre vide pour un parent, un tiers : « Lu et approuvé », date, signature.",
+      neuf: function () { return { b: 'signatureLibre', nb: 1, boites: [{ label: "Signature", mention: "Précédée de « Lu et approuvé »" }, { label: "Signature", mention: "" }] }; },
+      reglages: [{ cle: 'nb', lab: "Nombre de boîtes", type: 'choix', choix: ['1', '2', '3'] }],
+      bloc: function (x, ch) {
+        return { b: 'signatureLibre', boites: function () {
+          var n = Math.max(1, Math.min(3, parseInt(x.nb, 10) || 1)), out = [];
+          for (var j = 0; j < n; j++) out.push({ label: '@' + ch + 'boites.' + j + '.label', mention: '@' + ch + 'boites.' + j + '.mention' });
+          return out;
+        } };
+      } },
+
+    { type: 'diplome', nom: "Cadre de certificat", famille: "Structure",
+      resume: "Un cadre double or, le blason, un grand titre, le nom en évidence, deux signatures.",
+      neuf: function () {
+        return { b: 'diplome', titre: "Certificat", sous: "de participation", prelude: "est décerné à", nom: "", motif: "pour sa participation.",
+                 date: "Fait à Dakar, le " + U.dateLongue(U.isoDuJour(), true), sign1: "Antoine Jean Pierre Ndong", qual1: "Président", sign2: "", qual2: "" };
+      },
+      reglages: [],
+      bloc: function (x, ch) {
+        return { b: 'diplome', titre: '@' + ch + 'titre', sous: '@' + ch + 'sous', prelude: '@' + ch + 'prelude', nom: '@' + ch + 'nom', motif: '@' + ch + 'motif', date: '@' + ch + 'date',
+                 signatures: function () {
+                   var s = [{ nom: '@' + ch + 'sign1', qualite: '@' + ch + 'qual1' }];
+                   if (String(x.sign2 || '').trim()) s.push({ nom: '@' + ch + 'sign2', qualite: '@' + ch + 'qual2', signer: false });
+                   return s;
+                 } };
+      } },
+
+    { type: 'talon', nom: "Talon à détacher", famille: "Éléments",
+      resume: "Une ligne de coupe et des cases : ce que le club garde d'un reçu, d'un bon.",
+      neuf: function () { return { b: 'talon', nb: 4, etiquette: "Talon à conserver par le club", colonnes: [{ label: "N°", valeur: "" }, { label: "Date", valeur: "" }, { label: "Nom", valeur: "" }, { label: "Montant", valeur: "" }] }; },
+      reglages: [{ cle: 'nb', lab: "Nombre de cases", type: 'choix', choix: ['2', '3', '4', '5', '6'] }],
+      bloc: function (x, ch) {
+        return { b: 'talon', etiquette: '@' + ch + 'etiquette', colonnes: function () {
+          var n = Math.max(1, Math.min(6, parseInt(x.nb, 10) || 4)), out = [];
+          for (var j = 0; j < n; j++) out.push({ label: '@' + ch + 'colonnes.' + j + '.label', valeur: '@' + ch + 'colonnes.' + j + '.valeur' });
+          return out;
+        } };
+      } },
+
     { type: 'image', nom: "Image", famille: "Éléments",
       resume: "Une photo, un plan, un logo : déposée dans l'acte, largeur au choix.",
       neuf: function () { return { b: 'image', src: "", largeur: 60, calage: 'gauche', legende: "" }; },

@@ -25,7 +25,7 @@
         { cle: 'role',     lab: "Mention", type: 'texte', duo: true, aide: "« Carte de membre », « Licence club », « Staff »" },
         { cle: 'pied',     lab: "Ligne de pied", type: 'texte', aide: "« Valable jusqu'au 30 juin 2027 »" },
         { cle: 'dateActe', lab: "Établies le", type: 'date', duo: true },
-        { cle: 'vides',    lab: "Cartes vierges à imprimer en plus", type: 'texte', duo: true, aide: "Un nombre : des cartes sans nom, à remplir au stylo." }
+        { cle: 'vides',    lab: "Cartes à imprimer au moins", type: 'texte', duo: true, aide: "Huit par page. Chaque carte s'écrit directement sur la feuille ; un clic sur « Photo » dépose la photo." }
       ]},
       { titre: "Les membres", ouvert: true, special: 'table', source: 'membres' }
     ],
@@ -34,7 +34,7 @@
       var an = new Date().getFullYear();
       return {
         titre: "Cartes de membre", dateActe: U.isoDuJour(), lieu: "Dakar",
-        saison: an + "-" + (an + 1), role: "Carte de membre", pied: "Valable pour la saison en cours", vides: "",
+        saison: an + "-" + (an + 1), role: "Carte de membre", pied: "Valable pour la saison en cours", vides: "8",
         avecSignature: false, avecCachet: false,
         tables: {
           membres: {
@@ -56,13 +56,14 @@
       var c = [];
       var n = G.lignes(d, 'membres').length;
       if (!n && !(parseInt(d.vides, 10) > 0)) c.push({ n: 'erreur', t: 'Aucun membre, aucune carte vierge' });
-      else c.push({ n: 'ok', t: n + ' carte' + (n > 1 ? 's' : '') + (parseInt(d.vides, 10) > 0 ? ' + ' + parseInt(d.vides, 10) + ' vierge(s)' : '') });
+      else if (!n) c.push({ n: 'avert', t: parseInt(d.vides, 10) + ' cartes vierges : écrivez les noms sur les cartes, ou collez la liste' });
+      else c.push({ n: 'ok', t: n + ' carte' + (n > 1 ? 's' : '') + ' remplie' + (n > 1 ? 's' : '') });
       return c;
     },
 
     page: [
       { b: 'cartes', source: 'membres', club: "Baobabs Basket Club", saison: '@saison', role: '@role', pied: '@pied',
-        vide: function (d) { return G.lignes(d, 'membres').length + (parseInt(d.vides, 10) || 0); } }
+        vide: function (d) { return Math.max(G.lignes(d, 'membres').length, parseInt(d.vides, 10) || 0); } }
     ],
 
     pied: function (d) { return ["Baobabs Basket Club · Sicap Baobab, Dakar, Sénégal", "Cartes de membre · saison " + (d.saison || '')]; },

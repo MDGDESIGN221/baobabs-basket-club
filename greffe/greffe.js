@@ -1394,6 +1394,8 @@
         { lab: 'Annotation', off: !enAtelier || lect, act: function () { poserObjet('annotation'); } },
         { lab: 'Cadre', off: !enAtelier || lect, act: function () { poserObjet('cadre'); } },
         { lab: 'Flèche', off: !enAtelier || lect, act: function () { poserObjet('fleche'); } },
+        { lab: 'Case à cocher', off: !enAtelier || lect, act: function () { poserObjet('case'); } },
+        { lab: 'Variable…', off: !enAtelier || lect, act: insererVariable },
         { sep: true }
       ].concat(libre && !lect && modeleActif.catalogue
           ? modeleActif.catalogue.map(function (e) { return { lab: 'Bloc : ' + e.nom, act: function () { poserBloc(e); } }; })
@@ -1480,6 +1482,7 @@
       + (modeLecture && acteEtat === 'brouillon' ? ' · LECTURE' : '');
     if (elt.sousTitre) elt.sousTitre.textContent = nom + (donnees.numero ? ' n° ' + donnees.numero : '');
     majActions();
+    if (typeof majOutils === 'function') majOutils();
   }
 
   function majActions() {
@@ -1650,16 +1653,8 @@
       peindreControle();
       return;
     }
-    if (panneau === 'bloc' && !lectureSeule()) {
-      if (tete) { tete.hidden = false; tete.innerHTML = '<span class="gf-lab">Bloc sélectionné</span>'; }
-      peindreBloc();
-      return;
-    }
-    if (panneau === 'objet' && !lectureSeule()) {
-      if (tete) { tete.hidden = false; tete.innerHTML = '<span class="gf-lab">Objet posé sur la page</span>'; }
-      peindreObjet();
-      return;
-    }
+    if (panneau === 'bloc' || panneau === 'objet') panneau = 'donnees';
+    peindreProps();
     if (tete) {
       var lect = lectureSeule();
       tete.hidden = !lect;
@@ -2355,6 +2350,7 @@
     '  .objet-rotation::after{ content:""; position:absolute; left:50%; top:12px; width:2px; height:8px; margin-left:-1px; background:#46BF1D; }',
     '  .s-var{ background:rgba(70,191,29,.12); border-radius:2pt; box-shadow:0 0 0 1px rgba(70,191,29,.25); }',
     '  .s-var-vide{ background:rgba(224,72,63,.12); box-shadow:0 0 0 1px rgba(224,72,63,.35); }',
+    '  body.grille .page{ background-image:linear-gradient(to right, rgba(15,67,43,.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,67,43,.12) 1px, transparent 1px); background-size:5mm 5mm; background-position:13mm 11mm; }',
     '  .objet-guide{ position:absolute; z-index:40; pointer-events:none; }',
     '  .objet-guide-v{ top:0; bottom:0; width:0; border-left:1px dashed #E0483F; }',
     '  .objet-guide-h{ left:0; right:0; height:0; border-top:1px dashed #E0483F; }',
@@ -2392,6 +2388,9 @@
     feuilleSale = false;
     try {
       doc.body.innerHTML = corpsDocument();
+      /* modifiable AVANT la mise en pages : un texte vide rendu modifiable
+         prend la hauteur d'une ligne, et la page qui semblait tenir déborde */
+      brancherEdition(doc);
       nbPages = G.blocs.paginer(doc);
       poserObjets(doc);
     } catch (e) {
@@ -2404,6 +2403,7 @@
     cacher('texte');
     majBarreBloc(c ? doc.activeElement : null);
     marquerSelection();
+    appliquerGrille();
     /* Les polices arrivent parfois après la première mise en page : les
        hauteurs de ligne changent, les coupures aussi. Une seconde passe
        quand elles sont là, et seulement s'il en manquait. Pas de
@@ -2534,6 +2534,33 @@
     doc.body.addEventListener('focusout', surSortie);
     doc.body.addEventListener('focusin', function (e) { majBarreBloc(cibleEdit(e)); });
     doc.body.addEventListener('contextmenu', surClicDroit);
+    /* une case à cocher se coche d'un clic, sur la feuille : dans la donnée */
+    doc.body.addEventListener('click', function (e) {
+      if (lectureSeule()) return;
+      var cb = e.target.closest ? e.target.closest('.case[data-case]') : null;
+      if (cb && !(e.target.closest && e.target.closest('[data-edit]:focus'))) {
+        var chemin = cb.getAttribute('data-case');
+        ecrire(chemin, !G.blocs.lire(donnees, chemin)); cb.classList.toggle('cochee');
+        salir(); synchroniserFormulaire(chemin); feuilleSale = true; refaireQuandCalme();
+        return;
+      }
+      var ph = e.target.closest ? e.target.closest('[data-photo]') : null;
+      if (ph) {
+        var cheminPhoto = ph.getAttribute('data-photo');
+        var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+        inp.addEventListener('change', function () {
+          var f = inp.files && inp.files[0]; if (!f) return;
+          lireFichier(f).then(function (uri) { return alleger(uri, 480); }).then(function (uri) { ecrire(cheminPhoto, uri); salir(); planifier(); dire('Photo posée', 'ok'); });
+        });
+        inp.click();
+        return;
+      }
+      var oc = e.target.closest ? e.target.closest('.objet-case') : null;
+      if (oc && !glisseADeplace) {
+        var o = objetDe(oc.getAttribute('data-objet'));
+        if (o && !o.verrou) { o.coche = !o.coche; oc.classList.toggle('cochee', !!o.coche); salir(); if (panneau === 'objet') peindreFormulaire(); }
+      }
+    });
     doc.body.addEventListener('mousedown', function (e) { sourisEnfoncee = true; cacher('slash'); cacher('menu'); surSourisObjet(e); });
     doc.addEventListener('mousemove', surSourisBouge);
     doc.addEventListener('mouseup', surSourisLache);
@@ -2651,7 +2678,8 @@
       return;
     }
     var n = elt.formDefile.querySelector('[data-cle="' + p[0] + '"]');
-    if (n && n.type !== 'checkbox') n.value = donnees[p[0]] == null ? '' : donnees[p[0]];
+    if (n && n.type === 'checkbox') n.checked = !!donnees[p[0]];
+    else if (n) n.value = donnees[p[0]] == null ? '' : donnees[p[0]];
     majTitreBarre();
   }
 
@@ -3164,6 +3192,7 @@
     if (!bloc) { cacher('bloc'); blocCourant = null; return; }
     var bi = bloc.getAttribute('data-bloc');
     blocCourant = bi;
+    if (!objetSel && !blocSel && propsOnglet === 'proprietes') { clearTimeout(peindreProps._t); peindreProps._t = setTimeout(peindreProps, 120); }
     var libre = !!(modeleActif && modeleActif.libre && /^b\d+$/.test(bi));
     var i = libre ? +bi.slice(1) : -1;
     var nb = libre ? (donnees.blocs || []).length : 0;
@@ -3200,7 +3229,7 @@
     return cfg ? (noms[cfg.b] || cfg.b) : 'Bloc';
   }
   function commandeBloc(cmd, bi) {
-    if (cmd === 'reglages') { panneau = 'bloc'; blocSel = bi; peindreFormulaire(); return; }
+    if (cmd === 'reglages') { blocSel = bi; propsOnglet = 'proprietes'; racine.classList.remove('gf-sans-props'); racine.classList.add('gf-avec-props'); peindreProps(); majOutils(); return; }
     if (!modeleActif.libre) return;
     var i = +bi.slice(1), blocs = donnees.blocs || [];
     if (cmd === 'monter' && i > 0) { var t = blocs[i - 1]; blocs[i - 1] = blocs[i]; blocs[i] = t; deplacerStyle(bi, 'b' + (i - 1)); }
@@ -3238,15 +3267,16 @@
     else s[cle] = valeur;
     if (Object.keys(s).length) donnees.styles[bi] = s; else delete donnees.styles[bi];
     salir(); rafraichir(true);
-    if (panneau === 'bloc') peindreFormulaire();
+    if (blocSel) peindreProps();
   }
 
   /* le panneau quand un bloc est sélectionné : taille, alignement, thème,
      et pour un acte libre les réglages propres au bloc */
   var blocSel = null;
-  function peindreBloc() {
-    var hote = elt.formDefile, bi = blocSel;
-    if (!bi) { panneau = 'donnees'; peindreFormulaire(); return; }
+  function peindreBloc(hote) {
+    hote = hote || $('gf-props-corps') || elt.formDefile;
+    var bi = blocSel;
+    if (!bi) { peindreProps(); return; }
     var st = (donnees.styles || {})[bi] || {};
     var libre = !!(modeleActif.libre && /^b\d+$/.test(bi));
     var x = libre ? (donnees.blocs || [])[+bi.slice(1)] : null;
@@ -3268,7 +3298,7 @@
       + '<span class="gf-lab" style="margin-top:12px">Couleur</span>' + choix('theme', [['', 'Charte'], ['vert', 'Vert'], ['rouge', 'Rouge'], ['neutre', 'Neutre'], ['plein', 'Bandeau plein']], st.theme || '')
       + '<span class="gf-lab" style="margin-top:12px">Police</span>' + choix('police', [['', 'Charte'], ['gilroy', 'Gilroy'], ['inter', 'Inter'], ['organetto', 'Organetto'], ['paraphe', 'Manuscrite']], st.police || '')
       + (reglages ? '<span class="gf-lab" style="margin-top:12px">Réglages du bloc</span>' + reglages : '')
-      + '<div class="gf-controle-actions" style="margin-top:16px"><button type="button" class="gf-btn gf-btn-fant" id="gf-bloc-retour">Retour aux données</button></div>'
+      + '<div class="gf-controle-actions" style="margin-top:16px"><button type="button" class="gf-btn gf-btn-fant" id="gf-bloc-retour">Fermer les réglages</button></div>'
       + '</div>';
     hote.querySelectorAll('[data-st]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -3288,7 +3318,7 @@
         lireFichier(f).then(function (uri) { return alleger(uri, 1600); }).then(function (uri) { ecrire(n.getAttribute('data-image'), uri); salir(); planifier(); });
       });
     });
-    $('gf-bloc-retour').addEventListener('click', function () { panneau = 'donnees'; blocSel = null; peindreFormulaire(); });
+    $('gf-bloc-retour').addEventListener('click', function () { blocSel = null; peindreProps(); });
   }
 
   /* ---- « / » et le clic droit : les textes prédéfinis ---- */
@@ -3303,6 +3333,20 @@
       vars.push({ nom: 'Série : ' + k + ' {{col.' + k + '}}', groupe: 'Variables', texte: '{{col.' + k + '}}' });
     });
     return (G.textes || []).concat(vars).filter(function (t) { return !q || t.nom.toLowerCase().indexOf(q) !== -1 || (t.groupe || '').toLowerCase().indexOf(q) !== -1; });
+  }
+  function insererVariable() {
+    var doc = cadre && cadrePret ? cadre.contentDocument : null;
+    if (!doc) return;
+    var noms = listeTextes('variables').map(function (t) { return t.texte; });
+    demander('Insérer une variable', "Elle s'écrit avec sa valeur sur la feuille, et reste une variable dans la donnée. Cliquez d'abord dans le texte où la poser.", '', noms).then(function (v) {
+      if (!v) return;
+      var sel = doc.getSelection();
+      var el = sel && sel.rangeCount ? (sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode) : null;
+      el = el && el.closest ? el.closest('[data-edit]') : null;
+      if (!el) { dire("Cliquez d'abord dans un texte de la feuille, puis insérez la variable.", 'erreur'); return; }
+      cadre.contentWindow.focus();
+      doc.execCommand('insertText', false, v);
+    });
   }
   function ouvrirSlash(el, filtre) {
     var doc = cadre.contentDocument;
@@ -3421,7 +3465,8 @@
     image:      { nom: 'Image',      w: 50, h: 35 },
     annotation: { nom: 'Annotation', w: 60, h: 14, texte: 'Annotation' },
     cadre:      { nom: 'Cadre',      w: 60, h: 30 },
-    fleche:     { nom: 'Flèche',     w: 40, h: 10 }
+    fleche:     { nom: 'Flèche',     w: 40, h: 10 },
+    case:       { nom: 'Case à cocher', w: 45, h: 6, texte: 'À cocher' }
   };
 
   function poserObjet(type, extra) {
@@ -3499,6 +3544,9 @@
       } else if (o.type === 'cadre') {
         el.style.borderColor = c;
         if (o.fond) el.style.background = c + '18';
+      } else if (o.type === 'case') {
+        if (o.coche) el.classList.add('cochee');
+        el.innerHTML = '<i></i><span>' + ech(o.texte || '') + '</span>';
       } else if (o.type === 'fleche') {
         el.innerHTML = '<svg viewBox="0 0 100 20" preserveAspectRatio="none" style="width:100%;height:100%;display:block;overflow:visible">'
           + '<line x1="2" y1="10" x2="86" y2="10" stroke="' + c + '" stroke-width="2.2" vector-effect="non-scaling-stroke"/>'
@@ -3538,8 +3586,8 @@
   function selectionnerObjet(id) {
     objetSel = id;
     marquerSelection();
-    if (id) { panneau = 'objet'; peindreFormulaire(); }
-    else if (panneau === 'objet') { panneau = 'donnees'; peindreFormulaire(); }
+    if (id) { propsOnglet = 'proprietes'; racine.classList.remove('gf-sans-props'); racine.classList.add('gf-avec-props'); }
+    peindreProps(); majOutils();
   }
 
   /* ---- les guides : les marges, le milieu de la page, les bords des autres
@@ -3619,6 +3667,7 @@
     if (objetSel !== id) selectionnerObjet(id);
     if (o.verrou) return;
     var rc = (el || rotation.closest('.objet')).getBoundingClientRect();
+    glisseADeplace = false;
     glisse = { id: id, poignee: !!poignee, rotation: !!rotation, x0: e.clientX, y0: e.clientY, ox: o.x, oy: o.y, ow: o.w, oh: o.h,
                cx: rc.left + rc.width / 2, cy: rc.top + rc.height / 2 };
   }
@@ -3628,6 +3677,7 @@
     var el = doc.querySelector('[data-objet="' + glisse.id + '"]');
     if (!o || !el) { glisse = null; return; }
     var dx = (e.clientX - glisse.x0) / MM, dy = (e.clientY - glisse.y0) / MM;
+    glisseADeplace = Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3;
     if (glisse.rotation) {
       /* l'angle entre le centre de l'objet et la souris ; la poignée est en haut */
       var a = Math.atan2(e.clientY - glisse.cy, e.clientX - glisse.cx) * 180 / Math.PI + 90;
@@ -3647,20 +3697,21 @@
       var lie = !!(o.ratio || o.type === 'cachet');
       if (lie) { h = w / (o.ratio || 1); }
       o.w = w; o.h = h;
-      var gt = e.altKey ? { v: null, h: null } : aimanter(o, 'taille');
+      var gt = (e.altKey || !aimantActif) ? { v: null, h: null } : aimanter(o, 'taille');
       if (lie) { o.h = o.w / (o.ratio || 1); gt.h = null; }
       o.w = Math.round(Math.max(5, o.w) * 10) / 10; o.h = Math.round(Math.max(3, o.h) * 10) / 10;
       el.style.width = o.w + 'mm'; el.style.height = o.h + 'mm';
       montrerGuides(el.closest('.page'), gt);
     } else {
       o.x = glisse.ox + dx; o.y = glisse.oy + dy;
-      var gd = e.altKey ? { v: null, h: null } : aimanter(o, 'deplacer');
+      var gd = (e.altKey || !aimantActif) ? { v: null, h: null } : aimanter(o, 'deplacer');
       o.x = Math.round(o.x * 10) / 10; o.y = Math.round(o.y * 10) / 10;
       el.style.left = o.x + 'mm'; el.style.top = o.y + 'mm';
       montrerGuides(el.closest('.page'), gd);
     }
     majNoteObjet(o);
   }
+  var glisseADeplace = false;
   function surSourisLache() {
     if (!glisse) return;
     glisse = null;
@@ -3707,9 +3758,10 @@
   }
 
   /* le panneau : position, taille, rotation, opacité, texte, couleur, verrou */
-  function peindreObjet() {
-    var hote = elt.formDefile, o = objetDe(objetSel);
-    if (!o) { panneau = 'donnees'; peindreFormulaire(); return; }
+  function peindreObjet(hote) {
+    hote = hote || $('gf-props-corps') || elt.formDefile;
+    var o = objetDe(objetSel);
+    if (!o) { objetSel = null; peindreProps(); return; }
     var T = TYPES_OBJET[o.type] || { nom: o.type };
     function nombre(cle, lab, min, max, pas) {
       return '<div class="gf-champ"><label class="gf-lab">' + lab + '</label><input class="gf-in" type="number" data-o="' + cle + '" value="' + (o[cle] == null ? '' : o[cle]) + '" min="' + min + '" max="' + max + '" step="' + (pas || 1) + '"></div>';
@@ -3722,7 +3774,8 @@
       + '<div class="gf-duo"><div>' + nombre('w', 'Largeur (mm)', 3, 210, 0.5) + '</div><div>' + nombre('h', 'Hauteur (mm)', 2, 297, 0.5) + '</div></div>'
       + '<div class="gf-duo"><div>' + nombre('rotation', 'Rotation (°)', -180, 180, 1) + '</div><div>' + nombre('opacite', 'Opacité (%)', 5, 100, 5) + '</div></div>'
       + '<div class="gf-champ"><label class="gf-lab">Page</label><input class="gf-in" type="number" data-o="page" value="' + o.page + '" min="1" max="' + nbPages + '"></div>'
-      + (o.type === 'annotation' || o.type === 'signature' ? '<div class="gf-champ"><label class="gf-lab">' + (o.type === 'signature' ? 'Nom signé' : 'Texte') + '</label><textarea class="gf-ta" data-o="texte" rows="3">' + ech(o.texte || '') + '</textarea></div>' : '')
+      + (o.type === 'annotation' || o.type === 'signature' || o.type === 'case' ? '<div class="gf-champ"><label class="gf-lab">' + (o.type === 'signature' ? 'Nom signé' : (o.type === 'case' ? 'Libellé' : 'Texte')) + '</label><textarea class="gf-ta" data-o="texte" rows="' + (o.type === 'case' ? 2 : 3) + '">' + ech(o.texte || '') + '</textarea></div>' : '')
+      + (o.type === 'case' ? '<div class="gf-champ"><label class="gf-bascule"><input type="checkbox" data-ob="coche"' + (o.coche ? ' checked' : '') + '><span class="gf-bascule-piste"></span><span class="gf-bascule-txt">Cochée</span></label></div>' : '')
       + (o.type === 'annotation' || o.type === 'cadre' || o.type === 'fleche'
           ? '<span class="gf-lab">Couleur</span><div class="gf-puces">' + couleurs.map(function (c) {
               return '<button type="button" class="gf-puce' + ((o.couleur || 'or') === c[0] ? ' is-actif' : '') + '" data-oc="' + c[0] + '">' + c[1] + '</button>';
@@ -3735,7 +3788,7 @@
       + '<button type="button" class="gf-mini" data-oa="derriere">Derrière</button>'
       + '<button type="button" class="gf-mini gf-mini-danger" data-oa="retirer">Retirer</button>'
       + '</div>'
-      + '<div class="gf-controle-actions" style="margin-top:14px"><button type="button" class="gf-btn gf-btn-fant" id="gf-objet-retour">Retour aux données</button></div>'
+      + '<div class="gf-controle-actions" style="margin-top:14px"><button type="button" class="gf-btn gf-btn-fant" id="gf-objet-retour">Désélectionner</button></div>'
       + '</div>';
     hote.querySelectorAll('[data-o]').forEach(function (n) {
       n.addEventListener('change', function () {
@@ -3759,7 +3812,7 @@
           list.splice(i + 1, 0, c); objetSel = c.id;
         } else if (a === 'devant' && i < list.length - 1) { list.splice(i, 1); list.push(o); }
         else if (a === 'derriere' && i > 0) { list.splice(i, 1); list.unshift(o); }
-        salir(); rafraichir(); peindreFormulaire(); setTimeout(marquerSelection, 40);
+        salir(); rafraichir(); peindreProps(); setTimeout(marquerSelection, 40);
       });
     });
     $('gf-objet-retour').addEventListener('click', function () { selectionnerObjet(null); });
@@ -3874,6 +3927,203 @@
     cadre.contentWindow.print();
   }
 
+
+
+  /* =================================================================
+     6 quinquies. LA BARRE D'OUTILS ET LE PANNEAU DE PROPRIÉTÉS
+     Ce que demandait l'espace de travail : à gauche de la feuille, les
+     outils qui posent ; à droite, ce que demande la sélection (l'objet,
+     le bloc, le texte), les calques, les variables, l'historique. Rien
+     de décoratif : chaque bouton fait quelque chose.
+     ================================================================= */
+  var propsOnglet = 'proprietes', grilleVisible = false, aimantActif = true;
+
+  function brancherOutils() {
+    var rail = $('gf-rail');
+    if (!rail) return;
+    rail.querySelectorAll('[data-outil]').forEach(function (b) {
+      b.addEventListener('mousedown', function (e) { e.preventDefault(); });   /* la sélection de la feuille reste */
+      b.addEventListener('click', function () { outil(b.getAttribute('data-outil')); });
+    });
+    var props = $('gf-props');
+    if (props) {
+      props.querySelectorAll('[data-props]').forEach(function (o) {
+        o.addEventListener('click', function () { propsOnglet = o.getAttribute('data-props'); peindreProps(); });
+      });
+      props.addEventListener('mousedown', function (e) {
+        var t = e.target;
+        if (t.closest && t.closest('button') && !t.closest('input, textarea, select')) e.preventDefault();
+      });
+    }
+  }
+  function outil(nom) {
+    if (!modeleActif) { dire('Ouvrez d\'abord un acte.', 'erreur'); return; }
+    if (nom === 'selection') { selectionnerObjet(null); majOutils(); return; }
+    if (nom === 'grille') { grilleVisible = !grilleVisible; appliquerGrille(); majOutils(); return; }
+    if (nom === 'aimant') { aimantActif = !aimantActif; majOutils(); dire(aimantActif ? 'Aimant activé' : 'Aimant désactivé', 'ok'); return; }
+    if (nom === 'proprietes') {
+      var visible = $('gf-props') && $('gf-props').offsetParent !== null;
+      racine.classList.toggle('gf-sans-props', visible); racine.classList.toggle('gf-avec-props', !visible);
+      setTimeout(function () { if (cadre && cadrePret) mesurer(cadre.contentDocument); }, 50); majOutils(); return;
+    }
+    if (lectureSeule()) { dire('Cet acte ne se modifie plus.', 'erreur'); return; }
+    if (nom === 'image') { poserImageObjet(); return; }
+    if (nom === 'variable') { insererVariable(); return; }
+    if (nom === 'bloc') {
+      if (!modeleActif.libre) { dire('Les blocs se posent dans un acte libre. Ici, les objets (texte, case, image, cadre) se posent partout.', 'erreur'); return; }
+      choisirBloc(); return;
+    }
+    if (TYPES_OBJET[nom]) { poserObjet(nom); return; }
+  }
+  function majOutils() {
+    var rail = $('gf-rail');
+    if (!rail) return;
+    rail.querySelectorAll('[data-outil]').forEach(function (b) {
+      var n = b.getAttribute('data-outil');
+      if (n === 'selection') b.classList.toggle('is-actif', !objetSel);
+      else if (n === 'grille') b.classList.toggle('is-actif', grilleVisible);
+      else if (n === 'aimant') b.classList.toggle('is-actif', aimantActif);
+      else if (n === 'proprietes') b.classList.toggle('is-actif', !!($('gf-props') && $('gf-props').offsetParent !== null));
+      else if (n === 'bloc') b.disabled = !modeleActif || !modeleActif.libre;
+    });
+  }
+  function appliquerGrille() {
+    var doc = cadre && cadrePret ? cadre.contentDocument : null;
+    if (doc) doc.body.classList.toggle('grille', grilleVisible);
+  }
+  /* la palette d'un acte libre, en boîte : un clic pose le bloc */
+  function choisirBloc() {
+    var cat = modeleActif.catalogue || [];
+    var familles = {};
+    cat.forEach(function (e) { (familles[e.famille || 'Blocs'] = familles[e.famille || 'Blocs'] || []).push(e); });
+    var html = Object.keys(familles).map(function (f) {
+      return '<div class="gf-fam"><span class="gf-lab">' + ech(f) + '</span><div class="gf-cartes gf-cartes-mini">' + familles[f].map(function (e) {
+        return '<button type="button" class="gf-carte gf-carte-mini" data-bloc="' + ech(e.type) + '" title="' + ech(e.resume || '') + '"><b>' + ech(e.nom) + '</b></button>';
+      }).join('') + '</div></div>';
+    }).join('');
+    modale('Poser un bloc', html, [{ lab: 'Fermer' }]);
+    var voile = racine.querySelector('.gf-voile:last-child');
+    if (!voile) return;
+    voile.querySelectorAll('[data-bloc]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var e = cat.filter(function (x) { return x.type === b.getAttribute('data-bloc'); })[0];
+        voile.remove();
+        if (e) poserBloc(e);
+      });
+    });
+  }
+
+  function peindreProps() {
+    var hote = $('gf-props-corps');
+    if (!hote) return;
+    majOutils();
+    racine.querySelectorAll('[data-props]').forEach(function (o) { o.classList.toggle('is-actif', o.getAttribute('data-props') === propsOnglet); });
+    hote.innerHTML = '';
+    if (!modeleActif) { hote.innerHTML = '<p class="gf-props-vide">Ouvrez un acte.</p>'; return; }
+    if (propsOnglet === 'calques') return peindreCalques(hote);
+    if (propsOnglet === 'variables') return peindreVariables(hote);
+    if (propsOnglet === 'historique') return peindreHistoriqueProps(hote);
+    /* propriétés : l'objet, sinon le bloc, sinon le texte et la page */
+    if (objetSel && objetDe(objetSel) && !lectureSeule()) { peindreObjet(hote); return; }
+    if (blocSel && !lectureSeule()) { peindreBloc(hote); return; }
+    var doc = cadre && cadrePret ? cadre.contentDocument : null;
+    var sel = doc ? doc.getSelection() : null;
+    var dansTexte = !!(sel && sel.rangeCount && sel.anchorNode && (sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode).closest && (sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode).closest('[data-edit]'));
+    var lect = lectureSeule();
+    var teintes = [['Or', '#C1A462'], ['Vert', '#0F432B'], ['Rouge', '#B4231F'], ['Gris', '#8C948F']];
+    var h = '';
+    if (!lect) {
+      h += '<div class="gf-props-titre">Texte</div>'
+        + '<p class="gf-props-vide" style="margin-bottom:8px">' + (dansTexte ? 'Sélectionnez des mots sur la feuille, puis :' : 'Cliquez dans un texte de la feuille, sélectionnez des mots, puis :') + '</p>'
+        + '<div class="gf-typo">'
+        + '<button type="button" data-tx="bold" title="Gras (Ctrl+B)"><b>B</b></button>'
+        + '<button type="button" data-tx="italic" title="Italique (Ctrl+I)"><i>I</i></button>'
+        + '<button type="button" data-tx="underline" title="Souligné (Ctrl+U)"><u>U</u></button>'
+        + '<button type="button" data-tx="surligner" title="Surligner">ab</button>'
+        + teintes.map(function (t) { return '<button type="button" class="gf-flot-teinte" data-teinte="' + t[1] + '" title="' + t[0] + '" style="--t:' + t[1] + '"></button>'; }).join('')
+        + '<button type="button" data-tx="grand" title="Plus grand">A+</button>'
+        + '<button type="button" data-tx="petit" title="Plus petit">A-</button>'
+        + '<button type="button" data-tx="effacer" title="Retirer la mise en forme">✕</button>'
+        + '</div>';
+      if (blocCourant) {
+        h += '<div class="gf-props-titre">Bloc</div><p class="gf-props-vide">' + ech(nomDuBloc(blocCourant)) + '</p>'
+          + '<div class="gf-typo" style="margin-top:6px"><button type="button" data-bloc-reglages>Réglages du bloc : taille, alignement, couleur, police</button></div>';
+      }
+    }
+    h += '<div class="gf-props-titre">La page</div>'
+      + '<div class="gf-var"><span>Acte</span><code>' + ech((donnees.nomActe || donnees.titre || modeleActif.nom)) + '</code></div>'
+      + '<div class="gf-var"><span>Numéro</span><code>' + ech(donnees.numero || 'sans') + '</code></div>'
+      + '<div class="gf-var"><span>Pages</span><code>' + nbPages + '</code></div>'
+      + '<div class="gf-var"><span>Objets posés</span><code>' + (donnees.objets || []).length + '</code></div>'
+      + '<div class="gf-var"><span>Grille 5 mm</span><button type="button" class="gf-mini" data-outil2="grille">' + (grilleVisible ? 'Masquer' : 'Montrer') + '</button></div>'
+      + '<div class="gf-var"><span>Aimant</span><button type="button" class="gf-mini" data-outil2="aimant">' + (aimantActif ? 'Désactiver' : 'Activer') + '</button></div>';
+    hote.innerHTML = h;
+    hote.querySelectorAll('[data-tx]').forEach(function (b) { b.addEventListener('click', function () { commandeTexte(b.getAttribute('data-tx')); }); });
+    hote.querySelectorAll('[data-teinte]').forEach(function (b) { b.addEventListener('click', function () { commandeTexte('teinte', b.getAttribute('data-teinte')); }); });
+    hote.querySelectorAll('[data-outil2]').forEach(function (b) { b.addEventListener('click', function () { outil(b.getAttribute('data-outil2')); peindreProps(); }); });
+    var br = hote.querySelector('[data-bloc-reglages]');
+    if (br) br.addEventListener('click', function () { commandeBloc('reglages', blocCourant); });
+  }
+  function peindreCalques(hote) {
+    var objets = donnees.objets || [];
+    if (!objets.length) { hote.innerHTML = '<p class="gf-props-vide">Aucun objet posé. La barre d\'outils, à gauche de la feuille, en pose : texte, case, image, cadre, flèche, signature, cachet.</p>'; return; }
+    hote.innerHTML = '<div class="gf-props-titre">Objets posés, du dessus au dessous</div>' + objets.slice().reverse().map(function (o) {
+      var T = TYPES_OBJET[o.type] || { nom: o.type };
+      return '<div class="gf-calque' + (objetSel === o.id ? ' is-actif' : '') + '" data-calque="' + ech(o.id) + '">'
+        + '<b>' + ech(T.nom + (o.texte ? ' · ' + String(o.texte).slice(0, 24) : '')) + '</b><span>p. ' + (o.page || 1) + '</span>'
+        + '<button type="button" class="gf-ico" data-calque-verrou="' + ech(o.id) + '" title="' + (o.verrou ? 'Déverrouiller' : 'Verrouiller') + '">' + (o.verrou ? '🔒' : '🔓') + '</button>'
+        + '<button type="button" class="gf-ico" data-calque-retirer="' + ech(o.id) + '" title="Retirer">✕</button></div>';
+    }).join('');
+    hote.querySelectorAll('[data-calque]').forEach(function (c) {
+      c.addEventListener('click', function (e) {
+        if (e.target.closest('button')) return;
+        var o = objetDe(c.getAttribute('data-calque'));
+        if (o && o.page) allerPage(o.page);
+        selectionnerObjet(c.getAttribute('data-calque'));
+      });
+    });
+    hote.querySelectorAll('[data-calque-verrou]').forEach(function (b) {
+      b.addEventListener('click', function () { var o = objetDe(b.getAttribute('data-calque-verrou')); if (o) { o.verrou = !o.verrou; salir(); rafraichir(); peindreProps(); } });
+    });
+    hote.querySelectorAll('[data-calque-retirer]').forEach(function (b) {
+      b.addEventListener('click', function () { retirerObjet(b.getAttribute('data-calque-retirer')); peindreProps(); });
+    });
+  }
+  function peindreVariables(hote) {
+    var lignes = listeTextes('variables');
+    hote.innerHTML = '<p class="gf-props-vide">Cliquez dans un texte de la feuille, puis « Insérer » : la variable s\'écrit avec sa valeur et reste une variable. Les valeurs du club se règlent dans Paramètres.</p>'
+      + '<div class="gf-props-titre">Variables</div>'
+      + lignes.map(function (v) {
+          var val = v.texte.replace(VAR_RE, function (m, r, ch) { return valeurVariable(r, ch); });
+          return '<div class="gf-var"><code>' + ech(v.texte) + '</code><span>' + ech(String(val).slice(0, 26)) + '</span><button type="button" class="gf-mini" data-var-ins="' + ech(v.texte) + '">Insérer</button></div>';
+        }).join('')
+      + '<div class="gf-typo" style="margin-top:12px"><button type="button" data-espace2="parametres">Identité du club…</button></div>';
+    hote.querySelectorAll('[data-var-ins]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var doc = cadre && cadrePret ? cadre.contentDocument : null;
+        if (!doc) return;
+        var sel = doc.getSelection();
+        var el = sel && sel.rangeCount ? (sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode) : null;
+        el = el && el.closest ? el.closest('[data-edit]') : null;
+        if (!el || lectureSeule()) { try { navigator.clipboard.writeText(b.getAttribute('data-var-ins')); } catch (e) {} dire(b.getAttribute('data-var-ins') + ' copié : cliquez dans un texte de la feuille et collez.', 'ok'); return; }
+        cadre.contentWindow.focus();
+        doc.execCommand('insertText', false, b.getAttribute('data-var-ins'));
+      });
+    });
+    var pe = hote.querySelector('[data-espace2]'); if (pe) pe.addEventListener('click', function () { montrer('parametres'); });
+  }
+  function peindreHistoriqueProps(hote) {
+    var versions = acteVersions.slice().reverse().map(function (v) {
+      return '<div class="gf-var"><code>V' + v.v + '</code><span>' + (v.etat === 'emise' ? 'Émise' : 'Remplacée') + ' le ' + ech(dateHeure(v.emisLe)) + '</span><button type="button" class="gf-mini" data-ouvrir-version="' + v.v + '">Ouvrir</button></div>';
+    }).join('') || '<p class="gf-props-vide">Aucune version émise.</p>';
+    var journal = acteJournal.slice().reverse().slice(0, 40).map(function (j) {
+      return '<div class="gf-var"><span style="flex:0 0 auto">' + ech(dateHeure(j.t)) + '</span><span style="color:var(--gf-texte)">' + ech(j.quoi) + '</span></div>';
+    }).join('') || '<p class="gf-props-vide">Rien encore.</p>';
+    hote.innerHTML = '<div class="gf-props-titre">Versions</div>' + versions + '<div class="gf-props-titre">Journal</div>' + journal;
+    hote.querySelectorAll('[data-ouvrir-version]').forEach(function (b) {
+      b.addEventListener('click', function () { var f = ficheCourante(); ouvrirActe(f, +b.getAttribute('data-ouvrir-version')); });
+    });
+  }
 
   /* =================================================================
      10 bis. LA SÉRIE : UN ACTE PAR LIGNE D'UNE LISTE
@@ -4243,6 +4493,8 @@
   }
 
   G.mount = function (root, contexte) {
+    /* la barre d'outils et le panneau de propriétés, une fois pour toutes */
+    setTimeout(brancherOutils, 0);
     /* Le Greffe est réservé au propriétaire du site : l'admin le dit au
        montage, après avoir comparé la session à bbc_proprietaire_email().
        Sans ce mot, rien ne se monte, même si un bouton a fui. */

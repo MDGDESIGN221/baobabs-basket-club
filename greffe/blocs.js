@@ -144,7 +144,7 @@
       ".party-champ.large{ grid-column:1 / -1; }",
       ".party-champ .k{ color:var(--gris); flex:0 0 auto; }",
       ".party-champ .v{ color:var(--encre); font-weight:500; overflow:hidden; text-overflow:ellipsis; }",
-      ".party-champ .pointille{ flex:1 1 auto; min-width:18mm; border-bottom:1px dotted var(--gris-clair); height:7pt; }",
+      ".party-champ .pointille{ flex:1 1 auto; min-width:18mm; border-bottom:1px dotted var(--gris-clair); min-height:7pt; }",
 
       /* ---- phrase de liaison (« Il est convenu ce qui suit : ») ---- */
       ".lead{ font-family:'Gilroy',sans-serif; font-weight:700; font-size:8.6pt; color:var(--encre); }",
@@ -195,6 +195,10 @@
       ".objet-annotation p{ margin:0; }",
       ".objet-cadre{ border:1.2pt solid var(--or); border-radius:3pt; }",
       ".objet-fleche{ overflow:visible; }",
+      ".objet-case{ display:flex; align-items:center; gap:5pt; font-size:7.8pt; line-height:1.25; }",
+      ".objet-case i{ flex:0 0 auto; width:9pt; height:9pt; border:1.1pt solid var(--encre); border-radius:2pt; position:relative; }",
+      ".objet-case.cochee i::after{ content:''; position:absolute; left:2pt; top:0; width:3pt; height:5.5pt; border:solid var(--encre); border-width:0 1.4pt 1.4pt 0; transform:rotate(40deg); }",
+      ".objet-case span{ flex:1; }",
 
       /* ---- texte libre, image ---- */
       ".libre .label{ display:block; margin-bottom:3pt; }",
@@ -273,6 +277,9 @@
       ".carte .carte-photo{ width:22mm; height:28mm; border:1px dashed var(--gris-clair); border-radius:2mm; background:var(--fond-tint); display:flex; align-items:center; justify-content:center; font-size:5.5pt; color:var(--gris); text-align:center; padding:2mm; }",
       ".carte .carte-id{ flex:1; display:flex; flex-direction:column; gap:1.6mm; }",
       ".carte .carte-nom{ font-family:'Gilroy',sans-serif; font-weight:800; font-size:11pt; line-height:1.05; color:var(--encre); min-height:11pt; }",
+      ".carte .carte-nom span{ display:inline-block; min-width:12mm; }",
+      ".carte .carte-ligne > span:not(.k){ display:inline-block; min-width:14mm; }",
+      ".carte .carte-photo img{ width:100%; height:100%; object-fit:cover; border-radius:1.5mm; }",
       ".carte .carte-ligne{ font-size:6.6pt; color:var(--texte); } .carte .carte-ligne .k{ color:var(--gris); letter-spacing:.1em; text-transform:uppercase; font-size:5.4pt; margin-right:2pt; }",
       ".carte .carte-pied{ display:flex; justify-content:space-between; align-items:flex-end; font-size:5.6pt; color:var(--gris); margin-top:auto; }",
       ".carte .carte-pied b{ font-family:'Gilroy',sans-serif; color:var(--vert); font-size:7pt; }",
@@ -684,7 +691,7 @@
         return '<col style="width:' + (((+c.poids || B.COLONNE_DEFAUT.poids)) * base).toFixed(3) + '%">';
       }).join('');
 
-    var thead = '<tr>' + (numeroter ? '<th class="a-centre th-rang">N°</th>' : '')
+    var thead = '<tr>' + (numeroter ? '<th class="a-centre th-rang"' + editChemin('fixes.' + ctx.bi + '.libelleRang') + '>' + U.enLigne(lire(d, 'fixes.' + ctx.bi + '.libelleRang') || 'N°') + '</th>' : '')
       + cols.map(function (c, j) {
         var a = c.align === 'centre' ? ' class="a-centre"' : (c.align === 'droite' ? ' class="a-droite"' : '');
         return '<th' + a + editChemin('tables.' + cfg.source + '.colonnes.' + j + '.titre') + '>' + U.enLigne(c.titre || '') + '</th>';
@@ -804,11 +811,14 @@
       var ps = val(cfg.parties, d, ctx) || [];
       return '<section class="parties avoid">' + ps.map(function (p, j) {
         var pre = 'parties.' + j;
-        var champs = (p.champs || []).map(function (c) {
-          var v = String(c.valeur == null ? '' : c.valeur).trim();
+        var champs = (p.champs || []).map(function (c, k) {
+          var preC = pre + '.champs.' + k;
+          var L = slot(c, 'label', d, ctx, '', preC), V = slot(c, 'valeur', d, ctx, '', preC);
+          var v = String(V.t == null ? '' : V.t).trim();
+          /* vide : une ligne pointillée, à remplir au stylo ; mais elle s'écrit aussi sur la feuille */
           return '<div class="party-champ' + (c.large ? ' large' : '') + '">'
-            + '<span class="k">' + U.enLigne(c.label) + ' :</span>'
-            + (v ? '<span class="v">' + U.enLigne(v) + '</span>' : '<span class="pointille"></span>')
+            + '<span class="k"' + L.a + '>' + U.enLigne(L.t || '') + '</span><span class="k"> :</span>'
+            + '<span class="' + (v ? 'v' : 'pointille') + '"' + V.a + '>' + U.enLigne(v) + '</span>'
             + '</div>';
         }).join('');
         var tx = slot(p, 'texte', d, ctx, '', pre);
@@ -872,7 +882,7 @@
           }).join('') + '</tr>';
         }).join('');
         return '<div class="poste avoid"><div class="poste-tete"><div class="poste-titre">'
-          + '<span class="art-num">' + U.deuxChiffres(gi + 1) + '</span><b>' + U.enLigne(g) + '</b></div>'
+          + '<span class="art-num">' + U.deuxChiffres(gi + 1) + '</span>' + ligne('b', '', slot({ t: g }, 't', d, ctx, '', 'groupes.' + gi)) + '</div>'
           + '<div class="poste-st">' + ligne('span', 'label', slot(cfg, 'libelleSousTotal', d, ctx, 'Sous-total')) + U.ech(somme(st)) + '</div></div>'
           + '<table><colgroup>' + colgroup + '</colgroup><tbody>' + rows + '</tbody></table></div>';
       }).join('');
@@ -1026,9 +1036,10 @@
       var colonnes = parseInt(val(cfg.colonnes, d, ctx), 10) || 2;
       return '<section class="grille avoid col-' + colonnes + '">' + champs.map(function (c, j) {
         var L, V;
-        if (c.chemin) { L = { t: c.label, a: '' }; V = { t: lire(d, c.chemin), a: editChemin(c.chemin), declare: true }; }
+        if (c.chemin) { L = { t: c.label, a: c.labelChemin ? editChemin(c.labelChemin) : '', declare: !!c.labelChemin }; V = { t: lire(d, c.chemin), a: editChemin(c.chemin), declare: true }; }
         else { L = slot(c, 'label', d, ctx, '', 'champs.' + j); V = slot(c, 'valeur', d, ctx, '', 'champs.' + j); V.declare = true; }
-        return '<div class="grille-champ' + (c.large ? ' large' : '') + '"><span class="k">' + U.enLigne(L.t || '') + '</span>'
+        if (!L.a) { var Ls = slot({ label: c.label }, 'label', d, ctx, '', 'champs.' + j); L = { t: Ls.t, a: Ls.a }; }
+        return '<div class="grille-champ' + (c.large ? ' large' : '') + '"><span class="k"' + L.a + '>' + U.enLigne(L.t || '') + '</span>'
           + '<span class="v"' + V.a + '>' + U.enLigne(V.t || '') + '</span></div>';
       }).join('') + '</section>';
     },
@@ -1040,8 +1051,12 @@
       return '<section class="cases avoid' + (val(cfg.enLigne, d, ctx) ? ' en-ligne' : '') + '">'
         + ligne('span', 'label', slot(cfg, 'etiquette', d, ctx))
         + cs.map(function (c, j) {
-          var coche = c.chemin ? !!lire(d, c.chemin) : !!c.cochee;
-          return '<div class="case' + (coche ? ' cochee' : '') + '"><i></i>' + ligne('span', '', slot(c, 'texte', d, ctx, '', 'cases.' + j)) + '</div>';
+          /* la case se coche sur la feuille : dans sa donnée si elle en a
+             une, sinon dans les surcharges du bloc (fixes) */
+          var chemin = c.chemin || ('fixes.' + ctx.bi + '.cases.' + j + '.cochee');
+          var fixe = c.chemin ? null : lire(d, chemin);
+          var coche = c.chemin ? !!lire(d, c.chemin) : (fixe != null ? !!fixe : !!c.cochee);
+          return '<div class="case' + (coche ? ' cochee' : '') + '" data-case="' + U.ech(chemin) + '"><i></i>' + ligne('span', '', slot(c, 'texte', d, ctx, '', 'cases.' + j)) + '</div>';
         }).join('') + '</section>';
     },
 
@@ -1081,22 +1096,30 @@
        saison. Huit par page, à découper. */
     cartes: function (cfg, d, ctx) {
       var t = (d.tables && d.tables[cfg.source]) || { lignes: [] };
-      var lignes = (t.lignes || []).filter(function (l) { return l && Object.keys(l).some(function (k) { return String(l[k] || '').trim(); }); });
+      var reelles = lignesUtiles(t);
       var min = parseInt(val(cfg.vide, d, ctx), 10) || 0;
-      while (lignes.length < min) lignes.push({});
+      var suivant = (t.lignes || []).length;
+      var lignes = reelles.slice();
+      for (var k = reelles.length; k < min; k++) lignes.push({ l: {}, i: suivant + (k - reelles.length), vide: true });
       if (!lignes.length) return '';
-      var club = val(cfg.club, d, ctx) || 'Baobabs Basket Club', saison = val(cfg.saison, d, ctx) || '';
-      var role = val(cfg.role, d, ctx) || 'Carte de membre';
-      return '<section class="cartes pg-groupe">' + lignes.map(function (l) {
-        var nom = [l.prenom, l.nom].filter(Boolean).join(' ');
-        return '<div class="carte"><div class="carte-tete"><div class="crest"' + fond(ctx) + '></div><b>' + U.ech(club) + '</b><span>' + U.ech(role) + '</span></div>'
-          + '<div class="carte-corps"><div class="carte-photo">' + (l.photo ? '<img src="' + l.photo + '" style="width:100%;height:100%;object-fit:cover;border-radius:1.5mm" alt="">' : 'Photo') + '</div>'
-          + '<div class="carte-id"><div class="carte-nom">' + U.enLigne(nom) + '</div>'
-          + '<div class="carte-ligne"><span class="k">Catégorie</span>' + U.enLigne(l.categorie || '') + '</div>'
-          + '<div class="carte-ligne"><span class="k">Licence</span>' + U.enLigne(l.licence || '') + '</div>'
-          + '<div class="carte-ligne"><span class="k">Née le</span>' + U.enLigne(l.naissance || '') + '</div>'
+      var chemin = 'tables.' + cfg.source + '.lignes.';
+      var club = slot(cfg, 'club', d, ctx, 'Baobabs Basket Club'), role = slot(cfg, 'role', d, ctx, 'Carte de membre');
+      var saison = slot(cfg, 'saison', d, ctx, ''), pied = slot(cfg, 'pied', d, ctx, '');
+      /* chaque champ d'une carte s'écrit sur la feuille, comme une case de
+         tableau ; une carte vierge est une ligne à venir du tableau */
+      function champ(r, cle, classe) {
+        return '<span' + (classe ? ' class="' + classe + '"' : '') + editChemin(chemin + r.i + '.' + cle) + '>' + U.enLigne(r.l[cle] || '') + '</span>';
+      }
+      return '<section class="cartes pg-groupe">' + lignes.map(function (r) {
+        var l = r.l;
+        return '<div class="carte"><div class="carte-tete"><div class="crest"' + fond(ctx) + '></div>' + ligne('b', '', club) + ligne('span', '', role) + '</div>'
+          + '<div class="carte-corps"><div class="carte-photo" data-photo="' + chemin + r.i + '.photo" title="Cliquer pour déposer une photo">' + (l.photo ? '<img src="' + l.photo + '" alt="">' : '<span>Photo</span>') + '</div>'
+          + '<div class="carte-id"><div class="carte-nom">' + champ(r, 'prenom') + ' ' + champ(r, 'nom') + '</div>'
+          + '<div class="carte-ligne">' + ligne('span', 'k', slot(cfg, 'libCategorie', d, ctx, 'Catégorie')) + champ(r, 'categorie') + '</div>'
+          + '<div class="carte-ligne">' + ligne('span', 'k', slot(cfg, 'libLicence', d, ctx, 'Licence')) + champ(r, 'licence') + '</div>'
+          + '<div class="carte-ligne">' + ligne('span', 'k', slot(cfg, 'libNaissance', d, ctx, 'Née le')) + champ(r, 'naissance') + '</div>'
           + '</div></div>'
-          + '<div class="carte-pied"><span>' + U.ech(val(cfg.pied, d, ctx) || '') + '</span><b>' + U.ech(saison) + '</b></div></div>';
+          + '<div class="carte-pied">' + ligne('span', '', pied) + ligne('b', '', saison) + '</div></div>';
       }).join('') + '</section>';
     },
 
