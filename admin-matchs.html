@@ -14604,7 +14604,10 @@
   // avec la liste des convoques. Reserve au proprietaire, comme le Greffe.
   function bureauMembres(){
     var QUALITE = { president:'Président', vp:'Vice-président', sg:'Secrétaire', sg_adj:'Secrétaire', tres:'Trésorier', tres_adj:'Trésorier' };
-    return ORG_ROLES.map(function(o){ var r = bureauMap[o.key] || {}; return r.holder_name ? { nom: r.holder_name, qualite: QUALITE[o.key] || 'Membre', poste: o.label } : null; }).filter(Boolean);
+    // Un poste sans titulaire part quand meme, le nom vide : le club est
+    // neuf, les personnes arrivent une a une, et une ligne a remplir au
+    // stylo vaut mieux qu'un acte qui refuse de s'ecrire.
+    return ORG_ROLES.map(function(o){ var r = bureauMap[o.key] || {}; return { nom: r.holder_name || '', qualite: QUALITE[o.key] || 'Membre', poste: o.label }; });
   }
   function bureauGreffeBoutons(){
     var pv = document.getElementById('bureau-greffe-pv'), cv = document.getElementById('bureau-greffe-conv');
@@ -14614,13 +14617,15 @@
   (function(){
     var pv = document.getElementById('bureau-greffe-pv'), cv = document.getElementById('bureau-greffe-conv');
     if (pv) pv.addEventListener('click', function(){
-      var membres = bureauMembres(); if (!membres.length){ qgToast('Renseignez d\'abord les titulaires des postes.', true); return; }
-      var pres = membres.filter(function(m){ return m.qualite === 'Président'; })[0];
+      var membres = bureauMembres();
+      var pres = membres.filter(function(m){ return m.qualite === 'Président' && m.nom; })[0];
+      if (!membres.some(function(m){ return m.nom; })) qgToast('Aucun titulaire encore : les noms restent à écrire sur l\'acte.');
       greffeNouvelActe('pv-reunion', { objet: 'du bureau', preside: pres ? pres.nom : undefined,
         tables: { presents: membres.map(function(m){ return { nom: m.nom, qualite: m.qualite, presence: 'Présent', emargement: '' }; }) } }, { origine: 'Bureau' });
     });
     if (cv) cv.addEventListener('click', function(){
-      var membres = bureauMembres(); if (!membres.length){ qgToast('Renseignez d\'abord les titulaires des postes.', true); return; }
+      var membres = bureauMembres();
+      if (!membres.some(function(m){ return m.nom; })) qgToast('Aucun titulaire encore : les noms restent à écrire sur l\'acte.');
       greffeNouvelActe('convocation', { nature: 'Réunion de bureau', equipe: 'Le bureau', evenement: 'Réunion du bureau', tenue: '',
         corps: 'Vous êtes convoqué(e) à la réunion du bureau dont l\'ordre du jour est joint. Merci de confirmer votre présence.',
         consignes: '- Ordre du jour ci-joint\n- Les documents à présenter sont à transmettre la veille',
