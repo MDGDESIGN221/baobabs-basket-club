@@ -2960,6 +2960,13 @@
   .ds-sub b{color:var(--text);font-weight:600}
   /* La suppression ne se peint pas comme les autres : c'est le seul
      geste de la barre qu'on ne peut pas defaire. */
+  .pr-vis{ display:grid; grid-template-columns:64px minmax(0,1fr) auto; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); position:relative }
+  .pr-vis img{ width:64px; height:64px; border-radius:9px; object-fit:cover; background:#11201a; border:1px solid var(--line-strong) }
+  .pr-vis-in{ width:100% }
+  .pr-vis-acts{ display:flex; gap:4px } .pr-vis-acts button{ width:30px; height:30px; border-radius:7px; background:var(--surface-2); border:1px solid var(--line-strong); color:var(--text); cursor:pointer } .pr-vis-acts button:disabled{ opacity:.3; cursor:default }
+  .pr-vis-main{ position:absolute; left:0; bottom:-1px; font-style:normal; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); background:var(--surface); padding:0 4px }
+  .ds-quick .ds-accent{ color:#0A1B0D; background:#A8D93B; border-color:#A8D93B; font-weight:700 }
+  .ds-quick .ds-accent:hover{ background:#B9E85A; border-color:#B9E85A }
   .ds-quick .ds-danger{ color:#E5837A; border-color:rgba(229,131,122,.34) }
   .ds-quick .ds-danger:hover{ color:#F3EFE6; background:rgba(192,39,27,.22); border-color:rgba(229,131,122,.6) }
   .ds-quick{display:flex;flex-wrap:wrap;margin-top:16px;border:1px solid var(--line-strong);
@@ -3977,7 +3984,7 @@
               <button class="db-num" data-go="matches2" data-filtre="termine"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg></span><b id="dash-played-num">—</b><span class="db-num-lab">Matchs joués</span><span class="chev">›</span></button>
               <button class="db-num" data-go="orders2"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/></svg></span><b id="dash-orders-num">—</b><span class="db-num-lab">Commandes</span><em id="dash-orders-new-sub"></em><span class="chev">›</span></button>
               <button class="db-num" data-go="applications"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span><b id="dash-recruitment-num">—</b><span class="db-num-lab">Candidatures</span><span class="chev">›</span></button>
-              <button class="db-num" data-go="forms"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1Z"/></svg></span><b id="dash-contact-num">—</b><span class="db-num-lab">Messages</span><span class="chev">›</span></button>
+              <button class="db-num" data-go="forms"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1Z"/></svg></span><b id="dash-contact-num">—</b><span class="db-num-lab">Messages</span><em id="dash-contact-sub"></em><span class="chev">›</span></button>
               <button class="db-num" data-go="newsl"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/></svg></span><b id="dash-newsletter-num">—</b><span class="db-num-lab">Abonnés newsletter</span><span class="chev">›</span></button>
             </div>
           </div>
@@ -13343,6 +13350,7 @@
           .then(function(){
             msRows = msRows.filter(function(r){ return String(r.id)!==String(id); });
             msRender();
+            qgToast(msTab==='newsletter' ? 'Adresse retirée de la liste ✓' : (msTab==='orders' ? 'Commande supprimée ✓' : 'Message supprimé ✓'));
           })
           .catch(function(){ b.disabled = false;
             showMsg(msEl('ms-msg'), 'La suppression a échoué.', false); });
@@ -13553,15 +13561,20 @@
     ];
     var totalNew = 0, doneCount = 0;
     Promise.all(inboxTables.map(function(t){
-      return sbGet(t.table+'?select=id'+(t.key==='orders'?',status':'')+'&order=created_at.desc').then(function(rows){
+      return sbGet(t.table+'?select=id'+(t.key==='orders'?',status':'')+(t.key==='contact'?',is_read':'')+'&order=created_at.desc').then(function(rows){
         rows=rows||[];
         document.getElementById('dash-'+t.key+'-num').textContent=rows.length;
         if(t.key==='orders'){
           var pending = rows.filter(function(r){ var s=normalizeOrderStatus(r.status); return s!=='récupérée' && s!=='annulée'; }).length;
           document.getElementById('dash-orders-new-sub').textContent = pending ? (pending+' en attente') : 'Tout traité';
           totalNew += pending;
-        } else if (t.key!=='newsletter') {
-          totalNew += rows.length;
+        } else if (t.key==='contact') {
+          // Un message lu (« Marquer comme traité » dans Messages) ne compte
+          // plus : la pastille disait 2 alors que tout etait traite.
+          var nonLus = rows.filter(function(r){ return !r.is_read; }).length;
+          var sub = document.getElementById('dash-contact-sub');
+          if (sub) sub.textContent = nonLus ? (nonLus + ' à traiter') : (rows.length ? 'Tout traité' : '');
+          totalNew += nonLus;
         }
         return rows.length;
       }).catch(function(){ document.getElementById('dash-'+t.key+'-num').textContent='—'; return 0; });
@@ -13624,6 +13637,65 @@
     var s = prStock(r), t = 0;
     Object.keys(s).forEach(function(k){ t += Number(s[k]) || 0; });
     return t;
+  }
+  /* Les visuels d'un produit : products.images (jsonb, un tableau
+     d'adresses) est ce que le site affiche, image principale et
+     vignettes. La fiche ne les montrait qu'en lecture : impossible de
+     changer une photo de maillot sans passer par la base. */
+  function prImages(r){
+    var im = r.images;
+    if (typeof im === 'string'){ try { im = JSON.parse(im); } catch(e){ im = im ? [im] : []; } }
+    if (!Array.isArray(im)) im = im ? [im] : [];
+    im = im.filter(function(u){ return u && String(u).trim(); });
+    if (!im.length && r.image_url) im = [r.image_url];
+    return im;
+  }
+  function prVisuelsHtml(urls){
+    var rows = urls.map(function(u, i){
+      return '<div class="pr-vis" data-i="' + i + '">' +
+        '<img src="' + esc(u) + '" alt="" onerror="this.style.opacity=.25">' +
+        '<input type="text" class="pr-vis-in" value="' + esc(u) + '" placeholder="/media/img/visuel.webp">' +
+        '<span class="pr-vis-acts">' +
+          '<button type="button" data-vis="haut" title="Monter"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+          '<button type="button" data-vis="bas" title="Descendre"' + (i === urls.length - 1 ? ' disabled' : '') + '>↓</button>' +
+          '<button type="button" data-vis="oter" title="Retirer ce visuel">×</button>' +
+        '</span>' +
+        (i === 0 ? '<i class="pr-vis-main">Image principale</i>' : '') +
+      '</div>';
+    }).join('');
+    return rows + '<button type="button" class="btn btn-ghost" id="pr-vis-add" style="padding:8px 12px;font-size:12.5px">+ Ajouter un visuel</button>';
+  }
+  function prVisuelsLire(){
+    return Array.prototype.map.call(document.querySelectorAll('#pr-visuels .pr-vis-in'), function(i){ return String(i.value || '').trim(); })
+      .filter(function(u){ return !!u; });
+  }
+  function prVisuelsBrancher(){
+    var zone = document.getElementById('pr-visuels'); if (!zone) return;
+    var note = document.getElementById('pr-note');
+    function marquer(){ prDirty = true; if (note) note.textContent = 'Modifications non enregistrées.'; }
+    function redessiner(urls){ zone.innerHTML = prVisuelsHtml(urls); prVisuelsBrancher(); marquer(); }
+    zone.querySelectorAll('.pr-vis-in').forEach(function(inp){
+      inp.addEventListener('input', function(){ marquer(); var im = inp.closest('.pr-vis').querySelector('img'); if (im) { im.src = inp.value; im.style.opacity = 1; } });
+      inp.addEventListener('change', function(){ marquer(); });
+    });
+    zone.querySelectorAll('[data-vis]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var urls = prVisuelsLire(), i = parseInt(b.closest('.pr-vis').getAttribute('data-i'), 10), a = b.getAttribute('data-vis');
+        // on relit les champs tels quels (meme vides) pour ne pas perdre une ligne en cours
+        urls = Array.prototype.map.call(zone.querySelectorAll('.pr-vis-in'), function(x){ return String(x.value || '').trim(); });
+        if (a === 'oter') urls.splice(i, 1);
+        else if (a === 'haut' && i > 0) { var t = urls[i-1]; urls[i-1] = urls[i]; urls[i] = t; }
+        else if (a === 'bas' && i < urls.length - 1) { var t2 = urls[i+1]; urls[i+1] = urls[i]; urls[i] = t2; }
+        redessiner(urls);
+      });
+    });
+    var add = document.getElementById('pr-vis-add');
+    if (add) add.addEventListener('click', function(){
+      var urls = Array.prototype.map.call(zone.querySelectorAll('.pr-vis-in'), function(x){ return String(x.value || '').trim(); });
+      urls.push('');
+      redessiner(urls);
+      var last = zone.querySelectorAll('.pr-vis-in'); if (last.length) last[last.length - 1].focus();
+    });
   }
   function prImg(r){
     var im = r.images;
@@ -13799,6 +13871,9 @@
             '<p class="cd-prose" style="color:var(--faint);font-size:12px;margin:7px 0 0">Sans suivi de stock, c\'est vous qui déclarez la disponibilité.</p>' +
           '</div>' +
 
+          '<p class="ar-side-h">Visuels</p>' +
+          '<p class="cd-prose" style="color:var(--faint);font-size:12px;margin:0 0 10px">Le premier est l\'image principale de la boutique ; les autres deviennent des vignettes. Médiathèque, envoi depuis l\'appareil, ou une adresse.</p>' +
+          '<div id="pr-visuels" style="margin-bottom:22px">' + prVisuelsHtml(prImages(r)) + '</div>' +
           '<p class="ar-side-h">Fiche produit</p>' +
           '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:0 18px">' +
             fld('pr-name', 'Nom du produit', r.name) +
@@ -13829,6 +13904,7 @@
       prDirty = true; note.textContent = 'Modifications non enregistrées.';
     });
 
+    prVisuelsBrancher();
     var ids = ['pr-name','pr-price','pr-cost','pr-cat','pr-sku','pr-sort','pr-sizes','pr-desc','pr-alert','pr-instock']
       .concat(PR_SIZES.map(function(s){ return 'pr-q-' + s; }));
     ids.forEach(function(id){
@@ -13845,7 +13921,10 @@
         var x = v('pr-q-' + s);
         if (x !== '') stock[s] = Math.max(0, parseInt(x, 10) || 0);
       });
+      var visuels = prVisuelsLire();
       var body = {
+        images: visuels,
+        image_url: visuels[0] || null,
         name: v('pr-name').trim() || 'Sans nom',
         price: v('pr-price') === '' ? null : parseInt(v('pr-price'), 10),
         cost_fcfa: v('pr-cost') === '' ? null : parseInt(v('pr-cost'), 10),
@@ -15456,10 +15535,13 @@
   // origines -- envois, fiches, site, depot -- sont la sans un mot de
   // plus.
 
-  var IMGP_OUI = /(logo|photo|image|img|hero|poster|visuel|couverture|affiche|banniere|banner|portrait|avatar)/i;
+  var IMGP_OUI = /(logo|photo|image|img|hero|poster|visuel|couverture|affiche|banniere|banner|portrait|avatar|favicon)/i;
+  // Les champs d'adresse des controles « Uploader / Coller un lien » : leur
+  // nom ne dit pas « photo », il faut les nommer.
+  var IMGP_IDS = /^(founder_url|bureau_url|tm-ed-url|mp_url|hero_url|team_logo_url|ia_logo_url)$/;
   // « set_hero_title » contient « hero » et n'est pas une image. Sans ce
   // filtre, le bouton se posait sur des champs de texte.
-  var IMGP_NON = /(title|titre|texte|text|sous_titre|subtitle|alt|nom|name|couleur|color|lien|link|url_page|slug|cle|key)/i;
+  var IMGP_NON = /(title|titre|texte|text|sous_titre|subtitle|alt|nom|name|couleur|color|lien|link|url_page|slug|cle|key|video|channel|badge|kicker|label|pastille|tag|caption|legende)/i;
   var IMGP_EXT = /\.(jpe?g|png|webp|gif|svg|avif)\b/i;
 
   function imgpEstChampImage(el){
@@ -15469,10 +15551,15 @@
     if (el.dataset.imgp) return false;                 // deja equipe
     var ph = el.placeholder || '';
     var nom = (el.id || '') + ' ' + (el.name || '');
-    // Un placeholder qui montre une extension d'image tranche a lui seul :
-    // c'est ainsi que les champs batis a l'execution se reconnaissent.
-    if (IMGP_EXT.test(ph)) return !IMGP_NON.test(nom);
-    return IMGP_OUI.test(nom + ' ' + ph) && !IMGP_NON.test(nom);
+    if (IMGP_IDS.test(el.id || '')) return true;
+    // Un placeholder qui montre une extension d'image ou un chemin tranche
+    // a lui seul : c'est ainsi que les champs batis a l'execution se
+    // reconnaissent. UN MOT du placeholder ne suffit pas : « Ce qu'on voit
+    // sur la photo » est une legende, « Voir l'affiche » une pastille, et
+    // tous deux recevaient un bouton Mediatheque qu'ils ne pouvaient pas
+    // servir.
+    if (IMGP_EXT.test(ph) || /^\/media\/img\//i.test(ph)) return !IMGP_NON.test(nom);
+    return IMGP_OUI.test(nom) && !IMGP_NON.test(nom);
   }
 
   var IMGP_ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>';
@@ -15529,7 +15616,13 @@
       var rang = document.createElement('div');
       rang.className = 'imgp-row';
       rang.appendChild(b); rang.appendChild(t);
-      el.parentElement.insertBefore(rang, el.nextSibling);
+      // Le champ d'adresse d'un controle « Uploader / Coller un lien » est
+      // cache tant qu'on n'a pas choisi « Coller un lien » : les boutons
+      // poses derriere lui l'etaient aussi. Ils se posent apres le
+      // choix Uploader / Coller, toujours visible.
+      var choix = el.parentElement.querySelector('.logo-choice');
+      if (choix && el.classList.contains('hide')) el.parentElement.insertBefore(rang, choix.nextSibling);
+      else el.parentElement.insertBefore(rang, el.nextSibling);
     }
   }
 
@@ -18190,7 +18283,7 @@
     if (pt) pt.addEventListener('click', function(){
       pt.disabled = true;
       sbUpdate('orders', r.id, { paid: !r.paid }, 'Commandes')
-        .then(function(){ r.paid = !r.paid; odRenderDoc(); })
+        .then(function(){ r.paid = !r.paid; odRenderDoc(); showMsg(document.getElementById('od-msg'), r.paid ? 'Commande marquée encaissée.' : 'Commande marquée non encaissée.', true); })
         .catch(function(){ pt.disabled = false; showMsg(document.getElementById('od-msg'), 'Impossible de changer le paiement.', false); });
     });
 
@@ -19577,6 +19670,7 @@
             '<div class="ds-quick">'+
               (r.phone?'<a href="tel:'+esc(r.phone)+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.2-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.8 2Z"></path></svg>'+esc(r.phone)+'</a>':'')+
               (r.email?'<a href="mailto:'+esc(r.email)+'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m2 7 10 6 10-6"></path></svg>'+esc(r.email)+'</a>':'')+
+              ((r.status||'nouvelle')==='acceptee' ? '<button type="button" id="cd-vers-effectif" class="ds-accent">Créer la fiche joueuse</button>' : '')+
               '<button type="button" id="cd-archive-toggle">'+((r.status||'nouvelle')==='archivee'?'Désarchiver':'Archiver')+'</button>'+
               '<button type="button" id="cd-pdf-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5M4 21h16"/></svg>Fiche PDF</button>'+
               '<button type="button" id="cd-del-btn" class="ds-danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>Supprimer</button>'+
@@ -19629,7 +19723,7 @@
 
           '<div class="cd-sec"><div class="cd-sec-h">Coordonnées</div><div class="cd-sec-b">'+
             kv('Téléphone', r.phone)+kv('Email', r.email)+kv('Ville', r.city)+
-            kv('Date de naissance', r.birth_date)+kv('Âge', r.age?r.age+' ans':'')+
+            kv('Date de naissance', fmtDateSeule(r.birth_date))+kv('Âge', r.age?r.age+' ans':'')+
             (!r.phone&&!r.email&&!r.city?'<p class="cd-prose" style="color:var(--faint)">Aucune coordonnée renseignée.</p>':'')+
           '</div></div>'+
 
@@ -19706,6 +19800,30 @@
 
     var pdfBtn = document.getElementById('cd-pdf-btn');
     if (pdfBtn) pdfBtn.addEventListener('click', function(){ cdGeneratePdf(r); });
+    // ACCEPTEE -> EFFECTIF. Une candidature acceptee se retapait a la main
+    // dans Joueuses : nom, poste, taille, ville, photo. La fiche se cree
+    // d'ici, remplie de ce que le dossier sait, et s'ouvre dans Joueuses.
+    var versEf = document.getElementById('cd-vers-effectif');
+    if (versEf) versEf.addEventListener('click', function(){
+      var nom = ((r.first_name||'') + ' ' + (r.last_name||'')).trim() || 'Sans nom';
+      if (!confirm('Créer la fiche joueuse de ' + nom + ' dans l\'effectif ?\n\nNom, poste, taille, ville, année de naissance et photo sont repris du dossier. Le numéro de maillot se choisit dans la fiche.')) return;
+      versEf.disabled = true;
+      var corps = { name: nom, status: 'active', sort: 999 };
+      if (r.position) corps.position = String(r.position).replace(/·\w+$/, '');
+      if (r.height_cm) corps.height = (r.height_cm/100).toFixed(2).replace('.', ',') + ' m';
+      if (r.weight_kg) corps.weight = r.weight_kg + ' kg';
+      if (r.city) corps.city = r.city;
+      if (r.birth_date) { var an = parseInt(String(r.birth_date).slice(0,4), 10); if (!isNaN(an)) corps.birth_year = an; }
+      if (r.photo_url) corps.photo_url = r.photo_url;
+      if (r.gender) corps.gender = r.gender;
+      if (r.previous_clubs) corps.previous_club = r.previous_clubs;
+      corps.joined_at = new Date().toISOString().slice(0,10);
+      sbInsert('players', corps, 'Joueuses').then(function(cree){
+        qgToast(nom + ' — fiche joueuse créée ✓ Complétez le numéro et la photo.');
+        showSection('squad');
+        if (cree && cree.id != null && typeof efLoad === 'function') { efLoad().then(function(){ efSel = cree.id; efDirty = false; efRender(); }); }
+      }).catch(function(){ versEf.disabled = false; qgToast('La fiche joueuse n\'a pas pu être créée.', true); });
+    });
     // --- Étoiles ---
     box.querySelectorAll('#cd-stars button').forEach(function(b){
       b.addEventListener('click', function(){
@@ -20534,8 +20652,8 @@
           '</div></div>'+
 
           '<div class="cd-sec"><div class="cd-sec-h">L\'enfant</div><div class="cd-sec-b">'+
-            kv('Date de naissance', r.birth_date)+kv('Âge', r.age?r.age+' ans':'')+
-            kv('Catégorie', r.category)+kv('Établissement', r.school)+
+            kv('Date de naissance', fmtDateSeule(r.birth_date))+kv('Âge', (r.age||r.age===0)?(r.age+' ans'+((r.age>17||r.age<5)?' — hors tranche de l\'école, à vérifier':'')):'')+
+            kv('Catégorie', r.category || (r.age>17 ? 'à préciser' : ''))+kv('Établissement', r.school)+
             kv('Quartier / Ville', r.district)+kv('Niveau', r.experience)+
           '</div></div>'+
 
@@ -20757,9 +20875,17 @@
         box.innerHTML='';
         // showMsg écrit en textContent : échapper ici afficherait « d&#39;inscription ».
         showMsg(document.getElementById('in-msg'), titre+' — '+inFcfa(somme)+' encaissés.', true);
+        // UN PAIEMENT VAUT INSCRIPTION. Un dossier « nouvelle » ou
+        // « contactée » qui paie restait compte parmi les « sans reponse »
+        // du tableau de bord : l'argent etait encaisse, le dossier
+        // attendait toujours. Il passe en Inscrite, et le journal le dit.
+        var st = (r.status || 'nouvelle');
+        var passe = (st === 'nouvelle' || st === 'contactee' || st === 'essai') ? sbUpdate('academy_registrations', r.id, { status: 'inscrite' }, 'Inscriptions')
+          .then(function(){ r.status = 'inscrite'; qgToast('Paiement encaissé : le dossier passe en « Inscrite ».'); })
+          .catch(function(){ qgToast('Paiement encaissé, mais le dossier n\'a pas pu passer en « Inscrite ».', true); }) : Promise.resolve();
         // On recharge la liste : les totaux de la vue et les compteurs du
         // haut d'écran doivent bouger en même temps que la fiche.
-        inLoad().then(function(){ if (inSel) inOpen(inSel); });
+        passe.then(function(){ return inLoad(); }).then(function(){ if (inSel) inOpen(inSel); });
       })
       .catch(function(e){
         b.disabled = false;

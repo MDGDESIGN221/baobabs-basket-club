@@ -96,7 +96,16 @@ Deno.serve(async (req) => {
       .from("newsletter_subscribers")
       .select("email, name")
       .order("created_at", { ascending: true });
-    const list = (subs || []).filter((s) => s.email && /@/.test(s.email));
+    // Une adresse inscrite deux fois (le formulaire du site ne l'empêche
+    // pas) ne reçoit qu'un message : on dédoublonne, sans tenir compte
+    // de la casse.
+    const vus = new Set<string>();
+    const list = (subs || []).filter((s) => {
+      const e = String(s.email || "").trim().toLowerCase();
+      if (!e || !/@/.test(e) || vus.has(e)) return false;
+      vus.add(e);
+      return true;
+    });
     if (!list.length) return reply(200, { sent: 0, failed: 0, note: "aucun inscrit" });
 
     // --- Envoi par paquets : UN MESSAGE PAR PERSONNE, jamais de liste
