@@ -3805,9 +3805,12 @@
     peindreProps(); majOutils();
   }
   function selectionnerTout() {
-    var page = pageVisible();
-    var ids = (donnees.objets || []).filter(function (o) { return (o.page || 1) === page; }).map(function (o) { return o.id; });
-    if (!ids.length) { dire('Aucun objet posé sur cette page.', 'erreur'); return; }
+    /* la page de l'objet pris, sinon la page visible ; si elle est vide, tout l'acte */
+    var tous = donnees.objets || [], oSel = objetDe(objetSel);
+    var page = oSel ? (oSel.page || 1) : pageVisible();
+    var ids = tous.filter(function (o) { return (o.page || 1) === page; }).map(function (o) { return o.id; });
+    if (!ids.length) ids = tous.map(function (o) { return o.id; });
+    if (!ids.length) { dire('Aucun objet posé sur la feuille.', 'erreur'); return; }
     objetsSel = ids; objetSel = ids[ids.length - 1];
     marquerSelection(); peindreProps(); majOutils();
     dire(ids.length + ' objet' + (ids.length > 1 ? 's' : '') + ' sélectionné' + (ids.length > 1 ? 's' : ''), 'ok');
@@ -4490,7 +4493,7 @@
         + '</div>';
       if (blocCourant) {
         h += '<div class="gf-props-titre">Bloc</div><p class="gf-props-vide">' + ech(nomDuBloc(blocCourant)) + '</p>'
-          + '<div class="gf-typo" style="margin-top:6px"><button type="button" data-bloc-reglages>Réglages du bloc : taille, alignement, couleur, police</button></div>';
+          + '<div class="gf-typo" style="margin-top:6px"><button type="button" class="gf-long" data-bloc-reglages>Réglages du bloc : taille, alignement, couleur, police</button></div>';
       }
     }
     h += '<div class="gf-props-titre">La page</div>'
@@ -4930,10 +4933,12 @@
   function chargerMoteur() {
     var p = G.blocs ? Promise.resolve()
       : charger('/greffe/blocs.js', function () { return !!G.blocs; });
+    function modele(m) { return G.modeles[m] ? Promise.resolve() : charger('/greffe/modeles/' + m + '.js', function () { return !!G.modeles[m]; }); }
     return p.then(function () {
-      return Promise.all(MODELES.filter(function (m) { return !G.modeles[m]; }).map(function (m) {
-        return charger('/greffe/modeles/' + m + '.js', function () { return !!G.modeles[m]; });
-      }));
+      /* l'acte libre d'abord : la page blanche se construit sur lui */
+      return modele('acte-libre');
+    }).then(function () {
+      return Promise.all(MODELES.filter(function (m) { return m !== 'acte-libre'; }).map(modele));
     }).then(function () {
       /* les préréglages livrés avec le Greffe, après les modèles qu'ils citent */
       return G.prereglages ? null : charger('/greffe/prereglages.js', function () { return !!G.prereglages; });
