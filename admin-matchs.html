@@ -5228,6 +5228,7 @@
           </div>
           <input type="file" id="founder_file" accept="image/*">
           <input type="text" id="founder_url" placeholder="https://…" class="hide">
+          <div class="qg-photo-actions" id="founder_cadrer_zone"></div>
           <img id="founder_preview" alt="" class="logo-preview" style="width:110px;height:110px;border-radius:50%;object-fit:cover" alt="">
         </div>
         <div class="field"><label for="set_founder_name">Nom</label><input type="text" id="set_founder_name" placeholder="Ex : Antoine Jean-Pierre Ndong"></div>
@@ -6769,7 +6770,9 @@
     // la tete, et ces trois images sont vues en tout petit.
     app_sc_roster_img: { titre:'Appli — écran Effectif',    d:0.62, m:0.62 },
     app_sc_live_img:   { titre:'Appli — écran Direct',      d:1.30, m:1.30 },
-    app_sc_news_img:   { titre:'Appli — écran Actualité',   d:1.40, m:1.40 }
+    app_sc_news_img:   { titre:'Appli — écran Actualité',   d:1.40, m:1.40 },
+    // Le portrait du fondateur (page Le Club) : un carre, meme cadre partout.
+    founder_photo_url: { titre:'Fondateur — portrait',      d:1, m:1 }
   };
   // Les six réglages d'un cadrage, rangés dans site_settings à côté de
   // l'image : ps_poster_url_x, ps_poster_url_mzoom… Aucune migration SQL,
@@ -12572,6 +12575,38 @@
       });
     });
   }
+  // Le meme bouton pour le portrait du fondateur : ses six nombres vivent
+  // dans site_settings comme ceux du hero, et le site les applique par
+  // bbCadre(). Avant, ce portrait etait la seule photo de la page Le
+  // Club qu'on ne pouvait pas placer dans son cadre.
+  function founderCadreBouton(){
+    var zone = document.getElementById('founder_cadrer_zone');
+    if (!zone) return;
+    zone.innerHTML = cadreBouton('founder_photo_url');
+    var b = zone.querySelector('.qgc-cadrer');
+    b.addEventListener('click', function(){
+      var conf = CADRABLES.founder_photo_url;
+      var champ = document.getElementById('founder_url');
+      var url = (champ && champ.value.trim()) || settings.founder_photo_url || '';
+      if (!url){ qgToast('Choisissez d\'abord une photo à cadrer.', true); return; }
+      cadrageOuvrir({
+        url: url, titre: conf.titre, ratioD: conf.d, ratioM: conf.m, sansMobile: true,
+        valeurs: { x:b.dataset.cx, y:b.dataset.cy, zoom:b.dataset.cz },
+        onValider: function(r){
+          b.dataset.cx=r.x; b.dataset.cy=r.y; b.dataset.cz=r.zoom;
+          var lab=b.querySelector('span'); if(lab) lab.textContent=cadreResume(r,'founder_photo_url');
+          var p=document.getElementById('founder_preview');
+          if (p){ p.style.objectPosition = r.x+'% '+r.y+'%'; p.style.transform = 'scale('+(r.zoom/100)+')'; p.style.transformOrigin = r.x+'% '+r.y+'%'; }
+          qgToast('Cadrage posé — cliquez sur « Enregistrer » pour l\'appliquer au site.');
+        }
+      });
+    });
+  }
+  function founderCadreValeurs(){
+    var b = document.querySelector('#founder_cadrer_zone .qgc-cadrer');
+    if (!b) return {};
+    return { founder_photo_url_x: b.dataset.cx, founder_photo_url_y: b.dataset.cy, founder_photo_url_zoom: b.dataset.cz };
+  }
   // Les six nombres du cadrage du hero, à joindre à son enregistrement.
   function heroCadreValeurs(){
     var b = document.querySelector('#hero_cadrer_zone .qgc-cadrer');
@@ -12625,13 +12660,14 @@
     document.getElementById('set_founder_name').value=settings.founder_name||'';
     document.getElementById('set_founder_role').value=settings.founder_role||'';
     document.getElementById('set_founder_bio').value=settings.founder_bio||'';
+    founderCadreBouton();
     document.getElementById('founder_url').value=settings.founder_photo_url||''; var p=document.getElementById('founder_preview'); if(settings.founder_photo_url){p.src=settings.founder_photo_url;p.style.display='block';}
     updateFounderPreview();
   };
   document.getElementById('save-founder-btn').addEventListener('click',function(){
     var msg=document.getElementById('founder-msg'); var btn=this; btn.disabled=true;
     imageValue(MEDIA_BUCKET, document.getElementById('founder_file'), document.getElementById('founder_url'), document.getElementById('founder_mode_url'))
-      .then(function(url){ saveSettings({ founder_name:document.getElementById('set_founder_name').value.trim(), founder_role:document.getElementById('set_founder_role').value.trim(), founder_bio:document.getElementById('set_founder_bio').value.trim(), founder_photo_url:url||'' }, msg, btn, 'Fondateur'); })
+      .then(function(url){ saveSettings(Object.assign({ founder_name:document.getElementById('set_founder_name').value.trim(), founder_role:document.getElementById('set_founder_role').value.trim(), founder_bio:document.getElementById('set_founder_bio').value.trim(), founder_photo_url:url||'' }, founderCadreValeurs()), msg, btn, 'Fondateur'); })
       .catch(function(){ showMsg(msg,'Erreur lors de l\'upload de l\'image.',false); btn.disabled=false; });
   });
 
@@ -14218,7 +14254,10 @@
             fld('bn-fy', 'Cadrage vertical (%)', fy, 'number') +
             fld('bn-zoom', 'Zoom (%)', zm, 'number') +
           '</div>' +
-          '<button type="button" class="btn btn-ghost" id="bn-media" style="padding:8px 13px;font-size:12px;margin-bottom:20px">Ouvrir la médiathèque</button>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">' +
+          '<button type="button" class="btn btn-ghost" id="bn-media" style="padding:8px 13px;font-size:12px">Ouvrir la médiathèque</button>' +
+          '<button type="button" class="btn btn-ghost" id="bn-cadrer" style="padding:8px 13px;font-size:12px">Cadrer à la souris</button>' +
+          '</div>' +
 
           '<p class="ar-side-h">Mise en ligne</p>' +
           '<label style="display:flex;align-items:center;gap:9px;margin-bottom:13px;cursor:pointer">' +
@@ -14245,6 +14284,23 @@
     var v = function(id){ var e = document.getElementById(id); return e ? e.value : ''; };
 
     // L'aperçu suit la frappe : sans lui, on enregistre pour voir, on
+    // Trois nombres a deviner (horizontal, vertical, zoom) : le meme atelier
+    // que le hero les pose a la souris, et les recopie dans les champs.
+    var bnCadrer = document.getElementById('bn-cadrer');
+    if (bnCadrer) bnCadrer.addEventListener('click', function(){
+      var url = v('bn-img').trim();
+      if (!url){ qgToast('Choisissez d\'abord une image à cadrer.', true); return; }
+      var hc = CADRABLES.hero_image_url;
+      cadrageOuvrir({
+        url: url, titre: 'Bannière — ' + (v('bn-title') || 'visuel'), ratioD: hc.d, ratioM: hc.m, sansMobile: true,
+        valeurs: { x: v('bn-fx') || 50, y: v('bn-fy') || 50, zoom: v('bn-zoom') || 100 },
+        onValider: function(r){
+          document.getElementById('bn-fx').value = r.x; document.getElementById('bn-fy').value = r.y; document.getElementById('bn-zoom').value = r.zoom;
+          ['bn-fx','bn-fy','bn-zoom'].forEach(function(id){ document.getElementById(id).dispatchEvent(new Event('input', { bubbles:true })); });
+          qgToast('Cadrage posé — cliquez sur « Enregistrer » pour l\'appliquer au site.');
+        }
+      });
+    });
     // corrige, on réenregistre.
     function sync(){
       var im = document.getElementById('bn-pv-img');

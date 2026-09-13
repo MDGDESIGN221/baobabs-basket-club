@@ -10221,7 +10221,10 @@ window.bbCloud = function(url, w){
   function applyFounder(s){
     var el=document.getElementById('bb-founder'); if(!el) return;
     if(!s || !s.founder_name){ el.classList.add('bb-hide'); return; }
-    var photo = s.founder_photo_url ? '<img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(s.founder_photo_url,400):(s.founder_photo_url)))+'" alt="'+esc(s.founder_name)+'" style="width:clamp(120px,22vw,168px);height:clamp(120px,22vw,168px);border-radius:18px;object-fit:cover;border:1px solid rgba(var(--bb-or-rgb),.35);flex:none" loading="lazy" decoding="async">' : '';
+    var photo = s.founder_photo_url ? '<img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(s.founder_photo_url,400):(s.founder_photo_url)))+'" alt="'+esc(s.founder_name)+'" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" decoding="async">' : '';
+    // Le cadre porte le rayon et coupe ce qui depasse : un zoom pose depuis
+    // l'admin (transform:scale) sortirait sinon du portrait.
+    if (photo) photo = '<div style="width:clamp(120px,22vw,168px);height:clamp(120px,22vw,168px);border-radius:18px;overflow:hidden;border:1px solid rgba(var(--bb-or-rgb),.35);flex:none">' + photo + '</div>';
     var bio = s.founder_bio ? '<div style="font-size:14.5px;line-height:1.7;color:#B9C2BB;margin:14px 0 0">'+bbRich(s.founder_bio)+'</div>' : '';
     el.innerHTML =
       '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:var(--bb-or);text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px">Le fondateur</span>' +
@@ -10234,6 +10237,8 @@ window.bbCloud = function(url, w){
         '</div>' +
       '</div>';
     el.classList.remove('bb-hide');
+    // le portrait se place dans son cadre comme les autres images reglees depuis l'admin
+    var fimg = el.querySelector('img'); if (fimg && typeof bbCadre === 'function') bbCadre(fimg, s, 'founder_photo_url');
   }
 
   function init(){
