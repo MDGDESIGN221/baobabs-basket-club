@@ -2331,6 +2331,8 @@
   .cal-chip{background:var(--surface-2);border:none;border-left:2px solid var(--line-loud);
     border-radius:0;padding:5px 7px;cursor:pointer;font-size:11px;line-height:1.3;color:var(--text)}
   .cal-chip:hover{background:var(--surface-3);border-left-color:var(--gold)}
+  .cal-chip.ecole{background:transparent;border:1px dashed var(--line-loud);color:var(--muted)}
+  .cal-chip.ecole.off{opacity:.45;text-decoration:line-through}
   .cal-chip.won{border-left-color:var(--ok)}
   .cal-chip.lost{border-left-color:var(--danger)}
 
@@ -5605,6 +5607,8 @@
         <div class="field"><label for="set_bureau_powers">Pouvoirs <span class="opt">(optionnel)</span></label><textarea id="set_bureau_powers" placeholder="Un par ligne…"></textarea><span class="hint">Un par ligne.</span></div>
         <div class="field"><label for="set_bureau_limits">Limites <span class="opt">(optionnel)</span></label><textarea id="set_bureau_limits" placeholder="Une par ligne…"></textarea><span class="hint">Une par ligne.</span></div>
         <button class="ds-mini-btn" id="save-bureau-btn">Enregistrer ce poste</button>
+        <button type="button" class="btn btn-ghost" id="bureau-greffe-pv" hidden style="padding:9px 14px;font-size:12.5px" title="Un procès-verbal du Greffe, avec les membres du bureau à émarger">PV de réunion au Greffe</button>
+        <button type="button" class="btn btn-ghost" id="bureau-greffe-conv" hidden style="padding:9px 14px;font-size:12.5px" title="Une convocation du Greffe, adressée aux membres du bureau">Convoquer le bureau au Greffe</button>
         <div class="msg" id="bureau-msg"></div>
       </div>
       </div>
@@ -10208,7 +10212,8 @@
     else resRes = '<b>Le match est passé depuis ' + (-j) + ' jour' + (-j > 1 ? 's' : '') + '</b> et le score n\'est pas saisi : le site l\'affiche encore comme à venir, et le classement attend.';
     E.push({ cle:'resultat', titre:'Le résultat', etat: etatRes, resume: resRes,
       actions: '<button type="button" data-pc="fiche" data-tab="resultat">' + (score ? 'Revoir le résultat' : 'Saisir le résultat') + '</button>' +
-               (score ? '<button type="button" data-pc="fiche" data-tab="stats">Statistiques</button>' : '') });
+               (score ? '<button type="button" data-pc="fiche" data-tab="stats">Statistiques</button>' + greffeBoutonHtml('data-pc="greffe-communique"', 'Communiqué au Greffe') +
+                        '<button type="button" data-pc="newsletter-resultat">Annoncer aux abonnés</button>' : '') });
 
     // 8. L'article et les photos
     var pub = d.articles.filter(function(a){ return (a.status || 'publie') === 'publie'; });
@@ -10396,6 +10401,21 @@
       return;
     }
     if (act === 'greffe-convocation'){ pcGreffeConvocation(d); return; }
+    if (act === 'greffe-communique' || act === 'newsletter-resultat'){
+      var mm = d.m, issue = mm.score_baobabs > mm.score_opponent ? 'victoire' : (mm.score_baobabs < mm.score_opponent ? 'défaite' : 'match nul');
+      var accroche = issue === 'victoire' ? 'Les Baobabs s\'imposent ' + mm.score_baobabs + ' à ' + mm.score_opponent + ' face à ' + (mm.opponent_name || 'leur adversaire')
+                   : issue === 'défaite' ? 'Les Baobabs s\'inclinent ' + mm.score_baobabs + ' à ' + mm.score_opponent + ' face à ' + (mm.opponent_name || 'leur adversaire')
+                   : 'Les Baobabs et ' + (mm.opponent_name || 'leur adversaire') + ' se quittent sur un match nul, ' + mm.score_baobabs + ' à ' + mm.score_opponent;
+      var chapeau = 'Le ' + new Date(mm.match_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }) + (mm.venue ? ', ' + mm.venue : '') +
+        (mm.competition ? ', pour le compte ' + (/^(le|la|les|l')/i.test(mm.competition) ? 'du ' : 'de ') + mm.competition : '') + (mm.round_label ? ' (' + mm.round_label + ')' : '') + '.';
+      var corps = mm.recap ? String(mm.recap) : '';
+      if (act === 'greffe-communique'){
+        greffeNouvelActe('communique', { accroche: accroche, chapeau: chapeau, corps: corps, contactSite: 'baobabsbasketclub.com' }, { origine: 'Le match' });
+      } else {
+        nwPreremplir(accroche, chapeau + (corps ? '\n\n' + corps : '') + '\n\nLe résultat, les statistiques et le classement sont sur le site : ' + nwLienSite('competitions'));
+      }
+      return;
+    }
   }
 
   // La convocation officielle : le modele « convocation » du Greffe, rempli
@@ -10732,6 +10752,7 @@
     return '<div class="ec-planning">' +
       '<p class="pc-resume" style="margin-bottom:10px">Le planning de la semaine sert à créer les séances de chaque mois d\'un clic. Une séance créée se modifie ensuite à part : annuler un mardi ne touche pas au planning.</p>' +
       (lignes || '<div class="empty" style="margin-bottom:10px">Aucun créneau. Ajoutez le premier ci-dessous.</div>') +
+      (lignes ? '<div class="ds-quick" style="margin-top:10px"><button type="button" data-ec="publier-horaires" title="Écrit jours, horaires et lieu sur la page Inscriptions du site">Publier ces horaires sur le site</button></div>' : '') +
       '<div class="ec-form" style="margin-top:12px">' +
         '<div><label for="ec-pl-jour">Jour</label><select id="ec-pl-jour">' + EC_JOURS.map(function(j, i){ return '<option value="' + (i + 1) + '">' + esc(j) + '</option>'; }).join('') + '</select></div>' +
         '<div><label for="ec-pl-deb">Début</label><input id="ec-pl-deb" type="text" placeholder="17:00"></div>' +
@@ -10943,6 +10964,7 @@
     }
     if (act === 'generer'){ ecGenerer(); return; }
     if (act === 'plan-ajouter'){ ecPlanAjouter(); return; }
+    if (act === 'publier-horaires'){ ecPublierHoraires(); return; }
     if (act === 'plan-actif'){
       var p = ecPlanning.filter(function(x){ return String(x.id) === String(id); })[0]; if (!p) return;
       sbUpdate('academy_schedule', id, { active: p.active === false }, 'École').then(ecLoad).catch(function(){ qgToast('Le planning n\'a pas été modifié.', true); }); return;
@@ -11034,6 +11056,31 @@
       category: document.getElementById('ec-pl-cat').value || null, venue: document.getElementById('ec-pl-lieu').value.trim() || null,
       coach: document.getElementById('ec-pl-coach').value.trim() || null }, 'École')
       .then(function(){ qgToast('Créneau ajouté ✓'); dirtyClear(); return ecLoad(); }).catch(function(){ qgToast('L\'ajout a échoué.', true); });
+  }
+  // LE PLANNING SUR LE SITE. La page Inscriptions affiche « Jours »,
+  // « Horaires » et « Lieu » depuis trois reglages (ins_days, ins_time,
+  // ins_place) qu'on retapait a la main : ils s'ecrivent d'ici, depuis le
+  // planning reel. Un seul creneau par jour : la phrase est simple ; des
+  // horaires differents selon le groupe : la phrase les detaille.
+  function ecPublierHoraires(){
+    var actifs = ecPlanning.filter(function(p){ return p.active !== false; });
+    if (!actifs.length){ qgToast('Aucun créneau actif à publier.', true); return; }
+    var jours = []; actifs.forEach(function(p){ var j = EC_JOURS[(p.weekday || 1) - 1]; if (jours.indexOf(j) < 0) jours.push(j); });
+    var joursTxt = jours.length > 1 ? jours.slice(0, -1).join(', ') + ' et ' + jours.slice(-1)[0] : jours[0];
+    joursTxt = joursTxt.charAt(0).toUpperCase() + joursTxt.slice(1);
+    var h = function(p){ return String(p.start_time || '').replace(':', 'h') + (p.end_time ? ' à ' + String(p.end_time).replace(':', 'h') : ''); };
+    var plages = []; actifs.forEach(function(p){ var x = h(p); if (plages.indexOf(x) < 0) plages.push(x); });
+    var horaires = plages.length === 1 ? plages[0]
+      : actifs.map(function(p){ return EC_JOURS[(p.weekday || 1) - 1] + (p.category ? ' (' + p.category + ')' : '') + ' ' + h(p); }).join(' · ');
+    var lieu = (actifs.filter(function(p){ return p.venue; })[0] || {}).venue || '';
+    var msg = 'Publier sur la page Inscriptions du site :\n\nJours : ' + joursTxt + '\nHoraires : ' + horaires + (lieu ? '\nLieu : ' + lieu : '') + '\n\nLes visiteurs le verront tout de suite.';
+    if (!confirm(msg)) return;
+    var paires = [{ key:'ins_days', value: joursTxt }, { key:'ins_time', value: horaires }];
+    if (lieu) paires.push({ key:'ins_place', value: lieu });
+    sbUpsert('site_settings', paires, 'École').then(function(){
+      paires.forEach(function(p){ settings[p.key] = p.value; });
+      qgToast('Horaires publiés sur le site ✓');
+    }).catch(function(){ qgToast('La publication a échoué.', true); });
   }
   // Les seances du mois depuis le planning : une par creneau et par
   // semaine, en sautant celles qui existent deja (meme date, heure, groupe).
@@ -11251,6 +11298,25 @@
   })();
 
   // ===================== NEWSLETTER =====================
+  // LA NEWSLETTER PRE-REMPLIE. Un article publie, un evenement mis sur le
+  // site : « Envoyer aux abonnes » ouvre l'ecran Newsletter avec le sujet et
+  // le message deja ecrits, le lien vers le site compris. Rien ne part sans
+  // le clic « Envoyer a tous » de l'ecran lui-meme.
+  var nwPre = null;
+  function nwPreremplir(sujet, corps){
+    nwPre = { sujet: sujet || '', corps: corps || '' };
+    showSection('newsl');
+    var poser = function(){
+      var s = document.getElementById('nw-subject'), b = document.getElementById('nw-body');
+      if (!s || !b || !nwPre) return;
+      if ((s.value.trim() || b.value.trim()) && !confirm('Un message est déjà en cours dans la newsletter. Le remplacer ?')) { nwPre = null; return; }
+      s.value = nwPre.sujet; b.value = nwPre.corps; nwPre = null;
+      qgToast('Sujet et message posés : relisez, testez sur votre adresse, puis envoyez.');
+      s.focus();
+    };
+    setTimeout(poser, 200);
+  }
+  function nwLienSite(hash){ return 'https://www.baobabsbasketclub.com/' + (hash ? '#' + hash : ''); }
   var nwBusy = false;
 
   // LA FONCTION D'ENVOI EST-ELLE LA ?
@@ -11982,6 +12048,18 @@
     travaux.push(sbGet('contact_messages?select=created_at,is_read&is_read=is.false').then(function(rows){
       var n = (rows||[]).filter(function(m){ var h = hoursSince(m.created_at); return h !== null && h > 48; }).length;
       if (n) ajout('attention', n + ' message' + (n>1?'s':'') + ' de contact sans réponse', 'Reçu' + (n>1?'s':'') + ' il y a plus de deux jours.', 'forms', 'contenu');
+    }).catch(function(){}));
+
+    // --- L'ecole : l'appel d'une seance passee n'est pas fait ---
+    travaux.push(sbGet('academy_sessions?select=id,session_date,category&cancelled=eq.false&session_date=lt.' + todayISO() + '&order=session_date.desc&limit=6').then(function(rows){
+      rows = (rows||[]).filter(function(s){ var h = hoursSince(s.session_date + 'T23:59:00'); return h !== null && h < 24 * 7; });
+      if (!rows.length) return;
+      return sbGet('academy_attendance?select=session_id&session_id=in.(' + rows.map(function(s){ return s.id; }).join(',') + ')').then(function(pr){
+        var faits = {}; (pr||[]).forEach(function(p){ faits[p.session_id] = true; });
+        var sans = rows.filter(function(s){ return !faits[s.id]; });
+        if (sans.length) ajout('attention', 'L\'appel n\'est pas fait pour ' + sans.length + ' séance' + (sans.length>1?'s':'') + ' de l\'école',
+          sans.map(function(s){ return formatDateShort(s.session_date) + (s.category ? ' (' + s.category + ')' : ''); }).join(', ') + '. Sans appel, ni présence ni absence ne se comptent.', 'ecole', 'inscriptions');
+      });
     }).catch(function(){}));
 
     // --- Le prochain match sans convocation, a J-5 ---
@@ -14518,9 +14596,37 @@
   LOADERS_bureau=function(){
     var sel=document.getElementById('bureau_role');
     sel.innerHTML=ORG_ROLES.map(function(o){ return '<option value="'+o.key+'">'+esc(o.label)+'</option>'; }).join('');
-    sbGet('org_roles?select=*').then(function(rows){ bureauMap={}; (rows||[]).forEach(function(r){ bureauMap[r.role_key]=r; }); bureauFillForm(); })
-      .catch(function(){ bureauMap={}; bureauFillForm(); });
+    sbGet('org_roles?select=*').then(function(rows){ bureauMap={}; (rows||[]).forEach(function(r){ bureauMap[r.role_key]=r; }); bureauFillForm(); bureauGreffeBoutons(); })
+      .catch(function(){ bureauMap={}; bureauFillForm(); bureauGreffeBoutons(); });
   };
+  // LE BUREAU AU GREFFE. Les membres viennent de org_roles : le PV de
+  // reunion arrive avec la liste des presents a emarger, la convocation
+  // avec la liste des convoques. Reserve au proprietaire, comme le Greffe.
+  function bureauMembres(){
+    var QUALITE = { president:'Président', vp:'Vice-président', sg:'Secrétaire', sg_adj:'Secrétaire', tres:'Trésorier', tres_adj:'Trésorier' };
+    return ORG_ROLES.map(function(o){ var r = bureauMap[o.key] || {}; return r.holder_name ? { nom: r.holder_name, qualite: QUALITE[o.key] || 'Membre', poste: o.label } : null; }).filter(Boolean);
+  }
+  function bureauGreffeBoutons(){
+    var pv = document.getElementById('bureau-greffe-pv'), cv = document.getElementById('bureau-greffe-conv');
+    var proprio = typeof cpJeSuisProprio === 'function' && cpJeSuisProprio();
+    if (pv) pv.hidden = !proprio; if (cv) cv.hidden = !proprio;
+  }
+  (function(){
+    var pv = document.getElementById('bureau-greffe-pv'), cv = document.getElementById('bureau-greffe-conv');
+    if (pv) pv.addEventListener('click', function(){
+      var membres = bureauMembres(); if (!membres.length){ qgToast('Renseignez d\'abord les titulaires des postes.', true); return; }
+      var pres = membres.filter(function(m){ return m.qualite === 'Président'; })[0];
+      greffeNouvelActe('pv-reunion', { objet: 'du bureau', preside: pres ? pres.nom : undefined,
+        tables: { presents: membres.map(function(m){ return { nom: m.nom, qualite: m.qualite, presence: 'Présent', emargement: '' }; }) } }, { origine: 'Bureau' });
+    });
+    if (cv) cv.addEventListener('click', function(){
+      var membres = bureauMembres(); if (!membres.length){ qgToast('Renseignez d\'abord les titulaires des postes.', true); return; }
+      greffeNouvelActe('convocation', { nature: 'Réunion de bureau', equipe: 'Le bureau', evenement: 'Réunion du bureau', tenue: '',
+        corps: 'Vous êtes convoqué(e) à la réunion du bureau dont l\'ordre du jour est joint. Merci de confirmer votre présence.',
+        consignes: '- Ordre du jour ci-joint\n- Les documents à présenter sont à transmettre la veille',
+        tables: { convoquees: membres.map(function(m){ return { nom: m.nom, cat: '', poste: m.poste, maillot: '', presence: '' }; }) } }, { origine: 'Bureau' });
+    });
+  })();
   wireImageControl(document.getElementById('bureau_mode_upload'), document.getElementById('bureau_mode_url'), document.getElementById('bureau_file'), document.getElementById('bureau_url'), document.getElementById('bureau_preview'));
   document.getElementById('bureau_role').addEventListener('change',bureauFillForm);
   document.getElementById('save-bureau-btn').addEventListener('click',function(){
@@ -17015,6 +17121,7 @@
               (pub
                 ? '<button type="button" class="btn btn-ghost" id="ar-unpub" style="padding:10px 14px;font-size:13px">Dépublier</button>'
                 : '<button type="button" class="btn btn-ghost" id="ar-pub" style="padding:10px 14px;font-size:13px">Publier</button>') +
+              (pub ? '<button type="button" class="btn btn-ghost" id="ar-newsletter" style="padding:10px 14px;font-size:13px" title="Ouvre la newsletter avec cet article déjà écrit">Envoyer aux abonnés</button>' : '') +
             '</div>' +
             '<div class="cd-draft" id="ar-note" style="margin-top:9px"></div>' +
             '<button type="button" class="btn btn-ghost" id="ar-del" style="padding:8px 12px;font-size:12px;margin-top:12px;color:var(--danger)">Supprimer l\'article</button>' +
@@ -17130,6 +17237,15 @@
       mdDir = 'actus'; mdRenderTree(); mdRender();
     });
 
+    var bNw = document.getElementById('ar-newsletter');
+    if (bNw) bNw.addEventListener('click', function(){
+      var titre = (el['ar-title'].value || r.title || '').trim();
+      var chapo = (el['ar-excerpt'].value || r.excerpt || '').trim();
+      var corps = String(el['ar-body'].value || r.body || '').trim();
+      var extrait = corps.length > 700 ? corps.slice(0, 700).replace(/\s+\S*$/, '') + '…' : corps;
+      var lien = nwLienSite('actualites-' + ((el['ar-slug'].value || r.slug || '').trim() || r.id));
+      nwPreremplir(titre, (chapo ? chapo + '\n\n' : '') + extrait + '\n\nLire la suite sur le site : ' + lien);
+    });
     document.getElementById('ar-del').addEventListener('click', function(){
       if (!confirm('Supprimer définitivement cet article ? Cette action est irréversible.')) return;
       sbDelete('news', r.id, 'Articles')
@@ -18665,6 +18781,7 @@
           '<div class="ev-act">' +
             '<button type="button" class="btn btn-primary ev-save" style="padding:9px 16px;font-size:13px">Enregistrer</button>' +
             '<button type="button" class="ds-act ev-vu">' + (r.actif ? 'Retirer du site' : 'Mettre sur le site') + '</button>' +
+            '<button type="button" class="ds-act ev-nw" title="Ouvre la newsletter avec cet événement déjà écrit">Annoncer aux abonnés</button>' +
             '<span class="grow"></span>' +
             '<button type="button" class="ds-act ev-del">Supprimer</button>' +
           '</div>' +
@@ -18676,6 +18793,14 @@
       var id = carte.getAttribute('data-id');
       carte.querySelector('.ev-save').addEventListener('click', function(){ evEnregistrer(id, carte, this); });
       carte.querySelector('.ev-vu').addEventListener('click', function(){ evBasculer(id); });
+      carte.querySelector('.ev-nw').addEventListener('click', function(){
+        var v = evValeurs(carte);
+        var quand = v.dates || [v.debut, v.fin].filter(Boolean).join(' au ');
+        nwPreremplir(v.titre || 'Un événement des Baobabs',
+          (v.kicker ? v.kicker + '\n\n' : '') + (v.texte || '') + (quand ? '\n\nQuand : ' + quand : '') + (v.lieu ? '\nOù : ' + v.lieu : '') +
+          (v.programme && v.programme.length ? '\n\nProgramme :\n' + v.programme.map(function(e){ return '- ' + [e.jour, e.texte, e.entree].filter(Boolean).join(' : '); }).join('\n') : '') +
+          '\n\nTout est sur le site : ' + nwLienSite('accueil'));
+      });
       carte.querySelector('.ev-del').addEventListener('click', function(){ evSupprimer(id, carte); });
     });
   }
@@ -19832,6 +19957,18 @@
 
     var byDay = {};
     mcRows.forEach(function(m){ if (m.match_date) (byDay[m.match_date] = byDay[m.match_date]||[]).push(m); });
+    // LES SEANCES DE L'ECOLE, SUR LE MEME CALENDRIER. Le coach ne pense pas
+    // « matchs » d'un cote et « ecole » de l'autre : il pense a sa semaine.
+    // Lues une fois par mois affiche ; a l'arrivee, le mois se redessine.
+    var cleMois = y + '-' + ('0' + (mo + 1)).slice(-2);
+    if (calSeancesMois !== cleMois){
+      calSeancesMois = cleMois; calSeances = [];
+      var fin = new Date(y, mo + 1, 0).getDate();
+      sbGet('academy_sessions?select=id,session_date,start_time,category,cancelled&session_date=gte.' + cleMois + '-01&session_date=lte.' + cleMois + '-' + ('0' + fin).slice(-2) + '&order=session_date.asc,start_time.asc')
+        .then(function(rows){ calSeances = rows || []; if (calSeancesMois === cleMois && calSeances.length) calRender(); }).catch(function(){});
+    }
+    var seancesParJour = {};
+    calSeances.forEach(function(s){ (seancesParJour[s.session_date] = seancesParJour[s.session_date] || []).push(s); });
 
     var cells = '';
     for (var i=0; i<42; i++){
@@ -19843,15 +19980,24 @@
         var sc = (m.score_baobabs!=null&&m.score_opponent!=null) ? ' '+m.score_baobabs+'–'+m.score_opponent : '';
         return '<div class="cal-chip'+cls+'" data-id="'+m.id+'">'+esc((m.is_home?'vs ':'chez ')+(m.opponent_name||'?'))+sc+'</div>';
       }).join('');
+      var ecole = (seancesParJour[key]||[]).map(function(s){
+        return '<div class="cal-chip ecole'+(s.cancelled?' off':'')+'" data-seance="'+esc(s.session_date)+'" title="École de basket'+(s.category?' · '+esc(s.category):'')+(s.cancelled?' · annulée':'')+'">'+
+          esc((s.start_time ? s.start_time + ' ' : '') + 'École' + (s.category ? ' ' + s.category : ''))+'</div>';
+      }).join('');
       cells += '<div class="cal-cell'+(out?' out':'')+(key===todayKey?' today':'')+'">'+
-        '<span class="cal-day">'+d.getDate()+'</span>'+chips+'</div>';
+        '<span class="cal-day">'+d.getDate()+'</span>'+chips+ecole+'</div>';
     }
     var cellsEl = document.getElementById('cal-cells');
     cellsEl.innerHTML = cells;
     cellsEl.querySelectorAll('.cal-chip').forEach(function(el){
-      el.addEventListener('click', function(){ mcOpen(el.getAttribute('data-id')); });
+      el.addEventListener('click', function(){
+        var sd = el.getAttribute('data-seance');
+        if (sd){ ecMois = sd.slice(0, 7); ecOuvert = null; showSection('ecole'); if (typeof ecLoad === 'function' && ecStarted) ecLoad(); return; }
+        mcOpen(el.getAttribute('data-id'));
+      });
     });
   }
+  var calSeances = [], calSeancesMois = null;
 
   // ---------- Module Résultats : la file de saisie ----------
   var rsStarted = false;
@@ -21669,6 +21815,7 @@
                 return lienPrevenir(r.phone, r.email, 'Votre candidature : Baobabs Basket Club', texte);
               })()+
               ((r.status||'nouvelle')==='acceptee' ? '<button type="button" id="cd-vers-effectif" class="ds-accent">Créer la fiche joueuse</button>' : '')+
+              greffeBoutonHtml('id="cd-greffe-courrier"', 'Courrier de réponse au Greffe')+
               '<button type="button" id="cd-archive-toggle">'+((r.status||'nouvelle')==='archivee'?'Désarchiver':'Archiver')+'</button>'+
               '<button type="button" id="cd-pdf-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5M4 21h16"/></svg>Fiche PDF</button>'+
               '<button type="button" id="cd-del-btn" class="ds-danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>Supprimer</button>'+
@@ -21801,6 +21948,22 @@
     // ACCEPTEE -> EFFECTIF. Une candidature acceptee se retapait a la main
     // dans Joueuses : nom, poste, taille, ville, photo. La fiche se cree
     // d'ici, remplie de ce que le dossier sait, et s'ouvre dans Joueuses.
+    var bCourrier = document.getElementById('cd-greffe-courrier');
+    if (bCourrier) bCourrier.addEventListener('click', function(){
+      var nom = ((r.first_name||'') + ' ' + (r.last_name||'')).trim(), st = r.status || 'nouvelle';
+      var corps = st === 'acceptee'
+        ? 'Par la présente, Baobabs Basket Club a le plaisir de vous informer que votre candidature est acceptée. Nous vous recontacterons très prochainement pour la suite : licence, équipement et premier entraînement. Bienvenue parmi les Baobabs.'
+        : st === 'refusee'
+        ? 'Par la présente, Baobabs Basket Club vous remercie de l\'intérêt que vous portez au club. Après examen, nous ne pouvons malheureusement pas donner suite à votre candidature pour cette saison. Nous conservons votre dossier et vous souhaitons une excellente continuation sportive.'
+        : st === 'entretien' && r.interview_at
+        ? 'Par la présente, Baobabs Basket Club vous invite à un entretien le ' + fmtDateTime(r.interview_at) + ', au siège du club. Merci de confirmer votre présence.'
+        : 'Par la présente, Baobabs Basket Club accuse réception de votre candidature et vous remercie de votre confiance. Nous l\'étudions et revenons vers vous dans les meilleurs délais.';
+      greffeNouvelActe('courrier', {
+        destNom: nom || 'Madame, Monsieur', destLigne: [r.email, r.phone].filter(Boolean).join(' · '), destAdresse: r.city || '',
+        objet: 'Votre candidature au Baobabs Basket Club', salutation: (r.gender === 'M' ? 'Monsieur,' : (r.gender === 'F' ? 'Madame,' : 'Madame, Monsieur,')),
+        corps: corps, formule: 'Veuillez agréer, ' + (r.gender === 'M' ? 'Monsieur' : (r.gender === 'F' ? 'Madame' : 'Madame, Monsieur')) + ', l\'expression de nos salutations sportives.'
+      }, { origine: 'Candidatures' });
+    });
     var versEf = document.getElementById('cd-vers-effectif');
     if (versEf) versEf.addEventListener('click', function(){
       var nom = ((r.first_name||'') + ' ' + (r.last_name||'')).trim() || 'Sans nom';
@@ -22546,6 +22709,8 @@
               // classeur, ou le coach qui n'a pas l'admin sur son
               // téléphone. Candidatures l'avait, Inscriptions non.
               '<button type="button" id="in-pdf-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5M4 21h16"/></svg>Dossier PDF</button>'+
+              greffeBoutonHtml('id="in-greffe-autorisation"', 'Autorisation parentale au Greffe')+
+              greffeBoutonHtml('id="in-greffe-attestation"', 'Attestation d\'inscription au Greffe')+
               '<button type="button" id="in-del-btn" class="ds-danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>Supprimer</button>'+
             '</div>'+
           '</div>'+
@@ -22807,6 +22972,29 @@
     });
     var pdfBtn = document.getElementById('in-pdf-btn');
     if (pdfBtn) pdfBtn.addEventListener('click', function(){ inFichePdf(r); });
+    // Deux actes du Greffe, remplis avec le dossier : l'autorisation que
+    // la famille signe, l'attestation qu'elle demande pour l'ecole ou
+    // l'employeur.
+    var bAut = document.getElementById('in-greffe-autorisation');
+    if (bAut) bAut.addEventListener('click', function(){
+      var lien = String(r.guardian_relation || '').trim();
+      greffeNouvelActe('autorisation-parentale', {
+        objet: 'la saison ' + (inSaisonLabel(r) || ''), saison: inSaisonLabel(r) || '', equipe: 'École de basket' + (r.category ? ', groupe ' + r.category : ''),
+        enfant: r.full_name || '', naissance: r.birth_date ? String(r.birth_date).split('-').reverse().join('/') : '', categorie: r.category || '',
+        parent: r.guardian_name || '', lien: lien ? lien.charAt(0).toUpperCase() + lien.slice(1) : 'Mère',
+        telephone: r.guardian_phone || '', adresse: [r.district, r.school ? 'scolarisé(e) à ' + r.school : ''].filter(Boolean).join(' · '),
+        urgence: r.guardian_name || '', telUrgence: r.guardian_phone2 || r.guardian_phone || ''
+      }, { origine: 'Inscriptions' });
+    });
+    var bAtt = document.getElementById('in-greffe-attestation');
+    if (bAtt) bAtt.addEventListener('click', function(){
+      greffeNouvelActe('certificat', {
+        intitule: 'Attestation', sous: 'd\'inscription', prelude: 'est délivrée à', nom: r.full_name || '',
+        motif: 'inscrit(e) à l\'école de basket du Baobabs Basket Club pour la saison ' + (inSaisonLabel(r) || '') + (r.category ? ', dans le groupe ' + r.category : '') +
+               (r.birth_date ? ', né(e) le ' + String(r.birth_date).split('-').reverse().join('/') : '') + '. La présente attestation est délivrée à la demande de la famille pour servir et valoir ce que de droit.',
+        secondNom: '', secondQualite: ''
+      }, { origine: 'Inscriptions' });
+    });
 
     var inDel = document.getElementById('in-del-btn');
     if (inDel) inDel.addEventListener('click', function(){
