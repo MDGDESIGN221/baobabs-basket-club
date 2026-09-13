@@ -9843,6 +9843,32 @@ window.BaobabsStudio = (function () {
       majChamps();
     }).catch(function () { /* le Studio garde ses valeurs de maquette */ });
   }
+  /* Le match choisi devient data.match : la meme forme que dans
+     loadData(), au meme endroit, pour que pickMatch et l'ouverture
+     depuis l'administration ne divergent jamais. */
+  function syncMatch() {
+    var mm = (data.matchs || [])[data.matchIdx || 0];
+    if (!mm) return;
+    data.match = {
+      adversaire: mm.opponent || '', competition: mm.competition || '',
+      date: mm.date ? fmtDate(mm.date) : '', heure: mm.time ? String(mm.time).slice(0, 5).replace(':', 'H') : '',
+      lieu: mm.venue || '', lieuType: mm.isHome === false ? 'EXTÉRIEUR' : 'DOMICILE',
+      jours: mm.date ? 'J−' + Math.max(0, daysTo(mm.date)) : '',
+      affiche: 'BAOBABS ' + (mm.isHome === false ? '@' : 'VS') + ' ' + (mm.opponent || 'ADVERSAIRE'),
+      logoAdv: mm.opponentLogo || '', photo: mm.photo || ''
+    };
+  }
+  /* L'administration ouvre le Studio SUR un match (l'ecran « Le match »).
+     L'identifiant est garde jusqu'a ce que la base soit relue. */
+  var pendingMatchId = null;
+  function choisirMatchParId(id) {
+    var i = -1;
+    (data.matchs || []).forEach(function (m, k) { if (i < 0 && String(m.id) === String(id)) i = k; });
+    if (i < 0) return false;
+    data.matchIdx = i;
+    syncMatch();
+    return true;
+  }
   function safe(fn) {
     try { var p = fn && fn(); return (p && p.then) ? p.catch(function () { return null; }) : Promise.resolve(p); }
     catch (e) { return Promise.resolve(null); }
@@ -10171,17 +10197,7 @@ window.BaobabsStudio = (function () {
       }
       case 'pickMatch': {
         data.matchIdx = num(el.getAttribute('data-i'), 0);
-        var mm = (data.matchs || [])[data.matchIdx];
-        if (mm) {
-          data.match = {
-            adversaire: mm.opponent || '', competition: mm.competition || '',
-            date: mm.date ? fmtDate(mm.date) : '', heure: mm.time ? String(mm.time).slice(0, 5).replace(':', 'H') : '',
-            lieu: mm.venue || '', lieuType: mm.isHome === false ? 'EXTÉRIEUR' : 'DOMICILE',
-            jours: mm.date ? 'J−' + Math.max(0, daysTo(mm.date)) : '',
-            affiche: 'BAOBABS ' + (mm.isHome === false ? '@' : 'VS') + ' ' + (mm.opponent || 'ADVERSAIRE'),
-            logoAdv: mm.opponentLogo || '', photo: mm.photo || ''
-          };
-        }
+        syncMatch();
         change(function () { applyBindings(true); });
         renderPanel();
         return;
@@ -11503,6 +11519,15 @@ window.BaobabsStudio = (function () {
       doc: JSON.parse(serialize(doc)),
       modifie_le: doc.updated
     };
+    /* LE PROJET SAIT POUR QUEL MATCH IL EST FAIT. Des qu'un calque est
+       lie a une donnee du match (adversaire, date, logo...), le projet
+       porte l'identifiant du match affiche : l'ecran « Le match » de
+       l'administration retrouve ainsi l'affiche sans deviner sur un
+       nom. Un modele, lui, n'appartient a aucun match. */
+    var mm = (data.matchs || [])[data.matchIdx || 0];
+    var lieAuMatch = false;
+    walk(doc.layers, function (l) { if (l.bind && String(l.bind).indexOf('match.') === 0) lieAuMatch = true; if (l.slot === 'logoAdv' || l.slot === 'photoMatch') lieAuMatch = true; });
+    if (mm && mm.id && lieAuMatch && !project.isTemplate) rec.doc.matchId = mm.id; else delete rec.doc.matchId;
     var s = store();
     var p;
     if (s) p = Promise.resolve(s.save(rec));
@@ -15516,6 +15541,7 @@ window.BaobabsStudio = (function () {
       /* Le club vit : une joueuse arrive, un match se joue. On relit la
          base à chaque ouverture, pas une seule fois au chargement. */
       Promise.all([loadProjects(), loadData()]).then(function () {
+        if (pendingMatchId != null) { choisirMatchParId(pendingMatchId); pendingMatchId = null; }
         applyBindings(true);
         renderHome();
       });
@@ -15557,6 +15583,15 @@ window.BaobabsStudio = (function () {
     open: open,
     close: close,
     isOpen: isOpen,
+    /* Ouvrir sur un match precis : l'accueil, avec ce match deja choisi
+       pour les modeles. Un projet ouvert et modifie n'est pas perdu, on
+       revient seulement a l'accueil. */
+    openForMatch: function (id) {
+      if (!mounted) return;
+      pendingMatchId = id;
+      if (!atHome) showHome();
+      open();
+    },
     /* points d entrée annexes, utiles à l hôte */
     loadDocument: function (d) { if (d && d.layers) { doc = clone(d); sel = []; syncFormatSelect(); prewarmImages(); fitView(); refreshAll(); } },
     exportBlob: function (scale) { return exportBlob(scale || 2, 'image/png'); },

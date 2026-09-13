@@ -1423,6 +1423,142 @@
   .nw-hs-etat > div.ok::before{background:var(--lime)}
   .nw-hs-pas{margin:6px 0 10px;padding-left:22px;font-size:13px;line-height:1.6;color:var(--text)}
   .nw-hs-pas li{margin:4px 0}
+  /* =====================================================================
+     LE MATCH, DE J-7 A J+1 : le parcours
+     Un ecran qui enchaine les autres. Trois regles de dessin : l'etat se
+     lit sans lire (couleur et position sur le rail), l'action est
+     toujours en bas a gauche de la carte, et rien n'est decoratif.
+     ===================================================================== */
+  .pc-choix{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:18px}
+  .pc-chip{display:inline-flex;align-items:center;gap:9px;background:transparent;border:1px solid var(--line-strong);
+    border-radius:var(--r-full);padding:7px 14px 7px 9px;color:var(--muted);font-family:var(--font-ui);font-weight:600;
+    font-size:12.5px;cursor:pointer;min-height:0;transition:border-color .15s,color .15s,background .15s}
+  .pc-chip:hover{color:var(--text);border-color:var(--line-loud)}
+  .pc-chip.on{color:#0A1B0D;background:var(--gold);border-color:var(--gold)}
+  .pc-chip img,.pc-chip .pc-chip-c{width:22px;height:22px;border-radius:50%;object-fit:contain;background:var(--surface-3);flex:none;
+    display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--faint)}
+  .pc-chip.on .pc-chip-c{color:#0A1B0D;background:rgba(0,0,0,.14)}
+  .pc-chip small{font-weight:500;opacity:.8;font-size:11.5px}
+  .pc-chip-plus{flex:1}
+  .pc-hero{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:clamp(18px,3vw,40px);align-items:center;
+    padding:clamp(20px,3vw,30px) clamp(18px,2.6vw,28px);background:var(--surface);border:1px solid var(--line);border-top:2px solid var(--gold);
+    border-radius:0 0 var(--r-sm) var(--r-sm);margin-bottom:22px;overflow:hidden}
+  .pc-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 14% 50%,rgba(70,191,29,.11),transparent 52%);pointer-events:none}
+  .pc-j{position:relative;text-align:center;min-width:118px}
+  .pc-j b{display:block;font-family:var(--font-display);font-weight:var(--display-weight);letter-spacing:var(--display-tracking-xl);
+    font-size:clamp(46px,6vw,74px);line-height:.9;color:var(--text);font-variant-numeric:tabular-nums}
+  .pc-j b em{font-style:normal;color:var(--gold-lit);margin:0 2px}
+  .pc-j span{display:block;margin-top:9px;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:700}
+  .pc-j.today b{color:var(--gold-lit)}
+  .pc-j.past b{color:var(--muted)}
+  .pc-duel{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:clamp(12px,2vw,22px);min-width:0}
+  .pc-crest{width:72px;height:72px;border-radius:var(--r-sm);object-fit:contain;background:var(--surface-3);border:1px solid var(--line-strong);flex:none}
+  .pc-crest-none{width:72px;height:72px;border-radius:var(--r-sm);background:var(--surface-3);border:1px solid var(--line-strong);flex:none;
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-ui);font-weight:500;font-size:26px;color:var(--faint)}
+  .pc-vs{font-family:var(--font-display);font-weight:var(--display-weight);font-size:clamp(20px,2.4vw,28px);letter-spacing:var(--display-tracking);color:var(--faint);flex:none}
+  .pc-vs.score{color:var(--text);font-size:clamp(26px,3vw,36px);font-variant-numeric:tabular-nums}
+  .pc-titre{flex:1;min-width:230px;margin-left:clamp(4px,1vw,12px)}
+  .pc-titre h2{margin:0;font-family:var(--font-ui);font-weight:800;letter-spacing:-.025em;font-size:clamp(20px,2.6vw,27px);line-height:1.05;color:var(--text)}
+  .pc-titre .ds-sub{margin-top:8px}
+  .pc-avance{position:relative;min-width:184px;padding-left:clamp(14px,2vw,26px);border-left:1px solid var(--line-strong);align-self:stretch;
+    display:flex;flex-direction:column;justify-content:center;gap:9px}
+  .pc-avance i{display:block;font-style:normal;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-weight:700}
+  .pc-avance b{font-family:var(--font-ui);font-weight:800;font-size:24px;letter-spacing:-.02em;color:var(--text);font-variant-numeric:tabular-nums;line-height:1}
+  .pc-avance b small{font-size:12px;color:var(--muted);font-weight:600;margin-left:5px;letter-spacing:0}
+  .pc-jauge{height:4px;background:var(--surface-3);border-radius:2px;overflow:hidden}
+  .pc-jauge i{display:block;height:100%;background:var(--gold);border-radius:2px;transition:width .4s}
+  .pc-avance .pc-retard{font-size:11.5px;color:var(--warn);font-weight:600}
+  /* Le rail : neuf noeuds relies par un trait, l'etat en couleur. */
+  .pc-rail{list-style:none;margin:0 0 22px;padding:0;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:0;position:relative}
+  .pc-rail::before{content:'';position:absolute;left:calc(100%/18);right:calc(100%/18);top:15px;height:2px;background:var(--line-strong)}
+  .pc-rail li{position:relative;text-align:center;padding:0 4px}
+  .pc-rail button{background:none;border:none;padding:0;cursor:pointer;color:var(--faint);font-family:var(--font-ui);font-weight:600;font-size:10.5px;line-height:1.3;width:100%;min-height:0}
+  .pc-rail button:hover{color:var(--text)}
+  .pc-rail .pc-n{display:flex;align-items:center;justify-content:center;width:32px;height:32px;margin:0 auto 8px;border-radius:50%;
+    background:var(--surface);border:2px solid var(--line-loud);font-size:11px;font-weight:800;color:var(--muted);position:relative;font-variant-numeric:tabular-nums}
+  .pc-rail .fait .pc-n,.pc-rail .libre .pc-n{background:var(--gold);border-color:var(--gold);color:#0A1B0D}
+  .pc-rail .a_faire .pc-n{border-color:var(--warn);color:var(--warn);box-shadow:0 0 0 4px var(--warn-wash)}
+  .pc-rail .retard .pc-n{border-color:var(--danger);color:var(--danger);background:var(--danger-wash)}
+  .pc-rail .live .pc-n{border-color:var(--live);color:var(--live);animation:pc-pulse 1.2s infinite}
+  .pc-rail .facultatif .pc-n{border-style:dashed}
+  .pc-rail .auto .pc-n{border-color:var(--info);color:var(--info)}
+  .pc-rail .partiel .pc-n{border-color:var(--gold);color:var(--gold-bright)}
+  .pc-rail .fait button,.pc-rail .live button,.pc-rail .libre button{color:var(--text)}
+  @keyframes pc-pulse{0%,100%{box-shadow:0 0 0 4px rgba(255,68,56,.18)}50%{box-shadow:0 0 0 8px rgba(255,68,56,.05)}}
+  /* Les cartes : une colonne d'etat a gauche, le geste en bas. */
+  .pc-etapes{display:grid;gap:12px}
+  .pc-carte{display:grid;grid-template-columns:52px minmax(0,1fr);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);
+    overflow:hidden;scroll-margin-top:92px;transition:box-shadow .3s}
+  .pc-carte.retard{border-color:rgba(229,86,74,.42)}
+  .pc-carte.a_faire{border-color:rgba(232,169,60,.42)}
+  .pc-carte.live{border-color:rgba(255,68,56,.5)}
+  .pc-carte.pc-vise{box-shadow:0 0 0 2px var(--gold)}
+  .pc-col{display:flex;flex-direction:column;align-items:center;padding-top:18px;gap:8px;border-right:1px solid var(--line);background:var(--surface-2)}
+  .pc-col b{font-family:var(--font-ui);font-weight:800;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .pc-col i{width:10px;height:10px;border-radius:50%;background:var(--line-loud)}
+  .fait .pc-col i,.libre .pc-col i{background:var(--gold)} .a_faire .pc-col i{background:var(--warn)} .retard .pc-col i{background:var(--danger)}
+  .live .pc-col i{background:var(--live);animation:pc-pulse 1.2s infinite} .auto .pc-col i{background:var(--info)} .partiel .pc-col i{background:var(--gold-bright)}
+  .fait .pc-col b,.libre .pc-col b{color:var(--text)}
+  .pc-corps{padding:16px 18px 18px;min-width:0}
+  .pc-tete{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;margin-bottom:6px}
+  .pc-tete h3{margin:0;font-family:var(--font-ui);font-weight:800;font-size:15.5px;letter-spacing:-.015em;color:var(--text)}
+  .pc-echeance{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:700}
+  .pc-etat{margin-left:auto}
+  .pc-resume{margin:0;font-size:13px;line-height:1.6;color:var(--muted);text-wrap:pretty}
+  .pc-resume b{color:var(--text);font-weight:600}
+  .pc-detail{margin-top:12px}
+  .pc-actions{margin-top:14px}
+  .pc-actions .ds-quick{margin-top:0}
+  /* La convocation : la seule etape qui s'edite ici. */
+  .pc-rdv{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;margin-bottom:12px}
+  .pc-rdv .full{grid-column:1/-1}
+  .pc-rdv input,.pc-rdv textarea{width:100%;background:transparent;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:9px 11px;color:var(--text);font:inherit;font-size:13px}
+  .pc-rdv textarea{min-height:58px;resize:vertical}
+  .pc-rdv label{display:block;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:5px}
+  .pc-eff{border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+  .pc-jr{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)}
+  .pc-jr:last-child{border-bottom:none}
+  .pc-jr.off{opacity:.6}
+  .pc-jr img,.pc-jr .pc-ini{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--surface-3);border:1px solid var(--line-strong)}
+  .pc-jr .pc-ini{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--faint)}
+  .pc-jr-n{min-width:0}
+  .pc-jr-n b{display:block;font-size:13px;color:var(--text);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pc-jr-n span{font-size:11px;color:var(--faint)}
+  .pc-jr-n span.bl{color:var(--warn)}
+  .pc-seg{display:flex;border:1px solid var(--line-strong);border-radius:var(--r-sm);overflow:hidden}
+  .pc-seg button,.pc-seg a{display:inline-flex;align-items:center;background:transparent;border:none;border-right:1px solid var(--line-strong);color:var(--faint);
+    font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:7px 10px;cursor:pointer;white-space:nowrap;text-decoration:none;min-height:0}
+  .pc-seg button:last-child,.pc-seg a:last-child{border-right:none}
+  .pc-seg button:hover,.pc-seg a:hover{color:var(--text);background:var(--surface-2)}
+  .pc-seg a.pc-wa{color:var(--lime)}
+  .pc-seg button.on{color:#0A1B0D;background:var(--gold)}
+  .pc-seg button.on.conf{background:var(--lime)}
+  .pc-seg button.on.abs{background:var(--danger);color:#FFF0EE}
+  .pc-seg button.on.bl{background:var(--warn)}
+  .pc-compte{display:flex;flex-wrap:wrap;gap:14px;margin:12px 0;font-size:12px;color:var(--muted);align-items:baseline}
+  .pc-compte b{font-family:var(--font-ui);font-weight:800;font-size:16px;color:var(--text);margin-right:5px;font-variant-numeric:tabular-nums}
+  .pc-msg{margin-top:14px}
+  .pc-msg textarea{width:100%;min-height:124px;background:rgba(4,9,6,.55);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;color:var(--text);font:inherit;font-size:12.5px;line-height:1.6;resize:vertical}
+  .pc-cinq{display:flex;flex-wrap:wrap;gap:8px}
+  .pc-cinq span{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-strong);border-radius:var(--r-full);padding:4px 11px 4px 5px;font-size:12px;color:var(--text)}
+  .pc-cinq span img,.pc-cinq span i{width:22px;height:22px;border-radius:50%;object-fit:cover;background:var(--surface-3);display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:9px;font-weight:800;color:var(--faint)}
+  .pc-cinq span.vide{border-style:dashed;color:var(--faint)}
+  .pc-vide{padding:44px 20px;text-align:center;border:1px dashed var(--line-strong);border-radius:var(--r-sm);color:var(--muted);font-size:13.5px;line-height:1.7}
+  .pc-vide b{display:block;font-family:var(--font-display);font-weight:var(--display-weight);font-size:20px;color:var(--text);margin-bottom:6px}
+  @media (max-width:900px){
+    .pc-hero{grid-template-columns:1fr;gap:16px}
+    .pc-avance{border-left:none;padding-left:0;border-top:1px solid var(--line-strong);padding-top:14px;min-width:0}
+    .pc-j{text-align:left;display:flex;align-items:baseline;gap:12px;min-width:0}
+    .pc-j span{margin-top:0}
+    .pc-duel{flex-wrap:wrap}
+    .pc-titre{flex-basis:100%;margin-left:0}
+    .pc-rail{grid-template-columns:repeat(9,74px);overflow-x:auto;padding-bottom:6px}
+    .pc-rail::before{left:37px;right:37px;width:calc(9*74px - 74px)}
+    .pc-jr{grid-template-columns:36px minmax(0,1fr)}
+    .pc-jr .pc-seg{grid-column:1/-1;overflow-x:auto}
+    .pc-rdv{grid-template-columns:1fr}
+    .pc-carte{grid-template-columns:40px minmax(0,1fr)}
+  }
 
   /* ===== DEMANDER QUELQUE CHOSE ===== */
   #dem{ position:fixed; inset:0; z-index:480;
@@ -3751,6 +3887,10 @@
 
       <div class="sb-group">
         <div class="sb-group-label">Match day</div>
+        <button class="sb-link" data-section="parcours">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"/><path d="M4 4h13l-3 4 3 4H4"/></svg>
+          Le match
+        </button>
         <button class="sb-link" data-section="gameday">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
           Soir de match
@@ -4079,6 +4219,24 @@
       </section>
 
     <!-- ===== SECTION SOIR DE MATCH ===== -->
+    <!-- ===== SECTION LE MATCH : le parcours de J-7 a J+1 =====
+         Neuf etapes lues dans les donnees, jamais cochees a la main.
+         Le HTML est un squelette : tout se dessine dans pcRender(). -->
+    <section id="section-parcours" class="hide">
+      <div class="pc-choix" id="pc-choix"></div>
+      <div id="pc-vide" class="pc-vide hide">
+        <b>Aucun match au calendrier.</b>
+        Le parcours commence quand un match existe : adversaire, date, salle. Créez-le, tout le reste s'enchaîne ici.
+        <div class="ds-quick" style="margin:16px auto 0"><button type="button" data-pc="nouveau">Créer le premier match</button></div>
+      </div>
+      <div id="pc-corps" class="hide">
+        <div class="pc-hero" id="pc-hero"></div>
+        <ol class="pc-rail" id="pc-rail"></ol>
+        <div class="pc-etapes" id="pc-etapes"></div>
+      </div>
+      <div class="msg" id="pc-msg"></div>
+    </section>
+
     <section id="section-gameday" class="hide">
       <div id="gd-empty" class="rs-done hide">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--gold)"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
@@ -4707,6 +4865,7 @@
           <div class="field">
             <label for="gal-album">Album</label>
             <input type="text" id="gal-album" placeholder="Journée de détection">
+            <p class="card-sub hide" id="gal-match-note" style="margin:6px 0 0"></p>
           </div>
           <button type="button" class="ds-mini-btn" id="gal-add">Ajouter</button>
         </div>
@@ -5823,6 +5982,7 @@
   // « résultats » séparément, il pense « mes matchs ».
   var SECTION_MODULE = {
     dashboard:null,                                  // toujours accessible
+    parcours:'matchs',
     gameday:'matchs', teams:'matchs', live:'matchs', standings:'matchs',
     calendar:'matchs', matches2:'matchs', results:'matchs',
     squad:'effectif', staff:'effectif', bureau:'effectif', founder:'effectif',
@@ -7523,6 +7683,7 @@
             var passes = (rows || []).filter(function(x){ return x.match_date < auj; }).reverse();
             return futurs.concat(passes).slice(0, 20).map(function(m){
               return {
+                id: m.id,
                 opponent: m.opponent_name || '', competition: m.competition || '',
                 date: m.match_date || '', time: m.match_time || '', venue: m.venue || '',
                 isHome: m.is_home !== false, opponentLogo: m.opponent_logo_url || '',
@@ -8050,7 +8211,7 @@
   // qui le contient. Un ecran neuf non liste tombe dans « divers »,
   // ce qui est faux mais visible, plutot que dans le tas.
   var DOSSIER_ECRAN = {
-    gameday:'matchs', matches2:'matchs', calendar:'matchs', results:'matchs',
+    parcours:'matchs', gameday:'matchs', matches2:'matchs', calendar:'matchs', results:'matchs',
     standings:'matchs', teams:'matchs', live:'matchs', tickets:'matchs',
     squad:'joueuses', staff:'joueuses',
     products:'boutique', stock:'boutique', promos:'boutique',
@@ -8354,6 +8515,7 @@
     dashboard:{t:'Tableau de bord',d:'Vue d\'ensemble de votre club — ce qui se passe, ce qui vous attend.'},
     newsl:{t:'Newsletter',d:'Écrivez aux inscrits : test sur votre adresse d\'abord, envoi à tous ensuite, avec le journal des envois.'},
     promos:{t:'Codes promo',d:'Des remises à partager : pourcentage ou montant, avec période, minimum d\'achat et limite d\'utilisation.'},
+    parcours:{t:'Le match',d:'De J-7 à J+1 : ce qui est fait, ce qui attend, et le bouton qui mène là où ça se fait.'},
     gameday:{t:'Soir de match',d:'L\'écran du jour J : le score d\'un côté, le guichet de retrait des billets de l\'autre.'},
     teams:{t:'Adversaires',d:'Les clubs que vous affrontez : ajout en un clic, logos, historique des confrontations.'},
     live:{t:'Diffusion en direct',d:'Le direct suit le tableau de marque. Ici, vous choisissez seulement s\'il y a une vidéo, et où.'},
@@ -8417,6 +8579,7 @@
     newsl: ["<b>Écrire à tous les inscrits de la newsletter.</b> Chaque personne reçoit son propre e-mail — jamais de liste visible.","<b>Testez d'abord</b> : votre adresse dans « M'envoyer un test », le message arrive avec [TEST] devant le sujet.","« Envoyer à tous » demande confirmation, et deux envois à moins de 10 minutes d'écart sont refusés.","À l'ouverture, l'écran interroge la fonction serveur : clé Resend, adresse d'expédition, domaine vérifié. Le bandeau du haut dit ce qui est en place et ce qui manque, pas à pas.","Un inscrit qui répond « STOP » se retire dans Messages → Newsletter."],
     promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b>, dans la barre : un clic ajoute le club, logo compris. Pour un club absent, <b>Ajouter un adversaire</b> ouvre un formulaire — les deux panneaux se ferment l’un l’autre, la liste ne part jamais à deux écrans de défilement.","<b>Changer le logo</b> sur une ligne — ou <b>Ajouter un logo</b> si elle n’en a pas — ouvre l’éditeur. Les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo.","La colonne <b>Logo</b> est la seule chose de cet écran qui appelle un geste : elle dit d’un coup d’œil combien de clubs en attendent un. La recherche filtre par nom, et <b>Confrontations</b> compte les matchs déjà joués contre chacun."],
+    parcours: ["<b>Un match, neuf étapes, dans l'ordre où elles arrivent</b> : la fiche, la convocation, le cinq, l'affiche, la billetterie, le direct, le résultat, l'article, le classement. Chaque étape lit son état dans les données : rien ne se coche à la main.","<b>Le rail du haut</b> donne les neuf états d'un coup d'œil. Vert : fait. Orange : à faire ces jours-ci. Rouge : en retard sur l'échéance (convocation à J-5, cinq à J-1, résultat le soir même, article à J+2). Un clic sur un nœud descend à la carte.","<b>La convocation se fait ici</b>, et nulle part ailleurs : fixez le rendez-vous, cochez les joueuses, le message s'écrit tout seul. « Convoquée » puis « Confirmée » quand elle répond ; WhatsApp par joueuse si son numéro est dans sa fiche.","<b>Le cinq de départ</b> se compose dans la fiche du match, avec les visages ; ici on voit seulement s'il est complet. Le site ne publie la composition qu'à cinq titulaires.","<b>L'article naît lié au match</b> : « Écrire le récap » crée un brouillon déjà titré, et les photos ajoutées depuis « Ajouter des photos » se rangent avec ce match."],
     gameday: ["<b>L'écran du jour de match</b>, pensé pour la personne au guichet et à la table de marque.","<b>Les touches +1 / +2 / +3 ne sont que du côté de l’adversaire, et c’est voulu.</b> Ses points n’ont personne à qui être attribués : trois touches suffisent. <b>Les nôtres vont dans la feuille de match d’une joueuse</b> — on les saisit dans la table de marque, en dessous : la joueuse, puis le geste. C’est de là que sortent les statistiques de la saison.","<b>Le score vous suit.</b> Dès que le grand tableau sort de l’écran, une barre se colle sous le bandeau du haut : score, période, points de l’adversaire et annulation. Plus besoin de remonter entre deux paniers.","<b>Coup de sifflet final</b> publie le score sur le site, qui l’affiche alors comme définitif. Avant ça, le direct suit déjà chaque panier.","Le guichet retrouve une réservation par référence, nom ou téléphone ; <b>Retirer</b> pointe le billet à l'entrée.","Les jauges de droite montrent les places restantes par catégorie, mises à jour à chaque retrait."],
     live: ["<b>Collez ici l'adresse de la page du direct</b> — celle de la barre d'adresse, ou du bouton <b>Partager</b>. Elle peut appartenir à <b>n'importe quel compte</b> : c'est ainsi qu'on rediffuse le direct d'une fédération ou du club adverse. La ligne sous le champ dit tout de suite si l'adresse donnera un lecteur ou un bouton.","<b>Laissez « Automatique ».</b> Le direct s'allume quand vous ouvrez le tableau de marque dans <b>Soir de match</b>, et s'éteint au coup de sifflet final — le geste que vous faites déjà. « Forcé allumé » ne sert qu'à diffuser hors match.","Le message hors-direct remplace le titre du bloc les jours sans match. <b>Un soir de match sans caméra, le site n'écrit jamais « pas de direct » : il montre le score</b>, au panier près, sans aucune plateforme."],
     standings: ["<b>Le classement affiché sur la page Compétitions du site.</b>","Le podium en haut montre les trois premiers du championnat. Le <b>filet doré marque les Baobabs</b>, pas le leader : en ouvrant cet écran on cherche où est son club, pas qui mène. Si le club n’est pas sur le podium, une ligne en dessous dit son rang. L’éditeur permet de corriger chaque ligne — victoires, défaites, points — et le tableau se retrie tout seul.","L'éditeur visuel se manipule à la souris ; le formulaire classique reste disponible via l'onglet."],
@@ -8523,6 +8686,8 @@
     // designer. C'est un etat normal : entre deux matchs, hors saison,
     // ou sur un club qui commence. #gd-empty, lui, est toujours la quand
     // la console ne l'est pas.
+    parcours:   [['#pc-rail', '#pc-vide'], ['#pc-rail', '#pc-vide'], ['#pc-etape-convocation', '#pc-vide'],
+                 ['#pc-etape-cinq', '#pc-vide'], ['#pc-etape-article', '#pc-vide']],
     gameday:    [['#gd-main', '#gd-empty'], ['#gd-vers-console', '#gd-empty'],
                  ['#gd-suit', '#gd-empty'], ['#gd-publish', '#gd-empty'],
                  ['#gd-resa-search', '#gd-empty'], ['#gd-offers', '#gd-empty']],
@@ -8884,7 +9049,7 @@
   // retirés de la navigation. Leur balisage reste masqué dans la page le
   // temps du démêlage du code (loadTeams alimente encore l'ancien
   // formulaire), mais aucun chemin de l'admin n'y mène plus.
-  var ALL_SECTIONS = ['dashboard','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
+  var ALL_SECTIONS = ['dashboard','parcours','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
 
@@ -8900,6 +9065,7 @@
     if (!t || !t.matches) return;
     if (!t.matches('input,select,textarea,[contenteditable="true"]')) return;
     if (t.type === 'search' || t.type === 'file') return;      // chercher n'est pas saisir
+    if (t.hasAttribute('data-libre')) return;                   // un texte a copier, pas une saisie a enregistrer
     // FILTRER ET TRIER NON PLUS. Ces controles sont des <select> : ils
     // passaient donc par l'evenement `change` et posaient « Modifications
     // non enregistrees » sur un ecran ou rien n'avait ete saisi. Le
@@ -8995,7 +9161,7 @@
   var REFRESH_APRES_MS = 20000;
   function sectionRefreshers(){
     return {
-      dashboard: function(){ loadDashboard(); attInit(); }, gameday: gdLoad, teams: loadTeams,
+      dashboard: function(){ loadDashboard(); attInit(); }, parcours: pcLoad, gameday: gdLoad, teams: loadTeams,
       tickets: tkLoadOffers, promos: pmLoad, newsl: nwLoad,
       banners: bnLoad, announce: anLoad, squad: efLoad,
       products: prLoad, articles: arLoad, categories: ctLoad,
@@ -9163,8 +9329,9 @@
   // Raccourcis : trois liens qui répondent à « et maintenant ? » depuis
   // l'écran où l'on est. Tout écran non listé reçoit le trio par défaut.
   var CTX_LINKS = {
-    dashboard: [['Soir de match','gameday'],['Matchs','matches2'],['Billetterie','tickets']],
-    gameday:   [['Billetterie','tickets'],['Matchs','matches2'],['Direct','live']],
+    dashboard: [['Le match','parcours'],['Matchs','matches2'],['Soir de match','gameday']],
+    parcours:  [['Fiche du match','matches2'],['Soir de match','gameday'],['Classement','standings']],
+    gameday:   [['Le match','parcours'],['Billetterie','tickets'],['Matchs','matches2']],
     teams:     [['Matchs','matches2'],['Calendrier','calendar'],['Classement','standings']],
     matches2:  [['Calendrier','calendar'],['Résultats à saisir','results'],['Direct','live']],
     calendar:  [['Matchs','matches2'],['Résultats à saisir','results'],['Adversaires','teams']],
@@ -9465,6 +9632,8 @@
       pushAct('Ouvrir la billetterie du prochain match', 'Tarifs, quotas, ouverture de la vente',
         function(){ showSection('tickets'); }, 'billetterie billet vente place tarif', ICO.billet);
     }
+    pushAct('Préparer le prochain match', 'Le parcours de J-7 à J+1 : convocation, cinq, affiche, résultat',
+      function(){ showSection('parcours'); }, 'match parcours preparer convocation cinq affiche recap', ICO.match);
     pushAct('Lancer le soir de match', 'Tableau de marque et guichet',
       function(){ showSection('gameday'); }, 'soir match direct score guichet marque', ICO.direct);
     pushAct('Ajouter un match', 'Nouvelle rencontre au calendrier',
@@ -9603,6 +9772,508 @@
     else if (e.key === 'ArrowUp'){ e.preventDefault(); gsMove(-1); }
     else if (e.key === 'Enter'){ e.preventDefault(); gsGo(gsIdx); }
   });
+
+  // =================================================================
+  // LE MATCH, DE J-7 A J+1 : LE PARCOURS
+  // =================================================================
+  // L'admin avait tout ce qu'il faut pour un match, en six ecrans : la
+  // fiche, la composition, la billetterie, le Studio pour l'affiche, la
+  // console du soir, les articles. Rien ne les tenait ensemble : on
+  // savait ce qu'on avait fait en ouvrant chaque ecran, et ce qui restait
+  // en le devinant. Cet ecran est la reponse a « et maintenant ? » pour
+  // UN match : neuf etapes dans l'ordre ou elles arrivent, leur etat lu
+  // dans les donnees (jamais coche a la main), et pour chacune le bouton
+  // qui mene la ou ca se fait.
+  //
+  // UNE SEULE ETAPE S'EDITE ICI : la convocation. Elle n'avait de place
+  // nulle part (table match_convocations, rendez-vous sur matches). Les
+  // autres etapes vivent dans leur ecran et le parcours y renvoie ; les
+  // dupliquer ici aurait fait deux verites.
+  //
+  // L'ETAT VIENT DES DONNEES. « Cinq pose » = cinq titulaires dans
+  // match_stats ; « affiche faite » = un projet du Studio qui porte
+  // l'identifiant du match ; « article ecrit » = une actualite liee.
+  // Une case a cocher aurait menti des la deuxieme semaine.
+  //
+  // LES ECHEANCES sont relatives au match : convocation a J-5, cinq a
+  // J-1, resultat le soir meme, article a J+2. Une etape pas faite a
+  // l'echeance passe en « retard » ; avant, elle est « a faire » sur les
+  // trois derniers jours, et « plus tard » au-dela. Le rail du haut donne
+  // ces neuf etats d'un coup d'oeil.
+  var pcRows = [], pcSel = null, pcStarted = false, pcData = null, pcChargement = 0;
+  var PC_ETATS = {
+    fait:'Fait', a_faire:'À faire', retard:'En retard', attente:'Plus tard', facultatif:'Facultatif',
+    auto:'Automatique', live:'En direct', partiel:'Commencé', libre:'Entrée libre', passe:'Sans direct'
+  };
+  var PC_COURT = { fiche:'Fiche', convocation:'Convocation', cinq:'Cinq de départ', affiche:'Affiche', billetterie:'Billetterie', direct:'Direct', resultat:'Résultat', article:'Article', classement:'Classement' };
+  var PC_ECHEANCES = { fiche:'J-7', convocation:'J-5', cinq:'J-1', affiche:'J-3', billetterie:'J-5', direct:'Jour J', resultat:'Jour J', article:'J+2', classement:'Automatique' };
+
+  function pcInit(){
+    if (pcStarted){ pcLoad(); return; }
+    pcStarted = true;
+    var s = document.getElementById('section-parcours');
+    s.addEventListener('click', pcClic);
+    pcLoad();
+  }
+
+  function pcLoad(){
+    return sbGet('match_center?select=*&order=match_date.asc&limit=400')
+      .catch(function(){ return sbGet('matches?select=*&order=match_date.asc&limit=400'); })
+      .then(function(rows){
+        pcRows = rows || [];
+        if (!pcSel || !pcRows.some(function(m){ return String(m.id) === String(pcSel); })) pcSel = pcDefaut();
+        pcRenderChoix();
+        return pcCharger();
+      })
+      .catch(function(){ showMsg(document.getElementById('pc-msg'), 'Impossible de lire les matchs.', false); });
+  }
+
+  // LE MATCH QU'ON OUVRE D'ABORD. Le prochain, sauf si un match joue
+  // cette semaine attend encore son score : celui-la bloque le
+  // classement, il passe devant.
+  function pcDefaut(){
+    var auj = todayISO();
+    var recent = pcRows.filter(function(m){
+      return m.match_date < auj && (m.score_baobabs == null || m.score_opponent == null) && daysUntil(m.match_date) >= -7;
+    });
+    if (recent.length) return recent[recent.length - 1].id;
+    var fut = pcRows.filter(function(m){ return m.match_date >= auj; });
+    if (fut.length) return fut[0].id;
+    return pcRows.length ? pcRows[pcRows.length - 1].id : null;
+  }
+
+  function pcJours(m){ return m && m.match_date ? daysUntil(m.match_date) : null; }
+  function pcScore(m){ return m && m.score_baobabs != null && m.score_opponent != null; }
+
+  // Les pastilles du haut : deux matchs passes, quatre a venir, dans
+  // l'ordre du calendrier. Le reste est dans l'ecran Matchs.
+  function pcRenderChoix(){
+    var box = document.getElementById('pc-choix'); if (!box) return;
+    var auj = todayISO();
+    var passes = pcRows.filter(function(m){ return m.match_date < auj; }).slice(-2);
+    var futurs = pcRows.filter(function(m){ return m.match_date >= auj; }).slice(0, 4);
+    var liste = passes.concat(futurs);
+    box.innerHTML = liste.map(function(m){
+      var on = String(m.id) === String(pcSel);
+      var d = m.match_date ? new Date(m.match_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' }) : '';
+      var crest = m.opponent_logo_url ? '<img src="' + esc(m.opponent_logo_url) + '" alt="">'
+                                      : '<span class="pc-chip-c">' + esc(String(m.opponent_name || '?').charAt(0).toUpperCase()) + '</span>';
+      var score = pcScore(m) ? ' <small>' + m.score_baobabs + ' – ' + m.score_opponent + '</small>' : '';
+      return '<button type="button" class="pc-chip' + (on ? ' on' : '') + '" data-pc="choisir" data-id="' + esc(m.id) + '">' +
+        crest + '<span>' + esc(m.opponent_name || 'Adversaire') + ' <small>· ' + esc(d) + '</small>' + score + '</span></button>';
+    }).join('') +
+      '<span class="pc-chip-plus"></span>' +
+      '<button type="button" class="pc-chip" data-pc="tous">Tous les matchs</button>' +
+      '<button type="button" class="pc-chip" data-pc="nouveau">Nouveau match</button>';
+  }
+
+  function pcCharger(){
+    var id = pcSel, jeton = ++pcChargement;
+    var corps = document.getElementById('pc-corps'), vide = document.getElementById('pc-vide');
+    if (!id){ corps.classList.add('hide'); vide.classList.remove('hide'); pcData = null; return Promise.resolve(); }
+    vide.classList.add('hide'); corps.classList.remove('hide');
+    // Une table absente (migration pas passee) rend une liste vide, pas
+    // un ecran mort : l'etape dit alors « rien », ce qui est vrai.
+    function q(u){ return sbGet(u).catch(function(){ return []; }); }
+    return Promise.all([
+      q('match_convocations?select=*&match_id=eq.' + id),
+      q('match_stats?select=player_id,is_starter&match_id=eq.' + id),
+      q('news?select=id,title,status,published_at&match_id=eq.' + id + '&order=created_at.desc'),
+      q('gallery?select=id&match_id=eq.' + id),
+      q('studio_projets?select=id,nom,modifie_le&doc-%3E%3EmatchId=eq.' + id),
+      q('match_live?select=*&match_id=eq.' + id),
+      q('standings?select=*'),
+      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note&order=sort.asc,jersey_number.asc&limit=100'),
+      q('players_contacts?select=player_id,phone')
+    ]).then(function(r){
+      if (jeton !== pcChargement) return;
+      var m = pcRows.filter(function(x){ return String(x.id) === String(id); })[0];
+      pcData = { m: m, conv: r[0] || [], stats: r[1] || [], articles: r[2] || [], photos: r[3] || [],
+                 affiches: r[4] || [], live: (r[5] || [])[0] || null, classement: r[6] || [],
+                 joueuses: r[7] || [], contacts: r[8] || [] };
+      pcRender();
+    });
+  }
+
+  // ---------- les neuf etapes, calculees ----------
+  function pcEtapes(d){
+    var m = d.m, j = pcJours(m), score = pcScore(m);
+    function avant(fait, due){
+      if (fait) return 'fait';
+      if (j === null) return 'a_faire';
+      if (j < due) return 'retard';
+      if (j <= due + 3) return 'a_faire';
+      return 'attente';
+    }
+    function apres(fait, due){
+      if (fait) return 'fait';
+      if (j === null || j > 0) return 'attente';
+      if (-j > due) return 'retard';
+      return 'a_faire';
+    }
+    var heure = m.match_time ? String(m.match_time).slice(0, 5).replace(':', 'h') : '';
+    var E = [];
+
+    // 1. La fiche
+    var manque = [];
+    if (!m.match_date) manque.push('la date');
+    if (!m.match_time) manque.push('l\'heure');
+    if (!m.venue) manque.push('la salle');
+    if (!m.competition) manque.push('la compétition');
+    var ficheOk = !manque.length;
+    E.push({ cle:'fiche', titre:'La fiche du match', etat: ficheOk ? 'fait' : (j !== null && j < 7 ? 'retard' : 'a_faire'),
+      resume: ficheOk
+        ? '<b>' + esc(formatDateLong(m.match_date)) + (heure ? ' à ' + esc(heure) : '') + '</b>, ' + esc(m.venue) +
+          (m.is_home ? ' (à domicile)' : ' (déplacement)') + '. ' + esc(m.competition) + (m.round_label ? ', ' + esc(m.round_label) : '') + '.'
+        : 'Il manque ' + manque.join(', ') + '. Sans ces quatre choses, ni la convocation ni l\'affiche ne peuvent être justes.',
+      actions: '<button type="button" data-pc="fiche" data-tab="feuille">' + (ficheOk ? 'Ouvrir la fiche' : 'Compléter la fiche') + '</button>' });
+
+    // 2. La convocation
+    var conv = d.conv, convoquees = conv.filter(function(c){ return c.statut === 'convoquee' || c.statut === 'confirmee'; });
+    var confirmees = conv.filter(function(c){ return c.statut === 'confirmee'; });
+    var absentes = conv.filter(function(c){ return c.statut === 'absente' || c.statut === 'blessee'; });
+    var rdvOk = !!(m.rdv_heure && m.rdv_lieu);
+    var convOk = convoquees.length >= 5 && rdvOk;
+    var etatConv = avant(convOk, 5);
+    if (!convOk && (conv.length || rdvOk) && etatConv !== 'retard') etatConv = 'partiel';
+    E.push({ cle:'convocation', titre:'La convocation', etat: etatConv,
+      resume: conv.length
+        ? '<b>' + convoquees.length + ' convoquée' + (convoquees.length > 1 ? 's' : '') + '</b>, ' + confirmees.length + ' confirmée' + (confirmees.length > 1 ? 's' : '') +
+          (absentes.length ? ', ' + absentes.length + ' absente' + (absentes.length > 1 ? 's' : '') : '') + '. ' +
+          (rdvOk ? 'Rendez-vous à ' + esc(m.rdv_heure) + ', ' + esc(m.rdv_lieu) + '.' : 'Le rendez-vous n\'est pas encore fixé.')
+        : 'Personne n\'est encore convoquée. Fixez le rendez-vous, cochez les joueuses, le message s\'écrit tout seul.',
+      detail: pcConvHtml(d), actions: '' });
+
+    // 3. Le cinq de depart
+    var tit = d.stats.filter(function(s){ return s.is_starter; });
+    var cinqOk = tit.length === 5;
+    var etatCinq = avant(cinqOk, 1);
+    if (!cinqOk && tit.length && etatCinq !== 'retard') etatCinq = 'partiel';
+    var parId = {}; d.joueuses.forEach(function(p){ parId[p.id] = p; });
+    var cinqHtml = '<div class="pc-cinq">' + tit.slice(0, 5).map(function(s){
+      var p = parId[s.player_id] || { name:'?' };
+      return '<span>' + (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '<i>' + esc(initials(p.name)) + '</i>') +
+        (p.jersey_number != null ? '#' + p.jersey_number + ' ' : '') + esc(p.name) + '</span>';
+    }).join('') + (function(){ var h = ''; for (var i = tit.length; i < 5; i++) h += '<span class="vide"><i>·</i>poste libre</span>'; return h; })() + '</div>';
+    E.push({ cle:'cinq', titre:'Le cinq de départ', etat: etatCinq,
+      resume: cinqOk ? '<b>Le cinq est posé.</b> ' + d.stats.length + ' joueuse' + (d.stats.length > 1 ? 's' : '') + ' sur la feuille de match ; le site publie la composition.'
+                     : (tit.length ? '<b>' + tit.length + ' titulaire' + (tit.length > 1 ? 's' : '') + ' sur 5.</b> Le site n\'affiche la composition que complète.' : 'Aucune titulaire désignée. La composition se fait avec les visages, dans la fiche.'),
+      detail: cinqHtml,
+      actions: '<button type="button" data-pc="fiche" data-tab="feuille">' + (cinqOk ? 'Revoir la composition' : 'Composer le cinq') + '</button>' });
+
+    // 4. L'affiche
+    var aff = d.affiches;
+    E.push({ cle:'affiche', titre:'L\'affiche', etat: aff.length ? 'fait' : 'facultatif',
+      resume: aff.length
+        ? '<b>' + aff.length + ' projet' + (aff.length > 1 ? 's' : '') + ' au Studio</b> pour ce match : ' + aff.map(function(a){ return esc(a.nom || 'Sans titre'); }).join(', ') + '.'
+        : 'Aucune affiche au Studio pour ce match. Le Studio ouvre directement sur ce match : adversaire, date, salle et logo sont déjà posés sur les modèles.' +
+          (m.photo_url ? '' : ' Une photo du match dans la fiche (onglet Médias) sert de fond aux modèles photo.'),
+      actions: '<button type="button" data-pc="affiche">' + (aff.length ? 'Ouvrir le Studio' : 'Créer l\'affiche au Studio') + '</button>' +
+               '<button type="button" data-pc="fiche" data-tab="medias">Photo du match</button>' });
+
+    // 5. La billetterie
+    var nbCat = Number(m.nb_categories) || 0;
+    var etatBil, resBil;
+    if (m.free_entry){ etatBil = 'libre'; resBil = '<b>Entrée libre.</b> Rien à vendre, le guichet ne sert pas ce soir-là.'; }
+    else if (nbCat && m.vente_ouverte){ etatBil = 'fait'; resBil = '<b>' + nbCat + ' catégorie' + (nbCat > 1 ? 's' : '') + '</b>, ' + (Number(m.places_totales) || 0) + ' places, ' + (Number(m.places_reservees) || 0) + ' réservée' + (Number(m.places_reservees) > 1 ? 's' : '') + ', vente ouverte.'; }
+    else if (nbCat){ etatBil = avant(false, 5) === 'retard' ? 'retard' : 'partiel'; resBil = '<b>' + nbCat + ' catégorie' + (nbCat > 1 ? 's' : '') + '</b> créée' + (nbCat > 1 ? 's' : '') + ', mais la vente est fermée : personne ne peut réserver.'; }
+    else { etatBil = avant(false, 5); resBil = 'Aucune catégorie de billets. Soit le match est à entrée libre (à cocher dans la fiche), soit il faut créer les tarifs et ouvrir la vente.'; }
+    E.push({ cle:'billetterie', titre:'La billetterie', etat: etatBil, resume: resBil,
+      actions: '<button type="button" data-pc="fiche" data-tab="billetterie">' + (nbCat ? 'Gérer la billetterie' : 'Créer les tarifs') + '</button>' +
+               (nbCat ? '<button type="button" data-pc="gameday">Guichet du soir</button>' : '') });
+
+    // 6. Le direct
+    var live = d.live, etatDir, resDir;
+    if (live && live.is_live){ etatDir = 'live'; resDir = '<b>En cours : ' + live.score_bbc + ' – ' + live.score_adv + '</b>, ' + (live.period || 1) + '<sup>e</sup> période. Le site suit chaque panier.'; }
+    else if (score || (live && live.ended_at)){ etatDir = 'fait'; resDir = live ? '<b>Direct terminé.</b> Score final publié depuis la console.' : '<b>Score publié.</b>' + (live ? '' : ' Pas de direct tenu ce soir-là.'); }
+    else if (j === null || j > 0){ etatDir = 'attente'; resDir = 'Le jour du match, la console <b>Soir de match</b> tient la table de marque : score, chrono, feuille par joueuse. Le site affiche le direct en même temps.'; }
+    else if (j === 0){ etatDir = 'a_faire'; resDir = '<b>C\'est aujourd\'hui.</b> Ouvrez Soir de match sur le téléphone ou l\'ordinateur de la table de marque.'; }
+    else { etatDir = 'passe'; resDir = 'Pas de direct tenu. Le score se saisit dans la fiche, à l\'étape suivante.'; }
+    E.push({ cle:'direct', titre:'Le direct', etat: etatDir, resume: resDir + (m.stream_url ? ' Vidéo : lien posé.' : ''),
+      actions: '<button type="button" data-pc="gameday">Ouvrir Soir de match</button>' +
+               '<button type="button" data-pc="fiche" data-tab="diffusion">' + (m.stream_url ? 'Vidéo du match' : 'Ajouter une vidéo') + '</button>' });
+
+    // 7. Le resultat
+    var etatRes = apres(score, 0), resRes;
+    if (score){
+      var issue = m.score_baobabs > m.score_opponent ? 'Victoire' : (m.score_baobabs < m.score_opponent ? 'Défaite' : 'Match nul');
+      var q4 = mcQuarters(m);
+      resRes = '<b>' + issue + ' ' + m.score_baobabs + ' – ' + m.score_opponent + '.</b>' + (q4.length ? ' Quarts-temps : ' + q4.map(function(x){ return esc(String(x)); }).join(', ') + '.' : '') +
+        (m.attendance ? ' ' + m.attendance + ' spectateurs.' : '');
+    } else if (j === null || j > 0) resRes = 'Après le match. Le coup de sifflet final de la console l\'inscrit tout seul ; sinon, deux cases dans la fiche.';
+    else if (j === 0) resRes = '<b>Ce soir.</b> Coup de sifflet final dans Soir de match, ou deux cases dans la fiche.';
+    else resRes = '<b>Le match est passé depuis ' + (-j) + ' jour' + (-j > 1 ? 's' : '') + '</b> et le score n\'est pas saisi : le site l\'affiche encore comme à venir, et le classement attend.';
+    E.push({ cle:'resultat', titre:'Le résultat', etat: etatRes, resume: resRes,
+      actions: '<button type="button" data-pc="fiche" data-tab="resultat">' + (score ? 'Revoir le résultat' : 'Saisir le résultat') + '</button>' +
+               (score ? '<button type="button" data-pc="fiche" data-tab="stats">Statistiques</button>' : '') });
+
+    // 8. L'article et les photos
+    var pub = d.articles.filter(function(a){ return (a.status || 'publie') === 'publie'; });
+    var brouillons = d.articles.filter(function(a){ return (a.status || 'publie') !== 'publie'; });
+    var etatArt = apres(pub.length > 0, 2);
+    if (!pub.length && !score && (j === null || j >= 0)) etatArt = 'attente';
+    if (!pub.length && brouillons.length && etatArt !== 'retard') etatArt = 'partiel';
+    var nbPh = d.photos.length;
+    var resArt = pub.length
+      ? '<b>Publié : ' + esc(pub[0].title) + '.</b>' + (nbPh ? ' ' + nbPh + ' photo' + (nbPh > 1 ? 's' : '') + ' dans la galerie.' : ' Aucune photo liée dans la galerie.')
+      : brouillons.length ? '<b>Brouillon en cours : ' + esc(brouillons[0].title) + '.</b> Pas encore visible du public.'
+      : (score || (j !== null && j < 0) ? 'Rien d\'écrit. Un récap de dix lignes le lendemain vaut plus qu\'un long article la semaine d\'après.' : 'Après le match : le récap, et les photos de la soirée.');
+    E.push({ cle:'article', titre:'L\'article et les photos', etat: etatArt, resume: resArt,
+      actions: (d.articles.length
+        ? '<button type="button" data-pc="article-ouvrir" data-id="' + esc((pub[0] || brouillons[0]).id) + '">Ouvrir l\'article</button>'
+        : '<button type="button" data-pc="article">Écrire le récap</button>') +
+        '<button type="button" data-pc="photos">' + (nbPh ? 'Voir les photos' : 'Ajouter des photos') + '</button>' });
+
+    // 9. Le classement
+    var cl = d.classement.slice().sort(function(a, b){ return (b.points || 0) - (a.points || 0) || (b.wins || 0) - (a.wins || 0); });
+    var nous = -1; cl.forEach(function(r, i){ if (nous < 0 && /baobab/i.test(r.team_name || '')) nous = i; });
+    var resCl = nous >= 0
+      ? '<b>' + (nous + 1) + (nous === 0 ? 'er' : 'e') + ' sur ' + cl.length + '</b> : ' + (cl[nous].wins || 0) + ' victoire' + ((cl[nous].wins || 0) > 1 ? 's' : '') + ', ' + (cl[nous].losses || 0) + ' défaite' + ((cl[nous].losses || 0) > 1 ? 's' : '') + ', ' + (cl[nous].points || 0) + ' points.'
+      : 'Les Baobabs ne sont pas encore dans le classement : il se remplit au premier score saisi.';
+    E.push({ cle:'classement', titre:'Le classement', etat: score ? 'fait' : 'auto',
+      resume: resCl + (score ? '' : ' Il se recalcule tout seul à chaque score saisi : rien à faire ici.'),
+      actions: '<button type="button" data-pc="classement">Voir le classement</button>' });
+    return E;
+  }
+
+  // ---------- la convocation ----------
+  function pcConvHtml(d){
+    var m = d.m, conv = {}, tel = {};
+    d.conv.forEach(function(c){ conv[c.player_id] = c; });
+    d.contacts.forEach(function(c){ tel[c.player_id] = c.phone; });
+    var actives = d.joueuses.filter(function(p){ return (p.status || 'active') === 'active'; });
+    var autres = d.joueuses.filter(function(p){ return (p.status || 'active') !== 'active' && conv[p.id]; });
+    var message = pcMessage(d);
+    function ligne(p){
+      var c = conv[p.id], st = c ? c.statut : null;
+      var bl = p.injury_note ? ' <span class="bl">blessée : ' + esc(p.injury_note) + '</span>' : '';
+      function seg(k, lib, cls){ return '<button type="button" class="' + (st === k ? 'on ' + cls : '') + '" data-pc="statut" data-pid="' + esc(p.id) + '" data-statut="' + k + '">' + lib + '</button>'; }
+      var wa = (st === 'convoquee' || st === 'confirmee') && tel[p.id]
+        ? '<a class="pc-wa" href="https://wa.me/' + telWhatsApp(tel[p.id]) + '?text=' + encodeURIComponent('Bonjour ' + String(p.name || '').split(' ')[0] + ',\n' + message) + '" target="_blank" rel="noopener" title="Envoyer la convocation à ' + esc(p.name) + ' sur WhatsApp">WhatsApp</a>'
+        : '';
+      return '<div class="pc-jr' + (st ? '' : ' off') + '">' +
+        (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '<span class="pc-ini">' + esc(initials(p.name)) + '</span>') +
+        '<div class="pc-jr-n"><b>' + (p.jersey_number != null ? '#' + p.jersey_number + ' ' : '') + esc(p.name) + '</b><span>' + esc(p.position || '') + bl + '</span></div>' +
+        '<div class="pc-seg">' + seg('convoquee', 'Convoquée', '') + seg('confirmee', 'Confirmée', 'conf') + seg('absente', 'Absente', 'abs') + seg('blessee', 'Blessée', 'bl') +
+          wa + (st ? '<button type="button" data-pc="retirer" data-pid="' + esc(p.id) + '" title="Retirer de la convocation">×</button>' : '') +
+        '</div></div>';
+    }
+    var nbConv = d.conv.filter(function(c){ return c.statut === 'convoquee' || c.statut === 'confirmee'; }).length;
+    var nbConf = d.conv.filter(function(c){ return c.statut === 'confirmee'; }).length;
+    var nbAbs = d.conv.filter(function(c){ return c.statut === 'absente' || c.statut === 'blessee'; }).length;
+    var sansTel = d.conv.filter(function(c){ return (c.statut === 'convoquee' || c.statut === 'confirmee') && !tel[c.player_id]; }).length;
+    return '<div class="pc-rdv">' +
+        '<div><label for="pc-rdv-heure">Rendez-vous à</label><input id="pc-rdv-heure" type="text" value="' + esc(m.rdv_heure || '') + '" placeholder="17h30"></div>' +
+        '<div><label for="pc-rdv-lieu">Lieu du rendez-vous</label><input id="pc-rdv-lieu" type="text" value="' + esc(m.rdv_lieu || '') + '" placeholder="devant le club, ou directement à la salle"></div>' +
+        '<div class="full"><label for="pc-consignes">Consignes</label><textarea id="pc-consignes" placeholder="Tenue verte, licence sur soi, une bouteille d\'eau.">' + esc(m.consignes || '') + '</textarea></div>' +
+      '</div>' +
+      '<div class="ds-quick"><button type="button" data-pc="rdv-sauver">Enregistrer le rendez-vous</button>' +
+        '<button type="button" data-pc="convoquer-toutes">Convoquer toutes les joueuses actives</button></div>' +
+      '<div class="pc-compte"><span><b>' + nbConv + '</b>convoquée' + (nbConv > 1 ? 's' : '') + '</span><span><b>' + nbConf + '</b>confirmée' + (nbConf > 1 ? 's' : '') + '</span>' +
+        '<span><b>' + nbAbs + '</b>absente' + (nbAbs > 1 ? 's' : '') + '</span>' +
+        (sansTel ? '<span style="color:var(--warn)">' + sansTel + ' sans numéro de téléphone : à poser dans la fiche joueuse.</span>' : '') + '</div>' +
+      '<div class="pc-eff">' + actives.map(ligne).join('') + autres.map(ligne).join('') +
+        (actives.length ? '' : '<div class="empty">Aucune joueuse active dans l\'effectif.</div>') + '</div>' +
+      '<div class="pc-msg"><label class="pc-echeance" for="pc-message" style="display:block;margin-bottom:6px">Le message, prêt à envoyer</label>' +
+        '<textarea id="pc-message" data-libre="1">' + esc(message) + '</textarea>' +
+        '<div class="ds-quick" style="margin-top:8px"><button type="button" data-pc="msg-copier">Copier le message</button>' +
+          '<button type="button" data-pc="msg-whatsapp">Envoyer sur WhatsApp</button></div></div>';
+  }
+
+  function pcMessage(d){
+    var m = d.m, parId = {}; d.joueuses.forEach(function(p){ parId[p.id] = p; });
+    var noms = d.conv.filter(function(c){ return c.statut === 'convoquee' || c.statut === 'confirmee'; })
+      .map(function(c){ return parId[c.player_id]; }).filter(Boolean)
+      .sort(function(a, b){ return (a.jersey_number == null ? 999 : a.jersey_number) - (b.jersey_number == null ? 999 : b.jersey_number); })
+      .map(function(p){ return p.name + (p.jersey_number != null ? ' (' + p.jersey_number + ')' : ''); });
+    var quand = m.match_date ? new Date(m.match_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) : '';
+    var heure = m.match_time ? String(m.match_time).slice(0, 5).replace(':', 'h') : '';
+    var l = [];
+    l.push('Convocation : ' + mcLabel(m) + (m.competition ? ' (' + m.competition + (m.round_label ? ', ' + m.round_label : '') + ')' : '') + '.');
+    l.push((quand ? quand.charAt(0).toUpperCase() + quand.slice(1) : 'Date à confirmer') + (heure ? ' à ' + heure : '') + (m.venue ? ', ' + m.venue : '') + (m.is_home ? ' (à domicile).' : ' (déplacement).'));
+    if (m.rdv_heure || m.rdv_lieu) l.push('Rendez-vous' + (m.rdv_heure ? ' à ' + m.rdv_heure : '') + (m.rdv_lieu ? ', ' + m.rdv_lieu : '') + '.');
+    if (noms.length) l.push('Convoquées : ' + noms.join(', ') + '.');
+    if (m.consignes) l.push('Consignes : ' + m.consignes);
+    l.push('Merci de confirmer votre présence en répondant à ce message.');
+    l.push('Baobabs Basket Club');
+    return l.join('\n');
+  }
+
+  // ---------- le rendu ----------
+  function pcRender(){
+    var d = pcData; if (!d || !d.m) return;
+    var m = d.m, j = pcJours(m), E = pcEtapes(d);
+    var faits = E.filter(function(e){ return e.etat === 'fait' || e.etat === 'libre'; }).length;
+    var retards = E.filter(function(e){ return e.etat === 'retard'; }).length;
+
+    // le haut
+    var jHtml, jCls = '';
+    if (j === null) jHtml = '<b>?</b><span>date à fixer</span>';
+    else if (j > 1) jHtml = '<b>J<em>-</em>' + j + '</b><span>jours avant le match</span>';
+    else if (j === 1) jHtml = '<b>J<em>-</em>1</b><span>c\'est demain</span>';
+    else if (j === 0){ jHtml = '<b>J</b><span>c\'est aujourd\'hui</span>'; jCls = ' today'; }
+    else { jHtml = '<b>J<em>+</em>' + (-j) + '</b><span>' + (j === -1 ? 'hier' : 'il y a ' + (-j) + ' jours') + '</span>'; jCls = ' past'; }
+    var home = m.is_home !== false;
+    var gauche = home ? BAOBABS_LOGO : m.opponent_logo_url, droite = home ? m.opponent_logo_url : BAOBABS_LOGO;
+    var gN = home ? 'Baobabs' : (m.opponent_name || '?'), dN = home ? (m.opponent_name || '?') : 'Baobabs';
+    function crest(u, n){ return u ? '<img class="pc-crest" src="' + esc(u) + '" alt="">' : '<div class="pc-crest-none">' + esc(String(n).charAt(0).toUpperCase()) + '</div>'; }
+    var milieu = pcScore(m)
+      ? '<div class="pc-vs score">' + (home ? m.score_baobabs : m.score_opponent) + ' – ' + (home ? m.score_opponent : m.score_baobabs) + '</div>'
+      : '<div class="pc-vs">' + (home ? 'VS' : '@') + '</div>';
+    var heure = m.match_time ? String(m.match_time).slice(0, 5) : '';
+    document.getElementById('pc-hero').innerHTML =
+      '<div class="pc-j' + jCls + '">' + jHtml + '</div>' +
+      '<div class="pc-duel">' + crest(gauche, gN) + milieu + crest(droite, dN) +
+        '<div class="pc-titre"><h2>' + esc(mcLabel(m)) + '</h2>' +
+          '<div class="ds-sub">' + esc(formatDateLong(m.match_date)) + (heure ? ' · ' + esc(heure) : '') + (m.venue ? '<br>' + esc(m.venue) : '') +
+            (m.competition ? ' · ' + esc(m.competition) : '') + (m.round_label ? ', ' + esc(m.round_label) : '') + '</div></div></div>' +
+      '<div class="pc-avance"><i>Avancement</i><b>' + faits + '<small>sur ' + E.length + ' étapes</small></b>' +
+        '<div class="pc-jauge"><i style="width:' + Math.round(faits / E.length * 100) + '%"></i></div>' +
+        (retards ? '<span class="pc-retard">' + retards + ' étape' + (retards > 1 ? 's' : '') + ' en retard</span>' : '<span class="pc-echeance">' + (faits === E.length ? 'tout est fait' : 'rien en retard') + '</span>') +
+      '</div>';
+
+    // le rail
+    document.getElementById('pc-rail').innerHTML = E.map(function(e, i){
+      return '<li class="' + e.etat + '"><button type="button" data-pc="aller" data-cle="' + e.cle + '" title="' + esc(PC_ETATS[e.etat] || '') + '">' +
+        '<span class="pc-n">' + (i + 1) + '</span>' + esc(PC_COURT[e.cle] || e.titre) + '</button></li>';
+    }).join('');
+
+    // les cartes
+    document.getElementById('pc-etapes').innerHTML = E.map(function(e, i){
+      var pill = e.etat === 'retard' ? '<span class="ds-tag warn">' + esc(PC_ETATS[e.etat]) + '</span>'
+               : '<span class="ds-st' + (e.etat === 'fait' || e.etat === 'live' ? ' act' : '') + '"><i></i>' + esc(PC_ETATS[e.etat] || e.etat) + '</span>';
+      return '<article class="pc-carte ' + e.etat + '" id="pc-etape-' + e.cle + '">' +
+        '<div class="pc-col"><b>' + (i + 1) + '</b><i></i></div>' +
+        '<div class="pc-corps"><div class="pc-tete"><h3>' + esc(e.titre) + '</h3><span class="pc-echeance">' + esc(PC_ECHEANCES[e.cle] || '') + '</span><span class="pc-etat">' + pill + '</span></div>' +
+          '<p class="pc-resume">' + e.resume + '</p>' +
+          (e.detail ? '<div class="pc-detail">' + e.detail + '</div>' : '') +
+          (e.actions ? '<div class="pc-actions"><div class="ds-quick">' + e.actions + '</div></div>' : '') +
+        '</div></article>';
+    }).join('');
+  }
+
+  // ---------- les gestes ----------
+  function pcClic(e){
+    var b = e.target.closest('[data-pc]'); if (!b) return;
+    var act = b.getAttribute('data-pc'), d = pcData;
+    if (act === 'choisir'){ pcSel = b.getAttribute('data-id'); pcRenderChoix(); pcCharger(); return; }
+    if (act === 'tous'){ showSection('matches2'); return; }
+    if (act === 'nouveau'){ showSection('matches2'); setTimeout(function(){ if (typeof mcNouveau === 'function') mcNouveau(); }, 160); return; }
+    if (act === 'aller'){
+      var c = document.getElementById('pc-etape-' + b.getAttribute('data-cle'));
+      if (c){ c.scrollIntoView({ behavior:'smooth', block:'start' }); c.classList.add('pc-vise'); setTimeout(function(){ c.classList.remove('pc-vise'); }, 1400); }
+      return;
+    }
+    if (!d || !d.m) return;
+    var id = d.m.id;
+    // Toute action qui mene ailleurs change ce que le parcours mesure
+    // (un score, un article, une photo) : au retour, on relit tout.
+    SECTION_AGE.parcours = 0;
+    if (act === 'fiche'){ mcOpen(id, b.getAttribute('data-tab') || 'feuille'); return; }
+    if (act === 'gameday'){ showSection('gameday'); setTimeout(function(){ gdLoad(id); }, 120); return; }
+    if (act === 'classement'){ showSection('standings'); return; }
+    if (act === 'affiche'){ studioOuvrirPourMatch(id); return; }
+    if (act === 'article'){ pcArticle(d); return; }
+    if (act === 'article-ouvrir'){ var aid = b.getAttribute('data-id'); showSection('articles'); setTimeout(function(){ arLoad().then(function(){ arSel = aid; arDirty = false; arRender(); }); }, 120); return; }
+    if (act === 'photos'){ galMatch = { id: id, album: mcLabel(d.m) + ' · ' + formatDateShort(d.m.match_date) }; showSection('galerie'); return; }
+    if (act === 'statut'){ pcPoserStatut(b.getAttribute('data-pid'), b.getAttribute('data-statut')); return; }
+    if (act === 'retirer'){ pcRetirer(b.getAttribute('data-pid')); return; }
+    if (act === 'convoquer-toutes'){ pcConvoquerToutes(); return; }
+    if (act === 'rdv-sauver'){ pcSauverRdv(); return; }
+    if (act === 'msg-copier'){
+      var t = document.getElementById('pc-message');
+      var fin = function(ok){ qgToast(ok ? 'Message copié ✓' : 'La copie a échoué : sélectionnez le texte et copiez-le.', !ok); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t.value).then(function(){ fin(true); }, function(){ fin(false); });
+      else { try { t.select(); fin(document.execCommand('copy')); } catch(err){ fin(false); } }
+      return;
+    }
+    if (act === 'msg-whatsapp'){
+      window.open('https://wa.me/?text=' + encodeURIComponent(document.getElementById('pc-message').value), '_blank', 'noopener');
+      return;
+    }
+  }
+
+  // Un clic sur un statut s'ecrit tout de suite, sans bouton Enregistrer :
+  // c'est une case cochee au telephone, entre deux appels.
+  function pcPoserStatut(pid, statut){
+    var d = pcData; if (!d) return;
+    var mid = d.m.id, row = d.conv.filter(function(c){ return String(c.player_id) === String(pid); })[0];
+    var p = row
+      ? (row.statut === statut ? Promise.resolve() : sbUpdate('match_convocations', row.id, { statut: statut, updated_at: new Date().toISOString() }, 'Le match'))
+      : sbInsert('match_convocations', { match_id: mid, player_id: pid, statut: statut }, 'Le match');
+    p.then(function(){ return pcRechargerConv(); })
+     .catch(function(){ qgToast('Le statut n\'a pas été enregistré.', true); });
+  }
+  function pcRetirer(pid){
+    var d = pcData; if (!d) return;
+    var row = d.conv.filter(function(c){ return String(c.player_id) === String(pid); })[0];
+    if (!row) return;
+    sbDelete('match_convocations', row.id, 'Le match').then(function(){ return pcRechargerConv(); })
+      .catch(function(){ qgToast('Le retrait a échoué.', true); });
+  }
+  function pcConvoquerToutes(){
+    var d = pcData; if (!d) return;
+    var deja = {}; d.conv.forEach(function(c){ deja[c.player_id] = true; });
+    var corps = d.joueuses.filter(function(p){ return (p.status || 'active') === 'active' && !deja[p.id]; })
+      .map(function(p){ return { match_id: d.m.id, player_id: p.id, statut: p.injury_note ? 'blessee' : 'convoquee' }; });
+    if (!corps.length){ qgToast('Toutes les joueuses actives sont déjà dans la convocation.'); return; }
+    sbInsert('match_convocations', corps, 'Le match').then(function(){ qgToast(corps.length + ' joueuse' + (corps.length > 1 ? 's' : '') + ' convoquée' + (corps.length > 1 ? 's' : '') + ' ✓'); return pcRechargerConv(); })
+      .catch(function(){ qgToast('La convocation a échoué.', true); });
+  }
+  function pcRechargerConv(){
+    var d = pcData; if (!d) return Promise.resolve();
+    var jeton = pcChargement;
+    return sbGet('match_convocations?select=*&match_id=eq.' + d.m.id).then(function(rows){
+      if (jeton !== pcChargement) return;
+      d.conv = rows || [];
+      // On garde le rendez-vous tape mais pas encore enregistre.
+      var h = document.getElementById('pc-rdv-heure'), l = document.getElementById('pc-rdv-lieu'), c = document.getElementById('pc-consignes');
+      var saisie = h ? { h: h.value, l: l.value, c: c.value } : null;
+      pcRender();
+      if (saisie){ document.getElementById('pc-rdv-heure').value = saisie.h; document.getElementById('pc-rdv-lieu').value = saisie.l; document.getElementById('pc-consignes').value = saisie.c; }
+    });
+  }
+  function pcSauverRdv(){
+    var d = pcData; if (!d) return;
+    var corps = {
+      rdv_heure: document.getElementById('pc-rdv-heure').value.trim() || null,
+      rdv_lieu: document.getElementById('pc-rdv-lieu').value.trim() || null,
+      consignes: document.getElementById('pc-consignes').value.trim() || null
+    };
+    sbUpdate('matches', d.m.id, corps, 'Le match').then(function(){
+      Object.keys(corps).forEach(function(k){ d.m[k] = corps[k]; });
+      dirtyClear(); qgToast('Rendez-vous enregistré ✓'); pcRender();
+    }).catch(function(){ qgToast('L\'enregistrement a échoué.', true); });
+  }
+
+  // L'article nait lie au match, avec un titre qui dit deja de quoi il
+  // parle ; il s'ouvre dans l'ecran Articles, en brouillon.
+  function pcArticle(d){
+    var m = d.m, titre = mcLabel(m) + (pcScore(m) ? ' : ' + (m.score_baobabs > m.score_opponent ? 'victoire ' : m.score_baobabs < m.score_opponent ? 'défaite ' : 'match nul ') + m.score_baobabs + ' – ' + m.score_opponent : ' : le récap');
+    sbInsert('news', { title: titre, body: '', status: 'brouillon', published_at: todayISO(), match_id: m.id }, 'Articles')
+      .then(function(cree){
+        var id = cree && cree.id;
+        showSection('articles');
+        setTimeout(function(){ arLoad().then(function(){ if (id){ arSel = id; arDirty = false; arRender(); } }); }, 120);
+      })
+      .catch(function(){ qgToast('La création de l\'article a échoué.', true); });
+  }
+
+  // Le Studio s'ouvre sur CE match : l'affiche prend son adversaire,
+  // sa date, sa salle et son logo sans qu'on ait a le choisir.
+  function studioOuvrirPourMatch(id){
+    if (studioEnCours) return;
+    var lancer = function(){ if (window.BaobabsStudio.openForMatch) window.BaobabsStudio.openForMatch(id); else window.BaobabsStudio.open(); };
+    if (studioPret){ lancer(); return; }
+    studioEnCours = true;
+    qgToast('Ouverture du Studio…');
+    studioCharger().then(function(){
+      window.BaobabsStudio.mount(document.getElementById('bstudio'), studioApi());
+      studioPret = true;
+      lancer();
+    }).catch(function(e){ console.error('[Studio]', e); qgToast('Le Studio n\'a pas pu se charger', true); })
+      .then(function(){ studioEnCours = false; });
+  }
 
   // ===================== NEWSLETTER =====================
   var nwBusy = false;
@@ -9972,10 +10643,15 @@
   // du jour, sinon le prochain au calendrier.
   var gdMatch=null, gdScore={b:0,o:0}, gdResa=[], gdWired=false;
 
-  function gdLoad(){
+  function gdLoad(idVoulu){
     gdWire();
     var today=new Date().toISOString().slice(0,10);
-    sbGet('matches?select=*&score_baobabs=is.null&match_date=gte.'+today+'&order=match_date.asc,match_time.asc&limit=1').then(function(rows){
+    // Le parcours « Le match » ouvre la console sur SON match ; sans
+    // demande, c'est le prochain match sans score, comme avant.
+    var requete = typeof idVoulu === 'string' && idVoulu
+      ? 'matches?select=*&id=eq.'+idVoulu+'&limit=1'
+      : 'matches?select=*&score_baobabs=is.null&match_date=gte.'+today+'&order=match_date.asc,match_time.asc&limit=1';
+    sbGet(requete).then(function(rows){
       gdMatch=(rows||[])[0]||null;
       var main=document.getElementById('gd-main'), empty=document.getElementById('gd-empty');
       if(!gdMatch){ main.classList.add('hide'); empty.classList.remove('hide'); return; }
@@ -10331,6 +11007,19 @@
     travaux.push(sbGet('contact_messages?select=created_at,is_read&is_read=is.false').then(function(rows){
       var n = (rows||[]).filter(function(m){ var h = hoursSince(m.created_at); return h !== null && h > 48; }).length;
       if (n) ajout('attention', n + ' message' + (n>1?'s':'') + ' de contact sans réponse', 'Reçu' + (n>1?'s':'') + ' il y a plus de deux jours.', 'forms', 'contenu');
+    }).catch(function(){}));
+
+    // --- Le prochain match sans convocation, a J-5 ---
+    // La convocation vit dans le parcours « Le match » ; a cinq jours du
+    // match, personne de convoquee veut dire que personne n'a ete prevenue.
+    travaux.push(sbGet('match_center?select=id,opponent_name,match_date,statut&statut=in.(aujourdhui,a_venir)&order=match_date.asc&limit=1').then(function(rows){
+      var m = (rows||[])[0]; if (!m) return;
+      var j = jours(m.match_date); if (j === null || j > 5) return;
+      return sbGet('match_convocations?select=statut&match_id=eq.' + m.id + '&statut=in.(convoquee,confirmee)').then(function(cv){
+        var n = (cv||[]).length;
+        if (n < 5) ajout(j <= 1 ? 'urgent' : 'important', 'La convocation n\'est pas faite : ' + (m.opponent_name||'match'),
+          (n ? n + ' joueuse' + (n>1?'s':'') + ' convoquée' + (n>1?'s':'') + ' seulement' : 'Aucune joueuse convoquée') + (j > 0 ? ', à J-' + j : ', et c\'est aujourd\'hui') + '. Le message s\'écrit tout seul dans Le match.', 'parcours', 'matchs');
+      });
     }).catch(function(){}));
 
     // --- Le match du jour sans son cinq ---
@@ -14616,7 +15305,7 @@
   }
 
   // ===================== JOUEUSES =====================
-  var efRows = [], efSel = null, efStarted = false, efDirty = false;
+  var efRows = [], efSel = null, efStarted = false, efDirty = false, efContacts = {};
 
   var EF_STATUS = {
     active:  ['Active',   '#A8D93B'],
@@ -14718,7 +15407,13 @@
   }
 
   function efLoad(){
-    return sbGet('effectif_admin?select=*&order=sort.asc,jersey_number.asc&limit=200')
+    // Le telephone vit dans players_contacts, table reservee a
+    // l'administration : players est lisible par le site, un numero n'y
+    // a pas sa place. On le lit a part et on l'accroche a la fiche.
+    var contacts = sbGet('players_contacts?select=player_id,phone,email').then(function(rows){
+      efContacts = {}; (rows || []).forEach(function(c){ efContacts[c.player_id] = c; });
+    }).catch(function(){});
+    return contacts.then(function(){ return sbGet('effectif_admin?select=*&order=sort.asc,jersey_number.asc&limit=200'); })
       .then(function(rows){ efRows = rows || []; efRender(); })
       .catch(function(){
         return sbGet('players?select=*&order=sort.asc&limit=200').then(function(rows){
@@ -14849,6 +15544,7 @@
             fld('ef-join', 'Arrivée au club', r.joined_at ? String(r.joined_at).slice(0, 10) : '', 'date') +
             fld('ef-prev', 'Club précédent', r.previous_club, 'text') +
             fld('ef-insta', 'Instagram', r.instagram, 'text', '@pseudo') +
+            fld('ef-tel', 'Téléphone', (efContacts[r.id] || {}).phone, 'tel', '77 000 00 00') +
             fld('ef-sort', 'Ordre d\'affichage', r.sort, 'number', '0 = en premier') +
           '</div>' +
           fld('ef-photo', 'Photo (adresse)', r.photo_url, 'text', 'https://… .jpg') +
@@ -14878,7 +15574,7 @@
       '</div>';
 
     var note = document.getElementById('ef-note');
-    var ids = ['ef-name','ef-num','ef-pos','ef-status','ef-h','ef-w','ef-by','ef-city','ef-nat','ef-join','ef-prev','ef-insta','ef-sort','ef-photo','ef-inj','ef-bio']
+    var ids = ['ef-name','ef-num','ef-pos','ef-status','ef-h','ef-w','ef-by','ef-city','ef-nat','ef-join','ef-prev','ef-insta','ef-tel','ef-sort','ef-photo','ef-inj','ef-bio']
       .concat(EF_STATS.map(function(k){ return 'ef-s-' + k[0]; }));
     ids.forEach(function(id){
       var el = document.getElementById(id); if (!el) return;
@@ -14918,6 +15614,12 @@
         bio: v('ef-bio').trim() || null,
         stats: stats
       }, 'Joueuses')
+        .then(function(){
+          var tel = v('ef-tel').trim();
+          var avant = (efContacts[r.id] || {}).phone || '';
+          if (tel === avant) return;
+          return sbUpsert('players_contacts', { player_id: r.id, phone: tel || null, updated_at: new Date().toISOString() }, 'Joueuses');
+        })
         .then(function(){ efDirty = false; return efLoad(); })
         .then(function(){ b.disabled = false; if (efSel) efRenderDoc();
                           noteDire('ef-note', 'Enregistré.'); })
@@ -16781,7 +17483,16 @@
   function mcOpen(id, tab){
     mcSel = id; mcTab = tab || 'feuille'; mcDirty = null;
     showSection('matches2');
-    if (!mcStarted) mcInit(); else mcRender();
+    // OUVRIR UNE FICHE DEPUIS UN AUTRE ECRAN, A FROID. showSection vient
+    // de lancer mcInit(), dont la lecture est en vol : mcRows est encore
+    // vide, mcRenderDoc ne trouvait pas le match, effacait mcSel et
+    // rendait la liste. La fiche ne s'ouvrait jamais au premier essai
+    // (tableau de bord, recherche, parcours « Le match »). Tant que les
+    // lignes ne sont pas la, on attend la lecture : mcRenderAll rendra la
+    // fiche, mcSel etant deja pose.
+    if (!mcStarted){ mcInit(); return; }
+    if (!mcRows.length){ mcLoad(); return; }
+    mcRender();
   }
 
   // =================================================================
@@ -16796,6 +17507,7 @@
   // L'ORDRE FAIT FOI. Le site affiche les photos par `sort` croissant.
   // Ce qu'on voit ici, dans cet ordre, est ce qu'on verra la-bas.
   var galRows = [], galTable = true;
+  var galMatch = null;   // pose par le parcours « Le match » : les photos ajoutees lui sont liees
 
   // =================================================================
   // LES EVENEMENTS MIS EN AVANT
@@ -17061,6 +17773,17 @@
 
   function galLoad(){
     var box = document.getElementById('gal-grille'); if (!box) return;
+    // Venu du parcours « Le match » : l'album est pre-rempli et une note
+    // dit a quel match les photos seront liees, avec de quoi ne plus lier.
+    var note = document.getElementById('gal-match-note'), albIn = document.getElementById('gal-album');
+    if (note){
+      note.classList.toggle('hide', !galMatch);
+      if (galMatch){
+        note.innerHTML = 'Les photos ajoutées seront liées au match <b>' + esc(galMatch.album) + '</b>. <a href="#" id="gal-match-off">Ne plus lier</a>';
+        if (albIn && !albIn.value) albIn.value = galMatch.album;
+        note.querySelector('#gal-match-off').addEventListener('click', function(e){ e.preventDefault(); galMatch = null; note.classList.add('hide'); });
+      }
+    }
     // Un select direct : si la table n'existe pas, PostgREST repond 404
     // et l'ecran le dit au lieu de rester vide sans raison.
     fetch(SUPABASE_URL + '/rest/v1/gallery?select=*&order=sort.asc', { headers: sbHeaders() })
@@ -17202,6 +17925,9 @@
       sort: (galRows.length + 1) * 10,
       published: true
     };
+    // Venu du parcours « Le match » : la photo est liee au match, et
+    // l'album prend son nom si on n'en a pas tape un autre.
+    if (galMatch){ corps.match_id = galMatch.id; if (!alb) corps.album = galMatch.album; }
     sbInsert('gallery', corps, 'Galerie').then(function(){
       ['gal-url', 'gal-legende', 'gal-video'].forEach(function(i){ document.getElementById(i).value = ''; });
       qgToast('Photo ajoutée ✓');
@@ -23369,6 +24095,7 @@
   var LOADERS_live, LOADERS_home, LOADERS_founder, LOADERS_bureau;
   var LOADERS = {
     dashboard:function(){ loadDashboard(); attInit(); },
+    parcours: pcInit,
     gameday:function(){ gdLoad(); },
     promos:function(){ pmLoad(); },
     newsl:function(){ nwLoad(); },
