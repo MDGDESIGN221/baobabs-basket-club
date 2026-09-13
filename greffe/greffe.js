@@ -752,7 +752,11 @@
         peindreFormulaire(); rafraichir(); majTitreBarre();
       }
     }).catch(function () {}) : Promise.resolve();
+    /* pendant la relecture de la base, l'acte a pu être fermé ou remplacé
+       par un autre : on n'écrit alors rien, surtout pas sous une autre identité */
+    var idVise = acteId, modeleVise = modeleActif;
     return avant.then(function () {
+    if (acteId !== idVise || modeleActif !== modeleVise || !acteId) return;
     var fiche = ficheCourante();
     return dbPoser(MAG_ACTES, fiche).then(function () {
       if (canal) { try { canal.postMessage({ quoi: 'acte', id: fiche.id, maj: fiche.maj }); } catch (e) {} }
