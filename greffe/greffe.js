@@ -5471,6 +5471,32 @@
   });
   G.close = fermer;
   G.isOpen = function () { return ouvert; };
+  /* UN ACTE PRE-REMPLI DEPUIS L'ADMINISTRATION. Une convocation depuis
+     « Le match » arrive avec ses convoquées, un reçu depuis « L'école »
+     avec le montant et la famille : les données viennent de la base, pas
+     du clavier. `apport` porte les clés du modèle ; `apport.tables.<nom>`
+     ne porte que des lignes, les colonnes restent celles du modèle. */
+  G.nouvelActe = function (cle, apport, options) {
+    if (!racine || !G.modeles[cle]) return false;
+    var tables = apport && apport.tables, reste = {};
+    Object.keys(apport || {}).forEach(function (k) { if (k !== 'tables') reste[k] = apport[k]; });
+    var pre = { nom: (options && options.origine) || "l'administration", donnees: reste };
+    if (options && options.dossier) pre.dossier = options.dossier;
+    /* ouvert d'abord : la question « acte non enregistré ? » se pose
+       dans le Greffe, et un Greffe fermé la poserait dans le vide */
+    if (!ouvert) G.open();
+    avantDeQuitter(function () {
+      nouvelActe(cle, pre);
+      if (tables) Object.keys(tables).forEach(function (t) {
+        if (!donnees.tables[t]) return;
+        var l = Array.isArray(tables[t]) ? tables[t] : (tables[t].lignes || []);
+        donnees.tables[t].lignes = JSON.parse(JSON.stringify(l));
+      });
+      acteTouche = true;
+      peindreFormulaire(); rafraichir(); majTitreBarre();
+    });
+    return true;
+  };
   /* pour le banc d'essai : ce que la boîte « acte non enregistré » compare */
   G.diagnostic = function () { var f = modeleActif ? ficheCourante() : null; if (f) delete f.maj; var r = acteReference ? JSON.parse(acteReference) : null; if (r) delete r.maj; return { courante: f ? JSON.stringify(f) : null, reference: r ? JSON.stringify(r) : null, change: changementsNonValides(), derniereSauvegarde: derniereSauvegarde, stockagePersistant: stockagePersistant }; };
 

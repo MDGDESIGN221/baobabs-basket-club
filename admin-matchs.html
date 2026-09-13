@@ -7024,6 +7024,24 @@
   // Appelee une fois la session ET l'adresse du proprietaire lues.
   // Avant cela, CP_PROPRIETAIRE ne vaut que son repli en dur : reveler
   // le bouton trop tot le montrerait a la mauvaise personne.
+  // UN ACTE DU GREFFE PRE-REMPLI DEPUIS UN ECRAN. Reserve au proprietaire,
+  // comme le Greffe : le bouton ne s'affiche qu'a lui (greffeBoutonHtml).
+  function greffeNouvelActe(cle, apport, options){
+    if (!cpJeSuisProprio()){ qgToast('Le Greffe est reserve au proprietaire du site', true); return; }
+    var lancer = function(){ if (!window.BaobabsGreffe.nouvelActe(cle, apport, options)) qgToast('Ce modele n\'existe pas dans le Greffe : ' + cle, true); };
+    if (greffePret){ lancer(); return; }
+    if (greffeEnCours) return;
+    greffeEnCours = true;
+    greffeCharger().then(function(){
+      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), { acte: null, proprietaire: cpJeSuisProprio(), base: greffeBase() });
+    }).then(function(){ greffePret = true; lancer(); })
+      .catch(function(e){ console.error('[Greffe]', e); qgToast('Le Greffe n\'a pas pu se charger', true); })
+      .then(function(){ greffeEnCours = false; });
+  }
+  function greffeBoutonHtml(attrs, libelle){
+    return (typeof cpJeSuisProprio === 'function' && cpJeSuisProprio()) ? '<button type="button" ' + attrs + ' title="Un acte du Greffe, deja rempli avec ces donnees">' + libelle + '</button>' : '';
+  }
+  function greffeMoyen(code){ var m = (typeof IN_METHODES !== 'undefined' ? IN_METHODES : []).filter(function(x){ return x[0] === code; })[0]; return m ? m[1] : (code || 'Espèces'); }
   function greffeSerie(titre, lignes){
     if (!cpJeSuisProprio()){ qgToast('Le Greffe est reserve au proprietaire du site', true); return; }
     if (!lignes || !lignes.length){ qgToast('Aucune ligne a envoyer', true); return; }
@@ -10253,7 +10271,8 @@
         '<div class="full"><label for="pc-consignes">Consignes</label><textarea id="pc-consignes" placeholder="Tenue verte, licence sur soi, une bouteille d\'eau.">' + esc(m.consignes || '') + '</textarea></div>' +
       '</div>' +
       '<div class="ds-quick"><button type="button" data-pc="rdv-sauver">Enregistrer le rendez-vous</button>' +
-        '<button type="button" data-pc="convoquer-toutes">Convoquer toutes les joueuses actives</button></div>' +
+        '<button type="button" data-pc="convoquer-toutes">Convoquer toutes les joueuses actives</button>' +
+        greffeBoutonHtml('data-pc="greffe-convocation"', 'Convocation officielle au Greffe') + '</div>' +
       '<div class="pc-compte"><span><b>' + nbConv + '</b>convoquée' + (nbConv > 1 ? 's' : '') + '</span><span><b>' + nbConf + '</b>confirmée' + (nbConf > 1 ? 's' : '') + '</span>' +
         '<span><b>' + nbAbs + '</b>absente' + (nbAbs > 1 ? 's' : '') + '</span>' +
         (sansTel ? '<span style="color:var(--warn)">' + sansTel + ' sans numéro de téléphone : à poser dans la fiche joueuse.</span>' : '') + '</div>' +
@@ -10376,6 +10395,27 @@
       window.open('https://wa.me/?text=' + encodeURIComponent(document.getElementById('pc-message').value), '_blank', 'noopener');
       return;
     }
+    if (act === 'greffe-convocation'){ pcGreffeConvocation(d); return; }
+  }
+
+  // La convocation officielle : le modele « convocation » du Greffe, rempli
+  // avec le match, le rendez-vous, les consignes et la liste des convoquees.
+  function pcGreffeConvocation(d){
+    var m = d.m, parId = {}; d.joueuses.forEach(function(p){ parId[p.id] = p; });
+    var lignes = d.conv.filter(function(c){ return c.statut === 'convoquee' || c.statut === 'confirmee'; })
+      .map(function(c){ return parId[c.player_id]; }).filter(Boolean)
+      .sort(function(a, b){ return (a.jersey_number == null ? 999 : a.jersey_number) - (b.jersey_number == null ? 999 : b.jersey_number); })
+      .map(function(p){ return { nom: p.name || '', cat: 'Senior', poste: p.position || '', maillot: p.jersey_number == null ? '' : String(p.jersey_number), presence: '' }; });
+    if (!lignes.length){ qgToast('Convoquez d\'abord les joueuses : la liste part avec l\'acte.', true); return; }
+    var heure = m.match_time ? String(m.match_time).slice(0, 5).replace(':', ' h ') : '';
+    greffeNouvelActe('convocation', {
+      nature: 'Match', equipe: 'Équipe première',
+      evenement: 'Match' + (m.competition ? ' de ' + m.competition : '') + (m.round_label ? ' (' + m.round_label + ')' : '') + ' contre ' + (m.opponent_name || 'l\'adversaire') + (m.is_home ? ', à domicile' : ', en déplacement'),
+      jour: m.match_date || '', heure: heure, lieuEv: m.venue || '',
+      rdv: [m.rdv_heure, m.rdv_lieu].filter(Boolean).join(' '), adversaire: m.opponent_name || '',
+      consignes: m.consignes ? String(m.consignes).split('\n').map(function(l){ return l.trim() ? (l.trim().charAt(0) === '-' ? l.trim() : '- ' + l.trim()) : ''; }).filter(Boolean).join('\n') : undefined,
+      tables: { convoquees: lignes }
+    }, { origine: 'Le match' });
   }
 
   // Un clic sur un statut s'ecrit tout de suite, sans bouton Enregistrer :
@@ -10647,7 +10687,7 @@
         '</div>';
       }).join('');
     }
-    var actions = '<div class="ds-quick"><button type="button" data-ec="panneau" data-p="ajout">Ajouter une séance</button>' +
+    var actions = '<div class="ds-quick">' + greffeBoutonHtml('data-ec="greffe-presence"', 'Feuille de présence au Greffe') + '<button type="button" data-ec="panneau" data-p="ajout">Ajouter une séance</button>' +
       '<button type="button" data-ec="panneau" data-p="planning">Planning de la semaine' + (ecPlanning.length ? ' <small>(' + ecPlanning.length + ')</small>' : '') + '</button>' +
       (ecPlanning.length ? '<button type="button" data-ec="generer">Créer les séances ' + esc(ecDeMois()) + ' depuis le planning</button>' : '') + '</div>';
     document.getElementById('ec-seances').innerHTML = actions + (ecPanneau === 'ajout' ? ecAjoutHtml() : '') + (ecPanneau === 'planning' ? ecPlanningHtml() : '') + '<div class="ec-liste">' + h + '</div>';
@@ -10729,7 +10769,7 @@
         '<td class="r">' + esc(inFcfa(r.fee_monthly_fcfa)) + '</td>' +
         '<td>' + etat + '</td>' +
         '<td class="r"><div class="ds-quick">' +
-          (p ? '<button type="button" data-ec="recu" data-rid="' + esc(r.id) + '">Reçu</button>'
+          (p ? '<button type="button" data-ec="recu" data-rid="' + esc(r.id) + '">Reçu</button>' + greffeBoutonHtml('data-ec="greffe-recu" data-rid="' + esc(r.id) + '"', 'Reçu au Greffe')
              : '<button type="button" class="ds-accent" data-ec="encaisser" data-rid="' + esc(r.id) + '">Encaisser</button>' + relance) +
           '<button type="button" data-ec="dossier" data-rid="' + esc(r.id) + '">Dossier</button></div></td>' +
       '</tr>' + (ecEncaisse === r.id && !p ? '<tr class="ec-enc"><td colspan="6">' + ecEncaisseHtml(r) + '</td></tr>' : '');
@@ -10890,6 +10930,17 @@
       return;
     }
     if (act === 'ajouter-seance'){ ecAjouterSeance(); return; }
+    if (act === 'greffe-presence'){
+      var bp = ecBornes(), enf = ecInscrits();
+      var plan = ecPlanning.filter(function(p){ return p.active !== false && (!ecCat || !p.category || p.category === ecCat); });
+      greffeNouvelActe('feuille-presence', {
+        equipe: ecCat ? 'École de basket, groupe ' + ecCat : 'École de basket', periode: inPeriodeLabel(ecMois),
+        coach: (plan[0] || {}).coach || '', lieu: (plan[0] || {}).venue || '',
+        horaires: plan.map(function(p){ return EC_JOURS[(p.weekday || 1) - 1] + ' ' + (p.start_time || '') + (p.end_time ? ' à ' + p.end_time : ''); }).join(', '),
+        tables: { joueuses: enf.map(function(r){ return { nom: r.full_name || '', cat: r.category || '', s1:'', s2:'', s3:'', s4:'', s5:'', s6:'', s7:'', s8:'', obs: '' }; }) }
+      }, { origine: 'L\'école' });
+      return;
+    }
     if (act === 'generer'){ ecGenerer(); return; }
     if (act === 'plan-ajouter'){ ecPlanAjouter(); return; }
     if (act === 'plan-actif'){
@@ -10901,6 +10952,15 @@
     if (act === 'encaisser-non'){ ecEncaisse = null; ecRenderCotis(); return; }
     if (act === 'encaisser-ok'){ ecEncaisserOk(rid, b); return; }
     if (act === 'recu'){ var r = ecRows.filter(function(x){ return String(x.id) === String(rid); })[0], pay = r && ecPaiementDe(r); if (r && pay) inRecuPdf(r, pay); return; }
+    if (act === 'greffe-recu'){
+      var rr = ecRows.filter(function(x){ return String(x.id) === String(rid); })[0], pp = rr && ecPaiementDe(rr); if (!rr || !pp) return;
+      greffeNouvelActe('recu', {
+        montant: String(pp.amount_fcfa || rr.fee_monthly_fcfa || ''), mode: greffeMoyen(pp.method), dateActe: pp.paid_on || todayISO(),
+        motif: 'Mensualité de l\'école de basket', periode: inPeriodeLabel(ecMois),
+        payeur: rr.guardian_name || '', pourQui: rr.full_name || '', telephone: ecTel(rr) || ''
+      }, { origine: 'L\'école' });
+      return;
+    }
     if (act === 'dossier'){ ecOuvrirDossier(rid); return; }
     if (act === 'relancer-tous'){ ecPanneau = ecPanneau === 'relances' ? null : 'relances'; ecRenderCotis(); return; }
     if (act === 'modele'){ ecModele(b.getAttribute('data-m')); return; }
@@ -16481,7 +16541,11 @@
 
         '<div class="mc-savebar">' +
           '<span class="cd-draft" id="ef-note"></span>' +
-          '<div style="display:flex;gap:8px">' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+            (typeof cpJeSuisProprio === 'function' && cpJeSuisProprio()
+              ? '<button type="button" class="btn btn-ghost" id="ef-greffe-fiche" style="padding:10px 14px;font-size:13px" title="La fiche joueuse du Greffe, déjà remplie">Fiche au Greffe</button>' +
+                '<button type="button" class="btn btn-ghost" id="ef-greffe-certificat" style="padding:10px 14px;font-size:13px" title="Une attestation d\'appartenance au club, déjà remplie">Attestation au Greffe</button>'
+              : '') +
             '<button type="button" class="btn btn-ghost" id="ef-del" style="padding:10px 14px;font-size:13px;color:var(--danger)">Supprimer</button>' +
             '<button type="button" class="btn btn-primary" id="ef-save" style="padding:10px 18px;font-size:13px">Enregistrer</button>' +
           '</div>' +
@@ -16541,6 +16605,25 @@
         .catch(function(){ b.disabled = false; note.textContent = "L'enregistrement a échoué."; });
     });
 
+    var bGreffe = document.getElementById('ef-greffe-fiche');
+    if (bGreffe) bGreffe.addEventListener('click', function(){
+      var nom = String(r.name || '').trim(), morceaux = nom.split(/\s+/);
+      greffeNouvelActe('fiche-joueuse', {
+        nom: morceaux.length > 1 ? morceaux.slice(-1)[0] : nom, prenom: morceaux.length > 1 ? morceaux.slice(0, -1).join(' ') : '',
+        naissance: r.birth_year ? String(r.birth_year) : '', categorie: 'Senior', poste: r.position || '', taille: r.height || '',
+        maillot: r.jersey_number == null ? '' : String(r.jersey_number), photo: r.photo_url || '', adresse: r.city || '',
+        tel1: (efContacts[r.id] || {}).phone || '', email: (efContacts[r.id] || {}).email || ''
+      }, { origine: 'Les joueuses' });
+    });
+    var bAttest = document.getElementById('ef-greffe-certificat');
+    if (bAttest) bAttest.addEventListener('click', function(){
+      var an = new Date().getFullYear();
+      greffeNouvelActe('certificat', {
+        intitule: 'Attestation', sous: 'd\'appartenance', prelude: 'est délivrée à', nom: r.name || '',
+        motif: 'joueuse licenciée du Baobabs Basket Club pour la saison ' + an + '-' + (an + 1) + (r.jersey_number != null ? ', maillot n° ' + r.jersey_number : '') + (r.position ? ', au poste de ' + r.position.toLowerCase() : '') + '. La présente attestation est délivrée pour servir et valoir ce que de droit.',
+        secondNom: '', secondQualite: ''
+      }, { origine: 'Les joueuses' });
+    });
     var bCadre = document.getElementById('ef-cadrer');
     if (bCadre) bCadre.addEventListener('click', function(){
       var url = (document.getElementById('ef-photo').value || '').trim();
