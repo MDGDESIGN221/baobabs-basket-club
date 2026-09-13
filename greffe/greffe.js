@@ -287,12 +287,12 @@
        **gras**   *italique*   __souligné__   ==surligné==
        {{or|texte}} {{vert|…}} {{rouge|…}} {{gris|…}} {{grand|…}} {{petit|…}} {{maj|…}}
      Le texte est déjà échappé quand il arrive ici. */
-  var TEINTES = /^(or|vert|rouge|gris|grand|petit|maj)$/;
+  var TEINTES = /^(or|vert|rouge|gris|grand|petit|maj|fin|droit)$/;
   function gras(t) {
     /* les teintes et tailles s'emboîtent ({{or|{{grand|…}}}}) : on résout
        la plus intérieure d'abord, jusqu'à ce qu'il n'en reste plus */
-    for (var n = 0; n < 6 && /\{\{(or|vert|rouge|gris|grand|petit|maj)\|[^{}]+\}\}/.test(t); n++) {
-      t = t.replace(/\{\{(or|vert|rouge|gris|grand|petit|maj)\|([^{}]+)\}\}/g, '<span class="s-$1">$2</span>');
+    for (var n = 0; n < 6 && /\{\{(or|vert|rouge|gris|grand|petit|maj|fin|droit)\|[^{}]+\}\}/.test(t); n++) {
+      t = t.replace(/\{\{(or|vert|rouge|gris|grand|petit|maj|fin|droit)\|([^{}]+)\}\}/g, '<span class="s-$1">$2</span>');
     }
     return t
       .replace(/\*\*\*(.+?)\*\*\*/g, '<b><i>$1</i></b>')
@@ -309,8 +309,8 @@
      un intitulé de registre. */
   function sansMarques(texte) {
     var t = String(texte == null ? '' : texte);
-    for (var n = 0; n < 6 && /\{\{(?:or|vert|rouge|gris|grand|petit|maj)\|[^{}]+\}\}/.test(t); n++) {
-      t = t.replace(/\{\{(?:or|vert|rouge|gris|grand|petit|maj)\|([^{}]+)\}\}/g, '$1');
+    for (var n = 0; n < 6 && /\{\{(?:or|vert|rouge|gris|grand|petit|maj|fin|droit)\|[^{}]+\}\}/.test(t); n++) {
+      t = t.replace(/\{\{(?:or|vert|rouge|gris|grand|petit|maj|fin|droit)\|([^{}]+)\}\}/g, '$1');
     }
     return t
       .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
@@ -2701,10 +2701,12 @@
   function styleHerite(el, herite) {
     var s = { b: herite.b, i: herite.i, u: herite.u, m: herite.m, teinte: herite.teinte, dim: herite.dim, maj: herite.maj };
     var st = el.style || {}, tag = el.tagName, cls = el.className || '';
-    if (tag === 'B' || tag === 'STRONG') s.b = true;
-    if (st.fontWeight) { var fw = String(st.fontWeight).toLowerCase(); s.b = fw === 'bold' || fw === 'bolder' || (+fw >= 600); }
-    if (tag === 'I' || tag === 'EM') s.i = true;
-    if (st.fontStyle) s.i = /italic|oblique/.test(st.fontStyle);
+    if (tag === 'B' || tag === 'STRONG') { s.b = true; s.fin = false; }
+    if (/\bs-fin\b/.test(cls)) { s.b = false; s.fin = true; }
+    if (st.fontWeight) { var fw = String(st.fontWeight).toLowerCase(); s.b = fw === 'bold' || fw === 'bolder' || (+fw >= 600); s.fin = !s.b; }
+    if (tag === 'I' || tag === 'EM') { s.i = true; s.droit = false; }
+    if (/\bs-droit\b/.test(cls)) { s.i = false; s.droit = true; }
+    if (st.fontStyle) { s.i = /italic|oblique/.test(st.fontStyle); s.droit = !s.i; }
     if (tag === 'U') s.u = true;
     var td = st.textDecorationLine || st.textDecoration || '';
     if (td) s.u = /underline/.test(td);
@@ -2719,13 +2721,20 @@
     if (/\bs-maj\b/.test(cls)) s.maj = true;
     return s;
   }
-  function cleStyle(s) { return [s.b ? 1 : 0, s.i ? 1 : 0, s.u ? 1 : 0, s.m ? 1 : 0, s.teinte || '', s.dim || '', s.maj ? 1 : 0].join('|'); }
+  function cleStyle(s) { return [s.b ? 1 : 0, s.i ? 1 : 0, s.u ? 1 : 0, s.m ? 1 : 0, s.teinte || '', s.dim || '', s.maj ? 1 : 0, s.fin ? 1 : 0, s.droit ? 1 : 0].join('|'); }
+  /* ce que la feuille de style donne déjà au texte relu : un titre est
+     gras par lui-même ; le mettre en gras n'ajoute rien, le mettre en
+     maigre demande une marque ({{fin|…}}), sinon la feuille refaite le
+     rend gras « comme avant » */
+  var baseGras = false, baseItal = false;
   function decorer(t, s) {
     if (!t.trim()) return t;
     var m = /^(\s*)([\s\S]*?)(\s*)$/.exec(t), av = m[1], ap = m[3];
     t = m[2];
-    if (s.b) t = '**' + t + '**';
-    if (s.i) t = '*' + t + '*';
+    if (s.b && !baseGras) t = '**' + t + '**';
+    if (s.fin && baseGras) t = '{{fin|' + t + '}}';
+    if (s.i && !baseItal) t = '*' + t + '*';
+    if (s.droit && baseItal) t = '{{droit|' + t + '}}';
     if (s.u) t = '__' + t + '__';
     if (s.m) t = '==' + t + '==';
     if (s.teinte) t = '{{' + s.teinte + '|' + t + '}}';
@@ -2735,6 +2744,11 @@
   }
   function enLigneDom(racine) {
     var runs = [];
+    try {
+      var cs = racine.ownerDocument.defaultView.getComputedStyle(racine);
+      baseGras = cs.fontWeight === 'bold' || (+cs.fontWeight >= 600);
+      baseItal = /italic|oblique/.test(cs.fontStyle);
+    } catch (e) { baseGras = false; baseItal = false; }
     function marcher(n, st) {
       Array.prototype.forEach.call(n.childNodes, function (c) {
         if (c.nodeType === 3) { if (c.nodeValue) runs.push({ t: c.nodeValue.replace(/\u00a0/g, ' '), s: st }); return; }

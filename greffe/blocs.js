@@ -160,6 +160,7 @@
       "mark{ background:#FFF0B3; color:inherit; padding:0 1.5pt; border-radius:1.5pt; }",
       ".s-or{ color:var(--or); } .s-vert{ color:var(--vert); } .s-rouge{ color:#B4231F; } .s-gris{ color:var(--gris); }",
       ".s-grand{ font-size:1.22em; } .s-petit{ font-size:.85em; }",
+      ".s-fin{ font-weight:400; } .s-droit{ font-style:normal; }",
       ".s-maj{ text-transform:uppercase; letter-spacing:.06em; font-size:.92em; }",
 
       /* ---- le style d'un bloc : alignement, thème de couleur ---- */
