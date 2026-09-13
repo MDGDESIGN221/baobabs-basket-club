@@ -224,6 +224,9 @@ window.bbLienSur = function (u) {
   @media (prefers-reduced-motion:reduce){.bb-eff-bg{transition:opacity .01s linear}.bb-eff-bg.is-in{transform:none}}
 
   .bb-hide{display:none!important}
+  /* Le temoin (le site ouvert dans l'administration) souligne la section qu'on edite. */
+  .bb-temoin-vise{outline:2px solid #7DFF4F;outline-offset:6px}
+  .bb-temoin .bb-cookie,.bb-temoin #bb-cookie{display:none!important}
   img{-webkit-user-drag:none;-khtml-user-drag:none;-moz-user-drag:none;user-drag:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 
 
@@ -579,6 +582,13 @@ window.bbLienSur = function (u) {
   /* modal affiche */
   .bb-poster-modal{position:fixed;inset:0;z-index:200;display:none;justify-content:center;background:rgba(5,14,9,.88);backdrop-filter:blur(6px);padding:clamp(16px,4vw,40px);overflow-y:auto;-webkit-overflow-scrolling:touch}
   .bb-poster-modal.open{display:flex}
+  /* LA FENETRE VIDEO. Ces trois regles avaient disparu le 10 septembre 2026
+     (commit 28d8945, une tranche de CSS remplacee) : sans display:none, la
+     balise <video> de la fenetre s'affichait en bas de page, vide, avec ses
+     commandes. Retablies a l'identique. */
+  .bb-vid-modal{position:fixed;inset:0;z-index:210;display:none;align-items:center;justify-content:center;background:rgba(3,9,6,.94);backdrop-filter:blur(8px);padding:clamp(12px,3vw,32px)}
+  .bb-vid-modal.open{display:flex}
+  .bb-vid-modal video{max-width:min(100%,calc((100vh - 80px) * 0.5625));max-height:calc(100vh - 80px);width:auto;border-radius:14px;border:1px solid rgba(var(--bb-fil-rgb),.3);box-shadow:0 26px 70px rgba(0,0,0,.6);background:#000}
   .bb-poster-modal-inner{position:relative;max-width:1100px;width:100%;margin:auto;display:flex;gap:clamp(12px,2vw,24px);flex-wrap:wrap;align-items:center;justify-content:center}
   .bb-poster-modal-inner img{max-width:min(46vw,480px);width:100%;height:auto;border-radius:10px;border:1px solid rgba(var(--bb-fil-rgb),.3);box-shadow:0 20px 50px rgba(0,0,0,.5)}
   .bb-poster-modal-close{position:fixed;top:16px;right:16px;z-index:6;width:44px;height:44px;border-radius:50%;border:1px solid rgba(243,239,230,.24);background:rgba(10,21,15,.85);color:#F3EFE6;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:24px;line-height:1}
@@ -7451,10 +7461,10 @@ window.bbCloud = function(url, w){
   function bbHydrate(){
     // Les deux tables peuvent ne pas exister : le site doit continuer de
     // fonctionner si la migration n'a pas encore été passée.
-    sbFetch('banners_public?select=*').then(bbApplyBanners).catch(function(){});
-    sbFetch('announcement_public?select=*').then(bbApplyAnnounce).catch(function(){});
+    sbFetch('banners_public?select=*').then(bbPoser.banners = bbApplyBanners).catch(function(){});
+    sbFetch('announcement_public?select=*').then(bbPoser.announcements = bbApplyAnnounce).catch(function(){});
 
-    sbFetch('players?select=*&order=sort.asc,jersey_number.asc').then(function(rows){
+    sbFetch('players?select=*&order=sort.asc,jersey_number.asc').then(bbPoser.players = function(rows){
       if(!rows || !rows.length) return;
       // Une joueuse partie du club ne doit plus figurer sur le site : jusqu'ici
       // elle y restait comme si de rien n'était. Les blessées et les prêts
@@ -7483,7 +7493,7 @@ window.bbCloud = function(url, w){
       }).catch(function(){});
     }).catch(function(){});
 
-    sbFetch('products?select=*&order=sort.asc').then(function(rows){
+    sbFetch('products?select=*&order=sort.asc').then(bbPoser.products = function(rows){
       if(!rows || !rows.length) return;
       products = rows.map(function(r){
         var imgs = Array.isArray(r.images) ? r.images.filter(Boolean) : (r.image_url ? [r.image_url] : []);
@@ -7501,15 +7511,15 @@ window.bbCloud = function(url, w){
       renderHomeProducts(); renderShopGrid(); renderAppShop();
     }).catch(function(){});
 
-    sbFetch('partners?select=*&order=sort.asc').then(function(rows){
+    sbFetch('partners?select=*&order=sort.asc').then(bbPoser.partners = function(rows){
       if(rows && rows.length) renderPartners(rows);
     }).catch(function(){});
 
-    sbFetch('staff?select=*&order=sort.asc').then(function(rows){
+    sbFetch('staff?select=*&order=sort.asc').then(bbPoser.staff = function(rows){
       if(rows && rows.length) renderStaff(rows);
     }).catch(function(){});
 
-    sbFetch('timeline_events?select=*&order=sort.asc').then(function(rows){
+    sbFetch('timeline_events?select=*&order=sort.asc').then(bbPoser.timeline_events = function(rows){
       if(rows && rows.length){ timeline = rows.map(function(r){ return { year:r.year||'', title:r.title||'', text:r.body||'' }; }); renderTimeline(); }
     }).catch(function(){});
 
@@ -7526,7 +7536,7 @@ window.bbCloud = function(url, w){
     // deja pour se laisser remplacer. On ne reecrit rien : on
     // l'appelle.
     sbFetch('gallery?select=image_url,video_url,caption,sort&published=is.true&order=sort.asc')
-      .then(function(rows){
+      .then(bbPoser.gallery = function(rows){
         if (!rows || !rows.length || !window.bbDetGalerie) return;
         var photos = [], film = null;
         rows.forEach(function(r){
@@ -7549,7 +7559,7 @@ window.bbCloud = function(url, w){
       })
       .catch(function(){});
 
-    sbFetch('news?select=*&order=sort.asc,published_at.desc&limit=12').then(function(rows){
+    sbFetch('news?select=*&order=sort.asc,published_at.desc&limit=12').then(bbPoser.news = function(rows){
       // Filet de sécurité côté site : la politique de lecture en base exclut
       // déjà les brouillons, mais si elle est un jour élargie, rien ne doit
       // fuiter ici. Les anciennes actualités n'ont pas de statut : on les garde.
@@ -7557,11 +7567,11 @@ window.bbCloud = function(url, w){
       if(rows && rows.length){ renderActus(rows); renderAppNews(rows); }
     }).catch(function(){});
 
-    sbFetch('standings?select=*&order=points.desc,wins.desc').then(function(rows){
+    sbFetch('standings?select=*&order=points.desc,wins.desc').then(bbPoser.standings = function(rows){
       if(rows && rows.length){ renderStandings(rows); renderAppStandings(rows); }
     }).catch(function(){});
 
-    sbFetch('org_roles?select=*').then(function(rows){
+    sbFetch('org_roles?select=*').then(bbPoser.org_roles = function(rows){
       if(!rows || !rows.length) return;
       function lines(t){ return String(t||'').split('\n').map(function(s){return s.trim();}).filter(Boolean); }
       rows.forEach(function(r){
@@ -7580,16 +7590,79 @@ window.bbCloud = function(url, w){
     }).catch(function(){});
 
     sbFetch('site_settings?select=*').then(function(rows){
-      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; }); applyFounder(s); applyHero(s); applyHeroSplit(s); applyContent(s); applySiteSettings(s); applyFaceOff(s); applyNewsletter(s); applyLegal(s); applyMedia(s); applyApp(s); applyAppScreens(s); applyTryouts(s); applyTryMedia(s); applyEvenement(s); applyPresaison(s); applyDetection(s); applyEntetes(s); applyInscriptions(s); applyStats(s); applyTribu(s); applyCamp(s); applyFooterCols(s); applyCtaModals(s); applyApparence(s); bbSeoEnrich(s);
-      // Les reglages viennent de reecrire le bouton « Billetterie » du
-      // hero : on repose le mot juste par-dessus.
-      bbTkEtiquette();
-      applyTickets(s);
-      if(window.bbApplyLegacySettings) window.bbApplyLegacySettings(s);
+      var s={}; (rows||[]).forEach(function(r){ s[r.key]=r.value; });
+      bbReglagesCourants = s;
+      bbAppliquerReglages(s);
       bbRevealSoon();
     }).catch(function(){
       // Réglages indisponibles : le bloc live reste sur son état par défaut.
       if(window.bbApplyLegacySettings) window.bbApplyLegacySettings({});
+    });
+  }
+
+  // TOUS LES REGLAGES, POSES D'UN COUP. Une seule liste, appelee au
+  // chargement et rappelee par le temoin de l'administration a chaque
+  // frappe : les deux ne peuvent pas diverger.
+  var bbReglagesCourants = {};
+  function bbAppliquerReglages(s){
+    applyFounder(s); applyHero(s); applyHeroSplit(s); applyContent(s); applySiteSettings(s); applyFaceOff(s); applyNewsletter(s); applyLegal(s); applyMedia(s); applyApp(s); applyAppScreens(s); applyTryouts(s); applyTryMedia(s); applyEvenement(s); applyPresaison(s); applyDetection(s); applyEntetes(s); applyInscriptions(s); applyStats(s); applyTribu(s); applyCamp(s); applyFooterCols(s); applyCtaModals(s); applyApparence(s); bbSeoEnrich(s);
+    // Les reglages viennent de reecrire le bouton « Billetterie » du
+    // hero : on repose le mot juste par-dessus.
+    bbTkEtiquette();
+    applyTickets(s);
+    if(window.bbApplyLegacySettings) window.bbApplyLegacySettings(s);
+  }
+
+  // =====================================================================
+  //  LE TEMOIN : le site lui-meme, ouvert dans l'administration
+  //
+  //  L'admin montrait des « apercus » redessines a la main : un bloc
+  //  recopie en petit, qui pouvait mentir exactement la ou on venait
+  //  verifier son travail. Avec ?temoin=1, cette page s'ouvre dans un
+  //  cadre de l'administration (meme origine) et ecoute :
+  //    { type:'bbc-temoin-reglages', reglages:{cle:valeur}, cible }
+  //        les reglages du formulaire, par-dessus ceux de la base,
+  //        appliques par la meme liste que le chargement ;
+  //    { type:'bbc-temoin-lignes', table, lignes, cible }
+  //        les lignes d'une collection (joueuses, actualites...),
+  //        posees par la meme fonction que la lecture de la base ;
+  //    { type:'bbc-temoin-aller', cible }
+  //        aller a une page et a une section.
+  //  Rien de tout cela ne s'execute hors du temoin : sans ?temoin=1,
+  //  aucun message n'est ecoute.
+  // =====================================================================
+  var bbTemoin = /[?&]temoin=1/.test(location.search);
+  var bbPoser = {};   // table -> fonction qui pose les lignes (remplie par les lecteurs)
+  function bbTemoinAller(c){
+    if (!c) return;
+    var page = typeof c === 'object' ? c.page : null, sel = typeof c === 'object' ? c.sel : c;
+    var change = page && typeof PAGES !== 'undefined' && PAGES.indexOf(page) >= 0 && state.page !== page;
+    if (change) goTo(page, true);
+    setTimeout(function(){
+      var el = sel && document.querySelector(sel); if (!el) return;
+      el.scrollIntoView({ block:'start' });
+      el.classList.add('bb-temoin-vise');
+      setTimeout(function(){ el.classList.remove('bb-temoin-vise'); }, 1800);
+    }, change ? 320 : 0);
+  }
+  if (bbTemoin){
+    document.documentElement.classList.add('bb-temoin');
+    window.addEventListener('message', function(e){
+      if (e.origin !== location.origin) return;
+      var m = e.data || {}; if (!m || typeof m !== 'object') return;
+      if (m.type === 'bbc-temoin-reglages'){
+        var s = {}, k;
+        for (k in bbReglagesCourants) s[k] = bbReglagesCourants[k];
+        for (k in (m.reglages || {})) s[k] = m.reglages[k];
+        try { bbAppliquerReglages(s); } catch(err){ console.warn('[temoin]', err); }
+      }
+      if (m.type === 'bbc-temoin-lignes' && bbPoser[m.table]){
+        try { bbPoser[m.table](m.lignes || []); } catch(err){ console.warn('[temoin]', err); }
+      }
+      if (m.cible) bbTemoinAller(m.cible);
+    });
+    window.addEventListener('load', function(){
+      setTimeout(function(){ if (window.parent !== window) parent.postMessage({ type:'bbc-temoin-pret' }, location.origin); }, 400);
     });
   }
 
@@ -8140,7 +8213,7 @@ window.bbCloud = function(url, w){
 
   function bbEvCharger(){
     return sbFetch('evenements?select=*&actif=eq.true&order=ordre.asc,debut.asc')
-      .then(function(rows){ bbEvBase = rows || []; bbEvRendre(); })
+      .then(bbPoser.evenements = function(rows){ bbEvBase = rows || []; bbEvRendre(); })
       .catch(function(){ bbEvBase = null; bbEvRendre(); });
   }
 

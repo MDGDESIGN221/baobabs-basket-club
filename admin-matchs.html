@@ -1424,6 +1424,46 @@
   .nw-hs-pas{margin:6px 0 10px;padding-left:22px;font-size:13px;line-height:1.6;color:var(--text)}
   .nw-hs-pas li{margin:4px 0}
   /* =====================================================================
+     LE TEMOIN : le site public, dans un volet a droite, qui suit ce qu'on
+     tape. Un seul cadre, jamais deplace (un iframe deplace se recharge).
+     ===================================================================== */
+  :root{--tm-w:min(46vw,760px)}
+  .tm{position:fixed;top:var(--h-bandeau);right:0;bottom:0;width:var(--tm-w);background:var(--surface);
+    border-left:1px solid var(--line-loud);z-index:60;display:flex;flex-direction:column;box-shadow:-14px 0 44px rgba(0,0,0,.4)}
+  .tm[hidden]{display:none}
+  body.tm-ouvert .app-main{margin-right:var(--tm-w)}
+  .tm-barre{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+  .tm-titre{font-family:var(--font-ui);font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text);
+    flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tm-seg button{min-height:0}
+  .tm-seg button.on{color:#0A1B0D;background:var(--gold)}
+  .tm-lien{font-size:12px;font-weight:600;color:var(--gold-bright);text-decoration:none;white-space:nowrap}
+  .tm-lien:hover{text-decoration:underline}
+  .tm-x{background:none;border:1px solid var(--line-strong);border-radius:var(--r-sm);color:var(--muted);width:30px;height:30px;
+    cursor:pointer;min-height:0;padding:0;font-size:16px;line-height:1;flex:none}
+  .tm-x:hover{color:var(--text);border-color:var(--line-loud)}
+  .tm-scene{flex:1;position:relative;overflow:hidden;background:#050906}
+  .tm-scene iframe{position:absolute;top:0;left:0;border:0;transform-origin:0 0;background:#070E0A}
+  .tm-scene.tel iframe{box-shadow:0 0 0 1px var(--line-loud)}
+  .tm-attente{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12.5px;color:var(--faint);pointer-events:none}
+  .tm-attente[hidden]{display:none}
+  .tm-pied{padding:8px 12px;font-size:11.5px;line-height:1.5;color:var(--faint);border-top:1px solid var(--line)}
+  #tm-ouvrir{display:inline-flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:100px;
+    padding:8px 14px;color:var(--muted);font:600 12px var(--font-text);cursor:pointer;flex:none;margin-top:8px;min-height:0}
+  #tm-ouvrir:hover{color:var(--text);border-color:var(--line-loud)}
+  #tm-ouvrir[hidden]{display:none}
+  body.tm-ouvert #tm-ouvrir{color:#0A1B0D;background:var(--gold);border-color:var(--gold)}
+  .qgc-temoin{margin-left:auto;background:none;border:1px solid var(--line-strong);border-radius:var(--r-sm);color:var(--gold-bright);
+    font:600 11px var(--font-ui);letter-spacing:0;text-transform:none;padding:4px 9px;cursor:pointer;min-height:0}
+  .qgc-temoin:hover{border-color:var(--gold-edge);background:var(--gold-soft)}
+  /* Le volet prend la moitie de l'ecran : ce qui reste passe en une
+     colonne, et l'apercu redessine s'efface devant le vrai site. */
+  body.tm-ouvert .qgc-block-body{grid-template-columns:minmax(0,1fr)}
+  body.tm-ouvert .qgc-preview{display:none}
+  body.tm-ouvert .grid-2,body.tm-ouvert .ar-editor,body.tm-ouvert .pc-hero{grid-template-columns:minmax(0,1fr)}
+  @media (max-width:1700px){ body.tm-ouvert .sidebar{display:none} body.tm-ouvert .tm-pied::after{content:' Le menu revient quand on ferme le témoin.'} }
+  @media (max-width:1100px){ :root{--tm-w:100vw} body.tm-ouvert .app-main{margin-right:0} }
+  /* =====================================================================
      L'ECOLE, LE MOIS
      Meme famille que le parcours « Le match » (.pc-*) : pastilles, cartes,
      segments. Ce qui est propre au mois : la frise des dix mois, les
@@ -3839,6 +3879,19 @@
        L'atelier de cadrage des images. Même montage que le Studio : la
        feuille de style est chargée d'emblée (2 Ko), le script seulement
        au premier clic sur « Cadrer ». Voir cadrageOuvrir(). -->
+  <!-- LE TEMOIN : le site public dans un volet. Hors de #app, comme le
+       Studio : #app passe en display:none sur l'ecran de connexion, et un
+       ancetre masque annule le position:fixed. -->
+  <aside id="temoin" class="tm" hidden aria-label="Le site, tel qu'il s'affiche">
+    <div class="tm-barre">
+      <span class="tm-titre" id="tm-titre">Le site</span>
+      <div class="ds-seg tm-seg"><button type="button" data-tm="ordi" class="on">Ordi</button><button type="button" data-tm="tel">Téléphone</button></div>
+      <a id="tm-lien" class="tm-lien" href="/" target="_blank" rel="noopener">Ouvrir le site</a>
+      <button type="button" class="tm-x" data-tm="fermer" aria-label="Fermer le témoin">×</button>
+    </div>
+    <div class="tm-scene" id="tm-scene"><iframe id="tm-iframe" title="Le site, tel qu'il s'affiche"></iframe><div class="tm-attente" id="tm-attente">Le site se charge…</div></div>
+    <div class="tm-pied">Ce que vous tapez s'affiche ici avant d'être enregistré. Le site ne change pour les visiteurs qu'après « Enregistrer ».</div>
+  </aside>
   <div id="bcadrage"></div>
 
   <!-- Le sélecteur d'images. Hors de #app, comme le Studio et le cadrage :
@@ -4180,6 +4233,10 @@
       <div class="page-kicker" id="page-kicker">Aperçu</div>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <h1 id="page-title">Tableau de bord</h1>
+        <button type="button" id="tm-ouvrir" hidden title="Le site, à côté, qui suit ce que vous tapez">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg>
+          Témoin
+        </button>
         <button type="button" id="help-toggle" aria-expanded="false" aria-controls="page-help">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.4-3 4"/><path d="M12 17.5h.01"/></svg>
           Comment ça marche ?
@@ -8162,6 +8219,7 @@
     return true;
   }
   function auditDiffFields(before, after, section, table, recordId){
+    if (typeof tmApresEcriture === 'function') tmApresEcriture();
     before = before || {};
     var keys = Object.keys(after||{});
     keys.forEach(function(k){
@@ -8180,6 +8238,7 @@
     auditDiffFields(before, body, sectionLabel, table, id);
   }
   function auditLogDelete(table,id,sectionLabel){
+    if (typeof tmApresEcriture === 'function') tmApresEcriture();
     auditSend(sectionLabel, table, id, '(supprimé)', '', '');
   }
   function auditLogUpsert(table,body,sectionLabel){
@@ -9404,6 +9463,7 @@
     }
     if (typeof sbRevealActive === 'function') sbRevealActive(key);
     if (typeof pinSyncActive === 'function') pinSyncActive();
+    if (typeof tmBoutonEcran === 'function') tmBoutonEcran(key);
     var kick = document.getElementById('page-kicker');
     if (kick){
       var act = document.querySelector('#sidebar .sb-group:not(.sb-pinned) .sb-link.active');
@@ -10946,6 +11006,173 @@
     if (inRows.some(function(r){ return String(r.id) === String(rid); })) aller();
     else setTimeout(function(){ inLoad().then(aller); }, 150);
   }
+
+  // =================================================================
+  // LE TEMOIN : le site lui-meme, a cote de ce qu'on modifie
+  // =================================================================
+  // Un « apercu » redessine dans l'admin est une copie : un bloc recopie
+  // en petit, qui peut mentir exactement la ou on vient verifier son
+  // travail (une police, un cadrage, une ligne qui deborde). Le temoin
+  // n'est pas une copie : c'est la page publique, ouverte dans un cadre
+  // (index.html?temoin=1, meme origine), a qui l'admin envoie ce qu'on
+  // tape avant meme d'enregistrer. Elle l'applique avec la meme liste
+  // de fonctions que le chargement (bbAppliquerReglages) ou les memes
+  // poseurs de lignes (bbPoser.<table>). Deux largeurs : ordinateur
+  // (1280 px reduit) et telephone (390 px a taille reelle).
+  //
+  // UN SEUL CADRE, TOUJOURS CHAUD. Le site pese ; on ne l'ouvre qu'une
+  // fois, dans un volet a droite qui suit d'ecran en ecran. Deplacer un
+  // <iframe> dans la page le recharge : il ne bouge donc jamais.
+  //
+  // CE QUI ARRIVE AU SITE : les reglages d'un bloc (qgcCollect), ou
+  // l'ensemble des reglages enregistres (settings) pour les ecrans qui
+  // n'ont pas de formulaire declaratif, ou les lignes d'une collection
+  // (joueuses, produits, actualites...). Apres chaque ecriture en base
+  // (auditDiffFields), le temoin se remet a jour tout seul.
+  var tmEtat = { ouvert:false, mode:'ordi', pret:false, id:null, titre:'', cible:null, reglages:null, table:null, lignes:null, timer:null };
+  var TM_LARGEURS = { ordi:1280, tel:390 };
+
+  // Ou chaque bloc du registre s'affiche sur le site : la page, puis la section.
+  var TM_CIBLES = {
+    club_intro:{page:'club',sel:'#bb-club-intro'}, club_obj:{page:'club',sel:'#bb-obj1-title'}, club_hero:{page:'accueil',sel:'#bb-hero'},
+    club_media:{page:'accueil',sel:'#bb-media-shop'}, club_shop_home:{page:'accueil',sel:'#bb-shop-home'}, club_app_screens:{page:'accueil',sel:'#bb-app'},
+    club_stats:{page:'accueil',sel:'[data-bb="stat1-v"]'}, club_tryouts:{page:'accueil',sel:'#bb-try-home'}, club_try_media:{page:'tryouts',sel:'#bb-page-tryouts'},
+    club_evenement:{page:'accueil',sel:'#bb-evenement'}, club_presaison:{page:'accueil',sel:'#bb-presaison'}, club_detection:{page:'accueil',sel:'#bb-galerie'},
+    club_home_titres:{page:'accueil',sel:'#bb-actus'}, club_org:{page:'club',sel:'#bb-org'}, club_ins_titres:{page:'inscriptions',sel:'#bb-ins-body'},
+    club_inscriptions:{page:'inscriptions',sel:'#bb-page-inscriptions'}, club_tribu:{page:'accueil',sel:'#bb-tribu'}, club_newsletter:{page:'accueil',sel:'#bb-news-form'},
+    club_legal_mentions:{page:'accueil',sel:'footer'}, club_legal_confid:{page:'accueil',sel:'footer'}, club_camp:{page:'accueil',sel:'#bb-camp'},
+    club_footer_cols:{page:'accueil',sel:'footer'}, club_cta_modals:{page:'accueil',sel:'#bb-tribu'}, club_equipes:{page:'equipes',sel:'#bb-page-equipes'},
+    club_competitions:{page:'competitions',sel:'#bb-page-competitions'}, club_boutique_page:{page:'boutique',sel:'#bb-page-boutique'},
+    club_actualites:{page:'actualites',sel:'#bb-page-actualites'}, club_tickets_page:{page:'billetterie',sel:'#bb-page-billetterie'},
+    set_identity:{page:'accueil',sel:'#bb-hero'}, set_contact:{page:'accueil',sel:'footer'}, set_social:{page:'accueil',sel:'footer'}, set_footer:{page:'accueil',sel:'footer'}
+  };
+  // Les ecrans qui ne passent pas par le registre : ce qu'ils montrent, et
+  // les lignes qu'ils envoient (celles de l'ecran, deja lues ou enregistrees).
+  var TM_ECRANS = {
+    home:      { titre:'Le hero, sur le site', cible:{page:'accueil',sel:'#bb-hero'}, reglages:true },
+    founder:   { titre:'Le fondateur, sur le site', cible:{page:'club',sel:'#bb-founder'}, reglages:true },
+    banners:   { titre:'Les bannières, sur le site', cible:{page:'accueil',sel:'#bb-hero'}, table:'banners', lignes:function(){ return bnRows; } },
+    announce:  { titre:'Le bandeau d\'annonce, sur le site', cible:{page:'accueil',sel:'#bb-announce'}, table:'announcements', lignes:function(){ return anRows; } },
+    evenements:{ titre:'À la une, sur le site', cible:{page:'accueil',sel:'#bb-evenement'}, table:'evenements', lignes:function(){ return evRows.filter(function(e){ return e.actif !== false; }); } },
+    squad:     { titre:'Les joueuses, sur le site', cible:{page:'equipes',sel:'#bb-effectif-equipes'}, table:'players', lignes:function(){ return efRows; } },
+    products:  { titre:'La boutique, sur le site', cible:{page:'boutique',sel:'#bb-shop-grid'}, table:'products', lignes:function(){ return prRows; } },
+    stock:     { titre:'La boutique, sur le site', cible:{page:'boutique',sel:'#bb-shop-grid'}, table:'products', lignes:function(){ return prRows; } },
+    articles:  { titre:'Les actualités, sur le site', cible:{page:'actualites',sel:'#bb-ac-liste'}, table:'news', lignes:function(){ return arRows.filter(function(a){ return !a.status || a.status === 'publie'; }); } },
+    galerie:   { titre:'La galerie, sur le site', cible:{page:'accueil',sel:'#bb-galerie'}, table:'gallery', lignes:function(){ return galRows.filter(function(g){ return g.published !== false; }); } },
+    staff:     { titre:'Le staff, sur le site', cible:{page:'club',sel:'#bb-staff-list'}, table:'staff', lignes:function(){ return qgvState('staff').rows; } },
+    bureau:    { titre:'L\'organigramme, sur le site', cible:{page:'club',sel:'#bb-org'} },
+    partners:  { titre:'Les partenaires, sur le site', cible:{page:'accueil',sel:'#bb-partners-grid'}, table:'partners', lignes:function(){ return qgvState('partners').rows; } },
+    timeline:  { titre:'Notre histoire, sur le site', cible:{page:'club',sel:'#bb-timeline'}, table:'timeline_events', lignes:function(){ return qgvState('timeline').rows; } },
+    standings: { titre:'Le classement, sur le site', cible:{page:'competitions',sel:'#bb-standings-wrap'}, table:'standings', lignes:function(){ return qgvState('standings').rows; } },
+    news:      { titre:'Les actualités, sur le site', cible:{page:'actualites',sel:'#bb-ac-liste'} },
+    matches2:  { titre:'Les compétitions, sur le site', cible:{page:'competitions',sel:'#bb-page-competitions'} },
+    results:   { titre:'Les résultats, sur le site', cible:{page:'competitions',sel:'#bb-page-competitions'} },
+    calendar:  { titre:'Le calendrier, sur le site', cible:{page:'competitions',sel:'#bb-page-competitions'} },
+    tickets:   { titre:'La billetterie, sur le site', cible:{page:'billetterie',sel:'#bb-page-billetterie'} },
+    live:      { titre:'Le direct, sur le site', cible:{page:'accueil',sel:'#bb-hero'} },
+    c_home:    { titre:'L\'accueil, sur le site', cible:{page:'accueil',sel:'#bb-hero'}, reglages:true },
+    c_club:    { titre:'Le Club, sur le site', cible:{page:'club',sel:'#bb-club-intro'}, reglages:true },
+    c_tryouts: { titre:'Les tryouts, sur le site', cible:{page:'tryouts',sel:'#bb-page-tryouts'}, reglages:true },
+    c_inscriptions:{ titre:'Les inscriptions, sur le site', cible:{page:'inscriptions',sel:'#bb-page-inscriptions'}, reglages:true },
+    c_app:     { titre:'L\'appli, sur le site', cible:{page:'accueil',sel:'#bb-app'}, reglages:true },
+    c_promo:   { titre:'La promo, sur le site', cible:{page:'accueil',sel:'#bb-tribu'}, reglages:true },
+    c_legal:   { titre:'Les mentions, sur le site', cible:{page:'accueil',sel:'footer'}, reglages:true },
+    reglages:  { titre:'Les réglages, sur le site', cible:{page:'accueil',sel:'#bb-hero'}, reglages:true },
+    ecole:     { titre:'L\'école, sur le site', cible:{page:'inscriptions',sel:'#bb-page-inscriptions'} },
+    inscriptions:{ titre:'L\'école, sur le site', cible:{page:'inscriptions',sel:'#bb-page-inscriptions'} }
+  };
+
+  function tmIframe(){ return document.getElementById('tm-iframe'); }
+  function tmLien(c){
+    var page = c && typeof c === 'object' ? c.page : null;
+    return location.origin + '/' + (page && page !== 'accueil' ? '#' + page : '');
+  }
+  function tmOuvrir(o){
+    var el = document.getElementById('temoin'); if (!el) return;
+    tmEtat.id = o.id || null; tmEtat.titre = o.titre || 'Le site'; tmEtat.cible = o.cible || null;
+    tmEtat.reglages = o.reglages || null; tmEtat.table = o.table || null; tmEtat.lignes = o.lignes || null;
+    document.getElementById('tm-titre').textContent = tmEtat.titre;
+    document.getElementById('tm-lien').href = tmLien(tmEtat.cible);
+    el.hidden = false; document.body.classList.add('tm-ouvert'); tmEtat.ouvert = true;
+    var f = tmIframe();
+    if (!f.getAttribute('src')){
+      f.addEventListener('load', function(){ setTimeout(function(){ if (!tmEtat.pret) tmPret(); }, 1800); });
+      f.src = '/?temoin=1';
+    }
+    tmDimensionner();
+    if (tmEtat.pret) tmEnvoyer(true);
+  }
+  function tmPret(){ tmEtat.pret = true; var a = document.getElementById('tm-attente'); if (a) a.hidden = true; tmEnvoyer(true); }
+  function tmFermer(){ var el = document.getElementById('temoin'); if (el) el.hidden = true; document.body.classList.remove('tm-ouvert'); tmEtat.ouvert = false; }
+  function tmEnvoyer(avecCible){
+    if (!tmEtat.ouvert || !tmEtat.pret) return;
+    var f = tmIframe(), w = f && f.contentWindow; if (!w) return;
+    var reglages = null;
+    if (typeof tmEtat.reglages === 'function') reglages = tmEtat.reglages();
+    else if (tmEtat.reglages === true) reglages = settings;
+    else if (tmEtat.reglages && typeof tmEtat.reglages === 'object') reglages = tmEtat.reglages;
+    var lignes = typeof tmEtat.lignes === 'function' ? tmEtat.lignes() : tmEtat.lignes;
+    var cible = avecCible ? tmEtat.cible : null, envoye = false;
+    try {
+      if (reglages){ w.postMessage({ type:'bbc-temoin-reglages', reglages: reglages, cible: cible }, location.origin); envoye = true; cible = null; }
+      if (tmEtat.table && lignes){ w.postMessage({ type:'bbc-temoin-lignes', table: tmEtat.table, lignes: lignes, cible: cible }, location.origin); envoye = true; cible = null; }
+      if (!envoye && cible) w.postMessage({ type:'bbc-temoin-aller', cible: cible }, location.origin);
+    } catch(e){ /* une valeur non serialisable : on n'envoie rien, le site garde la base */ }
+  }
+  // A chaque frappe : un envoi au plus toutes les 250 ms.
+  function tmMaj(id){
+    if (!tmEtat.ouvert) return;
+    if (id && tmEtat.id && tmEtat.id !== id) return;
+    clearTimeout(tmEtat.timer); tmEtat.timer = setTimeout(function(){ tmEnvoyer(false); }, 250);
+  }
+  // Apres une ecriture en base : les lignes de l'ecran se rechargent,
+  // on laisse le temps a la lecture, puis on renvoie.
+  function tmApresEcriture(){ if (!tmEtat.ouvert) return; clearTimeout(tmEtat.timer); tmEtat.timer = setTimeout(function(){ tmEnvoyer(false); }, 900); }
+  function tmDimensionner(){
+    var sc = document.getElementById('tm-scene'), f = tmIframe(); if (!sc || !f || !tmEtat.ouvert) return;
+    var W = TM_LARGEURS[tmEtat.mode] || 1280, sw = sc.clientWidth, sh = sc.clientHeight;
+    var k = tmEtat.mode === 'ordi' ? sw / W : Math.min(1, sw / W);
+    f.style.width = W + 'px'; f.style.height = Math.round(sh / k) + 'px';
+    f.style.transform = 'scale(' + k + ')';
+    f.style.left = Math.max(0, Math.round((sw - W * k) / 2)) + 'px';
+    sc.classList.toggle('tel', tmEtat.mode === 'tel');
+  }
+  // Le bouton « Témoin » de l'en-tete : pour l'ecran courant, s'il montre
+  // quelque chose du site.
+  function tmBoutonEcran(key){
+    var b = document.getElementById('tm-ouvrir'); if (!b) return;
+    var c = TM_ECRANS[key];
+    b.hidden = !c;
+    if (tmEtat.ouvert && c && tmEtat.id !== 'ecran:' + key) tmOuvrirEcran(key);
+  }
+  function tmOuvrirEcran(key){
+    var c = TM_ECRANS[key]; if (!c) return;
+    tmOuvrir({ id:'ecran:' + key, titre:c.titre, cible:c.cible, reglages:c.reglages || null, table:c.table || null, lignes:c.lignes || null });
+  }
+  (function(){
+    var el = document.getElementById('temoin'); if (!el) return;
+    el.addEventListener('click', function(e){
+      var b = e.target.closest('[data-tm]'); if (!b) return;
+      var a = b.getAttribute('data-tm');
+      if (a === 'fermer'){ tmFermer(); return; }
+      tmEtat.mode = a;
+      el.querySelectorAll('.tm-seg [data-tm]').forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-tm') === a); });
+      tmDimensionner();
+    });
+    window.addEventListener('resize', tmDimensionner);
+    window.addEventListener('message', function(e){
+      if (e.origin !== location.origin) return;
+      if (e.data && e.data.type === 'bbc-temoin-pret') tmPret();
+    });
+    var btn = document.getElementById('tm-ouvrir');
+    if (btn) btn.addEventListener('click', function(){ if (tmEtat.ouvert && tmEtat.id === 'ecran:' + sectionCourante) tmFermer(); else tmOuvrirEcran(sectionCourante); });
+    document.addEventListener('click', function(e){
+      var b = e.target.closest('[data-tm-bloc]'); if (!b) return;
+      var id = b.getAttribute('data-tm-bloc');
+      var bl = (typeof qgcAll === 'function' ? qgcAll() : []).filter(function(x){ return x.id === id; })[0]; if (!bl) return;
+      tmOuvrir({ id:'bloc:' + id, titre: bl.label, cible: TM_CIBLES[id] || null, reglages: function(){ return qgcCollect(bl); } });
+    });
+  })();
 
   // ===================== NEWSLETTER =====================
   var nwBusy = false;
@@ -27282,7 +27509,7 @@
           '<div class="qgc-form"><div class="qgc-fields">'+fields+'</div>'+
             '<div class="qgc-actions"><button type="button" class="btn btn-primary qgc-save" data-block="'+bl.id+'">Enregistrer</button>'+
             '<div class="msg" id="qgc-msg-'+bl.id+'" role="status" aria-live="polite"></div></div></div>'+
-          '<aside class="qgc-preview"><div class="qgc-preview-label">Aperçu réel</div><div id="qgc-pv-'+bl.id+'"></div></aside>'+
+          '<aside class="qgc-preview"><div class="qgc-preview-label">Aperçu rapide<button type="button" class="qgc-temoin" data-tm-bloc="'+esc(bl.id)+'">Témoin sur le site</button></div><div id="qgc-pv-'+bl.id+'"></div></aside>'+
         '</div>'+
         // ON SORT D'UN CHAPITRE PAR LE BAS, LA OU L'ON A FINI DE LIRE.
         // Remonter chercher l'onglet suivant en haut de page apres avoir
@@ -27385,7 +27612,7 @@
       // poserait nulle part, et personne ne saurait pourquoi.
       QGC_CHAPITRES[mountId] = { ids:idsBl, poser:poser };
     }
-    m.querySelectorAll('.qgc-in').forEach(function(el){ el.addEventListener('input',function(){ var bl=qgcAll().filter(function(b){ return b.fields.some(function(f){return f.key===el.getAttribute('data-k');}); })[0]; if(bl) qgcPreview(bl); }); });
+    m.querySelectorAll('.qgc-in').forEach(function(el){ el.addEventListener('input',function(){ var bl=qgcAll().filter(function(b){ return b.fields.some(function(f){return f.key===el.getAttribute('data-k');}); })[0]; if(bl){ qgcPreview(bl); tmMaj('bloc:'+bl.id); } }); });
     m.querySelectorAll('input[data-kfile]').forEach(function(fe){ fe.addEventListener('change',function(){ var file=fe.files[0]; if(!file) return; var key=fe.getAttribute('data-kfile'); var kind=fe.getAttribute('data-kind')||'image'; var span=fe.parentNode.querySelector('span'); var libelle=span?span.textContent:''; if(span) span.textContent='Envoi…'; uploadFile(MEDIA_BUCKET,file).then(function(url){ var inp=document.querySelector('.qgc-in[data-k="'+key+'"]'); if(inp){ inp.value=url; inp.dispatchEvent(new Event('input',{bubbles:true})); } if(span) span.textContent=libelle; qgToast(kind==='video'?'Vidéo envoyée ✓':'Image envoyée ✓'); }).catch(function(){ if(span) span.textContent=libelle; qgToast('Échec de l\'envoi',true); }); }); });
     m.querySelectorAll('.qgc-save').forEach(function(btn){ btn.addEventListener('click',function(){ qgcSave(btn.getAttribute('data-block'),btn); }); });
     m.querySelectorAll('[data-qgc-src]').forEach(function(btn){
