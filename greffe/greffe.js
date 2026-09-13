@@ -219,7 +219,7 @@
     ['{{club.adresse}}', 'Adresse du club'], ['{{club.ville}}', 'Ville'], ['{{club.recepisse}}', 'Récépissé'],
     ['{{club.telephone}}', 'Téléphone'], ['{{club.email}}', 'E-mail'], ['{{club.site}}', 'Site'],
     ['{{acte.numero}}', 'Numéro de l\'acte'], ['{{acte.date}}', 'Date de l\'acte (en toutes lettres)'],
-    ['{{acte.titre}}', 'Intitulé de l\'acte'], ['{{aujourdhui}}', 'Date du jour'],
+    ['{{acte.titre}}', 'Intitulé de l\'acte'], ['{{acte.dossier}}', 'Dossier de l\'acte'], ['{{aujourdhui}}', 'Date du jour'],
     ['{{total.<tableau>}}', 'Total d\'un tableau'], ['{{col.<colonne>}}', 'Colonne d\'une série']
   ];
   function valeurVariable(racineV, chemin) {
@@ -233,6 +233,7 @@
       if (chemin === 'titre') return d.titre || (modeleActif ? modeleActif.nom : '');
       if (chemin === 'lieu') return d.lieu || C.ville || '';
       if (chemin === 'version') return String(acteVersion || 1);
+      if (chemin === 'dossier') { var dsr = dossierDe(acteDossier); return dsr ? dsr.nom : ''; }
       return '';
     }
     if (racineV === 'col') return (donnees && donnees.serie && chemin in donnees.serie) ? donnees.serie[chemin] : '';
@@ -417,7 +418,7 @@
     { cle: 'cachet',    groupe: 'Cachet',  nom: 'Cachet de la présidence', jeton: null, image: true }
   ];
 
-  var DB_NOM = 'bbc-greffe', DB_VER = 4, MAG_RES = 'ressources', MAG_ACTES = 'actes', MAG_PRE = 'prereglages', MAG_REG = 'reglages';
+  var DB_NOM = 'bbc-greffe', DB_VER = 5, MAG_RES = 'ressources', MAG_ACTES = 'actes', MAG_PRE = 'prereglages', MAG_REG = 'reglages', MAG_DOS = 'dossiers';
 
   function dbOuvrir() {
     return new Promise(function (res, rej) {
@@ -428,6 +429,7 @@
         if (!db.objectStoreNames.contains(MAG_ACTES)) db.createObjectStore(MAG_ACTES, { keyPath: 'id' });
         if (!db.objectStoreNames.contains(MAG_PRE)) db.createObjectStore(MAG_PRE, { keyPath: 'id' });
         if (!db.objectStoreNames.contains(MAG_REG)) db.createObjectStore(MAG_REG, { keyPath: 'cle' });
+        if (!db.objectStoreNames.contains(MAG_DOS)) db.createObjectStore(MAG_DOS, { keyPath: 'id' });
       };
       r.onsuccess = function () { res(r.result); };
       r.onerror = function () { rej(r.error); };
@@ -527,6 +529,10 @@
   var acteReference = null;
   /* le cycle de vie : etat, version, versions emises, journal */
   var acteEtat = 'brouillon', acteVersion = 1, acteVersions = [], acteJournal = [], acteEmisLe = null, acteMotif = '';
+  /* Les dossiers : une affaire, une personne, une saison. Un acte est
+     dans un dossier au plus ; le dossier ne contient rien d'autre que
+     ce lien, les actes restent au registre quand on le retire. */
+  var dossiers = [], acteDossier = null;
   var controle = null, panneau = 'donnees', modeLecture = false, espace = 'accueil';
   var registre = [], prereglages = [];
   var cadre = null, cadrePret = false, minuteur = null;
@@ -684,7 +690,7 @@
       date: donnees.dateActe || isoDuJour(),
       maj: Date.now(),
       etat: acteEtat, version: acteVersion, versions: acteVersions,
-      journal: acteJournal, emisLe: acteEmisLe, motif: acteMotif,
+      journal: acteJournal, emisLe: acteEmisLe, motif: acteMotif, dossier: acteDossier || null,
       donnees: JSON.parse(JSON.stringify(donnees))
     };
   }
@@ -713,6 +719,7 @@
     acteJournal = fiche.journal || [];
     acteEmisLe = fiche.emisLe || null;
     acteMotif = fiche.motif || '';
+    acteDossier = fiche.dossier || null;
     controle = null; panneau = 'donnees'; modeLecture = false; objetSel = null; blocSel = null;
   }
 
@@ -773,6 +780,7 @@
     }
     acteId = null; acteSauve = false; acteReference = null; acteTouche = false;
     acteEtat = 'brouillon'; acteVersion = 1; acteVersions = []; acteJournal = []; acteEmisLe = null; acteMotif = '';
+    acteDossier = (prereglage && prereglage.dossier) || (registreDossier !== 'tous' && registreDossier !== 'aucun' && dossierDe(registreDossier) ? registreDossier : null);
     controle = null; panneau = 'donnees'; modeLecture = false; objetSel = null; objetsSel = []; blocSel = null;
     journaliser('Créé' + (prereglage ? ' depuis le préréglage « ' + prereglage.nom + ' »' : ''));
     ongletPourActeCourant();
@@ -988,6 +996,7 @@
       + '<div><span class="gf-lab">Acte</span><b>' + ech(f.intitule) + '</b></div>'
       + '<div><span class="gf-lab">Modèle</span><b>' + ech(modeleActif.nom) + '</b></div>'
       + '<div><span class="gf-lab">Numéro</span><b>' + ech(f.numero || 'aucun') + '</b></div>'
+      + '<div><span class="gf-lab">Dossier</span><b>' + ech(nomDossier(acteDossier) || 'aucun') + '</b></div>'
       + '<div><span class="gf-lab">État</span><b>' + ech(etatLabel(acteEtat)) + ' · version ' + acteVersion + '</b></div>'
       + '<div><span class="gf-lab">Daté du</span><b>' + ech(dateLongue(f.date, true)) + '</b></div>'
       + (acteEmisLe ? '<div><span class="gf-lab">Émis le</span><b>' + ech(dateHeure(acteEmisLe)) + '</b></div>' : '')
@@ -1041,7 +1050,7 @@
   function ligneActe(a) {
     return '<button type="button" class="gf-acte-ligne" data-acte="' + ech(a.id) + '">'
       + '<span class="gf-al-num">' + ech(a.numero || '·') + '</span>'
-      + '<span class="gf-al-txt"><b>' + ech(a.intitule || a.nom) + '</b><span>' + ech(a.nom) + ' · ' + ech(dateLongue(a.date, false) || '') + '</span></span>'
+      + '<span class="gf-al-txt"><b>' + ech(a.intitule || a.nom) + '</b><span>' + ech(a.nom) + ' · ' + ech(dateLongue(a.date, false) || '') + (a.dossier && dossierDe(a.dossier) ? ' · <i class="gf-al-dos">' + ech(nomDossier(a.dossier)) + '</i>' : '') + '</span></span>'
       + badgeEtat(a.etat || 'brouillon', a.version) + '</button>';
   }
   function brancherLignesActes(hote) {
@@ -1099,6 +1108,7 @@
     var hote = elt.accueil;
     if (!hote) return;
     var brouillons = registre.filter(function (a) { return (a.etat || 'brouillon') === 'brouillon'; });
+    var dossiersRecents = dossiers.slice().sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); }).slice(0, 6);
     var emis = registre.filter(function (a) { return a.etat === 'emis'; });
     var recents = registre.slice(0, 6);
     var pres = tousPrereglages().slice(0, 6);
@@ -1120,6 +1130,10 @@
             + (brouillons.length ? ' · ' + brouillons.length + ' brouillon' + (brouillons.length > 1 ? 's' : '') : '')
             + (emis.length ? ' · ' + emis.length + ' émis' : '') + '</button></div>'
           : '')
+      + (dossiersRecents.length
+          ? '<div class="gf-acc-carte"><h2 class="gf-acc-titre gf-acc-titre-sm">Dossiers</h2><div class="gf-puces">' + dossiersRecents.map(function (d) {
+              return '<button type="button" class="gf-puce" data-acc-dossier="' + ech(d.id) + '">' + ech(d.nom) + ' <span class="gf-compte">' + actesDuDossier(d.id).length + '</span></button>';
+            }).join('') + '</div></div>' : '')
       + '<div class="gf-acc-carte"><h2 class="gf-acc-titre gf-acc-titre-sm">Préréglages</h2>'
       + '<p class="gf-acc-intro">Un acte déjà composé : ouvrez-le, il ne reste qu\'à écrire.</p>'
       + '<div class="gf-cartes gf-cartes-mini">' + pres.map(function (p, i) {
@@ -1129,6 +1143,7 @@
       + '<button type="button" class="gf-lien" id="gf-acc-sauver">Sauvegarder le Greffe</button></p>';
 
     $('gf-acc-nouveau').addEventListener('click', function () { ouvrirNouveau(); });
+    elt.accueil.querySelectorAll('[data-acc-dossier]').forEach(function (x) { x.addEventListener('click', function () { registreDossier = x.getAttribute('data-acc-dossier'); montrer('registre'); }); });
     var b = $('gf-acc-brouillon');
     if (b) b.addEventListener('click', function () { montrer('registre', 'brouillon'); });
     var r = $('gf-acc-registre');
@@ -1228,7 +1243,99 @@
   }
 
   /* ---- le registre : chercher, filtrer, ouvrir ---- */
-  var registreFiltre = 'tous', registreRecherche = '';
+  var registreFiltre = 'tous', registreRecherche = '', registreDossier = 'tous', registreCoches = [];
+  function dossierDe(id) { return id ? dossiers.filter(function (d) { return d.id === id; })[0] || null : null; }
+  function nomDossier(id) { var d = dossierDe(id); return d ? d.nom : ''; }
+  function actesDuDossier(id) { return registre.filter(function (a) { return (a.dossier || null) === id; }); }
+  function poserDossier(d) { d.maj = Date.now(); return dbPoser(MAG_DOS, d).then(function () { dossiers = dossiers.filter(function (x) { return x.id !== d.id; }); dossiers.unshift(d); }); }
+  function creerDossier(nom, note) {
+    nom = String(nom || '').trim(); if (!nom) return Promise.resolve(null);
+    var deja = dossiers.filter(function (d) { return d.nom.toLowerCase() === nom.toLowerCase(); })[0];
+    if (deja) return Promise.resolve(deja);
+    var d = { id: identifiant(), nom: nom, note: String(note || ''), maj: Date.now() };
+    return poserDossier(d).then(function () { return d; });
+  }
+  /* ranger des actes dans un dossier (null : les sortir) ; l'acte ouvert suit s'il en fait partie */
+  function rangerActes(fiches, idDossier) {
+    var p = Promise.resolve(), nom = nomDossier(idDossier);
+    fiches.forEach(function (f) {
+      if ((f.dossier || null) === (idDossier || null)) return;
+      f.dossier = idDossier || null; f.maj = Date.now();
+      (f.journal = f.journal || []).push({ t: Date.now(), quoi: idDossier ? 'Rangé dans le dossier « ' + nom + ' »' : 'Sorti de son dossier' });
+      if (f.id === acteId) { acteDossier = f.dossier; acteJournal = f.journal; }
+      p = p.then(function () { return dbPoser(MAG_ACTES, f); });
+    });
+    if (idDossier) { var d = dossierDe(idDossier); if (d) p = p.then(function () { return poserDossier(d); }); }
+    return p;
+  }
+  /* la boîte : choisir un dossier, en créer un, ou sortir l'acte */
+  function choisirDossier(fiches, titre) {
+    return new Promise(function (res) {
+      var courant = fiches.length === 1 ? (fiches[0].dossier || null) : null;
+      var liste = dossiers.slice().sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
+      var voile = document.createElement('div');
+      voile.className = 'gf-voile';
+      voile.innerHTML = '<div class="gf-modale gf-modale-courte" role="dialog" aria-modal="true">'
+        + '<header class="gf-modale-top"><h3>' + ech(titre || 'Ranger dans un dossier') + '</h3><button type="button" class="gf-ico gf-ico-close" data-x aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>'
+        + '<div class="gf-modale-corps"><p class="gf-modale-aide">' + (fiches.length > 1 ? fiches.length + ' actes' : '<b>' + ech(fiches[0].intitule || fiches[0].nom) + (fiches[0].numero ? ' · ' + ech(fiches[0].numero) : '') + '</b>') + ' · un acte est dans un dossier au plus.</p>'
+        + '<div class="gf-dos-liste">'
+        + '<label class="gf-dos-choix"><input type="radio" name="gf-dos" value=""' + (courant ? '' : ' checked') + '><span>Sans dossier</span></label>'
+        + liste.map(function (d) { return '<label class="gf-dos-choix"><input type="radio" name="gf-dos" value="' + ech(d.id) + '"' + (d.id === courant ? ' checked' : '') + '><span>' + ech(d.nom) + '</span><small>' + actesDuDossier(d.id).length + '</small></label>'; }).join('')
+        + '</div>'
+        + '<label class="gf-champ" style="margin-top:12px"><span>Ou un nouveau dossier</span><input class="gf-in" type="text" data-neuf placeholder="Saison 2026-2027, Tournoi de Thiès, Dossier Awa Diop…"></label></div>'
+        + '<footer class="gf-modale-pied"><button type="button" class="gf-btn gf-btn-fant" data-x>Annuler</button><button type="button" class="gf-btn gf-btn-accent" data-oui>Ranger</button></footer></div>';
+      function fin(v) { if (voile.parentNode) voile.remove(); res(v); }
+      voile.querySelectorAll('[data-x]').forEach(function (b) { b.addEventListener('click', function () { fin(null); }); });
+      voile.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fin(null); } if (e.key === 'Enter' && e.target === neuf) { e.preventDefault(); valider(); } });
+      var neuf = voile.querySelector('[data-neuf]');
+      function valider() {
+        var nomNeuf = neuf.value.trim();
+        var choix = voile.querySelector('input[name="gf-dos"]:checked');
+        var p = nomNeuf ? creerDossier(nomNeuf) : Promise.resolve(choix && choix.value ? dossierDe(choix.value) : null);
+        p.then(function (d) { return rangerActes(fiches, d ? d.id : null).then(function () { fin(d || { id: null }); }); });
+      }
+      voile.querySelector('[data-oui]').addEventListener('click', valider);
+      racine.appendChild(voile);
+      (liste.length ? voile.querySelector('input[name="gf-dos"]:checked') || neuf : neuf).focus();
+    });
+  }
+  function rangerActeCourant() {
+    if (!modeleActif) return;
+    var f = acteId ? registre.filter(function (a) { return a.id === acteId; })[0] : null;
+    /* un acte jamais enregistré : on l'enregistre d'abord, il faut une fiche au registre */
+    var p = f ? Promise.resolve(f) : enregistrer(true).then(function () { return registre.filter(function (a) { return a.id === acteId; })[0]; });
+    p.then(function (fiche) {
+      if (!fiche) return;
+      return choisirDossier([fiche], 'Ranger cet acte').then(function (d) {
+        if (!d) return;
+        majTitreBarre(); if (typeof peindreProps === 'function') peindreProps();
+        dire(d.id ? 'Rangé dans « ' + d.nom + ' »' : 'Sorti de son dossier', 'ok');
+      });
+    });
+  }
+  function renommerDossier(d) {
+    demander('Renommer le dossier', 'Le nom que verront le registre et les actes ({{acte.dossier}}).', d.nom).then(function (nom) {
+      if (!nom || nom === d.nom) return;
+      d.nom = nom; poserDossier(d).then(function () { peindreRegistre(); dire('Dossier renommé', 'ok'); });
+    });
+  }
+  function noterDossier(d) {
+    demander('Note du dossier', 'Ce qu\'il faut savoir en l\'ouvrant : l\'affaire, la personne, la période.', d.note || '').then(function (note) {
+      if (note == null) return;
+      d.note = note; poserDossier(d).then(function () { peindreRegistre(); });
+    });
+  }
+  function supprimerDossier(d) {
+    var n = actesDuDossier(d.id).length;
+    confirmer('Supprimer ce dossier ?', '<p class="gf-modale-aide"><b>' + ech(d.nom) + '</b> disparaît ; ' + (n ? 'ses ' + n + ' acte' + (n > 1 ? 's' : '') + ' restent au registre, sans dossier.' : 'il est vide.') + '</p>', 'Supprimer').then(function (oui) {
+      if (!oui) return;
+      rangerActes(actesDuDossier(d.id), null).then(function () { return dbOter(MAG_DOS, d.id); }).then(function () {
+        dossiers = dossiers.filter(function (x) { return x.id !== d.id; });
+        if (registreDossier === d.id) registreDossier = 'tous';
+        peindreRegistre(); dire('Dossier supprimé', 'ok');
+      });
+    });
+  }
   function peindreRegistre() {
     var hote = elt.registre;
     if (!hote) return;
@@ -1239,6 +1346,8 @@
       if (registreFiltre === 'archive') { if (e !== 'archive') return false; }
       else if (e === 'archive') return false;
       else if (registreFiltre !== 'tous' && e !== registreFiltre) return false;
+      if (registreDossier === 'aucun') { if (a.dossier && dossierDe(a.dossier)) return false; }
+      else if (registreDossier !== 'tous' && (a.dossier || null) !== registreDossier) return false;
       if (!q) return true;
       /* la recherche va jusque dans la donnée : un nom de joueuse, une ville */
       var corps = normal(a.intitule) + ' ' + normal(a.nom) + ' ' + normal(a.numero) + ' ' + normal(a.date) + ' ' + normal(JSON.stringify(a.donnees || {}));
@@ -1247,6 +1356,19 @@
     var compte = {};
     registre.forEach(function (a) { var e = a.etat || 'brouillon'; compte[e] = (compte[e] || 0) + 1; });
     var filtres = [['tous', 'Tous'], ['brouillon', 'Brouillons'], ['emis', 'Émis'], ['remplace', 'Remplacés'], ['annule', 'Annulés'], ['archive', 'Archivés']];
+    registreCoches = registreCoches.filter(function (id) { return registre.some(function (a) { return a.id === id; }); });
+    var dosCourant = dossierDe(registreDossier);
+    var sansDossier = registre.filter(function (a) { return !a.dossier || !dossierDe(a.dossier); }).length;
+    var dosTries = dossiers.slice().sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
+    var htmlDossiers = '<div class="gf-puces gf-reg-dossiers"><span class="gf-lab">Dossiers</span>'
+      + '<button type="button" class="gf-puce' + (registreDossier === 'tous' ? ' is-actif' : '') + '" data-dossier="tous">Tous</button>'
+      + '<button type="button" class="gf-puce' + (registreDossier === 'aucun' ? ' is-actif' : '') + '" data-dossier="aucun">Sans dossier <span class="gf-compte">' + sansDossier + '</span></button>'
+      + dosTries.map(function (d) { return '<button type="button" class="gf-puce' + (registreDossier === d.id ? ' is-actif' : '') + '" data-dossier="' + ech(d.id) + '">' + ech(d.nom) + ' <span class="gf-compte">' + actesDuDossier(d.id).length + '</span></button>'; }).join('')
+      + '<button type="button" class="gf-puce gf-puce-plus" data-dossier-neuf title="Nouveau dossier">+ Dossier</button></div>'
+      + (dosCourant ? '<div class="gf-dos-tete"><div class="gf-dos-nom"><b>' + ech(dosCourant.nom) + '</b>' + (dosCourant.note ? '<span>' + ech(dosCourant.note) + '</span>' : '<span class="gf-dos-vide">Sans note</span>') + '</div>'
+        + '<div class="gf-dos-actions"><button type="button" class="gf-mini" data-dos-nouvel>Nouvel acte ici</button><button type="button" class="gf-mini" data-dos-imprimer' + (actesDuDossier(dosCourant.id).length ? '' : ' disabled') + '>Tout imprimer en un PDF</button><button type="button" class="gf-mini" data-dos-renommer>Renommer</button><button type="button" class="gf-mini" data-dos-note>Note</button><button type="button" class="gf-mini gf-mini-danger" data-dos-supprimer>Supprimer le dossier</button></div></div>' : '');
+    var htmlCoches = registreCoches.length ? '<div class="gf-reg-coches"><b>' + registreCoches.length + ' acte' + (registreCoches.length > 1 ? 's' : '') + ' coché' + (registreCoches.length > 1 ? 's' : '') + '</b>'
+      + '<button type="button" class="gf-mini" data-coches-ranger>Ranger dans un dossier</button><button type="button" class="gf-mini" data-coches-imprimer>Imprimer ensemble</button><button type="button" class="gf-mini" data-coches-rien>Tout décocher</button></div>' : '';
 
     hote.innerHTML =
       '<div class="gf-acc-carte">'
@@ -1256,11 +1378,13 @@
           var n = f[0] === 'tous' ? registre.filter(function (a) { return (a.etat || 'brouillon') !== 'archive'; }).length : (compte[f[0]] || 0);
           return '<button type="button" class="gf-puce' + (registreFiltre === f[0] ? ' is-actif' : '') + '" data-filtre="' + f[0] + '">' + f[1] + ' <span class="gf-compte">' + n + '</span></button>';
         }).join('') + '</div>'
+      + htmlDossiers + htmlCoches
       + (liste.length
           ? '<div class="gf-reg-table">' + liste.map(function (a) {
               var e = a.etat || 'brouillon';
-              return '<div class="gf-reg-ligne">' + ligneActe(a)
+              return '<div class="gf-reg-ligne' + (registreCoches.indexOf(a.id) !== -1 ? ' is-coche' : '') + '"><div class="gf-reg-rang"><input type="checkbox" class="gf-reg-coche" data-coche="' + ech(a.id) + '"' + (registreCoches.indexOf(a.id) !== -1 ? ' checked' : '') + ' title="Cocher pour agir sur plusieurs actes">' + ligneActe(a) + '</div>'
                 + '<div class="gf-reg-actions">'
+                + '<button type="button" class="gf-mini" data-ranger="' + ech(a.id) + '">' + (a.dossier && dossierDe(a.dossier) ? 'Dossier : ' + ech(nomDossier(a.dossier)) : 'Ranger dans un dossier') + '</button>'
                 + '<button type="button" class="gf-mini" data-histo="' + ech(a.id) + '">Historique</button>'
                 + '<button type="button" class="gf-mini" data-fenetre="' + ech(a.id) + '" title="Ouvrir cet acte dans une nouvelle fenêtre">Nouvelle fenêtre</button>'
                 + (e === 'emis' ? '<button type="button" class="gf-mini" data-version="' + ech(a.id) + '">Nouvelle version</button>' : '')
@@ -1278,6 +1402,38 @@
     hote.querySelectorAll('[data-filtre]').forEach(function (b) {
       b.addEventListener('click', function () { registreFiltre = b.getAttribute('data-filtre'); peindreRegistre(); });
     });
+    hote.querySelectorAll('[data-dossier]').forEach(function (b) {
+      b.addEventListener('click', function () { registreDossier = b.getAttribute('data-dossier'); peindreRegistre(); });
+    });
+    var bNeuf = hote.querySelector('[data-dossier-neuf]');
+    if (bNeuf) bNeuf.addEventListener('click', function () {
+      demander('Nouveau dossier', 'Une affaire, une personne, une saison : les actes s\'y rangent depuis leur ligne ou en les cochant.', '').then(function (nom) {
+        if (!nom) return; creerDossier(nom).then(function (d) { registreDossier = d.id; peindreRegistre(); dire('Dossier « ' + d.nom + ' » créé', 'ok'); });
+      });
+    });
+    if (dosCourant) {
+      hote.querySelector('[data-dos-nouvel]').addEventListener('click', function () { ouvrirNouveau(); });
+      hote.querySelector('[data-dos-imprimer]').addEventListener('click', function () { imprimerSerie(actesDuDossier(dosCourant.id).map(function (a) { return a.id; })); });
+      hote.querySelector('[data-dos-renommer]').addEventListener('click', function () { renommerDossier(dosCourant); });
+      hote.querySelector('[data-dos-note]').addEventListener('click', function () { noterDossier(dosCourant); });
+      hote.querySelector('[data-dos-supprimer]').addEventListener('click', function () { supprimerDossier(dosCourant); });
+    }
+    hote.querySelectorAll('[data-coche]').forEach(function (c) {
+      c.addEventListener('change', function () {
+        var id = c.getAttribute('data-coche');
+        registreCoches = registreCoches.filter(function (x) { return x !== id; }); if (c.checked) registreCoches.push(id);
+        peindreRegistre();
+      });
+    });
+    var bCR = hote.querySelector('[data-coches-ranger]');
+    if (bCR) bCR.addEventListener('click', function () {
+      var fs = registreCoches.map(fiche).filter(Boolean);
+      choisirDossier(fs, 'Ranger ' + fs.length + ' actes').then(function (d) { if (!d) return; registreCoches = []; peindreRegistre(); dire(d.id ? fs.length + ' actes rangés dans « ' + d.nom + ' »' : fs.length + ' actes sortis de leur dossier', 'ok'); });
+    });
+    var bCI = hote.querySelector('[data-coches-imprimer]');
+    if (bCI) bCI.addEventListener('click', function () { imprimerSerie(registreCoches.slice()); });
+    var bCN = hote.querySelector('[data-coches-rien]');
+    if (bCN) bCN.addEventListener('click', function () { registreCoches = []; peindreRegistre(); });
     brancherLignesActes(hote);
     function fiche(id) { return registre.filter(function (a) { return a.id === id; })[0]; }
     function avecFiche(attr, fn) {
@@ -1286,6 +1442,7 @@
       });
     }
     avecFiche('data-histo', function (f) { historiqueActe(f); });
+    avecFiche('data-ranger', function (f) { choisirDossier([f], 'Ranger cet acte').then(function (d) { if (!d) return; peindreRegistre(); dire(d.id ? 'Rangé dans « ' + d.nom + ' »' : 'Sorti de son dossier', 'ok'); }); });
     avecFiche('data-retirer-onglet', function (f) { fermerOnglet(f.id); });
     avecFiche('data-fenetre', function (f) { nouvelleFenetre(f.id); });
     avecFiche('data-version', function (f) { ouvrirActe(f); setTimeout(nouvelleVersion, 400); });
@@ -1399,6 +1556,7 @@
       { nom: 'Acte', items: [
         { lab: 'Informations…', off: !enAtelier, act: informationsActe },
         { lab: 'Historique…', off: !enAtelier, act: function () { historiqueActe(); } },
+        { lab: (acteDossier && dossierDe(acteDossier) ? 'Dossier : ' + nomDossier(acteDossier) + '…' : 'Ranger dans un dossier…'), off: !enAtelier, act: rangerActeCourant },
         { sep: true },
         { lab: 'Vérifier', rac: 'Ctrl+Entrée', off: !enAtelier || lect, act: verifier },
         { lab: 'Émettre…', rac: 'Ctrl+Maj+E', off: !enAtelier || lect, act: emettreActe },
@@ -2153,6 +2311,9 @@
     if (modeleActif && modeleActif.libre && !lectureSeule() && modeleActif.catalogue) {
       modeleActif.catalogue.forEach(function (e) { out.push({ g: 'Poser un bloc', lab: e.nom, sous: e.aide || '', act: function () { poserBloc(e); } }); });
     }
+    dossiers.forEach(function (d) {
+      out.push({ g: 'Dossier', lab: d.nom, sous: actesDuDossier(d.id).length + ' acte' + (actesDuDossier(d.id).length > 1 ? 's' : '') + (d.note ? ' · ' + d.note : ''), act: function () { registreDossier = d.id; montrer('registre'); } });
+    });
     registre.slice().sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); }).forEach(function (a) {
       out.push({ g: 'Registre', lab: (a.numero ? a.numero + ' · ' : '') + (a.intitule || a.nom), sous: a.nom + ' · ' + (dateLongue(a.date, false) || '') + ' · ' + (a.etat || 'brouillon'),
                  act: function () { ouvrirActe(a); } });
@@ -3202,8 +3363,8 @@
      ================================================================= */
   function sauvegarderGreffe() {
     var contenu = {
-      greffe: 'sauvegarde', version: 2, date: new Date().toISOString(),
-      actes: registre, prereglages: prereglages, club: G.club
+      greffe: 'sauvegarde', version: 3, date: new Date().toISOString(),
+      actes: registre, prereglages: prereglages, dossiers: dossiers, club: G.club
     };
     var b = new Blob([JSON.stringify(contenu)], { type: 'application/json;charset=utf-8' });
     var u = URL.createObjectURL(b), a = document.createElement('a');
@@ -3236,6 +3397,12 @@
         p = p.then(function () { return dbPoser(MAG_PRE, q); }).then(function () {
           prereglages = prereglages.filter(function (a) { return a.id !== q.id; }); prereglages.push(q); nP++;
         });
+      });
+      (o.dossiers || []).forEach(function (d) {
+        if (!d || !d.id) return;
+        var local = dossierDe(d.id);
+        if (local && (local.maj || 0) >= (d.maj || 0)) return;
+        p = p.then(function () { return dbPoser(MAG_DOS, d); }).then(function () { dossiers = dossiers.filter(function (x) { return x.id !== d.id; }); dossiers.push(d); });
       });
       if (o.club && typeof o.club === 'object') {
         p = p.then(function () { G.club = Object.assign({}, CLUB_DEFAUT, o.club); return dbPoser(MAG_REG, { cle: 'club', valeur: G.club }); });
@@ -4299,12 +4466,12 @@
   var onglets = [], ongletCourant = null;
   function etatCourant() {
     return { modeleActif: modeleActif, donnees: donnees, acteEtat: acteEtat, acteVersion: acteVersion, acteVersions: acteVersions,
-             acteJournal: acteJournal, acteEmisLe: acteEmisLe, acteMotif: acteMotif, acteId: acteId, acteSauve: acteSauve,
+             acteJournal: acteJournal, acteEmisLe: acteEmisLe, acteMotif: acteMotif, acteDossier: acteDossier, acteId: acteId, acteSauve: acteSauve,
              acteReference: acteReference, acteTouche: acteTouche, modeLecture: modeLecture, histo: histo, histoI: histoI, zoom: zoom };
   }
   function restaurerEtat(s) {
     modeleActif = s.modeleActif; donnees = s.donnees; acteEtat = s.acteEtat; acteVersion = s.acteVersion; acteVersions = s.acteVersions;
-    acteJournal = s.acteJournal; acteEmisLe = s.acteEmisLe; acteMotif = s.acteMotif; acteId = s.acteId; acteSauve = s.acteSauve;
+    acteJournal = s.acteJournal; acteEmisLe = s.acteEmisLe; acteMotif = s.acteMotif; acteDossier = s.acteDossier || null; acteId = s.acteId; acteSauve = s.acteSauve;
     acteReference = s.acteReference; acteTouche = s.acteTouche; modeLecture = s.modeLecture; histo = s.histo; histoI = s.histoI; zoom = s.zoom || zoom;
     controle = null; panneau = 'donnees'; objetSel = null; objetsSel = []; blocSel = null; blocCourant = null; cadrePret = false;
   }
@@ -4498,6 +4665,7 @@
     }
     h += '<div class="gf-props-titre">La page</div>'
       + '<div class="gf-var"><span>Acte</span><code>' + ech((donnees.nomActe || donnees.titre || modeleActif.nom)) + '</code></div>'
+      + '<div class="gf-var"><span>Dossier</span><code>' + ech(nomDossier(acteDossier) || 'aucun') + '</code><button type="button" class="gf-mini" data-ranger-courant>' + (acteDossier && dossierDe(acteDossier) ? 'Changer' : 'Ranger') + '</button></div>'
       + '<div class="gf-var"><span>Numéro</span><code>' + ech(donnees.numero || 'sans') + '</code></div>'
       + '<div class="gf-var"><span>Pages</span><code>' + nbPages + '</code></div>'
       + '<div class="gf-var"><span>Objets posés</span><code>' + (donnees.objets || []).length + '</code></div>'
@@ -4509,6 +4677,8 @@
     hote.querySelectorAll('[data-outil2]').forEach(function (b) { b.addEventListener('click', function () { outil(b.getAttribute('data-outil2')); peindreProps(); }); });
     var br = hote.querySelector('[data-bloc-reglages]');
     if (br) br.addEventListener('click', function () { commandeBloc('reglages', blocCourant); });
+    var bd = hote.querySelector('[data-ranger-courant]');
+    if (bd) bd.addEventListener('click', rangerActeCourant);
   }
   function peindreCalques(hote) {
     var objets = donnees.objets || [];
@@ -4642,6 +4812,7 @@
       + '<div class="gf-grille2" style="margin-top:10px">'
       + '<label class="gf-champ"><span>Nom de chaque acte au registre</span><input class="gf-in" type="text" data-nom placeholder="{{col.nom}}"></label>'
       + '<label class="gf-champ"><span>Après la création</span><select class="gf-sel" data-apres><option value="registre">Ouvrir le registre</option><option value="imprimer">Tout imprimer en un PDF</option><option value="rester">Rester sur le modèle</option></select></label>'
+      + '<label class="gf-champ"><span>Dossier de la série (vide : aucun)</span><input class="gf-in" type="text" data-dossier-serie list="gf-dossiers-liste" value="' + ech(recu && recu.titre ? recu.titre : (acteDossier ? nomDossier(acteDossier) : '')) + '" placeholder="Convocations U15 septembre"><datalist id="gf-dossiers-liste">' + dossiers.map(function (d) { return '<option value="' + ech(d.nom) + '">'; }).join('') + '</datalist></label>'
       + '</div></div>'
       + '<footer class="gf-modale-pied"><button type="button" class="gf-btn gf-btn-fant" data-x>Annuler</button>'
       + '<button type="button" class="gf-btn gf-btn-accent" data-creer disabled>Créer les actes</button></footer></div>';
@@ -4681,7 +4852,9 @@
       creer.disabled = true; creer.textContent = 'Création…';
       var apres = voile.querySelector('[data-apres]').value;
       var gabaritNom = nomIn.value.trim() || ('{{col.' + liste.colonnes[0].cle + '}}');
-      var pris = [], ids = [], p = Promise.resolve();
+      var nomDos = voile.querySelector('[data-dossier-serie]').value.trim();
+      var pris = [], ids = [], p = nomDos ? creerDossier(nomDos) : Promise.resolve(null), idDos = null;
+      p = p.then(function (d) { idDos = d ? d.id : null; if (d) return poserDossier(d); });
       liste.lignes.forEach(function (l, i) {
         var d = JSON.parse(JSON.stringify(donnees));
         d.serie = l;
@@ -4695,6 +4868,7 @@
           etat: 'brouillon', version: 1, versions: [], journal: [{ t: Date.now(), quoi: 'Créé en série (' + (i + 1) + '/' + liste.lignes.length + ')' }],
           emisLe: null, motif: '', donnees: d
         };
+        p = p.then(function () { fiche.dossier = idDos; });
         ids.push(fiche.id);
         p = p.then(function () { return dbPoser(MAG_ACTES, fiche); }).then(function () { registre.unshift(fiche); });
       });
@@ -4708,7 +4882,7 @@
         try { localStorage.removeItem('bbc-greffe-serie'); } catch (e) {}
         dire(ids.length + ' acte' + (ids.length > 1 ? 's' : '') + ' créé' + (ids.length > 1 ? 's' : '') + ' en série', 'ok');
         if (apres === 'imprimer') imprimerSerie(ids);
-        else if (apres === 'registre') montrer('registre');
+        else if (apres === 'registre') { if (idDos) registreDossier = idDos; montrer('registre'); }
       }).catch(function (e) { creer.disabled = false; creer.textContent = 'Créer les actes'; dire('La série a buté : ' + (e && e.message ? e.message : e), 'erreur'); });
     });
     zone.focus();
@@ -4964,8 +5138,9 @@
     racine = root; api = contexte || {};
     brancher();
     return chargerMoteur().then(function () {
-      return Promise.all([dbTout(MAG_RES), dbTout(MAG_ACTES), chargerBlason(), dbTout(MAG_PRE), dbTout(MAG_REG)]);
+      return Promise.all([dbTout(MAG_RES), dbTout(MAG_ACTES), chargerBlason(), dbTout(MAG_PRE), dbTout(MAG_REG), dbTout(MAG_DOS)]);
     }).then(function (r) {
+      dossiers = (r[5] || []).sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); });
       (r[0] || []).forEach(function (o) { res[o.cle] = o.uri; });
       var regClub = (r[4] || []).filter(function (x) { return x.cle === 'club'; })[0];
       G.club = Object.assign({}, CLUB_DEFAUT, regClub && regClub.valeur ? regClub.valeur : {});
