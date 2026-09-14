@@ -1423,6 +1423,21 @@
   .nw-hs-etat > div.ok::before{background:var(--lime)}
   .nw-hs-pas{margin:6px 0 10px;padding-left:22px;font-size:13px;line-height:1.6;color:var(--text)}
   .nw-hs-pas li{margin:4px 0}
+  /* La caisse : douze mois (juillet a juin), le budget en deux colonnes. */
+  .cs-frise{grid-template-columns:repeat(12,minmax(0,1fr))}
+  .cs-tbl tr.cs-auto td{background:rgba(70,191,29,.04)}
+  .cs-tbl .m{font-size:11.5px;color:var(--faint);margin-top:2px}
+  .cs-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+  .cs-col h4{margin:0 0 10px;font-family:var(--font-ui);font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+  .cs-poste{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:4px 12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+  .cs-poste-t{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--muted)}
+  .cs-poste-t b{color:var(--text);font-weight:600}
+  .cs-poste-t span{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .cs-bar{grid-column:1;height:4px;background:var(--surface-3);border-radius:2px;overflow:hidden}
+  .cs-bar i{display:block;height:100%;background:var(--gold);border-radius:2px}
+  .cs-bar i.depasse{background:var(--danger)}
+  .cs-prevu{grid-column:2;grid-row:1/span 2;width:100%;background:transparent;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:7px 9px;color:var(--text);font:inherit;font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+  .cs-form{margin-bottom:14px}
   /* =====================================================================
      LE TEMOIN : le site public, dans un volet a droite, qui suit ce qu'on
      tape. Un seul cadre, jamais deplace (un iframe deplace se recharge).
@@ -3998,6 +4013,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
           Tableau de bord
         </button>
+        <button class="sb-link" data-section="caisse">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg>
+          La caisse
+        </button>
         <button class="sb-link" data-section="analytics">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 5-7"/></svg>
           Analytics du club
@@ -4370,6 +4389,15 @@
       </section>
 
     <!-- ===== SECTION SOIR DE MATCH ===== -->
+    <!-- ===== SECTION LA CAISSE ===== -->
+    <section id="section-caisse" class="hide">
+      <div id="cs-tete"></div>
+      <section class="ec-bloc"><header><h3>Les recettes</h3><span>Ce qui est entré ce mois-ci : l'école, la boutique et la billetterie lues à leur source, et ce qui n'a pas d'écran (sponsor, don, subvention, buvette, avance).</span></header><div class="ec-bloc-corps" id="cs-recettes"></div></section>
+      <section class="ec-bloc"><header><h3>Les dépenses</h3><span>Chaque sortie d'argent, avec son justificatif. Une note de frais du Greffe s'en déduit d'un clic.</span></header><div class="ec-bloc-corps" id="cs-depenses"></div></section>
+      <section class="ec-bloc"><header><h3>Le budget de la saison</h3><span>Prévu contre réalisé, poste par poste, de juillet à juin. Le budget du Greffe se remplit avec ces chiffres.</span></header><div class="ec-bloc-corps" id="cs-budget"></div></section>
+      <div class="msg" id="cs-msg"></div>
+    </section>
+
     <!-- ===== SECTION LE MATCH : le parcours de J-7 a J+1 =====
          Neuf etapes lues dans les donnees, jamais cochees a la main.
          Le HTML est un squelette : tout se dessine dans pcRender(). -->
@@ -6146,6 +6174,7 @@
   // « résultats » séparément, il pense « mes matchs ».
   var SECTION_MODULE = {
     dashboard:null,                                  // toujours accessible
+    caisse:'caisse',
     parcours:'matchs',
     gameday:'matchs', teams:'matchs', live:'matchs', standings:'matchs',
     calendar:'matchs', matches2:'matchs', results:'matchs',
@@ -6388,7 +6417,7 @@
     matchs:'les matchs', effectif:'l’effectif', stats:'les statistiques',
     billetterie:'la billetterie', boutique:'la boutique', contenu:'le contenu',
     inscriptions:'les inscriptions', recrutement:'le recrutement',
-    reglages:'les réglages', historique:'l’historique'
+    reglages:'les réglages', historique:'l’historique', caisse:'la caisse'
   };
   function roAppliquer(key){
     var sec = document.getElementById('section-'+key); if (!sec) return;
@@ -8742,6 +8771,7 @@
     dashboard:{t:'Tableau de bord',d:'Vue d\'ensemble de votre club — ce qui se passe, ce qui vous attend.'},
     newsl:{t:'Newsletter',d:'Écrivez aux inscrits : test sur votre adresse d\'abord, envoi à tous ensuite, avec le journal des envois.'},
     promos:{t:'Codes promo',d:'Des remises à partager : pourcentage ou montant, avec période, minimum d\'achat et limite d\'utilisation.'},
+    caisse:{t:'La caisse',d:'Recettes, dépenses, budget de la saison : ce qui entre, ce qui sort, ce qu\'il reste, et ce que le club doit au président.'},
     parcours:{t:'Le match',d:'De J-7 à J+1 : ce qui est fait, ce qui attend, et le bouton qui mène là où ça se fait.'},
     gameday:{t:'Soir de match',d:'L\'écran du jour J : le score d\'un côté, le guichet de retrait des billets de l\'autre.'},
     teams:{t:'Adversaires',d:'Les clubs que vous affrontez : ajout en un clic, logos, historique des confrontations.'},
@@ -8807,6 +8837,7 @@
     newsl: ["<b>Écrire à tous les inscrits de la newsletter.</b> Chaque personne reçoit son propre e-mail — jamais de liste visible.","<b>Testez d'abord</b> : votre adresse dans « M'envoyer un test », le message arrive avec [TEST] devant le sujet.","« Envoyer à tous » demande confirmation, et deux envois à moins de 10 minutes d'écart sont refusés.","À l'ouverture, l'écran interroge la fonction serveur : clé Resend, adresse d'expédition, domaine vérifié. Le bandeau du haut dit ce qui est en place et ce qui manque, pas à pas.","Un inscrit qui répond « STOP » se retire dans Messages → Newsletter."],
     promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b>, dans la barre : un clic ajoute le club, logo compris. Pour un club absent, <b>Ajouter un adversaire</b> ouvre un formulaire — les deux panneaux se ferment l’un l’autre, la liste ne part jamais à deux écrans de défilement.","<b>Changer le logo</b> sur une ligne — ou <b>Ajouter un logo</b> si elle n’en a pas — ouvre l’éditeur. Les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo.","La colonne <b>Logo</b> est la seule chose de cet écran qui appelle un geste : elle dit d’un coup d’œil combien de clubs en attendent un. La recherche filtre par nom, et <b>Confrontations</b> compte les matchs déjà joués contre chacun."],
+    caisse: ["<b>Une seule vérité.</b> Les mensualités de l'école, les commandes encaissées et les billets retirés sont lus là où ils sont déjà enregistrés : la caisse ne les recopie pas, elle les additionne.","<b>Ce qui n'a pas d'écran se note ici</b> : un sponsor, une subvention, un don, la buvette, une avance du président. Et toutes les dépenses, avec leur justificatif.","<b>L'avance du président</b> est une dette du club : chaque avance l'augmente, chaque remboursement la réduit. Le chiffre en haut d'écran est ce qui reste à rembourser, et il part dans le budget du Greffe.","<b>Le budget</b> se pose poste par poste pour la saison (juillet à juin). La barre dit où en est le réalisé ; elle passe au rouge quand un poste dépasse.","<b>Exporter</b> donne le mois ou la saison en CSV, pour le bureau ou l'expert-comptable : chaque ligne avec sa source."],
     parcours: ["<b>Un match, neuf étapes, dans l'ordre où elles arrivent</b> : la fiche, la convocation, le cinq, l'affiche, la billetterie, le direct, le résultat, l'article, le classement. Chaque étape lit son état dans les données : rien ne se coche à la main.","<b>Le rail du haut</b> donne les neuf états d'un coup d'œil. Vert : fait. Orange : à faire ces jours-ci. Rouge : en retard sur l'échéance (convocation à J-5, cinq à J-1, résultat le soir même, article à J+2). Un clic sur un nœud descend à la carte.","<b>La convocation se fait ici</b>, et nulle part ailleurs : fixez le rendez-vous, cochez les joueuses, le message s'écrit tout seul. « Convoquée » puis « Confirmée » quand elle répond ; WhatsApp par joueuse si son numéro est dans sa fiche.","<b>Le cinq de départ</b> se compose dans la fiche du match, avec les visages ; ici on voit seulement s'il est complet. Le site ne publie la composition qu'à cinq titulaires.","<b>L'article naît lié au match</b> : « Écrire le récap » crée un brouillon déjà titré, et les photos ajoutées depuis « Ajouter des photos » se rangent avec ce match."],
     gameday: ["<b>L'écran du jour de match</b>, pensé pour la personne au guichet et à la table de marque.","<b>Les touches +1 / +2 / +3 ne sont que du côté de l’adversaire, et c’est voulu.</b> Ses points n’ont personne à qui être attribués : trois touches suffisent. <b>Les nôtres vont dans la feuille de match d’une joueuse</b> — on les saisit dans la table de marque, en dessous : la joueuse, puis le geste. C’est de là que sortent les statistiques de la saison.","<b>Le score vous suit.</b> Dès que le grand tableau sort de l’écran, une barre se colle sous le bandeau du haut : score, période, points de l’adversaire et annulation. Plus besoin de remonter entre deux paniers.","<b>Coup de sifflet final</b> publie le score sur le site, qui l’affiche alors comme définitif. Avant ça, le direct suit déjà chaque panier.","Le guichet retrouve une réservation par référence, nom ou téléphone ; <b>Retirer</b> pointe le billet à l'entrée.","Les jauges de droite montrent les places restantes par catégorie, mises à jour à chaque retrait."],
     live: ["<b>Collez ici l'adresse de la page du direct</b> — celle de la barre d'adresse, ou du bouton <b>Partager</b>. Elle peut appartenir à <b>n'importe quel compte</b> : c'est ainsi qu'on rediffuse le direct d'une fédération ou du club adverse. La ligne sous le champ dit tout de suite si l'adresse donnera un lecteur ou un bouton.","<b>Laissez « Automatique ».</b> Le direct s'allume quand vous ouvrez le tableau de marque dans <b>Soir de match</b>, et s'éteint au coup de sifflet final — le geste que vous faites déjà. « Forcé allumé » ne sert qu'à diffuser hors match.","Le message hors-direct remplace le titre du bloc les jours sans match. <b>Un soir de match sans caméra, le site n'écrit jamais « pas de direct » : il montre le score</b>, au panier près, sans aucune plateforme."],
@@ -8915,6 +8946,8 @@
     // designer. C'est un etat normal : entre deux matchs, hors saison,
     // ou sur un club qui commence. #gd-empty, lui, est toujours la quand
     // la console ne l'est pas.
+    caisse:     [['#cs-recettes', '#cs-tete'], ['#cs-recettes', '#cs-tete'], ['#cs-tete .ds-fig:last-child', '#cs-tete'],
+                 ['#cs-budget', '#cs-tete'], ['#cs-recettes .ds-quick', '#cs-recettes']],
     parcours:   [['#pc-rail', '#pc-vide'], ['#pc-rail', '#pc-vide'], ['#pc-etape-convocation', '#pc-vide'],
                  ['#pc-etape-cinq', '#pc-vide'], ['#pc-etape-article', '#pc-vide']],
     gameday:    [['#gd-main', '#gd-empty'], ['#gd-vers-console', '#gd-empty'],
@@ -9280,7 +9313,7 @@
   // retirés de la navigation. Leur balisage reste masqué dans la page le
   // temps du démêlage du code (loadTeams alimente encore l'ancien
   // formulaire), mais aucun chemin de l'admin n'y mène plus.
-  var ALL_SECTIONS = ['dashboard','parcours','ecole','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
+  var ALL_SECTIONS = ['dashboard','caisse','parcours','ecole','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
 
@@ -9392,7 +9425,7 @@
   var REFRESH_APRES_MS = 20000;
   function sectionRefreshers(){
     return {
-      dashboard: function(){ loadDashboard(); attInit(); }, parcours: pcLoad, gameday: gdLoad, teams: loadTeams,
+      dashboard: function(){ loadDashboard(); attInit(); }, caisse: csLoad, parcours: pcLoad, gameday: gdLoad, teams: loadTeams,
       tickets: tkLoadOffers, promos: pmLoad, newsl: nwLoad,
       banners: bnLoad, announce: anLoad, squad: efLoad,
       products: prLoad, articles: arLoad, categories: ctLoad,
@@ -9562,6 +9595,7 @@
   // l'écran où l'on est. Tout écran non listé reçoit le trio par défaut.
   var CTX_LINKS = {
     dashboard: [['Le match','parcours'],['Matchs','matches2'],['Soir de match','gameday']],
+    caisse:    [['L\'école','ecole'],['Commandes','orders2'],['Billetterie','tickets']],
     parcours:  [['Fiche du match','matches2'],['Soir de match','gameday'],['Classement','standings']],
     gameday:   [['Le match','parcours'],['Billetterie','tickets'],['Matchs','matches2']],
     teams:     [['Matchs','matches2'],['Calendrier','calendar'],['Classement','standings']],
@@ -9867,6 +9901,8 @@
     }
     pushAct('L\'école ce mois-ci', 'Séances et appel, cotisations, familles à prévenir',
       function(){ showSection('ecole'); }, 'ecole basket seance appel presence cotisation mensualite parents familles', ICO.plus);
+    pushAct('Ouvrir la caisse', 'Recettes, dépenses, budget de la saison',
+      function(){ showSection('caisse'); }, 'caisse argent recettes depenses budget tresorerie avance', ICO.billet);
     pushAct('Préparer le prochain match', 'Le parcours de J-7 à J+1 : convocation, cinq, affiche, résultat',
       function(){ showSection('parcours'); }, 'match parcours preparer convocation cinq affiche recap', ICO.match);
     pushAct('Lancer le soir de match', 'Tableau de marque et guichet',
@@ -11324,6 +11360,290 @@
       tmOuvrir({ id:'bloc:' + id, titre: bl.label, cible: TM_CIBLES[id] || null, reglages: function(){ return qgcCollect(bl); } });
     });
   })();
+
+  // =================================================================
+  // LA CAISSE : recettes, depenses, budget de la saison
+  // =================================================================
+  // L'argent du club etait dans trois ecrans qui ne se parlaient pas :
+  // les mensualites dans Inscriptions, les commandes dans Boutique, les
+  // billets dans Billetterie. Et rien pour les depenses, les sponsors,
+  // les dons, ni pour l'avance du president, cette creance qui apparait
+  // dans le budget du Greffe (2 703 250 FCFA) et nulle part ailleurs.
+  //
+  // LA CAISSE LIT, ELLE NE RECOPIE PAS. Les recettes deja enregistrees
+  // ailleurs (academy_payments, orders.paid, reservations.checked_in_at)
+  // sont lues a leur source, jamais recopiees : une seule verite. Ce qui
+  // n'a pas d'ecran (sponsor, subvention, don, buvette, avance) et TOUTES
+  // les depenses s'ecrivent ici, dans caisse_mouvements.
+  //
+  // LA SAISON COMPTABLE VA DE JUILLET A JUIN : les depenses de
+  // pre-saison (licences, materiel) tombent en juillet et aout, avant la
+  // premiere mensualite de septembre.
+  var csRows = [], csBudget = [], csAvances = [], csEcole = [], csBoutique = [], csBillets = [],
+      csMois = inPeriodeCourante(), csStarted = false, csChargement = 0, csForm = null;
+  var CS_RECETTES = ['Sponsoring', 'Subvention', 'Don', 'Buvette', 'Événement', 'Avance du président', 'Autre recette'];
+  var CS_DEPENSES = ['Arbitrage', 'Transport', 'Matériel et équipement', 'Location de salle', 'Licences et fédération', 'Encadrement', 'Communication', 'Frais bancaires', 'Remboursement d\'avance', 'Autre dépense'];
+  // IN_METHODES est declare plus bas dans le fichier : a lire au moment de
+  // s'en servir, jamais au chargement (un `var` non encore execute vaut undefined).
+  function csMoyens(){ return (typeof IN_METHODES !== 'undefined' ? IN_METHODES : [['especes','Espèces'],['wave','Wave'],['orange_money','Orange Money']]).concat([['cheque', 'Chèque']]); }
+  var CS_AUTO = [
+    { cle:'ecole',    nom:'École de basket', detail:'mensualités et frais d\'inscription encaissés', section:'ecole' },
+    { cle:'boutique', nom:'Boutique',        detail:'commandes marquées encaissées',                  section:'orders2' },
+    { cle:'billets',  nom:'Billetterie',     detail:'billets retirés au guichet',                     section:'tickets' }
+  ];
+
+  function csInit(){
+    if (csStarted){ csLoad(); return; }
+    csStarted = true;
+    document.getElementById('section-caisse').addEventListener('click', csClic);
+    csLoad();
+  }
+  function csSaison(){
+    var y = parseInt(csMois.slice(0, 4), 10), m = parseInt(csMois.slice(5), 10);
+    var an = m >= 7 ? y : y - 1, mois = [];
+    for (var i = 7; i <= 12; i++) mois.push(an + '-' + ('0' + i).slice(-2));
+    for (var j = 1; j <= 6; j++) mois.push((an + 1) + '-' + ('0' + j).slice(-2));
+    return { label: an + '-' + (an + 1), debut: an + '-07-01', fin: (an + 1) + '-06-30', finPlus1: (an + 1) + '-07-01', mois: mois };
+  }
+  function csF(n){ return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+  function csMoisDe(iso){ return String(iso || '').slice(0, 7); }
+  function csMoyen(code){ var m = csMoyens().filter(function(x){ return x[0] === code; })[0]; return m ? m[1] : (code || ''); }
+  function csPeut(a){ return typeof can === 'function' ? can('caisse', a) : true; }
+
+  function csLoad(){
+    var s = csSaison(), jeton = ++csChargement;
+    function tout(u){ return sbGetAll(u).catch(function(){ return []; }); }
+    return Promise.all([
+      tout('caisse_mouvements?select=*&date=gte.' + s.debut + '&date=lte.' + s.fin + '&order=date.desc,created_at.desc'),
+      tout('caisse_budget?select=*&saison=eq.' + encodeURIComponent(s.label)),
+      tout('academy_payments?select=id,kind,period,amount_fcfa,method,paid_on&paid_on=gte.' + s.debut + '&paid_on=lte.' + s.fin),
+      tout('orders?select=id,order_number,total,paid,created_at,prepared_at,payment_method,customer_name&paid=eq.true&created_at=gte.' + s.debut + '&created_at=lt.' + s.finPlus1),
+      tout('reservations?select=id,reference,total_fcfa,checked_in_at,buyer_name&checked_in_at=gte.' + s.debut + '&checked_in_at=lt.' + s.finPlus1),
+      tout('caisse_mouvements?select=sens,categorie,montant_fcfa,date&categorie=in.(' + encodeURIComponent('"Avance du président","Remboursement d\'avance"') + ')')
+    ]).then(function(r){
+      if (jeton !== csChargement) return;
+      csRows = r[0] || []; csBudget = r[1] || []; csEcole = r[2] || []; csBoutique = r[3] || []; csBillets = r[4] || []; csAvances = r[5] || [];
+      csRender();
+    }).catch(function(){ showMsg(document.getElementById('cs-msg'), 'Impossible de lire la caisse.', false); });
+  }
+
+  // ---------- les chiffres d'un mois ----------
+  function csAutoMois(m){
+    var e = csEcole.filter(function(p){ return csMoisDe(p.paid_on) === m; });
+    var b = csBoutique.filter(function(o){ return csMoisDe(o.prepared_at || o.created_at) === m; });
+    var t = csBillets.filter(function(x){ return csMoisDe(x.checked_in_at) === m; });
+    var somme = function(l, f){ return l.reduce(function(a, x){ return a + (parseInt(f(x), 10) || 0); }, 0); };
+    return {
+      ecole:    { n: e.length, total: somme(e, function(x){ return x.amount_fcfa; }), mensualites: e.filter(function(x){ return x.kind === 'mensualite'; }).length, inscriptions: e.filter(function(x){ return x.kind === 'inscription'; }).length },
+      boutique: { n: b.length, total: somme(b, function(x){ return x.total; }) },
+      billets:  { n: t.length, total: somme(t, function(x){ return x.total_fcfa; }) }
+    };
+  }
+  function csManuel(m, sens){ return csRows.filter(function(x){ return x.sens === sens && (!m || csMoisDe(x.date) === m); }); }
+  function csTotaux(m){
+    var a = csAutoMois(m), rec = csManuel(m, 'recette'), dep = csManuel(m, 'depense');
+    var somme = function(l){ return l.reduce(function(t, x){ return t + (parseInt(x.montant_fcfa, 10) || 0); }, 0); };
+    var recettes = a.ecole.total + a.boutique.total + a.billets.total + somme(rec), depenses = somme(dep);
+    return { auto: a, recettes: recettes, depenses: depenses, solde: recettes - depenses, nbRec: rec.length, nbDep: dep.length };
+  }
+  function csTotauxSaison(){
+    var s = csSaison(), t = { recettes: 0, depenses: 0, parCat: {} };
+    s.mois.forEach(function(m){ var x = csTotaux(m); t.recettes += x.recettes; t.depenses += x.depenses; });
+    csRows.forEach(function(x){ var k = x.sens + '|' + x.categorie; t.parCat[k] = (t.parCat[k] || 0) + (parseInt(x.montant_fcfa, 10) || 0); });
+    var a = { ecole:0, boutique:0, billets:0 }; s.mois.forEach(function(m){ var y = csAutoMois(m); a.ecole += y.ecole.total; a.boutique += y.boutique.total; a.billets += y.billets.total; });
+    t.parCat['recette|École de basket'] = a.ecole; t.parCat['recette|Boutique'] = a.boutique; t.parCat['recette|Billetterie'] = a.billets;
+    t.solde = t.recettes - t.depenses;
+    return t;
+  }
+  function csAvancesDues(){
+    return csAvances.reduce(function(t, x){ return t + (x.categorie === 'Avance du président' ? 1 : -1) * (parseInt(x.montant_fcfa, 10) || 0); }, 0);
+  }
+
+  // ---------- le rendu ----------
+  function csRender(){
+    csRenderTete(); csRenderRecettes(); csRenderDepenses(); csRenderBudget();
+  }
+  function csRenderTete(){
+    var s = csSaison(), auj = inPeriodeCourante(), t = csTotaux(csMois), ts = csTotauxSaison(), av = csAvancesDues();
+    var frise = s.mois.map(function(m){
+      var x = csTotaux(m), etat = m > auj ? 'futur' : (!x.recettes && !x.depenses ? 'vide' : (x.solde > 0 ? 'ok' : (x.solde < 0 ? 'rien' : 'partiel')));
+      var mm = parseInt(m.slice(5), 10) - 1;
+      return '<button type="button" class="ec-mois ' + etat + (m === csMois ? ' on' : '') + '" data-cs="mois" data-mois="' + m + '" title="' + esc(inPeriodeLabel(m)) + ' : ' + csF(x.recettes) + ' de recettes, ' + csF(x.depenses) + ' de dépenses">' +
+        '<span>' + IN_MOIS_COURT[mm] + '</span><i></i></button>';
+    }).join('');
+    document.getElementById('cs-tete').innerHTML =
+      '<div class="ec-frise cs-frise">' + frise + '</div>' +
+      '<div class="ds-band">' +
+        '<div class="ds-fig"><i>Recettes · ' + esc(inPeriodeLabel(csMois)) + '</i><b>' + csF(t.recettes) + '<small> FCFA</small></b></div>' +
+        '<div class="ds-fig"><i>Dépenses · ' + esc(inPeriodeLabel(csMois)) + '</i><b>' + csF(t.depenses) + '<small> FCFA</small></b></div>' +
+        '<div class="ds-fig' + (t.solde < 0 ? ' cri' : '') + '"><i>Solde du mois</i><b>' + (t.solde < 0 ? '−' : '') + csF(Math.abs(t.solde)) + '<small> FCFA</small></b></div>' +
+        '<div class="ds-fig' + (ts.solde < 0 ? ' cri' : '') + '"><i>Solde de la saison ' + esc(s.label) + '</i><b>' + (ts.solde < 0 ? '−' : '') + csF(Math.abs(ts.solde)) + '<small> FCFA</small></b></div>' +
+        '<div class="ds-fig' + (av > 0 ? ' sig' : '') + '"><i>Avance du président à rembourser</i><b>' + csF(av) + '<small> FCFA</small></b></div>' +
+      '</div>';
+  }
+  function csLigneManuel(x){
+    var owner = typeof cpJeSuisProprio === 'function' && cpJeSuisProprio();
+    return '<tr>' +
+      '<td class="num">' + esc(ecDateFr(x.date)) + '</td>' +
+      '<td><b>' + esc(x.categorie) + '</b>' + (x.libelle ? '<div class="m">' + esc(x.libelle) + '</div>' : '') + '</td>' +
+      '<td>' + esc(x.tiers || '') + (x.moyen ? '<div class="m">' + esc(csMoyen(x.moyen)) + '</div>' : '') + '</td>' +
+      '<td class="r num"><b>' + csF(x.montant_fcfa) + '</b></td>' +
+      '<td class="r"><div class="ds-quick">' +
+        (x.piece_url ? '<a href="' + esc(x.piece_url) + '" target="_blank" rel="noopener">Justificatif</a>' : '') +
+        (csPeut('modifier') ? '<button type="button" data-cs="modifier" data-id="' + esc(x.id) + '">Modifier</button>' : '') +
+        (owner && x.sens === 'depense' ? '<button type="button" data-cs="greffe-frais" data-id="' + esc(x.id) + '" title="Une note de frais du Greffe, déjà remplie">Note de frais</button>' : '') +
+        (owner && x.sens === 'recette' && /Don|Sponsoring|Subvention|Avance/.test(x.categorie) ? '<button type="button" data-cs="greffe-recu" data-id="' + esc(x.id) + '" title="Un reçu du Greffe, déjà rempli">Reçu</button>' : '') +
+        (csPeut('supprimer') ? '<button type="button" class="ds-danger" data-cs="supprimer" data-id="' + esc(x.id) + '">×</button>' : '') +
+      '</div></td></tr>' + (csForm && csForm.id === x.id ? '<tr class="ec-enc"><td colspan="5">' + csFormHtml(x.sens, x) + '</td></tr>' : '');
+  }
+  function csRenderRecettes(){
+    var a = csAutoMois(csMois), man = csManuel(csMois, 'recette');
+    var auto = CS_AUTO.map(function(c){
+      var x = a[c.cle], detail = c.cle === 'ecole' ? (x.mensualites + ' mensualité' + (x.mensualites > 1 ? 's' : '') + (x.inscriptions ? ', ' + x.inscriptions + ' inscription' + (x.inscriptions > 1 ? 's' : '') : '')) : x.n + ' ' + (c.cle === 'boutique' ? 'commande' : 'billet') + (x.n > 1 ? 's' : '');
+      return '<tr class="cs-auto"><td class="num">' + esc(inPeriodeLabel(csMois)) + '</td><td><b>' + esc(c.nom) + '</b><div class="m">' + esc(c.detail) + '</div></td><td>' + (x.n ? esc(detail) : '<span class="ds-st"><i></i>rien ce mois-ci</span>') + '</td>' +
+        '<td class="r num"><b>' + csF(x.total) + '</b></td><td class="r"><div class="ds-quick"><button type="button" data-cs="aller" data-section="' + c.section + '">Ouvrir</button></div></td></tr>';
+    }).join('');
+    document.getElementById('cs-recettes').innerHTML =
+      '<div class="ds-quick" style="margin-bottom:12px">' + (csPeut('creer') ? '<button type="button" data-cs="ajouter" data-sens="recette">Ajouter une recette</button>' : '') +
+        '<button type="button" data-cs="export" data-quoi="mois">Exporter le mois (CSV)</button><button type="button" data-cs="export" data-quoi="saison">Exporter la saison (CSV)</button></div>' +
+      (csForm && csForm.sens === 'recette' && !csForm.id ? csFormHtml('recette', null) : '') +
+      '<div class="ds-scroll"><table class="ds-tbl cs-tbl"><thead><tr><th>Date</th><th>Recette</th><th>Détail</th><th class="r">FCFA</th><th class="r"></th></tr></thead><tbody>' +
+        auto + man.map(csLigneManuel).join('') +
+      '</tbody></table></div>' +
+      (man.length ? '' : '<p class="pc-resume" style="margin-top:10px">Les recettes qui n\'ont pas d\'écran (sponsor, subvention, don, buvette, avance du président) s\'ajoutent ici.</p>');
+  }
+  function csRenderDepenses(){
+    var man = csManuel(csMois, 'depense');
+    document.getElementById('cs-depenses').innerHTML =
+      '<div class="ds-quick" style="margin-bottom:12px">' + (csPeut('creer') ? '<button type="button" class="ds-accent" data-cs="ajouter" data-sens="depense">Ajouter une dépense</button>' : '') + '</div>' +
+      (csForm && csForm.sens === 'depense' && !csForm.id ? csFormHtml('depense', null) : '') +
+      (man.length
+        ? '<div class="ds-scroll"><table class="ds-tbl cs-tbl"><thead><tr><th>Date</th><th>Dépense</th><th>À qui</th><th class="r">FCFA</th><th class="r"></th></tr></thead><tbody>' + man.map(csLigneManuel).join('') + '</tbody></table></div>'
+        : '<div class="pc-vide" style="padding:24px 16px"><b>Aucune dépense en ' + esc(inPeriodeLabel(csMois)) + '.</b>Arbitrage, transport, matériel, salle, licences : chaque sortie d\'argent se note ici, avec son justificatif.</div>');
+  }
+  function csFormHtml(sens, x){
+    x = x || {};
+    var cats = sens === 'recette' ? CS_RECETTES : CS_DEPENSES;
+    return '<div class="ec-form cs-form" data-sens="' + sens + '">' +
+      '<div><label for="cs-f-date">Date</label><input id="cs-f-date" type="date" value="' + esc(x.date || (csMois === inPeriodeCourante() ? todayISO() : csMois + '-01')) + '"></div>' +
+      '<div><label for="cs-f-cat">Catégorie</label><select id="cs-f-cat">' + cats.map(function(c){ return '<option value="' + esc(c) + '"' + (x.categorie === c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select></div>' +
+      '<div><label for="cs-f-montant">Montant (FCFA)</label><input id="cs-f-montant" type="text" inputmode="numeric" value="' + esc(x.montant_fcfa || '') + '" placeholder="25000"></div>' +
+      '<div><label for="cs-f-moyen">Moyen</label><select id="cs-f-moyen">' + csMoyens().map(function(m){ return '<option value="' + m[0] + '"' + (x.moyen === m[0] ? ' selected' : '') + '>' + m[1] + '</option>'; }).join('') + '</select></div>' +
+      '<div><label for="cs-f-tiers">' + (sens === 'recette' ? 'Qui a payé' : 'À qui') + '</label><input id="cs-f-tiers" type="text" value="' + esc(x.tiers || '') + '" placeholder="' + (sens === 'recette' ? 'Nom du sponsor, du donateur' : 'Arbitre, transporteur, fournisseur') + '"></div>' +
+      '<div><label for="cs-f-libelle">Libellé</label><input id="cs-f-libelle" type="text" value="' + esc(x.libelle || '') + '" placeholder="' + (sens === 'recette' ? 'Sponsoring maillots saison 2026-2027' : 'Arbitrage match contre DUC') + '"></div>' +
+      '<div><label for="cs-f-piece">Justificatif (adresse)</label><input id="cs-f-piece" type="text" value="' + esc(x.piece_url || '') + '" placeholder="/media/img/facture.webp ou lien"></div>' +
+      '<div><label for="cs-f-note">Note</label><input id="cs-f-note" type="text" value="' + esc(x.note || '') + '" placeholder="(facultatif)"></div>' +
+      '<div class="ec-form-a"><div class="ds-quick"><button type="button" class="ds-accent" data-cs="enregistrer">' + (x.id ? 'Enregistrer' : 'Ajouter') + '</button><button type="button" data-cs="annuler-form">Annuler</button></div></div>' +
+    '</div>';
+  }
+  function csRenderBudget(){
+    var s = csSaison(), ts = csTotauxSaison(), owner = typeof cpJeSuisProprio === 'function' && cpJeSuisProprio();
+    var prevu = {}; csBudget.forEach(function(b){ prevu[b.sens + '|' + b.categorie] = parseInt(b.montant_fcfa, 10) || 0; });
+    function colonne(sens, cats){
+      return '<div class="cs-col"><h4>' + (sens === 'recette' ? 'Recettes' : 'Dépenses') + '</h4>' + cats.map(function(c){
+        var k = sens + '|' + c, p = prevu[k] || 0, r = ts.parCat[k] || 0, pct = p ? Math.min(100, Math.round(r / p * 100)) : 0;
+        return '<div class="cs-poste"><div class="cs-poste-t"><b>' + esc(c) + '</b><span>' + csF(r) + (p ? ' / ' + csF(p) : '') + '</span></div>' +
+          '<div class="cs-bar"><i style="width:' + pct + '%"' + (p && r > p ? ' class="depasse"' : '') + '></i></div>' +
+          (csPeut('modifier') ? '<input type="text" inputmode="numeric" class="cs-prevu" data-k="' + esc(k) + '" value="' + (p || '') + '" placeholder="prévu">' : '') + '</div>';
+      }).join('') + '</div>';
+    }
+    var totalPrevuR = CS_AUTO.map(function(c){ return c.nom; }).concat(CS_RECETTES).reduce(function(t, c){ return t + (prevu['recette|' + c] || 0); }, 0);
+    var totalPrevuD = CS_DEPENSES.reduce(function(t, c){ return t + (prevu['depense|' + c] || 0); }, 0);
+    document.getElementById('cs-budget').innerHTML =
+      '<p class="pc-resume">Saison <b>' + esc(s.label) + '</b> : réalisé sur prévu, poste par poste. ' +
+        (totalPrevuR || totalPrevuD ? 'Prévu : <b>' + csF(totalPrevuR) + '</b> de recettes, <b>' + csF(totalPrevuD) + '</b> de dépenses. ' : 'Aucun prévisionnel encore : posez les montants prévus, la barre dira où en est la saison.') +
+        'Réalisé : <b>' + csF(ts.recettes) + '</b> de recettes, <b>' + csF(ts.depenses) + '</b> de dépenses.</p>' +
+      '<div class="cs-cols">' + colonne('recette', CS_AUTO.map(function(c){ return c.nom; }).concat(CS_RECETTES)) + colonne('depense', CS_DEPENSES) + '</div>' +
+      '<div class="ds-quick" style="margin-top:14px">' + (csPeut('modifier') ? '<button type="button" class="ds-accent" data-cs="budget-sauver">Enregistrer le prévisionnel</button>' : '') +
+        (owner ? '<button type="button" data-cs="greffe-budget" title="Le budget prévisionnel du Greffe, rempli avec ces postes et l\'avance du président">Budget au Greffe</button>' : '') + '</div>';
+  }
+
+  // ---------- les gestes ----------
+  function csClic(e){
+    var b = e.target.closest('[data-cs]'); if (!b) return;
+    var act = b.getAttribute('data-cs'), id = b.getAttribute('data-id');
+    var ligne = id ? csRows.filter(function(x){ return String(x.id) === String(id); })[0] : null;
+    if (act === 'mois'){ csMois = b.getAttribute('data-mois'); csForm = null; csLoad(); return; }
+    if (act === 'aller'){ showSection(b.getAttribute('data-section')); return; }
+    if (act === 'ajouter'){ csForm = { sens: b.getAttribute('data-sens'), id: null }; csRenderRecettes(); csRenderDepenses(); var f = document.querySelector('.cs-form'); if (f) f.scrollIntoView({ behavior:'smooth', block:'center' }); return; }
+    if (act === 'modifier'){ if (!ligne) return; csForm = { sens: ligne.sens, id: ligne.id }; csRenderRecettes(); csRenderDepenses(); return; }
+    if (act === 'annuler-form'){ csForm = null; dirtyClear(); csRenderRecettes(); csRenderDepenses(); return; }
+    if (act === 'enregistrer'){ csEnregistrer(b); return; }
+    if (act === 'supprimer'){
+      if (!ligne) return;
+      if (!confirm('Supprimer ' + (ligne.sens === 'recette' ? 'cette recette' : 'cette dépense') + ' de ' + csF(ligne.montant_fcfa) + ' FCFA (' + ligne.categorie + ') ?')) return;
+      sbDelete('caisse_mouvements', ligne.id, 'Caisse').then(function(){ qgToast('Ligne supprimée ✓'); return csLoad(); }).catch(function(){ qgToast('La suppression a échoué.', true); });
+      return;
+    }
+    if (act === 'export'){ csExporter(b.getAttribute('data-quoi')); return; }
+    if (act === 'budget-sauver'){ csBudgetSauver(b); return; }
+    if (act === 'greffe-budget'){ csGreffeBudget(); return; }
+    if (act === 'greffe-frais'){
+      if (!ligne) return;
+      greffeNouvelActe('note-frais', { demandeur: ligne.tiers || '', objet: ligne.libelle || ligne.categorie, periode: inPeriodeLabel(csMois), paiement: csMoyen(ligne.moyen),
+        tables: { depenses: [{ date: String(ligne.date || '').split('-').reverse().join('/'), libelle: ligne.libelle || ligne.categorie, nature: /Transport/.test(ligne.categorie) ? 'Transport' : (/Matériel/.test(ligne.categorie) ? 'Matériel' : (/Communication/.test(ligne.categorie) ? 'Communication' : 'Autre')), justif: ligne.piece_url ? 'Joint' : '', montant: String(ligne.montant_fcfa) }] } }, { origine: 'La caisse' });
+      return;
+    }
+    if (act === 'greffe-recu'){
+      if (!ligne) return;
+      greffeNouvelActe('recu', { montant: String(ligne.montant_fcfa), mode: csMoyen(ligne.moyen) || 'Espèces', dateActe: ligne.date || todayISO(), motif: ligne.libelle || ligne.categorie, periode: inPeriodeLabel(csMois), payeur: ligne.tiers || '', pourQui: 'Baobabs Basket Club' }, { origine: 'La caisse' });
+      return;
+    }
+  }
+  function csEnregistrer(btn){
+    var f = btn.closest('.cs-form'), sens = f.getAttribute('data-sens');
+    var v = function(id){ var el = f.querySelector('#' + id); return el ? String(el.value).trim() : ''; };
+    var montant = parseInt(v('cs-f-montant').replace(/[^\d]/g, ''), 10);
+    if (!v('cs-f-date')){ qgToast('Choisissez une date.', true); return; }
+    if (isNaN(montant) || montant <= 0){ qgToast('Montant invalide.', true); return; }
+    var corps = { date: v('cs-f-date'), sens: sens, categorie: v('cs-f-cat'), montant_fcfa: montant, moyen: v('cs-f-moyen') || null, tiers: v('cs-f-tiers') || null,
+      libelle: v('cs-f-libelle') || null, piece_url: v('cs-f-piece') || null, note: v('cs-f-note') || null };
+    btn.disabled = true;
+    var p = csForm && csForm.id ? sbUpdate('caisse_mouvements', csForm.id, Object.assign(corps, { updated_at: new Date().toISOString() }), 'Caisse')
+                                 : sbInsert('caisse_mouvements', Object.assign(corps, { auteur: (currentSession && currentSession.user && currentSession.user.email) || null }), 'Caisse');
+    p.then(function(){ qgToast((sens === 'recette' ? 'Recette' : 'Dépense') + ' enregistrée ✓'); csForm = null; dirtyClear(); if (csMoisDe(corps.date) !== csMois) csMois = csMoisDe(corps.date); return csLoad(); })
+     .catch(function(){ btn.disabled = false; qgToast('L\'enregistrement a échoué.', true); });
+  }
+  function csBudgetSauver(btn){
+    var s = csSaison(), lignes = [];
+    document.querySelectorAll('.cs-prevu').forEach(function(i){
+      var k = i.getAttribute('data-k').split('|'), n = parseInt(String(i.value).replace(/[^\d]/g, ''), 10);
+      lignes.push({ saison: s.label, sens: k[0], categorie: k[1], montant_fcfa: isNaN(n) ? 0 : n, updated_at: new Date().toISOString() });
+    });
+    btn.disabled = true;
+    fetch(SUPABASE_URL + '/rest/v1/caisse_budget?on_conflict=saison,sens,categorie', { method:'POST', headers: sbHeaders({ 'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates,return=minimal' }), body: JSON.stringify(lignes) })
+      .then(function(r){ if (!r.ok) throw new Error(r.status); auditLogUpsert('caisse_budget', { saison: s.label, postes: lignes.length }, 'Caisse'); qgToast('Prévisionnel ' + s.label + ' enregistré ✓'); dirtyClear(); return csLoad(); })
+      .catch(function(){ btn.disabled = false; qgToast('L\'enregistrement a échoué.', true); });
+  }
+  function csGreffeBudget(){
+    var s = csSaison(), av = csAvancesDues();
+    var prevu = {}; csBudget.forEach(function(b){ prevu[b.sens + '|' + b.categorie] = parseInt(b.montant_fcfa, 10) || 0; });
+    var lignes = [];
+    CS_DEPENSES.forEach(function(c){ var p = prevu['depense|' + c]; if (p) lignes.push({ poste: 'Dépenses', libelle: c, calcul: '', montant: csF(p) }); });
+    CS_AUTO.map(function(c){ return c.nom; }).concat(CS_RECETTES).forEach(function(c){ var p = prevu['recette|' + c]; if (p) lignes.push({ poste: 'Recettes attendues', libelle: c, calcul: '', montant: csF(p) }); });
+    if (!lignes.length){ qgToast('Posez d\'abord des montants prévus : le budget part avec.', true); return; }
+    greffeNouvelActe('budget', { saison: s.label, objet: 'Le présent document détaille les prévisions de recettes et de dépenses du Club pour la saison ' + s.label + ', réparties par poste' + (av > 0 ? ', ainsi que la situation des avances effectuées par le Président' : '') + '.',
+      avecAvances: av > 0, avanceMontant: av > 0 ? csF(av) + ' FCFA' : '', avanceRembourser: av > 0 ? csF(av) + ' FCFA' : '',
+      avancesTexte: av > 0 ? 'À ce jour, un montant total de **' + csF(av) + ' FCFA** a été avancé par le Président sur ses fonds personnels, selon les mouvements enregistrés dans la caisse du club. Cette avance constitue une créance du Président sur le club, à rembourser selon les disponibilités financières et les modalités approuvées par le bureau.' : '',
+      tables: { lignes: lignes } }, { origine: 'La caisse' });
+  }
+  function csExporter(quoi){
+    if (!csPeut('exporter') && !csPeut('voir')){ qgToast('Export réservé.', true); return; }
+    var s = csSaison(), mois = quoi === 'mois' ? [csMois] : s.mois, lignes = [['Date', 'Sens', 'Source', 'Catégorie', 'Libellé', 'Tiers', 'Moyen', 'Montant FCFA', 'Justificatif']];
+    var q = function(v){ return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+    mois.forEach(function(m){
+      csEcole.filter(function(p){ return csMoisDe(p.paid_on) === m; }).forEach(function(p){ lignes.push([p.paid_on, 'recette', 'École de basket', p.kind === 'inscription' ? 'Frais d\'inscription' : 'Mensualité ' + (p.period || ''), '', '', csMoyen(p.method), p.amount_fcfa, '']); });
+      csBoutique.filter(function(o){ return csMoisDe(o.prepared_at || o.created_at) === m; }).forEach(function(o){ lignes.push([String(o.prepared_at || o.created_at).slice(0, 10), 'recette', 'Boutique', 'Commande ' + (o.order_number || ''), '', o.customer_name || '', o.payment_method || '', o.total, '']); });
+      csBillets.filter(function(x){ return csMoisDe(x.checked_in_at) === m; }).forEach(function(x){ lignes.push([String(x.checked_in_at).slice(0, 10), 'recette', 'Billetterie', 'Billet ' + (x.reference || ''), '', x.buyer_name || '', '', x.total_fcfa, '']); });
+      csRows.filter(function(x){ return csMoisDe(x.date) === m; }).forEach(function(x){ lignes.push([x.date, x.sens, 'Caisse', x.categorie, x.libelle || '', x.tiers || '', csMoyen(x.moyen), x.montant_fcfa, x.piece_url || '']); });
+    });
+    lignes.sort(function(a, b){ return a === lignes[0] ? -1 : (b === lignes[0] ? 1 : String(a[0]).localeCompare(String(b[0]))); });
+    var csv = '\uFEFF' + lignes.map(function(l){ return l.map(q).join(';'); }).join('\r\n');   // BOM : Excel lit les accents
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'caisse-' + (quoi === 'mois' ? csMois : 'saison-' + s.label) + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+    qgToast((lignes.length - 1) + ' ligne' + (lignes.length > 2 ? 's' : '') + ' exportée' + (lignes.length > 2 ? 's' : '') + ' ✓');
+  }
 
   // ===================== NEWSLETTER =====================
   // LA NEWSLETTER PRE-REMPLIE. Un article publie, un evenement mis sur le
@@ -24087,6 +24407,7 @@
     ['boutique','Boutique, stock, commandes'],
     ['contenu','Contenu du site public'],
     ['inscriptions','École de basket'],
+    ['caisse','La caisse : recettes, dépenses, budget'],
     ['recrutement','Recrutement'],
     ['reglages','Réglages et comptes'],
     ['historique','Historique des modifications']
@@ -25319,6 +25640,7 @@
   var LOADERS_live, LOADERS_home, LOADERS_founder, LOADERS_bureau;
   var LOADERS = {
     dashboard:function(){ loadDashboard(); attInit(); },
+    caisse: csInit,
     parcours: pcInit,
     gameday:function(){ gdLoad(); },
     promos:function(){ pmLoad(); },
