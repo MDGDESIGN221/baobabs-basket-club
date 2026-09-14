@@ -9279,8 +9279,11 @@ window.bbCloud = function(url, w){
       if (!sel || !birth.value || isNaN(d.getTime())) return;
       // Saison sportive : elle démarre en septembre, l'âge de référence
       // est celui atteint dans l'année civile de fin de saison.
+      // La saison commence en juillet (comme la caisse, l'école et
+      // l'écran La saison de l'admin) : en août, on propose déjà les
+      // tranches de la saison qui vient.
       var now = new Date();
-      var finSaison = now.getMonth() >= 8 ? now.getFullYear() + 1 : now.getFullYear();
+      var finSaison = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
       var age = finSaison - d.getFullYear();
       var cible = null;
       [9, 11, 13, 15, 17].forEach(function(u){ if (cible === null && age < u) cible = 'U' + u; });
@@ -10712,12 +10715,28 @@ document.addEventListener('keydown', function(e){
   var BB_MOIS = ['JAN','FÉV','MAR','AVR','MAI','JUIN','JUIL','AOÛT','SEPT','OCT','NOV','DÉC'];
   var BB_LOGO = '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp';
 
+  // La saison que le club a ouverte dans l'admin (vue saison_publique) :
+  // sans elle, tous les matchs comptent, comme avant.
+  var bbSaison = null, bbSaisonLue = null;
+  function bbLireSaison(){
+    if (bbSaisonLue) return bbSaisonLue;
+    bbSaisonLue = fetch(SUPABASE_URL + '/rest/v1/saison_publique?select=label,debut,fin,etat&etat=eq.en_cours&order=debut.desc&limit=1', { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } })
+      .then(function(r){ return r.ok ? r.json() : []; }).then(function(rows){ bbSaison = (rows || [])[0] || null; return bbSaison; }).catch(function(){ return null; });
+    return bbSaisonLue;
+  }
+  function bbDansSaison(m){
+    if (!bbSaison || !m || !m.match_date) return true;
+    return m.match_date >= bbSaison.debut && m.match_date <= bbSaison.fin;
+  }
   function renderSeason(played, upcoming){
     var el = document.getElementById('bb-season');
     if (!el) return;
+    // La saison se lit une fois ; si elle arrive apres le premier rendu,
+    // on redessine avec elle.
+    if (!bbSaisonLue) bbLireSaison().then(function(s){ if (s) renderSeason(played, upcoming); });
 
-    var past = (played || []).slice().sort(function(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); });
-    var next = (upcoming || []).slice().sort(function(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); });
+    var past = (played || []).filter(bbDansSaison).sort(function(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); });
+    var next = (upcoming || []).filter(bbDansSaison).sort(function(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); });
 
     if (!past.length && !next.length){
       el.innerHTML = '<p style="font-family:\'Inter\',sans-serif;font-size:14px;line-height:1.6;color:#7E8A82;margin:0;padding-left:0">La saison n\'a pas encore commencé. Le premier match apparaîtra ici dès qu\'il sera programmé.</p>';
@@ -10732,7 +10751,7 @@ document.addEventListener('keydown', function(e){
     el.style.setProperty('--bb-past', Math.round((past.length / total) * 100) + '%');
 
     var cnt = document.getElementById('bb-season-count');
-    if (cnt) cnt.textContent = past.length + ' joué' + (past.length > 1 ? 's' : '') + ' · ' + next.length + ' à venir';
+    if (cnt) cnt.textContent = (bbSaison ? 'Saison ' + bbSaison.label + ' · ' : '') + past.length + ' joué' + (past.length > 1 ? 's' : '') + ' · ' + next.length + ' à venir';
 
     function row(m, isPlayed, isNext){
       var d = m.match_date ? new Date(m.match_date + 'T12:00:00') : null;

@@ -1423,6 +1423,23 @@
   .nw-hs-etat > div.ok::before{background:var(--lime)}
   .nw-hs-pas{margin:6px 0 10px;padding-left:22px;font-size:13px;line-height:1.6;color:var(--text)}
   .nw-hs-pas li{margin:4px 0}
+  /* La saison : les pastilles de pieces par joueuse, le bilan en chiffres. */
+  .sn-pasts{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:flex-end}
+  .sn-past{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+  .sn-past i{width:8px;height:8px;border-radius:50%;background:var(--line-loud);flex:none}
+  .sn-past.ok i{background:var(--ok)} .sn-past.ko{color:var(--warn)} .sn-past.ko i{background:var(--danger)}
+  .sn-mini{background:transparent;border:1px solid var(--line-strong);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-ui);font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;cursor:pointer}
+  .sn-mini:hover{border-color:var(--gold);color:var(--gold-lit)}
+  .pc-jr.sn-manque{background:rgba(232,169,60,.04)}
+  .pc-jr .sn-piece{grid-column:1/-1;margin-top:4px}
+  .sn-tbl{min-width:0} .sn-tbl td{padding:9px 12px} .sn-tbl th{padding:0 12px 8px}
+  .sn-figs{display:grid;gap:8px}
+  .sn-fig{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line)}
+  .sn-fig i{font-style:normal;font-size:12.5px;color:var(--muted)}
+  .sn-fig b{font-family:var(--font-ui);font-weight:800;font-size:16px;color:var(--text);font-variant-numeric:tabular-nums;text-align:right}
+  .sn-fig b small{font-size:11px;color:var(--faint);font-weight:600}
+  .sn-fig small{grid-column:1/-1;font-size:11px;color:var(--faint)}
+  @media (max-width:720px){ .pc-jr{grid-template-columns:36px minmax(0,1fr)} .sn-pasts{grid-column:1/-1;justify-content:flex-start} }
   /* La joueuse : ses pieces (une ligne par piece, une pastille d'etat), ses presences. */
   .ef-pieces{display:grid;gap:6px}
   .ef-piece{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r-sm)}
@@ -4026,6 +4043,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
           Tableau de bord
         </button>
+        <button class="sb-link" data-section="saison">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="m9 15 2 2 4-4"/></svg>
+          La saison
+        </button>
         <button class="sb-link" data-section="caisse">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg>
           La caisse
@@ -4406,6 +4427,15 @@
       </section>
 
     <!-- ===== SECTION SOIR DE MATCH ===== -->
+    <!-- ===== SECTION LA SAISON : ouvrir, suivre, cloturer ===== -->
+    <section id="section-saison" class="hide">
+      <div id="sn-tete"></div>
+      <section class="ec-bloc" id="sn-rentree-bloc"><header><h3>La rentrée</h3><span>Neuf points, dans l'ordre. L'état de chacun se lit dans les données : rien ne se coche à la main.</span></header><div class="ec-bloc-corps"><div class="pc-etapes" id="sn-rentree"></div></div></section>
+      <div id="sn-bilan"></div>
+      <div id="sn-cloture"></div>
+      <div class="msg" id="sn-msg"></div>
+    </section>
+
     <!-- ===== SECTION ENTRAINEMENTS : les seances de l'equipe, l'appel ===== -->
     <section id="section-entrainements" class="hide">
       <div id="tr-tete"></div>
@@ -6198,7 +6228,7 @@
   // « résultats » séparément, il pense « mes matchs ».
   var SECTION_MODULE = {
     dashboard:null,                                  // toujours accessible
-    caisse:'caisse', entrainements:'effectif',
+    saison:null, caisse:'caisse', entrainements:'effectif',
     parcours:'matchs',
     gameday:'matchs', teams:'matchs', live:'matchs', standings:'matchs',
     calendar:'matchs', matches2:'matchs', results:'matchs',
@@ -8795,6 +8825,7 @@
     dashboard:{t:'Tableau de bord',d:'Vue d\'ensemble de votre club — ce qui se passe, ce qui vous attend.'},
     newsl:{t:'Newsletter',d:'Écrivez aux inscrits : test sur votre adresse d\'abord, envoi à tous ensuite, avec le journal des envois.'},
     promos:{t:'Codes promo',d:'Des remises à partager : pourcentage ou montant, avec période, minimum d\'achat et limite d\'utilisation.'},
+    saison:{t:'La saison',d:'Ouvrir la saison, dérouler la rentrée point par point, la clôturer avec son bilan.'},
     entrainements:{t:'Entraînements',d:'Les séances de l\'équipe : planning de la semaine, séances du mois, appel au bord du terrain.'},
     caisse:{t:'La caisse',d:'Recettes, dépenses, budget de la saison : ce qui entre, ce qui sort, ce qu\'il reste, et ce que le club doit au président.'},
     parcours:{t:'Le match',d:'De J-7 à J+1 : ce qui est fait, ce qui attend, et le bouton qui mène là où ça se fait.'},
@@ -8862,6 +8893,7 @@
     newsl: ["<b>Écrire à tous les inscrits de la newsletter.</b> Chaque personne reçoit son propre e-mail — jamais de liste visible.","<b>Testez d'abord</b> : votre adresse dans « M'envoyer un test », le message arrive avec [TEST] devant le sujet.","« Envoyer à tous » demande confirmation, et deux envois à moins de 10 minutes d'écart sont refusés.","À l'ouverture, l'écran interroge la fonction serveur : clé Resend, adresse d'expédition, domaine vérifié. Le bandeau du haut dit ce qui est en place et ce qui manque, pas à pas.","Un inscrit qui répond « STOP » se retire dans Messages → Newsletter."],
     promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b>, dans la barre : un clic ajoute le club, logo compris. Pour un club absent, <b>Ajouter un adversaire</b> ouvre un formulaire — les deux panneaux se ferment l’un l’autre, la liste ne part jamais à deux écrans de défilement.","<b>Changer le logo</b> sur une ligne — ou <b>Ajouter un logo</b> si elle n’en a pas — ouvre l’éditeur. Les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo.","La colonne <b>Logo</b> est la seule chose de cet écran qui appelle un geste : elle dit d’un coup d’œil combien de clubs en attendent un. La recherche filtre par nom, et <b>Confrontations</b> compte les matchs déjà joués contre chacun."],
+    saison: ["<b>Une ligne par saison</b>, de juillet à juin comme la caisse et l'école : en préparation, en cours, puis clôturée. Le site sait laquelle il raconte (stats « saison en cours », page Compétitions).","<b>La rentrée, en neuf points</b> : dates, catégories d'âge, réinscriptions de l'école, licences et certificats, planning, calendrier, budget, textes du site, annonce. Chaque état se lit dans les données.","<b>Les catégories d'âge se calculent</b> : « U13 » veut dire moins de 13 ans au 31 décembre de l'année de fin de saison. Un clic met le texte du site à jour et propose le bon groupe à chaque enfant.","<b>Réinscrire</b> crée un dossier neuf au tarif en vigueur, l'ancien passe en archive, l'extrait de naissance, la photo et un certificat de moins d'un an suivent l'enfant.","<b>Clôturer</b> fige le bilan (matchs, marqueuses, présence, école, caisse) dans la saison. Rien n'est supprimé. Le Greffe en tire le rapport de saison pour l'assemblée générale."],
     entrainements: ["<b>Les entraînements de l'équipe</b>, construits comme les séances de l'école : un planning de la semaine, les séances du mois créées d'un clic, et l'appel à chaque séance.","<b>L'appel se fait au bord du terrain</b>, sur le téléphone : Présente, Retard, Excusée, Absente. Chaque clic s'enregistre tout de suite.","<b>La présence de chaque joueuse</b> se lit ensuite sur sa fiche (Joueuses) : taux, douze dernières séances, absences de suite.","<b>Sous 50 % de présence</b> compte les joueuses actives qui manquent plus d'une séance sur deux ce mois-ci, dès trois séances pointées.","Une séance annulée reste dans la liste, barrée : elle ne compte ni dans les séances faites ni dans la présence."],
     caisse: ["<b>Une seule vérité.</b> Les mensualités de l'école, les commandes encaissées et les billets retirés sont lus là où ils sont déjà enregistrés : la caisse ne les recopie pas, elle les additionne.","<b>Ce qui n'a pas d'écran se note ici</b> : un sponsor, une subvention, un don, la buvette, une avance du président. Et toutes les dépenses, avec leur justificatif.","<b>L'avance du président</b> est une dette du club : chaque avance l'augmente, chaque remboursement la réduit. Le chiffre en haut d'écran est ce qui reste à rembourser, et il part dans le budget du Greffe.","<b>Le budget</b> se pose poste par poste pour la saison (juillet à juin). La barre dit où en est le réalisé ; elle passe au rouge quand un poste dépasse.","<b>Exporter</b> donne le mois ou la saison en CSV, pour le bureau ou l'expert-comptable : chaque ligne avec sa source."],
     parcours: ["<b>Un match, neuf étapes, dans l'ordre où elles arrivent</b> : la fiche, la convocation, le cinq, l'affiche, la billetterie, le direct, le résultat, l'article, le classement. Chaque étape lit son état dans les données : rien ne se coche à la main.","<b>Le rail du haut</b> donne les neuf états d'un coup d'œil. Vert : fait. Orange : à faire ces jours-ci. Rouge : en retard sur l'échéance (convocation à J-5, cinq à J-1, résultat le soir même, article à J+2). Un clic sur un nœud descend à la carte.","<b>La convocation se fait ici</b>, et nulle part ailleurs : fixez le rendez-vous, cochez les joueuses, le message s'écrit tout seul. « Convoquée » puis « Confirmée » quand elle répond ; WhatsApp par joueuse si son numéro est dans sa fiche.","<b>Le cinq de départ</b> se compose dans la fiche du match, avec les visages ; ici on voit seulement s'il est complet. Le site ne publie la composition qu'à cinq titulaires.","<b>L'article naît lié au match</b> : « Écrire le récap » crée un brouillon déjà titré, et les photos ajoutées depuis « Ajouter des photos » se rangent avec ce match."],
@@ -8972,6 +9004,8 @@
     // designer. C'est un etat normal : entre deux matchs, hors saison,
     // ou sur un club qui commence. #gd-empty, lui, est toujours la quand
     // la console ne l'est pas.
+    saison:     [['#sn-tete .pc-choix', '#sn-tete'], ['#sn-rentree', '#sn-tete'], ['#sn-etape-categories', '#sn-rentree'],
+                 ['#sn-etape-reinscriptions', '#sn-rentree'], ['#sn-bilan', '#sn-cloture']],
     entrainements: [['#tr-seances', '#tr-tete'], ['#tr-seances .ec-liste', '#tr-seances'], ['#tr-tete .ds-fig:nth-child(2)', '#tr-tete'],
                     ['#tr-tete .ds-fig:last-child', '#tr-tete'], ['#tr-seances .ec-liste', '#tr-seances']],
     caisse:     [['#cs-recettes', '#cs-tete'], ['#cs-recettes', '#cs-tete'], ['#cs-tete .ds-fig:last-child', '#cs-tete'],
@@ -9341,7 +9375,7 @@
   // retirés de la navigation. Leur balisage reste masqué dans la page le
   // temps du démêlage du code (loadTeams alimente encore l'ancien
   // formulaire), mais aucun chemin de l'admin n'y mène plus.
-  var ALL_SECTIONS = ['dashboard','caisse','entrainements','parcours','ecole','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
+  var ALL_SECTIONS = ['dashboard','saison','caisse','entrainements','parcours','ecole','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
 
@@ -9453,7 +9487,7 @@
   var REFRESH_APRES_MS = 20000;
   function sectionRefreshers(){
     return {
-      dashboard: function(){ loadDashboard(); attInit(); }, caisse: csLoad, entrainements: trLoad, parcours: pcLoad, gameday: gdLoad, teams: loadTeams,
+      dashboard: function(){ loadDashboard(); attInit(); }, caisse: csLoad, saison: snLoad, entrainements: trLoad, parcours: pcLoad, gameday: gdLoad, teams: loadTeams,
       tickets: tkLoadOffers, promos: pmLoad, newsl: nwLoad,
       banners: bnLoad, announce: anLoad, squad: efLoad,
       products: prLoad, articles: arLoad, categories: ctLoad,
@@ -9625,6 +9659,7 @@
     dashboard: [['Le match','parcours'],['Matchs','matches2'],['Soir de match','gameday']],
     caisse:    [['L\'école','ecole'],['Commandes','orders2'],['Billetterie','tickets']],
     entrainements: [['Joueuses','squad'],['Le match','parcours'],['Calendrier','calendar']],
+    saison:    [['L\'école','ecole'],['Joueuses','squad'],['La caisse','caisse'],['Calendrier','calendar']],
     parcours:  [['Fiche du match','matches2'],['Soir de match','gameday'],['Classement','standings']],
     gameday:   [['Le match','parcours'],['Billetterie','tickets'],['Matchs','matches2']],
     teams:     [['Matchs','matches2'],['Calendrier','calendar'],['Classement','standings']],
@@ -9930,6 +9965,8 @@
     }
     pushAct('L\'école ce mois-ci', 'Séances et appel, cotisations, familles à prévenir',
       function(){ showSection('ecole'); }, 'ecole basket seance appel presence cotisation mensualite parents familles', ICO.plus);
+    pushAct('Ouvrir la saison', 'La rentrée point par point, le bilan, la clôture',
+      function(){ showSection('saison'); }, 'saison rentree cloture bilan categories licences reinscription', ICO.match);
     pushAct('Faire l\'appel de l\'entraînement', 'Les séances de l\'équipe et les présences',
       function(){ showSection('entrainements'); }, 'entrainement entrainements appel presence seance planning', ICO.match);
     pushAct('Ouvrir la caisse', 'Recettes, dépenses, budget de la saison',
@@ -10185,7 +10222,7 @@
       q('studio_projets?select=id,nom,modifie_le&doc-%3E%3EmatchId=eq.' + id),
       q('match_live?select=*&match_id=eq.' + id),
       q('standings?select=*'),
-      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note&order=sort.asc,jersey_number.asc&limit=100'),
+      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note,birth_year&order=sort.asc,jersey_number.asc&limit=100'),
       q('players_contacts?select=player_id,phone')
     ]).then(function(r){
       if (jeton !== pcChargement) return;
@@ -10356,7 +10393,7 @@
         : '';
       return '<div class="pc-jr' + (st ? '' : ' off') + '">' +
         (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '<span class="pc-ini">' + esc(initials(p.name)) + '</span>') +
-        '<div class="pc-jr-n"><b>' + (p.jersey_number != null ? '#' + p.jersey_number + ' ' : '') + esc(p.name) + '</b><span>' + esc(p.position || '') + bl + '</span></div>' +
+        '<div class="pc-jr-n"><b>' + (p.jersey_number != null ? '#' + p.jersey_number + ' ' : '') + esc(p.name) + '</b><span>' + esc([p.position, p.birth_year ? (new Date().getFullYear() - p.birth_year) + ' ans' : ''].filter(Boolean).join(' · ')) + bl + '</span></div>' +
         '<div class="pc-seg">' + seg('convoquee', 'Convoquée', '') + seg('confirmee', 'Confirmée', 'conf') + seg('absente', 'Absente', 'abs') + seg('blessee', 'Blessée', 'bl') +
           wa + (st ? '<button type="button" data-pc="retirer" data-pid="' + esc(p.id) + '" title="Retirer de la convocation">×</button>' : '') +
         '</div></div>';
@@ -11835,7 +11872,7 @@
     return Promise.all([
       q('team_sessions?select=*&session_date=gte.' + avantIso + '&session_date=lte.' + b.fin + '&order=session_date.asc,start_time.asc'),
       q('team_schedule?select=*&order=weekday.asc,start_time.asc'),
-      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note&order=sort.asc,jersey_number.asc&limit=100')
+      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note,birth_year&order=sort.asc,jersey_number.asc&limit=100')
     ]).then(function(r){
       if (jeton !== trChargement) return;
       trSessions = r[0] || []; trPlanning = r[1] || []; trJoueuses = (r[2] || []).filter(function(p){ return (p.status || 'active') !== 'partie'; });
@@ -11890,7 +11927,7 @@
       '<div class="pc-eff">' + trJoueuses.map(function(p){
         var st = pr[p.id] ? pr[p.id].statut : null;
         return '<div class="pc-jr' + (st ? '' : ' off') + '">' + (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '<span class="pc-ini">' + esc(initials(p.name)) + '</span>') +
-          '<div class="pc-jr-n"><b>' + (p.jersey_number != null ? '#' + p.jersey_number + ' ' : '') + esc(p.name) + '</b><span>' + esc(p.position || '') + (p.status === 'blessee' ? ' <span class="bl">blessée</span>' : '') + (p.injury_note ? ' <span class="bl">' + esc(p.injury_note) + '</span>' : '') + '</span></div>' +
+          '<div class="pc-jr-n"><b>' + (p.jersey_number != null ? '#' + p.jersey_number + ' ' : '') + esc(p.name) + '</b><span>' + esc([p.position, p.birth_year ? (new Date().getFullYear() - p.birth_year) + ' ans' : ''].filter(Boolean).join(' · ')) + (p.status === 'blessee' ? ' <span class="bl">blessée</span>' : '') + (p.injury_note ? ' <span class="bl">' + esc(p.injury_note) + '</span>' : '') + '</span></div>' +
           '<div class="pc-seg">' + EC_PRES.map(function(k){ return '<button type="button" class="' + (st === k[0] ? 'on ' + k[2] : '') + '" data-tr="presence" data-id="' + esc(s.id) + '" data-pid="' + esc(p.id) + '" data-statut="' + k[0] + '">' + k[1].replace(/é$/, 'ée') + '</button>'; }).join('') + '</div></div>';
       }).join('') + '</div></div>';
   }
@@ -11969,6 +12006,590 @@
     var ids = trSessions.map(function(s){ return s.id; }); if (!ids.length) return Promise.resolve();
     var jeton = trChargement;
     return sbGet('team_attendance?select=*&session_id=in.(' + ids.join(',') + ')').then(function(pr){ if (jeton !== trChargement) return; trPres = pr || []; trRender(); });
+  }
+
+  // =================================================================
+  // LA SAISON : ouvrir, suivre, cloturer
+  // =================================================================
+  // Rien ne disait « on change d'annee ». La saison etait une regle de
+  // calcul repetee dans quatre endroits, les categories d'age du site
+  // etaient un texte fige d'une saison en retard, et une licence n'avait
+  // pas de fin. L'ecran lit la table `saisons` (une ligne par saison,
+  // etat preparation / en_cours / cloturee) et deroule LA RENTREE : neuf
+  // points dont l'etat se lit dans les donnees, jamais coche a la main.
+  // Le seul point qui s'edite ici, ce sont les dates de la saison ; tout
+  // le reste s'ecrit la ou il vit deja (pieces, dossiers, planning).
+  //
+  // La saison comptable va de juillet a juin, comme la caisse et
+  // l'ecole. Les categories d'age suivent la regle du site : « U13 »
+  // veut dire moins de 13 ans au 31 decembre de l'annee de fin de
+  // saison. Ce qui se calcule ne se tape plus.
+  var snSaisons = [], snSel = null, snD = null, snStarted = false, snChargement = 0, snForm = null, snPiece = null;
+  var SN_ETATS = { fait:'Fait', a_faire:'À faire', partiel:'Commencé', facultatif:'Facultatif', libre:'Sans objet', retard:'En retard', auto:'Automatique' };
+
+  function snInit(){
+    if (snStarted){ snLoad(); return; }
+    snStarted = true;
+    document.getElementById('section-saison').addEventListener('click', snClic);
+    document.getElementById('section-saison').addEventListener('change', snChange);
+    snLoad();
+  }
+  function snPeut(a){ return typeof can === 'function' ? can('reglages', a || 'modifier') : true; }
+  function snF(n){ return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+  function snLabelDepuis(an){ return an + '-' + (an + 1); }
+  // La saison que le calendrier designe aujourd'hui, quand aucune ligne
+  // n'existe encore : juillet a juin.
+  function snSaisonCalendaire(){
+    var d = new Date(), an = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
+    return { label: snLabelDepuis(an), debut: an + '-07-01', fin: (an + 1) + '-06-30' };
+  }
+  function snCourante(){
+    return snSaisons.filter(function(s){ return s.etat === 'en_cours'; })[0] || snSaisons[0] || null;
+  }
+  function snParLabel(l){ return snSaisons.filter(function(s){ return s.label === l; })[0] || null; }
+  function snFinPlus1(s){ var d = new Date(s.fin + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
+  function snPrecedente(s){ return snSaisons.filter(function(x){ return x.debut < s.debut; }).sort(function(a, b){ return a.debut < b.debut ? 1 : -1; })[0] || null; }
+  function snSuivante(s){ return snSaisons.filter(function(x){ return x.debut > s.debut; }).sort(function(a, b){ return a.debut > b.debut ? 1 : -1; })[0] || null; }
+  // Le dernier budget pose avant cette saison, dans la caisse : il peut
+  // exister sans ligne de saison (la caisse est nee avant cet ecran).
+  function snBudgetPrecedent(s){
+    var labels = snD.budget.map(function(b){ return b.saison; }).filter(function(l, i, a){ return l && l < s.label && a.indexOf(l) === i; }).sort();
+    return labels.length ? labels[labels.length - 1] : null;
+  }
+  function snDans(s, iso){ iso = String(iso || '').slice(0, 10); return !!iso && iso >= s.debut && iso <= s.fin; }
+  function snAnFin(s){ return parseInt(String(s.fin).slice(0, 4), 10); }
+
+  // ---------- les categories d'age ----------
+  // « U13 » : moins de 13 ans au 31 decembre de l'annee de fin de saison.
+  // Les categories viennent du reglage du site (leurs noms) ; leurs
+  // tranches d'annees se calculent.
+  function snCategoriesDuSite(){
+    var brut = typeof qgcVal === 'function' ? qgcVal('ins_categories') : (settings.ins_categories || '');
+    return String(brut || '').split('\n').map(function(l){ var p = l.split('|'); return { nom: (p[0] || '').trim(), regle: (p[1] || '').trim() }; }).filter(function(c){ return c.nom; });
+  }
+  function snCategoriesCalculees(s){
+    var anFin = snAnFin(s), cats = snCategoriesDuSite(), us = [];
+    cats.forEach(function(c){ var m = c.nom.match(/^U\s*(\d{1,2})$/i); if (m) us.push({ nom: c.nom, u: parseInt(m[1], 10), regle: c.regle }); });
+    us.sort(function(a, b){ return a.u - b.u; });
+    us.forEach(function(c, i){
+      // moins de u ans : nee apres anFin - u, donc a partir de anFin - u + 1
+      c.min = anFin - c.u + 1;
+      c.max = i === 0 ? null : c.min + (c.u - us[i - 1].u) - 1;
+      // la plus jeune categorie prend tous ceux nes apres
+      if (i === 0){ c.max = null; c.texte = 'Nés en ' + c.min + ' et après'; }
+      else {
+        var precedent = us[i - 1];
+        c.max = precedent.min - 1;
+        c.texte = c.min === c.max ? 'Nés en ' + c.min : 'Nés en ' + c.min + ' et ' + c.max;
+        if (c.max - c.min > 1) c.texte = 'Nés de ' + c.min + ' à ' + c.max;
+      }
+    });
+    // les categories qui ne sont pas des « U » gardent leur regle telle quelle
+    var out = cats.map(function(c){ var u = us.filter(function(x){ return x.nom === c.nom; })[0]; return u ? { nom: c.nom, regle: u.texte, min: u.min, max: u.max, u: u.u } : { nom: c.nom, regle: c.regle }; });
+    return out;
+  }
+  function snCategoriePour(s, naissance, cats){
+    var an = parseInt(String(naissance || '').slice(0, 4), 10); if (!an) return null;
+    var age = snAnFin(s) - an, trouve = null;
+    (cats || snCategoriesCalculees(s)).filter(function(c){ return c.u; }).sort(function(a, b){ return a.u - b.u; }).forEach(function(c){ if (!trouve && age < c.u) trouve = c.nom; });
+    return trouve;
+  }
+  function snTexteCategories(cats){ return cats.map(function(c){ return c.nom + ' | ' + c.regle; }).join('\n'); }
+
+  // ---------- la lecture ----------
+  function snLoad(){
+    var jeton = ++snChargement;
+    function q(u){ return sbGetAll(u).catch(function(){ return []; }); }
+    return Promise.all([
+      sbGet('saisons?select=*&order=debut.desc').catch(function(){ return []; }),
+      typeof loadSettings === 'function' ? loadSettings() : Promise.resolve(),
+      typeof loadSiteTexts === 'function' ? loadSiteTexts() : Promise.resolve()
+    ]).then(function(r){
+      if (jeton !== snChargement) return;
+      snSaisons = r[0] || [];
+      if (!snSel || !snParLabel(snSel)) snSel = snCourante() ? snCourante().label : null;
+      var s = snSel ? snParLabel(snSel) : null;
+      if (!s){ snD = null; snRender(); return; }
+      var fp1 = snFinPlus1(s);
+      return Promise.all([
+        q('players?select=id,name,birth_year,status,photo_url,jersey_number&order=name.asc'),
+        q('players_documents?select=player_id,kind,reference,received_on,expires_on'),
+        q('inscriptions_admin?select=*&order=child_first_name.asc'),
+        q('academy_payments?select=amount_fcfa,paid_on,kind&paid_on=gte.' + s.debut + '&paid_on=lte.' + s.fin),
+        q('academy_sessions?select=id,session_date,cancelled&session_date=gte.' + s.debut + '&session_date=lte.' + s.fin),
+        q('academy_attendance?select=session_id,statut'),
+        q('team_schedule?select=*&order=weekday.asc'),
+        q('academy_schedule?select=id,active'),
+        q('team_sessions?select=id,session_date,cancelled&session_date=gte.' + s.debut + '&session_date=lte.' + s.fin),
+        q('team_attendance?select=session_id,statut'),
+        q('matches?select=id,opponent_name,match_date,score_baobabs,score_opponent,is_home,competition&match_date=gte.' + s.debut + '&match_date=lte.' + s.fin + '&order=match_date.asc'),
+        q('match_stats?select=match_id,player_id,pts,played'),
+        q('standings?select=id,team_name,played'),
+        q('caisse_mouvements?select=sens,categorie,montant_fcfa,date'),
+        q('caisse_budget?select=id,saison,sens,categorie,montant_fcfa,note'),
+        q('orders?select=id,total,paid,created_at&paid=eq.true&created_at=gte.' + s.debut + '&created_at=lt.' + fp1),
+        q('reservations?select=id,total_fcfa,quantity,checked_in_at&checked_in_at=gte.' + s.debut + '&checked_in_at=lt.' + fp1),
+        q('announcements?select=id,message,is_active,ends_at'),
+        q('newsletter_sends?select=subject,created_at&order=created_at.desc&limit=30')
+      ]).then(function(d){
+        if (jeton !== snChargement) return;
+        var ids = {}; (d[10] || []).forEach(function(m){ ids[m.id] = m; });
+        var sIds = {}; (d[4] || []).forEach(function(x){ sIds[x.id] = x; });
+        var tIds = {}; (d[8] || []).forEach(function(x){ tIds[x.id] = x; });
+        snD = {
+          s: s, joueuses: d[0] || [], pieces: d[1] || [], dossiers: d[2] || [], paiements: d[3] || [],
+          ecoleSeances: d[4] || [], ecolePres: (d[5] || []).filter(function(p){ return sIds[p.session_id]; }),
+          planning: d[6] || [], ecolePlanning: d[7] || [],
+          seances: d[8] || [], pres: (d[9] || []).filter(function(p){ return tIds[p.session_id]; }),
+          matchs: d[10] || [], stats: (d[11] || []).filter(function(x){ return ids[x.match_id]; }),
+          classement: d[12] || [], mouvements: d[13] || [], budget: d[14] || [],
+          commandes: d[15] || [], billets: d[16] || [], annonces: d[17] || [], envois: d[18] || []
+        };
+        snRender();
+      });
+    }).catch(function(){ showMsg(document.getElementById('sn-msg'), 'Impossible de lire la saison.', false); });
+  }
+
+  // ---------- les calculs ----------
+  function snDossiersSaison(s){
+    var fp1 = snFinPlus1(s);
+    return snD.dossiers.filter(function(r){ var c = String(r.created_at || '').slice(0, 10); return c >= s.debut && c < fp1; });
+  }
+  function snInscritsSaison(s){ return snDossiersSaison(s).filter(function(r){ return (r.status || '') === 'inscrite'; }); }
+  function snAReinscrire(s){
+    // les enfants d'AVANT cette saison, encore inscrits : ils ne sont ni
+    // repartis avec un dossier neuf, ni archives
+    return snD.dossiers.filter(function(r){ var c = String(r.created_at || '').slice(0, 10); return c < s.debut && ((r.status || '') === 'inscrite' || (r.status || '') === 'en_pause'); });
+  }
+  function snActives(){ return snD.joueuses.filter(function(p){ return (p.status || 'active') === 'active'; }); }
+  function snDerniere(pid, kind){
+    var best = null;
+    snD.pieces.forEach(function(d){ if (d.player_id !== pid || d.kind !== kind) return; if (!best || (d.expires_on || d.received_on || '') > (best.expires_on || best.received_on || '')) best = d; });
+    return best;
+  }
+  function snPieceOk(d){ if (!d) return false; if (!d.expires_on) return true; return daysUntil(d.expires_on) >= 0; }
+  // L'age tel que le site et la fiche le donnent : l'annee en cours moins
+  // l'annee de naissance (effectif_admin.age fait le meme calcul).
+  function snAge(p){ return p && p.birth_year ? new Date().getFullYear() - p.birth_year : null; }
+  function snMineure(p){ var a = snAge(p); return a !== null && a < 18; }
+  function snPresence(pres){
+    var t = pres.length; if (!t) return null;
+    var la = pres.filter(function(p){ return p.statut === 'present' || p.statut === 'retard'; }).length;
+    return Math.round(100 * la / t);
+  }
+  function snMatchsJoues(){ return snD.matchs.filter(function(m){ return m.score_baobabs != null && m.score_opponent != null; }); }
+  function snAvanceDue(){
+    var due = 0;
+    snD.mouvements.forEach(function(m){ if (m.categorie === 'Avance du président') due += Number(m.montant_fcfa) || 0; if (m.categorie === 'Remboursement d\'avance') due -= Number(m.montant_fcfa) || 0; });
+    return Math.max(0, due);
+  }
+  function snCaisse(s){
+    var rec = 0, dep = 0, ecole = 0, boutique = 0, billets = 0, nbBillets = 0;
+    snD.mouvements.forEach(function(m){ if (!snDans(s, m.date)) return; if (m.sens === 'recette') rec += Number(m.montant_fcfa) || 0; else dep += Number(m.montant_fcfa) || 0; });
+    snD.paiements.forEach(function(p){ ecole += Number(p.amount_fcfa) || 0; });
+    snD.commandes.forEach(function(o){ boutique += Number(o.total) || 0; });
+    snD.billets.forEach(function(b){ billets += Number(b.total_fcfa) || 0; nbBillets += Number(b.quantity) || 0; });
+    var recettes = rec + ecole + boutique + billets;
+    return { recettes: recettes, depenses: dep, solde: recettes - dep, ecole: ecole, boutique: boutique, billets: billets, nbBillets: nbBillets, nbCommandes: snD.commandes.length, avance: snAvanceDue(), manuel: rec };
+  }
+  function snBilan(){
+    var s = snD.s, joues = snMatchsJoues(), v = 0, d = 0, n = 0, pour = 0, contre = 0, dom = { v:0, d:0 }, ext = { v:0, d:0 };
+    joues.forEach(function(m){
+      pour += m.score_baobabs; contre += m.score_opponent;
+      var g = m.score_baobabs > m.score_opponent, p = m.score_baobabs < m.score_opponent;
+      if (g) v++; else if (p) d++; else n++;
+      var c = m.is_home ? dom : ext; if (g) c.v++; else if (p) c.d++;
+    });
+    var parJ = {}; snD.stats.forEach(function(x){ if (!x.played) return; var k = x.player_id; parJ[k] = parJ[k] || { pts:0, m:0 }; parJ[k].pts += Number(x.pts) || 0; parJ[k].m++; });
+    var noms = {}; snD.joueuses.forEach(function(p){ noms[p.id] = p.name; });
+    var marqueuses = Object.keys(parJ).map(function(k){ return { player_id: k, name: noms[k] || '?', pts_total: parJ[k].pts, matchs: parJ[k].m, pts_moy: Math.round(10 * parJ[k].pts / parJ[k].m) / 10 }; })
+      .sort(function(a, b){ return b.pts_total - a.pts_total; }).slice(0, 5);
+    var actives = snActives(), licOk = actives.filter(function(p){ return snPieceOk(snDerniere(p.id, 'licence')); }).length;
+    var auj = todayISO();
+    var seances = snD.seances.filter(function(x){ return !x.cancelled && x.session_date <= auj; }).length;
+    var ecSeances = snD.ecoleSeances.filter(function(x){ return !x.cancelled && x.session_date <= auj; }).length;
+    var caisse = snCaisse(s);
+    return {
+      label: s.label, debut: s.debut, fin: s.fin, calcule_le: new Date().toISOString(),
+      matchs: { joues: joues.length, victoires: v, defaites: d, nuls: n, pts_pour: pour, pts_contre: contre, domicile: dom, exterieur: ext, programmes: snD.matchs.length },
+      marqueuses: marqueuses,
+      effectif: { actives: actives.length, licences_ok: licOk },
+      entrainements: { seances: seances, presence_pct: snPresence(snD.pres) },
+      ecole: { inscrits: snInscritsSaison(s).length, seances: ecSeances, presence_pct: snPresence(snD.ecolePres), mensualites_fcfa: caisse.ecole },
+      caisse: { recettes: caisse.recettes, depenses: caisse.depenses, solde: caisse.solde, avance_due: caisse.avance, boutique: caisse.boutique, billets: caisse.billets },
+      billetterie: { billets: caisse.nbBillets, fcfa: caisse.billets }, boutique: { commandes: caisse.nbCommandes, fcfa: caisse.boutique }
+    };
+  }
+
+  // Les textes du site qui parlent d'une autre saison que celle-ci.
+  function snMentionsPerimees(s){
+    if (typeof qgcAll !== 'function') return [];
+    var out = [], cible = s.label.replace(/[^0-9-]/g, '');
+    qgcAll().forEach(function(bl){ (bl.fields || []).forEach(function(f){
+      if (!f || !f.key || /_url$|_img$|image|photo|video/i.test(f.key) || f.type === 'image') return;
+      var val = String(qgcVal(f.key) || ''), re = /\b(20\d\d)\s*[-\u2013\u2014\/]\s*(20\d\d)\b/g, m, autres = [];
+      while ((m = re.exec(val))){ var l = m[1] + '-' + m[2]; if (l !== cible && autres.indexOf(l) < 0) autres.push(l); }
+      if (autres.length) out.push({ key: f.key, champ: f.label || f.key, saisons: autres, extrait: val.length > 90 ? val.slice(0, 88) + '…' : val });
+    }); });
+    return out;
+  }
+
+  // ---------- la rentree : neuf points ----------
+  function snEtapes(){
+    var s = snD.s, E = [], auj = todayISO(), peutR = snPeut('modifier');
+    var owner = typeof cpJeSuisProprio === 'function' && cpJeSuisProprio();
+    function ecran(nom, key){ return '<button type="button" data-sn="aller" data-section="' + key + '">' + nom + '</button>'; }
+
+    // 1. les dates
+    var datesOk = !!(s.reprise && s.competition);
+    E.push({ cle:'dates', titre:'Les dates de la saison', etat: datesOk ? 'fait' : 'a_faire',
+      resume: 'Du <b>' + esc(ecDateFr(s.debut, true)) + ' ' + s.debut.slice(0, 4) + '</b> au <b>' + esc(ecDateFr(s.fin, true)) + ' ' + s.fin.slice(0, 4) + '</b>' +
+        (s.reprise ? ', reprise le <b>' + esc(ecDateFr(s.reprise, true)) + '</b>' : ', <b>sans date de reprise</b>') +
+        (s.competition ? '. ' + esc(s.competition) + '.' : '. <b>Aucune compétition renseignée.</b>') +
+        (s.objectif ? ' Objectif : ' + esc(s.objectif) + '.' : ''),
+      detail: peutR ? snFormDatesHtml(s) : '' });
+
+    // 2. les categories d'age
+    var cats = snCategoriesCalculees(s), actuelles = snCategoriesDuSite();
+    var texteCalc = snTexteCategories(cats), texteActuel = snTexteCategories(actuelles);
+    var catsAJour = texteCalc === texteActuel;
+    var changent = snDossiersSaison(s).filter(function(r){ return ['inscrite', 'essai', 'nouvelle', 'contactee'].indexOf(r.status || 'nouvelle') >= 0 && r.birth_date; })
+      .map(function(r){ return { r: r, cible: snCategoriePour(s, r.birth_date, cats) }; })
+      .filter(function(x){ return x.cible && x.cible !== x.r.category; });
+    var tab = '<div class="ds-scroll"><table class="ds-tbl sn-tbl"><thead><tr><th>Catégorie</th><th>Pour ' + esc(s.label) + '</th><th>Sur le site aujourd\'hui</th></tr></thead><tbody>' +
+      cats.map(function(c){ var a = actuelles.filter(function(x){ return x.nom === c.nom; })[0]; var diff = !a || a.regle !== c.regle;
+        return '<tr class="ds-fixe"><td><b>' + esc(c.nom) + '</b></td><td' + (diff ? ' style="color:var(--gold-lit);font-weight:600"' : '') + '>' + esc(c.regle) + '</td><td style="color:var(--' + (diff ? 'warn' : 'muted') + ')">' + esc(a ? a.regle : '(absente)') + '</td></tr>'; }).join('') +
+      '</tbody></table></div>';
+    var liste = changent.length ? '<div class="ec-liens" style="margin-top:12px">' + changent.map(function(x){ return '<div class="ec-lien"><b>' + esc(x.r.full_name || (x.r.child_first_name + ' ' + x.r.child_last_name)) + '</b><span>' + esc(x.r.category || 'sans catégorie') + ' → <b style="font-size:11.5px">' + esc(x.cible) + '</b> · né' + (x.r.gender === 'F' ? 'e' : '') + ' en ' + esc(String(x.r.birth_date).slice(0, 4)) + '</span><button type="button" data-sn="dossier" data-rid="' + esc(x.r.id) + '">Dossier</button></div>'; }).join('') + '</div>' : '';
+    E.push({ cle:'categories', titre:'Les catégories d\'âge', etat: (catsAJour && !changent.length) ? 'fait' : 'a_faire',
+      resume: catsAJour ? 'Le site annonce les tranches d\'âge de <b>' + esc(s.label) + '</b>.' : 'Le site annonce encore des tranches d\'âge d\'une autre saison : <b>les enfants ont grandi, pas le texte</b>. ' +
+        (changent.length ? '<b>' + changent.length + ' enfant' + (changent.length > 1 ? 's changent' : ' change') + ' de catégorie</b>.' : ''),
+      detail: tab + liste,
+      actions: (!catsAJour && peutR ? '<button type="button" class="ds-accent" data-sn="categories-site">Mettre le site à jour</button>' : '') +
+        (changent.length && (typeof can !== 'function' || can('inscriptions', 'modifier')) ? '<button type="button" data-sn="categories-dossiers">Appliquer aux ' + changent.length + ' dossier' + (changent.length > 1 ? 's' : '') + '</button>' : '') +
+        ecran('L\'école', 'ecole') });
+
+    // 3. les reinscriptions
+    var aRe = snAReinscrire(s), prec = snPrecedente(s);
+    var reinscrits = snDossiersSaison(s).filter(function(r){ return /Réinscription depuis/.test(String(r.admin_notes || '')) || false; }).length;
+    var etatRe = !aRe.length ? (prec || snD.dossiers.some(function(r){ return String(r.created_at || '').slice(0, 10) < s.debut; }) ? 'fait' : 'libre') : 'partiel';
+    if (aRe.length && !snD.dossiers.some(function(r){ return String(r.created_at || '').slice(0, 10) < s.debut && r.status === 'archivee'; }) && !snDossiersSaison(s).length) etatRe = 'a_faire';
+    var msgRe = 'Bonjour {famille},\nla saison ' + s.label + ' du Baobabs Basket Club reprend' + (s.reprise ? ' le ' + ecDateFr(s.reprise, true) : ' en septembre') + '. Nous serions heureux de retrouver {enfant} à l\'école de basket. Dites-nous si vous renouvelez son inscription ; les frais sont de ' + snF(qgcVal('ins_fee_registration') || 20000) + ' FCFA et la mensualité de ' + snF(qgcVal('ins_fee_monthly') || 5000) + ' FCFA.\nSportivement, le Baobabs Basket Club';
+    var listeRe = aRe.length ? '<div class="ec-liens">' + aRe.map(function(r){
+      var tel = ecTel(r), nom = r.full_name || (r.child_first_name + ' ' + r.child_last_name), cible = snCategoriePour(s, r.birth_date, cats);
+      var texte = msgRe.replace('{famille}', r.guardian_name || '').replace('{enfant}', ecPrenom(r));
+      return '<div class="ec-lien"><b>' + esc(nom) + '</b><span>' + esc(r.category || '') + (cible && cible !== r.category ? ' → ' + esc(cible) : '') + ' · ' + esc(r.guardian_name || 'famille') + (tel ? ' · ' + esc(tel) : ' · sans numéro') + '</span>' +
+        '<div class="pc-seg">' + (tel ? '<a class="pc-wa" href="https://wa.me/' + telWhatsApp(tel) + '?text=' + encodeURIComponent(texte) + '" target="_blank" rel="noopener">WhatsApp</a>' : '') +
+          (typeof can !== 'function' || can('inscriptions', 'creer') ? '<button type="button" data-sn="reinscrire" data-rid="' + esc(r.id) + '" data-cat="' + esc(cible || r.category || '') + '">Réinscrire</button>' : '') +
+          (typeof can !== 'function' || can('inscriptions', 'modifier') ? '<button type="button" data-sn="ne-revient-pas" data-rid="' + esc(r.id) + '">Ne revient pas</button>' : '') + '</div></div>';
+    }).join('') + '</div>' : '';
+    E.push({ cle:'reinscriptions', titre:'Les réinscriptions de l\'école', etat: etatRe,
+      resume: aRe.length ? '<b>' + aRe.length + ' enfant' + (aRe.length > 1 ? 's' : '') + '</b> de la saison passée ' + (aRe.length > 1 ? 'n\'ont' : 'n\'a') + ' pas encore de dossier pour ' + esc(s.label) + '. Réinscrire crée un dossier neuf au tarif en vigueur ; les pièces encore valables suivent l\'enfant.'
+        : (etatRe === 'libre' ? 'Première saison de l\'école : personne à réinscrire. Les dossiers arrivent par le formulaire du site.' : 'Chaque enfant de la saison passée a été réinscrit ou archivé.' + (snInscritsSaison(s).length ? ' <b>' + snInscritsSaison(s).length + ' inscrit' + (snInscritsSaison(s).length > 1 ? 's' : '') + '</b> cette saison.' : '')),
+      detail: listeRe, actions: ecran('L\'école', 'ecole') + ecran('Les dossiers', 'inscriptions') });
+
+    // 4. les licences et certificats
+    var actives = snActives(), manque = 0, lignes = actives.map(function(p){
+      var lic = snDerniere(p.id, 'licence'), med = snDerniere(p.id, 'medical'), aut = snMineure(p) ? snDerniere(p.id, 'autorisation') : null, mineure = snMineure(p);
+      var okL = snPieceOk(lic), okM = snPieceOk(med), okA = !mineure || snPieceOk(aut);
+      if (!okL || !okM || !okA) manque++;
+      function past(ok, d, kind, lib){
+        var e = ok ? (d && d.expires_on ? 'jusqu\'au ' + ecDateFr(d.expires_on) + ' ' + String(d.expires_on).slice(0, 4) : 'à jour') : (d ? 'expiré' + (kind === 'licence' || kind === 'autorisation' ? 'e' : '') + ' le ' + ecDateFr(d.expires_on) : 'manquant' + (kind === 'licence' || kind === 'autorisation' ? 'e' : ''));
+        return '<span class="sn-past ' + (ok ? 'ok' : 'ko') + '"><i></i>' + lib + (ok && d && d.reference ? ' n° ' + esc(d.reference) : '') + ' · ' + e + '</span>' +
+          (!ok && (typeof can !== 'function' || can('effectif', 'modifier')) ? '<button type="button" class="sn-mini" data-sn="piece" data-pid="' + esc(p.id) + '" data-kind="' + kind + '">' + (d ? 'Renouvelée' : 'Reçue') + '</button>' : '');
+      }
+      return '<div class="pc-jr' + ((okL && okM && okA) ? '' : ' sn-manque') + '">' + (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '<span class="pc-ini">' + esc(initials(p.name)) + '</span>') +
+        '<div class="pc-jr-n"><b>' + esc(p.name) + (p.jersey_number != null ? ' <small style="color:var(--faint)">#' + esc(p.jersey_number) + '</small>' : '') + '</b><span>' + (p.birth_year ? snAge(p) + ' ans · née en ' + p.birth_year + (mineure ? ' · mineure' : '') : 'année de naissance inconnue') + '</span></div>' +
+        '<div class="sn-pasts">' + past(okL, lic, 'licence', 'Licence') + past(okM, med, 'medical', 'Certificat') + (mineure ? past(okA, aut, 'autorisation', 'Autorisation') : '') + '</div>' +
+        (snPiece && snPiece.pid === p.id ? snPieceFormHtml(p) : '') + '</div>';
+    }).join('');
+    E.push({ cle:'licences', titre:'Les licences et les certificats', etat: !actives.length ? 'libre' : (!manque ? 'fait' : (manque === actives.length ? 'a_faire' : 'partiel')),
+      resume: !actives.length ? 'Aucune joueuse active.' : (!manque ? 'Les <b>' + actives.length + ' joueuses</b> ont licence et certificat à jour.' : '<b>' + manque + ' joueuse' + (manque > 1 ? 's' : '') + ' sur ' + actives.length + '</b> ' + (manque > 1 ? 'n\'ont' : 'n\'a') + ' pas tout : sans licence ni certificat, elle ne devrait pas être alignée. La licence court jusqu\'au ' + esc(ecDateFr(s.fin)) + ' ' + s.fin.slice(0, 4) + ', le certificat un an.'),
+      detail: actives.length ? '<div class="pc-eff">' + lignes + '</div>' : '', actions: ecran('Les joueuses', 'squad') });
+
+    // 5. le planning
+    var plan = snD.planning.filter(function(x){ return x.active !== false; }), planEc = snD.ecolePlanning.filter(function(x){ return x.active !== false; });
+    var mois = auj.slice(0, 7), seancesMois = snD.seances.filter(function(x){ return x.session_date.slice(0, 7) === mois && !x.cancelled; }).length;
+    E.push({ cle:'planning', titre:'Le planning des entraînements', etat: plan.length ? 'fait' : (planEc.length ? 'partiel' : 'a_faire'),
+      resume: (plan.length ? '<b>' + plan.length + ' créneau' + (plan.length > 1 ? 'x' : '') + '</b> par semaine pour l\'équipe' : '<b>Aucun créneau</b> pour l\'équipe') + ', ' + (planEc.length ? '<b>' + planEc.length + '</b> pour l\'école' : '<b>aucun</b> pour l\'école') + '. ' +
+        (seancesMois ? seancesMois + ' séance' + (seancesMois > 1 ? 's' : '') + ' de l\'équipe ce mois-ci.' : 'Aucune séance de l\'équipe créée ce mois-ci : le planning ne suffit pas, il faut créer les séances du mois.'),
+      actions: ecran('Entraînements', 'entrainements') + ecran('L\'école', 'ecole') });
+
+    // 6. le calendrier
+    var joues = snMatchsJoues(), aVenir = snD.matchs.filter(function(m){ return m.match_date >= auj && (m.score_baobabs == null || m.score_opponent == null); });
+    var prochain = aVenir[0], v = joues.filter(function(m){ return m.score_baobabs > m.score_opponent; }).length;
+    var classementVieux = s.etat === 'preparation' && snD.classement.length;
+    E.push({ cle:'calendrier', titre:'Le calendrier des matchs', etat: snD.matchs.length ? (classementVieux ? 'partiel' : 'fait') : 'a_faire',
+      resume: (snD.matchs.length ? '<b>' + snD.matchs.length + ' match' + (snD.matchs.length > 1 ? 's' : '') + '</b> au calendrier, ' + joues.length + ' joué' + (joues.length > 1 ? 's' : '') + (joues.length ? ' (' + v + ' victoire' + (v > 1 ? 's' : '') + ')' : '') +
+          (prochain ? '. Prochain : <b>' + esc(prochain.opponent_name) + '</b> le ' + esc(ecDateFr(prochain.match_date, true)) + '.' : '.') : 'Aucun match programmé entre le ' + esc(ecDateFr(s.debut)) + ' et le ' + esc(ecDateFr(s.fin)) + ' ' + s.fin.slice(0, 4) + '. Le site dit « La saison n\'a pas encore commencé ».') +
+        (classementVieux ? ' Le classement porte encore <b>' + snD.classement.length + ' équipes</b> de la saison passée.' : ''),
+      actions: ecran('Calendrier', 'calendar') + ecran('Classement', 'standings') + (classementVieux && (typeof can !== 'function' || can('matchs', 'supprimer')) ? '<button type="button" class="ds-danger" data-sn="classement-zero">Remettre le classement à zéro</button>' : '') });
+
+    // 7. le budget
+    var bud = snD.budget.filter(function(b){ return b.saison === s.label; }), labelPrec = snBudgetPrecedent(s), budPrec = labelPrec ? snD.budget.filter(function(b){ return b.saison === labelPrec; }) : [];
+    var prevu = 0; bud.forEach(function(b){ if (b.sens === 'depense') prevu += Number(b.montant_fcfa) || 0; });
+    E.push({ cle:'budget', titre:'Le budget de la saison', etat: bud.length ? 'fait' : 'a_faire',
+      resume: bud.length ? '<b>' + bud.length + ' poste' + (bud.length > 1 ? 's' : '') + '</b> posé' + (bud.length > 1 ? 's' : '') + ', ' + snF(prevu) + ' FCFA de dépenses prévues.' : 'Aucun budget posé pour ' + esc(s.label) + '. La caisse compare le réalisé au prévu, poste par poste.' + (budPrec.length ? ' Celui de ' + esc(labelPrec) + ' (' + budPrec.length + ' postes) peut servir de base.' : ''),
+      actions: (!bud.length && budPrec.length && (typeof can !== 'function' || can('caisse', 'modifier')) ? '<button type="button" class="ds-accent" data-sn="budget-reprendre">Reprendre le budget ' + esc(labelPrec) + '</button>' : '') + ecran('La caisse', 'caisse') });
+
+    // 8. le site
+    var perimees = snMentionsPerimees(s), insFerme = String(qgcVal('ins_open') || 'oui') === 'non';
+    var listeP = perimees.length ? '<div class="ec-liens">' + perimees.map(function(m){ var ou = typeof coOuCorriger === 'function' ? coOuCorriger(m.key) : null;
+        return '<div class="ec-lien"><b>' + esc(m.champ) + '</b><span>' + esc(m.extrait) + '</span>' + (ou ? '<button type="button" data-sn="aller" data-section="' + esc(ou.ecran) + '">' + esc(ou.ecranNom) + '</button>' : '') + '</div>'; }).join('') + '</div>' : '';
+    E.push({ cle:'site', titre:'Le site parle de cette saison', etat: (!perimees.length && !insFerme) ? 'fait' : 'a_faire',
+      resume: (perimees.length ? '<b>' + perimees.length + ' texte' + (perimees.length > 1 ? 's' : '') + '</b> du site ' + (perimees.length > 1 ? 'parlent' : 'parle') + ' encore d\'une autre saison (' + esc(perimees.map(function(m){ return m.saisons.join(', '); }).filter(function(x, i, a){ return a.indexOf(x) === i; }).join(', ')) + ').' : 'Aucun texte du site ne parle d\'une autre saison.') +
+        (insFerme ? ' <b>Les inscriptions à l\'école sont closes</b> sur le site.' : ' Les inscriptions à l\'école sont ouvertes.'),
+      detail: listeP, actions: ecran('Inscriptions', 'c_inscriptions') + ecran('Tryouts', 'c_tryouts') });
+
+    // 9. annoncer
+    var annonce = snD.annonces.filter(function(a){ return a.is_active !== false && String(a.message || '').indexOf(s.label) >= 0; })[0];
+    var envoi = snD.envois.filter(function(e){ return String(e.subject || '').indexOf(s.label) >= 0; })[0];
+    E.push({ cle:'annonce', titre:'Annoncer la rentrée', etat: (annonce || envoi) ? 'fait' : 'facultatif',
+      resume: (annonce ? 'Une annonce en haut du site parle de ' + esc(s.label) + '. ' : '') + (envoi ? 'Une newsletter « ' + esc(envoi.subject) + ' » est partie le ' + esc(ecDateFr(envoi.created_at)) + '.' : '') +
+        (!annonce && !envoi ? 'Rien n\'annonce encore la saison : une ligne en haut du site, une newsletter aux abonnés, un communiqué du Greffe.' : ''),
+      actions: (!annonce && (typeof can !== 'function' || can('contenu', 'creer')) ? '<button type="button" data-sn="annonce-site">Une annonce en haut du site</button>' : '') +
+        (typeof nwPreremplir === 'function' ? '<button type="button" data-sn="annonce-newsletter">Newsletter aux abonnés</button>' : '') +
+        (owner ? greffeBoutonHtml('data-sn="greffe-communique"', 'Communiqué du Greffe') : '') });
+
+    return E;
+  }
+
+  // ---------- le rendu ----------
+  function snRender(){
+    var tete = document.getElementById('sn-tete'), rentree = document.getElementById('sn-rentree'), bilan = document.getElementById('sn-bilan'), clot = document.getElementById('sn-cloture');
+    var chips = snSaisons.map(function(x){ return '<button type="button" class="pc-chip' + (x.label === snSel ? ' on' : '') + '" data-sn="choisir" data-label="' + esc(x.label) + '"><span class="pc-chip-c">' + (x.etat === 'en_cours' ? '●' : (x.etat === 'cloturee' ? '✓' : '○')) + '</span>' + esc(x.label) + '<small>' + esc(x.etat === 'en_cours' ? 'en cours' : (x.etat === 'cloturee' ? 'clôturée' : 'en préparation')) + '</small></button>'; }).join('');
+    if (!snD){
+      var cal = snSaisonCalendaire();
+      tete.innerHTML = '<div class="pc-choix">' + chips + '</div>' +
+        '<div class="pc-hero"><div class="pc-j"><b>' + esc(cal.label.slice(2, 4) + '<em>·</em>' + cal.label.slice(7, 9)) + '</b><span>Saison</span></div>' +
+        '<div class="pc-titre"><h2>Aucune saison n\'est ouverte</h2><p class="ds-sub">Le calendrier dit ' + esc(cal.label) + ' (juillet à juin). L\'ouvrir met la rentrée en route : catégories, licences, réinscriptions, budget.</p>' +
+        (snPeut('modifier') ? '<div class="ds-quick"><button type="button" class="ds-accent" data-sn="creer" data-label="' + esc(cal.label) + '" data-debut="' + cal.debut + '" data-fin="' + cal.fin + '">Ouvrir la saison ' + esc(cal.label) + '</button></div>' : '<p class="pc-resume">Seul le président ou le propriétaire ouvre une saison.</p>') + '</div><div></div></div>';
+      rentree.innerHTML = ''; bilan.innerHTML = ''; clot.innerHTML = '';
+      return;
+    }
+    var s = snD.s, E = snEtapes(), b = snBilan(), auj = todayISO();
+    var prets = E.filter(function(e){ return e.etat === 'fait' || e.etat === 'libre' || e.etat === 'auto'; }).length, total = E.length;
+    var jours = Math.max(1, Math.round((new Date(s.fin + 'T00:00:00') - new Date(s.debut + 'T00:00:00')) / 86400000));
+    var ecoule = Math.min(jours, Math.max(0, Math.round((new Date(auj + 'T00:00:00') - new Date(s.debut + 'T00:00:00')) / 86400000)));
+    var pct = Math.round(100 * ecoule / jours);
+    var etatTxt = s.etat === 'en_cours' ? 'En cours' : (s.etat === 'cloturee' ? 'Clôturée' : 'En préparation');
+    var quand = s.etat === 'cloturee' ? 'Clôturée le ' + ecDateFr(s.cloturee_le) + ' ' + String(s.cloturee_le || '').slice(0, 4)
+      : (auj < s.debut ? 'Commence dans ' + daysUntil(s.debut) + ' jours' : (auj > s.fin ? 'Terminée depuis ' + (-daysUntil(s.fin)) + ' jours' : (s.reprise && auj < s.reprise ? 'Reprise dans ' + daysUntil(s.reprise) + ' jour' + (daysUntil(s.reprise) > 1 ? 's' : '') : 'Jour ' + (ecoule + 1) + ' sur ' + jours)));
+    var boutons = '';
+    if (snPeut('modifier')){
+      if (s.etat === 'preparation') boutons += '<button type="button" class="ds-accent" data-sn="ouvrir">Ouvrir la saison</button>';
+      if (s.etat === 'en_cours') boutons += '<button type="button" data-sn="voir-cloture">Clôturer la saison</button>';
+      if (s.etat === 'cloturee' && !snSuivante(s)){ var an = snAnFin(s); boutons += '<button type="button" class="ds-accent" data-sn="creer" data-label="' + esc(snLabelDepuis(an)) + '" data-debut="' + an + '-07-01" data-fin="' + (an + 1) + '-06-30">Préparer ' + esc(snLabelDepuis(an)) + '</button>'; }
+    }
+    if (typeof cpJeSuisProprio === 'function' && cpJeSuisProprio()) boutons += greffeBoutonHtml('data-sn="greffe-rapport"', 'Rapport de saison');
+    tete.innerHTML = '<div class="pc-choix">' + chips + '</div>' +
+      '<div class="pc-hero"><div class="pc-j' + (s.etat === 'en_cours' ? ' today' : (s.etat === 'cloturee' ? ' past' : '')) + '"><b>' + esc(s.label.slice(2, 4)) + '<em>·</em>' + esc(s.label.slice(7, 9)) + '</b><span>' + esc(etatTxt) + '</span></div>' +
+        '<div class="pc-duel"><div class="pc-titre"><h2>Saison ' + esc(s.label) + '</h2><p class="ds-sub">' + esc(s.competition || 'Compétition à renseigner') + ' · du ' + esc(ecDateFr(s.debut)) + ' ' + s.debut.slice(0, 4) + ' au ' + esc(ecDateFr(s.fin)) + ' ' + s.fin.slice(0, 4) + (s.reprise ? ' · reprise le ' + esc(ecDateFr(s.reprise)) : '') + '</p>' +
+          (boutons ? '<div class="ds-quick" style="margin-top:12px">' + boutons + '</div>' : '') + '</div></div>' +
+        '<div class="pc-avance"><i>La rentrée</i><b>' + prets + '<small>/ ' + total + ' prêts</small></b><div class="pc-jauge"><i style="width:' + Math.round(100 * prets / total) + '%"></i></div><i style="margin-top:6px">' + esc(quand) + '</i><div class="pc-jauge"><i style="width:' + pct + '%;background:var(--line-loud)"></i></div></div></div>' +
+      '<div class="ds-band">' +
+        '<div class="ds-fig"><i>Matchs</i><b>' + b.matchs.joues + '<small> joués · ' + (b.matchs.programmes - b.matchs.joues) + ' à venir</small></b></div>' +
+        '<div class="ds-fig"><i>Bilan</i><b>' + b.matchs.victoires + ' V · ' + b.matchs.defaites + ' D</b>' + (b.matchs.joues ? '<small>' + b.matchs.pts_pour + ' marqués · ' + b.matchs.pts_contre + ' encaissés</small>' : '') + '</div>' +
+        '<div class="ds-fig' + (b.effectif.actives && b.effectif.licences_ok < b.effectif.actives ? ' sig' : '') + '"><i>Effectif</i><b>' + b.effectif.actives + '<small> joueuses · ' + b.effectif.licences_ok + ' licence' + (b.effectif.licences_ok > 1 ? 's' : '') + '</small></b></div>' +
+        '<div class="ds-fig"><i>École</i><b>' + b.ecole.inscrits + '<small> inscrit' + (b.ecole.inscrits > 1 ? 's' : '') + '</small></b>' + (b.ecole.presence_pct != null ? '<small>' + b.ecole.presence_pct + ' % de présence</small>' : '') + '</div>' +
+        '<div class="ds-fig' + (b.caisse.solde < 0 ? ' cri' : '') + '"><i>Caisse de la saison</i><b>' + (b.caisse.solde < 0 ? '−' : '') + snF(Math.abs(b.caisse.solde)) + '<small> FCFA</small></b><small>' + snF(b.caisse.recettes) + ' entrés · ' + snF(b.caisse.depenses) + ' sortis</small></div>' +
+      '</div>';
+
+    var blocRentree = document.getElementById('sn-rentree-bloc');
+    if (blocRentree) blocRentree.classList.toggle('hide', s.etat === 'cloturee');
+    rentree.innerHTML = s.etat === 'cloturee' ? '' : E.map(function(e, i){
+      var pill = e.etat === 'retard' ? '<span class="ds-tag warn">' + esc(SN_ETATS[e.etat]) + '</span>'
+        : '<span class="ds-st' + (e.etat === 'fait' ? ' act' : '') + '"><i></i>' + esc(SN_ETATS[e.etat] || e.etat) + '</span>';
+      return '<article class="pc-carte ' + e.etat + '" id="sn-etape-' + e.cle + '"><div class="pc-col"><b>' + (i + 1) + '</b><i></i></div>' +
+        '<div class="pc-corps"><div class="pc-tete"><h3>' + esc(e.titre) + '</h3><span class="pc-etat">' + pill + '</span></div>' +
+        '<p class="pc-resume">' + e.resume + '</p>' + (e.detail ? '<div class="pc-detail">' + e.detail + '</div>' : '') +
+        (e.actions ? '<div class="pc-actions"><div class="ds-quick">' + e.actions + '</div></div>' : '') + '</div></article>';
+    }).join('');
+
+    snRenderBilan(s.etat === 'cloturee' && s.bilan ? s.bilan : b, s.etat === 'cloturee' && s.bilan);
+    clot.innerHTML = (s.etat === 'en_cours' && snPeut('modifier')) ?
+      '<section class="ec-bloc" id="sn-cloture-bloc"><header><h3>Clôturer la saison ' + esc(s.label) + '</h3><span>À faire une fois le dernier match joué et la dernière mensualité encaissée.</span></header><div class="ec-bloc-corps">' +
+        '<p class="pc-resume">Clôturer <b>fige le bilan ci-dessus</b> dans la saison, tel qu\'il est aujourd\'hui. Les matchs, les dossiers, les paiements restent où ils sont : rien n\'est supprimé. Les licences expirent à leur date, les stats « saison en cours » du site repartiront de zéro avec la saison suivante, et l\'école proposera de réinscrire chaque enfant.</p>' +
+        '<div class="ds-quick" style="margin-top:12px"><button type="button" class="ds-danger" data-sn="cloturer">Clôturer ' + esc(s.label) + ' et figer son bilan</button></div></div></section>' : '';
+  }
+  function snFormDatesHtml(s){
+    if (!snForm || snForm.label !== s.label) return '<div class="ds-quick"><button type="button" data-sn="dates-modifier">Modifier les dates</button></div>';
+    return '<div class="pc-rdv" id="sn-dates">' +
+      '<div><label for="sn-d-debut">Début</label><input id="sn-d-debut" type="date" value="' + esc(s.debut) + '"></div>' +
+      '<div><label for="sn-d-fin">Fin</label><input id="sn-d-fin" type="date" value="' + esc(s.fin) + '"></div>' +
+      '<div><label for="sn-d-reprise">Reprise sportive</label><input id="sn-d-reprise" type="date" value="' + esc(s.reprise || '') + '"></div>' +
+      '<div><label for="sn-d-comp">Compétition</label><input id="sn-d-comp" type="text" value="' + esc(s.competition || '') + '" placeholder="Championnat National de Division 2 (Féminin)"></div>' +
+      '<div class="full"><label for="sn-d-obj">Objectif de la saison</label><input id="sn-d-obj" type="text" value="' + esc(s.objectif || '') + '" placeholder="La montée en Division 1, une école à 40 enfants…"></div>' +
+      '<div class="full"><div class="ds-quick" style="margin-top:0"><button type="button" class="ds-accent" data-sn="dates-enregistrer">Enregistrer</button><button type="button" data-sn="dates-annuler">Annuler</button></div>' +
+      '<p class="pc-resume" style="margin-top:8px">La saison comptable va de juillet à juin : la caisse et l\'école comptent ainsi. La reprise sportive est la date du premier entraînement.</p></div></div>';
+  }
+  function snPieceFormHtml(p){
+    var kind = snPiece.kind, recu = todayISO(), exp = kind === 'medical' ? efEcheanceParDefaut('medical', recu) : snD.s.fin;
+    return '<div class="ec-form sn-piece" data-pid="' + esc(p.id) + '">' +
+      '<div><label for="sn-p-ref">' + (kind === 'licence' ? 'Numéro de licence' : 'Référence') + '</label><input id="sn-p-ref" type="text" placeholder="' + (kind === 'licence' ? 'n° fédéral' : '(facultatif)') + '"></div>' +
+      '<div><label for="sn-p-recu">Reçue le</label><input id="sn-p-recu" type="date" value="' + recu + '"></div>' +
+      '<div><label for="sn-p-exp">Valable jusqu\'au</label><input id="sn-p-exp" type="date" value="' + esc(exp) + '"></div>' +
+      '<div class="ec-form-a"><div class="ds-quick" style="margin-top:0"><button type="button" class="ds-accent" data-sn="piece-enregistrer">Enregistrer ' + (kind === 'licence' ? 'la licence' : (kind === 'medical' ? 'le certificat' : 'l\'autorisation')) + '</button><button type="button" data-sn="piece-annuler">Annuler</button></div></div></div>';
+  }
+  function snRenderBilan(b, fige){
+    var box = document.getElementById('sn-bilan'), s = snD.s;
+    var marq = (b.marqueuses || []).length ? '<div class="ds-scroll" style="margin-top:12px"><table class="ds-tbl sn-tbl"><thead><tr><th>Joueuse</th><th class="r">Matchs</th><th class="r">Points</th><th class="r">Par match</th></tr></thead><tbody>' +
+      b.marqueuses.map(function(m){ return '<tr class="ds-fixe"><td><b>' + esc(m.name) + '</b></td><td class="r num">' + m.matchs + '</td><td class="r num"><b>' + m.pts_total + '</b></td><td class="r num">' + m.pts_moy + '</td></tr>'; }).join('') + '</tbody></table></div>' : '';
+    function fig(l, v, sous){ return '<div class="sn-fig"><i>' + l + '</i><b>' + v + '</b>' + (sous ? '<small>' + sous + '</small>' : '') + '</div>'; }
+    box.innerHTML = '<section class="ec-bloc"><header><h3>Le bilan de ' + esc(s.label) + '</h3><span>' + (fige ? 'Figé à la clôture, le ' + esc(ecDateFr(b.calcule_le)) + ' ' + String(b.calcule_le || '').slice(0, 4) + '.' : 'Calculé à l\'instant depuis les feuilles de match, les appels, les dossiers et la caisse.') + '</span></header><div class="ec-bloc-corps">' +
+      '<div class="cs-cols">' +
+        '<div class="cs-col"><h4>L\'équipe</h4><div class="sn-figs">' + fig('Matchs joués', b.matchs.joues, b.matchs.programmes > b.matchs.joues ? (b.matchs.programmes - b.matchs.joues) + ' encore à jouer' : '') + fig('Bilan', b.matchs.victoires + ' V · ' + b.matchs.defaites + ' D' + (b.matchs.nuls ? ' · ' + b.matchs.nuls + ' N' : ''), 'Domicile ' + b.matchs.domicile.v + '-' + b.matchs.domicile.d + ' · extérieur ' + b.matchs.exterieur.v + '-' + b.matchs.exterieur.d) + fig('Points', b.matchs.pts_pour + ' <small style="display:inline">marqués</small> · ' + b.matchs.pts_contre + ' <small style="display:inline">encaissés</small>', b.matchs.joues ? Math.round(b.matchs.pts_pour / b.matchs.joues) + ' par match' : '') + fig('Entraînements', b.entrainements.seances + ' séance' + (b.entrainements.seances > 1 ? 's' : ''), b.entrainements.presence_pct != null ? b.entrainements.presence_pct + ' % de présence' : 'aucun appel') + '</div>' + marq + '</div>' +
+        '<div class="cs-col"><h4>L\'école</h4><div class="sn-figs">' + fig('Inscrits', b.ecole.inscrits, '') + fig('Séances', b.ecole.seances, b.ecole.presence_pct != null ? b.ecole.presence_pct + ' % de présence' : 'aucun appel') + fig('Encaissé', snF(b.ecole.mensualites_fcfa) + ' <small style="display:inline">FCFA</small>', 'mensualités et frais') + '</div>' +
+          '<h4 style="margin-top:18px">La caisse</h4><div class="sn-figs">' + fig('Recettes', snF(b.caisse.recettes) + ' <small style="display:inline">FCFA</small>', 'école ' + snF(b.ecole.mensualites_fcfa) + ' · boutique ' + snF(b.caisse.boutique) + ' · billets ' + snF(b.caisse.billets)) + fig('Dépenses', snF(b.caisse.depenses) + ' <small style="display:inline">FCFA</small>', '') + fig('Solde', (b.caisse.solde < 0 ? '−' : '') + snF(Math.abs(b.caisse.solde)) + ' <small style="display:inline">FCFA</small>', '') + fig('Avance du président', snF(b.caisse.avance_due) + ' <small style="display:inline">FCFA</small>', 'à rembourser') + '</div></div>' +
+      '</div></div></section>';
+  }
+
+  // ---------- les gestes ----------
+  function snClic(e){
+    var b = e.target.closest('[data-sn]'); if (!b) return;
+    var act = b.getAttribute('data-sn'), s = snD && snD.s;
+    if (act === 'choisir'){ snSel = b.getAttribute('data-label'); snForm = null; snPiece = null; snLoad(); return; }
+    if (act === 'aller'){ SECTION_AGE.saison = 0; showSection(b.getAttribute('data-section')); return; }
+    if (act === 'dossier'){ SECTION_AGE.saison = 0; showSection('inscriptions'); var rid = b.getAttribute('data-rid'); setTimeout(function(){ if (typeof inOpen === 'function') inOpen(rid); }, 400); return; }
+    if (act === 'creer'){
+      var label = b.getAttribute('data-label'), debut = b.getAttribute('data-debut'), fin = b.getAttribute('data-fin'), auj = todayISO();
+      var enCours = snSaisons.some(function(x){ return x.etat === 'en_cours'; });
+      var etat = (!enCours && auj >= debut && auj <= fin) ? 'en_cours' : 'preparation';
+      var prec = snSaisons.length ? snSaisons[0] : null;
+      sbInsert('saisons', { label: label, debut: debut, fin: fin, etat: etat, competition: prec ? prec.competition : null, ouverte_le: etat === 'en_cours' ? new Date().toISOString() : null }, 'Saison')
+        .then(function(){ snSel = label; qgToast(etat === 'en_cours' ? 'La saison ' + label + ' est ouverte.' : 'La saison ' + label + ' est en préparation : la rentrée se déroule ci-dessous.'); snLoad(); })
+        .catch(function(){ qgToast('La saison n\'a pas pu être créée.', true); });
+      return;
+    }
+    if (!s) return;
+    if (act === 'ouvrir'){
+      var autre = snSaisons.filter(function(x){ return x.etat === 'en_cours' && x.label !== s.label; })[0];
+      if (autre){ qgToast('Clôturez d\'abord la saison ' + autre.label + ' : deux saisons ne peuvent pas être en cours.', true); return; }
+      sbUpdate('saisons', s.id, { etat: 'en_cours', ouverte_le: new Date().toISOString() }, 'Saison').then(function(){ qgToast('La saison ' + s.label + ' est ouverte. Les stats « saison en cours » du site repartent d\'ici.'); snLoad(); }).catch(function(){ qgToast('L\'ouverture a échoué.', true); });
+      return;
+    }
+    if (act === 'voir-cloture'){ var bl = document.getElementById('sn-cloture-bloc'); if (bl) bl.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (act === 'cloturer'){
+      var bilan = snBilan(), restent = snD.matchs.filter(function(m){ return m.score_baobabs == null || m.score_opponent == null; }).length;
+      if (!confirm('Clôturer la saison ' + s.label + ' ?\n\n' + bilan.matchs.joues + ' match' + (bilan.matchs.joues > 1 ? 's' : '') + ' joué' + (bilan.matchs.joues > 1 ? 's' : '') + ' (' + bilan.matchs.victoires + ' V, ' + bilan.matchs.defaites + ' D), ' + bilan.ecole.inscrits + ' enfant' + (bilan.ecole.inscrits > 1 ? 's' : '') + ' à l\'école, solde de caisse ' + snF(bilan.caisse.solde) + ' FCFA.' + (restent ? '\n\nAttention : ' + restent + ' match' + (restent > 1 ? 's' : '') + ' du calendrier ' + (restent > 1 ? 'n\'ont' : 'n\'a') + ' pas de résultat.' : '') + '\n\nLe bilan est figé tel quel ; rien n\'est supprimé.')) return;
+      sbUpdate('saisons', s.id, { etat: 'cloturee', cloturee_le: new Date().toISOString(), bilan: bilan }, 'Saison').then(function(){
+        qgToast('La saison ' + s.label + ' est clôturée, son bilan est figé.');
+        var an = snAnFin(s), suivante = snLabelDepuis(an);
+        if (!snParLabel(suivante) && confirm('Préparer la saison ' + suivante + ' maintenant ?\n\nElle s\'ouvre en préparation : la rentrée se déroule point par point.')){
+          return sbInsert('saisons', { label: suivante, debut: an + '-07-01', fin: (an + 1) + '-06-30', etat: 'preparation', competition: s.competition }, 'Saison').then(function(){ snSel = suivante; });
+        }
+      }).then(snLoad).catch(function(){ qgToast('La clôture a échoué.', true); });
+      return;
+    }
+    if (act === 'dates-modifier'){ snForm = { label: s.label }; snRender(); var el = document.getElementById('sn-dates'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    if (act === 'dates-annuler'){ snForm = null; snRender(); return; }
+    if (act === 'dates-enregistrer'){
+      var g = function(id){ return (document.getElementById(id) || {}).value || ''; };
+      var corps = { debut: g('sn-d-debut'), fin: g('sn-d-fin'), reprise: g('sn-d-reprise') || null, competition: g('sn-d-comp').trim() || null, objectif: g('sn-d-obj').trim() || null };
+      if (!corps.debut || !corps.fin || corps.fin <= corps.debut){ qgToast('La fin doit venir après le début.', true); return; }
+      if (corps.reprise && (corps.reprise < corps.debut || corps.reprise > corps.fin)){ qgToast('La reprise doit tomber dans la saison.', true); return; }
+      sbUpdate('saisons', s.id, corps, 'Saison').then(function(){ snForm = null; qgToast('Dates enregistrées.'); snLoad(); }).catch(function(){ qgToast('L\'enregistrement a échoué.', true); });
+      return;
+    }
+    if (act === 'categories-site'){
+      var texte = snTexteCategories(snCategoriesCalculees(s));
+      sbUpsert('site_settings', [{ key: 'ins_categories', value: texte }], 'Saison').then(function(){ settings.ins_categories = texte; qgToast('Le site annonce les tranches d\'âge de ' + s.label + '.'); snLoad(); }).catch(function(){ qgToast('Le site n\'a pas pu être mis à jour.', true); });
+      return;
+    }
+    if (act === 'categories-dossiers'){
+      var cats = snCategoriesCalculees(s), aChanger = snDossiersSaison(s).filter(function(r){ return ['inscrite', 'essai', 'nouvelle', 'contactee'].indexOf(r.status || 'nouvelle') >= 0 && r.birth_date; })
+        .map(function(r){ return { r: r, cible: snCategoriePour(s, r.birth_date, cats) }; }).filter(function(x){ return x.cible && x.cible !== x.r.category; });
+      if (!aChanger.length) return;
+      if (!confirm('Changer la catégorie de ' + aChanger.length + ' dossier' + (aChanger.length > 1 ? 's' : '') + ' d\'après l\'année de naissance ?\n\n' + aChanger.map(function(x){ return (x.r.full_name || x.r.child_first_name) + ' : ' + (x.r.category || '?') + ' → ' + x.cible; }).join('\n'))) return;
+      Promise.all(aChanger.map(function(x){ return sbUpdate('academy_registrations', x.r.id, { category: x.cible }, 'Inscriptions'); }))
+        .then(function(){ qgToast(aChanger.length + ' dossier' + (aChanger.length > 1 ? 's' : '') + ' mis à jour.'); SECTION_AGE.ecole = 0; SECTION_AGE.inscriptions = 0; snLoad(); }).catch(function(){ qgToast('Une mise à jour a échoué.', true); snLoad(); });
+      return;
+    }
+    if (act === 'reinscrire'){
+      var rid = b.getAttribute('data-rid'), cat = b.getAttribute('data-cat'), r = snD.dossiers.filter(function(x){ return String(x.id) === String(rid); })[0];
+      if (!r) return;
+      if (!confirm('Réinscrire ' + (r.full_name || r.child_first_name) + ' pour ' + s.label + (cat ? ' en ' + cat : '') + ' ?\n\nUn dossier neuf est créé (inscrit, tarif en vigueur), l\'ancien passe en archive. L\'extrait de naissance, la photo et un certificat de moins d\'un an suivent l\'enfant.')) return;
+      b.disabled = true;
+      fetch(SUPABASE_URL + '/rest/v1/rpc/bbc_reinscrire', { method: 'POST', headers: sbHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ p_id: rid, p_category: cat || null }) })
+        .then(function(res){ return res.json().then(function(j){ if (!res.ok) throw new Error((j && j.message) || res.status); return j; }); })
+        .then(function(ref){ try { auditLogInsert('academy_registrations', { reference: ref, child_first_name: r.child_first_name, child_last_name: r.child_last_name, status: 'inscrite' }, 'Saison'); } catch(e){} qgToast((r.full_name || r.child_first_name) + ' est réinscrit' + (r.gender === 'F' ? 'e' : '') + ' : dossier ' + ref + '.'); SECTION_AGE.ecole = 0; SECTION_AGE.inscriptions = 0; snLoad(); })
+        .catch(function(err){ qgToast('La réinscription a échoué' + (err && err.message ? ' : ' + err.message : '') + '.', true); b.disabled = false; });
+      return;
+    }
+    if (act === 'ne-revient-pas'){
+      var rid2 = b.getAttribute('data-rid'), r2 = snD.dossiers.filter(function(x){ return String(x.id) === String(rid2); })[0];
+      if (!r2 || !confirm('Archiver le dossier de ' + (r2.full_name || r2.child_first_name) + ' ? L\'enfant ne revient pas cette saison ; le dossier reste lisible dans Inscriptions.')) return;
+      sbUpdate('academy_registrations', rid2, { status: 'archivee' }, 'Inscriptions').then(function(){ qgToast('Dossier archivé.'); SECTION_AGE.ecole = 0; SECTION_AGE.inscriptions = 0; snLoad(); }).catch(function(){ qgToast('L\'archivage a échoué.', true); });
+      return;
+    }
+    if (act === 'piece'){ snPiece = { pid: b.getAttribute('data-pid'), kind: b.getAttribute('data-kind') }; snRender(); var f = document.querySelector('.sn-piece input'); if (f) f.focus(); return; }
+    if (act === 'piece-annuler'){ snPiece = null; snRender(); return; }
+    if (act === 'piece-enregistrer'){
+      if (!snPiece) return;
+      var g2 = function(id){ return (document.getElementById(id) || {}).value || ''; }, p = snD.joueuses.filter(function(x){ return String(x.id) === String(snPiece.pid); })[0];
+      var ligne = { player_id: snPiece.pid, kind: snPiece.kind, reference: g2('sn-p-ref').trim() || null, received_on: g2('sn-p-recu') || todayISO(), expires_on: g2('sn-p-exp') || null, author: (typeof currentSession !== 'undefined' && currentSession && currentSession.user && currentSession.user.email) || null };
+      sbInsert('players_documents', ligne, 'Effectif').then(function(){ qgToast((snPiece.kind === 'licence' ? 'Licence' : (snPiece.kind === 'medical' ? 'Certificat' : 'Autorisation')) + ' de ' + (p ? p.name : 'la joueuse') + ' enregistré' + (snPiece.kind === 'medical' ? '' : 'e') + '.'); snPiece = null; SECTION_AGE.squad = 0; snLoad(); }).catch(function(){ qgToast('La pièce n\'a pas pu être enregistrée.', true); });
+      return;
+    }
+    if (act === 'classement-zero'){
+      if (!confirm('Remettre le classement à zéro ?\n\nLes ' + snD.classement.length + ' lignes du classement sont supprimées. Les matchs et leurs résultats restent.')) return;
+      Promise.all(snD.classement.map(function(x){ return sbDelete('standings', x.id, 'Classement'); })).then(function(){ qgToast('Classement vidé : il se remplira avec les premiers matchs.'); SECTION_AGE.standings = 0; snLoad(); }).catch(function(){ qgToast('Une suppression a échoué.', true); snLoad(); });
+      return;
+    }
+    if (act === 'budget-reprendre'){
+      var labelPrec = snBudgetPrecedent(s), lignes = labelPrec ? snD.budget.filter(function(x){ return x.saison === labelPrec; }) : [];
+      if (!lignes.length) return;
+      if (!confirm('Reprendre les ' + lignes.length + ' postes du budget ' + labelPrec + ' pour ' + s.label + ' ? Les montants se corrigent ensuite dans la caisse.')) return;
+      fetch(SUPABASE_URL + '/rest/v1/caisse_budget?on_conflict=saison,sens,categorie', { method: 'POST', headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' }), body: JSON.stringify(lignes.map(function(x){ return { saison: s.label, sens: x.sens, categorie: x.categorie, montant_fcfa: x.montant_fcfa, note: x.note }; })) })
+        .then(function(res){ if (!res.ok) throw new Error(res.status); try { auditLogUpsert('caisse_budget', { saison: s.label, postes: lignes.length }, 'Saison'); } catch(e){} qgToast('Budget ' + s.label + ' posé à partir de ' + labelPrec + '.'); SECTION_AGE.caisse = 0; snLoad(); })
+        .catch(function(){ qgToast('Le budget n\'a pas pu être repris.', true); });
+      return;
+    }
+    if (act === 'annonce-site'){
+      var msg = 'La saison ' + s.label + ' ' + (s.reprise ? 'reprend le ' + ecDateFr(s.reprise, true) : 'est lancée') + '. Les inscriptions à l\'école de basket sont ouvertes.';
+      if (!confirm('Poser cette annonce en haut du site ?\n\n« ' + msg + ' »\n\nElle se modifie ensuite dans Annonces.')) return;
+      sbInsert('announcements', { message: msg, cta_label: 'S\'inscrire', cta_href: '#inscriptions', tone: 'succes', is_active: true }, 'Annonces').then(function(){ qgToast('Annonce posée en haut du site.'); SECTION_AGE.announce = 0; snLoad(); }).catch(function(){ qgToast('L\'annonce n\'a pas pu être posée.', true); });
+      return;
+    }
+    if (act === 'annonce-newsletter'){
+      SECTION_AGE.saison = 0;
+      nwPreremplir('Saison ' + s.label + ' : la reprise', 'Bonjour,\n\nLa saison ' + s.label + ' du Baobabs Basket Club ' + (s.reprise ? 'reprend le ' + ecDateFr(s.reprise, true) + ' ' + String(s.reprise).slice(0, 4) : 'est lancée') + (s.competition ? ' en ' + s.competition : '') + '.\n\n' +
+        'L\'école de basket rouvre ses portes' + (qgcVal('ins_start') ? ' : ' + qgcVal('ins_start') : '') + '. Les inscriptions se font sur le site : ' + nwLienSite('inscriptions') + '\n\n' + (s.objectif ? 'Notre objectif cette saison : ' + s.objectif + '.\n\n' : '') + 'À très vite au bord du terrain,\nLe Baobabs Basket Club');
+      return;
+    }
+    if (act === 'greffe-communique'){
+      greffeNouvelActe('communique', { titre: 'Saison ' + s.label + ' : la reprise', objet: 'Reprise de la saison ' + s.label, corps: 'Le Baobabs Basket Club annonce la reprise de ses activités pour la saison ' + s.label + (s.reprise ? ', le ' + ecDateFr(s.reprise, true) + ' ' + String(s.reprise).slice(0, 4) : '') + (s.competition ? ', en ' + s.competition : '') + '.\n\nL\'école de basket accueille les enfants' + (qgcVal('ins_start') ? ' à partir du ' + qgcVal('ins_start').replace(/^\w+\s/, '') : '') + ' ; les inscriptions se font sur le site du club.' + (s.objectif ? '\n\n' + s.objectif : '') }, { origine: 'La saison' });
+      return;
+    }
+    if (act === 'greffe-rapport'){
+      var bb = s.etat === 'cloturee' && s.bilan ? s.bilan : snBilan();
+      greffeNouvelActe('rapport-saison', {
+        saison: s.label, competition: s.competition || '', presente: s.etat === 'cloturee' ? 'à l\'assemblée générale' : 'au bureau',
+        intro: 'Le présent rapport rend compte de la saison ' + s.label + ' du Baobabs Basket Club' + (s.etat === 'cloturee' ? '' : ', arrêtée à ce jour') + ' : les résultats de l\'équipe, la vie de l\'école de basket, la situation financière du club, et les orientations proposées pour la saison à venir.',
+        matchsJoues: String(bb.matchs.joues), victoires: String(bb.matchs.victoires), defaites: String(bb.matchs.defaites), ptsPour: String(bb.matchs.pts_pour), ptsContre: String(bb.matchs.pts_contre),
+        effectif: String(bb.effectif.actives), presence: bb.entrainements.presence_pct != null ? bb.entrainements.presence_pct + ' %' : '',
+        sportifTexte: 'L\'équipe a disputé ' + bb.matchs.joues + ' match' + (bb.matchs.joues > 1 ? 's' : '') + (s.competition ? ' en ' + s.competition : '') + ' : ' + bb.matchs.victoires + ' victoire' + (bb.matchs.victoires > 1 ? 's' : '') + ' et ' + bb.matchs.defaites + ' défaite' + (bb.matchs.defaites > 1 ? 's' : '') + (bb.matchs.joues ? ', ' + bb.matchs.pts_pour + ' points marqués pour ' + bb.matchs.pts_contre + ' encaissés' : '') + '. ' + (bb.entrainements.seances ? bb.entrainements.seances + ' séance' + (bb.entrainements.seances > 1 ? 's' : '') + ' d\'entraînement ont été tenues' + (bb.entrainements.presence_pct != null ? ', avec ' + bb.entrainements.presence_pct + ' % de présence' : '') + '.' : ''),
+        ecoleInscrits: String(bb.ecole.inscrits), ecoleSeances: String(bb.ecole.seances), ecolePresence: bb.ecole.presence_pct != null ? bb.ecole.presence_pct + ' %' : '',
+        ecoleTexte: bb.ecole.inscrits ? 'L\'école de basket a réuni ' + bb.ecole.inscrits + ' enfant' + (bb.ecole.inscrits > 1 ? 's' : '') + ' sur ' + bb.ecole.seances + ' séance' + (bb.ecole.seances > 1 ? 's' : '') + (bb.ecole.presence_pct != null ? ', avec ' + bb.ecole.presence_pct + ' % de présence' : '') + '. Les familles ont versé ' + snF(bb.ecole.mensualites_fcfa) + ' FCFA de frais et de mensualités.' : 'L\'école de basket n\'a pas encore accueilli d\'enfant inscrit cette saison.',
+        recettes: snF(bb.caisse.recettes), depenses: snF(bb.caisse.depenses), solde: (bb.caisse.solde < 0 ? '-' : '') + snF(Math.abs(bb.caisse.solde)), avance: snF(bb.caisse.avance_due),
+        financesTexte: 'La saison a vu entrer ' + snF(bb.caisse.recettes) + ' FCFA et sortir ' + snF(bb.caisse.depenses) + ' FCFA, soit un solde de ' + (bb.caisse.solde < 0 ? '-' : '') + snF(Math.abs(bb.caisse.solde)) + ' FCFA.' + (bb.caisse.avance_due ? ' L\'avance du Président sur ses fonds personnels s\'élève à ' + snF(bb.caisse.avance_due) + ' FCFA, à rembourser selon les disponibilités du club.' : ''),
+        tables: {
+          marqueuses: (bb.marqueuses || []).map(function(m){ return { nom: m.name, matchs: String(m.matchs), points: String(m.pts_total), moyenne: String(m.pts_moy) }; }),
+          finances: [
+            { poste: 'École de basket (frais et mensualités)', sens: 'Recette', montant: snF(bb.ecole.mensualites_fcfa) },
+            { poste: 'Boutique', sens: 'Recette', montant: snF(bb.caisse.boutique) },
+            { poste: 'Billetterie', sens: 'Recette', montant: snF(bb.caisse.billets) },
+            { poste: 'Autres recettes (sponsors, dons, subventions, avances)', sens: 'Recette', montant: snF(bb.caisse.recettes - bb.ecole.mensualites_fcfa - bb.caisse.boutique - bb.caisse.billets) },
+            { poste: 'Dépenses de la saison', sens: 'Dépense', montant: snF(bb.caisse.depenses) }
+          ]
+        }
+      }, { origine: 'La saison', dossier: 'Saison ' + s.label });
+      return;
+    }
+  }
+  function snChange(e){
+    // la date de reception change l'echeance proposee, comme sur la fiche
+    if (e.target.id === 'sn-p-recu' && snPiece){ var exp = document.getElementById('sn-p-exp'); if (exp) exp.value = snPiece.kind === 'medical' ? efEcheanceParDefaut('medical', e.target.value) : (snD ? snD.s.fin : efEcheanceParDefaut('licence', e.target.value)); }
   }
 
   // ===================== NEWSLETTER =====================
@@ -12722,6 +13343,15 @@
     travaux.push(sbGet('contact_messages?select=created_at,is_read&is_read=is.false').then(function(rows){
       var n = (rows||[]).filter(function(m){ var h = hoursSince(m.created_at); return h !== null && h > 48; }).length;
       if (n) ajout('attention', n + ' message' + (n>1?'s':'') + ' de contact sans réponse', 'Reçu' + (n>1?'s':'') + ' il y a plus de deux jours.', 'forms', 'contenu');
+    }).catch(function(){}));
+
+    // --- La saison : aucune ouverte, ou la rentree qui traine ---
+    travaux.push(sbGet('saisons?select=label,etat,debut,fin,reprise&order=debut.desc').then(function(rows){
+      rows = rows || [];
+      var auj = todayISO(), enCours = rows.filter(function(s){ return s.etat === 'en_cours'; })[0];
+      if (!rows.length) return ajout('info', 'Aucune saison n\'est ouverte', 'L\'écran La saison déroule la rentrée : catégories, licences, réinscriptions, budget.', 'saison', 'reglages');
+      if (enCours && auj > enCours.fin) ajout('attention', 'La saison ' + enCours.label + ' est terminée depuis le ' + formatDateShort(enCours.fin), 'Clôturez-la pour figer son bilan et préparer la suivante.', 'saison', 'reglages');
+      if (!enCours){ var prep = rows.filter(function(s){ return s.etat === 'preparation'; })[0]; if (prep && auj >= prep.debut) ajout('attention', 'La saison ' + prep.label + ' a commencé mais n\'est pas ouverte', 'Tant qu\'elle est en préparation, le site compte encore l\'ancienne.', 'saison', 'reglages'); }
     }).catch(function(){}));
 
     // --- L'equipe : licence ou certificat manquant, expire, ou bientot ---
@@ -26001,6 +26631,7 @@
   var LOADERS = {
     dashboard:function(){ loadDashboard(); attInit(); },
     caisse: csInit,
+    saison: snInit,
     entrainements: trInit,
     parcours: pcInit,
     gameday:function(){ gdLoad(); },
