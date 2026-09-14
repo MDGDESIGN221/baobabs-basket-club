@@ -11340,7 +11340,8 @@
   // A chaque frappe : un envoi au plus toutes les 250 ms.
   function tmMaj(id){
     if (!tmEtat.ouvert) return;
-    if (id && tmEtat.id && tmEtat.id !== id) return;
+    // un bloc qui change interesse aussi le temoin de l'ecran entier
+    if (id && tmEtat.id && tmEtat.id !== id && !(/^bloc:/.test(id) && tmEtat.id === 'ecran:' + sectionCourante)) return;
     clearTimeout(tmEtat.timer); tmEtat.timer = setTimeout(function(){ tmEnvoyer(false); }, 250);
   }
   // Apres une ecriture en base : les lignes de l'ecran se rechargent,
@@ -11363,9 +11364,27 @@
     b.hidden = !c;
     if (tmEtat.ouvert && c && tmEtat.id !== 'ecran:' + key) tmOuvrirEcran(key);
   }
+  // Les reglages enregistres, recouverts par ce qui est tape dans les
+  // blocs de l'ecran : le temoin ouvert depuis l'en-tete montre ce qu'on
+  // tape, comme celui ouvert depuis un bloc. Avant, il ne montrait que
+  // la base, et le pied du volet mentait.
+  function tmReglagesEcran(key){
+    var out = {}; Object.keys(settings || {}).forEach(function(k){ out[k] = settings[k]; });
+    var blocs = [];
+    try {
+      if (key === 'reglages' && typeof SETTINGS_BLOCKS !== 'undefined') blocs = SETTINGS_BLOCKS;
+      else if (typeof qgcGroup === 'function') blocs = qgcGroup(key);
+    } catch(e){}
+    if (typeof qgcCollect === 'function') blocs.forEach(function(bl){
+      // un bloc qui n'est pas dessine n'a pas de champs : on garde la base
+      if (!document.querySelector('.qgc-in[data-k="' + (bl.fields[0] && bl.fields[0].key) + '"]')) return;
+      try { var v = qgcCollect(bl); Object.keys(v).forEach(function(k){ out[k] = v[k]; }); } catch(e){}
+    });
+    return out;
+  }
   function tmOuvrirEcran(key){
     var c = TM_ECRANS[key]; if (!c) return;
-    tmOuvrir({ id:'ecran:' + key, titre:c.titre, cible:c.cible, reglages:c.reglages || null, table:c.table || null, lignes:c.lignes || null });
+    tmOuvrir({ id:'ecran:' + key, titre:c.titre, cible:c.cible, reglages: c.reglages === true ? function(){ return tmReglagesEcran(key); } : (c.reglages || null), table:c.table || null, lignes:c.lignes || null });
   }
   (function(){
     var el = document.getElementById('temoin'); if (!el) return;
