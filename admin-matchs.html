@@ -1423,6 +1423,20 @@
   .nw-hs-etat > div.ok::before{background:var(--lime)}
   .nw-hs-pas{margin:6px 0 10px;padding-left:22px;font-size:13px;line-height:1.6;color:var(--text)}
   .nw-hs-pas li{margin:4px 0}
+  /* Inscriptions : les dossiers qui reclament un geste, en tete du tableau ;
+     sur chaque carte, une ligne d'etat sobre (argent, pieces, qui suit). */
+  .in-agir{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+  .in-agir button{display:inline-flex;align-items:center;gap:8px;background:transparent;border:1px solid var(--line-strong);border-radius:var(--r-full);
+    padding:6px 12px 6px 8px;color:var(--muted);font-family:var(--font-ui);font-weight:600;font-size:12px;cursor:pointer}
+  .in-agir button b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:11px;padding:0 6px;font-size:11.5px;font-weight:800;color:#0A1B0D;background:var(--gold)}
+  .in-agir button.cri b{background:var(--danger);color:#FFF0EE} .in-agir button.warn b{background:var(--warn)}
+  .in-agir button:hover,.in-agir button.on{color:var(--text);border-color:var(--gold)}
+  .in-agir .in-agir-ok{font-size:12px;color:var(--faint);align-self:center}
+  .ds-card-e{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:7px;font-size:10.5px;color:var(--faint)}
+  .ds-card-e span{display:inline-flex;align-items:center;gap:4px}
+  .ds-card-e i{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none}
+  .ds-card-e span.ko{color:var(--warn)} .ds-card-e span.ko i{background:var(--warn)}
+  .ds-card-e .ini{margin-left:auto;font-weight:800;letter-spacing:.06em;color:var(--muted)}
   /* Le tableau de bord : la bande de chiffres, l'activite, l'agenda, le mois. */
   .tb-band{margin-bottom:var(--s5)}
   .tb-fig{flex:1 1 150px;background:none;text-align:left;cursor:pointer;font:inherit;color:inherit;transition:background .15s;border-bottom:1px solid var(--line)}
@@ -5383,6 +5397,7 @@
             <option value="noreg">Frais d'inscription non réglés</option>
             <option value="incomplet">Pièces manquantes</option>
             <option value="nomedical">Sans certificat médical</option>
+            <option value="sansreponse">Sans réponse depuis 48 h</option>
             <option value="ajour">À jour</option>
           </select>
           <div class="ds-seg" id="in-view-switch">
@@ -5392,6 +5407,7 @@
           <button type="button" class="ds-act" id="in-export">Exporter CSV</button>
           <button type="button" class="ds-act" id="in-greffe" hidden title="Une autorisation, une convocation, une fiche par enfant : la liste part au Greffe">Série au Greffe</button>
         </div>
+        <div class="in-agir" id="in-agir"></div>
         <div class="callout ds-note" id="in-callout">Chaque enfant est un dossier&nbsp;: cliquez une carte pour l'ouvrir et y enregistrer les paiements. Faites glisser une carte d'une colonne à l'autre pour changer son statut — chaque mouvement est écrit dans le journal du dossier.</div>
         <div id="in-board" class="ds-board"></div>
         <div id="in-rows" class="hide"></div>
@@ -23772,6 +23788,26 @@
   // mensualité à un dossier qui n'a pas encore fait sa séance d'essai serait
   // une fausse alerte, et une fausse alerte de plus rend toutes les autres
   // invisibles.
+  // Un dossier arrive du site et personne n'a repondu depuis deux jours.
+  function inSansReponse(r){ if ((r.status || 'nouvelle') !== 'nouvelle') return false; var h = hoursSince(r.created_at); return h !== null && h > 48; }
+  // Les dossiers qui reclament un geste, comptes sur TOUS les dossiers
+  // (pas sur le filtre courant) : chaque pastille pose le filtre.
+  function inRenderAgir(){
+    var box = document.getElementById('in-agir'); if (!box) return;
+    var pay = document.getElementById('in-filter-pay').value;
+    var actifs = inRows.filter(function(r){ return ['refusee', 'archivee'].indexOf(r.status || 'nouvelle') < 0; });
+    var inscrits = actifs.filter(function(r){ return (r.status || '') === 'inscrite'; });
+    var items = [
+      { cle:'sansreponse', n: actifs.filter(inSansReponse).length, lib:'sans réponse depuis 48 h', cls:'cri' },
+      { cle:'retard',      n: inscrits.filter(inEnRetard).length, lib:'en retard de mensualité', cls:'warn' },
+      { cle:'noreg',       n: inscrits.filter(function(r){ return r.inscription_payee === false; }).length, lib:'frais d\'inscription non réglés', cls:'warn' },
+      { cle:'nomedical',   n: inscrits.filter(function(r){ return r.medical_recu === false; }).length, lib:'sans certificat médical', cls:'cri' },
+      { cle:'incomplet',   n: inscrits.filter(function(r){ return r.dossier_complet === false && r.medical_recu !== false; }).length, lib:'avec des pièces manquantes', cls:'' }
+    ].filter(function(x){ return x.n > 0; });
+    box.innerHTML = items.length ? items.map(function(x){
+      return '<button type="button" class="' + x.cls + (pay === x.cle ? ' on' : '') + '" data-in-agir="' + x.cle + '"><b>' + x.n + '</b>' + esc(x.lib) + '</button>';
+    }).join('') + (pay ? '<button type="button" data-in-agir="">Tout voir</button>' : '') : (actifs.length ? '<span class="in-agir-ok">Aucun dossier ne réclame de geste aujourd\'hui.</span>' : '');
+  }
   function inEnRetard(row){
     if ((row.status||'nouvelle') !== 'inscrite') return false;
     var mois = inPeriodeCourante();
@@ -23784,6 +23820,10 @@
     document.getElementById('in-search').addEventListener('input', inRender);
     document.getElementById('in-filter-cat').addEventListener('change', inRender);
     document.getElementById('in-filter-pay').addEventListener('change', inRender);
+    document.getElementById('in-agir').addEventListener('click', function(e){
+      var b = e.target.closest('[data-in-agir]'); if (!b) return;
+      var sel = document.getElementById('in-filter-pay'); sel.value = b.getAttribute('data-in-agir') || ''; inRender();
+    });
     document.getElementById('in-back').addEventListener('click', function(){ inSel = null; inRender(); });
     document.getElementById('in-export').addEventListener('click', inExportCsv);
     // LA SERIE AU GREFFE. Le Greffe fabrique un acte par ligne d'une liste
@@ -23904,6 +23944,7 @@
       if (pay === 'noreg'     && r.inscription_payee !== false) return false;
       if (pay === 'incomplet' && r.dossier_complet !== false) return false;
       if (pay === 'nomedical' && r.medical_recu !== false) return false;
+      if (pay === 'sansreponse' && !inSansReponse(r)) return false;
       if (pay === 'ajour'  && (inEnRetard(r) || r.inscription_payee === false || r.dossier_complet === false)) return false;
       if (!q) return true;
       return [r.full_name, r.guardian_name, r.guardian_phone, r.guardian_phone2, r.guardian_email, r.reference, r.district, r.school, r.category]
@@ -23943,6 +23984,26 @@
     return '<span class="ds-cat on" style="background:' + esc(c) + '">' + esc(nom) + '</span>';
   }
 
+  // La ligne d'etat d'une carte : l'argent et les pieces pour un enfant
+  // inscrit, la reponse attendue pour un dossier neuf, et qui suit le
+  // dossier. Vert quand c'est bon, ambre sinon ; jamais plus.
+  function inCarteEtat(r){
+    var st = r.status || 'nouvelle', parts = [];
+    if (st === 'inscrite'){
+      var argentOk = r.inscription_payee !== false && !inEnRetard(r);
+      parts.push('<span class="' + (argentOk ? '' : 'ko') + '"><i></i>' + (argentOk ? 'À jour' : (r.inscription_payee === false ? 'Frais dus' : 'Mensualité en retard')) + '</span>');
+      var piecesOk = r.dossier_complet !== false;
+      parts.push('<span class="' + (piecesOk ? '' : 'ko') + '"><i></i>' + (piecesOk ? 'Pièces complètes' : 'Pièces manquantes') + '</span>');
+    } else if (st === 'nouvelle'){
+      var h = hoursSince(r.created_at);
+      parts.push('<span class="' + (inSansReponse(r) ? 'ko' : '') + '"><i></i>' + (h === null ? 'Reçu' : (h < 24 ? 'Reçu aujourd\'hui' : 'Reçu il y a ' + Math.round(h / 24) + ' j')) + '</span>');
+    } else if (st === 'essai'){
+      var he = hoursSince(r.updated_at || r.created_at);
+      parts.push('<span class="' + (he !== null && he > 24 * 14 ? 'ko' : '') + '"><i></i>' + (he === null ? 'À l\'essai' : 'À l\'essai depuis ' + Math.max(1, Math.round(he / 24)) + ' j') + '</span>');
+    }
+    if (r.assigned_to) parts.push('<span class="ini" title="Suivi par ' + esc(r.assigned_to) + '">' + esc(initials(String(r.assigned_to).split('@')[0].replace(/[._-]/g, ' '))) + '</span>');
+    return parts.length ? '<span class="ds-card-e">' + parts.join('') + '</span>' : '';
+  }
   function inSubline(r){
     // La categorie part en badge devant : elle ne se noie plus dans la ligne.
     return [(r.age?r.age+' ans':''), r.district].filter(Boolean).join(' · ');
@@ -24058,7 +24119,7 @@
       return;
     }
     listView.classList.remove('hide'); docView.classList.add('hide');
-    inKpis();
+    inKpis(); inRenderAgir();
 
     var rows = inVisible();
     document.getElementById('in-count').textContent = rows.length + (rows.length>1?' dossiers':' dossier');
@@ -24096,6 +24157,7 @@
               '<span class="ds-card-n">'+esc(r.full_name||'—')+'</span>'+
               '<span class="ds-card-m">'+catBadge(r.category)+esc(inSubline(r)||'—')+'</span>'+
               (m ? '<span class="ds-card-s">'+m+'</span>' : '')+
+              inCarteEtat(r)+
             '</div>';
           }).join('') : '<div class="ds-empty">Aucun</div>') +'</div></div>';
       }).join('');
