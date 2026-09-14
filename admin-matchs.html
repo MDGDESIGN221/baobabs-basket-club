@@ -1423,6 +1423,19 @@
   .nw-hs-etat > div.ok::before{background:var(--lime)}
   .nw-hs-pas{margin:6px 0 10px;padding-left:22px;font-size:13px;line-height:1.6;color:var(--text)}
   .nw-hs-pas li{margin:4px 0}
+  /* La joueuse : ses pieces (une ligne par piece, une pastille d'etat), ses presences. */
+  .ef-pieces{display:grid;gap:6px}
+  .ef-piece{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r-sm)}
+  .ef-piece i{width:10px;height:10px;border-radius:50%;background:var(--line-loud)}
+  .ef-piece.ok i{background:var(--ok)} .ef-piece.bientot i{background:var(--warn)} .ef-piece.expire i,.ef-piece.manque i{background:var(--danger)}
+  .ef-piece.manque{border-style:dashed}
+  .ef-piece-n b{display:block;font-size:13px;color:var(--text);font-weight:700}
+  .ef-piece-n span{font-size:11.5px;color:var(--muted)}
+  .ef-piece.expire .ef-piece-n span,.ef-piece.manque .ef-piece-n span{color:var(--danger)}
+  .ef-piece.bientot .ef-piece-n span{color:var(--warn)}
+  .ef-presences{display:flex;gap:5px;margin:10px 0 4px}
+  .ef-presences span{width:18px;height:18px;border-radius:4px;background:var(--line-strong)}
+  .ef-presences span.present{background:var(--ok)} .ef-presences span.retard{background:var(--warn)} .ef-presences span.absent{background:var(--danger)} .ef-presences span.excuse{background:var(--line-loud)}
   /* La caisse : douze mois (juillet a juin), le budget en deux colonnes. */
   .cs-frise{grid-template-columns:repeat(12,minmax(0,1fr))}
   .cs-tbl tr.cs-auto td{background:rgba(70,191,29,.04)}
@@ -4096,6 +4109,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Joueuses
         </button>
+        <button class="sb-link" data-section="entrainements">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Entraînements
+        </button>
         <button class="sb-link" data-section="staff">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Staff
@@ -4389,6 +4406,13 @@
       </section>
 
     <!-- ===== SECTION SOIR DE MATCH ===== -->
+    <!-- ===== SECTION ENTRAINEMENTS : les seances de l'equipe, l'appel ===== -->
+    <section id="section-entrainements" class="hide">
+      <div id="tr-tete"></div>
+      <section class="ec-bloc"><header><h3>Les entraînements</h3><span>Le planning de la semaine, les séances du mois, l'appel à chacune. La présence de chaque joueuse se lit ensuite sur sa fiche.</span></header><div class="ec-bloc-corps" id="tr-seances"></div></section>
+      <div class="msg" id="tr-msg"></div>
+    </section>
+
     <!-- ===== SECTION LA CAISSE ===== -->
     <section id="section-caisse" class="hide">
       <div id="cs-tete"></div>
@@ -6174,7 +6198,7 @@
   // « résultats » séparément, il pense « mes matchs ».
   var SECTION_MODULE = {
     dashboard:null,                                  // toujours accessible
-    caisse:'caisse',
+    caisse:'caisse', entrainements:'effectif',
     parcours:'matchs',
     gameday:'matchs', teams:'matchs', live:'matchs', standings:'matchs',
     calendar:'matchs', matches2:'matchs', results:'matchs',
@@ -8771,6 +8795,7 @@
     dashboard:{t:'Tableau de bord',d:'Vue d\'ensemble de votre club — ce qui se passe, ce qui vous attend.'},
     newsl:{t:'Newsletter',d:'Écrivez aux inscrits : test sur votre adresse d\'abord, envoi à tous ensuite, avec le journal des envois.'},
     promos:{t:'Codes promo',d:'Des remises à partager : pourcentage ou montant, avec période, minimum d\'achat et limite d\'utilisation.'},
+    entrainements:{t:'Entraînements',d:'Les séances de l\'équipe : planning de la semaine, séances du mois, appel au bord du terrain.'},
     caisse:{t:'La caisse',d:'Recettes, dépenses, budget de la saison : ce qui entre, ce qui sort, ce qu\'il reste, et ce que le club doit au président.'},
     parcours:{t:'Le match',d:'De J-7 à J+1 : ce qui est fait, ce qui attend, et le bouton qui mène là où ça se fait.'},
     gameday:{t:'Soir de match',d:'L\'écran du jour J : le score d\'un côté, le guichet de retrait des billets de l\'autre.'},
@@ -8837,6 +8862,7 @@
     newsl: ["<b>Écrire à tous les inscrits de la newsletter.</b> Chaque personne reçoit son propre e-mail — jamais de liste visible.","<b>Testez d'abord</b> : votre adresse dans « M'envoyer un test », le message arrive avec [TEST] devant le sujet.","« Envoyer à tous » demande confirmation, et deux envois à moins de 10 minutes d'écart sont refusés.","À l'ouverture, l'écran interroge la fonction serveur : clé Resend, adresse d'expédition, domaine vérifié. Le bandeau du haut dit ce qui est en place et ce qui manque, pas à pas.","Un inscrit qui répond « STOP » se retire dans Messages → Newsletter."],
     promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b>, dans la barre : un clic ajoute le club, logo compris. Pour un club absent, <b>Ajouter un adversaire</b> ouvre un formulaire — les deux panneaux se ferment l’un l’autre, la liste ne part jamais à deux écrans de défilement.","<b>Changer le logo</b> sur une ligne — ou <b>Ajouter un logo</b> si elle n’en a pas — ouvre l’éditeur. Les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo.","La colonne <b>Logo</b> est la seule chose de cet écran qui appelle un geste : elle dit d’un coup d’œil combien de clubs en attendent un. La recherche filtre par nom, et <b>Confrontations</b> compte les matchs déjà joués contre chacun."],
+    entrainements: ["<b>Les entraînements de l'équipe</b>, construits comme les séances de l'école : un planning de la semaine, les séances du mois créées d'un clic, et l'appel à chaque séance.","<b>L'appel se fait au bord du terrain</b>, sur le téléphone : Présente, Retard, Excusée, Absente. Chaque clic s'enregistre tout de suite.","<b>La présence de chaque joueuse</b> se lit ensuite sur sa fiche (Joueuses) : taux, douze dernières séances, absences de suite.","<b>Sous 50 % de présence</b> compte les joueuses actives qui manquent plus d'une séance sur deux ce mois-ci, dès trois séances pointées.","Une séance annulée reste dans la liste, barrée : elle ne compte ni dans les séances faites ni dans la présence."],
     caisse: ["<b>Une seule vérité.</b> Les mensualités de l'école, les commandes encaissées et les billets retirés sont lus là où ils sont déjà enregistrés : la caisse ne les recopie pas, elle les additionne.","<b>Ce qui n'a pas d'écran se note ici</b> : un sponsor, une subvention, un don, la buvette, une avance du président. Et toutes les dépenses, avec leur justificatif.","<b>L'avance du président</b> est une dette du club : chaque avance l'augmente, chaque remboursement la réduit. Le chiffre en haut d'écran est ce qui reste à rembourser, et il part dans le budget du Greffe.","<b>Le budget</b> se pose poste par poste pour la saison (juillet à juin). La barre dit où en est le réalisé ; elle passe au rouge quand un poste dépasse.","<b>Exporter</b> donne le mois ou la saison en CSV, pour le bureau ou l'expert-comptable : chaque ligne avec sa source."],
     parcours: ["<b>Un match, neuf étapes, dans l'ordre où elles arrivent</b> : la fiche, la convocation, le cinq, l'affiche, la billetterie, le direct, le résultat, l'article, le classement. Chaque étape lit son état dans les données : rien ne se coche à la main.","<b>Le rail du haut</b> donne les neuf états d'un coup d'œil. Vert : fait. Orange : à faire ces jours-ci. Rouge : en retard sur l'échéance (convocation à J-5, cinq à J-1, résultat le soir même, article à J+2). Un clic sur un nœud descend à la carte.","<b>La convocation se fait ici</b>, et nulle part ailleurs : fixez le rendez-vous, cochez les joueuses, le message s'écrit tout seul. « Convoquée » puis « Confirmée » quand elle répond ; WhatsApp par joueuse si son numéro est dans sa fiche.","<b>Le cinq de départ</b> se compose dans la fiche du match, avec les visages ; ici on voit seulement s'il est complet. Le site ne publie la composition qu'à cinq titulaires.","<b>L'article naît lié au match</b> : « Écrire le récap » crée un brouillon déjà titré, et les photos ajoutées depuis « Ajouter des photos » se rangent avec ce match."],
     gameday: ["<b>L'écran du jour de match</b>, pensé pour la personne au guichet et à la table de marque.","<b>Les touches +1 / +2 / +3 ne sont que du côté de l’adversaire, et c’est voulu.</b> Ses points n’ont personne à qui être attribués : trois touches suffisent. <b>Les nôtres vont dans la feuille de match d’une joueuse</b> — on les saisit dans la table de marque, en dessous : la joueuse, puis le geste. C’est de là que sortent les statistiques de la saison.","<b>Le score vous suit.</b> Dès que le grand tableau sort de l’écran, une barre se colle sous le bandeau du haut : score, période, points de l’adversaire et annulation. Plus besoin de remonter entre deux paniers.","<b>Coup de sifflet final</b> publie le score sur le site, qui l’affiche alors comme définitif. Avant ça, le direct suit déjà chaque panier.","Le guichet retrouve une réservation par référence, nom ou téléphone ; <b>Retirer</b> pointe le billet à l'entrée.","Les jauges de droite montrent les places restantes par catégorie, mises à jour à chaque retrait."],
@@ -8946,6 +8972,8 @@
     // designer. C'est un etat normal : entre deux matchs, hors saison,
     // ou sur un club qui commence. #gd-empty, lui, est toujours la quand
     // la console ne l'est pas.
+    entrainements: [['#tr-seances', '#tr-tete'], ['#tr-seances .ec-liste', '#tr-seances'], ['#tr-tete .ds-fig:nth-child(2)', '#tr-tete'],
+                    ['#tr-tete .ds-fig:last-child', '#tr-tete'], ['#tr-seances .ec-liste', '#tr-seances']],
     caisse:     [['#cs-recettes', '#cs-tete'], ['#cs-recettes', '#cs-tete'], ['#cs-tete .ds-fig:last-child', '#cs-tete'],
                  ['#cs-budget', '#cs-tete'], ['#cs-recettes .ds-quick', '#cs-recettes']],
     parcours:   [['#pc-rail', '#pc-vide'], ['#pc-rail', '#pc-vide'], ['#pc-etape-convocation', '#pc-vide'],
@@ -9313,7 +9341,7 @@
   // retirés de la navigation. Leur balisage reste masqué dans la page le
   // temps du démêlage du code (loadTeams alimente encore l'ancien
   // formulaire), mais aucun chemin de l'admin n'y mène plus.
-  var ALL_SECTIONS = ['dashboard','caisse','parcours','ecole','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
+  var ALL_SECTIONS = ['dashboard','caisse','entrainements','parcours','ecole','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
 
@@ -9425,7 +9453,7 @@
   var REFRESH_APRES_MS = 20000;
   function sectionRefreshers(){
     return {
-      dashboard: function(){ loadDashboard(); attInit(); }, caisse: csLoad, parcours: pcLoad, gameday: gdLoad, teams: loadTeams,
+      dashboard: function(){ loadDashboard(); attInit(); }, caisse: csLoad, entrainements: trLoad, parcours: pcLoad, gameday: gdLoad, teams: loadTeams,
       tickets: tkLoadOffers, promos: pmLoad, newsl: nwLoad,
       banners: bnLoad, announce: anLoad, squad: efLoad,
       products: prLoad, articles: arLoad, categories: ctLoad,
@@ -9596,6 +9624,7 @@
   var CTX_LINKS = {
     dashboard: [['Le match','parcours'],['Matchs','matches2'],['Soir de match','gameday']],
     caisse:    [['L\'école','ecole'],['Commandes','orders2'],['Billetterie','tickets']],
+    entrainements: [['Joueuses','squad'],['Le match','parcours'],['Calendrier','calendar']],
     parcours:  [['Fiche du match','matches2'],['Soir de match','gameday'],['Classement','standings']],
     gameday:   [['Le match','parcours'],['Billetterie','tickets'],['Matchs','matches2']],
     teams:     [['Matchs','matches2'],['Calendrier','calendar'],['Classement','standings']],
@@ -9901,6 +9930,8 @@
     }
     pushAct('L\'école ce mois-ci', 'Séances et appel, cotisations, familles à prévenir',
       function(){ showSection('ecole'); }, 'ecole basket seance appel presence cotisation mensualite parents familles', ICO.plus);
+    pushAct('Faire l\'appel de l\'entraînement', 'Les séances de l\'équipe et les présences',
+      function(){ showSection('entrainements'); }, 'entrainement entrainements appel presence seance planning', ICO.match);
     pushAct('Ouvrir la caisse', 'Recettes, dépenses, budget de la saison',
       function(){ showSection('caisse'); }, 'caisse argent recettes depenses budget tresorerie avance', ICO.billet);
     pushAct('Préparer le prochain match', 'Le parcours de J-7 à J+1 : convocation, cinq, affiche, résultat',
@@ -11645,6 +11676,282 @@
     qgToast((lignes.length - 1) + ' ligne' + (lignes.length > 2 ? 's' : '') + ' exportée' + (lignes.length > 2 ? 's' : '') + ' ✓');
   }
 
+  // =================================================================
+  // LA JOUEUSE : ses pieces, ses entrainements
+  // =================================================================
+  // Une joueuse existait par sa fiche et ses matchs. Ni licence, ni
+  // certificat medical, ni entrainement : le coach savait de tete qui
+  // etait a jour et qui venait. Deux blocs de plus sur la fiche (pieces
+  // avec echeance, presences aux entrainements) et un ecran
+  // « Entrainements » construit comme les seances de l'ecole : planning
+  // de la semaine, seances du mois, appel au bord du terrain.
+  var EF_PIECES = [
+    ['licence',      'Licence',              'Numero et fin de saison.'],
+    ['medical',      'Certificat médical',   'Un an. Sans lui, elle ne joue pas.'],
+    ['identite',     'Pièce d\'identité',    'Carte ou passeport.'],
+    ['autorisation', 'Autorisation parentale', 'Pour une mineure.'],
+    ['photo',        'Photo d\'identité',    'Pour la licence.'],
+    ['autre',        'Autre pièce',          '']
+  ];
+  var efDocs = {}, efPres = {}, efDocForm = null;
+
+  function efPieceLib(k){ var p = EF_PIECES.filter(function(x){ return x[0] === k; })[0]; return p ? p[1] : k; }
+  // L'echeance qu'on propose : la fin de la saison pour une licence ou une
+  // autorisation, un an pour un certificat medical.
+  function efEcheanceParDefaut(kind, recu){
+    var d = recu ? new Date(recu + 'T00:00:00') : new Date();
+    if (kind === 'medical'){ d.setFullYear(d.getFullYear() + 1); return d.toISOString().slice(0, 10); }
+    if (kind === 'licence' || kind === 'autorisation'){ var an = d.getMonth() >= 6 ? d.getFullYear() + 1 : d.getFullYear(); return an + '-06-30'; }
+    return '';
+  }
+  function efEtatPiece(d){
+    if (!d) return { cls:'manque', lib:'manquante' };
+    if (!d.expires_on) return { cls:'ok', lib:'à jour' };
+    var j = daysUntil(d.expires_on);
+    if (j < 0) return { cls:'expire', lib:'expirée le ' + ecDateFr(d.expires_on) };
+    if (j <= 30) return { cls:'bientot', lib:'expire dans ' + j + ' jour' + (j > 1 ? 's' : '') };
+    return { cls:'ok', lib:'jusqu\'au ' + ecDateFr(d.expires_on) + ' ' + String(d.expires_on).slice(0, 4) };
+  }
+  function efChargerPieces(pid){
+    var box = document.getElementById('ef-pieces'); if (!box) return;
+    box.innerHTML = '<p class="ar-side-h">Les pièces du dossier</p><div class="empty">Lecture…</div>';
+    Promise.all([
+      sbGet('players_documents?select=*&player_id=eq.' + pid + '&order=created_at.desc').catch(function(){ return []; }),
+      sbGet('team_attendance?select=statut,updated_at,team_sessions(session_date,start_time,cancelled)&player_id=eq.' + pid + '&order=updated_at.desc&limit=40').catch(function(){ return []; })
+    ]).then(function(r){
+      if (String(efSel) !== String(pid)) return;
+      efDocs[pid] = r[0] || []; efPres[pid] = (r[1] || []).filter(function(p){ return p.team_sessions && !p.team_sessions.cancelled; });
+      efRenderPieces(pid); efRenderPresences(pid);
+    });
+  }
+  function efRenderPieces(pid){
+    var box = document.getElementById('ef-pieces'); if (!box) return;
+    var docs = efDocs[pid] || [], derniers = {};
+    docs.forEach(function(d){ if (!derniers[d.kind] || (d.expires_on || d.received_on || '') > (derniers[d.kind].expires_on || derniers[d.kind].received_on || '')) derniers[d.kind] = d; });
+    var peut = typeof can === 'function' ? can('effectif', 'modifier') : true;
+    var lignes = EF_PIECES.filter(function(p){ return p[0] !== 'autre' || derniers.autre; }).map(function(p){
+      var d = derniers[p[0]], e = efEtatPiece(d);
+      return '<div class="ef-piece ' + e.cls + '"><i></i><div class="ef-piece-n"><b>' + esc(p[1]) + '</b><span>' + esc(e.lib) + (d && d.reference ? ' · n° ' + esc(d.reference) : '') + (d && d.received_on ? ' · reçue le ' + esc(ecDateFr(d.received_on)) : '') + '</span></div>' +
+        '<div class="ds-quick">' + (d && d.url ? '<a href="' + esc(d.url) + '" target="_blank" rel="noopener">Voir</a>' : '') +
+          (peut ? '<button type="button" data-ef-piece="ajouter" data-kind="' + p[0] + '">' + (d ? 'Renouveler' : 'Ajouter') + '</button>' : '') +
+          (peut && d ? '<button type="button" class="ds-danger" data-ef-piece="retirer" data-id="' + esc(d.id) + '" title="Retirer cette pièce">×</button>' : '') + '</div></div>';
+    }).join('');
+    var manquent = EF_PIECES.filter(function(p){ return (p[0] === 'licence' || p[0] === 'medical') && (!derniers[p[0]] || efEtatPiece(derniers[p[0]]).cls === 'expire'); }).map(function(p){ return p[1].toLowerCase(); });
+    box.innerHTML = '<p class="ar-side-h">Les pièces du dossier</p>' +
+      (manquent.length ? '<p class="pc-resume" style="margin-bottom:10px;color:var(--warn)">Sans ' + manquent.join(' ni ') + ' à jour, la joueuse ne devrait pas être alignée.</p>' : '') +
+      '<div class="ef-pieces">' + lignes + '</div>' +
+      (peut && !derniers.autre ? '<div class="ds-quick" style="margin-top:8px"><button type="button" data-ef-piece="ajouter" data-kind="autre">Autre pièce</button></div>' : '') +
+      (efDocForm && String(efDocForm.pid) === String(pid) ? efDocFormHtml(efDocForm.kind) : '');
+  }
+  function efDocFormHtml(kind){
+    var recu = todayISO();
+    return '<div class="ec-form" id="ef-doc-form" style="margin-top:12px">' +
+      '<div><label for="ef-d-kind">Pièce</label><select id="ef-d-kind">' + EF_PIECES.map(function(p){ return '<option value="' + p[0] + '"' + (p[0] === kind ? ' selected' : '') + '>' + esc(p[1]) + '</option>'; }).join('') + '</select></div>' +
+      '<div><label for="ef-d-ref">Numéro / référence</label><input id="ef-d-ref" type="text" placeholder="' + (kind === 'licence' ? 'n° de licence' : '') + '"></div>' +
+      '<div><label for="ef-d-recu">Reçue le</label><input id="ef-d-recu" type="date" value="' + recu + '"></div>' +
+      '<div><label for="ef-d-exp">Valable jusqu\'au</label><input id="ef-d-exp" type="date" value="' + esc(efEcheanceParDefaut(kind, recu)) + '"></div>' +
+      '<div><label for="ef-d-url">Fichier (adresse)</label><input id="ef-d-url" type="text" placeholder="/media/… ou lien vers le scan"></div>' +
+      '<div><label for="ef-d-note">Note</label><input id="ef-d-note" type="text" placeholder="(facultatif)"></div>' +
+      '<div class="ec-form-a"><div class="ds-quick"><button type="button" class="ds-accent" data-ef-piece="enregistrer">Enregistrer la pièce</button><button type="button" data-ef-piece="annuler">Annuler</button></div></div>' +
+    '</div>';
+  }
+  function efRenderPresences(pid){
+    var box = document.getElementById('ef-entrainements'); if (!box) return;
+    var pres = (efPres[pid] || []).slice().sort(function(a, b){ return (a.team_sessions.session_date < b.team_sessions.session_date) ? 1 : -1; });
+    if (!pres.length){ box.innerHTML = '<p class="ar-side-h">Aux entraînements</p><p class="pc-resume">Aucun appel enregistré pour elle. L\'appel se fait dans <b>Entraînements</b>, séance par séance.</p><div class="ds-quick" style="margin-top:8px"><button type="button" data-ef-piece="entrainements">Ouvrir les entraînements</button></div>'; return; }
+    var venues = pres.filter(function(p){ return p.statut === 'present' || p.statut === 'retard'; }).length;
+    var taux = Math.round(venues / pres.length * 100);
+    var derniers = pres.slice(0, 12).reverse();
+    var suite = 0; for (var i = 0; i < pres.length; i++){ if (pres[i].statut === 'absent') suite++; else break; }
+    box.innerHTML = '<p class="ar-side-h">Aux entraînements</p>' +
+      '<div class="ef-meta-row"><span><b>' + taux + '%</b> de présence</span><span><b>' + venues + '</b> sur ' + pres.length + ' séance' + (pres.length > 1 ? 's' : '') + ' pointée' + (pres.length > 1 ? 's' : '') + '</span>' +
+        (suite >= 3 ? '<span style="color:var(--warn)"><b>' + suite + '</b> absences de suite</span>' : '') + '</div>' +
+      '<div class="ef-presences">' + derniers.map(function(p){ var s = p.team_sessions; return '<span class="' + p.statut + '" title="' + esc(ecDateFr(s.session_date) + (s.start_time ? ' ' + s.start_time : '') + ' : ' + p.statut) + '"></span>'; }).join('') + '</div>' +
+      '<p class="ef-curve-l">Les ' + derniers.length + ' dernières séances, de la plus ancienne à la plus récente : vert présente, orange retard, gris excusée, rouge absente</p>' +
+      '<div class="ds-quick" style="margin-top:8px"><button type="button" data-ef-piece="entrainements">Ouvrir les entraînements</button></div>';
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-ef-piece]'); if (!b) return;
+    var act = b.getAttribute('data-ef-piece'), pid = efSel; if (!pid) return;
+    if (act === 'entrainements'){ showSection('entrainements'); return; }
+    if (act === 'ajouter'){ efDocForm = { pid: pid, kind: b.getAttribute('data-kind') || 'licence' }; efRenderPieces(pid); var f = document.getElementById('ef-doc-form'); if (f) f.scrollIntoView({ behavior:'smooth', block:'center' }); return; }
+    if (act === 'annuler'){ efDocForm = null; efRenderPieces(pid); return; }
+    if (act === 'retirer'){
+      if (!confirm('Retirer cette pièce du dossier ?')) return;
+      sbDelete('players_documents', b.getAttribute('data-id'), 'Joueuses').then(function(){ qgToast('Pièce retirée ✓'); efChargerPieces(pid); }).catch(function(){ qgToast('Le retrait a échoué.', true); });
+      return;
+    }
+    if (act === 'enregistrer'){
+      var v = function(id){ var el = document.getElementById(id); return el ? String(el.value).trim() : ''; };
+      var corps = { player_id: pid, kind: v('ef-d-kind'), reference: v('ef-d-ref') || null, received_on: v('ef-d-recu') || null, expires_on: v('ef-d-exp') || null, url: v('ef-d-url') || null, note: v('ef-d-note') || null,
+        author: (currentSession && currentSession.user && currentSession.user.email) || null };
+      b.disabled = true;
+      sbInsert('players_documents', corps, 'Joueuses').then(function(){ qgToast(efPieceLib(corps.kind) + ' enregistrée ✓'); efDocForm = null; dirtyClear(); efChargerPieces(pid); })
+        .catch(function(){ b.disabled = false; qgToast('L\'enregistrement a échoué.', true); });
+      return;
+    }
+  });
+  // Le type change : l'echeance proposee suit.
+  document.addEventListener('change', function(e){
+    if (!e.target || e.target.id !== 'ef-d-kind' && e.target.id !== 'ef-d-recu') return;
+    var k = document.getElementById('ef-d-kind'), r = document.getElementById('ef-d-recu'), x = document.getElementById('ef-d-exp');
+    if (k && r && x) x.value = efEcheanceParDefaut(k.value, r.value);
+  });
+
+  // ---------- L'ecran Entrainements ----------
+  var trSessions = [], trPres = [], trPlanning = [], trJoueuses = [], trMois = inPeriodeCourante(), trStarted = false, trOuvert = null, trPanneau = null, trChargement = 0;
+  function trInit(){
+    if (trStarted){ trLoad(); return; }
+    trStarted = true;
+    document.getElementById('section-entrainements').addEventListener('click', trClic);
+    trLoad();
+  }
+  function trBornes(){ var m = /^(\d{4})-(\d{2})$/.exec(trMois), a = +m[1], mo = +m[2], fin = new Date(a, mo, 0).getDate(); return { debut: trMois + '-01', fin: trMois + '-' + ('0' + fin).slice(-2), annee: a, mois: mo, nbJours: fin }; }
+  function trSaison(){ var b = trBornes(), d = b.mois >= 9 ? b.annee : b.annee - 1, out = []; for (var i = 9; i <= 12; i++) out.push(d + '-' + ('0' + i).slice(-2)); for (var j = 1; j <= 6; j++) out.push((d + 1) + '-' + ('0' + j).slice(-2)); return out; }
+  function trLoad(){
+    var jeton = ++trChargement, b = trBornes();
+    function q(u){ return sbGet(u).catch(function(){ return []; }); }
+    var avant = new Date(b.annee, b.mois - 1, 1); avant.setDate(avant.getDate() - 45);
+    var avantIso = avant.getFullYear() + '-' + ('0' + (avant.getMonth() + 1)).slice(-2) + '-' + ('0' + avant.getDate()).slice(-2);
+    return Promise.all([
+      q('team_sessions?select=*&session_date=gte.' + avantIso + '&session_date=lte.' + b.fin + '&order=session_date.asc,start_time.asc'),
+      q('team_schedule?select=*&order=weekday.asc,start_time.asc'),
+      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note&order=sort.asc,jersey_number.asc&limit=100')
+    ]).then(function(r){
+      if (jeton !== trChargement) return;
+      trSessions = r[0] || []; trPlanning = r[1] || []; trJoueuses = (r[2] || []).filter(function(p){ return (p.status || 'active') !== 'partie'; });
+      var ids = trSessions.map(function(s){ return s.id; });
+      if (!ids.length){ trPres = []; trRender(); return; }
+      return q('team_attendance?select=*&session_id=in.(' + ids.join(',') + ')').then(function(pr){ if (jeton !== trChargement) return; trPres = pr || []; trRender(); });
+    }).catch(function(){ showMsg(document.getElementById('tr-msg'), 'Impossible de lire les entraînements.', false); });
+  }
+  function trResume(s){ var pr = trPres.filter(function(p){ return p.session_id === s.id; }); if (!pr.length) return null; var n = { present:0, retard:0, excuse:0, absent:0 }; pr.forEach(function(p){ n[p.statut] = (n[p.statut] || 0) + 1; }); return n; }
+  function trRender(){
+    var b = trBornes(), auj = todayISO(), auj7 = inPeriodeCourante();
+    var frise = trSaison().map(function(m){
+      var ss = trSessions.filter(function(s){ return String(s.session_date).slice(0, 7) === m && !s.cancelled; });
+      var faites = ss.filter(function(s){ return trPres.some(function(p){ return p.session_id === s.id; }); });
+      var etat = m > auj7 ? 'futur' : (!ss.length ? 'vide' : (faites.length === ss.length ? 'ok' : (faites.length ? 'partiel' : 'rien')));
+      return '<button type="button" class="ec-mois ' + etat + (m === trMois ? ' on' : '') + '" data-tr="mois" data-mois="' + m + '"><span>' + IN_MOIS_COURT[parseInt(m.slice(5), 10) - 1] + '</span><i></i></button>';
+    }).join('');
+    var liste = trSessions.filter(function(s){ return s.session_date >= b.debut && s.session_date <= b.fin; });
+    var faites = liste.filter(function(s){ return !s.cancelled && trPres.some(function(p){ return p.session_id === s.id; }); });
+    var tot = 0, ven = 0; faites.forEach(function(s){ trPres.filter(function(p){ return p.session_id === s.id; }).forEach(function(p){ tot++; if (p.statut === 'present' || p.statut === 'retard') ven++; }); });
+    var actives = trJoueuses.filter(function(p){ return (p.status || 'active') === 'active'; });
+    var faibles = actives.filter(function(p){ var mine = faites.map(function(s){ return trPres.filter(function(x){ return x.session_id === s.id && x.player_id === p.id; })[0]; }).filter(Boolean); if (mine.length < 3) return false; var v = mine.filter(function(x){ return x.statut === 'present' || x.statut === 'retard'; }).length; return v / mine.length < 0.5; });
+    document.getElementById('tr-tete').innerHTML = '<div class="ec-frise">' + frise + '</div>' +
+      '<div class="ds-band"><div class="ds-fig"><i>' + esc(inPeriodeLabel(trMois)) + '</i><b>' + faites.length + '<small style="margin-left:3px">/ ' + liste.filter(function(s){ return !s.cancelled; }).length + ' séances</small></b></div>' +
+        '<div class="ds-fig"><i>Présence</i><b>' + (tot ? Math.round(ven / tot * 100) + '<small>%</small>' : '<small>pas d\'appel</small>') + '</b></div>' +
+        '<div class="ds-fig"><i>Joueuses actives</i><b>' + actives.length + '</b></div>' +
+        '<div class="ds-fig' + (faibles.length ? ' sig' : '') + '"><i>Sous 50 % de présence</i><b>' + faibles.length + '</b></div></div>';
+    var h = liste.length ? liste.map(function(s){
+      var d = new Date(s.session_date + 'T00:00:00'), n = trResume(s), etat, cls;
+      if (s.cancelled){ etat = 'Annulée' + (s.cancel_reason ? ' : ' + esc(s.cancel_reason) : ''); cls = 'annulee'; }
+      else if (n){ etat = '<b>' + (n.present + n.retard) + '</b> présente' + (n.present + n.retard > 1 ? 's' : '') + ' sur ' + actives.length + (n.absent ? ' · ' + n.absent + ' absente' + (n.absent > 1 ? 's' : '') : '') + (n.excuse ? ' · ' + n.excuse + ' excusée' + (n.excuse > 1 ? 's' : '') : ''); cls = 'faite'; }
+      else if (s.session_date < auj){ etat = 'Appel à faire'; cls = 'retard'; }
+      else if (s.session_date === auj){ etat = 'Aujourd\'hui'; cls = 'jour'; }
+      else { etat = 'Prévue'; cls = 'prevue'; }
+      return '<div class="ec-seance ' + cls + (trOuvert === s.id ? ' ouverte' : '') + '" id="tr-seance-' + esc(s.id) + '">' +
+        '<div class="ec-date"><i>' + EC_JOURS_COURT[(d.getDay() + 6) % 7] + '</i><b>' + d.getDate() + '</b></div>' +
+        '<div class="ec-seance-c"><div class="ec-seance-t">' + (s.start_time ? esc(s.start_time) + (s.end_time ? ' à ' + esc(s.end_time) : '') : 'heure à fixer') + '</div>' +
+          '<div class="ec-seance-s">' + esc([s.venue, s.coach].filter(Boolean).join(' · ')) + (s.note ? ' · ' + esc(s.note) : '') + '</div><div class="ec-seance-e">' + etat + '</div></div>' +
+        '<div class="ds-quick ec-seance-a">' + (s.cancelled ? '<button type="button" data-tr="retablir" data-id="' + esc(s.id) + '">Rétablir</button>'
+          : '<button type="button" data-tr="appel" data-id="' + esc(s.id) + '">' + (n ? 'Modifier l\'appel' : 'Faire l\'appel') + '</button><button type="button" data-tr="annuler" data-id="' + esc(s.id) + '">Annuler</button>') +
+          '<button type="button" class="ds-danger" data-tr="supprimer" data-id="' + esc(s.id) + '">×</button></div>' +
+        (trOuvert === s.id && !s.cancelled ? trAppelHtml(s) : '') + '</div>';
+    }).join('') : '<div class="pc-vide" style="padding:28px 16px"><b>Aucun entraînement en ' + esc(inPeriodeLabel(trMois)) + '.</b>' + (trPlanning.length ? 'Créez les séances du mois depuis le planning.' : 'Posez le planning de la semaine, puis créez les séances du mois d\'un clic.') + '</div>';
+    document.getElementById('tr-seances').innerHTML =
+      '<div class="ds-quick"><button type="button" data-tr="panneau" data-p="ajout">Ajouter une séance</button><button type="button" data-tr="panneau" data-p="planning">Planning de la semaine' + (trPlanning.length ? ' <small>(' + trPlanning.length + ')</small>' : '') + '</button>' +
+        (trPlanning.length ? '<button type="button" data-tr="generer">Créer les séances de ' + esc(IN_MOIS[b.mois - 1]) + '</button>' : '') + '</div>' +
+      (trPanneau === 'ajout' ? trAjoutHtml() : '') + (trPanneau === 'planning' ? trPlanningHtml() : '') + '<div class="ec-liste">' + h + '</div>';
+  }
+  function trAppelHtml(s){
+    var pr = {}; trPres.filter(function(p){ return p.session_id === s.id; }).forEach(function(p){ pr[p.player_id] = p; });
+    return '<div class="ec-appel"><div class="ds-quick" style="margin:0 0 10px"><button type="button" data-tr="toutes-presentes" data-id="' + esc(s.id) + '">Toutes présentes</button><button type="button" data-tr="fermer-appel">Fermer</button></div>' +
+      '<div class="pc-eff">' + trJoueuses.map(function(p){
+        var st = pr[p.id] ? pr[p.id].statut : null;
+        return '<div class="pc-jr' + (st ? '' : ' off') + '">' + (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '<span class="pc-ini">' + esc(initials(p.name)) + '</span>') +
+          '<div class="pc-jr-n"><b>' + (p.jersey_number != null ? '#' + p.jersey_number + ' ' : '') + esc(p.name) + '</b><span>' + esc(p.position || '') + (p.status === 'blessee' ? ' <span class="bl">blessée</span>' : '') + (p.injury_note ? ' <span class="bl">' + esc(p.injury_note) + '</span>' : '') + '</span></div>' +
+          '<div class="pc-seg">' + EC_PRES.map(function(k){ return '<button type="button" class="' + (st === k[0] ? 'on ' + k[2] : '') + '" data-tr="presence" data-id="' + esc(s.id) + '" data-pid="' + esc(p.id) + '" data-statut="' + k[0] + '">' + k[1].replace(/é$/, 'ée') + '</button>'; }).join('') + '</div></div>';
+      }).join('') + '</div></div>';
+  }
+  function trAjoutHtml(){
+    var b = trBornes(), auj = todayISO(), def = (auj >= b.debut && auj <= b.fin) ? auj : b.debut;
+    return '<div class="ec-form"><div><label for="tr-aj-date">Date</label><input id="tr-aj-date" type="date" value="' + def + '"></div>' +
+      '<div><label for="tr-aj-deb">Début</label><input id="tr-aj-deb" type="text" placeholder="19:00"></div><div><label for="tr-aj-fin">Fin</label><input id="tr-aj-fin" type="text" placeholder="21:00"></div>' +
+      '<div><label for="tr-aj-lieu">Lieu</label><input id="tr-aj-lieu" type="text" placeholder="' + esc((trPlanning[0] || {}).venue || 'Salle') + '"></div><div><label for="tr-aj-coach">Coach</label><input id="tr-aj-coach" type="text" placeholder="' + esc((trPlanning[0] || {}).coach || '') + '"></div>' +
+      '<div class="ec-form-a"><div class="ds-quick"><button type="button" class="ds-accent" data-tr="ajouter-seance">Ajouter</button><button type="button" data-tr="panneau" data-p="">Fermer</button></div></div></div>';
+  }
+  function trPlanningHtml(){
+    var lignes = trPlanning.map(function(p){ return '<div class="ec-plan' + (p.active === false ? ' off' : '') + '"><b>' + esc(EC_JOURS[(p.weekday || 1) - 1]) + '</b><span>' + esc(p.start_time || '') + (p.end_time ? ' à ' + esc(p.end_time) : '') + '</span><span class="ds-tag">équipe</span><span>' + esc([p.venue, p.coach].filter(Boolean).join(' · ')) + '</span>' +
+      '<div class="ds-quick"><button type="button" data-tr="plan-actif" data-id="' + esc(p.id) + '">' + (p.active === false ? 'Réactiver' : 'Suspendre') + '</button><button type="button" class="ds-danger" data-tr="plan-supprimer" data-id="' + esc(p.id) + '">×</button></div></div>'; }).join('');
+    return '<div class="ec-planning">' + (lignes || '<div class="empty" style="margin-bottom:10px">Aucun créneau.</div>') +
+      '<div class="ec-form" style="margin-top:12px"><div><label for="tr-pl-jour">Jour</label><select id="tr-pl-jour">' + EC_JOURS.map(function(j, i){ return '<option value="' + (i + 1) + '">' + esc(j) + '</option>'; }).join('') + '</select></div>' +
+      '<div><label for="tr-pl-deb">Début</label><input id="tr-pl-deb" type="text" placeholder="19:00"></div><div><label for="tr-pl-fin">Fin</label><input id="tr-pl-fin" type="text" placeholder="21:00"></div>' +
+      '<div><label for="tr-pl-lieu">Lieu</label><input id="tr-pl-lieu" type="text" placeholder="Salle"></div><div><label for="tr-pl-coach">Coach</label><input id="tr-pl-coach" type="text"></div>' +
+      '<div class="ec-form-a"><div class="ds-quick"><button type="button" class="ds-accent" data-tr="plan-ajouter">Ajouter le créneau</button><button type="button" data-tr="panneau" data-p="">Fermer</button></div></div></div></div>';
+  }
+  function trClic(e){
+    var b = e.target.closest('[data-tr]'); if (!b) return;
+    var act = b.getAttribute('data-tr'), id = b.getAttribute('data-id');
+    if (act === 'mois'){ trMois = b.getAttribute('data-mois'); trOuvert = null; trPanneau = null; trLoad(); return; }
+    if (act === 'panneau'){ trPanneau = trPanneau === b.getAttribute('data-p') ? null : (b.getAttribute('data-p') || null); trRender(); return; }
+    if (act === 'appel'){ trOuvert = trOuvert === id ? null : id; trRender(); var el = document.getElementById('tr-seance-' + id); if (el && trOuvert) el.scrollIntoView({ behavior:'smooth', block:'start' }); return; }
+    if (act === 'fermer-appel'){ trOuvert = null; trRender(); return; }
+    if (act === 'presence'){
+      var pid = b.getAttribute('data-pid'), statut = b.getAttribute('data-statut');
+      var row = trPres.filter(function(p){ return p.session_id === id && String(p.player_id) === String(pid); })[0];
+      var p = row ? (row.statut === statut ? Promise.resolve() : sbUpdate('team_attendance', row.id, { statut: statut, updated_at: new Date().toISOString() }, 'Entraînements')) : sbInsert('team_attendance', { session_id: id, player_id: pid, statut: statut }, 'Entraînements');
+      p.then(trRechargerPres).catch(function(){ qgToast('La présence n\'a pas été enregistrée.', true); });
+      return;
+    }
+    if (act === 'toutes-presentes'){
+      var deja = {}; trPres.filter(function(p){ return p.session_id === id; }).forEach(function(p){ deja[p.player_id] = true; });
+      var corps = trJoueuses.filter(function(p){ return (p.status || 'active') === 'active' && !deja[p.id]; }).map(function(p){ return { session_id: id, player_id: p.id, statut: 'present' }; });
+      if (!corps.length){ qgToast('Tout le monde est déjà pointé.'); return; }
+      sbInsert('team_attendance', corps, 'Entraînements').then(function(){ qgToast(corps.length + ' présente' + (corps.length > 1 ? 's' : '') + ' ✓'); return trRechargerPres(); }).catch(function(){ qgToast('L\'appel n\'a pas été enregistré.', true); });
+      return;
+    }
+    if (act === 'annuler'){
+      var s = trSessions.filter(function(x){ return String(x.id) === String(id); })[0]; if (!s) return;
+      var motif = prompt('Annuler l\'entraînement du ' + ecDateFr(s.session_date, true) + ' ?\n\nMotif (facultatif) :', ''); if (motif === null) return;
+      sbUpdate('team_sessions', id, { cancelled: true, cancel_reason: motif.trim() || null }, 'Entraînements').then(function(){ qgToast('Séance annulée.'); return trLoad(); }).catch(function(){ qgToast('L\'annulation a échoué.', true); });
+      return;
+    }
+    if (act === 'retablir'){ sbUpdate('team_sessions', id, { cancelled: false, cancel_reason: null }, 'Entraînements').then(trLoad).catch(function(){ qgToast('Impossible de rétablir.', true); }); return; }
+    if (act === 'supprimer'){ if (!confirm('Supprimer cette séance et son appel ?')) return; sbDelete('team_sessions', id, 'Entraînements').then(function(){ qgToast('Séance supprimée ✓'); return trLoad(); }).catch(function(){ qgToast('La suppression a échoué.', true); }); return; }
+    if (act === 'ajouter-seance'){
+      var date = document.getElementById('tr-aj-date').value, deb = ecHeure(document.getElementById('tr-aj-deb').value), fin = ecHeure(document.getElementById('tr-aj-fin').value);
+      if (!date){ qgToast('Choisissez une date.', true); return; }
+      sbInsert('team_sessions', { session_date: date, start_time: deb, end_time: fin, venue: document.getElementById('tr-aj-lieu').value.trim() || null, coach: document.getElementById('tr-aj-coach').value.trim() || null }, 'Entraînements')
+        .then(function(){ qgToast('Séance ajoutée ✓'); trPanneau = null; dirtyClear(); return trLoad(); }).catch(function(e){ qgToast(String(e && e.message || '').indexOf('duplicate') >= 0 ? 'Cette séance existe déjà.' : 'L\'ajout a échoué.', true); });
+      return;
+    }
+    if (act === 'plan-ajouter'){
+      var pdeb = ecHeure(document.getElementById('tr-pl-deb').value); if (!pdeb){ qgToast('Heure de début illisible : écrivez 19:00 ou 19h.', true); return; }
+      sbInsert('team_schedule', { weekday: parseInt(document.getElementById('tr-pl-jour').value, 10), start_time: pdeb, end_time: ecHeure(document.getElementById('tr-pl-fin').value), venue: document.getElementById('tr-pl-lieu').value.trim() || null, coach: document.getElementById('tr-pl-coach').value.trim() || null }, 'Entraînements')
+        .then(function(){ qgToast('Créneau ajouté ✓'); dirtyClear(); return trLoad(); }).catch(function(){ qgToast('L\'ajout a échoué.', true); });
+      return;
+    }
+    if (act === 'plan-actif'){ var pl = trPlanning.filter(function(x){ return String(x.id) === String(id); })[0]; if (!pl) return; sbUpdate('team_schedule', id, { active: pl.active === false }, 'Entraînements').then(trLoad); return; }
+    if (act === 'plan-supprimer'){ if (!confirm('Retirer ce créneau ? Les séances déjà créées restent.')) return; sbDelete('team_schedule', id, 'Entraînements').then(trLoad); return; }
+    if (act === 'generer'){
+      var bb = trBornes(), actifs = trPlanning.filter(function(p){ return p.active !== false; }), existe = {}, corps2 = [];
+      trSessions.forEach(function(s){ existe[s.session_date + '|' + (s.start_time || '')] = true; });
+      for (var j = 1; j <= bb.nbJours; j++){ var d = new Date(bb.annee, bb.mois - 1, j), wd = (d.getDay() + 6) % 7 + 1, iso = trMois + '-' + ('0' + j).slice(-2);
+        actifs.forEach(function(p){ if (p.weekday !== wd) return; var cle = iso + '|' + (p.start_time || ''); if (existe[cle]) return; existe[cle] = true; corps2.push({ session_date: iso, start_time: p.start_time, end_time: p.end_time || null, venue: p.venue || null, coach: p.coach || null }); }); }
+      if (!corps2.length){ qgToast('Toutes les séances de ' + IN_MOIS[bb.mois - 1] + ' existent déjà.'); return; }
+      if (!confirm('Créer ' + corps2.length + ' séance' + (corps2.length > 1 ? 's' : '') + ' en ' + IN_MOIS[bb.mois - 1] + ' depuis le planning ?')) return;
+      sbInsert('team_sessions', corps2, 'Entraînements').then(function(){ qgToast(corps2.length + ' séance' + (corps2.length > 1 ? 's' : '') + ' créée' + (corps2.length > 1 ? 's' : '') + ' ✓'); return trLoad(); }).catch(function(){ qgToast('La création a échoué.', true); });
+      return;
+    }
+  }
+  function trRechargerPres(){
+    var ids = trSessions.map(function(s){ return s.id; }); if (!ids.length) return Promise.resolve();
+    var jeton = trChargement;
+    return sbGet('team_attendance?select=*&session_id=in.(' + ids.join(',') + ')').then(function(pr){ if (jeton !== trChargement) return; trPres = pr || []; trRender(); });
+  }
+
   // ===================== NEWSLETTER =====================
   // LA NEWSLETTER PRE-REMPLIE. Un article publie, un evenement mis sur le
   // site : « Envoyer aux abonnes » ouvre l'ecran Newsletter avec le sujet et
@@ -12396,6 +12703,31 @@
     travaux.push(sbGet('contact_messages?select=created_at,is_read&is_read=is.false').then(function(rows){
       var n = (rows||[]).filter(function(m){ var h = hoursSince(m.created_at); return h !== null && h > 48; }).length;
       if (n) ajout('attention', n + ' message' + (n>1?'s':'') + ' de contact sans réponse', 'Reçu' + (n>1?'s':'') + ' il y a plus de deux jours.', 'forms', 'contenu');
+    }).catch(function(){}));
+
+    // --- L'equipe : licence ou certificat manquant, expire, ou bientot ---
+    travaux.push(Promise.all([
+      sbGet('players?select=id,name,status'), sbGet('players_documents?select=player_id,kind,expires_on&kind=in.(licence,medical)')
+    ]).then(function(r){
+      var actives = (r[0]||[]).filter(function(p){ return (p.status||'active') === 'active'; }); if (!actives.length) return;
+      var meilleur = {}; (r[1]||[]).forEach(function(d){ var k = d.player_id + '|' + d.kind; if (!meilleur[k] || (d.expires_on||'') > (meilleur[k].expires_on||'')) meilleur[k] = d; });
+      var sans = [], expire = [], bientot = [];
+      actives.forEach(function(p){ ['licence','medical'].forEach(function(k){ var d = meilleur[p.id + '|' + k]; var lib = k === 'licence' ? 'licence' : 'certificat médical';
+        if (!d) sans.push(p.name + ' (' + lib + ')'); else if (d.expires_on){ var j = jours(d.expires_on); if (j !== null && j < 0) expire.push(p.name + ' (' + lib + ')'); else if (j !== null && j <= 30) bientot.push(p.name + ' (' + lib + ', ' + j + ' j)'); } }); });
+      if (expire.length) ajout('important', expire.length + ' pièce' + (expire.length>1?'s':'') + ' de joueuse expirée' + (expire.length>1?'s':''), expire.slice(0,4).join(', ') + (expire.length>4?'…':'') + '. À renouveler avant le prochain match.', 'squad', 'effectif');
+      if (bientot.length) ajout('attention', bientot.length + ' pièce' + (bientot.length>1?'s':'') + ' de joueuse expire' + (bientot.length>1?'nt':'') + ' dans le mois', bientot.slice(0,4).join(', ') + (bientot.length>4?'…':''), 'squad', 'effectif');
+      if (sans.length) ajout('info', sans.length + ' pièce' + (sans.length>1?'s':'') + ' de joueuse jamais enregistrée' + (sans.length>1?'s':''), sans.slice(0,4).join(', ') + (sans.length>4?'…':'') + '. La fiche de chaque joueuse a un bloc Pièces.', 'squad', 'effectif');
+    }).catch(function(){}));
+
+    // --- L'equipe : l'appel d'un entrainement passe n'est pas fait ---
+    travaux.push(sbGet('team_sessions?select=id,session_date&cancelled=eq.false&session_date=lt.' + todayISO() + '&order=session_date.desc&limit=6').then(function(rows){
+      rows = (rows||[]).filter(function(s){ var h = hoursSince(s.session_date + 'T23:59:00'); return h !== null && h < 24 * 7; });
+      if (!rows.length) return;
+      return sbGet('team_attendance?select=session_id&session_id=in.(' + rows.map(function(s){ return s.id; }).join(',') + ')').then(function(pr){
+        var faits = {}; (pr||[]).forEach(function(p){ faits[p.session_id] = true; });
+        var sans = rows.filter(function(s){ return !faits[s.id]; });
+        if (sans.length) ajout('attention', 'L\'appel n\'est pas fait pour ' + sans.length + ' entraînement' + (sans.length>1?'s':''), sans.map(function(s){ return formatDateShort(s.session_date); }).join(', ') + '. Sans appel, la présence de chaque joueuse ne se lit pas sur sa fiche.', 'entrainements', 'effectif');
+      });
     }).catch(function(){}));
 
     // --- L'ecole : l'appel d'une seance passee n'est pas fait ---
@@ -16957,6 +17289,8 @@
           // Ce que disent les feuilles de match. Rempli après coup :
           // la fiche s'ouvre sans attendre la requête.
           '<div id="ef-real"></div>' +
+          '<div id="ef-pieces" style="margin-top:18px"></div>' +
+          '<div id="ef-entrainements" style="margin-top:18px"></div>' +
           '<p class="ar-side-h">Statistiques de la saison — saisie manuelle</p>' +
           '<p style="font-size:12.5px;color:var(--faint);margin:-6px 0 12px;max-width:62ch">Ces chiffres alimentent le site. Ils restent utiles pour une saison passée&nbsp;; dès qu\'un match est saisi à la table de marque, fiez-vous au bloc calculé ci-dessus.</p>' +
           '<div class="ef-statgrid" style="margin-bottom:22px">' +
@@ -17100,6 +17434,7 @@
     });
 
     efLoadReal(r.id);
+    efChargerPieces(r.id);
   }
 
   // Ce que les feuilles de match disent d'une joueuse. Aucun chiffre
@@ -25641,6 +25976,7 @@
   var LOADERS = {
     dashboard:function(){ loadDashboard(); attInit(); },
     caisse: csInit,
+    entrainements: trInit,
     parcours: pcInit,
     gameday:function(){ gdLoad(); },
     promos:function(){ pmLoad(); },
