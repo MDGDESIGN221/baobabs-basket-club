@@ -1423,6 +1423,41 @@
   .nw-hs-etat > div.ok::before{background:var(--lime)}
   .nw-hs-pas{margin:6px 0 10px;padding-left:22px;font-size:13px;line-height:1.6;color:var(--text)}
   .nw-hs-pas li{margin:4px 0}
+  /* Le tableau de bord : la bande de chiffres, l'activite, l'agenda, le mois. */
+  .tb-band{margin-bottom:var(--s5)}
+  .tb-fig{flex:1 1 150px;background:none;text-align:left;cursor:pointer;font:inherit;color:inherit;transition:background .15s;border-bottom:1px solid var(--line)}
+  .tb-fig:hover{background:var(--surface-2)}
+  .tb-fig b{font-size:26px}
+  .tb-fig small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  /* La joueuse de l'affiche etait cachee par le panneau Billetterie, qui
+     s'etirait jusqu'au bord droit. Le panneau garde une largeur de
+     lecture, et la place de la photo est reservee a droite. */
+  .db-tick{max-width:400px}
+  .tb-trois{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:var(--s5);align-items:start}
+  @media(max-width:1040px){.tb-trois{grid-template-columns:1fr}}
+  .tb-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);
+    padding:10px 4px;cursor:pointer;font:inherit;color:var(--text);transition:background .12s}
+  .tb-row:hover{background:var(--surface-2)}
+  .tb-row-t{flex:1;min-width:0}
+  .tb-row-t b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tb-row-t span{display:block;font-size:11.5px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tb-quand{flex:none;font-size:11px;color:var(--faint);white-space:nowrap}
+  .tb-ico{flex:none;width:8px;height:8px;border-radius:50%;background:var(--line-loud)}
+  .tb-ico-ecole{background:var(--lime)} .tb-ico-recrutement{background:var(--info)} .tb-ico-boutique{background:var(--gold)}
+  .tb-ico-billet{background:var(--gold-bright)} .tb-ico-message{background:var(--warn)} .tb-ico-newsletter{background:var(--line-loud)} .tb-ico-article{background:var(--ok)}
+  .tb-jour{flex:none;width:40px;text-align:center;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px 0 3px}
+  .tb-jour b{display:block;font-family:var(--font-ui);font-weight:800;font-size:16px;line-height:1;color:var(--text)}
+  .tb-jour i{display:block;font-style:normal;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:2px}
+  .tb-jour.today{border-color:var(--gold);background:var(--gold-soft)} .tb-jour.today b{color:var(--gold-lit)}
+  .tb-type{flex:none;font-size:9px}
+  .tb-type.match i{background:var(--gold)} .tb-type.entrainement i{background:var(--lime)} .tb-type.ecole i{background:var(--info)} .tb-type.evenement i{background:var(--warn)}
+  .tb-serie{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:10px 4px;cursor:pointer;font:inherit;color:var(--text)}
+  .tb-serie:hover{background:var(--surface-2)}
+  .tb-serie-t b{display:block;font-size:13px;font-weight:600}
+  .tb-serie-t span{display:block;font-size:11.5px;color:var(--faint);margin-top:2px}
+  .tb-barres{display:flex;align-items:flex-end;gap:4px;height:34px}
+  .tb-barres i{flex:1;background:var(--line-loud);border-radius:2px 2px 0 0;min-height:3px}
+  .tb-barres i.on{background:var(--gold)}
   /* La saison : les pastilles de pieces par joueuse, le bilan en chiffres. */
   .sn-pasts{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:flex-end}
   .sn-past{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);white-space:nowrap}
@@ -2690,6 +2725,11 @@
   .db-hero-in{position:relative;z-index:1;padding:clamp(22px,3vw,38px);
     display:grid;grid-template-columns:1fr auto;gap:clamp(20px,3vw,40px);align-items:start}
   @media(max-width:860px){.db-hero-in{grid-template-columns:1fr}}
+  /* La joueuse de l'affiche etait cachee par le panneau Billetterie, qui
+     s'etirait jusqu'au bord droit. Sa place est reservee a droite, et le
+     panneau garde une largeur de lecture. Regle posee APRES le raccourci
+     padding du bloc, sinon elle serait ecrasee. */
+  @media(min-width:1100px){.db-hero-in{padding-right:clamp(250px,23vw,360px)}}
 
   .db-kick{display:flex;align-items:center;gap:9px;font-family:var(--font-ui);font-weight:700;
     font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-bright)}
@@ -4308,6 +4348,7 @@
     <!-- ===== SECTION TABLEAU DE BORD ===== -->
     <section id="section-dashboard">
       <div class="db">
+        <div id="tb-kpi"></div>
         <div class="db-hero" id="db-hero">
           <img class="db-hero-photo" src="/media/img/joueuse-buste_admin.webp" alt="">
           <div class="db-hero-in">
@@ -4333,28 +4374,37 @@
 
         <div class="db-two">
           <div>
-            <div class="db-h"><h2>Ce qui vous attend</h2><span id="att-sub"></span></div>
+            <div class="db-h"><h2>À traiter</h2><span id="att-sub"></span></div>
             <div id="att-list"></div>
           </div>
           <div>
-            <div class="db-h"><h2>En un coup d’œil</h2></div>
-            <div class="db-nums">
-              <button class="db-num" data-go="matches2"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg></span><b id="dash-upcoming-num">—</b><span class="db-num-lab">Matchs à venir</span><span class="chev">›</span></button>
-              <button class="db-num" data-go="matches2" data-filtre="termine"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg></span><b id="dash-played-num">—</b><span class="db-num-lab">Matchs joués</span><span class="chev">›</span></button>
-              <button class="db-num" data-go="orders2"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/></svg></span><b id="dash-orders-num">—</b><span class="db-num-lab">Commandes</span><em id="dash-orders-new-sub"></em><span class="chev">›</span></button>
-              <button class="db-num" data-go="applications"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span><b id="dash-recruitment-num">—</b><span class="db-num-lab">Candidatures</span><span class="chev">›</span></button>
-              <button class="db-num" data-go="forms"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1Z"/></svg></span><b id="dash-contact-num">—</b><span class="db-num-lab">Messages</span><em id="dash-contact-sub"></em><span class="chev">›</span></button>
-              <button class="db-num" data-go="newsl"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/></svg></span><b id="dash-newsletter-num">—</b><span class="db-num-lab">Abonnés newsletter</span><span class="chev">›</span></button>
-            </div>
+            <div class="db-h"><h2>Prochains rendez-vous</h2><span>14 jours</span></div>
+            <div id="tb-agenda"><div class="att-vide att-attente"><b>·</b><span>Lecture en cours…</span></div></div>
           </div>
         </div>
 
+        <div class="tb-trois">
+          <div>
+            <div class="db-h"><h2>Activité récente</h2><span id="tb-act-sub"></span></div>
+            <div id="tb-activite"><div class="att-vide att-attente"><b>·</b><span>Lecture en cours…</span></div></div>
+          </div>
+          <div>
+            <div class="db-h"><h2>Le club, mois par mois</h2><span>six derniers mois</span></div>
+            <div id="tb-mois"></div>
+          </div>
+        </div>
+
+
+
         <div>
           <div class="db-h"><h2>Accès rapide</h2></div>
-          <div class="dash-quick">
-            <button class="dash-quick-btn" data-section="matches2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Ajouter un match</button>
-            <button class="dash-quick-btn" data-section="articles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Publier une actualité</button>
-            <button class="dash-quick-btn" data-section="squad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Ajouter une joueuse</button>
+          <div class="dash-quick" id="tb-actions">
+            <button class="dash-quick-btn" data-tb-action="squad|#ef-new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Ajouter une joueuse</button>
+            <button class="dash-quick-btn" data-tb-action="matches2|#mc-new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>Créer un match</button>
+            <button class="dash-quick-btn" data-tb-action="evenements|#ev-new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Ajouter un événement</button>
+            <button class="dash-quick-btn" data-tb-action="articles|#ar-new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Publier une actualité</button>
+            <button class="dash-quick-btn" data-tb-action="caisse|[data-cs=&quot;ajouter&quot;][data-sens=&quot;depense&quot;]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>Noter une dépense</button>
+            <button class="dash-quick-btn" data-tb-action="announce|#an-new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15 9a3 3 0 0 1 0 6"/></svg>Annonce en haut du site</button>
             <button class="dash-quick-btn" data-section="forms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>Voir les messages</button>
             <a class="dash-quick-btn" href="index.html" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>Voir le site public</a>
           </div>
@@ -8889,7 +8939,7 @@
   }
 
   var SECTION_HELP = {
-    dashboard: ["<b>Deux colonnes qui ne disent pas la même chose.</b> « Ce qui vous attend » dit <b>quoi faire</b> : seulement ce sur quoi vous pouvez agir aujourd’hui, le plus pressé en haut, et chaque ligne ouvre l’écran où ça se règle. « En un coup d’œil » dit <b>combien</b>.","Les jours où rien ne réclame de décision, la liste le dit et la page se replie sur une seule colonne. C’est bon signe — pas un écran inachevé.","Les <b>six chiffres</b> d’« En un coup d’œil » ouvrent leur écran d’un clic : matchs à venir, matchs joués, commandes, candidatures, messages, abonnés à la newsletter. En dessous, <b>Accès rapide</b> fait la même chose pour les gestes de création.","L’affiche du haut est le <b>prochain match</b>. <b>Préparer le match</b> ouvre le parcours de J-7 à J+1 (convocation, cinq, affiche, billetterie, direct, résultat, article) ; <b>Soir de match</b> mène à la table de marque et au guichet ; <b>Fiche du match</b> à la feuille, au résultat, à la billetterie et à la diffusion. La jauge à droite dit où en est la vente.","<b>Ctrl+K</b> (ou la loupe en haut) cherche partout : un match, un club, une joueuse, une référence de billet, un écran."],
+    dashboard: ["<b>La bande du haut compte</b> : ce qui est à traiter, les joueuses et leurs licences, l\'école, les commandes du mois, les réservations, la caisse du mois, les messages. Chaque chiffre dit d\'où il vient et ouvre son écran.","<b>À traiter</b> dit <b>quoi faire</b> : seulement ce sur quoi vous pouvez agir aujourd\'hui, le plus pressé en haut. Les jours où rien ne réclame de décision, la liste le dit : c\'est bon signe.","<b>Activité récente</b> est ce qui est arrivé au club : un dossier, une candidature, une commande, un billet, un message, un abonné, un article. <b>Prochains rendez-vous</b> réunit matchs, entraînements, séances de l\'école et événements sur quatorze jours. <b>Mois par mois</b> compte six mois de vraies arrivées : ce mois-ci contre le mois dernier, sans courbe inventée.","L’affiche du haut est le <b>prochain match</b>. <b>Préparer le match</b> ouvre le parcours de J-7 à J+1 (convocation, cinq, affiche, billetterie, direct, résultat, article) ; <b>Soir de match</b> mène à la table de marque et au guichet ; <b>Fiche du match</b> à la feuille, au résultat, à la billetterie et à la diffusion. La jauge à droite dit où en est la vente.","<b>Ctrl+K</b> (ou la loupe en haut) cherche partout : un match, un club, une joueuse, une référence de billet, un écran."],
     newsl: ["<b>Écrire à tous les inscrits de la newsletter.</b> Chaque personne reçoit son propre e-mail — jamais de liste visible.","<b>Testez d'abord</b> : votre adresse dans « M'envoyer un test », le message arrive avec [TEST] devant le sujet.","« Envoyer à tous » demande confirmation, et deux envois à moins de 10 minutes d'écart sont refusés.","À l'ouverture, l'écran interroge la fonction serveur : clé Resend, adresse d'expédition, domaine vérifié. Le bandeau du haut dit ce qui est en place et ce qui manque, pas à pas.","Un inscrit qui répond « STOP » se retire dans Messages → Newsletter."],
     promos: ["<b>Des codes de remise pour la boutique.</b> Un code se partage en story, au micro, sur une affiche — l'acheteur le saisit dans son panier.","Pourcentage (−10 %) ou montant fixe (−2 000 FCFA), avec si besoin une période, un minimum d'achat et une limite d'utilisation.","Le compteur d'utilisations avance tout seul à chaque commande passée avec le code.","La remise apparaît sur la commande (export CSV compris) — le total enregistré est déjà remisé."],
     teams: ["<b>La liste des clubs que vous affrontez.</b> Elle alimente la liste déroulante « adversaire » à la création d'un match.","<b>Clubs connus</b>, dans la barre : un clic ajoute le club, logo compris. Pour un club absent, <b>Ajouter un adversaire</b> ouvre un formulaire — les deux panneaux se ferment l’un l’autre, la liste ne part jamais à deux écrans de défilement.","<b>Changer le logo</b> sur une ligne — ou <b>Ajouter un logo</b> si elle n’en a pas — ouvre l’éditeur. Les matchs déjà enregistrés contre ce club sont mis à jour en même temps.","Supprimer un club ne touche pas aux matchs déjà joués : ils gardent leur nom et leur logo.","La colonne <b>Logo</b> est la seule chose de cet écran qui appelle un geste : elle dit d’un coup d’œil combien de clubs en attendent un. La recherche filtre par nom, et <b>Confrontations</b> compte les matchs déjà joués contre chacun."],
@@ -8985,12 +9035,12 @@
     // Le conseil 0 parle des DEUX COLONNES, le conseil 1 de la LISTE
     // qui annonce qu'il n'y a rien a decider. On designait la liste en
     // parlant des colonnes, et les colonnes en parlant de la liste.
-    dashboard:  ['#section-dashboard .db-two',
+    dashboard:  ['#tb-kpi',
                  '#att-list',
-                 '#section-dashboard .db-nums',
+                 '#section-dashboard .db-two',
                  // Le bandeau du prochain match n'existe que s'il y a un
                  // prochain match. Sans lui, on designe le releve du haut.
-                 ['#section-dashboard .db-cta', '#section-dashboard .db-nums'],
+                 ['#section-dashboard .db-cta', '#tb-kpi'],
                  '#gs-open'],
     analytics:  ['#an-kpis', '#an-recettes',
                  ['#an-kpi-recouvrees', '#an-kpis'],
@@ -10147,6 +10197,8 @@
   var PC_COURT = { fiche:'Fiche', convocation:'Convocation', cinq:'Cinq de départ', affiche:'Affiche', billetterie:'Billetterie', direct:'Direct', resultat:'Résultat', article:'Article', classement:'Classement' };
   var PC_ECHEANCES = { fiche:'J-7', convocation:'J-5', cinq:'J-1', affiche:'J-3', billetterie:'J-5', direct:'Jour J', resultat:'Jour J', article:'J+2', classement:'Automatique' };
 
+  // Ouvrir le parcours sur un match precis (depuis le tableau de bord).
+  function pcChoisir(id){ pcSel = id; if (pcStarted && typeof pcRenderChoix === 'function'){ pcRenderChoix(); pcCharger(); } }
   function pcInit(){
     if (pcStarted){ pcLoad(); return; }
     pcStarted = true;
@@ -12592,6 +12644,205 @@
     if (e.target.id === 'sn-p-recu' && snPiece){ var exp = document.getElementById('sn-p-exp'); if (exp) exp.value = snPiece.kind === 'medical' ? efEcheanceParDefaut('medical', e.target.value) : (snD ? snD.s.fin : efEcheanceParDefaut('licence', e.target.value)); }
   }
 
+  // =================================================================
+  // LE TABLEAU DE BORD : les chiffres, l'activite, l'agenda, le mois
+  // =================================================================
+  // L'utilisateur a montre des maquettes (14 septembre 2026) : on en
+  // garde ce qui se lit dans les donnees, rien de ce qui s'invente.
+  //   - la bande de chiffres du haut : chacun compte quelque chose de
+  //     precis, et son second texte dit d'ou il vient ;
+  //   - l'activite recente : ce qui est ARRIVE au club (un dossier, une
+  //     candidature, une commande, un billet, un message, un abonne, un
+  //     article publie), lu dans les tables, jamais dans le journal
+  //     d'audit qui reste derriere son mot de passe ;
+  //   - les prochains rendez-vous : matchs, entrainements, seances de
+  //     l'ecole, evenements, dans une seule liste datee ;
+  //   - le club mois par mois : six mois de vrais comptages, en barres.
+  // Pas de courbe de tendance sans donnee, pas de meteo, pas de « +18 % »
+  // sorti de nulle part : ce mois contre le mois dernier, en chiffres.
+  var tbD = null, tbChargement = 0;
+
+  function tbMoisIso(d){ return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }
+  function tbIlYA(iso){
+    var h = hoursSince(iso); if (h === null) return '';
+    if (h < 1) return 'il y a ' + Math.max(1, Math.round(h * 60)) + ' min';
+    if (h < 24) return 'il y a ' + Math.round(h) + ' h';
+    var j = Math.round(h / 24); if (j === 1) return 'hier';
+    if (j < 7) return 'il y a ' + j + ' jours';
+    return ecDateFr(String(iso).slice(0, 10));
+  }
+  function tbF(n){ return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+
+  function tbLoad(){
+    if (!document.getElementById('tb-kpi')) return;
+    var jeton = ++tbChargement, auj = todayISO(), d = new Date();
+    var mois = tbMoisIso(d), debutMois = mois + '-01';
+    var depuis = new Date(d.getFullYear(), d.getMonth() - 5, 1), depuisIso = depuis.toISOString().slice(0, 10);
+    var dans14 = new Date(); dans14.setDate(dans14.getDate() + 14); var dans14Iso = dans14.toISOString().slice(0, 10);
+    function q(u){ return sbGetAll(u).catch(function(){ return []; }); }
+    function peutVoir(m){ return typeof can !== 'function' || can(m, 'voir'); }
+    Promise.all([
+      peutVoir('effectif') ? q('players?select=id,name,status,birth_year') : Promise.resolve([]),
+      peutVoir('effectif') ? q('players_documents?select=player_id,kind,expires_on&kind=in.(licence,medical)') : Promise.resolve([]),
+      peutVoir('inscriptions') ? q('academy_registrations?select=id,child_first_name,child_last_name,status,category,created_at&order=created_at.desc') : Promise.resolve([]),
+      peutVoir('recrutement') ? q('recruitment_requests?select=id,first_name,last_name,status,created_at&order=created_at.desc') : Promise.resolve([]),
+      peutVoir('boutique') ? q('orders?select=id,order_number,customer_name,status,total,paid,created_at&order=created_at.desc') : Promise.resolve([]),
+      peutVoir('billetterie') ? q('reservations?select=id,reference,buyer_name,status,quantity,total_fcfa,created_at,checked_in_at&order=created_at.desc') : Promise.resolve([]),
+      peutVoir('contenu') ? q('contact_messages?select=id,name,is_read,created_at&order=created_at.desc&limit=200') : Promise.resolve([]),
+      peutVoir('contenu') ? q('newsletter_subscribers?select=id,email,created_at&order=created_at.desc&limit=300') : Promise.resolve([]),
+      peutVoir('contenu') ? q('news?select=id,title,status,published_at,created_at&order=created_at.desc&limit=30') : Promise.resolve([]),
+      q('matches?select=id,opponent_name,opponent_logo_url,match_date,match_time,venue,is_home,competition,score_baobabs,score_opponent&match_date=gte.' + auj + '&match_date=lte.' + dans14Iso + '&order=match_date.asc'),
+      peutVoir('effectif') ? q('team_sessions?select=id,session_date,start_time,end_time,venue,cancelled&session_date=gte.' + auj + '&session_date=lte.' + dans14Iso + '&order=session_date.asc') : Promise.resolve([]),
+      peutVoir('inscriptions') ? q('academy_sessions?select=id,session_date,start_time,end_time,category,venue,cancelled&session_date=gte.' + auj + '&session_date=lte.' + dans14Iso + '&order=session_date.asc') : Promise.resolve([]),
+      q('evenements?select=id,titre,debut,fin,lieu,actif&actif=eq.true&order=debut.asc'),
+      peutVoir('caisse') ? q('caisse_mouvements?select=sens,montant_fcfa,date&date=gte.' + debutMois) : Promise.resolve(null),
+      peutVoir('caisse') ? q('academy_payments?select=amount_fcfa,paid_on&paid_on=gte.' + debutMois) : Promise.resolve([]),
+      sbGet('saisons?select=label,debut,fin,etat&etat=eq.en_cours&limit=1').catch(function(){ return []; })
+    ]).then(function(r){
+      if (jeton !== tbChargement) return;
+      tbD = { joueuses: r[0], pieces: r[1], dossiers: r[2], candidatures: r[3], commandes: r[4], billets: r[5], messages: r[6], abonnes: r[7], articles: r[8],
+              matchs: r[9], seances: r[10], ecoleSeances: r[11], evenements: r[12], mouvements: r[13], paiements: r[14], saison: (r[15] || [])[0] || null,
+              mois: mois, depuisIso: depuisIso, auj: auj, peut: peutVoir };
+      tbRender();
+    });
+  }
+
+  // ---------- les chiffres du haut ----------
+  function tbRenderKpi(){
+    var D = tbD, box = document.getElementById('tb-kpi'); if (!box) return;
+    var cartes = [];
+    // a traiter : ce que « Ce qui vous attend » a releve
+    var faits = attFaits || [], chauds = faits.filter(function(f){ return f.niveau === 'urgent' || f.niveau === 'important'; }).length;
+    cartes.push({ cle:'traiter', n: faits.length, lib: 'à traiter', sous: chauds ? chauds + ' pressé' + (chauds > 1 ? 's' : '') : (faits.length ? 'rien de pressé' : 'le club tourne'), cls: chauds ? 'sig' : '', go: null });
+    // les joueuses
+    if (D.peut('effectif')){
+      var actives = D.joueuses.filter(function(p){ return (p.status || 'active') === 'active'; });
+      var lic = {}; D.pieces.forEach(function(x){ if (x.kind !== 'licence') return; if (!x.expires_on || daysUntil(x.expires_on) >= 0) lic[x.player_id] = true; });
+      var nLic = actives.filter(function(p){ return lic[p.id]; }).length;
+      cartes.push({ cle:'joueuses', n: actives.length, lib: 'joueuse' + (actives.length > 1 ? 's' : '') + ' active' + (actives.length > 1 ? 's' : ''), sous: actives.length ? nLic + ' licence' + (nLic > 1 ? 's' : '') + ' à jour' : 'aucune fiche', cls: actives.length && nLic < actives.length ? 'sig' : '', go: 'squad' });
+    }
+    // l'ecole
+    if (D.peut('inscriptions')){
+      var s = D.saison, inscrits = D.dossiers.filter(function(x){ return x.status === 'inscrite' && (!s || String(x.created_at).slice(0, 10) >= s.debut); }).length;
+      var nouveaux = D.dossiers.filter(function(x){ return (x.status || 'nouvelle') === 'nouvelle'; }).length;
+      cartes.push({ cle:'ecole', n: inscrits, lib: 'inscrit' + (inscrits > 1 ? 's' : '') + ' à l\'école', sous: nouveaux ? nouveaux + ' dossier' + (nouveaux > 1 ? 's' : '') + ' à traiter' : 'aucun dossier en attente', cls: nouveaux ? 'sig' : '', go: 'inscriptions' });
+    }
+    // les commandes
+    if (D.peut('boutique')){
+      var duMois = D.commandes.filter(function(o){ return String(o.created_at).slice(0, 7) === D.mois; }), enAttente = D.commandes.filter(function(o){ var st = String(o.status || 'nouvelle').toLowerCase(); return st === 'nouvelle' || st === 'confirmée' || st === 'confirmee' || st === 'prête' || st === 'prete'; }).length;
+      cartes.push({ cle:'commandes', n: duMois.length, lib: 'commande' + (duMois.length > 1 ? 's' : '') + ' ce mois-ci', sous: enAttente ? enAttente + ' à préparer ou remettre' : 'rien en attente', cls: enAttente ? 'sig' : '', go: 'orders2' });
+    }
+    // les billets du prochain match
+    if (D.peut('billetterie')){
+      var m = D.matchs[0];
+      var res = m ? D.billets.filter(function(b){ return b.status === 'reservee'; }).length : 0;
+      cartes.push({ cle:'billets', n: res, lib: 'réservation' + (res > 1 ? 's' : '') + ' en cours', sous: m ? 'prochain match : ' + m.opponent_name : 'aucun match dans 14 jours', cls: '', go: 'tickets' });
+    }
+    // la caisse du mois
+    if (D.peut('caisse') && D.mouvements){
+      var rec = 0, dep = 0;
+      D.mouvements.forEach(function(x){ if (x.sens === 'recette') rec += Number(x.montant_fcfa) || 0; else dep += Number(x.montant_fcfa) || 0; });
+      D.paiements.forEach(function(p){ rec += Number(p.amount_fcfa) || 0; });
+      D.commandes.forEach(function(o){ if (o.paid && String(o.created_at).slice(0, 7) === D.mois) rec += Number(o.total) || 0; });
+      D.billets.forEach(function(b){ if (b.checked_in_at && String(b.checked_in_at).slice(0, 7) === D.mois) rec += Number(b.total_fcfa) || 0; });
+      var solde = rec - dep;
+      cartes.push({ cle:'caisse', n: (solde < 0 ? '−' : '') + tbF(Math.abs(solde)), lib: 'FCFA de solde ce mois-ci', sous: tbF(rec) + ' entrés · ' + tbF(dep) + ' sortis', cls: solde < 0 ? 'cri' : '', go: 'caisse' });
+    }
+    // les messages
+    if (D.peut('contenu')){
+      var nonLus = D.messages.filter(function(x){ return !x.is_read; }).length;
+      cartes.push({ cle:'messages', n: nonLus, lib: 'message' + (nonLus > 1 ? 's' : '') + ' non lu' + (nonLus > 1 ? 's' : ''), sous: D.abonnes.length + ' abonné' + (D.abonnes.length > 1 ? 's' : '') + ' à la newsletter', cls: nonLus ? 'sig' : '', go: 'forms' });
+    }
+    box.innerHTML = '<div class="ds-band tb-band">' + cartes.map(function(c){
+      return '<' + (c.go ? 'button type="button" data-tb-go="' + c.go + '"' : 'div') + ' class="ds-fig tb-fig ' + c.cls + '"><i>' + esc(c.lib) + '</i><b>' + esc(String(c.n)) + '</b><small>' + esc(c.sous) + '</small></' + (c.go ? 'button' : 'div') + '>';
+    }).join('') + '</div>';
+  }
+
+  // ---------- l'activite recente : ce qui est arrive au club ----------
+  function tbRenderActivite(){
+    var D = tbD, box = document.getElementById('tb-activite'), sub = document.getElementById('tb-act-sub'); if (!box) return;
+    var faits = [];
+    function f(quand, ico, titre, detail, section){ if (!quand) return; faits.push({ quand: quand, ico: ico, titre: titre, detail: detail, section: section }); }
+    D.dossiers.forEach(function(x){ f(x.created_at, 'ecole', 'Dossier d\'inscription', (x.child_first_name || '') + ' ' + (x.child_last_name || '') + (x.category ? ' · ' + x.category : ''), 'inscriptions'); });
+    D.candidatures.forEach(function(x){ f(x.created_at, 'recrutement', 'Candidature', (x.first_name || '') + ' ' + (x.last_name || ''), 'applications'); });
+    D.commandes.forEach(function(x){ f(x.created_at, 'boutique', 'Commande ' + (x.order_number ? '#' + x.order_number : ''), (x.customer_name || '') + (x.total ? ' · ' + tbF(x.total) + ' FCFA' : ''), 'orders2'); });
+    D.billets.forEach(function(x){ f(x.created_at, 'billet', 'Réservation ' + (x.reference || ''), (x.buyer_name || '') + ' · ' + (x.quantity || 1) + ' place' + (x.quantity > 1 ? 's' : ''), 'tickets'); });
+    D.messages.forEach(function(x){ f(x.created_at, 'message', 'Message' + (x.is_read ? '' : ' non lu'), x.name || '', 'forms'); });
+    D.abonnes.forEach(function(x){ f(x.created_at, 'newsletter', 'Abonné à la newsletter', String(x.email || '').replace(/^(.{3}).*(@.*)$/, '$1…$2'), 'newsl'); });
+    D.articles.forEach(function(x){ if (x.status === 'publie' || x.published_at) f(x.published_at || x.created_at, 'article', 'Article publié', x.title || '', 'articles'); });
+    faits.sort(function(a, b){ return a.quand < b.quand ? 1 : -1; });
+    var dix = faits.slice(0, 10);
+    if (sub) sub.textContent = faits.length ? (faits.filter(function(x){ return hoursSince(x.quand) !== null && hoursSince(x.quand) < 24 * 7; }).length + ' cette semaine') : '';
+    if (!dix.length){ box.innerHTML = '<div class="att-vide"><b>·</b><span>Rien n\'est encore arrivé : le premier dossier, la première commande apparaîtront ici.</span></div>'; return; }
+    box.innerHTML = dix.map(function(x){
+      return '<button type="button" class="tb-row" data-tb-go="' + x.section + '"><span class="tb-ico tb-ico-' + x.ico + '"></span><span class="tb-row-t"><b>' + esc(x.titre) + '</b><span>' + esc(x.detail) + '</span></span><span class="tb-quand">' + esc(tbIlYA(x.quand)) + '</span></button>';
+    }).join('');
+  }
+
+  // ---------- les prochains rendez-vous ----------
+  function tbRenderAgenda(){
+    var D = tbD, box = document.getElementById('tb-agenda'); if (!box) return;
+    var rdv = [];
+    D.matchs.forEach(function(m){ rdv.push({ date: m.match_date, heure: m.match_time ? String(m.match_time).slice(0, 5) : '', titre: (m.is_home ? 'Baobabs vs ' : 'Baobabs @ ') + (m.opponent_name || ''), lieu: m.venue || '', type: 'match', section: 'parcours', id: m.id }); });
+    D.seances.forEach(function(s){ if (s.cancelled) return; rdv.push({ date: s.session_date, heure: s.start_time ? String(s.start_time).slice(0, 5) : '', titre: 'Entraînement de l\'équipe', lieu: s.venue || '', type: 'entrainement', section: 'entrainements' }); });
+    D.ecoleSeances.forEach(function(s){ if (s.cancelled) return; rdv.push({ date: s.session_date, heure: s.start_time ? String(s.start_time).slice(0, 5) : '', titre: 'École de basket' + (s.category ? ' · ' + s.category : ''), lieu: s.venue || '', type: 'ecole', section: 'ecole' }); });
+    D.evenements.forEach(function(e){ var d = String(e.debut || '').slice(0, 10); if (!d || d < D.auj) return; rdv.push({ date: d, heure: String(e.debut || '').length > 10 ? String(e.debut).slice(11, 16) : '', titre: e.titre || 'Événement', lieu: e.lieu || '', type: 'evenement', section: 'evenements' }); });
+    rdv.sort(function(a, b){ return (a.date + a.heure) < (b.date + b.heure) ? -1 : 1; });
+    var huit = rdv.slice(0, 8);
+    if (!huit.length){ box.innerHTML = '<div class="att-vide"><b>·</b><span>Rien dans les quatorze prochains jours : ni match, ni entraînement, ni séance.</span></div>'; return; }
+    var TYPES = { match:'Match', entrainement:'Entraînement', ecole:'École', evenement:'Événement' };
+    box.innerHTML = huit.map(function(x){
+      var d = new Date(x.date + 'T00:00:00'), j = daysUntil(x.date);
+      return '<button type="button" class="tb-row tb-rdv" data-tb-go="' + x.section + '"' + (x.id ? ' data-tb-match="' + esc(x.id) + '"' : '') + '><span class="tb-jour' + (j === 0 ? ' today' : '') + '"><b>' + d.getDate() + '</b><i>' + IN_MOIS_COURT[d.getMonth()] + '</i></span>' +
+        '<span class="tb-row-t"><b>' + esc(x.titre) + '</b><span>' + esc([x.heure, x.lieu].filter(Boolean).join(' · ') || (j === 0 ? 'aujourd\'hui' : 'dans ' + j + ' jour' + (j > 1 ? 's' : ''))) + '</span></span>' +
+        '<span class="ds-st tb-type ' + x.type + '"><i></i>' + TYPES[x.type] + '</span></button>';
+    }).join('');
+  }
+
+  // ---------- le club, mois par mois ----------
+  function tbRenderMois(){
+    var D = tbD, box = document.getElementById('tb-mois'); if (!box) return;
+    var moisListe = [], d = new Date();
+    for (var i = 5; i >= 0; i--){ var m = new Date(d.getFullYear(), d.getMonth() - i, 1); moisListe.push(tbMoisIso(m)); }
+    function compte(rows, champ){ var c = {}; moisListe.forEach(function(m){ c[m] = 0; }); (rows || []).forEach(function(r){ var k = String(r[champ] || '').slice(0, 7); if (c[k] !== undefined) c[k]++; }); return moisListe.map(function(m){ return c[m]; }); }
+    var series = [];
+    if (D.peut('inscriptions')) series.push({ nom: 'Dossiers de l\'école', v: compte(D.dossiers, 'created_at'), go: 'inscriptions' });
+    if (D.peut('recrutement')) series.push({ nom: 'Candidatures', v: compte(D.candidatures, 'created_at'), go: 'applications' });
+    if (D.peut('boutique')) series.push({ nom: 'Commandes', v: compte(D.commandes, 'created_at'), go: 'orders2' });
+    if (D.peut('billetterie')) series.push({ nom: 'Réservations de billets', v: compte(D.billets, 'created_at'), go: 'tickets' });
+    if (D.peut('contenu')) series.push({ nom: 'Abonnés à la newsletter', v: compte(D.abonnes, 'created_at'), go: 'newsl' });
+    if (!series.length){ box.innerHTML = ''; return; }
+    box.innerHTML = series.map(function(s){
+      var max = Math.max.apply(null, s.v.concat([1])), ce = s.v[5], avant = s.v[4];
+      var diff = ce - avant, txt = ce + ' ce mois-ci · ' + avant + ' le mois dernier' + (avant || ce ? (diff > 0 ? ' · +' + diff : (diff < 0 ? ' · ' + diff : ' · égal')) : '');
+      return '<button type="button" class="tb-serie" data-tb-go="' + s.go + '"><span class="tb-serie-t"><b>' + esc(s.nom) + '</b><span>' + esc(txt) + '</span></span>' +
+        '<span class="tb-barres">' + s.v.map(function(n, i){ return '<i style="height:' + Math.max(3, Math.round(100 * n / max)) + '%" title="' + esc(IN_MOIS_COURT[parseInt(moisListe[i].slice(5), 10) - 1] + ' : ' + n) + '"' + (i === 5 ? ' class="on"' : '') + '></i>'; }).join('') + '</span></button>';
+    }).join('');
+  }
+
+  function tbRender(){
+    if (!tbD) return;
+    tbRenderKpi(); tbRenderActivite(); tbRenderAgenda(); tbRenderMois();
+  }
+  // Les signaux arrivent apres les chiffres : la carte « a traiter » se
+  // remet a jour quand ils sont la.
+  function tbApresSignaux(){ if (tbD) tbRenderKpi(); }
+
+  // Les gestes : tout ouvre son ecran ; un match ouvre son parcours ; une
+  // action rapide ouvre l'ecran puis presse son bouton « Nouveau ».
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-tb-go], [data-tb-action]'); if (!b || !b.closest('#section-dashboard')) return;
+    var act = b.getAttribute('data-tb-action');
+    if (act){
+      var p = act.split('|'); showSection(p[0]);
+      if (p[1]) setTimeout(function(){ var el = document.querySelector(p[1]); if (el) el.click(); }, 450);
+      return;
+    }
+    var mid = b.getAttribute('data-tb-match'), go = b.getAttribute('data-tb-go');
+    showSection(go);
+    if (mid && go === 'parcours' && typeof pcChoisir === 'function') setTimeout(function(){ pcChoisir(mid); }, 300);
+  });
+
   // ===================== NEWSLETTER =====================
   // LA NEWSLETTER PRE-REMPLIE. Un article publie, un evenement mis sur le
   // site : « Envoyer aux abonnes » ouvre l'ecran Newsletter avec le sujet et
@@ -13210,7 +13461,7 @@
     // On annonce donc l'attente, et on peint dans tous les cas.
     box.innerHTML = '<div class="att-vide att-attente"><b>·</b><span>Lecture en cours…</span></div>';
     attCollecte(true)
-      .then(function(faits){ attPeindre(faits || []); })
+      .then(function(faits){ attPeindre(faits || []); if (typeof tbApresSignaux === 'function') tbApresSignaux(); })
       .catch(function(){ attPeindre([]); });
   }
 
@@ -16741,8 +16992,7 @@
       rows=rows||[];
       var aVenir=rows.filter(function(m){return m.statut==='a_venir'||m.statut==='aujourdhui';});
       var joues=rows.filter(function(m){return m.statut==='termine';});
-      document.getElementById('dash-upcoming-num').textContent=aVenir.length;
-      document.getElementById('dash-played-num').textContent=joues.length;
+      dashNum('upcoming', aVenir.length); dashNum('played', joues.length);
 
       var hero=document.getElementById('db-hero');
       var m=aVenir[0];
@@ -16843,10 +17093,10 @@
     Promise.all(inboxTables.map(function(t){
       return sbGet(t.table+'?select=id'+(t.key==='orders'?',status':'')+(t.key==='contact'?',is_read':'')+'&order=created_at.desc').then(function(rows){
         rows=rows||[];
-        document.getElementById('dash-'+t.key+'-num').textContent=rows.length;
+        dashNum(t.key, rows.length);
         if(t.key==='orders'){
           var pending = rows.filter(function(r){ var s=normalizeOrderStatus(r.status); return s!=='récupérée' && s!=='annulée'; }).length;
-          document.getElementById('dash-orders-new-sub').textContent = pending ? (pending+' en attente') : 'Tout traité';
+          var osub = document.getElementById('dash-orders-new-sub'); if (osub) osub.textContent = pending ? (pending+' en attente') : 'Tout traité';
           totalNew += pending;
         } else if (t.key==='contact') {
           // Un message lu (« Marquer comme traité » dans Messages) ne compte
@@ -16857,7 +17107,7 @@
           totalNew += nonLus;
         }
         return rows.length;
-      }).catch(function(){ document.getElementById('dash-'+t.key+'-num').textContent='—'; return 0; });
+      }).catch(function(){ dashNum(t.key, '—'); return 0; });
     })).then(function(){
       var badge=document.getElementById('sb-messages-badge');
       if(totalNew>0){ badge.textContent = totalNew>99?'99+':totalNew; badge.classList.remove('hide'); }
@@ -16870,13 +17120,17 @@
     // sinon le badge resterait élevé en permanence même à jour.
     sbGet('recruitment_requests?select=id,status&order=created_at.desc').then(function(rows){
       rows=rows||[];
-      document.getElementById('dash-recruitment-num').textContent=rows.length;
+      dashNum('recruitment', rows.length);
       var pendingRecruit = rows.filter(function(r){ return (r.status||'nouvelle')==='nouvelle'; }).length;
       var appBadge=document.getElementById('sb-applications-badge');
       if(pendingRecruit>0){ appBadge.textContent = pendingRecruit>99?'99+':pendingRecruit; appBadge.classList.remove('hide'); }
       else appBadge.classList.add('hide');
-    }).catch(function(){ document.getElementById('dash-recruitment-num').textContent='—'; });
+    }).catch(function(){ dashNum('recruitment', '—'); });
+
+    // Les blocs neufs du tableau de bord : chiffres, activite, agenda, mois.
+    if (typeof tbLoad === 'function') tbLoad();
   }
+  function dashNum(key, v){ var el = document.getElementById('dash-' + key + '-num'); if (el) el.textContent = v; }
 
   // ===================== PRODUITS & STOCK =====================
   // L'ancien écran n'avait qu'un booléen « Épuisé ». Résultat : un maillot
