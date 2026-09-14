@@ -16137,11 +16137,17 @@
 
       // Sans billetterie ouverte, le panneau n'a rien a dire : il
       // disparait au lieu d'afficher un tiret et une jauge a zero.
-      var t=Number(m.places_totales)||0, v=Number(m.places_reservees)||0;
-      document.getElementById('db-tick').classList.toggle('hide', t===0);
-      document.getElementById('db-tick-n').innerHTML = t? v+' <em>/ '+t+'</em>' : '—';
-      document.getElementById('db-gauge').style.width = (t? Math.min(Math.round(v/t*100),100):0)+'%';
-      document.getElementById('db-tick-s').textContent = t
+      // Un match a entree gratuite n'a pas de jauge a remplir : la case
+      // cochee l'emporte sur les categories, comme sur le site et dans
+      // la Billetterie. Sinon on lisait « 0 / 1250 places restantes »
+      // pour un match ou personne ne vend rien.
+      var t=Number(m.places_totales)||0, v=Number(m.places_reservees)||0, libre=m.free_entry===true;
+      document.getElementById('db-tick').classList.toggle('hide', t===0 && !libre);
+      document.getElementById('db-tick-n').innerHTML = libre ? '<em>Entrée gratuite</em>' : (t? v+' <em>/ '+t+'</em>' : '—');
+      document.getElementById('db-gauge').style.width = (t && !libre? Math.min(Math.round(v/t*100),100):0)+'%';
+      document.getElementById('db-tick-s').textContent = libre
+        ? 'Personne ne vend rien ce soir-là' + (t ? ' : les ' + (Number(m.nb_categories)||0) + ' catégorie' + ((m.nb_categories>1)?'s':'') + ' de billets restent ignorées par le site' : '') + '.'
+        : t
         ? (Number(m.nb_categories)||0)+' catégorie'+((m.nb_categories>1)?'s':'')+' · '+Math.max(t-v,0)+' places restantes'
         : 'Aucune catégorie ouverte à la vente.';
 
