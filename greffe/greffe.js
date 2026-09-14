@@ -610,6 +610,9 @@
   var acteReference = null;
   /* le cycle de vie : etat, version, versions emises, journal */
   var acteEtat = 'brouillon', acteVersion = 1, acteVersions = [], acteJournal = [], acteEmisLe = null, acteMotif = '';
+  /* l'etat de la fiche elle-meme, quand on relit une ancienne version :
+     la frise sait ainsi s'il existe un brouillon apres la derniere emission */
+  var acteFicheEtat = 'brouillon', acteFicheVersion = 1;
   /* Les dossiers : une affaire, une personne, une saison. Un acte est
      dans un dossier au plus ; le dossier ne contient rien d'autre que
      ce lien, les actes restent au registre quand on le retire. */
@@ -870,6 +873,7 @@
     chargerFiche(fiche);
     /* une ancienne version se relit telle qu'elle a été émise */
     var v = version ? (acteVersions.filter(function (x) { return x.v === version; })[0]) : null;
+    acteFicheEtat = acteEtat; acteFicheVersion = acteVersion;
     donnees = JSON.parse(JSON.stringify(v ? v.donnees : fiche.donnees));
     if (v) { acteEtat = v.etat === 'emise' ? 'emis' : 'remplace'; acteVersion = v.v; modeLecture = true; }
     acteId = fiche.id; acteSauve = true; acteTouche = false;
@@ -911,6 +915,7 @@
     }
     acteId = null; acteSauve = false; acteReference = null; acteTouche = false;
     acteEtat = 'brouillon'; acteVersion = 1; acteVersions = []; acteJournal = []; acteEmisLe = null; acteMotif = '';
+    acteFicheEtat = 'brouillon'; acteFicheVersion = 1;
     acteDossier = (prereglage && prereglage.dossier) || (registreDossier !== 'tous' && registreDossier !== 'aucun' && dossierDe(registreDossier) ? registreDossier : null);
     controle = null; panneau = 'donnees'; modeLecture = false; objetSel = null; objetsSel = []; blocSel = null;
     journaliser('Créé' + (prereglage ? ' depuis le préréglage « ' + prereglage.nom + ' »' : ''));
@@ -1045,7 +1050,7 @@
         acteVersions.forEach(function (v) { if (v.etat === 'emise') v.etat = 'remplacee'; });
         acteVersions.push({ v: acteVersion, etat: 'emise', emisLe: maintenant, empreinte: h,
                             donnees: JSON.parse(JSON.stringify(donnees)) });
-        acteEtat = 'emis'; acteEmisLe = maintenant; controle = null; panneau = 'donnees';
+        acteEtat = 'emis'; acteEmisLe = maintenant; controle = null; panneau = 'donnees'; acteFicheEtat = 'emis'; acteFicheVersion = acteVersion;
         journaliser('Émis V' + acteVersion + (h ? ' · empreinte ' + h.slice(0, 12) + '…' : ''));
         return enregistrer(true).then(function () {
           peindreFormulaire(); rafraichir(); majTitreBarre();
@@ -1062,7 +1067,7 @@
       + 'Vous travaillez sur la version ' + (acteVersion + 1) + ', qui la remplacera une fois émise.</p>',
       'Créer V' + (acteVersion + 1)).then(function (oui) {
       if (!oui) return;
-      acteVersion++; acteEtat = 'brouillon'; acteEmisLe = null; controle = null; panneau = 'donnees'; modeLecture = false;
+      acteVersion++; acteEtat = 'brouillon'; acteEmisLe = null; controle = null; panneau = 'donnees'; modeLecture = false; acteFicheEtat = 'brouillon'; acteFicheVersion = acteVersion;
       journaliser('Nouvelle version V' + acteVersion);
       salir();
       return enregistrer(true).then(function () { peindreFormulaire(); rafraichir(); majTitreBarre(); histoDepart(); });
@@ -1836,6 +1841,7 @@
         { lab: 'Page entière', off: !enAtelier, act: function () { zoomer('page'); } },
         { sep: true },
         { lab: (racine.classList.contains('gf-sans-panneau') ? 'Montrer' : 'Masquer') + ' le panneau', rac: 'Ctrl+Maj+P', off: !enAtelier, act: basculerPanneau },
+        { lab: (vignettesVoulues() ? 'Masquer' : 'Montrer') + ' les vignettes des pages', off: !enAtelier, act: basculerVignettes },
         { lab: (modeLecture ? 'Quitter le' : 'Passer en') + ' mode lecture', rac: 'Ctrl+Maj+R', off: !enAtelier, act: basculerLecture }
       ]},
       { nom: 'Aide', items: [
@@ -1911,8 +1917,49 @@
       + (modeLecture && acteEtat === 'brouillon' ? ' · LECTURE' : '');
     if (elt.sousTitre) elt.sousTitre.textContent = nom + (donnees.numero ? ' n° ' + donnees.numero : '');
     majActions();
+    peindreFrise();
+    montrerVignettes();
     if (typeof majOutils === 'function') majOutils();
     var oc = ongletDe(ongletCourant); if (oc && oc.nom !== nomOnglet()) { oc.nom = nomOnglet(); peindreOnglets(); } else peindreOnglets();
+  }
+
+  /* LA FRISE DES VERSIONS. Le brouillon, puis chaque version emise, dans
+     l'ordre ; celle qu'on regarde est en clair. Un clic sur une version
+     l'ouvre en lecture, comme l'onglet Historique le permettait deja. */
+  function peindreFrise() {
+    var hote = $('gf-frise'); if (!hote) return;
+    var enAtelier = !!modeleActif && espace === 'atelier';
+    hote.hidden = !enAtelier;
+    if (!enAtelier) return;
+    var pts = [], surUneVersion = acteEtat !== 'brouillon';
+    /* les versions dans l'ordre, puis le brouillon : c'est toujours le
+       dernier etat, celui qui vient apres la derniere emission */
+    acteVersions.slice().sort(function (a, b) { return a.v - b.v; }).forEach(function (v) {
+      var cour = surUneVersion && v.v === acteVersion;
+      if (pts.length) pts.push('<span class="gf-frise-trait"></span>');
+      pts.push('<button type="button" class="gf-frise-pt ' + (v.etat === 'emise' ? 'est-emise' : 'est-remplacee') + (cour ? ' est-cour' : '') + '" data-frise="' + v.v + '"><i></i><b>V' + v.v + '</b><span>' + (v.etat === 'emise' ? 'émise' : 'remplacée') + ' le ' + ech(dateHeure(v.emisLe)) + '</span></button>');
+    });
+    /* le brouillon : celui qu'on ecrit, ou celui qui attend derriere la
+       version qu'on relit ; rien si la fiche est emise sans suite */
+    var brouillonExiste = !surUneVersion || acteFicheEtat === 'brouillon';
+    if (brouillonExiste) {
+      var vb = !surUneVersion ? acteVersion : acteFicheVersion;
+      if (pts.length) pts.push('<span class="gf-frise-trait"></span>');
+      pts.push('<button type="button" class="gf-frise-pt' + (!surUneVersion ? ' est-cour' : '') + '" data-frise="brouillon"><i></i><b>Brouillon' + (vb > 1 ? ' V' + vb : '') + '</b><span>' + (!surUneVersion ? (acteSauve ? 'enregistré' : 'en cours') : 'reprendre') + '</span></button>');
+    }
+    var fin = surUneVersion ? 'Vous regardez la version ' + acteVersion + (acteEtat === 'emis' ? ', celle qui fait foi' : ', remplacée depuis') : (acteVersions.length ? 'Une nouvelle version repart de la dernière émise' : 'Émettre fige une V1 et lui donne un numéro');
+    hote.innerHTML = pts.join('') + '<span class="gf-frise-fin">' + fin + '</span>';
+    Array.prototype.forEach.call(hote.querySelectorAll('[data-frise]'), function (b) {
+      b.addEventListener('click', function () {
+        var quoi = b.getAttribute('data-frise');
+        /* la fiche du registre, pas l'etat relu : c'est elle qui porte
+           le brouillon qui attend derriere la version affichee */
+        var f = (typeof registre !== 'undefined' && registre.filter(function (a) { return a.id === acteId; })[0]) || ficheCourante();
+        if (!f) return;
+        if (quoi === 'brouillon') { if (acteEtat !== 'brouillon') ouvrirActe(f); return; }
+        ouvrirActe(f, +quoi);
+      });
+    });
   }
 
   function majActions() {
@@ -3007,7 +3054,82 @@
       appliquerZoom();
       elt.pages.textContent = nbPages + ' page' + (nbPages > 1 ? 's' : '');
       majActions();
+      planifierVignettes();
     } catch (e) { /* le cadre a pu être remplacé entre deux passes */ }
+  }
+
+  /* LES VIGNETTES DES PAGES. Un second cadre recoit une copie de la
+     feuille rendue, reduite : chaque page y est un bouton qui amene la
+     scene dessus, et la page qu'on regarde est soulignee. La copie se
+     refait apres chaque mesure, avec un delai : taper ne doit pas
+     redessiner deux feuilles a chaque lettre. Se montre et se cache par
+     le menu Affichage ; le choix est garde. */
+  var vigMinuteur = null, vigPret = false, vigEchelle = 0.155;
+  var CLE_VIGNETTES = 'greffe-vignettes';
+  function vignettesVoulues() { try { return localStorage.getItem(CLE_VIGNETTES) !== 'non'; } catch (e) { return true; } }
+  function basculerVignettes() {
+    var v = !vignettesVoulues();
+    try { localStorage.setItem(CLE_VIGNETTES, v ? 'oui' : 'non'); } catch (e) {}
+    montrerVignettes();
+  }
+  function montrerVignettes() {
+    var hote = $('gf-vignettes'); if (!hote) return;
+    var voulues = vignettesVoulues() && !!modeleActif && espace === 'atelier';
+    hote.hidden = !voulues;
+    if (voulues) planifierVignettes(0);
+  }
+  function planifierVignettes(delai) {
+    clearTimeout(vigMinuteur);
+    vigMinuteur = setTimeout(peindreVignettes, delai == null ? 600 : delai);
+  }
+  function peindreVignettes() {
+    var hote = $('gf-vignettes'), vig = $('gf-vig-cadre');
+    if (!hote || hote.hidden || !vig || !cadre || !cadrePret) return;
+    var doc = cadre.contentDocument, vdoc;
+    try { vdoc = vig.contentDocument; } catch (e) { return; }
+    if (!vdoc) return;
+    if (!vigPret) {
+      vdoc.open();
+      vdoc.write('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">'
+        + '<style id="gf-polices">' + cssPolices() + '</style>'
+        + '<style id="gf-style">' + cssDocument() + '</style>'
+        + '<style>html,body{margin:0;background:transparent;overflow:hidden}'
+        + ' .pages{transform:scale(' + vigEchelle + ');transform-origin:top left;width:210mm}'
+        + ' .page{cursor:pointer;outline:0 solid transparent;transition:outline-color .15s}'
+        + ' .page.vig-cour{outline:14px solid rgba(70,191,29,.55)}'
+        + ' .page *{pointer-events:none}'
+        + ' [contenteditable]{-webkit-user-modify:read-only}</style>'
+        + '</head><body class="pagine"></body></html>');
+      vdoc.close();
+      vigPret = true;
+      vdoc.addEventListener('click', function (e) {
+        var p = e.target.closest ? e.target.closest('.page') : null; if (!p) return;
+        var toutes = Array.prototype.slice.call(vdoc.querySelectorAll('.page'));
+        allerPage(toutes.indexOf(p) + 1);
+      });
+    }
+    var src = doc.querySelector('.pages');
+    if (!src) return;
+    var copie = src.cloneNode(true);
+    /* rien d'interactif dans une vignette */
+    Array.prototype.forEach.call(copie.querySelectorAll('[contenteditable]'), function (n) { n.removeAttribute('contenteditable'); });
+    Array.prototype.forEach.call(copie.querySelectorAll('.objet-poignee, .objet-rotation, .objet-cadre-sel, .objet-guide'), function (n) { n.parentNode && n.parentNode.removeChild(n); });
+    vdoc.body.innerHTML = '';
+    vdoc.body.appendChild(copie);
+    try {
+      /* le rectangle est deja reduit par la transformation : pas de
+         seconde echelle */
+      var h = copie.getBoundingClientRect().height;
+      vig.style.height = Math.ceil(h + 8) + 'px';
+    } catch (e) {}
+    soulignerVignette();
+  }
+  function soulignerVignette() {
+    var vig = $('gf-vig-cadre'); if (!vig || !vigPret) return;
+    var vdoc; try { vdoc = vig.contentDocument; } catch (e) { return; }
+    if (!vdoc) return;
+    var n = pageVisible();
+    Array.prototype.forEach.call(vdoc.querySelectorAll('.page'), function (p, i) { p.classList.toggle('vig-cour', i + 1 === n); });
   }
 
   /* Le zoom porte sur le CADRE, pas sur la feuille : un transform ne
@@ -3055,6 +3177,7 @@
   function majPointeurPage() {
     var p = $('gf-page-cour');
     if (p) p.textContent = pageVisible() + ' / ' + nbPages;
+    soulignerVignette();
   }
 
   function appliquerZoom() {

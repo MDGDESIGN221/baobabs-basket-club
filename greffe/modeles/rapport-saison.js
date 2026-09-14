@@ -29,6 +29,7 @@
 
     sections: [
       { titre: "La saison", ouvert: true, champs: [
+        { cle: 'titre',       lab: "Intitulé", type: 'texte' },
         { cle: 'saison',      lab: "Saison", type: 'texte', duo: true },
         { cle: 'numero',      lab: "Numéro", type: 'texte', duo: true },
         { cle: 'competition', lab: "Compétition", type: 'texte' },
@@ -79,6 +80,7 @@
       var an = new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
       var saison = an + "-" + (an + 1);
       return {
+        titre: "Bilan de la saison " + saison,
         saison: saison, numero: "", competition: "",
         dateActe: U.isoDuJour(), lieu: "Dakar", presente: "à l'assemblée générale",
         intro: "Le présent rapport rend compte de la saison " + saison + " du Baobabs Basket Club : "
@@ -130,7 +132,7 @@
         droite: function (d) { return ["Saison " + v(d.saison, ""), d.numero ? "Rapport n° " + d.numero : "Bureau du Club"]; } },
 
       { b: 'titre', etiquette: "Rapport de saison", pastille: function (d) { return "Saison " + v(d.saison, ""); },
-        texte: function (d) { return "Bilan de la saison " + v(d.saison, ""); },
+        texte: function (d) { return v(d.titre, "Bilan de la saison " + v(d.saison, "")); },
         sous: function (d) { return v(d.competition, "") + (d.presente ? (d.competition ? " · " : "") + "Présenté " + d.presente : ""); } },
 
       { b: 'texte', texte: '@intro' },
