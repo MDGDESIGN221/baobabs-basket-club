@@ -255,9 +255,15 @@ grant execute on function public.bbc_collecte_ouvrir(text) to anon, authenticate
 --  personne : elle peut revenir completer, et l'admin peut le lui
 --  renvoyer. Il modifie SA fiche, il n'en cree jamais une seconde.
 -- ---------------------------------------------------------------------
+-- « extensions » dans le chemin, et pas seulement « public » :
+-- gen_random_bytes vient de pgcrypto, installee dans ce schema. L'editeur
+-- SQL de Supabase la voit -- une fonction figee sur public ne la voit pas,
+-- et le depot echouait avec « 42883 function gen_random_bytes(integer)
+-- does not exist ». Trouve en envoyant un vrai profil depuis un vrai
+-- telephone : aucune relecture ne l'aurait montre.
 create or replace function public.bbc_collecte_deposer(p_jeton text, p_data jsonb)
 returns table (ok boolean, reprise text, motif text)
-language plpgsql security definer set search_path to 'public' as $$
+language plpgsql security definer set search_path to 'public', 'extensions' as $$
 declare
   c        collecte_campagnes%rowtype;
   v_rep    text;

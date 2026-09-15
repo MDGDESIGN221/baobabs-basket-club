@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Mon profil — Baobabs Basket Club</title>
+<!--
+  LE FORMULAIRE DE COLLECTE.
+
+  Une page a part, et non une page de plus dans le site : une joueuse
+  l'ouvre sur son telephone, souvent en donnees mobiles. Le site entier
+  pese plusieurs megaoctets ; celle-ci tient dans un souffle, sans
+  police a telecharger, sans bibliotheque, sans image.
+
+  Elle n'ecrit nulle part directement. Tout passe par trois fonctions
+  de la base -- bbc_collecte_ouvrir, _deposer, _reprendre -- qui sont
+  la seule porte ouverte au public. Sans jeton valide, il ne se passe
+  rien.
+-->
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --fond:#081C13; --fond2:#0D2619; --carte:#0F2A1C;
+    --trait:rgba(243,239,230,.14); --trait-fort:rgba(243,239,230,.26);
+    --texte:#F3EFE6; --doux:#C7CFC8; --pale:#8A968E;
+    --vert:#46BF1D; --vert-clair:#7DFF4F; --or:#C6A257; --rouge:#D2402F;
+    --r:12px; --mv:.22s cubic-bezier(.22,1,.36,1);
+  }
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--fond);color:var(--texte);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;line-height:1.55;
+    /* l'encoche et la barre d'accueil des telephones */
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  .enveloppe{max-width:560px;margin:0 auto;padding:22px 18px 40px}
+
+  /* --- l'en-tete --- */
+  .marque{display:flex;align-items:center;gap:11px;margin-bottom:26px}
+  .blason{width:38px;height:38px;border-radius:50%;background:var(--vert);flex:none;
+    display:grid;place-items:center;font-weight:800;font-size:15px;color:#06180E;letter-spacing:-.02em}
+  .marque b{display:block;font-size:14px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+  .marque span{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--pale)}
+
+  h1{font-size:clamp(25px,7vw,33px);line-height:1.1;letter-spacing:-.025em;margin:0 0 10px;font-weight:800}
+  .chapo{color:var(--doux);font-size:15px;margin:0 0 26px}
+  .chapo b{color:var(--vert-clair);font-weight:600}
+
+  /* --- les champs --- */
+  .bloc{margin-bottom:19px}
+  label.t{display:block;font-size:12px;font-weight:700;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--doux);margin-bottom:7px}
+  label.t i{font-style:normal;color:var(--pale);font-weight:400;letter-spacing:0;text-transform:none}
+  input[type=text],input[type=number],input[type=date],input[type=tel],textarea,select{
+    width:100%;background:var(--fond2);border:1px solid var(--trait);border-radius:var(--r);
+    padding:13px 14px;color:var(--texte);font:inherit;font-size:16px;
+    transition:border-color var(--mv),background var(--mv)}
+  textarea{min-height:104px;resize:vertical;line-height:1.55}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--vert);background:var(--carte)}
+  input::placeholder,textarea::placeholder{color:#5F6B62}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .aide{font-size:12.5px;color:var(--pale);margin:6px 0 0}
+
+  /* --- les postes : on en coche autant qu'il en faut --- */
+  .postes{display:flex;flex-wrap:wrap;gap:8px}
+  .postes label{display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+    border:1px solid var(--trait-fort);border-radius:999px;padding:10px 15px;
+    font-size:14px;color:var(--doux);transition:border-color var(--mv),color var(--mv),background var(--mv);
+    -webkit-tap-highlight-color:transparent}
+  .postes input{accent-color:var(--vert);width:17px;height:17px;margin:0;flex:none}
+  .postes label:has(input:checked){border-color:var(--vert);color:var(--vert-clair);background:rgba(70,191,29,.1)}
+
+  /* --- la photo --- */
+  .photo{display:flex;align-items:center;gap:15px}
+  .vignette{width:86px;height:86px;border-radius:var(--r);flex:none;overflow:hidden;
+    background:var(--fond2);border:1px dashed var(--trait-fort);
+    display:grid;place-items:center;color:var(--pale);font-size:11px;text-align:center;padding:6px}
+  .vignette img{width:100%;height:100%;object-fit:cover;display:block}
+  .bouton-fichier{display:inline-block;border:1px solid var(--trait-fort);border-radius:var(--r);
+    padding:11px 16px;font-size:14px;font-weight:600;color:var(--texte);cursor:pointer;
+    background:transparent;transition:border-color var(--mv);-webkit-tap-highlight-color:transparent}
+  .bouton-fichier:hover{border-color:var(--vert)}
+  input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+  /* --- le consentement --- */
+  .accord{display:flex;gap:11px;align-items:flex-start;background:var(--fond2);
+    border:1px solid var(--trait);border-radius:var(--r);padding:14px 15px}
+  .accord input{accent-color:var(--vert);width:19px;height:19px;margin:2px 0 0;flex:none}
+  .accord span{font-size:13.5px;color:var(--doux);line-height:1.5}
+
+  /* --- envoyer --- */
+  .envoyer{width:100%;border:0;border-radius:var(--r);background:var(--vert);color:#06180E;
+    font:inherit;font-size:16px;font-weight:800;letter-spacing:.01em;padding:16px;cursor:pointer;
+    margin-top:4px;transition:background var(--mv),opacity var(--mv);-webkit-tap-highlight-color:transparent}
+  .envoyer:hover:not(:disabled){background:var(--vert-clair)}
+  .envoyer:disabled{opacity:.55;cursor:default}
+
+  .alerte{border-radius:var(--r);padding:13px 15px;font-size:14px;margin-bottom:18px;line-height:1.5}
+  .alerte.mal{background:rgba(210,64,47,.12);border:1px solid rgba(210,64,47,.45);color:#FFD9D3}
+  .alerte.info{background:rgba(198,162,87,.1);border:1px solid rgba(198,162,87,.4);color:#F0DFBE}
+  .champ-mal input,.champ-mal textarea{border-color:var(--rouge)}
+
+  /* --- l'ecran de fin --- */
+  .fin{text-align:center;padding:40px 0}
+  .coche{width:66px;height:66px;border-radius:50%;background:rgba(70,191,29,.14);
+    border:1.5px solid var(--vert);display:grid;place-items:center;margin:0 auto 22px}
+  .coche svg{width:30px;height:30px;stroke:var(--vert-clair);stroke-width:2.6;fill:none;
+    stroke-linecap:round;stroke-linejoin:round}
+  .fin h2{font-size:24px;margin:0 0 10px;letter-spacing:-.02em}
+  .fin p{color:var(--doux);font-size:15px;margin:0 auto 20px;max-width:34ch}
+  .lien-perso{background:var(--fond2);border:1px solid var(--trait);border-radius:var(--r);
+    padding:14px;margin-top:8px;text-align:left}
+  .lien-perso b{display:block;font-size:12px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--doux);margin-bottom:8px}
+  .lien-perso code{display:block;font-size:12px;word-break:break-all;color:var(--vert-clair);
+    background:var(--fond);border-radius:8px;padding:10px;user-select:all;line-height:1.45}
+  .lien-perso p{font-size:12.5px;color:var(--pale);margin:9px 0 0;max-width:none}
+
+  .cache{display:none!important}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="enveloppe">
+
+  <div class="marque">
+    <span class="blason" aria-hidden="true">BB</span>
+    <span><b>Baobabs Basket Club</b><span>Dakar</span></span>
+  </div>
+
+  <!-- 1. pendant qu'on verifie le lien -->
+  <div id="ecran-lecture">
+    <p class="chapo">Ouverture du formulaire…</p>
+  </div>
+
+  <!-- 2. lien mort -->
+  <div id="ecran-refus" class="cache">
+    <h1>Ce lien n’est plus valable</h1>
+    <p class="chapo" id="refus-mot">Demandez au club un nouveau lien.</p>
+  </div>
+
+  <!-- 3. le formulaire -->
+  <div id="ecran-form" class="cache">
+    <h1 id="titre">Mon profil</h1>
+    <p class="chapo" id="chapo"></p>
+
+    <div class="alerte mal cache" id="erreur" role="alert"></div>
+    <div class="alerte info cache" id="info"></div>
+
+    <form id="form" novalidate>
+
+      <div class="bloc">
+        <label class="t" for="photo">Photo <i>— celle que le club retravaillera</i></label>
+        <div class="photo">
+          <span class="vignette" id="vignette">Aucune<br>photo</span>
+          <div>
+            <label class="bouton-fichier" for="photo">Choisir une photo</label>
+            <input type="file" id="photo" accept="image/*">
+            <p class="aide" id="photo-mot">JPG ou PNG. Elle est allégée automatiquement.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bloc duo">
+        <div><label class="t" for="prenom">Prénom</label><input type="text" id="prenom" autocomplete="given-name" required></div>
+        <div><label class="t" for="nom">Nom</label><input type="text" id="nom" autocomplete="family-name" required></div>
+      </div>
+
+      <!-- ce qui ne concerne que les joueuses -->
+      <div id="part-joueuse" class="cache">
+        <div class="bloc">
+          <label class="t">Poste<i> — plusieurs si vous êtes polyvalente</i></label>
+          <div class="postes" id="postes"></div>
+        </div>
+
+        <div class="bloc duo">
+          <div><label class="t" for="numero">Numéro souhaité <i>(optionnel)</i></label>
+            <input type="number" id="numero" min="0" max="99" inputmode="numeric"></div>
+          <div><label class="t" for="main">Main forte</label>
+            <select id="main"><option value="">—</option><option>Droitière</option><option>Gauchère</option><option>Ambidextre</option></select></div>
+        </div>
+
+        <div class="bloc duo">
+          <div><label class="t" for="taille">Taille</label><input type="text" id="taille" placeholder="1,78 m" inputmode="decimal"></div>
+          <div><label class="t" for="poids">Poids <i>(optionnel)</i></label><input type="text" id="poids" placeholder="64 kg" inputmode="decimal"></div>
+        </div>
+
+        <div class="bloc duo">
+          <div><label class="t" for="naissance">Date de naissance</label><input type="date" id="naissance"></div>
+          <div><label class="t" for="nationalite">Nationalité</label><input type="text" id="nationalite" placeholder="Sénégalaise"></div>
+        </div>
+
+        <div class="bloc"><label class="t" for="ancien">Ancien club <i>(optionnel)</i></label>
+          <input type="text" id="ancien" placeholder="Le club où vous jouiez avant"></div>
+      </div>
+
+      <!-- ce qui ne concerne que l'encadrement -->
+      <div id="part-staff" class="cache">
+        <div class="bloc"><label class="t" for="fonction">Fonction au club</label>
+          <input type="text" id="fonction" placeholder="Entraîneur, préparateur physique, trésorier…">
+          <p class="aide">Telle qu’elle apparaîtra sur le site.</p></div>
+      </div>
+
+      <div class="bloc duo">
+        <div><label class="t" for="ville">Ville</label><input type="text" id="ville" placeholder="Dakar"></div>
+        <div><label class="t" for="tel">Téléphone <i>(optionnel)</i></label>
+          <input type="tel" id="tel" placeholder="77 000 00 00" inputmode="tel"></div>
+      </div>
+      <p class="aide" style="margin:-13px 0 19px">Le téléphone reste interne au club. Il n’apparaît jamais sur le site.</p>
+
+      <div class="bloc">
+        <label class="t" for="bio">Quelques mots sur vous <i>(optionnel)</i></label>
+        <textarea id="bio" placeholder="Votre parcours, votre style de jeu, ce qui vous caractérise."></textarea>
+      </div>
+
+      <div class="bloc">
+        <label class="accord">
+          <input type="checkbox" id="consent">
+          <span>J’autorise le Baobabs Basket Club à publier ma photo et ces informations
+                sur son site et ses réseaux.</span>
+        </label>
+      </div>
+
+      <button type="submit" class="envoyer" id="envoyer">Envoyer mon profil</button>
+      <p class="aide" style="text-align:center;margin-top:12px">
+        Le staff vérifie vos informations avant toute publication.</p>
+    </form>
+  </div>
+
+  <!-- 4. c'est parti -->
+  <div id="ecran-fin" class="cache">
+    <div class="fin">
+      <div class="coche"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div>
+      <h2>Votre profil est bien arrivé</h2>
+      <p>Le staff va vérifier vos informations avant leur publication sur le site.</p>
+      <div class="lien-perso" id="lien-perso">
+        <b>Votre lien personnel</b>
+        <code id="lien-url"></code>
+        <p>Gardez-le : il vous permet de corriger vos informations ou d’envoyer
+           une autre photo, tant que le club n’a pas validé votre profil.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var URL_BASE = 'https://lmwbwasupqkvswukieav.supabase.co';
+  var CLE = 'sb_publishable_68RKprorqTmVkzjHrKgdZw_h-AcMXRh';
+  var BUCKET = 'recruitment-photos';
+
+  var POSTES = ['Meneuse','Arrière','Ailière','Ailière forte','Pivot'];
+  var MAX_OCTETS = 12 * 1024 * 1024;   // avant compression
+
+  var q = new URLSearchParams(location.search);
+  var JETON = q.get('t') || '';
+  var REPRISE = q.get('r') || '';
+
+  var el = function(id){ return document.getElementById(id); };
+  var montrer = function(id){
+    ['ecran-lecture','ecran-refus','ecran-form','ecran-fin'].forEach(function(x){
+      el(x).classList.toggle('cache', x !== id);
+    });
+  };
+  function rpc(fn, corps){
+    return fetch(URL_BASE + '/rest/v1/rpc/' + fn, {
+      method:'POST',
+      headers:{ apikey:CLE, Authorization:'Bearer ' + CLE, 'Content-Type':'application/json' },
+      body: JSON.stringify(corps)
+    }).then(function(r){
+      if (!r.ok) throw new Error('rpc ' + r.status);
+      return r.json();
+    }).then(function(j){ return Array.isArray(j) ? j[0] : j; });
+  }
+  function dire(mot){
+    var e = el('erreur');
+    if (!mot){ e.classList.add('cache'); return; }
+    e.textContent = mot; e.classList.remove('cache');
+    e.scrollIntoView({ block:'center', behavior:'smooth' });
+  }
+
+  // --------------------------------------------------------------- 1. ouvrir
+  var TYPE = 'joueuse';
+  if (!JETON && !REPRISE){
+    montrer('ecran-refus');
+    el('refus-mot').textContent = 'Ce lien est incomplet. Demandez au club de vous le renvoyer en entier.';
+  } else if (REPRISE){
+    rpc('bbc_collecte_reprendre', { p_reprise: REPRISE }).then(function(r){
+      if (!r || !r.ok){ montrer('ecran-refus'); return; }
+      TYPE = r.type === 'joueuse' ? 'joueuse' : 'staff';
+      if (!r.modifiable){
+        montrer('ecran-refus');
+        el('ecran-refus').querySelector('h1').textContent = 'Votre profil est validé';
+        el('refus-mot').textContent = 'Il n’est plus modifiable ici. Contactez le club pour tout changement.';
+        return;
+      }
+      batir('Corriger mon profil', 'Modifiez ce qui doit l’être, puis renvoyez.');
+      remplir(r.donnees || {});
+    }).catch(panne);
+  } else {
+    rpc('bbc_collecte_ouvrir', { p_jeton: JETON }).then(function(r){
+      if (!r || !r.ok){
+        montrer('ecran-refus');
+        var mots = { ferme:'Le club a fermé ce formulaire.',
+                     expire:'Ce lien a expiré.',
+                     complet:'Ce formulaire a reçu toutes les réponses attendues.' };
+        el('refus-mot').textContent = (r && mots[r.motif]) || 'Demandez au club un nouveau lien.';
+        return;
+      }
+      TYPE = r.type === 'joueuse' ? 'joueuse' : 'staff';
+      batir(r.type === 'joueuse' ? 'Rejoindre l’effectif' : 'Mon profil au club',
+            r.libelle ? r.libelle + ' — remplissez votre profil, le staff s’occupe du reste.'
+                      : 'Remplissez votre profil, le staff s’occupe du reste.');
+    }).catch(panne);
+  }
+  function panne(){
+    montrer('ecran-refus');
+    el('ecran-refus').querySelector('h1').textContent = 'Connexion impossible';
+    el('refus-mot').textContent = 'Vérifiez votre connexion et rouvrez le lien.';
+  }
+
+  // --------------------------------------------------------------- 2. batir
+  function batir(titre, chapo){
+    el('titre').textContent = titre;
+    el('chapo').innerHTML = chapo;
+    el('part-joueuse').classList.toggle('cache', TYPE !== 'joueuse');
+    el('part-staff').classList.toggle('cache', TYPE === 'joueuse');
+    el('postes').innerHTML = POSTES.map(function(p, i){
+      return '<label><input type="checkbox" value="' + p + '" id="po-' + i + '"><span>' + p + '</span></label>';
+    }).join('');
+    montrer('ecran-form');
+  }
+  function remplir(d){
+    var nom = String(d.nom_complet || '').trim().split(/\s+/);
+    el('prenom').value = nom.length > 1 ? nom.slice(0, -1).join(' ') : (nom[0] || '');
+    el('nom').value    = nom.length > 1 ? nom[nom.length - 1] : '';
+    ['ville','bio'].forEach(function(k){ if (d[k]) el(k).value = d[k]; });
+    if (TYPE === 'joueuse'){
+      if (d.numero != null) el('numero').value = d.numero;
+      if (d.taille) el('taille').value = d.taille;
+      if (d.poids) el('poids').value = d.poids;
+      if (d.naissance) el('naissance').value = String(d.naissance).slice(0, 10);
+      if (d.nationalite) el('nationalite').value = d.nationalite;
+      if (d.main) el('main').value = d.main;
+      if (d.ancien_club) el('ancien').value = d.ancien_club;
+      (d.postes || []).forEach(function(p){
+        var i = POSTES.indexOf(p);
+        if (i >= 0) el('po-' + i).checked = true;
+      });
+    } else if (d.fonction) el('fonction').value = d.fonction;
+    if (d.photo){
+      photoUrl = d.photo;
+      el('vignette').innerHTML = '<img src="' + d.photo + '" alt="">';
+      el('photo-mot').textContent = 'Une photo est déjà enregistrée. Choisissez-en une autre pour la remplacer.';
+    }
+  }
+
+  // --------------------------------------------------------------- 3. photo
+  // Un telephone recent produit des images de 4 a 8 Mo. Les envoyer
+  // telles quelles, c'est une minute d'attente en donnees mobiles et un
+  // envoi qui echoue au moindre creux de reseau. On reduit AVANT.
+  var photoFichier = null, photoUrl = null;
+  el('photo').addEventListener('change', function(){
+    dire('');
+    var f = this.files && this.files[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)){
+      dire('Ce fichier n’est pas une image. Choisissez une photo (JPG ou PNG).');
+      this.value = ''; return;
+    }
+    if (f.size > MAX_OCTETS){
+      dire('Cette image est trop lourde (' + Math.round(f.size / 1048576) + ' Mo). Le maximum est 12 Mo.');
+      this.value = ''; return;
+    }
+    photoFichier = f;
+    var lecteur = new FileReader();
+    lecteur.onload = function(e){ el('vignette').innerHTML = '<img src="' + e.target.result + '" alt="">'; };
+    lecteur.readAsDataURL(f);
+    el('photo-mot').textContent = f.name.slice(0, 34) + ' · ' + Math.max(1, Math.round(f.size / 1024)) + ' Ko';
+  });
+
+  function reduire(f){
+    return new Promise(function(res){
+      var u = URL.createObjectURL(f), img = new Image();
+      img.onload = function(){
+        try {
+          var cote = 1400, e = Math.min(1, cote / Math.max(img.width, img.height));
+          var c = document.createElement('canvas');
+          c.width = Math.round(img.width * e); c.height = Math.round(img.height * e);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(u);
+          c.toBlob(function(b){
+            if (!b) return res(f);
+            res(new File([b], f.name.replace(/\.[a-z0-9]+$/i, '') + '.jpg', { type:'image/jpeg' }));
+          }, 'image/jpeg', .86);
+        } catch(e){ URL.revokeObjectURL(u); res(f); }
+      };
+      img.onerror = function(){ URL.revokeObjectURL(u); res(f); };
+      img.src = u;
+    });
+  }
+  function envoyerPhoto(f){
+    return reduire(f).then(function(petit){
+      var chemin = 'profils/' + Date.now() + '-' + petit.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      return fetch(URL_BASE + '/storage/v1/object/' + BUCKET + '/' + chemin, {
+        method:'POST',
+        headers:{ apikey:CLE, Authorization:'Bearer ' + CLE, 'Content-Type': petit.type || 'application/octet-stream' },
+        body: petit
+      }).then(function(r){
+        if (!r.ok) throw new Error('photo');
+        return URL_BASE + '/storage/v1/object/public/' + BUCKET + '/' + chemin;
+      });
+    });
+  }
+
+  // --------------------------------------------------------------- 4. envoi
+  var enCours = false;
+  el('form').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    if (enCours) return;             // double envoi : le second ne part pas
+    dire('');
+    document.querySelectorAll('.champ-mal').forEach(function(n){ n.classList.remove('champ-mal'); });
+
+    var prenom = el('prenom').value.trim(), nom = el('nom').value.trim();
+    if (!prenom || !nom){
+      (!prenom ? el('prenom') : el('nom')).closest('div').classList.add('champ-mal');
+      dire('Votre prénom et votre nom sont nécessaires.');
+      (!prenom ? el('prenom') : el('nom')).focus();
+      return;
+    }
+    if (TYPE !== 'joueuse' && !el('fonction').value.trim()){
+      el('fonction').closest('div').classList.add('champ-mal');
+      dire('Indiquez votre fonction au club.'); el('fonction').focus(); return;
+    }
+    if (!el('consent').checked){
+      dire('Cochez l’autorisation de publication pour envoyer votre profil.');
+      el('consent').focus(); return;
+    }
+
+    enCours = true;
+    var b = el('envoyer'), mot = b.textContent;
+    b.disabled = true; b.textContent = photoFichier ? 'Envoi de la photo…' : 'Envoi…';
+
+    var etape = photoFichier ? envoyerPhoto(photoFichier).catch(function(){
+      // La photo est un plus, pas un barrage : si elle ne part pas, le
+      // profil part quand meme et le club pourra la redemander.
+      photoRatee = true; return null;
+    }) : Promise.resolve(photoUrl);
+    var photoRatee = false;
+
+    etape.then(function(url){
+      b.textContent = 'Envoi…';
+      var d = {
+        prenom: prenom, nom: nom,
+        ville: el('ville').value.trim(),
+        bio: el('bio').value.trim(),
+        tel: el('tel').value.trim(),
+        photo: url || photoUrl || '',
+        consent: true
+      };
+      if (TYPE === 'joueuse'){
+        d.numero = el('numero').value.trim();
+        d.taille = el('taille').value.trim();
+        d.poids = el('poids').value.trim();
+        d.naissance = el('naissance').value;
+        d.nationalite = el('nationalite').value.trim();
+        d.main = el('main').value;
+        d.ancien_club = el('ancien').value.trim();
+        d.postes = POSTES.filter(function(p, i){ return el('po-' + i) && el('po-' + i).checked; });
+      } else {
+        d.fonction = el('fonction').value.trim();
+      }
+      return REPRISE ? rpc('bbc_collecte_majour', { p_reprise: REPRISE, p_data: d })
+                     : rpc('bbc_collecte_deposer', { p_jeton: JETON, p_data: d });
+    }).then(function(r){
+      if (!r || !r.ok){
+        var mots = { lien:'Ce lien n’est plus valable. Demandez-en un nouveau au club.',
+                     nom:'Votre prénom et votre nom sont nécessaires.',
+                     verrouille:'Votre profil a déjà été validé : il n’est plus modifiable ici.',
+                     introuvable:'Ce lien personnel n’est pas reconnu.' };
+        throw new Error(mots[r && r.motif] || 'L’envoi n’a pas abouti. Réessayez dans un instant.');
+      }
+      var perso = r.reprise || REPRISE;
+      if (perso){
+        el('lien-url').textContent = new URL('joueuse.html?r=' + perso, location.href).href;
+      } else {
+        el('lien-perso').classList.add('cache');
+      }
+      if (photoRatee){
+        el('ecran-fin').querySelector('.fin p').textContent =
+          'Votre photo n’est pas partie, mais vos informations sont bien arrivées. Le club vous la redemandera.';
+      }
+      montrer('ecran-fin');
+      window.scrollTo({ top:0 });
+    }).catch(function(e){
+      enCours = false;
+      b.disabled = false; b.textContent = mot;
+      dire(e && e.message && !/^rpc /.test(e.message)
+           ? e.message
+           : 'L’envoi n’a pas abouti. Vérifiez votre connexion et réessayez.');
+    });
+  });
+})();
+</script>
+</body>
+</html>
