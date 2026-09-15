@@ -6690,13 +6690,13 @@
     // Les reglages entrent ici : les badges des dossiers et les couleurs
     // de categorie en viennent, et ils servent des le premier ecran
     // ouvert. Une seule lecture, avant tout le monde.
-    // lienClubPret() entre ici pour une raison precise : la reponse doit
-    // etre connue AVANT qu'on puisse enregistrer un match. La demander
-    // au moment du clic obligerait a attendre le reseau une commande a
-    // la main. Elle ne bloque rien : elle ne peut pas echouer, elle rend
-    // vrai ou faux.
+    // liensPrets() entre ici pour une raison precise : la reponse doit
+    // etre connue AVANT qu'on puisse enregistrer un match ou un article.
+    // La demander au moment du clic obligerait a attendre le reseau une
+    // commande a la main. Elle ne bloque rien : elle ne peut pas
+    // echouer, elle rend vrai ou faux pour chaque lien.
     return Promise.all([role, profil(), chargerListes(), chargerProprietaire(),
-                        lienClubPret(),
+                        liensPrets(),
                         loadSettings().then(badgesAppliquer)])
       // Le bouton du Greffe n'apparait qu'ici : c'est le premier moment
       // ou CP_PROPRIETAIRE vient de la base et non de son repli.
@@ -15276,20 +15276,33 @@
   // retombe sur l'ancien comportement (la copie du logo a la creation),
   // et le dit quand on enregistre un logo.
   // ---------------------------------------------------------------------
-  var LIEN_CLUB = null;            // null = pas encore demande
-  function lienClubPret(){
-    if (LIEN_CLUB !== null) return Promise.resolve(LIEN_CLUB);
-    return sbGet('matches?select=opponent_team_id&limit=1')
-      .then(function(){ LIEN_CLUB = true;  return true; })
-      .catch(function(){ LIEN_CLUB = false;
-        console.warn('[Baobabs] MIGRATION-2026-09-15-un-club-un-logo.sql n\'a pas ete jouee : le logo d\'un club ne suivra pas ses matchs.');
-        return false; });
+  // Une entree par lien : chacune vient de sa migration, et elles
+  // peuvent etre jouees separement.
+  var LIENS = {
+    club:     { pose:null, table:'matches', colonne:'opponent_team_id',
+                fichier:'MIGRATION-2026-09-15-un-club-un-logo.sql',
+                manque:'le logo d\'un club ne suivra pas ses matchs ni le classement' },
+    rubrique: { pose:null, table:'news',    colonne:'category_id',
+                fichier:'MIGRATION-2026-09-15-rubrique-des-articles.sql',
+                manque:'renommer une categorie detachera ses articles' }
+  };
+  function liensPrets(){
+    return Promise.all(Object.keys(LIENS).map(function(k){
+      var L = LIENS[k];
+      if (L.pose !== null) return L.pose;
+      return sbGet(L.table + '?select=' + L.colonne + '&limit=1')
+        .then(function(){ L.pose = true; return true; })
+        .catch(function(){ L.pose = false;
+          console.warn('[Baobabs] ' + L.fichier + ' n\'a pas ete jouee : ' + L.manque + '.');
+          return false; });
+    }));
   }
   // Retire du corps les colonnes de liaison quand la base ne les a pas.
-  function sansLienClub(corps, champ){
-    if (LIEN_CLUB === false && corps && champ in corps) delete corps[champ];
+  function sansLien(cle, corps, champ){
+    if (LIENS[cle] && LIENS[cle].pose === false && corps && champ in corps) delete corps[champ];
     return corps;
   }
+  function sansLienClub(corps, champ){ return sansLien('club', corps, champ); }
 
   function clubsRefCharger(){
     if (clubsRef.length) return Promise.resolve(clubsRef);
@@ -19170,11 +19183,18 @@
     });
 
     document.getElementById('ef-del').addEventListener('click', function(){
-      if (!confirm('Supprimer définitivement la fiche de ' + (r.name || 'cette joueuse') + ' ?')) return;
+      var bd = this; bd.disabled = true;
+      joueuseDependances(r.id).then(function(dep){
+        bd.disabled = false;
+        if (!joueuseConfirmerSuppression(r.name, dep)) return;
+        efSupprimerVraiment(r, note);
+      });
+    });
+    function efSupprimerVraiment(r, note){
       sbDelete('players', r.id, 'Joueuses')
         .then(function(){ efSel = null; efDirty = false; return efLoad(); })
         .catch(function(){ note.textContent = 'La suppression a échoué.'; });
-    });
+    }
 
     efLoadReal(r.id);
     efChargerPieces(r.id);
@@ -19546,7 +19566,14 @@
               '<input id="ar-date" type="date" value="' + esc(r.published_at ? String(r.published_at).slice(0, 10) : '') + '"></div>' +
             '<div class="ar-field"><label for="ar-cat">Catégorie</label><select id="ar-cat">' +
               '<option value="">Sans catégorie</option>' +
-              arCats.map(function(c){ return '<option value="' + esc(c.name) + '"' + (r.category === c.name ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') +
+              // L'option porte les deux : le NOM, que lit le site, et
+              // l'IDENTIFIANT, qui fait que l'article suivra sa rubrique
+              // si on la renomme. La selection se fait sur le lien quand
+              // l'article en a un, sur le nom sinon (article d'avant la
+              // migration, jamais reenregistre).
+              arCats.map(function(c){
+                var choisi = r.category_id ? String(r.category_id) === String(c.id) : (r.category === c.name);
+                return '<option value="' + esc(c.name) + '" data-cat-id="' + esc(c.id) + '"' + (choisi ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') +
             '</select></div>' +
             '<div class="ar-field"><label for="ar-author">Auteur</label>' +
               '<input id="ar-author" type="text" value="' + esc(r.author || '') + '" placeholder="Qui signe l\'article"></div>' +
@@ -19634,6 +19661,7 @@
         status: el['ar-status'].value,
         published_at: el['ar-date'].value || null,
         category: el['ar-cat'].value || null,
+        category_id: (function(){ var o = el['ar-cat'].selectedOptions[0]; return (o && o.getAttribute('data-cat-id')) || null; })(),
         author: el['ar-author'].value.trim() || null,
         slug: el['ar-slug'].value.trim() || null,
         image_url: el['ar-img'].value.trim() || null,
@@ -19646,6 +19674,7 @@
     function save(extra, label){
       var body = payload();
       if (extra) Object.keys(extra).forEach(function(k){ body[k] = extra[k]; });
+      sansLien('rubrique', body, 'category_id');
       note.textContent = 'Enregistrement…';
       return sbUpdate('news', r.id, body, 'Articles')
         .then(function(){ arDirty = false; return arLoad(); })
@@ -19721,9 +19750,49 @@
     ctLoad();
   }
 
+  // COMBIEN D'ARTICLES DANS CHAQUE RUBRIQUE.
+  //
+  // Ce compte venait de `arRows`, le cache de l'ecran Articles. Il n'est
+  // rempli qu'une fois cet ecran ouvert : en arrivant directement sur
+  // Categories, toutes les rubriques affichaient « 0 article ».
+  //
+  // Ce n'etait pas qu'un affichage faux. C'est LE MEME COMPTE qui garde
+  // la suppression : « 2 article(s) utilisent cette categorie » ne
+  // s'affichait pas, et l'on supprimait une rubrique en usage sans le
+  // moindre avertissement. Un ecran ne doit pas dependre de l'ordre dans
+  // lequel on a visite les autres.
+  //
+  // Une lecture de deux colonnes suffit, et elle est a jour.
+  var ctUsage = null;        // null = pas encore compte
+  function ctCompter(){
+    return sbGet('news?select=category,category_id&limit=2000')
+      .then(function(rows){
+        var u = { parNom:{}, parId:{} };
+        (rows || []).forEach(function(r){
+          var n = String(r.category == null ? '' : r.category).trim().toLowerCase();
+          if (n) u.parNom[n] = (u.parNom[n] || 0) + 1;
+          if (r.category_id) u.parId[String(r.category_id)] = (u.parId[String(r.category_id)] || 0) + 1;
+        });
+        ctUsage = u;
+        return u;
+      })
+      .catch(function(){ ctUsage = null; return null; });
+  }
+  // Le lien fait foi quand il existe ; le nom sert de repli pour les
+  // articles ecrits avant la migration et jamais reenregistres.
+  function ctUsageDe(c){
+    if (!ctUsage) return null;                       // null = on ne sait pas
+    var parId = ctUsage.parId[String(c.id)] || 0;
+    if (parId) return parId;
+    return ctUsage.parNom[String(c.name || '').trim().toLowerCase()] || 0;
+  }
+
   function ctLoad(){
-    return sbGet('news_categories?select=*&order=sort.asc')
-      .then(function(rows){ ctRows = rows || []; arCats = ctRows; ctRender(); })
+    return Promise.all([
+      sbGet('news_categories?select=*&order=sort.asc'),
+      ctCompter()
+    ])
+      .then(function(r){ ctRows = r[0] || []; arCats = ctRows; ctRender(); })
       .catch(function(){
         showMsg(document.getElementById('ct-msg'), 'Table des catégories introuvable — MIGRATION-publications.sql a-t-elle été exécutée ?', false);
       });
@@ -19739,7 +19808,7 @@
     if (!ctRows.length){ box.innerHTML = '<div class="empty">Aucune catégorie.</div>'; return; }
 
     box.innerHTML = ctRows.map(function(c){
-      var used = arRows.filter(function(r){ return r.category === c.name; }).length;
+      var used = ctUsageDe(c);
       // La ligne etait une carte a 11px de rayon ; le nuancier, sept
       // ronds de 20px cercles de blanc sur le choisi. Un filet, des
       // carres a l'echelle du fichier, et l'or pour marquer le choix —
@@ -19752,7 +19821,7 @@
             return '<button type="button" class="ct-col' + (c.color === col ? ' on' : '') + '" data-id="' + c.id + '" data-col="' + col + '" title="' + col + '" style="background:' + col + '"></button>';
           }).join('') +
         '</div>' +
-        '<span class="ct-used">' + used + ' article' + (used > 1 ? 's' : '') + '</span>' +
+        '<span class="ct-used">' + (used == null ? '—' : used + ' article' + (used > 1 ? 's' : '')) + '</span>' +
         '<button type="button" class="ds-act ct-del" data-id="' + c.id + '" data-name="' + esc(c.name) + '">Supprimer</button>' +
       '</div>';
     }).join('');
@@ -19772,10 +19841,20 @@
     });
     box.querySelectorAll('.ct-del').forEach(function(b){
       b.addEventListener('click', function(){
-        var used = arRows.filter(function(r){ return r.category === b.getAttribute('data-name'); }).length;
-        // On avertit avant de créer des articles orphelins.
-        if (used && !confirm(used + ' article(s) utilisent cette catégorie. Ils se retrouveront sans rubrique. Continuer ?')) return;
-        if (!used && !confirm('Supprimer cette catégorie ?')) return;
+        var cat = ctRows.filter(function(x){ return String(x.id) === String(b.getAttribute('data-id')); })[0] || { name: b.getAttribute('data-name') };
+        var used = ctUsageDe(cat);
+        // On avertit avant de creer des articles orphelins. Si le compte
+        // n'a pas pu etre lu, on le DIT plutot que de le supposer nul.
+        var SL = String.fromCharCode(10);
+        if (used == null){
+          if (!confirm('Impossible de vérifier combien d’articles utilisent cette catégorie.' + SL + SL +
+                       'Supprimer quand même ?')) return;
+        } else if (used){
+          if (!confirm(used + ' article' + (used > 1 ? 's utilisent' : ' utilise') + ' cette catégorie. ' +
+                       (used > 1 ? 'Ils garderont' : 'Il gardera') + ' le nom de la rubrique, mais ' +
+                       (used > 1 ? 'ils n’auront' : 'il n’aura') + ' plus de couleur, et la rubrique disparaîtra de la liste.' + SL + SL +
+                       'Continuer ?')) return;
+        } else if (!confirm('Supprimer cette catégorie ?')) return;
         sbDelete('news_categories', b.getAttribute('data-id'), 'Catégories')
           .then(ctLoad).catch(function(){ showMsg(msg, 'La suppression a échoué.', false); });
       });
@@ -28501,11 +28580,67 @@
     }).then(function(rows){ QG.rows=(rows||[]).map(function(r,i){ if(r.sort==null) r.sort=i; return r; }); qgRenderCards(); qgRenderInspector(); })
       .catch(function(){ qgToast('Erreur lors de l\'enregistrement (table / migration SQL ?).',true); if(btn){ btn.disabled=false; btn.textContent=isNew?'Ajouter au site':'Enregistrer'; } });
   }
+  // ---------------------------------------------------------------------
+  // CE QUI PART AVEC UNE JOUEUSE
+  //
+  // Six tables la referencent en `on delete cascade` : sa feuille de
+  // match ligne par ligne, ses convocations, ses presences aux
+  // entrainements, ses pieces, ses coordonnees, ses statistiques de
+  // saison. La confirmation disait « Supprimer definitivement la fiche
+  // de X ? » -- le mot « fiche » laisse croire qu'on retire une carte
+  // d'un trombinoscope. On efface une saison entiere de releves, et
+  // rien ne le rattrape : le journal d'audit garde la trace du geste,
+  // pas les lignes.
+  //
+  // On compte avant de demander. Si le comptage echoue, on le DIT : une
+  // suppression ne se confirme pas sur un chiffre qu'on n'a pas.
+  // ---------------------------------------------------------------------
+  function joueuseDependances(id){
+    var q = function(t, c){
+      return sbGet(t + '?select=' + (c || 'player_id') + '&player_id=eq.' + encodeURIComponent(id) + '&limit=1000')
+        .then(function(r){ return (r || []).length; })
+        .catch(function(){ return null; });
+    };
+    return Promise.all([
+      q('match_stats'), q('match_convocations'), q('team_attendance'), q('players_documents')
+    ]).then(function(n){
+      if (n.some(function(x){ return x === null; })) return null;
+      return { feuilles:n[0], convocations:n[1], presences:n[2], pieces:n[3],
+               total:n[0]+n[1]+n[2]+n[3] };
+    });
+  }
+  function joueuseConfirmerSuppression(nom, dep){
+    var SL = String.fromCharCode(10);
+    var qui = nom || 'cette joueuse';
+    if (dep === null)
+      return confirm('Supprimer la fiche de ' + qui + ' ?' + SL + SL +
+        'Impossible de vérifier ce qui y est rattaché. Tout ce qui la concerne (feuille de match, convocations, présences, pièces) serait effacé avec elle.' + SL + SL +
+        'Supprimer quand même ?');
+    if (!dep.total)
+      return confirm('Supprimer la fiche de ' + qui + ' ?' + SL + SL + 'Rien d’autre n’y est rattaché.');
+    var bouts = [];
+    if (dep.feuilles)     bouts.push(dep.feuilles + ' ligne' + (dep.feuilles > 1 ? 's' : '') + ' de feuille de match');
+    if (dep.convocations) bouts.push(dep.convocations + ' convocation' + (dep.convocations > 1 ? 's' : ''));
+    if (dep.presences)    bouts.push(dep.presences + ' présence' + (dep.presences > 1 ? 's' : '') + ' à l’entraînement');
+    if (dep.pieces)       bouts.push(dep.pieces + ' pièce' + (dep.pieces > 1 ? 's' : '') + ' du dossier');
+    return confirm('Supprimer définitivement ' + qui + ' ?' + SL + SL +
+      'Ceci efface AUSSI, sans retour possible :' + SL +
+      bouts.map(function(b){ return '• ' + b; }).join(SL) + SL + SL +
+      'Ses statistiques disparaîtront des matchs déjà joués.' + SL + SL +
+      'Pour la retirer de l’effectif sans rien perdre, passez son statut à « partie ».');
+  }
+
   function qgDeleteId(id){
     if(id==='__new__'){ QG.sel=null; QG.draft=null; qgRenderCards(); qgRenderInspector(); return; }
     var r=QG.rows.filter(function(x){return String(x.id)===String(id);})[0];
-    if(!confirm('Supprimer '+((r&&r.name)?r.name:'cette fiche')+' ?')) return;
-    sbDelete('players',id,'Effectif — '+((r&&r.name)?r.name:'(sans nom)')).then(function(){ qgToast('Fiche supprimée ✓'); if(String(QG.sel)===String(id)) QG.sel=null; loadDashboard && loadDashboard(); qgLoad(); qgRenderInspector(); })
+    var nom=(r&&r.name)?r.name:null;
+    joueuseDependances(id).then(function(dep){
+      if(!joueuseConfirmerSuppression(nom, dep)) return;
+      return qgSupprimerVraiment(id, r);
+    });
+  }
+  function qgSupprimerVraiment(id, r){
+    return sbDelete('players',id,'Effectif — '+((r&&r.name)?r.name:'(sans nom)')).then(function(){ qgToast('Fiche supprimée ✓'); if(String(QG.sel)===String(id)) QG.sel=null; loadDashboard && loadDashboard(); qgLoad(); qgRenderInspector(); })
       .catch(function(){ qgToast('Erreur lors de la suppression.',true); });
   }
   function qgDuplicate(id){
