@@ -1964,6 +1964,61 @@
     .pc-carte{grid-template-columns:40px minmax(0,1fr)}
   }
 
+  /* ===================== CONFIRMER =====================
+     Meme geometrie que la boite « demander » : hauteur maximale, corps
+     qui defile, pied qui ne defile pas. Un ecran de 528 px de haut ne
+     doit jamais cacher le bouton qui decide. */
+  #cfm{position:fixed;inset:0;z-index:520;
+    background:rgba(4,9,6,.76);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+    display:flex;align-items:safe center;justify-content:center;padding:24px;
+    overflow-y:auto;overscroll-behavior:contain}
+  #cfm.hide{display:none}
+  .cfm-boite{width:min(440px,100%);background:var(--surface);
+    border:1px solid var(--line-strong);border-radius:var(--r-lg);
+    box-shadow:0 24px 70px rgba(0,0,0,.6);
+    display:flex;flex-direction:column;max-height:calc(100dvh - 48px);overflow:hidden}
+  .cfm-corps{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+    padding:22px 24px 6px}
+  /* Le pictogramme dit le registre AVANT qu'on lise : rouge pour ce qui
+     efface, sable pour ce qui engage sans detruire. */
+  .cfm-ic{width:38px;height:38px;border-radius:var(--r-md);display:grid;place-items:center;
+    margin-bottom:14px;font-family:var(--font-ui);font-weight:800;font-size:19px;line-height:1}
+  #cfm.est-danger .cfm-ic{background:var(--danger-wash);color:var(--danger);
+    border:1px solid rgba(229,86,74,.34)}
+  #cfm:not(.est-danger) .cfm-ic{background:var(--attente-wash);color:var(--attente);
+    border:1px solid var(--attente-edge)}
+  .cfm-t{margin:0 0 8px;font-family:var(--font-display);font-weight:var(--display-weight);
+    letter-spacing:var(--display-tracking);font-size:19px;line-height:1.2;color:var(--text)}
+  .cfm-d{margin:0 0 4px;font-size:13.5px;line-height:1.55;color:var(--muted)}
+  .cfm-d:empty{display:none}
+  /* La liste de ce qui disparait. Chaque ligne porte son chiffre a
+     gauche, en tabulaire : on les compare en descendant, et c'est le
+     total qu'on soupese avant de cliquer. */
+  .cfm-l{margin:14px 0 0}
+  .cfm-l:empty{display:none}
+  .cfm-li{display:flex;align-items:baseline;gap:10px;padding:7px 11px;
+    border:1px solid var(--line);border-radius:var(--r-sm);margin-bottom:6px;
+    background:var(--surface-2);font-size:13px}
+  .cfm-li b{font-family:var(--font-ui);font-weight:800;font-size:15px;
+    font-variant-numeric:tabular-nums;min-width:26px;text-align:right;color:var(--text)}
+  .cfm-li span{color:var(--muted);min-width:0}
+  .cfm-li.perd{border-color:rgba(229,86,74,.3)}
+  .cfm-li.perd b{color:var(--danger)}
+  .cfm-li.reste{opacity:.82}
+  .cfm-li em{font-style:normal;display:block;font-size:11.5px;color:var(--faint);margin-top:2px}
+  .cfm-apres{margin:14px 0 0;font-size:12.5px;line-height:1.5;color:var(--faint)}
+  .cfm-apres:empty{display:none}
+  .cfm-pied{flex:none;display:flex;justify-content:flex-end;gap:10px;
+    padding:15px 24px 17px;border-top:1px solid var(--line);background:var(--surface);
+    border-radius:0 0 calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px)}
+  .cfm-pied .btn{min-height:44px;padding:11px 20px;width:auto;min-width:0}
+  /* Le bouton qui detruit ne prend pas l'accent de l'application : le
+     vert dit « allez-y » partout ailleurs, il ne peut pas dire « vous
+     allez perdre quelque chose » ici. */
+  #cfm.est-danger #cfm-oui{background:var(--danger);color:#FFF3F1;border:1px solid var(--danger)}
+  #cfm.est-danger #cfm-oui:hover{filter:brightness(1.08)}
+  #cfm:not(.est-danger) #cfm-oui{background:linear-gradient(155deg,var(--gold-bright),var(--gold));color:#1A1305}
+  @media(max-width:520px){ .cfm-pied{flex-direction:column-reverse} .cfm-pied .btn{width:100%} }
   /* ===== DEMANDER QUELQUE CHOSE ===== */
   /* `safe center` : centre tant que ca tient, et retombe sur le haut
      quand ca ne tient pas. Un `center` ordinaire coupe des DEUX cotes
@@ -4446,6 +4501,36 @@
        « Nom de la joueuse ? » au-dessus d'un ecran fige, sans dire ce
        qui allait se passer ensuite -- on ne savait pas si l'on creait
        une fiche ou si l'on cherchait quelqu'un. -->
+  <!-- ===== CONFIRMER =====
+       Un confirm() du navigateur est une boite grise du systeme posee
+       au milieu d'un ecran sombre : elle ne ressemble a rien de ce
+       qu'elle interrompt. Et surtout elle ne sait rien montrer. Depuis
+       que le moteur des liens sait dire « ceci efface AUSSI 14 lignes
+       de feuille de match et 3 convocations », il faut pouvoir
+       l'ECRIRE : une liste, des chiffres, une hierarchie.
+
+       Le bouton qui detruit est a DROITE et il est rouge ; celui qui
+       renonce est a gauche et discret. C'est l'inverse du confirm()
+       natif sur Windows, et c'est l'ordre de tout le reste de
+       l'administration : le geste qui engage se trouve toujours a
+       droite. Le clavier suit : Echap renonce, et le focus part sur
+       « Annuler » -- on n'arme pas la destruction par un Entree
+       distrait. -->
+  <div id="cfm" class="hide" role="dialog" aria-modal="true" aria-labelledby="cfm-t">
+    <div class="cfm-boite">
+      <div class="cfm-corps">
+        <div class="cfm-ic" id="cfm-ic" aria-hidden="true"></div>
+        <h3 class="cfm-t" id="cfm-t"></h3>
+        <p class="cfm-d" id="cfm-d"></p>
+        <div class="cfm-l" id="cfm-l"></div>
+        <p class="cfm-apres" id="cfm-apres"></p>
+      </div>
+      <div class="cfm-pied">
+        <button type="button" class="btn btn-ghost" id="cfm-non">Annuler</button>
+        <button type="button" class="btn" id="cfm-oui">Confirmer</button>
+      </div>
+    </div>
+  </div>
   <div id="dem" class="hide" role="dialog" aria-modal="true" aria-labelledby="dem-t">
     <!-- LE CORPS DEFILE, LE PIED RESTE.
          Sans cette separation, une boite plus haute que la fenetre etait
@@ -7520,36 +7605,56 @@
   // LA CONFIRMATION, TIREE DE LA MEME CARTE. Elle nomme ce qui part, ce
   // qui reste, et ce qui bloquera. Elle rend une promesse : le comptage
   // passe par le reseau.
+  // LA CONFIRMATION, TIREE DE LA MEME CARTE. Elle nomme ce qui part, ce
+  // qui reste, et ce qui bloquera. Elle rend une promesse : le comptage
+  // passe par le reseau, et la boite aussi attend une reponse.
+  //
+  // Les chiffres vont dans une LISTE, pas dans un paragraphe : « 14
+  // lignes de feuille de match » et « 3 convocations » se soupesent en
+  // descendant, l'un sous l'autre. C'est tout ce qu'un confirm() du
+  // navigateur ne savait pas faire.
   function depConfirmer(type, id, nom){
     var c = DEP_CARTE[type];
-    var SL = String.fromCharCode(10);
-    if (!c) return Promise.resolve(confirm('Supprimer ' + (nom || 'cet élément') + ' ?'));
+    if (!c) return confirmer({ titre: 'Supprimer ' + (nom || 'cet élément') + ' ?' });
     var qui = nom || c.quoi;
     return depCompter(type, id).then(function(res){
       if (!res)
-        return confirm('Supprimer ' + qui + ' ?' + SL + SL +
-          'Impossible de vérifier ce qui en dépend. Tout ce qui y est rattaché pourrait être effacé.' + SL + SL +
-          'Supprimer quand même ?');
+        return confirmer({
+          titre: 'Supprimer ' + qui + ' ?',
+          detail: 'Impossible de vérifier ce qui en dépend.',
+          apres: 'Tout ce qui y est rattaché pourrait être effacé, sans retour possible.',
+          ok: 'Supprimer quand même' });
+
       var perdus   = res.filter(function(x){ return x.n && x.l.etat === 'perdu'; });
       var restent  = res.filter(function(x){ return x.n && x.l.etat === 'survit'; });
       var bloquent = res.filter(function(x){ return x.n && x.l.etat === 'bloque'; });
+
+      // Ce qui bloque n'est pas une question : la base refusera. On le
+      // dit, et on n'ouvre pas une boite qui laisserait croire au choix.
       if (bloquent.length){
         qgToast('Suppression impossible : ' + bloquent.map(depPhrase).join(', ') +
                 ' y ' + (bloquent[0].n > 1 ? 'sont rattachées' : 'est rattachée') + '. Retirez-les d’abord.', true);
         return false;
       }
       if (!perdus.length && !restent.length)
-        return confirm('Supprimer ' + qui + ' ?' + SL + SL + 'Rien d’autre n’en dépend.');
-      var txt = 'Supprimer définitivement ' + qui + ' ?' + SL;
-      if (perdus.length)
-        txt += SL + 'Ceci efface AUSSI, sans retour possible :' + SL +
-               perdus.map(function(x){ return '• ' + depPhrase(x); }).join(SL) + SL;
-      if (restent.length)
-        txt += SL + 'Ce qui reste :' + SL +
-               restent.map(function(x){
-                 var d = x.n > 1 ? x.l.devient : (x.l.devientUn || x.l.devient);
-                 return '• ' + depPhrase(x) + ' — ' + (d || 'sans lien'); }).join(SL) + SL;
-      return confirm(txt);
+        return confirmer({ titre: 'Supprimer ' + qui + ' ?',
+                           detail: 'Rien d’autre n’en dépend.' });
+
+      var lignes = perdus.map(function(x){
+        return { n: x.n, quoi: x.n > 1 ? x.l.des : x.l.un, perd: true };
+      }).concat(restent.map(function(x){
+        return { n: x.n, quoi: x.n > 1 ? x.l.des : x.l.un, perd: false,
+                 devient: x.n > 1 ? x.l.devient : (x.l.devientUn || x.l.devient) };
+      }));
+
+      return confirmer({
+        titre: 'Supprimer ' + qui + ' ?',
+        detail: perdus.length
+          ? 'Ceci efface aussi, sans retour possible :'
+          : 'Voici ce qui y est rattaché :',
+        lignes: lignes,
+        apres: (perdus.length && restent.length) ? 'Ce qui est en rouge disparaît. Le reste survit.' : '',
+        ok: 'Supprimer' });
     });
   }
 
@@ -30206,6 +30311,101 @@
     if (!z || !demApercuFn) return;
     try { z.innerHTML = demApercuFn(demValeurs()) || ''; } catch(e){ z.innerHTML = ''; }
   }
+  // =====================================================================
+  //  CONFIRMER
+  //
+  //  Soixante-quatorze confirm() du navigateur dans l'administration.
+  //  Chacun est une boite grise du systeme posee au milieu d'un ecran
+  //  sombre travaille : elle ne ressemble a rien de ce qu'elle
+  //  interrompt, et elle ne sait montrer qu'un bloc de texte.
+  //
+  //  Ca comptait peu tant qu'on demandait « Supprimer ? ». Ca compte
+  //  depuis que le moteur des liens sait dire « ceci efface AUSSI
+  //  14 lignes de feuille de match et 3 convocations » : ces chiffres
+  //  veulent une liste, pas un paragraphe -- on les soupese en
+  //  descendant, et c'est le total qui decide.
+  //
+  //  DEUX CHOIX QUI NE SONT PAS COSMETIQUES :
+  //
+  //  Le bouton qui detruit est A DROITE et il est ROUGE. C'est
+  //  l'inverse du confirm() de Windows, et c'est l'ordre de tout le
+  //  reste de l'administration : le geste qui engage se trouve toujours
+  //  a droite. Melanger les deux conventions dans une meme application
+  //  est pire que d'en choisir une mauvaise.
+  //
+  //  Le focus part sur « Annuler », pas sur le bouton rouge. On n'arme
+  //  pas une suppression par un Entree distrait -- et Echap renonce,
+  //  toujours.
+  //
+  //  Rend une promesse. Un confirm() natif bloque le fil ; celui-ci
+  //  attend. Tous les appelants passent donc par .then().
+  // =====================================================================
+  var CFM_EN_COURS = null;
+  function confirmer(o){
+    o = o || {};
+    var b = document.getElementById('cfm');
+    // Repli honnete : sans la boite, on ne fait pas semblant de demander.
+    if (!b) return Promise.resolve(confirm(o.titre || 'Confirmer ?'));
+    if (CFM_EN_COURS) return Promise.resolve(false);   // une seule a la fois
+
+    b.classList.toggle('est-danger', o.danger !== false);
+    document.getElementById('cfm-ic').textContent = o.danger === false ? '!' : '×';
+    document.getElementById('cfm-t').textContent = o.titre || 'Confirmer ?';
+    document.getElementById('cfm-d').textContent = o.detail || '';
+    document.getElementById('cfm-apres').textContent = o.apres || '';
+
+    // LES LIGNES. `perd` pour ce qui disparait, sinon ce qui survit.
+    // Le texte vient toujours du code de l'admin, jamais d'une saisie --
+    // mais on echappe quand meme : un nom de club vient de la base.
+    var l = document.getElementById('cfm-l');
+    l.innerHTML = (o.lignes || []).map(function(x){
+      return '<div class="cfm-li ' + (x.perd ? 'perd' : 'reste') + '">' +
+        (x.n != null ? '<b>' + esc(String(x.n)) + '</b>' : '') +
+        '<span>' + esc(x.quoi || '') +
+          (x.devient ? '<em>' + esc(x.devient) + '</em>' : '') +
+        '</span></div>';
+    }).join('');
+
+    var ok = document.getElementById('cfm-oui'), non = document.getElementById('cfm-non');
+    ok.textContent = o.ok || (o.danger === false ? 'Continuer' : 'Supprimer');
+    non.textContent = o.annuler || 'Annuler';
+    b.classList.remove('hide');
+
+    return new Promise(function(resolve){
+      function fermer(v){
+        if (!CFM_EN_COURS) return;
+        CFM_EN_COURS = null;
+        b.classList.add('hide');
+        ok.removeEventListener('click', oui);
+        non.removeEventListener('click', nn);
+        b.removeEventListener('mousedown', fond);
+        document.removeEventListener('keydown', touche, true);
+        resolve(v);
+      }
+      function oui(){ fermer(true); }
+      function nn(){ fermer(false); }
+      // Le clic DOIT commencer sur le voile : sinon, relacher une
+      // selection de texte hors de la boite fermerait la demande.
+      function fond(e){ if (e.target === b) fermer(false); }
+      function touche(e){
+        if (e.key === 'Escape'){ e.preventDefault(); fermer(false); }
+        // Entree valide, mais seulement si le focus n'est pas deja sur
+        // un bouton : sinon on validerait deux fois.
+        else if (e.key === 'Enter' && document.activeElement !== ok && document.activeElement !== non){
+          e.preventDefault(); fermer(true);
+        }
+      }
+      CFM_EN_COURS = fermer;
+      ok.addEventListener('click', oui);
+      non.addEventListener('click', nn);
+      b.addEventListener('mousedown', fond);
+      document.addEventListener('keydown', touche, true);
+      // Le renoncement prend le focus : on n'arme pas la destruction
+      // par un Entree distrait.
+      setTimeout(function(){ try { non.focus(); } catch(e){} }, 30);
+    });
+  }
+
   function demander(opts){
     var b = document.getElementById('dem');
     // Repli honnete : si la boite manque, on ne fait pas semblant.
