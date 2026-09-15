@@ -187,30 +187,21 @@ window.bbLienSur = function (u) {
   .bb-eff.armed.is-in .bb-player .bb-num{animation:bbNumIn .6s cubic-bezier(.34,1.56,.64,1) both}
   .bb-eff.armed.is-in .bb-player .bb-name{animation:bbNameIn .6s cubic-bezier(.16,.8,.3,1) both}
   .bb-eff.armed.is-in .bb-player .bb-bar{animation:bbBarIn .5s cubic-bezier(.16,.8,.3,1) both;transform-origin:left}
-  .bb-eff.armed.is-in .bb-player:nth-child(1){animation-delay:.02s}
-  .bb-eff.armed.is-in .bb-player:nth-child(2){animation-delay:.11s}
-  .bb-eff.armed.is-in .bb-player:nth-child(3){animation-delay:.2s}
-  .bb-eff.armed.is-in .bb-player:nth-child(4){animation-delay:.29s}
-  .bb-eff.armed.is-in .bb-player:nth-child(5){animation-delay:.38s}
-  .bb-eff.armed.is-in .bb-player:nth-child(6){animation-delay:.47s}
-  .bb-eff.armed.is-in .bb-player:nth-child(7){animation-delay:.56s}
-  .bb-eff.armed.is-in .bb-player:nth-child(8){animation-delay:.65s}
-  .bb-eff.armed.is-in .bb-player:nth-child(1) .bb-sweep{animation-delay:.24s}
-  .bb-eff.armed.is-in .bb-player:nth-child(2) .bb-sweep{animation-delay:.33s}
-  .bb-eff.armed.is-in .bb-player:nth-child(3) .bb-sweep{animation-delay:.42s}
-  .bb-eff.armed.is-in .bb-player:nth-child(4) .bb-sweep{animation-delay:.51s}
-  .bb-eff.armed.is-in .bb-player:nth-child(5) .bb-sweep{animation-delay:.6s}
-  .bb-eff.armed.is-in .bb-player:nth-child(6) .bb-sweep{animation-delay:.69s}
-  .bb-eff.armed.is-in .bb-player:nth-child(7) .bb-sweep{animation-delay:.78s}
-  .bb-eff.armed.is-in .bb-player:nth-child(8) .bb-sweep{animation-delay:.87s}
-  .bb-eff.armed.is-in .bb-player:nth-child(1) .bb-num,.bb-eff.armed.is-in .bb-player:nth-child(1) .bb-name,.bb-eff.armed.is-in .bb-player:nth-child(1) .bb-bar{animation-delay:.18s}
-  .bb-eff.armed.is-in .bb-player:nth-child(2) .bb-num,.bb-eff.armed.is-in .bb-player:nth-child(2) .bb-name,.bb-eff.armed.is-in .bb-player:nth-child(2) .bb-bar{animation-delay:.27s}
-  .bb-eff.armed.is-in .bb-player:nth-child(3) .bb-num,.bb-eff.armed.is-in .bb-player:nth-child(3) .bb-name,.bb-eff.armed.is-in .bb-player:nth-child(3) .bb-bar{animation-delay:.36s}
-  .bb-eff.armed.is-in .bb-player:nth-child(4) .bb-num,.bb-eff.armed.is-in .bb-player:nth-child(4) .bb-name,.bb-eff.armed.is-in .bb-player:nth-child(4) .bb-bar{animation-delay:.45s}
-  .bb-eff.armed.is-in .bb-player:nth-child(5) .bb-num,.bb-eff.armed.is-in .bb-player:nth-child(5) .bb-name,.bb-eff.armed.is-in .bb-player:nth-child(5) .bb-bar{animation-delay:.54s}
-  .bb-eff.armed.is-in .bb-player:nth-child(6) .bb-num,.bb-eff.armed.is-in .bb-player:nth-child(6) .bb-name,.bb-eff.armed.is-in .bb-player:nth-child(6) .bb-bar{animation-delay:.63s}
-  .bb-eff.armed.is-in .bb-player:nth-child(7) .bb-num,.bb-eff.armed.is-in .bb-player:nth-child(7) .bb-name,.bb-eff.armed.is-in .bb-player:nth-child(7) .bb-bar{animation-delay:.72s}
-  .bb-eff.armed.is-in .bb-player:nth-child(8) .bb-num,.bb-eff.armed.is-in .bb-player:nth-child(8) .bb-name,.bb-eff.armed.is-in .bb-player:nth-child(8) .bb-bar{animation-delay:.81s}
+  /* LA CASCADE SUIT L'EFFECTIF, ELLE NE LE DEVANCE PLUS.
+     Quarante mentions de nth-child allaient de 1 a 8 -- il y avait
+     huit joueuses de demonstration. A la neuvieme, les suivantes
+     recevaient un delai nul et apparaissaient toutes ensemble pendant
+     que les huit premieres cascadaient.
+     playerCards() pose --i sur chaque carte, comme il posait deja un
+     delai pour .bb-cardbg et .bb-bignum. Le plafond a onze crans evite
+     que cinquante joueuses mettent cinq secondes a se poser : au-dela,
+     les dernieres arrivent ensemble, ce que personne ne remarque en bas
+     d'une grille. */
+  .bb-eff.armed.is-in .bb-player{animation-delay:calc(.02s + min(var(--i,0), 11) * .09s)}
+  .bb-eff.armed.is-in .bb-player .bb-sweep{animation-delay:calc(.24s + min(var(--i,0), 11) * .09s)}
+  .bb-eff.armed.is-in .bb-player .bb-num,
+  .bb-eff.armed.is-in .bb-player .bb-name,
+  .bb-eff.armed.is-in .bb-player .bb-bar{animation-delay:calc(.18s + min(var(--i,0), 11) * .09s)}
 
   .bb-player{transform-origin:bottom center;will-change:transform,opacity}
   .bb-flip-front{transition:box-shadow .35s ease,border-color .35s ease}
@@ -4770,7 +4761,7 @@ window.bbCloud = function(url, w){
     return players.filter(function(p){ return !filterGender || filterGender==='all' || p.gender===filterGender; }).map(function(p, i){
       var idx = players.indexOf(p);
       return '' +
-        '<div class="bb-player" data-player="' + p.no + '" data-player-idx="' + idx + '" style="cursor:pointer;position:relative;border-radius:14px;min-height:330px">' +
+        '<div class="bb-player" data-player="' + p.no + '" data-player-idx="' + idx + '" style="--i:' + i + ';cursor:pointer;position:relative;border-radius:14px;min-height:330px">' +
           '<div class="bb-flip-inner">' +
             '<div class="bb-flip-face bb-flip-front" style="background:#0D1A12;border:1px solid rgba(243,239,230,.09);box-shadow:0 10px 26px rgba(0,0,0,.32)">' +
               '<div class="bb-cardbg" style="animation-delay:' + (-i * 1.1).toFixed(1) + 's"></div>' +
@@ -7473,12 +7464,26 @@ window.bbCloud = function(url, w){
     sbFetch('banners_public?select=*').then(bbPoser.banners = bbApplyBanners).catch(function(){});
     sbFetch('announcement_public?select=*').then(bbPoser.announcements = bbApplyAnnounce).catch(function(){});
 
-    sbFetch('players?select=*&order=sort.asc,jersey_number.asc').then(bbPoser.players = function(rows){
+    // UNE FICHE NON PUBLIEE NE DESCEND MEME PAS DANS LE NAVIGATEUR.
+    // Le site lisait toutes les joueuses et ne filtrait que « partie »,
+    // ici, apres coup. Des que le formulaire de collecte existe, une
+    // inconnue qui le remplit apparaitrait sur la page Equipe avant que
+    // quiconque l'ait regardee.
+    // Si la colonne manquait -- base non migree -- on retombe sur
+    // l'ancienne requete et le filtre ci-dessous traite « pas de
+    // fiche_etat » comme publiable : exactement ce que faisait le site
+    // avant, quand rien n'etait en attente.
+    sbFetch('players?select=*&fiche_etat=eq.publiee&order=sort.asc,jersey_number.asc')
+      .catch(function(){ return sbFetch('players?select=*&order=sort.asc,jersey_number.asc'); })
+      .then(bbPoser.players = function(rows){
       if(!rows || !rows.length) return;
       // Une joueuse partie du club ne doit plus figurer sur le site : jusqu'ici
       // elle y restait comme si de rien n'était. Les blessées et les prêts
       // restent visibles, avec leur statut affiché.
-      players = rows.filter(function(r){ return (r.status||'active') !== 'partie'; }).map(function(r){
+      players = rows.filter(function(r){
+        if ((r.status||'active') === 'partie') return false;
+        return (r.fiche_etat || 'publiee') === 'publiee';
+      }).map(function(r){
         return { no: (r.jersey_number!=null?r.jersey_number:''), name:r.name||'', pos:r.position||'',
           status:(r.status||'active'),
           age:(r.birth_year? (new Date().getFullYear()-r.birth_year):''), height:r.height||'', foot:r.city||'',
