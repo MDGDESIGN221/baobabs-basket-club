@@ -1091,6 +1091,7 @@
   #upcoming-list .rec-item:has(.rec-alert)::before{background:#E08A5B}
   #upcoming-list .rec-thumb, #played-list .rec-thumb,
   #upcoming-list .rec-noimg, #played-list .rec-noimg{width:46px;height:46px;font-size:17px}
+  #upcoming-list .rec-thumb-crest, #played-list .rec-thumb-crest{--crest:46px}
   #upcoming-list .rec-main, #played-list .rec-main{width:100%;min-width:0}
   #upcoming-list .rec-title, #played-list .rec-title{display:flex;flex-wrap:wrap;align-items:center;gap:7px;font-family:var(--font-ui);font-weight:700;font-size:14px;letter-spacing:-.01em;line-height:1.3;color:var(--text)}
   #upcoming-list .rec-title b, #played-list .rec-title b{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:19px;letter-spacing:.01em;color:var(--gold-bright)}
@@ -1144,6 +1145,10 @@
   #section-matches .rec-item:has(.status-upcoming){border-left-color:rgba(198,162,87,.55)}
   #section-matches .rec-item:has(.rec-alert){border-left-color:var(--danger)}
   #section-matches .rec-thumb,#section-matches .rec-noimg{width:48px;height:48px;box-shadow:0 0 0 3px var(--bg),0 0 0 4px rgba(70,191,29,.22),0 4px 10px rgba(0,0,0,.3)}
+  #section-matches .rec-thumb-crest{--crest:48px;box-shadow:0 0 0 3px var(--bg),0 0 0 4px rgba(70,191,29,.22),0 4px 10px rgba(0,0,0,.3)}
+  /* La vignette d'une liste de fiches garde son ombre portee : c'est
+     elle qui la detache du fond de la ligne. */
+  .rec-thumb-crest{--crest:44px;box-shadow:0 2px 6px rgba(0,0,0,.25)}
   #section-matches .rec-title b{font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:17px;letter-spacing:.01em;font-variant-numeric:tabular-nums}
   #section-matches #teams-list .rec-item{border-left-color:rgba(70,191,29,.5)}
   #section-matches #teams-list .rec-item:hover{border-left-color:rgba(70,191,29,.85)}
@@ -1471,6 +1476,12 @@
   .tv-carte b .ok{color:var(--ok)} .tv-carte b .ko{color:var(--danger)}
   .tv-carte small{display:block;font-size:11px;color:var(--faint);margin-top:6px}
   .tv-carte.sig{border-color:rgba(232,169,60,.45);cursor:pointer} .tv-carte.sig:hover{background:var(--surface-2)}
+  /* Une carte qui signale doit dire ce qu'elle repare. Sans ce libelle,
+     rien n'indiquait qu'elle etait cliquable, ni ce que le clic ferait. */
+  .tv-carte-cta{display:inline-flex;align-items:center;gap:5px;margin-top:9px;
+    font-style:normal;font-size:11.5px;font-weight:600;color:var(--warn)}
+  .tv-carte-cta::after{content:'›';font-size:15px;line-height:1;transition:transform .16s}
+  .tv-carte.sig:hover .tv-carte-cta::after{transform:translateX(3px)}
   .tv-carte-club{display:flex;align-items:center;gap:8px} .tv-carte-club b{font-size:15px}
   .tv-page{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
   .tv-avec-profil .tv-page{grid-template-columns:minmax(0,1fr) 380px}
@@ -2482,6 +2493,66 @@
      qui appellent le meme mcCrest. */
   .ds-crest{background:var(--surface-3);color:var(--faint);font-weight:600;
     border:1px solid var(--line-strong)}
+
+  /* ===================== L'ECUSSON D'UN CLUB =====================
+     Un seul composant, cinq tailles. Il remplace .mc-mini, .mc-crest,
+     .db-crest, .pc-crest, .tv-crest et .dem-ap-crest, qui dessinaient
+     six fois la meme chose avec six replis differents.
+
+     LE MONOGRAMME EST DESSOUS, PAS A LA PLACE. L'image le recouvre
+     quand elle charge ; quand elle echoue, elle se retire (voir
+     l'ecouteur `error` en capture) et le monogramme se voit. Il n'y a
+     pas de troisieme etat, donc pas de carre vide possible.
+
+     Le fond reste neutre : un club se reconnait a son ecusson, et
+     teinter l'emplacement de ceux qui n'en ont pas les ferait briller
+     plus que les autres.
+
+     UNE SEULE MESURE, --crest. Les cinq tailles nommees ne font que la
+     poser ; le monogramme s'en deduit. Un contexte qui a besoin d'un
+     diametre a lui l'ecrit en une ligne (voir .ctx-vs plus bas) au lieu
+     de redefinir une famille de classes. */
+  .bb-crest{--crest:28px;position:relative;display:inline-grid;place-items:center;
+    width:var(--crest);height:var(--crest);flex:none;
+    vertical-align:middle;overflow:hidden;border-radius:var(--r-sm);
+    background:var(--surface-3);border:1px solid var(--line-strong)}
+  .bb-crest > i{font-family:var(--font-ui);font-style:normal;font-weight:700;
+    font-size:calc(var(--crest) * .38);letter-spacing:.01em;
+    color:var(--faint);line-height:1;user-select:none}
+  .bb-crest > img{position:absolute;inset:0;width:100%;height:100%;
+    object-fit:contain;padding:9%;background:var(--surface-3)}
+  .bb-crest.is-vide > img{display:none}
+  /* Rond : le staff, le bureau, les lignes de classement du site. */
+  .bb-crest.is-rond{border-radius:50%}
+  /* Une PHOTO n'est pas un logo : un visage doit remplir le cadre, pas
+     flotter au milieu. Meme composant, meme repli, autre cadrage. */
+  .bb-crest.is-photo > img{object-fit:cover;padding:0}
+  /* Fond blanc : certains logos sont dessines pour le papier et
+     disparaissent sur fond sombre. Reserve a la grande taille, ou la
+     perte de contraste avec la page se voit le moins. */
+  .bb-crest.sur-blanc > img{background:#fff}
+
+  .bb-crest--xs{--crest:22px}
+  .bb-crest--sm{--crest:28px}
+  .bb-crest--md{--crest:44px}
+  .bb-crest--lg{--crest:64px}
+  .bb-crest--xl{--crest:clamp(54px,7vw,74px)}
+  /* Le duel, en tete d'une fiche de match : les deux plus gros ecussons
+     de l'administration, un de chaque cote du score. */
+  .bb-crest--duel{--crest:clamp(72px,9vw,104px)}
+
+  /* L'affiche du formulaire de match garde son caractere : fond de
+     terrain, filet vert, et la meme apparition que les autres pieces
+     de la scene. Seul le dessin de l'ecusson est devenu commun. */
+  #gmc .bb-crest--duel{background:#0A1710;border-color:rgba(70,191,29,.3);
+    animation:gmPop .34s cubic-bezier(.22,1,.36,1) both}
+  #gmc .bb-crest--duel > img{background:#0A1710;padding:8px}
+  .bb-crest.gmc-pickable{cursor:pointer;transition:border-color .16s,transform .16s}
+  .bb-crest.gmc-pickable:hover{border-color:var(--gold);transform:scale(1.04)}
+  /* Les diametres propres a un contexte : une ligne chacun. */
+  .ctx-vs .bb-crest{--crest:40px}
+  .pc-chip .bb-crest{--crest:22px;border:none;background:transparent}
+  .gmc-opt .bb-crest{--crest:42px}
   /* L'ecusson au format tableau. On reconnait un club a son ecusson bien
      avant d'en lire le nom : c'est la seule image qu'on garde dans une
      liste, et elle est vraie — pas une initiale sur aplat colore. */
@@ -5894,7 +5965,10 @@
           </div>
           <input type="file" id="bureau_file" accept="image/*">
           <input type="text" id="bureau_url" placeholder="https://…" class="hide">
-          <img id="bureau_preview" alt="" class="logo-preview" style="width:88px;height:88px;border-radius:var(--r-sm);object-fit:cover">
+          <img id="bureau_preview" alt="" class="logo-preview" style="width:88px;height:88px;border-radius:50%;object-fit:cover">
+          <!-- Le bouton « Cadrer » est pose ici par bureauCadreBouton() : il
+               porte les trois nombres du titulaire choisi. -->
+          <div class="qg-photo-actions" id="bureau_cadrer_zone"></div>
         </div>
         <div class="field"><label for="set_bureau_holder">Nom du titulaire <span class="opt">(optionnel)</span></label><input type="text" id="set_bureau_holder" placeholder="Ex : Awa Sène"></div>
         <div class="field"><label for="set_bureau_intro">Intro de la fiche</label><textarea id="set_bureau_intro" placeholder="Rôle général du poste…"></textarea></div>
@@ -7007,6 +7081,50 @@
   var FALLBACK_COLORS = ['#c0392b','#2457c5','#15803d','#d97706','#7c3aed','#0891b2','#be185d','#b45309'];
   function fallbackColor(name){ var h=0,s=String(name||'?'); for(var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return FALLBACK_COLORS[h%FALLBACK_COLORS.length]; }
   function initials(name){ return String(name||'?').replace(/[^A-Za-z0-9 ]/g,'').trim().split(/\s+/).map(function(w){return w.charAt(0);}).join('').slice(0,3).toUpperCase()||'?'; }
+
+  // ---------------------------------------------------------------------
+  // L'ECUSSON D'UN CLUB, UN SEUL POUR TOUTE L'ADMINISTRATION
+  //
+  // Il y en avait quatre : celui du tableau de bord, celui des listes de
+  // matchs, celui de la fiche de preparation et celui de l'apercu au
+  // moment de creer un match. Quatre balisages, quatre familles de
+  // classes, et quatre replis differents quand le logo manque -- le meme
+  // club n'avait donc pas la meme tete selon l'ecran.
+  //
+  // ET SURTOUT, AUCUN DES QUATRE NE SURVIVAIT A UNE IMAGE ABSENTE. Une
+  // adresse qui rend 404 laissait un carre vide, sans un mot : c'est ce
+  // qu'on voyait le 15 septembre apres avoir change un logo. Ici, le
+  // monogramme est POSE D'ABORD et l'image vient par-dessus ; si elle ne
+  // charge pas, elle se retire et le monogramme reapparait. Il n'y a pas
+  // d'etat ou l'on ne voit rien.
+  //
+  // Les tailles sont nommees, pas chiffrees : xs dans une cellule de
+  // tableau, sm dans une liste, md dans une carte, lg dans une fiche,
+  // xl dans l'affiche d'un match.
+  // ---------------------------------------------------------------------
+  function bbCrest(url, nom, taille, extra, attrs){
+    var t = taille || 'sm';
+    var mono = esc(initials(nom).slice(0, 2));
+    var titre = esc(nom || 'Club');
+    var cls = 'bb-crest bb-crest--' + t + (extra ? ' ' + extra : '') + (url ? '' : ' is-vide');
+    return '<span class="' + cls + '" role="img" aria-label="' + titre + '" title="' + titre + '"' +
+             (attrs ? ' ' + attrs : '') + '>' +
+             '<i aria-hidden="true">' + mono + '</i>' +
+             (url ? '<img src="' + esc(url) + '" alt="" loading="lazy" decoding="async">' : '') +
+           '</span>';
+  }
+  // L'evenement `error` d'une image ne remonte pas : il faut l'attraper
+  // en phase de capture, sur le document. Un seul ecouteur couvre donc
+  // tous les ecussons, y compris ceux dessines plus tard.
+  document.addEventListener('error', function(e){
+    var img = e.target;
+    if (!img || img.tagName !== 'IMG') return;
+    var hote = img.parentNode;
+    if (!hote || !hote.classList || !hote.classList.contains('bb-crest')) return;
+    hote.classList.add('is-vide');
+    img.remove();
+  }, true);
+
   function formatDateLong(d){ if(!d)return''; return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}).toUpperCase(); }
   function formatDateShort(d){ if(!d)return''; return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}); }
   function daysUntil(d){ var t=new Date();t.setHours(0,0,0,0); return Math.round((new Date(d+'T00:00:00')-t)/86400000); }
@@ -7506,7 +7624,11 @@
   // faudrait six colonnes de plus en base pour la ranger.
   var CADRE_COLLECTION = {
     photo:     { titre:'Photo de la joueuse',   ratio:0.88, y0:0  },
-    image_url: { titre:'Image de l\'actualité', ratio:1.60, y0:50 }
+    image_url: { titre:'Image de l\'actualité', ratio:1.60, y0:50 },
+    // le rond du staff et du bureau sur le site : un carre, visage au centre
+    photo_url: { titre:'Photo dans son rond',   ratio:1,    y0:50 },
+    // la vignette de la galerie : portrait 9/16, comme les tuiles du site
+    image:     { titre:'Photo de la galerie',   ratio:0.5625, y0:50 }
   };
   function cadrerCollection(champ, url, cur, apres){
     var conf = CADRE_COLLECTION[champ] || { titre:'Image', ratio:1.6, y0:50 };
@@ -9700,6 +9822,9 @@
   function sectionRefreshers(){
     return {
       dashboard: function(){ loadDashboard(); attInit(); }, caisse: csLoad, saison: snLoad, entrainements: trLoad, parcours: pcLoad, gameday: gdLoad, teams: loadTeams,
+      // le direct relit les matchs et le tableau de marque : un lien pose
+      // dans une fiche de match doit se voir en revenant ici
+      live: function(){ loadSettings().then(function(){ LOADERS_live(); }); },
       tickets: tkLoadOffers, promos: pmLoad, newsl: nwLoad,
       banners: bnLoad, announce: anLoad, squad: efLoad,
       products: prLoad, articles: arLoad, categories: ctLoad,
@@ -9964,9 +10089,7 @@
         '<button type="button" class="ctx-link" data-ctx-go="matches2">Composer un match</button>';
     } else {
       var m = ctxNext;
-      var crest = m.opponent_logo_url
-        ? '<img class="ctx-crest" src="' + esc(m.opponent_logo_url) + '" alt="">'
-        : '<div class="ctx-crest-none" style="background:' + fallbackColor(m.opponent_name || '?') + '">' + esc(String(m.opponent_name || '?').charAt(0).toUpperCase()) + '</div>';
+      var crest = bbCrest(m.opponent_logo_url, m.opponent_name, 'md', 'is-rond');
       body.innerHTML =
         '<div class="ctx-vs">' + crest +
           '<div><div class="ctx-team">' + esc((m.is_home ? 'vs ' : 'chez ') + (m.opponent_name || '?')) + '</div>' +
@@ -10409,8 +10532,7 @@
     box.innerHTML = liste.map(function(m){
       var on = String(m.id) === String(pcSel);
       var d = m.match_date ? new Date(m.match_date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' }) : '';
-      var crest = m.opponent_logo_url ? '<img src="' + esc(m.opponent_logo_url) + '" alt="">'
-                                      : '<span class="pc-chip-c">' + esc(String(m.opponent_name || '?').charAt(0).toUpperCase()) + '</span>';
+      var crest = bbCrest(m.opponent_logo_url, m.opponent_name, 'xs', 'is-rond');
       var score = pcScore(m) ? ' <small>' + m.score_baobabs + ' – ' + m.score_opponent + '</small>' : '';
       return '<button type="button" class="pc-chip' + (on ? ' on' : '') + '" data-pc="choisir" data-id="' + esc(m.id) + '">' +
         crest + '<span>' + esc(m.opponent_name || 'Adversaire') + ' <small>· ' + esc(d) + '</small>' + score + '</span></button>';
@@ -10671,7 +10793,7 @@
     var home = m.is_home !== false;
     var gauche = home ? BAOBABS_LOGO : m.opponent_logo_url, droite = home ? m.opponent_logo_url : BAOBABS_LOGO;
     var gN = home ? 'Baobabs' : (m.opponent_name || '?'), dN = home ? (m.opponent_name || '?') : 'Baobabs';
-    function crest(u, n){ return u ? '<img class="pc-crest" src="' + esc(u) + '" alt="">' : '<div class="pc-crest-none">' + esc(String(n).charAt(0).toUpperCase()) + '</div>'; }
+    function crest(u, n){ return bbCrest(u, n, 'xl'); }
     var milieu = pcScore(m)
       ? '<div class="pc-vs score">' + (home ? m.score_baobabs : m.score_opponent) + ' – ' + (home ? m.score_opponent : m.score_baobabs) + '</div>'
       : '<div class="pc-vs">' + (home ? 'VS' : '@') + '</div>';
@@ -13017,7 +13139,7 @@
       '<div class="tv-carte"><i>Affrontés cette saison</i><b>' + Object.keys(nomsSaison).length + '</b><small>' + saison.length + ' match' + (saison.length > 1 ? 's' : '') + (s ? ' en ' + esc(s.label) : '') + '</small></div>' +
       '<div class="tv-carte"><i>Prochain adversaire</i>' + (prochain ? '<span class="tv-carte-club">' + mcCrest(prochain.opponent_logo_url, prochain.opponent_name, 'mc-mini') + '<b>' + esc(prochain.opponent_name) + '</b></span><small>' + esc(ecDateFr(prochain.match_date, true)) + (prochain.match_time ? ' · ' + esc(String(prochain.match_time).slice(0, 5)) : '') + '</small>' : '<b>Aucun</b><small>rien au calendrier</small>') + '</div>' +
       '<div class="tv-carte"><i>Bilan global</i><b><span class="ok">' + v + ' V</span> · <span class="ko">' + d + ' D</span>' + (n ? ' · ' + n + ' N' : '') + '</b>' + (tot ? '<div class="tv-h2h tv-h2h-l"><span class="v" style="flex:' + v + '"></span><span class="n" style="flex:' + n + '"></span><span class="d" style="flex:' + d + '"></span></div>' : '<small>aucun match joué</small>') + '</div>' +
-      (inconnus.length ? '<button type="button" class="tv-carte sig" data-tv-connus="1" title="Ouvrir les clubs connus pour les ajouter"><i>Sans fiche</i><b>' + inconnus.length + '</b><small>' + esc(inconnus.slice(0, 3).map(function(k){ return noms[k]; }).join(', ')) + ' : des matchs contre un club absent de la liste</small></button>' : '') +
+      (inconnus.length ? '<button type="button" class="tv-carte sig" data-tv-fiches="1" title="Créer la fiche de ces clubs, logo compris"><i>Sans fiche</i><b>' + inconnus.length + '</b><small>' + esc(inconnus.slice(0, 3).map(function(k){ return noms[k]; }).join(', ')) + ' : des matchs contre un club absent de la liste</small><em class="tv-carte-cta">Créer leur fiche</em></button>' : '') +
       '</div>';
   }
 
@@ -13138,7 +13260,40 @@
         .catch(function(){ qgToast('La fiche n\'a pas pu être enregistrée.', true); });
     }
   }
+  // CREER D'UN COUP LES FICHES QUI MANQUENT.
+  // La carte « Sans fiche » ouvrait le panneau des clubs connus : utile
+  // seulement si le club manquant fait partie des cinquante ecrits en
+  // dur. Pour les autres, elle ne menait nulle part. Elle cree
+  // maintenant la fiche, avec le logo que portent deja les matchs, et
+  // c'est ce rattachement qui fera suivre ces matchs le jour ou l'on
+  // changera ce logo.
+  function tvCreerFichesManquantes(){
+    var noms = {};
+    tvMatchs.forEach(function(m){
+      var k = tvNorm(m.opponent_name); if (!k) return;
+      if (teamsCache.some(function(t){ return tvNorm(t.name) === k; })) return;
+      if (!noms[k]) noms[k] = { name: String(m.opponent_name).trim(), logo: null };
+      if (!noms[k].logo && m.opponent_logo_url) noms[k].logo = m.opponent_logo_url;
+    });
+    var liste = Object.keys(noms).map(function(k){ return noms[k]; });
+    if (!liste.length){ qgToast('Tous les clubs rencontrés ont déjà leur fiche.'); return; }
+    if (typeof can === 'function' && !can('matchs', 'creer')){ qgToast('Votre rôle ne permet pas de créer un adversaire.', true); return; }
+    var SL = String.fromCharCode(10);
+    var quoi = liste.map(function(x){ return '• ' + x.name + (x.logo ? '' : ' (sans logo)'); }).join(SL);
+    if (!confirm('Créer ' + liste.length + ' fiche' + (liste.length > 1 ? 's' : '') + ' d’adversaire ?' + SL + SL + quoi +
+                 SL + SL + 'Leurs matchs y seront rattachés : changer leur logo depuis la fiche le changera partout.')) return;
+    Promise.all(liste.map(function(x){
+      return sbInsert('teams', { name: x.name, logo_url: x.logo || null }, 'Adversaires').catch(function(){ return null; });
+    })).then(function(faits){
+      var n = faits.filter(Boolean).length;
+      qgToast(n === liste.length
+        ? n + ' fiche' + (n > 1 ? 's créées' : ' créée') + ' ✓ Les matchs y sont rattachés.'
+        : n + ' fiche' + (n > 1 ? 's créées' : ' créée') + ' sur ' + liste.length + ' : une création a échoué.', n !== liste.length);
+      loadTeams();
+    });
+  }
   document.addEventListener('click', function(e){
+    var f = e.target.closest('[data-tv-fiches]'); if (f){ tvCreerFichesManquantes(); return; }
     var b = e.target.closest('[data-tv-connus]'); if (b){ var k = document.getElementById('kc-toggle'); if (k && k.getAttribute('aria-expanded') !== 'true') k.click(); var g = document.getElementById('known-clubs'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     var o = e.target.closest('[data-tv-outil]'); if (!o) return;
     var q = o.getAttribute('data-tv-outil');
@@ -14998,6 +15153,18 @@
 
   // ===================== ADVERSAIRES =====================
   var teamsCache = [];
+  // LA LISTE DES CLUBS, DISPONIBLE HORS DE CET ECRAN.
+  // teamsCache n'est rempli qu'une fois Adversaires ouvert. Le
+  // classement, lui, peut etre le premier ecran visite de la session et
+  // a besoin de la meme liste pour proposer un rattachement. Trois
+  // colonnes suffisent : on ne sort ni les contacts ni les notes.
+  var clubsRef = [];
+  function clubsRefCharger(){
+    if (clubsRef.length) return Promise.resolve(clubsRef);
+    return sbGet('teams?select=id,name,logo_url&order=name.asc')
+      .then(function(rows){ clubsRef = rows || []; return clubsRef; })
+      .catch(function(){ return clubsRef; });
+  }
   var KNOWN_CLUBS = [
     { name: "AS Douanes", logo_url: "/media/img/AS_Douanes_Basket_logo_kidrco.webp" },
     { name: "AS Bopp Basket Club", logo_url: "/media/img/AS_Bopp_Basket_Club_co7ang.webp" },
@@ -15039,7 +15206,7 @@
 
   function loadTeams(){
     return sbGet('teams?select=*&order=name.asc').then(function(rows){
-      teamsCache = rows||[]; renderTeamsList(); renderOpponentSelect(); renderKnownClubs();
+      teamsCache = rows||[]; clubsRef = teamsCache; renderTeamsList(); renderOpponentSelect(); renderKnownClubs();
       // les matchs entiers : le face-a-face, le dernier, le prochain
       tvLoad();
       return teamsCache;
@@ -15068,9 +15235,22 @@
     if(!confirm('Supprimer cet adversaire ? Les matchs déjà enregistrés gardent son nom et son logo.')) return;
     sbDelete('teams',id,'Adversaires').then(loadTeams).catch(function(){ alert('Erreur lors de la suppression.'); });
   }
-  // Changer un logo ne suffit pas : les matchs déjà enregistrés contre ce
-  // club en gardent une copie. L'enregistrement met donc à jour les deux,
-  // sinon l'ancien logo resterait affiché sur le site.
+  // LE LOGO D'UN CLUB NE SE RECOPIE PLUS.
+  //
+  // Cet ecran repercutait lui-meme le nouveau logo sur les matchs, par
+  // une requete filtree sur `opponent_name=eq.<nom>`. Mesure le 15
+  // septembre 2026 sur quatre matchs contre le meme club : deux mis a
+  // jour, deux oublies, parce qu'ils s'ecrivaient « HLM BASKET CLUB »
+  // et « HLM  Basket Club ». L'egalite PostgREST est stricte, et le
+  // classement -- que le site public affiche -- n'etait propage nulle
+  // part.
+  //
+  // La propagation est maintenant tenue par la base
+  // (MIGRATION-2026-09-15-un-club-un-logo.sql) : le declencheur
+  // `teams_descend` descend le nom ET le logo sur tous les matchs et
+  // toutes les lignes de classement rattaches au club. Ici, on ecrit
+  // donc UNE ligne, et on se contente de compter ce que ca touche pour
+  // le dire.
   var tmEditId = null;
   wireImageControl(document.getElementById('tm-ed-upload'), document.getElementById('tm-ed-url-btn'), document.getElementById('tm-ed-file'), document.getElementById('tm-ed-url'), document.getElementById('tm-ed-preview'));
   function tmOpenEditor(id){
@@ -15089,6 +15269,30 @@
     tmEditId = null;
     document.getElementById('tm-logo-editor').classList.add('hide');
   });
+  // CE QUE CE LOGO VA TOUCHER. On le demande a la base plutot que de
+  // l'annoncer de tete : l'ancien message disait « 1 match mis a jour »
+  // quand deux changeaient et que deux autres etaient oublies.
+  // Si la colonne de liaison n'existe pas encore (migration du 15
+  // septembre non passee), la lecture echoue : on le dit franchement
+  // plutot que d'annoncer une propagation qui n'a pas eu lieu.
+  function tmPorteeDuClub(id, nom){
+    return Promise.all([
+      sbGet('matches?select=id&opponent_team_id=eq.' + encodeURIComponent(id)),
+      sbGet('standings?select=id&team_id=eq.' + encodeURIComponent(id))
+    ]).then(function(r){
+      return { ok:true, matchs:(r[0]||[]).length, classement:(r[1]||[]).length };
+    }).catch(function(){ return { ok:false, nom:nom }; });
+  }
+  function tmDireLaPortee(p){
+    if (!p.ok)
+      return 'Logo enregistré sur la fiche. La propagation aux matchs et au classement demande la migration « un club, un logo ».';
+    var bouts = [];
+    if (p.matchs)     bouts.push(p.matchs + ' match' + (p.matchs > 1 ? 's' : ''));
+    if (p.classement) bouts.push('la ligne du classement');
+    if (!bouts.length) return 'Logo enregistré. Aucun match ni classement ne porte encore ce club.';
+    return 'Logo enregistré ✓ Il s’applique aussi à ' + bouts.join(' et à ') + '.';
+  }
+
   document.getElementById('tm-ed-save').addEventListener('click', function(){
     if (!tmEditId) return;
     var t = teamsCache.filter(function(x){ return String(x.id)===String(tmEditId); })[0];
@@ -15097,21 +15301,20 @@
     imageValue(MEDIA_BUCKET, document.getElementById('tm-ed-file'), document.getElementById('tm-ed-url'), document.getElementById('tm-ed-url-btn'))
       .then(function(u){
         if (!u){ showMsg(msg, 'Choisissez un fichier ou collez un lien.', false); return; }
-        return sbUpdate('teams', tmEditId, { logo_url: u }, 'Adversaires').then(function(){
-          return fetch(SUPABASE_URL + '/rest/v1/matches?opponent_name=eq.' + encodeURIComponent(t.name), {
-            method: 'PATCH',
-            headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=representation' }),
-            body: JSON.stringify({ opponent_logo_url: u })
-          }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
-        }).then(function(rows){
-          var n = (rows || []).length;
-          showMsg(msg, 'Logo enregistré' + (n ? ' — ' + n + ' match' + (n>1?'s':'') + ' existant' + (n>1?'s':'') + ' mis à jour aussi.' : '.'), true);
-          tmEditId = null;
-          setTimeout(function(){ document.getElementById('tm-logo-editor').classList.add('hide'); }, 1400);
-          loadTeams();
-          if (typeof loadMatches === 'function') loadMatches();
-          if (typeof mcLoad === 'function') mcLoad();
-        });
+        return sbUpdate('teams', tmEditId, { logo_url: u }, 'Adversaires')
+          .then(function(){ return tmPorteeDuClub(tmEditId, t && t.name); })
+          .then(function(p){
+            showMsg(msg, tmDireLaPortee(p), true);
+            tmEditId = null;
+            setTimeout(function(){ document.getElementById('tm-logo-editor').classList.add('hide'); }, 1800);
+            loadTeams();
+            if (typeof loadMatches === 'function') loadMatches();
+            if (typeof mcLoad === 'function') mcLoad();
+            // Le classement lit sa propre table : sans ce rappel, l'ecran
+            // d'a cote garderait l'ancien ecusson jusqu'au rechargement.
+            SECTION_AGE.standings = 0;
+            if (typeof qgvLoad === 'function' && loadedSections.standings) qgvLoad('standings');
+          });
       })
       .catch(function(){ showMsg(msg, "L'enregistrement a échoué.", false); })
       .finally(function(){ btn.disabled = false; });
@@ -15203,10 +15406,18 @@
   }
   function renderKnownClubs(){
     var grid=document.getElementById('kc-grid'), countEl=document.getElementById('kc-count');
-    var existing=teamsCache.map(function(t){ return normName(t.name); }); var added=0;
+    var added=0;
     grid.innerHTML=KNOWN_CLUBS.map(function(c,i){
-      var already=existing.indexOf(normName(c.name))!==-1; if(already)added++;
-      var logo=c.logo_url?'<img src="'+esc(c.logo_url)+'" alt="">':'<div class="kc-noimg">'+esc(initials(c.name))+'</div>';
+      // UNE TUILE DEJA AJOUTEE MONTRE LE LOGO DE LA BASE, PAS LE SIEN.
+      // Ces 50 clubs et leurs logos sont ecrits en dur plus haut : c'est
+      // une liste d'amorcage, pratique pour remplir un debut de saison
+      // en un clic. Mais une fois le club cree, sa FICHE fait foi. La
+      // tuile montrait toujours le logo d'origine : on changeait le logo
+      // d'un club, et il restait l'ancien juste au-dessus, dans le
+      // panneau d'ajout du meme ecran.
+      var fiche=teamsCache.filter(function(t){ return normName(t.name)===normName(c.name); })[0];
+      var already=!!fiche; if(already)added++;
+      var logo=bbCrest((fiche&&fiche.logo_url)||c.logo_url, c.name, 'md', 'is-rond');
       return '<button type="button" class="kc-tile'+(already?' added':'')+'" data-i="'+i+'"'+(already?' disabled':'')+'>'+(already?'<span class="kc-check">✓</span>':'')+logo+'<span>'+esc(c.name)+'</span></button>';
     }).join('');
     countEl.textContent=added+' / '+KNOWN_CLUBS.length+' déjà ajoutés — cliquez pour ajouter';
@@ -15804,9 +16015,15 @@
   // possible entre ce qu'on voit et ce qui sera enregistré.
   var gmcReady = false;
 
+  // La pastille de couleur tiree au sort du nom avait ete retiree de
+  // Matchs, Calendrier et Resultats ; elle survivait ici, sur le plus
+  // gros ecusson de l'admin. Deux clubs voisins dans l'alphabet y
+  // tiraient parfois la meme couleur, et un club SANS logo y brillait
+  // plus fort que ceux qui en ont un.
   function gmcCrest(url, name, clickable){
-    if (url) return '<img class="gmc-crest" src="' + esc(url) + '" alt="' + esc(name || '') + '"' + (clickable ? ' style="cursor:pointer" data-gmc-pick="1"' : '') + '>';
-    if (!clickable) return '<div class="gmc-crest" style="display:flex;align-items:center;justify-content:center;font-family:var(--font-ui);font-weight:800;font-stretch:62%;font-size:30px;color:#fff;background:' + fallbackColor(name || '?') + '">' + esc(String(name || '?').charAt(0).toUpperCase()) + '</div>';
+    if (url || !clickable)
+      return bbCrest(url, name, 'duel', 'is-rond' + (clickable ? ' gmc-pickable' : ''),
+                     clickable ? 'data-gmc-pick="1"' : '');
     return '<button type="button" class="gmc-crest-btn" data-gmc-pick="1">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>' +
       '<span>Adversaire</span></button>';
@@ -15961,9 +16178,7 @@
       return;
     }
     grid.innerHTML = rows.map(function(t){
-      var img = t.logo_url
-        ? '<img src="' + esc(t.logo_url) + '" alt="" loading="lazy">'
-        : '<div class="gmc-opt-none" style="background:' + fallbackColor(t.name || '?') + '">' + esc(String(t.name || '?').charAt(0).toUpperCase()) + '</div>';
+      var img = bbCrest(t.logo_url, t.name, 'md', 'is-rond');
       return '<button type="button" class="gmc-opt' + (String(t.id) === String(cur) ? ' on' : '') + '" data-id="' + esc(t.id) + '">' + img + '<span>' + esc(t.name || '') + '</span></button>';
     }).join('');
 
@@ -16018,7 +16233,7 @@
     if(!rows.length){ container.innerHTML='<div class="empty">'+(played?'Aucun match joué pour le moment.':'Aucun match à venir.')+'</div>'; return; }
     container.innerHTML=rows.map(function(m){
       var lieu=m.is_home?'vs':'chez';
-      var logo=m.opponent_logo_url?'<img class="rec-thumb circle" src="'+esc(m.opponent_logo_url)+'" alt="">':'<div class="rec-noimg circle" style="background:'+fallbackColor(m.opponent_name)+'">'+esc(initials(m.opponent_name))+'</div>';
+      var logo=bbCrest(m.opponent_logo_url, m.opponent_name, 'md', 'is-rond rec-thumb-crest');
       var pill,score='';
       if(played){ var win=m.score_baobabs>m.score_opponent; pill='<span class="status-pill '+(win?'status-win':'status-loss')+'">'+(win?'Victoire':(m.score_baobabs===m.score_opponent?'Nul':'Défaite'))+'</span>'; score=' · <b>'+m.score_baobabs+' – '+m.score_opponent+'</b>'; }
       else {
@@ -16099,7 +16314,12 @@
     // nulle part. Il est vide, le ramener ne casse rien.
     imageValue(MEDIA_BUCKET, document.getElementById('mp_file'), document.getElementById('mp_url'), document.getElementById('mp_mode_url'))
       .then(function(photoUrl){
-        var payload={ opponent_name:f.team.name, opponent_logo_url:f.team.logo_url||null, match_date:f.match_date, match_time:f.match_time||null, is_home:f.is_home, venue:f.venue||null, competition:f.competition||null, photo_url:photoUrl||null, stream_url:f.stream_url||null, notes:f.notes||null, score_baobabs:f.bothScores?parseInt(f.sb,10):null, score_opponent:f.bothScores?parseInt(f.so,10):null };
+        // Le lien vers la fiche du club part avec le match ; c'est lui
+        // qui fait que le match suivra le club si son logo change. Le
+        // nom et le logo restent envoyes : la base les reecrit depuis la
+        // fiche, et ils servent de secours si la migration n'est pas
+        // encore passee.
+        var payload={ opponent_team_id:f.team.id, opponent_name:f.team.name, opponent_logo_url:f.team.logo_url||null, match_date:f.match_date, match_time:f.match_time||null, is_home:f.is_home, venue:f.venue||null, competition:f.competition||null, photo_url:photoUrl||null, stream_url:f.stream_url||null, notes:f.notes||null, score_baobabs:f.bothScores?parseInt(f.sb,10):null, score_opponent:f.bothScores?parseInt(f.so,10):null };
         return editingMatchId ? sbUpdate('matches',editingMatchId,payload,'Matchs') : sbInsert('matches',payload,'Matchs');
       })
       .then(function(){ showMsg(msg,editingMatchId?'Match mis à jour.':'Match ajouté.',true); resetMatchForm(); loadMatches(); })
@@ -16606,9 +16826,39 @@
     document.getElementById('set_bureau_limits').value=r.limits||'';
     document.getElementById('bureau_url').value=r.photo_url||'';
     var p=document.getElementById('bureau_preview'); if(r.photo_url){p.src=r.photo_url;p.style.display='block';}else p.style.display='none';
+    bureauCadreBouton(r);
     document.getElementById('bureau_mode_upload').click();
     showMsg(document.getElementById('bureau-msg'),'',true);
     updateBureauPreview();
+  }
+  // LE CADRAGE DU TITULAIRE. Meme atelier que le fondateur : le rond du
+  // site est un carre, le visage se place a la souris. Les trois nombres
+  // voyagent sur le bouton jusqu'a l'enregistrement.
+  function bureauCadreBouton(r){
+    var zone=document.getElementById('bureau_cadrer_zone'); if(!zone) return;
+    var cx=(r.photo_url_x==null||r.photo_url_x==='')?50:r.photo_url_x, cy=(r.photo_url_y==null||r.photo_url_y==='')?50:r.photo_url_y, cz=(r.photo_url_zoom==null||r.photo_url_zoom==='')?100:r.photo_url_zoom;
+    var pose=(cx!=50||cy!=50||cz!=100);
+    zone.innerHTML='<button type="button" class="qg-file-btn qgc-cadrer" data-cx="'+esc(cx)+'" data-cy="'+esc(cy)+'" data-cz="'+esc(cz)+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg><span>'+(pose?'Cadré':'Cadrer')+'</span></button>';
+    var b=zone.querySelector('.qgc-cadrer');
+    var p=document.getElementById('bureau_preview');
+    if(p){ p.style.objectPosition=cx+'% '+cy+'%'; p.style.transform='scale('+(cz/100)+')'; p.style.transformOrigin=cx+'% '+cy+'%'; }
+    b.addEventListener('click',function(){
+      var champ=document.getElementById('bureau_url');
+      var url=(champ&&champ.value.trim())||(p&&p.style.display!=='none'&&p.getAttribute('src'))||'';
+      if(!url){ qgToast('Choisissez d\'abord une photo à cadrer.',true); return; }
+      cadrageOuvrir({ url:url, titre:'Photo du titulaire, dans son rond', ratioD:1, ratioM:1, sansMobile:true,
+        valeurs:{ x:b.dataset.cx, y:b.dataset.cy, zoom:b.dataset.cz },
+        onValider:function(v){
+          b.dataset.cx=v.x; b.dataset.cy=v.y; b.dataset.cz=v.zoom;
+          var lab=b.querySelector('span'); if(lab) lab.textContent='Cadré';
+          if(p){ p.style.objectPosition=v.x+'% '+v.y+'%'; p.style.transform='scale('+(v.zoom/100)+')'; p.style.transformOrigin=v.x+'% '+v.y+'%'; }
+          qgToast('Cadrage posé — cliquez sur « Enregistrer » pour l\'appliquer au site.');
+        } });
+    });
+  }
+  function bureauCadreValeurs(){
+    var b=document.querySelector('#bureau_cadrer_zone .qgc-cadrer'); if(!b) return {};
+    return { photo_url_x:parseInt(b.dataset.cx,10), photo_url_y:parseInt(b.dataset.cy,10), photo_url_zoom:parseInt(b.dataset.cz,10) };
   }
   LOADERS_bureau=function(){
     var sel=document.getElementById('bureau_role');
@@ -16662,6 +16912,7 @@
           responsibilities:document.getElementById('set_bureau_resp').value.trim()||null,
           powers:document.getElementById('set_bureau_powers').value.trim()||null,
           limits:document.getElementById('set_bureau_limits').value.trim()||null };
+        Object.assign(body, bureauCadreValeurs());
         var before=bureauMap[k]||{};
         return sbUpsert('org_roles',body,'Organigramme — '+(bureauMap[k]&&bureauMap[k].holder_name?bureauMap[k].holder_name:k)).then(function(){
           auditDiffFields(before, body, 'Organigramme', 'org_roles', k);
@@ -16710,6 +16961,7 @@
     standings:{ table:'standings', guide:'Saisissez le classement du championnat, une ligne par équipe. Les lignes sont triées automatiquement par points (puis victoires). La ligne « Baobabs » est mise en avant sur le site.', empty:'Classement vide — ajoutez les équipes du championnat.', title:'ligne de classement', order:'points.desc,wins.desc', imageField:'logo_url', circle:true, primary:'team_name',
       meta:function(r){ return 'J'+(r.played||0)+' · '+(r.wins||0)+'V '+(r.losses||0)+'D · '+(r.points||0)+' pts'; },
       fields:[
+        {name:'team_id',label:'Rattacher à un adversaire',type:'club',opt:true,nomChamp:'team_name',logoChamp:'logo_url'},
         {name:'team_name',label:'Équipe',type:'text',required:true,ph:'Ex : US Ouakam'},
         {name:'logo_url',label:'Logo du club',type:'image',opt:true},
         {name:'played',label:'Matchés joués (J)',type:'number',opt:true},
@@ -16751,12 +17003,12 @@
           '</div></div>'+
         '<p class="pv-hint">Rendu simplifié — la fiche publique utilise un effet retourné (flip) avec la bio au verso.</p>';
       }},
-    staff:{ table:'staff', guide:'Ajoutez les membres du bureau et de l\'encadrement : un nom et une fonction (Président, Entraîneur, Manager…). La photo et la présentation sont optionnelles.', empty:'Aucun membre pour l\'instant.', title:'membre du bureau / staff', order:'sort.asc', circle:true, imageField:'photo_url', primary:'name',
+    staff:{ table:'staff', guide:'Ajoutez les membres du bureau et de l\'encadrement : un nom et une fonction (Président, Entraîneur, Manager…). La photo et la présentation sont optionnelles ; « Cadrer » place le visage dans le rond du site.', empty:'Aucun membre pour l\'instant.', title:'membre du bureau / staff', order:'sort.asc', circle:true, imageField:'photo_url', primary:'name',
       meta:function(r){ return r.role||''; },
       fields:[
         {name:'name',label:'Nom',type:'text',required:true},
         {name:'role',label:'Fonction',type:'text',required:true,ph:'Ex : Président, Entraîneur…'},
-        {name:'photo_url',label:'Photo',type:'image',opt:true},
+        {name:'photo_url',label:'Photo',type:'image',opt:true,pos:true},
         {name:'bio',label:'Présentation',type:'textarea',opt:true},
         {name:'sort',label:'Ordre d\'affichage',type:'number',opt:true,ph:'0 = en premier'}
       ],
@@ -16944,7 +17196,12 @@
       if(!rows.length){ list.innerHTML='<div class="empty">'+(c.empty?esc(c.empty):'Rien pour le moment.')+'</div>'; return; }
       list.innerHTML=rows.map(function(r){
         var img=r[c.imageField]; if(Array.isArray(img)) img=img[0];
-        var thumb=img?'<img class="rec-thumb'+(c.circle?' circle':'')+'" src="'+esc(img)+'" alt="">':'<div class="rec-noimg'+(c.circle?' circle':'')+'" style="background:'+fallbackColor(r[c.primary])+'">'+esc(initials(r[c.primary]))+'</div>';
+        // Le meme composant que partout ailleurs. Les aplats tires au
+        // sort du nom faisaient de cette liste un damier, et donnaient
+        // le plus de couleur aux fiches qui n'ont pas d'image.
+        // « photo » plutot que « logo » : un visage remplit le cadre.
+        var estPhoto=/photo|image|avatar/.test(String(c.imageField||''));
+        var thumb=bbCrest(img, r[c.primary], 'md', (c.circle?'is-rond ':'')+(estPhoto?'is-photo ':'')+'rec-thumb-crest');
         var meta=c.meta(r);
         return '<div class="rec-item">'+thumb+'<div class="rec-main"><div class="rec-title">'+esc(r[c.primary])+'</div>'+(meta?'<div class="rec-meta">'+esc(meta)+'</div>':'')+'</div>'+
           '<div class="item-actions"><button class="icon-btn ce" data-id="'+r.id+'" aria-label="Modifier"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>'+
@@ -17442,10 +17699,7 @@
       document.getElementById('db-kick-t').textContent =
         j===null?'Prochain match':(j<=0?'Match aujourd’hui':(j===1?'Prochain match · demain':'Prochain match · dans '+j+' jours'));
 
-      function ecusson(url,nom){
-        return url? '<div class="db-crest"><img src="'+esc(url)+'" alt=""></div>'
-                  : '<div class="db-crest none">'+esc(String(nom||'?').charAt(0).toUpperCase())+'</div>';
-      }
+      function ecusson(url,nom){ return bbCrest(url, nom, 'xl'); }
       document.getElementById('db-vs').innerHTML =
         ecusson(LOGO_DEF,'B')+
         '<div class="db-team"><b>Baobabs</b><span>'+(m.is_home?'reçoit':'se déplace')+'</span></div>'+
@@ -20347,13 +20601,13 @@
   }
   function mcLabel(m){ return 'Baobabs ' + (m.is_home ? 'vs ' : 'chez ') + (m.opponent_name || '?'); }
   function mcById(id){ return mcRows.filter(function(m){ return String(m.id)===String(id); })[0]; }
-  // L'ecusson du club quand il existe ; sinon un emplacement vide. Trois
-  // ecrans appellent cette fonction — Matchs, Calendrier, Resultats — et
-  // tous les trois cessent donc d'afficher des pastilles de couleur
-  // tirees au sort du nom de l'adversaire.
+  // L'ecusson du club. Cette fonction ne dessine plus rien elle-meme :
+  // elle traduit l'ancien nom de classe en taille et passe la main a
+  // bbCrest, le composant unique. Les appelants n'ont pas eu a changer,
+  // et ils heritent du repli sur monogramme quand l'image manque.
+  var MC_CREST_TAILLE = { 'mc-mini':'sm', 'mc-crest':'lg', 'tv-crest':'lg' };
   function mcCrest(url, name, cls){
-    return url ? '<img class="'+cls+'" src="'+esc(url)+'" alt="">'
-               : '<div class="'+cls+'-none ds-crest">'+esc(String(name||'?').charAt(0).toUpperCase())+'</div>';
+    return bbCrest(url, name, MC_CREST_TAILLE[cls] || 'sm', cls === 'tv-crest' ? 'sur-blanc' : '');
   }
   function mcQuarters(m){
     var q; try{ q = Array.isArray(m.quarters)?m.quarters:JSON.parse(m.quarters||'[]'); }catch(e){ q=[]; }
@@ -20573,11 +20827,7 @@
       // qui manque encore, en or.
       apercu: function(v){
         var c = clubs.filter(function(x){ return String(x.id) === String(v.club); })[0];
-        function crest(url, nom){
-          return '<span class="dem-ap-crest">' + (url
-            ? '<img src="' + esc(url) + '" alt="">'
-            : esc(String(nom || '?').trim().charAt(0).toUpperCase())) + '</span>';
-        }
+        function crest(url, nom){ return bbCrest(url, nom, 'md'); }
         function ou(t){ return '<span class="dem-ap-manque">' + t + '</span>'; }
         var dom = v.ou !== '0';
         var meta = [
@@ -20612,6 +20862,7 @@
       var h = String(v.heure||'').trim();
       if (h && !/^\d{1,2}:\d{2}$/.test(h)){ qgToast('Heure incomprise — écrivez-la 19:00.', true); return; }
       return sbInsert('matches', {
+        opponent_team_id: club ? club.id : null,
         opponent_name: club ? club.name : null,
         opponent_logo_url: (club && club.logo_url) || null,
         match_date: iso,
@@ -20980,7 +21231,7 @@
       var film = !!r.video_url;
       return '<div class="gal-c' + (r.published ? '' : ' cachee') + '" data-id="' + esc(String(r.id)) + '">' +
         '<span class="gal-vis">' +
-          (r.image_url ? '<img src="' + esc(r.image_url) + '" alt="" loading="lazy">' : '') +
+          (r.image_url ? '<img src="' + esc(r.image_url) + '" alt="" loading="lazy" style="' + galCadreStyle(r) + '">' : '') +
           '<span class="gal-rang">' + (i + 1) + '</span>' +
           (film ? '<span class="gal-film">Film</span>' : '') +
         '</span>' +
@@ -20993,6 +21244,7 @@
           '<button type="button" class="gal-b" data-act="haut" title="Monter"' + (i === 0 ? ' disabled' : '') + '>‹</button>' +
           '<button type="button" class="gal-b' + (r.published ? ' on' : '') + '" data-act="publier" title="' +
             (r.published ? 'Publiée sur le site' : 'Masquée du site') + '">' + (r.published ? 'Publiée' : 'Masquée') + '</button>' +
+          (r.image_url && !film ? '<button type="button" class="gal-b" data-act="cadrer" title="Placer la photo dans sa vignette">' + (galCadre(r).pose ? 'Cadré' : 'Cadrer') + '</button>' : '') +
           '<button type="button" class="gal-b sup" data-act="supprimer" title="Supprimer">×</button>' +
           '<button type="button" class="gal-b" data-act="bas" title="Descendre"' + (i === galRows.length - 1 ? ' disabled' : '') + '>›</button>' +
         '</div>' +
@@ -21005,6 +21257,7 @@
         var a = b.getAttribute('data-act');
         if (a === 'supprimer') return galSupprimer(id);
         if (a === 'publier')   return galPublier(id);
+        if (a === 'cadrer')    return galCadrer(id);
         galDecaler(id, a === 'haut' ? -1 : 1);
       });
     });
@@ -21023,6 +21276,32 @@
     });
   }
 
+  // LE CADRAGE D'UNE VIGNETTE. Les tuiles du site sont des portraits
+  // 9/16 : une photo de match en paysage y perd la moitie du terrain.
+  // L'atelier place la photo dans un cadre de la meme forme, et les
+  // trois nombres partent en base tout de suite (la galerie enregistre
+  // chaque geste, il n'y a pas de bouton Enregistrer).
+  function galCadre(r){
+    var x=(r.image_x==null||r.image_x==='')?50:r.image_x, y=(r.image_y==null||r.image_y==='')?50:r.image_y, z=(r.image_zoom==null||r.image_zoom==='')?100:r.image_zoom;
+    return { x:x, y:y, z:z, pose:(x!=50||y!=50||z!=100) };
+  }
+  function galCadreStyle(r){
+    var c=galCadre(r);
+    return 'object-position:'+c.x+'% '+c.y+'%;transform:scale('+(c.z/100)+');transform-origin:'+c.x+'% '+c.y+'%';
+  }
+  function galCadrer(id){
+    var r=galParId(id); if(!r||!r.image_url) return;
+    var c=galCadre(r);
+    cadrageOuvrir({ url:r.image_url, titre:'Photo de la galerie, dans sa vignette', ratioD:0.5625, ratioM:0.5625, sansMobile:true,
+      valeurs:{ x:c.x, y:c.y, zoom:c.z },
+      onValider:function(v){
+        var corps={ image_x:v.x, image_y:v.y, image_zoom:v.zoom };
+        sbUpdate('gallery', id, corps, 'Galerie').then(function(){
+          r.image_x=v.x; r.image_y=v.y; r.image_zoom=v.zoom; galRender();
+          qgToast('Cadrage enregistré ✓ Le site le lit au prochain chargement.');
+        }).catch(function(){ qgToast('Le cadrage n\'a pas pu être enregistré.', true); });
+      } });
+  }
   function galParId(id){
     return galRows.filter(function(r){ return String(r.id) === String(id); })[0] || null;
   }
@@ -27395,7 +27674,7 @@
     reglages:function(){ loadSettings().then(function(){ qgcRender(SETTINGS_BLOCKS,'qgs-mount'); }); },
     news:function(){ qgvInit('news'); },
     partners:function(){ qgvInit('partners'); },
-    standings:function(){ qgvInit('standings'); },
+    standings:function(){ clubsRefCharger(); qgvInit('standings'); },
     tickets:function(){ tkInit(); },
     coherence:function(){ coInit(); },
     banners:function(){ bnInit(); },
@@ -28166,9 +28445,7 @@
         var bao=/baobab/i.test(r.team_name||''); var isSel=sel!=null&&String(sel)===String(id);
         var played=Number(r.played)||0, wins=Number(r.wins)||0, losses=Number(r.losses)||0;
         var mismatch=(r.played!=null || r.wins!=null || r.losses!=null) && played!==(wins+losses);
-        var logo=r.logo_url
-          ? '<img class="stt-crest" src="'+esc(r.logo_url)+'" alt="">'
-          : '<span class="stt-crest stt-crest-none">'+esc(initials(r.team_name||'?'))+'</span>';
+        var logo=bbCrest(r.logo_url, r.team_name, 'sm', 'is-rond stt-crest');
         var cls='stt-row'+(bao?' is-us':'')+(i===0?' is-first':'');
         return '<div class="'+cls+'" data-qgv-id="'+esc(id)+'" title="'+(mismatch?'J ne correspond pas à V+D':'')+'">'+
           '<span class="stt-rk">'+(i+1<10?'0':'')+(i+1)+'</span>'+
@@ -28262,6 +28539,25 @@
     var id='qgvf-'+key+'-'+f.name; var v=cur[f.name]; if(v==null) v='';
     var lab='<label>'+esc(f.label)+'</label>';
     if(f.type==='gallery') return '<div class="qg-field"><label>'+esc(f.label)+'</label><div class="qg-gal" id="'+id+'-gal"></div><div class="qg-hint" style="margin-top:8px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Glisse pour réordonner · la 1re photo est l\'image principale · jusqu\'à '+GALLERY_N+' photos.</div></div>';
+    // LE RATTACHEMENT A UNE FICHE DE CLUB.
+    // Une ligne de classement portait son nom et son logo en propre :
+    // changer le logo dans Adversaires ne la touchait pas, et c'est
+    // pourtant cette table que le site public affiche. Rattachee, elle
+    // suit la fiche -- et l'on dit clairement que le nom et le logo ne
+    // se modifient plus ici, sans quoi on croirait que rien ne s'est
+    // enregistre.
+    if(f.type==='club'){
+      var lie=!!v;
+      var opts=(clubsRef||[]).map(function(t){
+        return '<option value="'+esc(t.id)+'"'+(String(v)===String(t.id)?' selected':'')+'>'+esc(t.name)+'</option>'; }).join('');
+      return '<div class="qg-field">'+lab+
+        '<select class="qg-in" id="'+id+'">'+
+          '<option value="">Club sans fiche — nom libre ci-dessous</option>'+opts+
+        '</select>'+
+        '<p class="qg-hint">'+(lie
+          ? 'Nom et logo viennent de la fiche du club. Pour les changer, passez par <b>Adversaires</b> : la correction descendra ici et sur tous les matchs.'
+          : 'Rattachez cette ligne à un adversaire pour que son logo suive automatiquement. Sinon, saisissez le nom et le logo à la main.')+'</p></div>';
+    }
     if(f.type==='rich') return '<div class="qg-field">'+lab+qgRTField(id,v,f.ph||'')+'</div>';
     if(f.type==='textarea') return '<div class="qg-field">'+lab+'<textarea class="qg-in" id="'+id+'" rows="4" placeholder="'+esc(f.ph||'')+'">'+esc(v)+'</textarea></div>';
     if(f.type==='select'){ var o=(f.options||[]).slice(); if(v&&o.indexOf(v)<0) o.push(v); return '<div class="qg-field">'+lab+'<select class="qg-in" id="'+id+'">'+o.map(function(x){ return '<option value="'+esc(x)+'"'+(String(v)===x?' selected':'')+'>'+(x?esc(x):'—')+'</option>'; }).join('')+'</select></div>'; }
@@ -28278,6 +28574,17 @@
   function qgvBindField(key,f){
     if(f.type==='gallery'){ qgvGalleryRender(key,f.name); return; }
     if(f.type==='rich'){ qgvRTBind(key,'qgvf-'+key+'-'+f.name,f.name); return; }
+    if(f.type==='club'){
+      var ec=document.getElementById('qgvf-'+key+'-'+f.name); if(!ec) return;
+      ec.addEventListener('change',function(){
+        var cur=qgvCurrent(key); if(!cur) return;
+        cur[f.name]=ec.value||null;
+        var t=(clubsRef||[]).filter(function(x){ return String(x.id)===String(ec.value); })[0];
+        if(t){ if(f.nomChamp) cur[f.nomChamp]=t.name; if(f.logoChamp && t.logo_url) cur[f.logoChamp]=t.logo_url; }
+        qgvRenderCards(key); qgvRenderInspector(key);
+      });
+      return;
+    }
     var id='qgvf-'+key+'-'+f.name; var e=document.getElementById(id); if(!e) return;
     var h=function(){ var cur=qgvCurrent(key); if(!cur) return; cur[f.name]=e.value; qgvRenderCards(key); };
     e.addEventListener('input',h); e.addEventListener('change',h);
@@ -29732,8 +30039,7 @@
         var ini = String(r.name || '?').trim().charAt(0).toUpperCase();
         var joues = 0;
         try { joues = (tmCounts && tmCounts[normName(r.name || '')]) || 0; } catch(e){}
-        return '<span class="jp-ph tp-ph">' + (r.logo_url
-            ? '<img src="' + esc(r.logo_url) + '" alt="" loading="lazy">' : esc(ini)) + '</span>' +
+        return bbCrest(r.logo_url, r.name, 'md', 'jp-ph tp-ph') +
           '<span class="jp-txt"><b class="jp-n">' + esc(r.name || '—') + '</b>' +
             '<span class="jp-s">' + (joues
               ? joues + ' rencontre' + (joues > 1 ? 's' : '')

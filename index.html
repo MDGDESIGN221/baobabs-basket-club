@@ -939,9 +939,9 @@ window.bbLienSur = function (u) {
   .bb-gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
   .bb-gal-i{position:relative;display:block;padding:0;border:0;border-radius:12px;overflow:hidden;
     aspect-ratio:9/16;background:#0F1E15;cursor:zoom-in;isolation:isolate}
-  .bb-gal-i img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.22,1,.36,1)}
+  .bb-gal-i img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(var(--z,1));transition:transform .5s cubic-bezier(.22,1,.36,1)}
   .bb-gal-i::after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 0 1px rgba(243,239,230,.1);border-radius:12px;pointer-events:none;transition:box-shadow .25s}
-  .bb-gal-i:hover img,.bb-gal-i:focus-visible img{transform:scale(1.06)}
+  .bb-gal-i:hover img,.bb-gal-i:focus-visible img{transform:scale(calc(var(--z,1) * 1.06))}
   .bb-gal-i:hover::after,.bb-gal-i:focus-visible::after{box-shadow:inset 0 0 0 2px rgba(168,217,59,.65)}
   .bb-gal-i:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
   @media(max-width:520px){ .bb-gal{grid-template-columns:repeat(2,1fr)} .bb-gal-i:first-child{grid-column:span 2;grid-row:auto;aspect-ratio:9/16} }
@@ -5468,7 +5468,7 @@ window.bbCloud = function(url, w){
     var html = '';
     if (r.photo || r.holder) {
       html += '<div style="display:flex;align-items:center;gap:14px;margin-top:16px">' +
-        (r.photo ? '<img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(r.photo,200):(r.photo)))+'" alt="" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:1px solid rgba(var(--bb-or-rgb),.45);flex:none" loading="lazy" decoding="async">' : '') +
+        (r.photo ? bbRond((window.bbCloud?window.bbCloud(r.photo,200):(r.photo)), 60, r.cadre || {}, '', 'border:1px solid rgba(var(--bb-or-rgb),.45)') : '') +
         (r.holder ? '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:16px;color:var(--bb-or)">'+esc(r.holder)+'</div>' : '') +
         '</div>';
     }
@@ -6981,11 +6981,20 @@ window.bbCloud = function(url, w){
     }).join('');
   }
 
+  // Un rond avec le visage dedans : les trois nombres de l'admin (staff et
+  // bureau les portent comme les joueuses). Le rond est un cadre qui
+  // decoupe, l'image bouge et grandit dedans ; sans reglage, elle reste
+  // centree comme avant.
+  function bbRond(url, taille, r, alt, bordure){
+    var x = (r.photo_url_x == null || r.photo_url_x === '') ? 50 : r.photo_url_x, y = (r.photo_url_y == null || r.photo_url_y === '') ? 50 : r.photo_url_y, z = (r.photo_url_zoom == null || r.photo_url_zoom === '') ? 100 : r.photo_url_zoom;
+    return '<span style="display:block;width:' + taille + 'px;height:' + taille + 'px;border-radius:50%;overflow:hidden;flex:none;' + (bordure || '') + '">' +
+      '<img src="' + window.bbSafeUrl(url) + '" alt="' + esc(alt || '') + '" style="display:block;width:100%;height:100%;object-fit:cover;object-position:' + x + '% ' + y + '%;transform:scale(' + (z / 100) + ');transform-origin:' + x + '% ' + y + '%" loading="lazy" decoding="async"></span>';
+  }
   function renderStaff(rows){
     var el = document.getElementById('bb-staff-list'); if(!el || !rows || !rows.length) return;
     el.innerHTML = rows.map(function(m){
       var ph = m.photo_url
-        ? '<img src="'+window.bbSafeUrl((window.bbCloud?window.bbCloud(m.photo_url,150):(m.photo_url)))+'" alt="'+esc(m.name||'')+'" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex:none" loading="lazy" decoding="async">'
+        ? bbRond((window.bbCloud?window.bbCloud(m.photo_url,150):(m.photo_url)), 42, m, m.name||'')
         : '<div style="width:42px;height:42px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.18);flex:none;display:flex;align-items:center;justify-content:center;font-family:\'Inter\',sans-serif;font-weight:700;font-size:14px;color:var(--bb-or)">'+esc((m.name||'?').trim().charAt(0).toUpperCase())+'</div>';
       return '<div style="display:flex;align-items:center;gap:12px">'+ph+'<div><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">'+esc(m.role||'')+'</div><div style="font-size:12.5px;color:#B9C2BB">'+esc(m.name||'')+'</div></div></div>';
     }).join('');
@@ -7535,7 +7544,7 @@ window.bbCloud = function(url, w){
     // window.bbDetGalerie est la porte que la galerie livree expose
     // deja pour se laisser remplacer. On ne reecrit rien : on
     // l'appelle.
-    sbFetch('gallery?select=image_url,video_url,caption,sort&published=is.true&order=sort.asc')
+    sbFetch('gallery?select=image_url,video_url,caption,sort,image_x,image_y,image_zoom&published=is.true&order=sort.asc')
       .then(bbPoser.gallery = function(rows){
         if (!rows || !rows.length || !window.bbDetGalerie) return;
         var photos = [], film = null;
@@ -7551,8 +7560,11 @@ window.bbCloud = function(url, w){
           // s'annonce « image » a un lecteur d'ecran. La base fait
           // autorite quand elle dit quelque chose, pas quand elle se
           // tait.
-          photos.push(m ? { n: m[1], t: r.caption || null }
-                        : { u: r.image_url, t: r.caption || '' });
+          // Les trois nombres du cadrage, poses dans l'admin ; sans eux la
+          // vignette reste centree comme avant.
+          var cadre = (r.image_x != null || r.image_y != null || r.image_zoom != null) ? { x: r.image_x == null ? 50 : r.image_x, y: r.image_y == null ? 50 : r.image_y, z: r.image_zoom == null ? 100 : r.image_zoom } : null;
+          photos.push(m ? { n: m[1], t: r.caption || null, c: cadre }
+                        : { u: r.image_url, t: r.caption || '', c: cadre });
         });
         if (film) window.bbDetGalerie.video(film);
         if (photos.length) window.bbDetGalerie.photos(photos);
@@ -7583,7 +7595,7 @@ window.bbCloud = function(url, w){
         if(r.limits) secs.push({h:'SES LIMITES',items:lines(r.limits)});
         if(secs.length) ex.sections=secs;
         if(r.holder_name) ex.holder=r.holder_name;
-        if(r.photo_url) ex.photo=r.photo_url;
+        if(r.photo_url){ ex.photo=r.photo_url; ex.cadre={ photo_url_x:r.photo_url_x, photo_url_y:r.photo_url_y, photo_url_zoom:r.photo_url_zoom }; }
         orgRoles[key]=ex;
         if(r.holder_name){ var t=document.querySelector('.org-node[data-role="'+key+'"] .on-t'); if(t) t.insertAdjacentHTML('beforeend','<small style="display:block;color:var(--bb-or);font-weight:700;margin-top:3px">'+esc(r.holder_name)+'</small>'); }
       });
@@ -10456,8 +10468,11 @@ window.bbCloud = function(url, w){
 
   function dessiner(){
     grille.innerHTML = PHOTOS.map(function(p, i){
+      /* le cadrage de l'admin : position, origine, et le zoom dans une
+         variable pour que le survol s'y ajoute au lieu de l'ecraser */
+      var st = p.c ? ' style="object-position:' + att(p.c.x) + '% ' + att(p.c.y) + '%;transform-origin:' + att(p.c.x) + '% ' + att(p.c.y) + '%;--z:' + att(p.c.z / 100) + '"' : '';
       return '<button type="button" class="bb-gal-i" data-i="' + i + '" aria-label="Agrandir : ' + att(legende(p)) + '">' +
-        '<img src="' + att(vignette(p)) + '" alt="' + att(legende(p)) + '" ' +
+        '<img src="' + att(vignette(p)) + '" alt="' + att(legende(p)) + '"' + st + ' ' +
         'loading="lazy" decoding="async" width="540" height="960"></button>';
     }).join('');
   }
@@ -10475,7 +10490,7 @@ window.bbCloud = function(url, w){
       var avant = {};
       PHOTOS.forEach(function(p){ if (p.n) avant[p.n] = p.t; });
       PHOTOS = liste.map(function(p){
-        if (p.t == null && p.n && avant[p.n]) { p = { n:p.n, u:p.u, t:avant[p.n] }; }
+        if (p.t == null && p.n && avant[p.n]) { p = { n:p.n, u:p.u, t:avant[p.n], c:p.c }; }
         if (p.t == null) p.t = '';
         return p;
       });
