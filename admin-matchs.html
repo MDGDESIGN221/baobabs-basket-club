@@ -1415,6 +1415,22 @@
   .po-choix label:has(input:checked){border-color:var(--gold);color:var(--gold-bright);
     background:rgba(70,191,29,.08)}
   .po-hint{font-size:11.5px;color:var(--faint);margin:0 0 14px}
+
+  /* CE QUI VIENT D'ARRIVER : une ligne par profil, qu'on ouvre. */
+  .ef-att-liste{display:flex;flex-direction:column;gap:8px;margin-top:11px}
+  .ef-att{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-md);
+    padding:10px 12px;cursor:pointer;color:inherit;font:inherit;
+    transition:border-color var(--mv-vite),background var(--mv-vite)}
+  .ef-att:hover{border-color:var(--gold);background:var(--surface-3)}
+  .ef-att-p{width:44px;height:44px;border-radius:var(--r-sm);overflow:hidden;flex:none;
+    background:var(--surface-3);display:grid;place-items:center}
+  .ef-att-p img{width:100%;height:100%;object-fit:cover;object-position:top center}
+  .ef-att-p i{font-style:normal;font-family:var(--font-ui);font-weight:700;font-size:14px;color:var(--faint)}
+  .ef-att-c{flex:1;min-width:0}
+  .ef-att-c b{display:block;font-family:var(--font-ui);font-weight:700;font-size:13.5px;color:var(--text)}
+  .ef-att-c span{display:block;font-size:11.5px;color:var(--faint);margin-top:2px}
+  .ef-att-m{color:var(--attente)!important}
   .ef-b{padding:11px 12px 13px}
   .ef-name{font-family:var(--font-ui);font-weight:700;font-size:14.5px;letter-spacing:-.01em;color:var(--text);line-height:1.25}
   .ef-meta{font-size:11.5px;color:var(--faint);margin-top:3px}
@@ -5502,6 +5518,9 @@
              on le copie, on le colle dans un message, on revient le
              chercher le lendemain sans le regenerer. -->
         <div class="co-panneau" id="ef-collecte"></div>
+        <!-- CE QUI VIENT D'ARRIVER. Au-dessus de l'effectif, parce que
+             cela demande un geste ; cache quand il n'y a rien. -->
+        <div class="co-panneau hide" id="ef-attente"></div>
         <div class="ds-band" id="ef-kpis"></div>
         <div class="ds-head">
           <button type="button" class="ds-mini-btn" id="ef-new">Nouvelle fiche</button>
@@ -19506,6 +19525,29 @@
     ['matchs',  'Matchs']
   ];
 
+  // ============ L'ETAT DU DOSSIER, ET CELUI DU GROUPE ============
+  // Deux choses differentes, et elles ne se melangent pas. « status »
+  // dit la disponibilite sportive ; « fiche_etat » dit ou en est le
+  // dossier. Une joueuse validee peut etre blessee.
+  //
+  // Une fiche creee a la main n'a pas d'etat : elle vaut « publiee »,
+  // c'est le comportement d'avant la collecte.
+  var efDossiers = {};
+  var EF_DOSSIER = {
+    recue:       ['Reçu',        'Vient d\u2019arriver, personne ne l\u2019a encore ouvert.'],
+    a_verifier:  ['À vérifier',  'Des informations ont été envoyées ou corrigées.'],
+    a_completer: ['À compléter', 'Il manque quelque chose ; elle peut encore le corriger.'],
+    validee:     ['Validée',     'Vérifiée par le club, mais retirée du site.'],
+    publiee:     ['Sur le site', 'Visible dans l\u2019effectif du site public.'],
+    refusee:     ['Archivée',    'Ne figure plus nulle part, sans rien perdre.']
+  };
+  function efDos(r){ return r && r.fiche_etat ? r.fiche_etat : 'publiee'; }
+  // Un profil recu attend qu'on l'ouvre : il n'est pas encore du groupe.
+  function efEnAttente(r){
+    var k = efDos(r);
+    return k === 'recue' || k === 'a_verifier' || k === 'a_completer';
+  }
+
   function efSt(s){ return EF_STATUS[s || 'active'] || EF_STATUS.active; }
   // « Active » est l'etat normal d'une joueuse : quatorze cartes
   // portaient quatorze pastilles vertes, et l'oeil devait chercher
@@ -19740,8 +19782,27 @@
     var contacts = sbGet('players_contacts?select=player_id,phone,email').then(function(rows){
       efContacts = {}; (rows || []).forEach(function(c){ efContacts[c.player_id] = c; });
     }).catch(function(){});
-    return contacts.then(function(){ return sbGet('effectif_admin?select=*&order=sort.asc,jersey_number.asc&limit=200'); })
-      .then(function(rows){ efRows = rows || []; efRender(); })
+    // L'ETAT DU DOSSIER NE VIENT PAS DE LA VUE.
+    // efLoad lit effectif_admin, qui n'expose pas fiche_etat : l'ecran
+    // ne pouvait pas distinguer une joueuse du groupe d'un profil qui
+    // vient d'arriver. On ne reecrit pas la vue -- sa definition sert
+    // ailleurs -- on lit ce qui manque a part, comme on le fait deja
+    // pour les telephones juste au-dessus.
+    var dossiers = sbGet('players?select=id,fiche_etat,photo_source_url,soumis_le,reprise_jeton,campagne_id')
+      .then(function(rows){
+        efDossiers = {}; (rows || []).forEach(function(d){ efDossiers[d.id] = d; });
+      }).catch(function(){ efDossiers = {}; });
+    return Promise.all([contacts, dossiers])
+      .then(function(){ return sbGet('effectif_admin?select=*&order=sort.asc,jersey_number.asc&limit=200'); })
+      .then(function(rows){
+        efRows = (rows || []).map(function(r){
+          var d = efDossiers[r.id];
+          if (d){ r.fiche_etat = d.fiche_etat; r.photo_source_url = d.photo_source_url;
+                  r.soumis_le = d.soumis_le; r.reprise_jeton = d.reprise_jeton; }
+          return r;
+        });
+        efRender();
+      })
       .catch(function(){
         return sbGet('players?select=*&order=sort.asc&limit=200').then(function(rows){
           efRows = rows || [];
@@ -19764,8 +19825,14 @@
       return [r.name, r.position, r.city, r.nationality].join(' ').toLowerCase().indexOf(q) >= 0;
     });
 
+    // L'EFFECTIF, C'EST LE GROUPE. Les profils qui viennent d'arriver
+    // ont leur propre bloc, au-dessus : on les ouvre, on les verifie, on
+    // les valide. Ils rejoignent la liste ensuite.
+    var attente = rows.filter(efEnAttente);
+    rows = rows.filter(function(r){ return !efEnAttente(r); });
+    efPeindreAttente(attente);
     document.getElementById('ef-count').textContent = rows.length + (rows.length > 1 ? ' fiches' : ' fiche');
-    efKpis();
+    efKpis(rows);
     var box = document.getElementById('ef-grid');
     if (!rows.length){ box.innerHTML = '<div style="grid-column:1/-1">' + videListe({ cle:'squad', total:efRows.length, genre:'f',
       singulier:'fiche', pluriel:'fiches',
@@ -19797,28 +19864,66 @@
     });
   }
 
+  // ============== CE QUI VIENT D'ARRIVER ==============
+  // Le bloc n'existe que s'il y a quelque chose dedans : un ecran qui
+  // affiche « 0 profil recu » tous les jours de l'annee apprend a
+  // l'oeil a ne plus le voir.
+  function efPeindreAttente(liste){
+    var box = document.getElementById('ef-attente'); if (!box) return;
+    if (!liste.length){ box.classList.add('hide'); box.innerHTML = ''; return; }
+    box.classList.remove('hide');
+    box.innerHTML =
+      '<div class="co-tete"><h3>' + liste.length + ' profil' + (liste.length > 1 ? 's re\u00e7us' : ' re\u00e7u') + '</h3>' +
+        '<span class="co-sous">\u00e0 v\u00e9rifier avant de rejoindre l\u2019effectif</span></div>' +
+      '<div class="ef-att-liste">' + liste.map(function(r){
+        var d = EF_DOSSIER[efDos(r)] || EF_DOSSIER.recue;
+        var manque = [];
+        if (r.jersey_number == null) manque.push('num\u00e9ro');
+        if (!r.photo_url) manque.push('photo finale');
+        return '<button type="button" class="ef-att" data-id="' + esc(r.id) + '">' +
+          '<span class="ef-att-p">' + (r.photo_source_url || r.photo_url
+              ? '<img src="' + esc(r.photo_source_url || r.photo_url) + '" alt="" loading="lazy">'
+              : '<i>' + esc(initials(r.name).slice(0, 2)) + '</i>') + '</span>' +
+          '<span class="ef-att-c">' +
+            '<b>' + esc(r.name || 'Sans nom') + '</b>' +
+            '<span>' + esc([r.position, r.city].filter(Boolean).join(' \u00b7 ') || 'Fiche \u00e0 lire') + '</span>' +
+            (manque.length ? '<span class="ef-att-m">il manque : ' + esc(manque.join(', ')) + '</span>' : '') +
+          '</span>' +
+          '<span class="ds-tag warn">' + esc(d[0]) + '</span>' +
+        '</button>';
+      }).join('') + '</div>';
+    box.querySelectorAll('.ef-att').forEach(function(b){
+      b.addEventListener('click', function(){
+        efSel = b.getAttribute('data-id'); efDirty = false; efRender();
+      });
+    });
+  }
+
   // Ce qu'un entraineur vient verifier : combien il en a, combien sont
   // disponibles, et combien de fiches le site affiche sans photo.
-  function efKpis(){
+  function efKpis(liste){
     var band = document.getElementById('ef-kpis');
     if (!band) return;
+    // Le bandeau compte LE GROUPE, pas les profils en attente : sinon
+    // « Effectif 9 » annoncerait une joueuse de plus que le club n'en a.
+    var rows = liste || efRows.filter(function(r){ return !efEnAttente(r); });
     var actives = 0, blessees = 0, sansPhoto = 0;
-    efRows.forEach(function(r){
+    rows.forEach(function(r){
       var k = r.status || 'active';
       if (k === 'active') actives++;
       if (k === 'blessee') blessees++;
       if (k !== 'partie' && !r.photo_url) sansPhoto++;
     });
     band.innerHTML =
-      '<div class="ds-fig"><i>Effectif</i><b>' + efRows.length + '</b>' +
-        '<small>' + (efRows.length > 1 ? 'fiches enregistrées' : 'fiche enregistrée') + '</small></div>' +
+      '<div class="ds-fig"><i>Effectif</i><b>' + rows.length + '</b>' +
+        '<small>' + (rows.length > 1 ? 'fiches enregistrées' : 'fiche enregistrée') + '</small></div>' +
       '<div class="ds-fig"><i>Disponibles</i><b>' + actives + '</b>' +
         '<small>joueuses actives</small></div>' +
       '<div class="ds-fig' + (blessees ? ' cri' : '') + '"><i>Blessées</i><b>' + blessees + '</b>' +
         '<small>' + (blessees ? 'hors du groupe' : 'personne à l\'infirmerie') + '</small></div>' +
       '<div class="ds-fig' + (sansPhoto ? ' sig' : '') + '"><i>Sans photo</i><b>' + sansPhoto + '</b>' +
         '<small>fiches incomplètes sur le site</small></div>';
-    band.classList.toggle('hide', !efRows.length);
+    band.classList.toggle('hide', !rows.length);
   }
 
   function efRenderDoc(){
@@ -19869,7 +19974,17 @@
             fld('ef-name', 'Nom', r.name) +
             fld('ef-num', 'Numéro de maillot', r.jersey_number, 'number') +
             fld('ef-pos', 'Poste', r.position, null, null, [['',''],['Meneur / Meneuse','Meneur / Meneuse'],['Arrière','Arrière'],['Ailier / Ailière','Ailier / Ailière'],['Ailier fort / Ailière forte','Ailier fort / Ailière forte'],['Pivot','Pivot']]) +
-            fld('ef-status', 'Statut', r.status || 'active', null, null, [['active','Active'],['blessee','Blessée'],['pret','En prêt'],['partie','Partie']]) +
+            fld('ef-status', 'Statut sportif', r.status || 'active', null, null, [['active','Active'],['blessee','Blessée'],['pret','En prêt'],['partie','Partie']]) +
+            // L'ETAT DU DOSSIER, A COTE DU STATUT SPORTIF MAIS DISTINCT.
+            // Une joueuse validee peut etre blessee ; une joueuse dont le
+            // dossier attend n'est pas « blessee ». Les fondre en un seul
+            // reglage rendrait l'un des deux faux.
+            // C'est aussi ici qu'on retire une joueuse du site sans rien
+            // perdre : « Validee » la garde entiere dans l'admin, dans les
+            // feuilles de match et dans les statistiques, mais le site ne
+            // l'affiche plus.
+            fld('ef-dossier', 'Sur le site', efDos(r), null, null,
+                Object.keys(EF_DOSSIER).map(function(k){ return [k, EF_DOSSIER[k][0]]; })) +
             fld('ef-h', 'Taille', r.height, 'text', '1,92 m') +
             fld('ef-w', 'Poids', r.weight, 'text', '72 kg') +
             fld('ef-by', 'Année de naissance', r.birth_year, 'number', '2004') +
@@ -19894,12 +20009,26 @@
             '<span>Cadrer la photo</span></button>' +
             '<span class="hint" style="margin:0">Le site affiche un portrait : choisissez ce qu’il garde.</span>' +
           '</div>' +
+          '<p class="po-hint" id="ef-dossier-mot">' + esc((EF_DOSSIER[efDos(r)] || EF_DOSSIER.publiee)[1]) + '</p>' +
+          // CE QU'ELLE A ENVOYE, tel quel. L'admin corrige librement la
+          // fiche ; l'instantane garde la trace de ce qui est arrive --
+          // « elle avait ecrit Ndeye Gueye, j'ai corrige en Ndeye Guèye ».
+          (r.soumis_le ? '<p class="po-hint">Profil reçu le ' + esc(fmtDateTime(r.soumis_le)) +
+             (r.reprise_jeton ? ' · <a href="joueuse.html?r=' + esc(r.reprise_jeton) + '" target="_blank" rel="noopener">son lien personnel</a>' : '') +
+             '</p>' : '') +
           fld('ef-inj', 'Note de blessure', r.injury_note, 'textarea', 'Nature et retour prévu — visible de vous seul.') +
           fld('ef-bio', 'Bio', r.bio, 'textarea', 'Le parcours, le style de jeu, ce qui la caractérise.') +
         '</div>' +
 
         '<div class="mc-savebar">' +
           '<span class="cd-draft" id="ef-note"></span>' +
+          // LE GESTE COURANT, EN UN COUP. Quand treize profils arrivent le
+          // meme soir, on ouvre, on lit, on publie. Derouler une liste a
+          // chaque fois pour choisir « Sur le site » serait treize fois
+          // trop. Le bouton n'apparait que sur un dossier qui attend.
+          (efEnAttente(r)
+            ? '<button type="button" class="btn btn-primary" id="ef-valider">Valider et publier</button>'
+            : '') +
           '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
             (typeof cpJeSuisProprio === 'function' && cpJeSuisProprio()
               ? '<button type="button" class="btn btn-ghost" id="ef-greffe-fiche" style="padding:10px 14px;font-size:13px" title="La fiche joueuse du Greffe, déjà remplie">Fiche au Greffe</button>' +
@@ -19933,6 +20062,7 @@
         jersey_number: v('ef-num') === '' ? null : parseInt(v('ef-num'), 10),
         position: v('ef-pos') || null,
         status: v('ef-status') || 'active',
+        fiche_etat: v('ef-dossier') || 'publiee',
         height: v('ef-h').trim() || null,
         weight: v('ef-w').trim() || null,
         birth_year: v('ef-by') === '' ? null : parseInt(v('ef-by'), 10),
@@ -19962,6 +20092,34 @@
         .then(function(){ b.disabled = false; if (efSel) efRenderDoc();
                           noteDire('ef-note', 'Enregistré.'); })
         .catch(function(){ b.disabled = false; note.textContent = "L'enregistrement a échoué."; });
+    });
+
+    var bVal = document.getElementById('ef-valider');
+    if (bVal) bVal.addEventListener('click', function(){
+      var manque = [];
+      if (!String(r.name || '').trim()) manque.push('le nom');
+      if (r.jersey_number == null) manque.push('le num\u00e9ro de maillot');
+      if (!r.photo_url) manque.push('la photo finale');
+      confirmer({
+        titre: 'Publier ' + (r.name || 'cette fiche') + ' ?',
+        detail: manque.length
+          ? 'Il manque encore ' + manque.join(', ') + '. Vous pouvez publier quand m\u00eame : ' +
+            'la fiche appara\u00eetra sur le site telle qu\u2019elle est.'
+          : 'La fiche rejoint l\u2019effectif et appara\u00eet sur le site public.',
+        ok: 'Publier', annuler: 'Pas maintenant'
+      }).then(function(oui){
+        if (!oui) return;
+        bVal.disabled = true;
+        sbUpdate('players', r.id, { fiche_etat: 'publiee' }, 'Joueuses')
+          .then(function(){ efDirty = false; return efLoad(); })
+          .then(function(){ qgToast((r.name || 'La fiche') + ' rejoint l\u2019effectif \u2713'); if (efSel) efRenderDoc(); })
+          .catch(function(){ bVal.disabled = false; qgToast('La publication a \u00e9chou\u00e9.', true); });
+      });
+    });
+    var dSel = document.getElementById('ef-dossier');
+    if (dSel) dSel.addEventListener('change', function(){
+      var m = document.getElementById('ef-dossier-mot');
+      if (m) m.textContent = (EF_DOSSIER[dSel.value] || EF_DOSSIER.publiee)[1];
     });
 
     var bGreffe = document.getElementById('ef-greffe-fiche');
