@@ -957,9 +957,69 @@
   /* L'en-tête prend la voix du club : sur-titre doré (le groupe), titre en
      Anton. Une section change, on le voit — l'entrée glisse de 10px. */
   .page-kicker{font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+  /* ===================== LE MOUVEMENT =====================
+     Cinq courbes differentes tramaient l'admin, aucune nommee. Celle-ci
+     etait deja la majoritaire (13 emplois sur 17) : elle devient LA
+     courbe, et les trois durees se nomment. Tout ce qui bouge ici s'y
+     refere -- c'est la seule facon qu'un ecran ressemble au suivant. */
+  :root{
+    --mv-vite:.16s;   /* un survol, un etat de bouton */
+    --mv:.30s;        /* une arrivee, une bascule */
+    --mv-lent:.52s;   /* un chiffre qui monte, une barre qui pousse */
+    --mv-c:cubic-bezier(.22,1,.36,1);
+  }
   @keyframes secIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-  section.sec-in{animation:secIn .28s cubic-bezier(.22,1,.36,1) both}
-  @media(prefers-reduced-motion:reduce){section.sec-in{animation:none}}
+  section.sec-in{animation:secIn .28s var(--mv-c) both}
+
+  /* LES BLOCS ARRIVENT L'UN APRES L'AUTRE.
+     La section entiere montait d'un seul tenant : quinze cents pixels
+     apparaissaient en meme temps, et rien ne disait par ou commencer.
+     Le bandeau se pose, puis la barre d'outils, puis la liste -- l'oeil
+     suit l'ordre de lecture au lieu de le chercher.
+
+     Quatre crans seulement, puis tout le reste ensemble : une section
+     de quinze blocs mettrait sinon une seconde entiere a se poser.
+     Total : 170 ms de retard + 340 ms de course. */
+  section.sec-in > *{animation:secIn .34s var(--mv-c) both}
+  section.sec-in > *:nth-child(1){animation-delay:0s}
+  section.sec-in > *:nth-child(2){animation-delay:.045s}
+  section.sec-in > *:nth-child(3){animation-delay:.09s}
+  section.sec-in > *:nth-child(4){animation-delay:.13s}
+  section.sec-in > *:nth-child(n+5){animation-delay:.17s}
+
+  /* LES BARRES POUSSENT DEPUIS LEUR BASE.
+     On anime la transformation, jamais la hauteur : la hauteur est
+     posee en style dans la ligne par le script, et la recalculer
+     soixante fois par seconde ferait travailler la mise en page pour
+     rien. */
+  @keyframes mvPousse{from{transform:scaleY(.02)}to{transform:scaleY(1)}}
+  @keyframes mvEtire{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  .tbc-g i, .ef-curve .ef-bar{transform-origin:bottom;
+    animation:mvPousse var(--mv-lent) var(--mv-c) both}
+  .tbc-g i:nth-child(2){animation-delay:.04s}
+  .tbc-g i:nth-child(3){animation-delay:.08s}
+  .tbc-g i:nth-child(4){animation-delay:.12s}
+  .tbc-g i:nth-child(5){animation-delay:.16s}
+  .tbc-g i:nth-child(6){animation-delay:.2s}
+  .an-bar i, .cs-bar i{transform-origin:left;
+    animation:mvEtire var(--mv-lent) var(--mv-c) both}
+
+  /* UN SEUL INTERRUPTEUR.
+     Qui a demande moins d'animation n'en recoit AUCUNE -- pas une
+     version attenuee. Les chiffres se posent alors a leur valeur, les
+     barres a leur hauteur : rien ne manque, rien ne bouge. */
+  @media(prefers-reduced-motion:reduce){
+    /* « !important » se justifie ici, et seulement ici : les regles
+       nth-child au-dessus sont plus specifiques (0,2,1 contre 0,1,1) et
+       une requete de media n'ajoute aucune specificite. Sans cela, les
+       retards survivaient a l'interrupteur -- mesure du 15 septembre :
+       animation-delay valait encore 0.045s alors que le mouvement etait
+       coupe. Inoffensif tant que le nom de l'animation tombe aussi,
+       mais un interrupteur d'accessibilite doit gagner sans dependre de
+       l'ordre des regles. */
+    section.sec-in, section.sec-in > *,
+    .tbc-g i, .ef-curve .ef-bar, .an-bar i, .cs-bar i{animation:none!important}
+  }
 
   /* Le rail porte le compte à rebours et ce qui attend une action.
      Il avait été descendu à 1300px pour être visible sur les portables.
@@ -10419,6 +10479,92 @@
     else if (r === 'rien-a-rafraichir') qgToast('Cet écran n\'a rien à recharger.', false);
   });
 
+  // ============ LES CHIFFRES MONTENT, ILS N'APPARAISSENT PAS ============
+  // Un compteur qui monte dit « je viens d'etre calcule ». Un compteur
+  // qui se pose d'un coup ne dit rien -- il a l'air d'avoir toujours
+  // ete la, et on ne sait pas si l'ecran a fini de charger.
+  //
+  // On ne touche qu'au PREMIER NOEUD TEXTE : plusieurs de ces chiffres
+  // portent un <small> a l'interieur (« 8 <small>inscrits</small> »),
+  // et le remplacer effacerait le mot.
+  //
+  // Un chiffre qui change repart de sa valeur precedente, pas de zero :
+  // un effectif qui passe de 8 a 9 ne doit pas redescendre a zero pour
+  // remonter. Seule la premiere venue part de zero.
+  var MV_REDUIT = !!(window.matchMedia &&
+                     window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var MV_CIBLES = '.ds-fig b, .tbc-n, .db-nums b';
+
+  function mvTexte(el){
+    for (var i = 0; i < el.childNodes.length; i++){
+      var n = el.childNodes[i];
+      if (n.nodeType === 3 && n.nodeValue.replace(/\s/g, '')) return n;
+    }
+    return null;
+  }
+  function mvMonter(el){
+    var noeud = mvTexte(el); if (!noeud) return;
+    // Un nombre en tete, puis ce qui suit : « 41 667 FCFA », « 75 % »,
+    // « 8 ». Les espaces des milliers viennent de toLocaleString et ne
+    // sont pas des espaces ordinaires.
+    // GOURMANDE, ET ELLE FINIT SUR UN CHIFFRE.
+    //
+    // La premiere version etait paresseuse. Sur \u00ab 48 000 FCFA \u00bb elle
+    // s'arretait a \u00ab 48 \u00bb -- le caractere suivant etait une espace, que
+    // le \D acceptait -- et gardait \u00ab 000 FCFA \u00bb comme suffixe. Le
+    // compteur montait donc jusqu'a 48, en affichant au passage
+    // \u00ab 16 000 FCFA \u00bb, \u00ab 29 000 FCFA \u00bb : des montants PLAUSIBLES ET
+    // FAUX. La valeur finale, elle, tombait juste par accident, ce qui
+    // aurait cache le defaut longtemps.
+    //
+    // Mesure du 15 septembre sur la Caisse :
+    //   0 000 -> 16 000 -> 29 000 -> 38 000 -> 44 000 -> 48 000
+    //   au lieu de 0 -> 15 800 -> ... -> 48 000
+    var m = String(noeud.nodeValue).match(/^(\s*)([0-9][0-9\s\u00a0\u202f]*[0-9]|[0-9])(.*)$/);
+    if (!m) return;
+    var brut = m[2].replace(/[\s\u00a0\u202f]/g, '');
+    var cible = parseInt(brut, 10);
+    if (!isFinite(cible) || cible < 1) return;
+    var avant = el.getAttribute('data-mv');
+    if (avant !== null && Number(avant) === cible) return;   // deja a jour
+    el.setAttribute('data-mv', String(cible));
+    if (MV_REDUIT) return;
+    var depart = (avant === null) ? 0 : Number(avant);
+    if (depart === cible) return;
+    var espace = /[\s\u00a0\u202f]/.test(m[2]);
+    var tete = m[1] || '', queue = m[3] || '';
+    // ON REPOSE LA CHAINE D'ORIGINE A L'ARRIVEE, pas une reconstruction.
+    // toLocaleString separe les milliers par une espace fine insecable ;
+    // l'ecran, lui, a pu ecrire autre chose. Les deux se ressemblent a
+    // l'oeil, mais le texte final doit etre CELUI QUE L'ECRAN A ECRIT --
+    // c'est lui que le reste du code, les captures et les exports
+    // relisent.
+    var origine = noeud.nodeValue;
+    var mettre = function(v){
+      noeud.nodeValue = tete + (espace ? v.toLocaleString('fr-FR') : String(v)) + queue;
+    };
+    var t0 = 0, duree = 520;
+    (function pas(t){
+      if (!t0) t0 = t;
+      var p = Math.min((t - t0) / duree, 1);
+      var e = 1 - Math.pow(1 - p, 3);            // sortie douce
+      mettre(Math.round(depart + (cible - depart) * e));
+      if (p < 1) requestAnimationFrame(pas);
+      else noeud.nodeValue = origine;             // exactement ce que l'ecran avait ecrit
+    })(performance.now());
+  }
+  // La donnee n'arrive pas avec l'ecran : quatre passages couvrent le
+  // premier dessin puis les requetes qui reviennent. Un chiffre deja a
+  // sa valeur est ignore -- rien ne rejoue.
+  var MV_PASSES = [60, 420, 1100, 2200];
+  function mvChiffres(racine){
+    if (!racine) return;
+    racine.querySelectorAll(MV_CIBLES).forEach(mvMonter);
+  }
+  function mvChiffresPlusTard(racine){
+    MV_PASSES.forEach(function(ms){ setTimeout(function(){ mvChiffres(racine); }, ms); });
+  }
+
   function showSection(key, formKey){
     // Cacher l'entrée de menu ne suffit pas : la recherche, les
     // raccourcis et le rail contextuel appellent showSection directement.
@@ -10476,7 +10622,18 @@
       kick.textContent = labTxt.replace(/\s+/g, ' ').trim();
     }
     var vis = document.getElementById('section-' + key);
-    if (vis){ vis.classList.remove('sec-in'); void vis.offsetWidth; vis.classList.add('sec-in'); }
+    if (vis){
+      vis.classList.remove('sec-in'); void vis.offsetWidth; vis.classList.add('sec-in');
+      // On RETIRE la classe une fois l'arrivee jouee (170 ms de retard
+      // + 340 ms de course). Un element reste en « animation-fill-mode:
+      // both » garderait l'opacite de sa premiere image si, pour une
+      // raison quelconque, son animation ne partait pas -- un bloc
+      // devoile plus tard resterait alors invisible. La classe s'en va,
+      // l'element reprend son etat naturel.
+      setTimeout(function(){ vis.classList.remove('sec-in'); }, 700);
+      // Les chiffres de CET ecran, des qu'ils sont la.
+      if (typeof mvChiffresPlusTard === 'function') mvChiffresPlusTard(vis);
+    }
     if (typeof ctxRender === 'function') ctxRender(key);
     if (key === 'standings' && typeof stPodium === 'function') stPodium();
     closeMobileNav();
