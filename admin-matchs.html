@@ -3728,6 +3728,48 @@
   /* Le depot se signale sur le corps de la colonne, pas par un cadre qui
      apparait : la colonne n'en a pas, et n'a pas a en gagner un. */
   .ds-col.survol .ds-col-b{background:var(--gold-soft);outline:1px dashed var(--gold-edge)}
+  /* UNE COLONNE VIDE NE PREND PLUS LA PLACE D'UNE COLONNE PLEINE.
+     Mesure du 15 septembre sur Inscriptions : sept colonnes de 262 px
+     dans une planche visible de 1217, soit 701 px a faire defiler --
+     dont 1310 px de colonnes VIDES. On defilait donc sept cents pixels
+     pour voir les deux colonnes qui portaient quelque chose. Et c'est
+     l'etat normal de ces planches : les dossiers s'accumulent au debut
+     et a la fin, les etapes du milieu sont vides la plupart du temps.
+
+     Elle ne disparait pas : c'est une cible de depot, et elle doit
+     continuer de dire qu'elle existe. Son titre bascule a la verticale,
+     comme l'onglet d'un classeur -- c'est la seule facon de garder un
+     mot lisible dans 96 px sans le couper. */
+  .ds-col.est-vide{flex:0 0 96px}
+  .ds-col.est-vide .ds-col-h{flex-direction:column;align-items:center;gap:6px;
+    padding-bottom:8px;border-bottom-color:var(--line)}
+  /* HAUTEUR FIXE : sans elle, le filet de chaque colonne s'arretait a
+     la fin de son mot -- « SEANCE D'ESSAI » descend plus bas que « EN
+     PAUSE » -- et les separateurs formaient un escalier. Cent trente
+     pixels tiennent le plus long des sept libelles. */
+  .ds-col.est-vide .ds-col-h{min-height:130px;justify-content:flex-start}
+  .ds-col.est-vide .ds-col-n{writing-mode:vertical-rl;transform:rotate(180deg);
+    flex:none;max-height:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    color:var(--faint)}
+  .ds-col.est-vide .ds-col-c{color:var(--faint);margin-top:auto}
+  /* « Aucun » n'a rien a dire dans une colonne large de trois lettres :
+     elle est manifestement vide, et son zero le dit deja. */
+  .ds-col.est-vide .ds-col-b .ds-empty{display:none}
+  .ds-col.est-vide .ds-col-b{min-height:0}
+  /* La bascule s'anime : sans transition, la planche se reorganise d'un
+     coup au moindre deplacement de carte et l'oeil perd la colonne
+     qu'il suivait. */
+  .ds-col{transition:flex-basis .22s cubic-bezier(.22,1,.36,1)}
+  @media(prefers-reduced-motion:reduce){ .ds-col{transition:none} }
+
+  /* PENDANT UN GLISSER, TOUTES REPRENNENT LEUR LARGEUR.
+     Viser 96 px avec une carte au bout du curseur serait pire que de
+     faire defiler. */
+  .ds-board.on-glisse .ds-col.est-vide{flex-basis:262px}
+  .ds-board.on-glisse .ds-col.est-vide .ds-col-h{flex-direction:row;align-items:baseline}
+  .ds-board.on-glisse .ds-col.est-vide .ds-col-n,
+  .ds-board.on-glisse .ds-col.est-vide .ds-col-b .ds-empty{writing-mode:horizontal-tb;transform:none}
+  .ds-board.on-glisse .ds-col.est-vide .ds-col-n{flex:1;max-height:none}
   .ds-card{position:relative;padding:12px 12px 12px 13px;cursor:pointer;
     border-bottom:1px solid var(--line);transition:background .12s}
   .ds-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
@@ -22993,7 +23035,7 @@
       // sont l'argent qui n'est pas rentre et la commande qui attend.
       board.innerHTML = OD_ST.map(function(s){
         var col = rows.filter(function(r){ return normalizeOrderStatus(r.status)===s.key; });
-        return '<div class="ds-col" data-col="'+s.key+'">'+
+        return '<div class="ds-col'+(col.length?'':' est-vide')+'" data-col="'+s.key+'">'+
           '<div class="ds-col-h'+(col.length?' on':'')+'">'+
           '<span class="ds-col-n">'+esc(s.label)+'</span>'+
           '<span class="ds-col-c">'+col.length+'</span></div>'+
@@ -23051,6 +23093,28 @@
       });
     }
   }
+
+  // PENDANT UN GLISSER, LES COLONNES VIDES REPRENNENT LEUR LARGEUR.
+  // Une colonne reduite a 96 px reste une cible de depot, mais viser
+  // 96 px avec une carte au bout du curseur est pire que de faire
+  // defiler. Un seul ecouteur pour les trois planches -- commandes,
+  // candidatures, inscriptions -- plutot que la meme ligne recopiee
+  // dans chacune des trois fonctions de cablage.
+  document.addEventListener('dragstart', function(e){
+    var c = e.target && e.target.closest && e.target.closest('.ds-card');
+    if (!c) return;
+    var b = c.closest('.ds-board'); if (b) b.classList.add('on-glisse');
+  }, true);
+  document.addEventListener('dragend', function(){
+    document.querySelectorAll('.ds-board.on-glisse').forEach(function(b){ b.classList.remove('on-glisse'); });
+  }, true);
+  // Le depot ne declenche pas toujours dragend selon le navigateur : on
+  // retire la classe la aussi, sinon les colonnes resteraient ouvertes.
+  document.addEventListener('drop', function(){
+    setTimeout(function(){
+      document.querySelectorAll('.ds-board.on-glisse').forEach(function(b){ b.classList.remove('on-glisse'); });
+    }, 0);
+  }, true);
 
   function odWireBoard(){
     var board = document.getElementById('od-board');
@@ -24477,7 +24541,7 @@
       // tete, dore quand la colonne porte quelque chose.
       board.innerHTML = CD_ST.map(function(s){
         var col = rows.filter(function(r){ return (r.status||'nouvelle')===s.key; });
-        return '<div class="ds-col" data-col="'+s.key+'">'+
+        return '<div class="ds-col'+(col.length?'':' est-vide')+'" data-col="'+s.key+'">'+
           '<div class="ds-col-h'+(col.length?' on':'')+'">'+
           '<span class="ds-col-n">'+esc(s.label)+'</span>'+
           '<span class="ds-col-c">'+col.length+'</span></div>'+
@@ -25338,7 +25402,7 @@
       // tirees au sort d'un nom ne disent rien de l'enfant.
       board.innerHTML = IN_ST.map(function(s){
         var col = rows.filter(function(r){ return (r.status||'nouvelle')===s.key; });
-        return '<div class="ds-col" data-col="'+s.key+'">'+
+        return '<div class="ds-col'+(col.length?'':' est-vide')+'" data-col="'+s.key+'">'+
           '<div class="ds-col-h'+(col.length?' on':'')+'">'+
           '<span class="ds-col-n">'+esc(s.label)+'</span>'+
           '<span class="ds-col-c">'+col.length+'</span></div>'+
