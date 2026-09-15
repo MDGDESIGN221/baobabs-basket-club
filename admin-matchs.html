@@ -3794,7 +3794,32 @@
     text-transform:uppercase;padding:3px 7px;border-radius:2px;border:1px solid;flex:none;
     display:inline-block;line-height:1.35;white-space:nowrap}
   .ds-tag.warn{color:var(--warn);border-color:rgba(232,169,60,.45);background:transparent}
+  /* CE QUE LE CLUB SAIT DEJA D'UNE ADRESSE.
+     Les pastilles se posent sur une ligne d'abonne et dans la liste de
+     l'ecran Newsletter. Elles sont muettes par defaut -- la couleur ne
+     sert qu'a distinguer la boutique de l'ecole -- parce qu'aucune
+     n'appelle un geste : ce sont des faits, pas des alertes. */
+  .nl-sig{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .nl-sig .ds-tag{font-size:8.5px;letter-spacing:.09em;padding:2px 6px;
+    color:var(--muted);border-color:var(--line-strong);background:transparent}
+  .nl-sig .ds-tag.ach{color:var(--gold-bright);border-color:rgba(70,191,29,.4)}
+  .nl-sig .ds-tag.eco{color:var(--attente);border-color:rgba(198,162,87,.42)}
   .ds-tag.cri{color:#FFF0EE;border-color:var(--danger);background:var(--danger)}
+  /* LA LISTE DES DESTINATAIRES, A COTE DU CHAMP OU L'ON ECRIT.
+     Elle defile dans sa carte plutot que d'allonger l'ecran : la
+     colonne de droite porte deja le journal des envois, et la liste
+     peut compter des centaines d'adresses. */
+  .nl-liste{max-height:300px;overflow-y:auto;margin:0 -4px;padding:0 4px}
+  .nl-l{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    padding:9px 0;border-bottom:1px solid var(--line)}
+  .nl-l:last-child{border-bottom:0}
+  .nl-l-g{min-width:0;flex:1}
+  .nl-l-n{font-family:var(--font-ui);font-weight:700;font-size:13px;color:var(--text);
+    line-height:1.3;overflow-wrap:anywhere}
+  .nl-l-n i{font-style:normal;font-weight:400;color:var(--faint)}
+  .nl-l-m{font-size:11.5px;color:var(--faint);margin-top:2px;overflow-wrap:anywhere}
+  .nl-l-d{font-size:11px;color:var(--faint);flex:none;white-space:nowrap}
+  .nl-l .nl-sig{margin-top:5px}
   .ds-st{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-ui);font-weight:700;
     font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
   .ds-st i{width:6px;height:6px;flex:none;background:var(--line-loud)}
@@ -5914,6 +5939,20 @@
           <div class="msg" id="nw-msg"></div>
         </div>
       </div><div>
+        <!-- ON VOIT A QUI ON ECRIT AVANT D'ECRIRE.
+             L'ecran annoncait « L'envoi general partira a 3 inscrits »
+             et s'arretait la : trois personnes, aucun moyen de savoir
+             lesquelles. La liste existait dans Messages, ou personne
+             n'allait la chercher. -->
+        <div class="card">
+          <h2 class="card-title">À qui vous écrivez</h2>
+          <p class="card-sub" id="nw-liste-sub">Lecture en cours…</p>
+          <div class="nl-liste" id="nw-liste"><div class="empty">Lecture en cours…</div></div>
+          <div style="margin-top:12px;display:flex;gap:14px;flex-wrap:wrap">
+            <button type="button" class="link-btn" id="nw-gerer">Gérer la liste</button>
+            <button type="button" class="link-btn" id="nw-csv">Exporter en CSV</button>
+          </div>
+        </div>
         <div class="card">
           <h2 class="card-title">Envois précédents</h2>
           <p class="card-sub">Le journal se remplit à chaque envoi général.</p>
@@ -7299,7 +7338,19 @@
   }, true);
 
   function formatDateLong(d){ if(!d)return''; return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}).toUpperCase(); }
-  function formatDateShort(d){ if(!d)return''; return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}); }
+  // UNE DATE SEULE OU UN HORODATAGE, LES DEUX SE LISENT ICI.
+  // '2026-09-01' a besoin de son 'T00:00:00' pour ne pas basculer d'un
+  // jour selon le fuseau. Un horodatage complet le porte deja, et le
+  // lui ajouter fabriquait '...+00:00T00:00:00' -- soit « Invalid Date »
+  // affiche tel quel dans la case, sans erreur ni avertissement. Deux
+  // appels s'en gardaient a la main avec un .slice(0,10) ; le troisieme
+  // l'a oublie. La fonction s'en charge desormais, et une date illisible
+  // laisse une case vide plutot que d'annoncer une panne.
+  function formatDateShort(d){
+    if(!d) return '';
+    var s = String(d), t = new Date(/[T ]/.test(s) ? s : s+'T00:00:00');
+    return isNaN(t.getTime()) ? '' : t.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+  }
   function daysUntil(d){ var t=new Date();t.setHours(0,0,0,0); return Math.round((new Date(d+'T00:00:00')-t)/86400000); }
   function hoursSince(ts){ if(!ts) return null; var d=new Date(ts); if(isNaN(d.getTime())) return null; return (Date.now()-d.getTime())/3600000; }
   function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
@@ -14214,14 +14265,110 @@
     return String(d).slice(0, 300);
   }
 
+  // =============== CE QUE LE CLUB SAIT D'UNE ADRESSE ===============
+  // La meme adresse peut figurer dans cinq autres tables : la boutique,
+  // l'ecole, la billetterie, les messages, les candidatures. Ecrire a
+  // « une maman d'eleve qui achete au magasin » n'est pas ecrire a
+  // « une adresse recueillie sur le site ».
+  //
+  // La vue newsletter_abonnes fait les cinq rapprochements en une
+  // requete. Elle est en security_invoker : un compte qui voit la
+  // lettre sans voir la boutique lira « 0 commande » alors qu'il n'a
+  // simplement pas le droit de savoir. UN COMPTEUR A ZERO N'AFFICHE
+  // DONC RIEN -- l'absence d'une pastille ne dit jamais « cette
+  // personne n'a rien fait ».
+  var NL_SIGNES = [
+    ['commandes',    'ach', 'commande',   'commandes'],
+    ['enfants_ecole','eco', 'enfant à l\u2019école', 'enfants à l\u2019école'],
+    ['billets',      '',    'billet',     'billets'],
+    ['messages',     '',    'message',    'messages'],
+    ['candidatures', '',    'candidature','candidatures']
+  ];
+  function nlSignes(r){
+    var out = NL_SIGNES.map(function(c){
+      var n = Number(r[c[0]]) || 0;
+      if (!n) return '';
+      return '<span class="ds-tag' + (c[1] ? ' ' + c[1] : '') + '">' +
+             n + ' ' + esc(n > 1 ? c[3] : c[2]) + '</span>';
+    }).filter(Boolean);
+    // La depense ne vaut d'etre dite que si elle est reelle : une
+    // commande passee et jamais payee afficherait « 0 FCFA », ce qui
+    // contredirait la pastille « 1 commande » juste a cote.
+    var d = Number(r.depense) || 0;
+    if (d > 0) out.push('<span class="ds-tag ach">' + esc(inFcfa(d)) + '</span>');
+    return out.length ? '<span class="nl-sig">' + out.join('') + '</span>' : '';
+  }
+  // La meme chose en mots, pour le CSV.
+  function nlSignesTexte(r){
+    var out = NL_SIGNES.map(function(c){
+      var n = Number(r[c[0]]) || 0;
+      return n ? (n + ' ' + (n > 1 ? c[3] : c[2])) : '';
+    }).filter(Boolean);
+    var d = Number(r.depense) || 0;
+    if (d > 0) out.push(inFcfa(d) + ' dépensés');
+    return out.join(' · ');
+  }
+  // La vue n'existe pas sur une base non migrée : on retombe alors sur
+  // la table, qui porte les mêmes quatre premières colonnes. Les
+  // pastilles disparaissent, le reste de l'écran fonctionne.
+  function nlAbonnes(){
+    return sbGet('newsletter_abonnes?select=*&order=created_at.desc')
+      .catch(function(){
+        return sbGet('newsletter_subscribers?select=*&order=created_at.desc')
+                 .catch(function(){ return []; });
+      });
+  }
+
+  // La liste des destinataires, dans l'ecran ou l'on ecrit.
+  var nwAbonnes = [];
+  function nwPeindreListe(rows){
+    nwAbonnes = rows || [];
+    var box = document.getElementById('nw-liste');
+    var sub = document.getElementById('nw-liste-sub');
+    if (!box) return;
+    if (!nwAbonnes.length){
+      if (sub) sub.textContent = 'Le formulaire du pied de page du site remplit cette liste.';
+      box.innerHTML = '<div class="empty">Personne n\u2019est encore inscrit.</div>';
+      return;
+    }
+    // Combien de ces adresses le club connait deja par ailleurs : c'est
+    // ce qu'on veut savoir avant de choisir le ton d'une lettre.
+    var connus = nwAbonnes.filter(function(r){ return nlSignesTexte(r); }).length;
+    if (sub) sub.textContent = connus
+      ? connus + ' de ces adresse' + (connus > 1 ? 's sont' : ' est') + ' déjà connue' +
+        (connus > 1 ? 's' : '') + ' du club par ailleurs.'
+      : 'Chacun recevra son propre e-mail : personne ne voit la liste.';
+    box.innerHTML = nwAbonnes.map(function(r){
+      var sg = nlSignes(r);
+      return '<div class="nl-l"><div class="nl-l-g">' +
+          '<div class="nl-l-n">' + (r.name ? esc(r.name) : '<i>sans nom</i>') + '</div>' +
+          '<div class="nl-l-m">' + esc(r.email || '') + '</div>' +
+          sg +
+        '</div>' +
+        '<div class="nl-l-d">' + esc(r.created_at ? formatDateShort(r.created_at) : '') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function nwExportCsv(){
+    bbCsvDownload('newsletter-' + bbCsvDate() + '.csv',
+      ['Adresse', 'Nom', 'Inscrit le', 'Connu du club par'],
+      nwAbonnes.map(function(r){
+        return [r.email, r.name || '', r.created_at ? String(r.created_at).slice(0, 10) : '',
+                nlSignesTexte(r)];
+      }));
+  }
+
   function nwLoad(){
     nwSonder();
-    sbGet('newsletter_subscribers?select=id').then(function(rows){
-      var n = (rows || []).length;
+    nlAbonnes().then(function(rows){
+      rows = rows || [];
+      var n = rows.length;
       document.getElementById('nw-count').textContent = n + ' inscrit' + (n > 1 ? 's' : '');
       document.getElementById('nw-sub').textContent = n
         ? 'L\'envoi général partira à ' + n + ' inscrit' + (n > 1 ? 's' : '') + '.'
         : 'Aucun inscrit pour le moment — le formulaire du site remplit la liste.';
+      nwPeindreListe(rows);
     }).catch(function(){ document.getElementById('nw-count').textContent = '—'; });
     sbGet('newsletter_sends?select=*&order=created_at.desc&limit=20').then(function(rows){
       var box = document.getElementById('nw-history');
@@ -17727,7 +17874,10 @@
       filtres:[['','Tous les messages'],['todo','À traiter'],['done','Traités']]
     },
     newsletter:{
-      table:'newsletter_subscribers', nom:['abonné','abonnés'],
+      // « table » reste celle ou l'on ECRIT (le bouton « Retirer ») ;
+      // « lire » est la vue qui rapproche l'adresse des cinq autres
+      // tables du club. On ne supprime pas dans une vue.
+      table:'newsletter_subscribers', lire:'newsletter_abonnes', nom:['abonné','abonnés'],
       chercher:'Adresse ou nom…',
       vide:'Aucune inscription pour l\'instant.',
       note:'Les adresses recueillies par le formulaire du site. Rien ne s\'écrit ici&nbsp;: la lettre elle-même se rédige et s\'envoie depuis l\'écran <b>Newsletter</b>.',
@@ -17840,12 +17990,18 @@
   //      il en prend la forme. La ligne ne s'ouvre pas — il n'y a rien
   //      derriere une adresse — d'ou .ds-fixe. ----
   function msVueNews(rows){
+    // UNE ADRESSE N'EST PAS QU'UNE ADRESSE. La colonne « Connu du club »
+    // dit ce que la meme adresse est ailleurs : cliente de la boutique,
+    // parent d'un enfant a l'ecole, spectatrice, candidate. Sans elle,
+    // la liste de diffusion etait un tas d'e-mails.
     return '<div class="ds-scroll"><table class="ds-tbl">'+
-      '<thead><tr><th>Adresse</th><th>Nom</th><th>Inscrit le</th><th class="r"></th></tr></thead><tbody>'+
+      '<thead><tr><th>Adresse</th><th>Nom</th><th>Connu du club</th><th>Inscrit le</th><th class="r"></th></tr></thead><tbody>'+
       rows.map(function(r){
+        var sg = nlSignes(r);
         return '<tr class="ds-fixe">'+
           '<td><div class="n">'+esc(r.email||'—')+'</div></td>'+
           '<td class="num">'+esc(r.name||'—')+'</td>'+
+          '<td>'+(sg || '<span style="color:var(--faint)">—</span>')+'</td>'+
           '<td class="num">'+esc(fmtDateTime(r.created_at))+'</td>'+
           '<td class="r"><button type="button" class="ds-act ms-del" data-id="'+esc(r.id)+'">Retirer</button></td>'+
         '</tr>';
@@ -18046,21 +18202,32 @@
     var t = MS_TABS[msTab];
     var box = msEl('ms-rows');
     box.innerHTML = '<div class="ms-vide">Chargement…</div>';
-    return sbGetAll(t.table+'?select=*&order=created_at.desc')
-      .then(function(rows){ msRows = rows||[]; msRender(); })
+    function poser(rows){ msRows = rows||[]; msRender(); }
+    function echouer(){
+      msRows = [];
+      msEl('ms-band').classList.add('hide');
+      msEl('ms-count').textContent = '—';
+      box.innerHTML = '<div class="empty">Impossible de charger. La table «&nbsp;'+
+        esc(t.table)+'&nbsp;» existe-t-elle&nbsp;? (migration SQL)</div>';
+    }
+    return sbGetAll((t.lire || t.table)+'?select=*&order=created_at.desc')
+      .then(poser)
       .catch(function(){
-        msRows = [];
-        msEl('ms-band').classList.add('hide');
-        msEl('ms-count').textContent = '—';
-        box.innerHTML = '<div class="empty">Impossible de charger. La table «&nbsp;'+
-          esc(t.table)+'&nbsp;» existe-t-elle&nbsp;? (migration SQL)</div>';
+        // Une vue absente (base non migrée) ne doit pas vider l'écran :
+        // la table d'origine porte les mêmes colonnes de base, et
+        // l'onglet marche sans les pastilles.
+        if (!t.lire) { echouer(); return; }
+        return sbGetAll(t.table+'?select=*&order=created_at.desc')
+          .then(poser).catch(echouer);
       });
   }
 
   function msExport(){
-    bbCsvDownload('newsletter-'+bbCsvDate()+'.csv', ['Adresse','Nom','Inscrit le'],
+    bbCsvDownload('newsletter-'+bbCsvDate()+'.csv',
+      ['Adresse','Nom','Inscrit le','Connu du club par'],
       msVisible().map(function(r){
-        return [r.email, r.name||'', r.created_at ? String(r.created_at).slice(0,10) : ''];
+        return [r.email, r.name||'', r.created_at ? String(r.created_at).slice(0,10) : '',
+                nlSignesTexte(r)];
       }));
   }
 
@@ -28249,7 +28416,26 @@
     parcours: pcInit,
     gameday:function(){ gdLoad(); },
     promos:function(){ pmLoad(); },
-    newsl:function(){ nwLoad(); },
+    newsl:function(){
+      // Cables une seule fois : nwLoad() repasse a chaque ouverture.
+      var g = document.getElementById('nw-gerer');
+      if (g && !g.dataset.pret){
+        g.dataset.pret = '1';
+        g.addEventListener('click', function(){
+          // L'onglet se pose AVANT le changement d'ecran : msInit() lit
+          // msTab au montage, et arriverait sinon sur « Contact ».
+          if (typeof msOnglet === 'function' && typeof msTab !== 'undefined') msTab = 'newsletter';
+          showSection('forms');
+          if (typeof msOnglet === 'function') msOnglet('newsletter');
+        });
+      }
+      var c = document.getElementById('nw-csv');
+      if (c && !c.dataset.pret){
+        c.dataset.pret = '1';
+        c.addEventListener('click', nwExportCsv);
+      }
+      nwLoad();
+    },
     teams:function(){ loadTeams(); },
     live:function(){ loadSettings().then(function(){ LOADERS_live(); }); },
     home:function(){ loadSettings().then(function(){ LOADERS_home(); }); },
