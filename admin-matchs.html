@@ -7099,6 +7099,46 @@
   function sbThrow(r, label, table){ return r.text().then(function(t){ throw sbFail(label, r.status, t, table); }); }
   function sbNet(table, label){ return function(err){ if (err && err.reason) throw err; throw sbFail(label, 0, null, table); }; }
 
+  // ---------------------------------------------------------------------
+  // LA MEME LECTURE, DEMANDEE CINQ FOIS
+  //
+  // Mesure le 15 septembre 2026 : ouvrir le tableau de bord declenche
+  // 70 lectures pour 34 tables. `orders` est lue CINQ fois, `players` et
+  // `match_center` quatre, `news` trois. Ce n'est le defaut d'aucun
+  // ecran en particulier : c'est que quatre moteurs peignent cette page
+  // ensemble -- le hero, les vingt-cinq regles de « Ce qui vous
+  // attend », l'activite recente, la preparation du match -- et
+  // qu'aucun ne sait ce que les autres viennent de demander.
+  //
+  // On ne les fusionne pas : chacun a sa raison d'etre et sa cadence, et
+  // les coudre ensemble ferait un bloc que personne n'oserait toucher.
+  // On pose un souvenir de dix secondes devant la porte commune. Deux
+  // demandes identiques a dix secondes d'intervalle, c'est le meme ecran
+  // qui se peint ; a une minute, c'est quelqu'un qui revient voir, et la
+  // lecture repart pour de vrai.
+  //
+  // TOUTE ECRITURE VIDE LE SOUVENIR. Une liste relue juste apres un
+  // enregistrement doit montrer ce qu'on vient d'ecrire : c'est
+  // exactement le defaut qu'on passe la journee a corriger ailleurs, il
+  // serait absurde de l'introduire ici.
+  //
+  // La promesse elle-meme est retenue, pas seulement son resultat : deux
+  // appels lances dans la meme milliseconde -- ce qui arrive a chaque
+  // Promise.all -- partagent alors la meme requete.
+  // ---------------------------------------------------------------------
+  var SB_MEMO = {}, SB_MEMO_MS = 10000;
+  function sbMemoVider(){ SB_MEMO = {}; }
+  function sbMemo(path, faire){
+    var maintenant = Date.now(), e = SB_MEMO[path];
+    if (e && (maintenant - e.t) < SB_MEMO_MS) return e.p;
+    var p = faire();
+    SB_MEMO[path] = { t: maintenant, p: p };
+    // Une lecture ratee ne se retient pas : on ne veut pas dix secondes
+    // d'erreur pour une coupure d'une seconde.
+    p.catch(function(){ if (SB_MEMO[path] && SB_MEMO[path].p === p) delete SB_MEMO[path]; });
+    return p;
+  }
+
   function sbGet(path){
     var table = String(path).split('?')[0];
     // ENTRAINEMENT : cette table-la rend des lignes d'exemple.
@@ -7112,9 +7152,18 @@
         return c;                       // une copie : l'ecran peut la modifier sans abimer le jeu
       }));
     }
-    return fetch(SUPABASE_URL+'/rest/v1/'+path, {headers:sbHeaders()})
-      .then(function(r){ if(!r.ok) return sbThrow(r, 'GET '+path, table); return r.json(); }, sbNet(table, 'GET '+path))
-      .then(function(rows){ sbAvertirTroncature(path, rows); return rows; });
+    return sbMemo(path, function(){
+      return fetch(SUPABASE_URL+'/rest/v1/'+path, {headers:sbHeaders()})
+        .then(function(r){ if(!r.ok) return sbThrow(r, 'GET '+path, table); return r.json(); }, sbNet(table, 'GET '+path))
+        .then(function(rows){ sbAvertirTroncature(path, rows); return rows; });
+    // UNE COPIE PAR APPELANT. Les ecrans modifient ce qu'ils recoivent
+    // (ils y posent des champs calcules, ils trient sur place) : rendre
+    // le meme tableau a deux appelants les ferait se marcher dessus.
+    }).then(function(rows){ return Array.isArray(rows) ? rows.map(function(r){
+      if (!r || typeof r !== 'object') return r;
+      var c = {}; for (var k in r) if (Object.prototype.hasOwnProperty.call(r, k)) c[k] = r[k];
+      return c;
+    }) : rows; });
   }
 
   // ---------------------------------------------------------------------
@@ -7175,6 +7224,7 @@
   function sbInsert(table,body,sectionLabel){
     return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=representation'}),body:JSON.stringify(body)})
       .then(function(r){
+        sbMemoVider();
         if(!r.ok) return sbThrow(r, r.status===409?'duplicate':'insert', table);
         auditLogInsert(table,body,sectionLabel);
         // ON REND LA LIGNE CREEE. Elle etait lue pour l'annulation, puis
@@ -7193,6 +7243,7 @@
     return sbGet(table+'?select=*&id=eq.'+id).then(function(rows){ return (rows&&rows[0])||null; }).catch(function(){ return null; }).then(function(before){
       return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'PATCH',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)})
         .then(function(r){
+          sbMemoVider();
           if(!r.ok) return sbThrow(r, 'update', table);
           auditLogUpdate(table,id,before,body,sectionLabel);
           // On ne retient QUE les champs réellement touchés : réécrire la
@@ -7211,7 +7262,7 @@
   function sbPatchBy(table,keyCol,keyVal,body,sectionLabel){
     return fetch(SUPABASE_URL+'/rest/v1/'+table+'?'+keyCol+'=eq.'+encodeURIComponent(keyVal),
       {method:'PATCH',headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),body:JSON.stringify(body)})
-      .then(function(r){ if(!r.ok) return sbThrow(r, 'patch '+table, table); try{ auditLogUpdate(table,keyVal,{},body,sectionLabel); }catch(e){} }, sbNet(table,'patch '+table));
+      .then(function(r){ sbMemoVider(); if(!r.ok) return sbThrow(r, 'patch '+table, table); try{ auditLogUpdate(table,keyVal,{},body,sectionLabel); }catch(e){} }, sbNet(table,'patch '+table));
   }
   // La ligne est relue AVANT d'être supprimée : sans ça, rien ne permet
   // de la remettre. Le journal d'audit ne garde qu'un « (supprimé) », il
@@ -7221,6 +7272,7 @@
     return sbGet(table+'?select=*&id=eq.'+id).then(function(rows){ return (rows&&rows[0])||null; }).catch(function(){ return null; }).then(function(avant){
       return fetch(SUPABASE_URL+'/rest/v1/'+table+'?id=eq.'+id,{method:'DELETE',headers:sbHeaders()})
         .then(function(r){
+          sbMemoVider();
           if(!r.ok) return sbThrow(r, 'delete', table);
           auditLogDelete(table,id,sectionLabel);
           if (avant) undoPousser({ type:'suppression', table:table, ligne:avant, quoi:undoNom(table, avant), section:sectionLabel });
@@ -7229,7 +7281,7 @@
   }
   function sbUpsert(table,body,sectionLabel){
     return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)})
-      .then(function(r){ if(!r.ok) return sbThrow(r, 'upsert', table); auditLogUpsert(table,body,sectionLabel); }, sbNet(table,'upsert'));
+      .then(function(r){ sbMemoVider(); if(!r.ok) return sbThrow(r, 'upsert', table); auditLogUpsert(table,body,sectionLabel); }, sbNet(table,'upsert'));
   }
 
   // =====================================================================
