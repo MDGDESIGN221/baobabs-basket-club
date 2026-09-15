@@ -3017,7 +3017,14 @@
 
   /* L'affiche proprement dite : deux écussons face à face. On reconnaît
      un club à son écusson bien avant d'en lire le nom. */
-  .db-vs{display:flex;align-items:center;gap:clamp(14px,2.2vw,26px);margin:20px 0 18px}
+  .db-vs{display:flex;flex-wrap:wrap;align-items:center;gap:clamp(14px,2.2vw,26px);margin:20px 0 18px}
+  /* LES ECUSSONS SE MESURENT A L'AFFICHE, PAS A LA FENETRE.
+     En 7vw, ils restaient a 74 px meme quand la colonne de contenu
+     tombait a 760 -- et la ligne du duel debordait alors de 17 px.
+     L'affiche est un conteneur (.db-hero) : cqw la mesure. Le
+     flex-wrap est le filet : s'il n'y a vraiment plus de place, la
+     ligne se casse au lieu de sortir du cadre. */
+  .db-vs .bb-crest{--crest:clamp(42px,6.8cqw,74px)}
   /* LE NOM DE L'ADVERSAIRE SE MESURE A SA PLACE, PAS A LA FENETRE.
      En 3,4vw il montait a 40 px dans une colonne de 225 px : « HLM
      Basket Club » y prenait TROIS lignes et poussait tout le hero de
@@ -3036,7 +3043,22 @@
   .db-crest.none{font-family:var(--font-ui);font-weight:800;font-size:24px;color:var(--gold)}
   .db-vs-mid{font-family:var(--font-ui);font-weight:800;font-size:13px;letter-spacing:.14em;
     color:var(--faint);flex:none}
-  .db-team{min-width:0}
+  /* « BAOBABS » SORTAIT DE SA BOITE ET TOUCHAIT LE « VS ».
+     Signale par le club, mesure a 1536 px : la boite de l'equipe
+     faisait 104 px, les lettres 132 -- 27 px de debordement -- et le
+     « VS » commencait a 550 quand le mot finissait a 552. Ecart reel :
+     MOINS UN PIXEL. Les deux se chevauchaient.
+     La cause est `min-width:0` avec `flex:0 1 auto` : la boite accepte
+     de descendre sous la largeur de son propre mot, et « Baobabs » est
+     un seul mot, qui ne peut pas se replier. Il sort donc par la droite.
+     Le nom de NOTRE club ne bouge jamais : il tient en un mot, il a la
+     place. C'est le nom de l'adversaire qui cede, lui qui peut etre
+     long et se replier sur deux lignes. Et `overflow-wrap:anywhere` sur
+     les deux : si un jour il n'y a vraiment plus de place, ca coupe au
+     lieu de deborder. */
+  .db-team{min-width:0;flex:0 0 auto}
+  .db-team b{overflow-wrap:anywhere}
+  .db-team.adv{flex:1 1 auto;min-width:0}
   .db-team b{display:block;font-family:var(--font-ui);font-weight:800;font-size:clamp(20px,2.6vw,30px);
     line-height:1.1;letter-spacing:-.01em;color:var(--text)}
   .db-team span{display:block;font-size:12px;color:var(--faint);margin-top:3px}
