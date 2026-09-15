@@ -213,9 +213,16 @@
         </div>
 
         <div class="bloc duo">
-          <div><label class="t" for="taille">Taille</label><select id="taille"></select></div>
-          <div><label class="t" for="poids">Poids <i>(optionnel)</i></label><select id="poids"></select></div>
+          <div><label class="t" for="taille">Taille</label>
+            <input type="text" id="taille" list="l-taille" inputmode="decimal"
+                   placeholder="1,78 m" autocomplete="off">
+            <datalist id="l-taille"></datalist></div>
+          <div><label class="t" for="poids">Poids <i>(optionnel)</i></label>
+            <input type="text" id="poids" list="l-poids" inputmode="decimal"
+                   placeholder="64 kg" autocomplete="off">
+            <datalist id="l-poids"></datalist></div>
         </div>
+        <p class="aide" style="margin:-13px 0 19px">Choisis dans la liste, ou écris comme tu veux.</p>
 
         <div class="bloc">
           <label class="t" for="n-jour">Date de naissance</label>
@@ -320,15 +327,18 @@
     return '<option value="' + v + '"' + (sel ? ' selected' : '') + '>' + (t == null ? v : t) + '</option>';
   }
   function remplirListes(){
-    // Taille : de 1,45 m a 2,05 m, au centimetre. Le format est celui
-    // que le site affiche deja -- elle n'a pas a l'inventer.
-    var t = [opt('', '—')];
+    // Taille et poids : DES SUGGESTIONS, PAS UNE LISTE FERMEE.
+    // Le champ reste libre -- celle qui mesure 1,785 m ou qui prefere
+    // ecrire « 1 m 78 » doit pouvoir le faire. Les suggestions donnent
+    // le format que le site affiche deja, pour que la plupart n'aient
+    // qu'a pointer.
+    var t = [];
     for (var c = 145; c <= 205; c++) t.push(opt((c / 100).toFixed(2).replace('.', ',') + ' m'));
-    el('taille').innerHTML = t.join('');
+    el('l-taille').innerHTML = t.join('');
 
-    var p = [opt('', '—')];
+    var p = [];
     for (var k = 40; k <= 115; k++) p.push(opt(k + ' kg'));
-    el('poids').innerHTML = p.join('');
+    el('l-poids').innerHTML = p.join('');
 
     var j = [opt('', 'Jour')];
     for (var d = 1; d <= 31; d++) j.push(opt(d < 10 ? '0' + d : String(d), String(d)));
