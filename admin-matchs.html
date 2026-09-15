@@ -1730,7 +1730,16 @@
      segments. Ce qui est propre au mois : la frise des dix mois, les
      seances, l'appel, la table des cotisations, les signaux.
      ===================================================================== */
-  .ec-frise{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;margin-bottom:14px}
+  /* DIX COLONNES EN DUR, DOUZE MOIS A PLACER.
+     La saison de l'ecole compte dix mois (septembre a juin) : la grille
+     etait taillee pour elle. La caisse en compte douze -- les deux
+     derniers tombaient sur une seconde rangee, et la bande passait de
+     38 a 79 px pour deux mots de quatre lettres. Mesure le 15 septembre.
+     En flex, les mois se partagent la ligne quels qu'ils soient : dix ou
+     douze, une seule rangee. `flex:1 1 0` et non une base en pixels,
+     sinon le dernier s'esseule au premier retrecissement. */
+  .ec-frise{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:14px}
+  .ec-frise > *{flex:1 1 0;min-width:52px}
   .ec-mois{background:transparent;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:8px 4px 7px;cursor:pointer;
     color:var(--faint);font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;min-height:0;
     display:flex;flex-direction:column;align-items:center;gap:6px;transition:border-color .15s,color .15s}
@@ -1740,6 +1749,13 @@
   .ec-mois.futur i,.ec-mois.vide i{background:var(--line)}
   .ec-mois.on{color:#0A1B0D;background:var(--gold);border-color:var(--gold)}
   .ec-mois.on i{background:rgba(0,0,0,.28)}
+  /* Un reglage sans effet ne disparait pas : il s'eteint, et dit
+     pourquoi. Le faire disparaitre laisserait croire qu'il n'existe
+     pas ; le laisser vif ferait croire qu'il sert. */
+  .ev-nav{transition:opacity .18s}
+  .ev-nav.ev-eteint{opacity:.42}
+  .ev-nav.ev-eteint select{pointer-events:none}
+  .ev-si{font-weight:400;text-transform:none;letter-spacing:0;color:var(--faint)}
   .ec-band{margin-bottom:22px}
   .ec-band .ds-fig b small{font-size:11px;color:var(--muted);font-weight:600}
   .ec-bloc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);margin-bottom:14px;overflow:hidden}
@@ -1805,7 +1821,7 @@
   .ec-signal b{display:block;font-size:13px;color:var(--text);font-weight:700}
   .ec-signal span{display:block;font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
   @media (max-width:900px){
-    .ec-frise{grid-template-columns:repeat(5,minmax(0,1fr))}
+    .ec-frise > *{flex:1 1 calc(20% - 4px)}
     .ec-seance{grid-template-columns:44px minmax(0,1fr)}
     .ec-seance-a{grid-column:1/-1}
     .ec-plan{grid-template-columns:1fr 1fr}
@@ -3537,7 +3553,17 @@
   .ds-fig{flex:1 1 0;min-width:0;padding:14px 15px 15px;
     border-right:1px solid var(--line);position:relative}
   .ds-fig:last-child{border-right:none}
+  /* LE LIBELLE RESERVE DEUX LIGNES, MEME QUAND IL N'EN PREND QU'UNE.
+     Mesure le 15 septembre a 1536 px : sur La caisse, quatre chiffres
+     etaient alignes a 354 px et le cinquieme a 367 -- « Avance du
+     president a rembourser » passait sur deux lignes et poussait son
+     nombre de treize pixels vers le bas. Meme chose sur Inscriptions
+     avec « Encaisse -- septembre 2026 ». La ligne de chiffres, qui est
+     tout l'interet du bandeau, cessait d'en etre une.
+     2 x 1.35em de hauteur de ligne : le libelle long ne deplace plus
+     rien, le libelle court laisse un blanc qui aere. */
   .ds-fig i{display:block;font-style:normal;font-size:9px;letter-spacing:.16em;
+    line-height:1.35;min-height:calc(2 * 1.35em);
     text-transform:uppercase;color:var(--faint);margin-bottom:9px}
   .ds-fig b{display:block;font-family:var(--font-ui);font-weight:800;letter-spacing:-.02em;
     font-size:27px;line-height:.9;color:var(--text);font-variant-numeric:tabular-nums}
@@ -5295,6 +5321,16 @@
             <label for="gal-album">Album</label>
             <input type="text" id="gal-album" placeholder="Journée de détection">
             <p class="card-sub hide" id="gal-match-note" style="margin:6px 0 0"></p>
+          </div>
+          <!-- LA DATE DE LA PRISE DE VUE.
+               La colonne `taken_on` existe depuis la premiere migration
+               de la galerie, avec son commentaire, et n'avait jamais eu
+               de champ : une photo de la saison derniere et une d'hier
+               se rangeaient pareil. Elle reste optionnelle -- on ne
+               connait pas toujours la date d'une photo qu'on recoit. -->
+          <div class="field" style="max-width:190px">
+            <label for="gal-date">Prise le <span class="opt">(optionnel)</span></label>
+            <input type="date" id="gal-date">
           </div>
           <button type="button" class="ds-mini-btn" id="gal-add">Ajouter</button>
         </div>
@@ -21156,6 +21192,18 @@
             champ('cta_label', 'Bouton — libellé', 'text', 'Lire l’actualité') +
             '<div class="ev-f"><label>Bouton — article ouvert</label>' +
               '<select data-c="article_slug">' + opts + '</select></div>' +
+            // OU MENE LE BOUTON QUAND AUCUN ARTICLE N'EST CHOISI.
+            // Le site lit `cta_nav` dans ce cas precis, et retombe sur
+            // « Actualites » quand la colonne est vide -- ce qu'elle
+            // etait toujours, faute de champ. On pouvait donc ecrire
+            // « Voir la billetterie » sur un bouton qui atterrit
+            // ailleurs. Le champ s'efface des qu'un article est choisi :
+            // il ne servirait plus a rien et ferait croire a un reglage.
+            '<div class="ev-f ev-nav' + (r.article_slug ? ' ev-eteint' : '') + '">' +
+              '<label>Bouton — page ouverte <span class="ev-si">si aucun article</span></label>' +
+              '<select data-c="cta_nav">' + EV_PAGES.map(function(o){
+                return '<option value="' + esc(o[0]) + '"' + ((r.cta_nav || 'actualites') === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+              }).join('') + '</select></div>' +
             champ('tel', 'Téléphone affiché (vide = pas de bouton)', 'text', '+222 36 84 96 31') +
           '</div>' +
           '<div class="ev-act">' +
@@ -21172,6 +21220,15 @@
     box.querySelectorAll('.ev-c').forEach(function(carte){
       var id = carte.getAttribute('data-id');
       carte.querySelector('.ev-save').addEventListener('click', function(){ evEnregistrer(id, carte, this); });
+      // Choisir un article eteint « page ouverte » : le site n'y regarde
+      // plus. Laisser les deux allumes ferait croire qu'on regle deux
+      // choses, alors qu'une seule sert.
+      var selArt = carte.querySelector('[data-c="article_slug"]');
+      var boiteNav = carte.querySelector('.ev-nav');
+      if (selArt && boiteNav)
+        selArt.addEventListener('change', function(){
+          boiteNav.classList.toggle('ev-eteint', !!selArt.value);
+        });
       carte.querySelector('.ev-vu').addEventListener('click', function(){ evBasculer(id); });
       carte.querySelector('.ev-nw').addEventListener('click', function(){
         var v = evValeurs(carte);
@@ -21184,6 +21241,13 @@
       carte.querySelector('.ev-del').addEventListener('click', function(){ evSupprimer(id, carte); });
     });
   }
+
+  // Les pages du site ou un bouton peut mener. La meme liste que le
+  // reglage ev_cta_nav, qui servait a l'ancien evenement unique : deux
+  // listes differentes finiraient par proposer des pages qui n'existent
+  // plus d'un cote et pas de l'autre.
+  var EV_PAGES = [['actualites','Actualités'],['competitions','Compétitions'],['billetterie','Billetterie'],
+                  ['club','Le Club'],['equipes','Équipes'],['boutique','Boutique'],['inscriptions','Inscriptions']];
 
   function evValeurs(carte){
     var v = {};
@@ -21206,6 +21270,7 @@
       affiche_alt: (v.affiche_alt || '').trim() || null,
       affiche_label: (v.affiche_label || '').trim() || null,
       cta_label: (v.cta_label || '').trim() || null,
+      cta_nav: (v.cta_nav || '').trim() || null,
       article_slug: (v.article_slug || '').trim() || null,
       tel: (v.tel || '').trim() || null,
       ordre: parseInt(v.ordre, 10) || 0
@@ -21445,6 +21510,7 @@
     var leg = document.getElementById('gal-legende').value.trim();
     var alb = document.getElementById('gal-album').value.trim();
     var vid = document.getElementById('gal-video').value.trim();
+    var prise = (document.getElementById('gal-date') || {}).value || '';
     if (!url){ qgToast('Choisissez une image.', true); return; }
     var corps = {
       image_url: url,
@@ -21454,13 +21520,14 @@
       // A la fin de la liste : une photo ajoutee ne doit pas passer
       // devant celles qu'on a deja classees.
       sort: (galRows.length + 1) * 10,
-      published: true
+      published: true,
+      taken_on: prise || null
     };
     // Venu du parcours « Le match » : la photo est liee au match, et
     // l'album prend son nom si on n'en a pas tape un autre.
     if (galMatch){ corps.match_id = galMatch.id; if (!alb) corps.album = galMatch.album; }
     sbInsert('gallery', corps, 'Galerie').then(function(){
-      ['gal-url', 'gal-legende', 'gal-video'].forEach(function(i){ document.getElementById(i).value = ''; });
+      ['gal-url', 'gal-legende', 'gal-video', 'gal-date'].forEach(function(i){ var e = document.getElementById(i); if (e) e.value = ''; });
       qgToast('Photo ajoutée ✓');
       galLoad();
     }).catch(function(){ qgToast('L’ajout a échoué.', true); });
