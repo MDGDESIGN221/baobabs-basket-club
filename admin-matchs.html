@@ -20059,22 +20059,20 @@
     });
     box.querySelectorAll('.ct-del').forEach(function(b){
       b.addEventListener('click', function(){
-        var cat = ctRows.filter(function(x){ return String(x.id) === String(b.getAttribute('data-id')); })[0] || { name: b.getAttribute('data-name') };
-        var used = ctUsageDe(cat);
-        // On avertit avant de creer des articles orphelins. Si le compte
-        // n'a pas pu etre lu, on le DIT plutot que de le supposer nul.
-        var SL = String.fromCharCode(10);
-        if (used == null){
-          if (!confirm('Impossible de vérifier combien d’articles utilisent cette catégorie.' + SL + SL +
-                       'Supprimer quand même ?')) return;
-        } else if (used){
-          if (!confirm(used + ' article' + (used > 1 ? 's utilisent' : ' utilise') + ' cette catégorie. ' +
-                       (used > 1 ? 'Ils garderont' : 'Il gardera') + ' le nom de la rubrique, mais ' +
-                       (used > 1 ? 'ils n’auront' : 'il n’aura') + ' plus de couleur, et la rubrique disparaîtra de la liste.' + SL + SL +
-                       'Continuer ?')) return;
-        } else if (!confirm('Supprimer cette catégorie ?')) return;
-        sbDelete('news_categories', b.getAttribute('data-id'), 'Catégories')
-          .then(ctLoad).catch(function(){ showMsg(msg, 'La suppression a échoué.', false); });
+        var id = b.getAttribute('data-id');
+        var cat = ctRows.filter(function(x){ return String(x.id) === String(id); })[0]
+               || { name: b.getAttribute('data-name') };
+        // LE COMPTE VIENT DU MOTEUR DES LIENS, PLUS DE CET ECRAN.
+        // ctUsageDe() comptait deja bien, mais il ne comptait QUE les
+        // articles : si demain une autre table pointe vers une
+        // rubrique, ce garde-fou l'ignorerait en silence. Le moteur lit
+        // la carte, et la carte est le seul endroit ou une relation se
+        // declare.
+        depConfirmer('rubrique', id, '\u00ab ' + (cat.name || 'cette rubrique') + ' \u00bb').then(function(ok){
+          if (!ok) return;
+          sbDelete('news_categories', id, 'Cat\u00e9gories')
+            .then(ctLoad).catch(function(){ showMsg(msg, 'La suppression a \u00e9chou\u00e9.', false); });
+        });
       });
     });
   }
@@ -22379,14 +22377,23 @@
     if (bDup) bDup.addEventListener('click', function(){ bDup.disabled = true; gmDuplicate(m.id); setTimeout(function(){ bDup.disabled = false; }, 1500); });
     var bDel = document.getElementById('mc-del');
     if (bDel) bDel.addEventListener('click', function(){
-      var quoi = mcLabel(m) + ' — ' + formatDateLong(m.match_date);
-      var hasS = m.score_baobabs != null && m.score_opponent != null;
-      if (!confirm('Supprimer ce match ?\n\n' + quoi + (hasS ? '\n\nSon score, sa feuille de match et ses statistiques partent avec lui, et le classement sera recalculé.' : '\n\nSa billetterie et sa feuille de match partent avec lui.'))) return;
       bDel.disabled = true;
-      sbDelete('matches', m.id, 'Matchs')
-        .then(function(){ qgToast('Match supprimé ✓'); mcSel = null; mcDirty = null; return mcLoad(); })
-        .catch(function(){ bDel.disabled = false; qgToast('La suppression a échoué.', true); });
+      // Le message disait « son score, sa feuille de match et ses
+      // statistiques partent avec lui » -- sans jamais dire combien, et
+      // en oubliant les convocations, les categories de billets, les
+      // articles et les photos rattaches au match. Le moteur des liens
+      // les compte tous.
+      // formatDateLong rend des CAPITALES : c'est fait pour une
+      // etiquette, pas pour une phrase. « le SAM. 19 SEPT. ? » se
+      // lisait mal au milieu d'une question.
+      depConfirmer('match', m.id, '\u00ab ' + mcLabel(m) + ' \u00bb, le ' + ecDateFr(m.match_date, true)).then(function(ok){
+        if (!ok){ bDel.disabled = false; return; }
+        sbDelete('matches', m.id, 'Matchs')
+          .then(function(){ qgToast('Match supprim\u00e9 \u2713'); mcSel = null; mcDirty = null; return mcLoad(); })
+          .catch(function(){ bDel.disabled = false; qgToast('La suppression a \u00e9chou\u00e9.', true); });
+      });
     });
+
     mcRenderPanel(m);
   }
 
@@ -28018,11 +28025,20 @@
   }
 
   function tkDeleteOffer(id){
-    if(!confirm('Supprimer cette catégorie de billet ?')) return;
+    // LE SEUL CAS « bloque » DE LA CARTE DES LIENS. La contrainte est
+    // `on delete restrict` : la base REFUSE quand des reservations
+    // existent. L'ecran le decouvrait apres coup, dans un message
+    // d'echec -- on cliquait « Supprimer », on attendait, et on
+    // apprenait que non. Le moteur le dit avant, et n'ouvre meme pas la
+    // boite.
     var msg=document.getElementById('tk-offers-msg');
-    sbDelete('ticket_offers',id,'Billetterie')
-      .then(function(){ showMsg(msg,'Catégorie supprimée.',true); return tkLoadOffers(); })
-      .catch(function(){ showMsg(msg,'Suppression impossible : des réservations existent sur cette catégorie. Fermez plutôt la vente.',false); });
+    var o=(tkOffers[tkSel]||[]).filter(function(x){ return String(x.id)===String(id); })[0];
+    depConfirmer('offre', id, o ? '\u00ab ' + o.category + ' \u00bb' : null).then(function(ok){
+      if (!ok) return;
+      sbDelete('ticket_offers',id,'Billetterie')
+        .then(function(){ showMsg(msg,'Cat\u00e9gorie supprim\u00e9e.',true); return tkLoadOffers(); })
+        .catch(function(){ showMsg(msg,'Suppression impossible : des r\u00e9servations existent sur cette cat\u00e9gorie. Fermez plut\u00f4t la vente.',false); });
+    });
   }
 
   function tkAddOffer(){
