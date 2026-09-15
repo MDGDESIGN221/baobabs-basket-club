@@ -156,11 +156,18 @@ create trigger news_categories_adopte
 create or replace view public.articles_admin as
  SELECT n.id, n.title, n.body, n.image_url, n.published_at, n.sort, n.created_at,
     n.image_url_x, n.image_url_y, n.image_url_zoom, n.status, n.slug, n.excerpt,
-    n.category, n.category_id, n.author, n.image_alt, n.seo_title, n.seo_description, n.updated_at,
+    n.category, n.author, n.image_alt, n.seo_title, n.seo_description, n.updated_at,
     c.color AS category_color,
     length(COALESCE(n.body, ''::text)) AS longueur,
     GREATEST(1::numeric, round(array_length(regexp_split_to_array(COALESCE(n.body, ''::text), '\s+'::text), 1)::numeric / 200.0)) AS minutes_lecture,
-    n.match_id
+    n.match_id,
+    -- EN FIN DE LISTE, ET PAS A COTE DE `category`.
+    -- `create or replace view` ne sait qu'AJOUTER des colonnes a la fin :
+    -- inserer category_id au milieu renomme toutes les suivantes, et
+    -- Postgres refuse (42P16 : cannot change name of view column
+    -- « author » to « category_id »). Vu en jouant la migration le
+    -- 15 septembre.
+    n.category_id
    FROM news n
      LEFT JOIN news_categories c
             ON c.id = n.category_id
@@ -176,7 +183,7 @@ alter view public.articles_admin set (security_invoker = on);
 --    fiche de club un match est rattache.
 -- ---------------------------------------------------------------------
 create or replace view public.match_center as
- SELECT m.id, m.opponent_name, m.opponent_logo_url, m.opponent_team_id,
+ SELECT m.id, m.opponent_name, m.opponent_logo_url,
     m.match_date, m.match_time, m.venue, m.is_home,
     m.competition, m.score_baobabs, m.score_opponent, m.created_at, m.photo_url, m.stream_url,
     m.notes, m.quarters, m.recap, m.referees, m.attendance, m.round_label, m.free_entry,
@@ -197,7 +204,8 @@ create or replace view public.match_center as
             WHEN m.score_baobabs < m.score_opponent THEN 'D'::text
             ELSE 'N'::text
         END AS issue,
-    m.rdv_heure, m.rdv_lieu, m.consignes
+    m.rdv_heure, m.rdv_lieu, m.consignes,
+    m.opponent_team_id          -- meme raison : en fin de liste
    FROM matches m
      LEFT JOIN ( SELECT ticket_offers.match_id,
             count(*) AS nb_categories,
