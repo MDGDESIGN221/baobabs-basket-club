@@ -93,6 +93,16 @@
   .bouton-fichier:hover{border-color:var(--vert)}
   input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 
+  /* --- les modeles de bio ---
+     Ils se lisent en entier : un modele coupe a « Meneuse de jeu, je
+     dicte le tempo et... » ne dit pas assez pour qu'on le choisisse. */
+  .modeles{display:flex;flex-direction:column;gap:8px}
+  .modele{display:block;width:100%;text-align:left;font:inherit;font-size:13.5px;
+    line-height:1.5;color:var(--doux);background:var(--fond2);
+    border:1px solid var(--trait);border-radius:var(--r);padding:12px 14px;cursor:pointer;
+    transition:border-color var(--mv),color var(--mv);-webkit-tap-highlight-color:transparent}
+  .modele:hover,.modele:focus-visible{border-color:var(--vert);color:var(--texte);outline:none}
+
   /* --- le consentement --- */
   .accord{display:flex;gap:11px;align-items:flex-start;background:var(--fond2);
     border:1px solid var(--trait);border-radius:var(--r);padding:14px 15px}
@@ -188,8 +198,9 @@
         </div>
 
         <div class="bloc duo">
-          <div><label class="t" for="numero">Numéro souhaité <i>(optionnel)</i></label>
-            <input type="number" id="numero" min="0" max="99" inputmode="numeric"></div>
+          <div><label class="t" for="numero">Ton numéro de maillot</label>
+            <input type="number" id="numero" min="0" max="99" inputmode="numeric"
+                   placeholder="Celui que le club t’a donné"></div>
           <div><label class="t" for="main">Main forte</label>
             <select id="main"><option value="">—</option><option>Droitière</option><option>Gauchère</option><option>Ambidextre</option></select></div>
         </div>
@@ -225,6 +236,15 @@
       <div class="bloc">
         <label class="t" for="bio">Quelques mots sur toi <i>(optionnel)</i></label>
         <textarea id="bio" placeholder="Ton parcours, ton style de jeu, ce qui te caractérise."></textarea>
+        <!-- DES EXEMPLES A REPRENDRE, PAS UNE PAGE BLANCHE.
+             « Parlez de vous » est la question la plus difficile d'un
+             formulaire : on ne sait pas quoi dire, ni sur quel ton, et
+             on laisse vide. Les exemples sont ecrits dans la voix des
+             fiches deja en ligne ; on en prend un, on le change. -->
+        <div id="exemples" class="cache">
+          <p class="aide" style="margin:11px 0 7px">Pas d’idée ? Prends-en un et change-le.</p>
+          <div class="modeles" id="modeles"></div>
+        </div>
       </div>
 
       <div class="bloc">
@@ -267,6 +287,41 @@
   var BUCKET = 'recruitment-photos';
 
   var POSTES = ['Meneuse','Arrière','Ailière','Ailière forte','Pivot'];
+
+  // DES MODELES DE BIO, DANS LA VOIX DES FICHES DEJA EN LIGNE.
+  // Celles du site tiennent en deux phrases d'environ cent vingt
+  // signes : ce qu'elle est, ce qu'elle apporte. On garde ce format --
+  // une bio de six lignes deborderait de la carte du site.
+  //
+  // Ils sont ECRITS POUR ETRE CHANGES, pas recopies : aucun ne reprend
+  // le texte d'une joueuse existante, sinon deux fiches diraient la
+  // meme chose mot pour mot.
+  var MODELES = {
+    'Meneuse': [
+      'Meneuse de jeu, je dicte le tempo et j’aime faire briller mes coéquipières. Lucide dans les fins de match serrées.',
+      'Rapide balle en main, je presse tout terrain et je déclenche le jeu de contre. Une gagneuse au caractère bien trempé.'
+    ],
+    'Arrière': [
+      'Arrière adroite de loin, je sanctionne à trois points et je prends mes responsabilités dans les grands rendez-vous.',
+      'Défensive avant tout, je prends le meilleur shooteur adverse et je me bats sur chaque ballon. Fiable et régulière.'
+    ],
+    'Ailière': [
+      'Ailière athlétique, j’étire les défenses et je me projette vite en transition. Précieuse des deux côtés du terrain.',
+      'Je joue simple et juste : bon shoot, bonne passe, et je cours toujours le contre-attaque jusqu’au bout.'
+    ],
+    'Ailière forte': [
+      'Ailière forte au contact, j’apporte de l’énergie et de l’impact défensif. Je prends les rebonds qui font gagner.',
+      'Solide dans la peinture et capable de s’écarter, je pose des écrans propres et je finis près du cercle.'
+    ],
+    'Pivot': [
+      'Intérieure travailleuse, je domine la raquette au rebond et je protège le cercle. Un vrai relais dans la rotation.',
+      'Pivot de métier, je pose des écrans propres, je finis près du cercle et je tiens le poste bas des deux côtés.'
+    ],
+    '_': [
+      'Passée par le basket de quartier avant de rejoindre les Baobabs, je joue avec le cœur et je ne lâche rien.',
+      'J’aime le jeu collectif, la défense et les fins de match serrées. Je donne tout ce que j’ai à chaque entraînement.'
+    ]
+  };
   var MAX_OCTETS = 12 * 1024 * 1024;   // avant compression
 
   var q = new URLSearchParams(location.search);
@@ -353,7 +408,39 @@
     el('postes').innerHTML = POSTES.map(function(p, i){
       return '<label><input type="checkbox" value="' + p + '" id="po-' + i + '"><span>' + p + '</span></label>';
     }).join('');
+    // Les exemples suivent le poste : une meneuse n'a rien a faire d'un
+    // modele de pivot. Tant qu'aucun poste n'est coche, on en propose
+    // deux qui vont a tout le monde.
+    POSTES.forEach(function(p, i){
+      var c = el('po-' + i);
+      if (c) c.addEventListener('change', modeles);
+    });
+    if (TYPE === 'joueuse') modeles();
     montrer('ecran-form');
+  }
+
+  function modeles(){
+    var choisis = POSTES.filter(function(p, i){ return el('po-' + i) && el('po-' + i).checked; });
+    var liste = [];
+    choisis.forEach(function(p){ (MODELES[p] || []).forEach(function(t){ liste.push(t); }); });
+    if (!liste.length) liste = MODELES._;
+    liste = liste.slice(0, 4);
+    el('modeles').innerHTML = liste.map(function(t, i){
+      return '<button type="button" class="modele" data-i="' + i + '">' + t + '</button>';
+    }).join('');
+    el('exemples').classList.remove('cache');
+    el('modeles').querySelectorAll('.modele').forEach(function(b){
+      b.addEventListener('click', function(){
+        var t = liste[+b.getAttribute('data-i')];
+        var champ = el('bio');
+        // On ne remplace jamais ce qu'elle a deja ecrit sans le dire :
+        // le modele se pose sur un champ vide, sinon il s'ajoute a la
+        // suite et elle taille dedans.
+        champ.value = champ.value.trim() ? (champ.value.trim() + ' ' + t) : t;
+        champ.focus();
+        champ.setSelectionRange(champ.value.length, champ.value.length);
+      });
+    });
   }
   function remplir(d){
     var nom = String(d.nom_complet || '').trim().split(/\s+/);
