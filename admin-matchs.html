@@ -1387,6 +1387,34 @@
     background:var(--surface-3)}
   .ef-jersey{position:absolute;top:9px;left:11px;font-family:var(--font-ui);font-weight:700;font-size:26px;line-height:1;letter-spacing:-.04em;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.75)}
   .ef-st{position:absolute;top:11px;right:9px}
+  /* LE LIEN DE COLLECTE, TOUJOURS SOUS LES YEUX.
+     Un lien qu'on genere puis qu'on retrouve en fouillant n'est pas un
+     lien : on le regenere, et on en a deux. Celui-ci reste affiche en
+     toutes lettres tant qu'il est ouvert. */
+  .co-panneau{border:1px solid var(--line-strong);border-radius:var(--r-lg);
+    background:var(--surface);padding:14px 16px;margin-bottom:16px}
+  .co-tete{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:2px}
+  .co-tete h3{font-family:var(--font-ui);font-weight:700;font-size:13.5px;margin:0;color:var(--text)}
+  .co-tete .co-sous{font-size:12px;color:var(--faint)}
+  .co-ligne{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .co-url{flex:1;min-width:220px;font-family:var(--font-mono,monospace);font-size:12px;
+    background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);
+    padding:9px 11px;color:var(--text);overflow-wrap:anywhere;user-select:all}
+  .co-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--faint);margin-top:8px}
+  .co-meta b{color:var(--text);font-weight:700}
+  .co-vide{font-size:12.5px;color:var(--faint);margin:8px 0 0;max-width:64ch;line-height:1.55}
+
+  /* LES POSTES : on en coche autant qu'il en faut. */
+  .po-choix{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 4px}
+  .po-choix label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    border:1px solid var(--line-strong);border-radius:var(--r-full);
+    padding:6px 12px;font-size:12.5px;color:var(--muted);
+    transition:border-color var(--mv-vite),color var(--mv-vite),background var(--mv-vite)}
+  .po-choix label:hover{border-color:var(--gold)}
+  .po-choix input{accent-color:var(--gold);margin:0}
+  .po-choix label:has(input:checked){border-color:var(--gold);color:var(--gold-bright);
+    background:rgba(70,191,29,.08)}
+  .po-hint{font-size:11.5px;color:var(--faint);margin:0 0 14px}
   .ef-b{padding:11px 12px 13px}
   .ef-name{font-family:var(--font-ui);font-weight:700;font-size:14.5px;letter-spacing:-.01em;color:var(--text);line-height:1.25}
   .ef-meta{font-size:11.5px;color:var(--faint);margin-top:3px}
@@ -5470,6 +5498,10 @@
     <!-- ===== SECTION JOUEUSES ===== -->
     <section id="section-squad" class="hide">
       <div id="ef-list-view">
+        <!-- LE LIEN DE COLLECTE. Il reste affiche tant qu'il est ouvert :
+             on le copie, on le colle dans un message, on revient le
+             chercher le lendemain sans le regenerer. -->
+        <div class="co-panneau" id="ef-collecte"></div>
         <div class="ds-band" id="ef-kpis"></div>
         <div class="ds-head">
           <button type="button" class="ds-mini-btn" id="ef-new">Nouvelle fiche</button>
@@ -19493,7 +19525,149 @@
     return s && typeof s === 'object' ? s : {};
   }
 
+  // ================== LE LIEN DE COLLECTE ==================
+  // Un lien partageable par type de membre. Il vit dans
+  // collecte_campagnes, le public n'y a aucun droit, et il ne s'ouvre
+  // que par les fonctions bbc_collecte_*.
+  //
+  // L'adresse est derivee de celle de l'admin : le site est servi
+  // depuis la meme origine (le tableau de bord ouvre « index.html » en
+  // relatif). Rien a configurer, et cela marche aussi bien en local
+  // qu'en ligne.
+  var coRows = null;
+  function coUrl(jeton){
+    try { return new URL('joueuse.html?t=' + encodeURIComponent(jeton), location.href).href; }
+    catch(e){ return 'joueuse.html?t=' + encodeURIComponent(jeton); }
+  }
+  function coCharger(){
+    return sbGet('collecte_campagnes?select=*&order=created_at.desc')
+      .then(function(rows){ coRows = rows || []; coPeindre(); })
+      .catch(function(){ coRows = []; coPeindre(true); });
+  }
+  function coPeindre(absente){
+    var box = document.getElementById('ef-collecte'); if (!box) return;
+    if (absente){
+      box.innerHTML = '<div class="co-tete"><h3>Lien de collecte</h3></div>' +
+        '<p class="co-vide">La table des campagnes n\u2019existe pas encore dans la base. ' +
+        'Ex\u00e9cutez la migration <code>MIGRATION-2026-09-15-collecte-des-membres.sql</code>.</p>';
+      return;
+    }
+    var vivants = (coRows || []).filter(function(c){
+      return c.actif && (!c.expire_le || new Date(c.expire_le) > new Date());
+    });
+    if (!vivants.length){
+      box.innerHTML = '<div class="co-tete"><h3>Lien de collecte</h3>' +
+          '<span class="co-sous">Aucun lien ouvert</span></div>' +
+        '<p class="co-vide">Ouvrez un lien, envoyez-le aux joueuses : chacune remplit son ' +
+        'profil depuis son t\u00e9l\u00e9phone et arrive ici, \u00e0 v\u00e9rifier. ' +
+        'Rien ne part sur le site avant que vous l\u2019ayez valid\u00e9e.</p>' +
+        '<div class="co-ligne"><button type="button" class="ds-mini-btn" id="co-new">Ouvrir un lien</button></div>';
+      coCabler();
+      return;
+    }
+    box.innerHTML = vivants.map(function(c){
+      var u = coUrl(c.jeton);
+      var reste = c.max_usages != null ? (c.max_usages - (c.usages || 0)) : null;
+      return '<div class="co-tete"><h3>' + esc(c.libelle) + '</h3>' +
+          '<span class="co-sous">' + esc(CO_TYPES[c.type] || c.type) + '</span></div>' +
+        '<div class="co-ligne">' +
+          '<code class="co-url" id="co-u-' + esc(c.id) + '">' + esc(u) + '</code>' +
+          '<button type="button" class="ds-mini-btn co-copier" data-u="' + esc(u) + '">Copier</button>' +
+          '<a class="ds-act" href="' + esc(u) + '" target="_blank" rel="noopener">Ouvrir</a>' +
+          '<button type="button" class="ds-act co-fermer" data-id="' + esc(c.id) + '">Fermer</button>' +
+        '</div>' +
+        '<div class="co-meta">' +
+          '<span><b>' + (c.usages || 0) + '</b> profil' + ((c.usages || 0) > 1 ? 's re\u00e7us' : ' re\u00e7u') + '</span>' +
+          (reste != null ? '<span><b>' + reste + '</b> place' + (reste > 1 ? 's' : '') + ' restante' + (reste > 1 ? 's' : '') + '</span>' : '') +
+          (c.expire_le ? '<span>expire le <b>' + esc(fmtDateTime(c.expire_le)) + '</b></span>' : '<span>sans date de fin</span>') +
+        '</div>';
+    }).join('<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">') +
+      '<div class="co-ligne"><button type="button" class="ds-act" id="co-new">Ouvrir un autre lien</button></div>';
+    coCabler();
+  }
+  var CO_TYPES = { joueuse:'Joueuses', coach:'Coachs', staff:'Staff', dirigeant:'Dirigeants' };
+  function coCabler(){
+    var box = document.getElementById('ef-collecte'); if (!box) return;
+    box.querySelectorAll('.co-copier').forEach(function(b){
+      b.addEventListener('click', function(){
+        var u = b.getAttribute('data-u');
+        // Le presse-papier moderne echoue hors HTTPS et sans geste : on
+        // garde le vieux chemin, qui marche partout.
+        var fini = function(){ var a = b.textContent; b.textContent = 'Copi\u00e9 \u2713';
+                               setTimeout(function(){ b.textContent = a; }, 1600); };
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(u).then(fini).catch(function(){ coCopierVieux(u, fini); });
+        } else coCopierVieux(u, fini);
+      });
+    });
+    box.querySelectorAll('.co-fermer').forEach(function(b){
+      b.addEventListener('click', function(){
+        var id = b.getAttribute('data-id');
+        var c = (coRows || []).filter(function(x){ return String(x.id) === String(id); })[0];
+        confirmer({
+          titre: 'Fermer ce lien ?',
+          detail: 'Le lien cesse imm\u00e9diatement de fonctionner. Les profils d\u00e9j\u00e0 ' +
+                  're\u00e7us restent en place, rien n\u2019est supprim\u00e9. Vous pourrez ' +
+                  'en ouvrir un autre \u00e0 tout moment.',
+          ok: 'Fermer le lien', annuler: 'Garder ouvert', danger: true
+        }).then(function(oui){
+          if (!oui) return;
+          sbUpdate('collecte_campagnes', id, { actif: false }, 'Joueuses')
+            .then(coCharger)
+            .then(function(){ qgToast('Lien ferm\u00e9 \u2713'); })
+            .catch(function(){ qgToast('Le lien n\u2019a pas pu \u00eatre ferm\u00e9.', true); });
+        });
+      });
+    });
+    var bn = document.getElementById('co-new');
+    if (bn) bn.addEventListener('click', coOuvrir);
+  }
+  function coCopierVieux(texte, apres){
+    var t = document.createElement('textarea');
+    t.value = texte; t.setAttribute('readonly', '');
+    t.style.position = 'fixed'; t.style.left = '-9999px';
+    document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); apres(); }
+    catch(e){ qgToast('Copie impossible \u2014 s\u00e9lectionnez le lien \u00e0 la main.', true); }
+    document.body.removeChild(t);
+  }
+  function coOuvrir(){
+    demander({
+      titre: 'Ouvrir un lien de collecte',
+      detail: 'Chaque personne remplit son profil depuis son t\u00e9l\u00e9phone. ' +
+              'Rien n\u2019appara\u00eet sur le site avant votre validation.',
+      champs: [
+        { cle:'libelle', label:'Nom du lien', valeur:'Effectif ' + new Date().getFullYear() },
+        { cle:'type', label:'Qui remplit ce formulaire', type:'select',
+          options:[['joueuse','Des joueuses'],['coach','Des coachs'],['staff','Du staff'],['dirigeant','Des dirigeants']] }
+      ],
+      ok: 'Ouvrir le lien'
+    }).then(function(v){
+      if (!v) return;
+      var libelle = String(v.libelle || '').trim() || 'Collecte';
+      // 32 caracteres tires au sort : un lien ne se devine pas.
+      var jeton = coJeton();
+      sbInsert('collecte_campagnes', {
+        type: v.type || 'joueuse', libelle: libelle, jeton: jeton,
+        // Pas de date de fin a la creation : le bouton « Fermer » est un
+        // geste sur ; une date mal saisie fermerait le lien sans qu'on
+        // comprenne pourquoi. La colonne existe, elle attend son ecran.
+        expire_le: null,
+        cree_par: (currentSession && currentSession.user && currentSession.user.email) || null
+      }, 'Joueuses')
+        .then(coCharger)
+        .then(function(){ qgToast('Lien ouvert \u2713 Copiez-le et envoyez-le.'); })
+        .catch(function(){ qgToast('Le lien n\u2019a pas pu \u00eatre ouvert.', true); });
+    });
+  }
+  function coJeton(){
+    var a = new Uint8Array(16);
+    (window.crypto || window.msCrypto).getRandomValues(a);
+    return Array.prototype.map.call(a, function(x){ return ('0' + x.toString(16)).slice(-2); }).join('');
+  }
+
   function efInit(){
+    coCharger();
     videRaz('squad', ['ef-search','ef-filter'], function(){ efRender(); });
     if (efStarted){ efRender(); return; }
     efStarted = true;
