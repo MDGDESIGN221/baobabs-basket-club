@@ -3402,6 +3402,53 @@
   .gd-sheet td:first-child{font-weight:600}
   .gd-sheet td.pts{color:var(--gold);font-weight:800;font-family:var(--font-ui)}
   .gd-sheet tr.vide td{color:var(--faint);font-weight:400}
+  /* ===================== LE DEROULE DU MATCH =====================
+     Une ligne par geste, la plus recente en haut. Quatre colonnes de
+     largeur fixe : le temps, le geste, qui, les points. Fixes parce
+     qu'on les lit EN COLONNE -- on cherche « toutes les fautes », pas
+     « la troisieme ligne » -- et qu'une colonne qui bouge ne se lit pas
+     de haut en bas.
+
+     Soir de match garde son vert et son rouge : c'est une console, et
+     marche / arret y est la langue universelle. Un panier est donc vert,
+     une faute rouge, et tout le reste reste gris -- sinon plus rien ne
+     ressort. Le geste de l'adversaire est en retrait : il compte au
+     score, pas dans notre feuille. */
+  .gd-dero{max-height:340px;overflow-y:auto;overscroll-behavior:contain;
+    border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2)}
+  .gd-dero-i{display:grid;grid-template-columns:64px 1fr 150px 34px 28px;
+    align-items:center;gap:10px;padding:7px 10px;
+    border-bottom:1px solid var(--line);font-size:12.5px}
+  .gd-dero-i:last-child{border-bottom:none}
+  .gd-dero-i:hover{background:var(--surface-3)}
+  /* Le temps : la periode en gros, l'heure dessous. Tabulaire, sinon
+     les minutes ne s'alignent pas d'une ligne a l'autre. */
+  .gd-dero-q{display:flex;flex-direction:column;line-height:1.15;
+    font-family:var(--font-ui);font-weight:700;font-size:11px;
+    font-variant-numeric:tabular-nums;color:var(--faint)}
+  .gd-dero-q i{font-style:normal;font-weight:600;font-size:11.5px;color:var(--muted)}
+  .gd-dero-t{color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gd-dero-w{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gd-dero-p{font-family:var(--font-ui);font-weight:800;font-variant-numeric:tabular-nums;
+    text-align:right;color:var(--lime)}
+  .gd-dero-i.est-fort .gd-dero-t{color:var(--text);font-weight:600}
+  .gd-dero-i.est-faute .gd-dero-t{color:#FF8A7E}
+  .gd-dero-i.est-adv{opacity:.62}
+  .gd-dero-i.est-adv .gd-dero-w{font-style:italic}
+  /* La croix ne se montre qu'au survol : neuf cents gestes dans un match,
+     neuf cents croix rouges en feraient une liste de boutons. Elle reste
+     atteignable au clavier, ou elle se montre aussi. */
+  .gd-dero-x{opacity:0;background:transparent;border:none;cursor:pointer;
+    font:inherit;font-size:17px;line-height:1;color:var(--faint);padding:2px 4px;
+    border-radius:4px;transition:opacity .12s,color .12s,background .12s}
+  .gd-dero-i:hover .gd-dero-x,.gd-dero-x:focus-visible{opacity:1}
+  .gd-dero-x:hover{color:var(--danger);background:var(--danger-wash)}
+  .gd-dero-x:focus-visible{outline:2px solid var(--lime);outline-offset:1px}
+  .gd-dero-vide{padding:16px;font-size:12.5px;color:var(--faint);text-align:center}
+  @media(max-width:700px){
+    .gd-dero-i{grid-template-columns:56px 1fr 34px 28px}
+    .gd-dero-w{display:none}
+  }
   .gd-final{text-align:center;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
 
   @media(max-width:640px){
@@ -5089,6 +5136,20 @@
             <span class="card-sub" id="gd-sheet-sub">Elle se remplit au fil des appuis.</span>
           </div>
           <div class="gd-sheet-scroll"><table class="gd-sheet" id="gd-sheet"><tbody></tbody></table></div>
+
+          <!-- ===== LE DEROULE =====
+               Chaque geste, du plus recent au plus ancien, avec sa
+               periode et son heure. Il repond a deux questions que la
+               feuille de match ne sait pas poser : « qu'est-ce que je
+               viens d'entrer ? » pendant le match, et « quand est-ce
+               que ca a bascule ? » apres.
+               Et il rend REPARABLE ce qui ne l'etait pas : jusqu'ici
+               seul le DERNIER geste pouvait etre annule. -->
+          <div class="gd-sheet-head">
+            <h3 class="card-title" style="font-size:14px">Le déroulé</h3>
+            <span class="card-sub" id="gd-dero-n"></span>
+          </div>
+          <div class="gd-dero" id="gd-dero"></div>
 
           <div class="gd-final">
             <button class="btn btn-primary" id="gd-publish">Coup de sifflet final</button>
@@ -15002,7 +15063,12 @@
       p_kind: kind,
       p_player_id: team === 'adv' ? null : gdSel,
       p_team: team || 'bbc',
-      p_period: gdPeriod
+      p_period: gdPeriod,
+      // L'HEURE DU GESTE. La colonne `match_events.clock` existe depuis
+      // le premier jour et restait vide : le chrono tournait a l'ecran
+      // sans jamais accompagner ce qu'on enregistrait. Sans elle, le
+      // deroule ci-dessous ne saurait pas dire QUAND.
+      p_clock: gdMMSS(gdReste)
     };
     var pts = kind==='panier2' ? 2 : kind==='panier3' ? 3 : kind==='lf' ? 1 : 0;
 
@@ -15057,12 +15123,133 @@
     gdPaintCourt(); gdPaintRoster(); gdArm();
   }
 
+  // =====================================================================
+  //  LE DEROULE DU MATCH
+  //
+  //  `match_events` recevait chaque geste depuis le premier jour --
+  //  panier, tir rate, rebond, passe, interception, contre, perte,
+  //  faute -- et personne ne la relisait. L'ecran ne savait afficher que
+  //  des totaux : on voyait qu'une joueuse avait quatre fautes, jamais
+  //  QUAND elle les avait prises.
+  //
+  //  Trois choses deviennent possibles :
+  //
+  //    1. VERIFIER. Pendant le match, la table de marque voit ce qu'elle
+  //       vient d'entrer. C'est la relecture qu'on fait naturellement sur
+  //       une feuille papier, et que l'ecran interdisait.
+  //    2. CORRIGER N'IMPORTE QUOI. Jusqu'ici, seul le DERNIER geste
+  //       pouvait etre annule : un panier attribue a la mauvaise joueuse
+  //       trois actions plus tot etait definitif.
+  //    3. RACONTER. Apres le match, on lit ou il a bascule.
+  //
+  //  RIEN N'EST RECALCULE ICI. La feuille de match (match_stats) et le
+  //  score (match_live) sont tenus par bbc_marquer en base. Retirer une
+  //  ligne du deroule doit donc defaire les DEUX -- c'est ce que fait
+  //  gdDeroSupprimer, en passant par la meme porte que l'ajout.
+  // =====================================================================
+  var GD_GESTES = {
+    panier2:{ t:'Panier à 2 points', pts:2, poids:'fort' },
+    panier3:{ t:'Panier à 3 points', pts:3, poids:'fort' },
+    lf:     { t:'Lancer franc',      pts:1, poids:'fort' },
+    rate2:  { t:'Tir à 2 manqué' },
+    rate3:  { t:'Tir à 3 manqué' },
+    rate_lf:{ t:'Lancer franc manqué' },
+    reb_off:{ t:'Rebond offensif' },
+    reb_def:{ t:'Rebond défensif' },
+    passe:  { t:'Passe décisive' },
+    interception:{ t:'Interception' },
+    contre: { t:'Contre' },
+    perte:  { t:'Balle perdue' },
+    faute:  { t:'Faute', poids:'faute' }
+  };
+  var gdDero = [];
+
+  function gdDeroCharger(){
+    if (!gdMatch) return Promise.resolve();
+    return sbGet('match_events?select=id,player_id,team,kind,points,period,clock,created_at&match_id=eq.' +
+                 gdMatch.id + '&order=created_at.desc&limit=400')
+      .then(function(rows){ gdDero = rows || []; gdDeroPeindre(); })
+      .catch(function(){ gdDero = []; gdDeroPeindre(true); });
+  }
+
+  function gdDeroNom(e){
+    if (e.team === 'adv') return 'Adversaire';
+    if (!e.player_id) return 'Baobabs';
+    var p = (gdRoster || []).filter(function(x){ return String(x.id) === String(e.player_id); })[0];
+    return p ? p.name : 'Joueuse retirée';
+  }
+
+  function gdDeroPeindre(echec){
+    var box = document.getElementById('gd-dero'), n = document.getElementById('gd-dero-n');
+    if (!box) return;
+    if (echec){
+      box.innerHTML = '<div class="gd-dero-vide">Le déroulé n’a pas pu être lu. Le score et la feuille, eux, sont à jour.</div>';
+      if (n) n.textContent = '';
+      return;
+    }
+    if (!gdDero.length){
+      box.innerHTML = '<div class="gd-dero-vide">Rien encore. Chaque geste s’inscrira ici, du plus récent au plus ancien.</div>';
+      if (n) n.textContent = '';
+      return;
+    }
+    if (n) n.textContent = gdDero.length + ' geste' + (gdDero.length > 1 ? 's' : '');
+    // Le plus recent en premier : c'est celui qu'on vient d'entrer et
+    // qu'on veut verifier. Un journal qui commence par le debut oblige a
+    // descendre a chaque fois.
+    box.innerHTML = gdDero.map(function(e){
+      var g = GD_GESTES[e.kind] || { t: e.kind };
+      var adv = e.team === 'adv';
+      return '<div class="gd-dero-i' + (g.poids === 'fort' ? ' est-fort' : '') +
+             (g.poids === 'faute' ? ' est-faute' : '') + (adv ? ' est-adv' : '') + '">' +
+        '<span class="gd-dero-q">' + (e.period ? 'P' + e.period : '—') +
+          (e.clock ? '<i>' + esc(e.clock) + '</i>' : '') + '</span>' +
+        '<span class="gd-dero-t">' + esc(g.t) + '</span>' +
+        '<span class="gd-dero-w">' + esc(gdDeroNom(e)) + '</span>' +
+        '<span class="gd-dero-p">' + (e.points ? '+' + e.points : '') + '</span>' +
+        '<button type="button" class="gd-dero-x" data-dero="' + esc(String(e.id)) + '"' +
+          ' title="Retirer ce geste" aria-label="Retirer ce geste">×</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  // RETIRER UN GESTE DU MILIEU DU MATCH.
+  // On ne touche pas aux tables a la main : bbc_marquer a ajoute des
+  // points au score ET des lignes a la feuille ; les defaire au coup par
+  // coup serait inventer une seconde comptabilite. On passe donc par la
+  // fonction prevue pour, et on relit tout ensuite.
+  function gdDeroSupprimer(id){
+    var e = gdDero.filter(function(x){ return String(x.id) === String(id); })[0];
+    if (!e) return;
+    var g = GD_GESTES[e.kind] || { t: e.kind };
+    var SL = String.fromCharCode(10);
+    if (!confirm('Retirer ce geste ?' + SL + SL +
+                 g.t + ' — ' + gdDeroNom(e) + (e.period ? ' (période ' + e.period + (e.clock ? ', ' + e.clock : '') + ')' : '') + SL + SL +
+                 (e.points ? 'Le score perdra ' + e.points + ' point' + (e.points > 1 ? 's' : '') + '. ' : '') +
+                 'La feuille de match sera corrigée en conséquence.')) return;
+    tkRpc('bbc_retirer_geste', { p_event_id: e.id })
+      .then(function(){
+        qgToast('Geste retiré ✓');
+        return Promise.all([gdLoadLive(), gdLoadSheet(), gdDeroCharger()]);
+      })
+      .catch(function(){
+        qgToast('Le retrait a échoué. La fonction bbc_retirer_geste est-elle en base ?', true);
+      });
+  }
+  document.addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-dero]');
+    if (b) gdDeroSupprimer(b.getAttribute('data-dero'));
+  });
+
   function gdLoadSheet(){
     if(!gdMatch) return Promise.resolve();
     return sbGet('match_stats?select=*&match_id=eq.'+gdMatch.id)
       .then(function(rows){
         gdSheet = rows||[];
         gdPaintSheet(); gdPaintCourt(); gdPaintRoster();
+        // Le deroule suit la feuille : les deux viennent du meme geste,
+        // et les voir diverger a l'ecran serait la pire des confusions
+        // un soir de match.
+        gdDeroCharger();
         // Cinq fautes constatées côté serveur : on sort la joueuse même si
         // la faute a été saisie depuis un autre appareil.
         gdCourt.slice().forEach(gdVerifFautes);
@@ -27455,11 +27642,24 @@
   function tkFcfa(n){ return String(Number(n)||0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' FCFA'; }
   function tkLabel(m){ return 'Baobabs '+(m.is_home?'vs ':'chez ')+(m.opponent_name||'?'); }
   function tkMatchById(id){ return tkMatches.filter(function(m){ return String(m.id)===String(id); })[0]; }
+  // UN APPEL DE FONCTION EST UNE ECRITURE, LUI AUSSI.
+  // Le souvenir de lecture pose devant sbGet est vide par sbInsert,
+  // sbUpdate, sbDelete, sbUpsert et sbPatchBy -- mais pas par les
+  // fonctions appelees en RPC. Or c'est par la que passe TOUT le soir
+  // de match : chaque panier, chaque faute, chaque annulation. Sans ce
+  // vidage, la feuille relue juste apres un geste pouvait rendre l'etat
+  // d'AVANT pendant dix secondes. Trouve en posant le deroule : il
+  // restait vide alors que les gestes etaient bien enregistres.
   function tkRpc(fn, body){
+    if (typeof sbMemoVider === 'function') sbMemoVider();
     return fetch(SUPABASE_URL+'/rest/v1/rpc/'+fn, {method:'POST',headers:sbHeaders({'Content-Type':'application/json'}),body:JSON.stringify(body||{})})
       .then(function(r){ return r.text().then(function(t){
         var j=null; try{ j=t?JSON.parse(t):null; }catch(e){}
         if(!r.ok) throw new Error((j&&(j.message||j.hint))||'erreur');
+        // Une deuxieme fois APRES la reponse : une lecture lancee
+        // pendant que la fonction tournait a pu remettre l'ancien etat
+        // en memoire entre-temps.
+        if (typeof sbMemoVider === 'function') sbMemoVider();
         return j;
       }); });
   }
