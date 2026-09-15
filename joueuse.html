@@ -70,6 +70,12 @@
   input:focus,textarea:focus,select:focus{outline:none;border-color:var(--vert);background:var(--carte)}
   input::placeholder,textarea::placeholder{color:#5F6B62}
   .duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  /* Jour, mois, annee. Le mois est le plus large -- « septembre » ne doit
+     pas etre coupe -- mais l'annee a besoin de place pour son mot :
+     mesure a 375 px, « Annee » sortait de sa liste. Les trois listes
+     resserrent leur retrait interieur, la fleche a moins de marge. */
+  .trio{display:grid;grid-template-columns:1fr 1.45fr 1.15fr;gap:8px}
+  .trio select{padding-left:11px;padding-right:9px}
   .aide{font-size:12.5px;color:var(--pale);margin:6px 0 0}
 
   /* --- les postes : on en coche autant qu'il en faut --- */
@@ -198,21 +204,32 @@
         </div>
 
         <div class="bloc duo">
-          <div><label class="t" for="numero">Ton numéro de maillot</label>
+          <div><label class="t" for="numero">Numéro de maillot</label>
             <input type="number" id="numero" min="0" max="99" inputmode="numeric"
-                   placeholder="Celui que le club t’a donné"></div>
+                   placeholder="Ton numéro">
+            <p class="aide">Celui que le club t’a donné.</p></div>
           <div><label class="t" for="main">Main forte</label>
             <select id="main"><option value="">—</option><option>Droitière</option><option>Gauchère</option><option>Ambidextre</option></select></div>
         </div>
 
         <div class="bloc duo">
-          <div><label class="t" for="taille">Taille</label><input type="text" id="taille" placeholder="1,78 m" inputmode="decimal"></div>
-          <div><label class="t" for="poids">Poids <i>(optionnel)</i></label><input type="text" id="poids" placeholder="64 kg" inputmode="decimal"></div>
+          <div><label class="t" for="taille">Taille</label><select id="taille"></select></div>
+          <div><label class="t" for="poids">Poids <i>(optionnel)</i></label><select id="poids"></select></div>
         </div>
 
-        <div class="bloc duo">
-          <div><label class="t" for="naissance">Date de naissance</label><input type="date" id="naissance"></div>
-          <div><label class="t" for="nationalite">Nationalité</label><input type="text" id="nationalite" placeholder="Sénégalaise"></div>
+        <div class="bloc">
+          <label class="t" for="n-jour">Date de naissance</label>
+          <div class="trio">
+            <select id="n-jour" aria-label="Jour"></select>
+            <select id="n-mois" aria-label="Mois"></select>
+            <select id="n-an" aria-label="Année"></select>
+          </div>
+        </div>
+
+        <div class="bloc">
+          <label class="t" for="nationalite">Nationalité</label>
+          <select id="nationalite"></select>
+          <input type="text" id="nat-autre" class="cache" placeholder="Laquelle ?" style="margin-top:9px">
         </div>
 
         <div class="bloc"><label class="t" for="ancien">Ancien club <i>(optionnel)</i></label>
@@ -287,6 +304,63 @@
   var BUCKET = 'recruitment-photos';
 
   var POSTES = ['Meneuse','Arrière','Ailière','Ailière forte','Pivot'];
+
+  // CE QU'ON CHOISIT PLUTOT QUE DE LE TAPER.
+  //
+  // « Senegalaise » en tete parce que c'est le cas de presque toutes ;
+  // puis les pays d'ou viennent les joueuses de la sous-region ; puis
+  // « Autre », qui ouvre un champ libre. Personne n'est enferme dans la
+  // liste, et le site n'affiche pas quatre orthographes d'un meme mot.
+  var NATIONS = ['Sénégalaise','Malienne','Guinéenne','Ivoirienne','Mauritanienne',
+                 'Gambienne','Bissau-guinéenne','Cap-verdienne','Française','Marocaine'];
+  var MOIS = ['janvier','février','mars','avril','mai','juin',
+              'juillet','août','septembre','octobre','novembre','décembre'];
+
+  function opt(v, t, sel){
+    return '<option value="' + v + '"' + (sel ? ' selected' : '') + '>' + (t == null ? v : t) + '</option>';
+  }
+  function remplirListes(){
+    // Taille : de 1,45 m a 2,05 m, au centimetre. Le format est celui
+    // que le site affiche deja -- elle n'a pas a l'inventer.
+    var t = [opt('', '—')];
+    for (var c = 145; c <= 205; c++) t.push(opt((c / 100).toFixed(2).replace('.', ',') + ' m'));
+    el('taille').innerHTML = t.join('');
+
+    var p = [opt('', '—')];
+    for (var k = 40; k <= 115; k++) p.push(opt(k + ' kg'));
+    el('poids').innerHTML = p.join('');
+
+    var j = [opt('', 'Jour')];
+    for (var d = 1; d <= 31; d++) j.push(opt(d < 10 ? '0' + d : String(d), String(d)));
+    el('n-jour').innerHTML = j.join('');
+
+    var m = [opt('', 'Mois')];
+    MOIS.forEach(function(nom, i){ m.push(opt(i < 9 ? '0' + (i + 1) : String(i + 1), nom)); });
+    el('n-mois').innerHTML = m.join('');
+
+    // De seize a quarante-cinq ans : les joueuses d'aujourd'hui, et les
+    // encadrants qui se serviront du meme formulaire.
+    var an = new Date().getFullYear(), a = [opt('', 'Année')];
+    for (var y = an - 16; y >= an - 45; y--) a.push(opt(String(y)));
+    el('n-an').innerHTML = a.join('');
+
+    el('nationalite').innerHTML =
+      NATIONS.map(function(n, i){ return opt(n, n, i === 0); }).join('') + opt('_autre', 'Autre…');
+    el('nationalite').addEventListener('change', function(){
+      var libre = this.value === '_autre';
+      el('nat-autre').classList.toggle('cache', !libre);
+      if (libre) el('nat-autre').focus();
+    });
+  }
+  // Ce que la base recoit : « 2004-03-12 », comme avant.
+  function naissanceLue(){
+    var d = el('n-jour').value, m = el('n-mois').value, a = el('n-an').value;
+    return (d && m && a) ? (a + '-' + m + '-' + d) : '';
+  }
+  function nationaliteLue(){
+    var v = el('nationalite').value;
+    return v === '_autre' ? el('nat-autre').value.trim() : v;
+  }
 
   // DES MODELES DE BIO, DANS LA VOIX DES FICHES DEJA EN LIGNE.
   // Celles du site tiennent en deux phrases d'environ cent vingt
@@ -431,6 +505,7 @@
     el('chapo').innerHTML = chapo;
     el('part-joueuse').classList.toggle('cache', TYPE !== 'joueuse');
     el('part-staff').classList.toggle('cache', TYPE === 'joueuse');
+    remplirListes();
     el('postes').innerHTML = POSTES.map(function(p, i){
       return '<label><input type="checkbox" value="' + p + '" id="po-' + i + '"><span>' + p + '</span></label>';
     }).join('');
@@ -502,8 +577,20 @@
       if (d.numero != null) el('numero').value = d.numero;
       if (d.taille) el('taille').value = d.taille;
       if (d.poids) el('poids').value = d.poids;
-      if (d.naissance) el('naissance').value = String(d.naissance).slice(0, 10);
-      if (d.nationalite) el('nationalite').value = d.nationalite;
+      if (d.naissance){
+        var iso = String(d.naissance).slice(0, 10).split('-');
+        if (iso.length === 3){ el('n-an').value = iso[0]; el('n-mois').value = iso[1]; el('n-jour').value = iso[2]; }
+      }
+      if (d.nationalite){
+        // Une nationalite hors liste revient dans le champ libre, pas
+        // dans le vide : elle doit se retrouver telle qu'elle l'a ecrite.
+        if (NATIONS.indexOf(d.nationalite) >= 0) el('nationalite').value = d.nationalite;
+        else {
+          el('nationalite').value = '_autre';
+          el('nat-autre').value = d.nationalite;
+          el('nat-autre').classList.remove('cache');
+        }
+      }
       if (d.main) el('main').value = d.main;
       if (d.ancien_club) el('ancien').value = d.ancien_club;
       (d.postes || []).forEach(function(p){
@@ -625,8 +712,8 @@
         d.numero = el('numero').value.trim();
         d.taille = el('taille').value.trim();
         d.poids = el('poids').value.trim();
-        d.naissance = el('naissance').value;
-        d.nationalite = el('nationalite').value.trim();
+        d.naissance = naissanceLue();
+        d.nationalite = nationaliteLue();
         d.main = el('main').value;
         d.ancien_club = el('ancien').value.trim();
         d.postes = POSTES.filter(function(p, i){ return el('po-' + i) && el('po-' + i).checked; });
