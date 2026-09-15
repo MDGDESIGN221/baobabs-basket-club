@@ -229,7 +229,9 @@
           <div class="trio">
             <select id="n-jour" aria-label="Jour"></select>
             <select id="n-mois" aria-label="Mois"></select>
-            <select id="n-an" aria-label="Année"></select>
+            <input type="number" id="n-an" list="l-an" aria-label="Année"
+                   placeholder="Année" inputmode="numeric" autocomplete="off">
+            <datalist id="l-an"></datalist>
           </div>
         </div>
 
@@ -348,11 +350,16 @@
     MOIS.forEach(function(nom, i){ m.push(opt(i < 9 ? '0' + (i + 1) : String(i + 1), nom)); });
     el('n-mois').innerHTML = m.join('');
 
-    // De seize a quarante-cinq ans : les joueuses d'aujourd'hui, et les
-    // encadrants qui se serviront du meme formulaire.
-    var an = new Date().getFullYear(), a = [opt('', 'Année')];
+    // L'ANNEE SE TAPE, ET SE SUGGERE.
+    // De seize a quarante-cinq ans en suggestion -- les joueuses
+    // d'aujourd'hui et les encadrants qui se servent du meme formulaire
+    // -- mais le champ reste libre : personne n'est enferme, et celle
+    // qui connait son annee la tape plus vite qu'elle ne la cherche.
+    var an = new Date().getFullYear(), a = [];
     for (var y = an - 16; y >= an - 45; y--) a.push(opt(String(y)));
-    el('n-an').innerHTML = a.join('');
+    el('l-an').innerHTML = a.join('');
+    el('n-an').min = an - 80;
+    el('n-an').max = an - 5;
 
     el('nationalite').innerHTML =
       NATIONS.map(function(n, i){ return opt(n, n, i === 0); }).join('') + opt('_autre', 'Autre…');
@@ -363,8 +370,19 @@
     });
   }
   // Ce que la base recoit : « 2004-03-12 », comme avant.
+  //
+  // UNE ANNEE TAPEE PEUT ETRE FAUSSE -- c'est la contrepartie du champ
+  // libre. « 98 », « 2O04 » avec un O, ou une annee a venir donneraient
+  // une date que la base refuse, ou pire, qu'elle accepte. On ne rend
+  // une date que si l'annee tient debout.
+  function anneeTientDebout(){
+    var a = (el('n-an').value || '').trim();
+    if (!/^[0-9]{4}$/.test(a)) return 0;
+    var n = parseInt(a, 10), cette = new Date().getFullYear();
+    return (n >= cette - 80 && n <= cette - 5) ? n : 0;
+  }
   function naissanceLue(){
-    var d = el('n-jour').value, m = el('n-mois').value, a = el('n-an').value;
+    var d = el('n-jour').value, m = el('n-mois').value, a = anneeTientDebout();
     return (d && m && a) ? (a + '-' + m + '-' + d) : '';
   }
   function nationaliteLue(){
@@ -691,6 +709,13 @@
     if (TYPE !== 'joueuse' && !el('fonction').value.trim()){
       el('fonction').closest('div').classList.add('champ-mal');
       dire('Indiquez votre fonction au club.'); el('fonction').focus(); return;
+    }
+    // Une annee commencee mais impossible ne part pas sans un mot : la
+    // date disparaitrait de la fiche sans que personne ne comprenne.
+    if (el('n-an').value.trim() && !anneeTientDebout()){
+      el('n-an').closest('div').classList.add('champ-mal');
+      dire('Vérifie ton année de naissance : quatre chiffres, par exemple 2004.');
+      el('n-an').focus(); return;
     }
     if (!el('consent').checked){
       dire('Cochez l’autorisation de publication pour envoyer votre profil.');
