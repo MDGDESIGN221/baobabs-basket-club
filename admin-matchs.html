@@ -3002,7 +3002,17 @@
   /* L'affiche proprement dite : deux écussons face à face. On reconnaît
      un club à son écusson bien avant d'en lire le nom. */
   .db-vs{display:flex;align-items:center;gap:clamp(14px,2.2vw,26px);margin:20px 0 18px}
-  .db-team.adv b{font-size:clamp(24px,3.4vw,40px);letter-spacing:-.02em;color:var(--gold-lit)}
+  /* LE NOM DE L'ADVERSAIRE SE MESURE A SA PLACE, PAS A LA FENETRE.
+     En 3,4vw il montait a 40 px dans une colonne de 225 px : « HLM
+     Basket Club » y prenait TROIS lignes et poussait tout le hero de
+     soixante pixels vers le bas -- sur un portable, « Ce qui vous
+     attend » commencait alors sous le pli. L'unite cqw mesure
+     l'affiche, qui est le conteneur ; et `text-wrap: balance` repartit
+     un nom long sur deux lignes egales au lieu d'en laisser un mot
+     seul. Il reste plus gros que « Baobabs » : c'est lui qu'on vient
+     lire. */
+  .db-team.adv b{font-size:clamp(22px,3.2cqw,34px);letter-spacing:-.02em;color:var(--gold-lit);
+    text-wrap:balance;overflow-wrap:anywhere}
   .db-crest{width:clamp(54px,7vw,74px);height:clamp(54px,7vw,74px);border-radius:var(--r-md);
     background:rgba(243,239,230,.06);border:1px solid var(--line-strong);flex:none;
     display:grid;place-items:center;overflow:hidden}
@@ -3024,6 +3034,84 @@
      un bloc qui en portait deja. Un releve : des filets entre les
      nombres, rien autour. Le libelle passe au-dessus, comme partout
      ailleurs — on lit la ligne, pas chaque case. */
+  /* ===================== LA PREPARATION DU MATCH, DANS LE HERO =====
+     Neuf pastilles, une par etape, dans l'ordre ou le travail se fait.
+     L'etat se lit a la forme AVANT la couleur : plein pour fait, cercle
+     ouvert pour a faire, creux eteint pour plus tard. La couleur ne
+     sert qu'a un cas, le retard -- sur une photo, un damier de cinq
+     teintes ne se lit pas, et l'or du club ne doit pas dire « alerte ».
+     Le hero est pose sur une image : tout y est donc opaque et
+     legerement detache du fond, sinon rien ne tient. */
+  .db-prep{margin-top:20px;padding-top:18px;border-top:1px solid rgba(243,239,230,.16)}
+  .db-prep-att{font-size:12px;color:rgba(243,239,230,.55)}
+  .db-prep-h{display:flex;align-items:baseline;gap:9px;margin-bottom:11px}
+  .db-prep-h b{font-family:var(--font-ui);font-weight:800;font-size:23px;line-height:1;
+    letter-spacing:-.02em;color:var(--text)}
+  .db-prep-h b span{font-weight:600;font-size:14px;color:rgba(243,239,230,.5)}
+  .db-prep-l{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(243,239,230,.6)}
+  .db-prep-l em{font-style:normal;color:var(--danger);font-weight:700}
+  .db-prep-p{display:flex;flex-wrap:wrap;gap:6px}
+  .db-prep-i{display:inline-flex;align-items:center;gap:6px;padding:5px 11px 5px 9px;
+    font:inherit;font-size:11.5px;cursor:pointer;border-radius:99px;
+    background:rgba(10,23,16,.62);border:1px solid rgba(243,239,230,.14);
+    color:rgba(243,239,230,.72);transition:border-color .15s,color .15s,background .15s}
+  .db-prep-i:hover{border-color:rgba(243,239,230,.34);color:var(--text);background:rgba(10,23,16,.82)}
+  .db-prep-i:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  .db-prep-i > i{width:8px;height:8px;border-radius:50%;flex:none;
+    border:1.5px solid currentColor;background:transparent}
+  .db-prep-i.est-fait{color:var(--text);border-color:rgba(168,217,59,.4)}
+  .db-prep-i.est-fait > i{background:var(--lime);border-color:var(--lime)}
+  .db-prep-i.est-partiel > i{background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
+  .db-prep-i.est-retard{color:var(--danger);border-color:rgba(229,86,74,.45)}
+  .db-prep-i.est-retard > i{background:var(--danger);border-color:var(--danger)}
+  .db-prep-i.est-attente{color:rgba(243,239,230,.4);border-color:rgba(243,239,230,.09)}
+  .db-prep-i.est-attente > i{border-color:rgba(243,239,230,.28)}
+  @media(max-width:700px){
+    .db-prep-i > span{display:none}
+    .db-prep-i{padding:7px;gap:0}
+  }
+
+  /* ===================== LE CLUB, MOIS PAR MOIS =====================
+     Une carte = un chiffre, et rien d'autre ne le redit ailleurs.
+     Ordre de lecture : le libelle (ce dont on parle), le total (le
+     sujet), la courbe (d'ou il vient), le mois en cours (ou il va).
+     Le total est en Archivo tabulaire : c'est le seul endroit de la
+     carte ou l'alignement des chiffres compte. */
+  .tb-chiffres{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:var(--s2)}
+  .tbc{display:flex;flex-direction:column;gap:9px;padding:14px 15px 13px;text-align:left;
+    font:inherit;cursor:pointer;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r-md);color:var(--text);transition:border-color .15s,background .15s}
+  .tbc:hover{border-color:rgba(70,191,29,.34);background:var(--surface-2)}
+  .tbc:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  .tbc-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    font-size:10.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--faint);line-height:1.3}
+  .tbc-h > i{font-style:normal;font-size:15px;line-height:1;color:var(--line-loud);
+    flex:none;transition:transform .15s,color .15s}
+  .tbc:hover .tbc-h > i{transform:translateX(2px);color:var(--gold)}
+  .tbc-n{font-family:var(--font-ui);font-weight:800;font-size:30px;line-height:.95;
+    letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+  /* La courbe : six mois, le dernier en accent. Elle se lit d'un coup
+     d'oeil et ne pretend rien mesurer -- pas d'axe, pas de grille. */
+  .tbc-g{display:flex;align-items:flex-end;gap:3px;height:26px}
+  .tbc-g > i{flex:1;min-width:0;border-radius:2px 2px 0 0;background:var(--line-strong)}
+  .tbc-g > i.on{background:var(--gold)}
+  .tbc-d{font-size:11.5px;color:var(--faint);line-height:1.4}
+  .tbc-d b{font-weight:700;color:var(--muted)}
+  .tbc-d em{font-style:normal;font-weight:700;margin-left:5px}
+  .tbc-d em.hausse{color:var(--ok)}
+  .tbc-d em.baisse{color:var(--attente)}
+  .tbc-note{display:block;margin-top:3px;font-weight:600;color:var(--muted)}
+  /* Rien n'est encore arrive : la carte s'efface au lieu de dessiner
+     six batonnets de deux pixels sous un zero. */
+  .tbc.est-vide{justify-content:space-between}
+  .tbc.est-vide .tbc-n{color:var(--faint)}
+
+  /* Deux colonnes en bas, au lieu de trois : « mois par mois » est
+     remonte a cote de « Ce qui vous attend », ou il repond a la meme
+     question -- qu'est-ce qui bouge dans ce club. */
+  .db-deux-bas{display:grid;grid-template-columns:1fr 1fr;gap:var(--s5);margin-top:var(--s5)}
+  @media(max-width:900px){ .db-deux-bas{grid-template-columns:1fr} }
   .db-cd{display:flex;margin-top:22px;border-top:1px solid rgba(243,239,230,.16);
     border-bottom:1px solid rgba(243,239,230,.16);width:fit-content;max-width:100%}
   /* En colonne : sans cela, `order` sur les enfants n'a aucun effet et
@@ -4627,6 +4715,14 @@
               <div class="db-vs" id="db-vs"></div>
               <div class="db-meta" id="db-meta"></div>
               <div class="db-cd" id="db-cd"></div>
+              <!-- LA PREPARATION, EN CLAIR.
+                   Le bouton « Preparer le match » ne disait pas si la
+                   preparation avait commence, ni ou elle en etait. Les six
+                   etapes sont calculees par l'ecran « Le match » ; on en
+                   montre ici l'avancement, et chaque pastille mene a
+                   l'etape. Un bouton qui annonce du travail vaut moins
+                   qu'une barre qui dit lequel reste. -->
+              <div class="db-prep hide" id="db-prep"></div>
               <div class="db-cta">
                 <button class="btn btn-primary" data-go="parcours" title="Convocation, cinq, affiche, billetterie, direct, résultat : ce qui est fait et ce qui reste">Préparer le match</button>
                 <button class="btn btn-ghost" data-go="gameday">Soir de match</button>
@@ -4642,25 +4738,29 @@
           </div>
         </div>
 
+        <!-- DEUX COLONNES, ET UN CHIFFRE N'APPARAIT QU'UNE FOIS.
+             « Commandes », « Candidatures » et « Abonnes » etaient
+             affiches DEUX FOIS sur cette page : un nombre nu dans « En
+             un coup d'oeil », une courbe dans « Le club, mois par
+             mois ». Un chiffre qui apparait deux fois dans deux styles
+             differents n'est pas une redondance d'affichage : c'est
+             l'aveu qu'aucune des deux places n'etait la bonne.
+
+             Il en reste une, et elle porte les trois choses qui font
+             un chiffre utile : le total, sa courbe sur six mois, et ce
+             qu'il a fait depuis le mois dernier. -->
         <div class="db-two">
           <div>
             <div class="db-h"><h2>Ce qui vous attend</h2><span id="att-sub"></span></div>
             <div id="att-list"></div>
           </div>
           <div>
-            <div class="db-h"><h2>En un coup d’œil</h2></div>
-            <div class="db-nums">
-              <button class="db-num" data-go="matches2"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg></span><b id="dash-upcoming-num">—</b><span class="db-num-lab">Matchs à venir</span><span class="chev">›</span></button>
-              <button class="db-num" data-go="matches2" data-filtre="termine"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg></span><b id="dash-played-num">—</b><span class="db-num-lab">Matchs joués</span><span class="chev">›</span></button>
-              <button class="db-num" data-go="orders2"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/></svg></span><b id="dash-orders-num">—</b><span class="db-num-lab">Commandes</span><em id="dash-orders-new-sub"></em><span class="chev">›</span></button>
-              <button class="db-num" data-go="applications"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span><b id="dash-recruitment-num">—</b><span class="db-num-lab">Candidatures</span><span class="chev">›</span></button>
-              <button class="db-num" data-go="forms"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1Z"/></svg></span><b id="dash-contact-num">—</b><span class="db-num-lab">Messages</span><em id="dash-contact-sub"></em><span class="chev">›</span></button>
-              <button class="db-num" data-go="newsl"><span class="db-num-i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/></svg></span><b id="dash-newsletter-num">—</b><span class="db-num-lab">Abonnés newsletter</span><span class="chev">›</span></button>
-            </div>
+            <div class="db-h"><h2>Le club, mois par mois</h2><span>six derniers mois</span></div>
+            <div class="tb-chiffres" id="tb-chiffres"></div>
           </div>
         </div>
 
-        <div class="tb-trois">
+        <div class="db-deux-bas">
           <div>
             <div class="db-h"><h2>Activité récente</h2><span id="tb-act-sub"></span></div>
             <div id="tb-activite"><div class="att-vide att-attente"><b>·</b><span>Lecture en cours…</span></div></div>
@@ -4669,13 +4769,7 @@
             <div class="db-h"><h2>Prochains rendez-vous</h2><span>14 jours</span></div>
             <div id="tb-agenda"><div class="att-vide att-attente"><b>·</b><span>Lecture en cours…</span></div></div>
           </div>
-          <div>
-            <div class="db-h"><h2>Le club, mois par mois</h2><span>six derniers mois</span></div>
-            <div id="tb-mois"></div>
-          </div>
         </div>
-
-
 
         <div>
           <div class="db-h"><h2>Accès rapide</h2></div>
@@ -13065,29 +13159,164 @@
   }
 
   // ---------- le club, mois par mois ----------
-  function tbRenderMois(){
-    var D = tbD, box = document.getElementById('tb-mois'); if (!box) return;
+
+  // ---------------------------------------------------------------------
+  // LES ETAPES D'UN MATCH, POUR QUI N'EST PAS SUR L'ECRAN « LE MATCH »
+  //
+  // pcEtapes() est le SEUL endroit qui sait ce qu'est un match pret : la
+  // fiche complete, cinq convoquees et un rendez-vous, cinq titulaires,
+  // l'affiche, la billetterie, le direct, le resultat, l'article, le
+  // classement. Neuf jugements, chacun avec sa regle de retard.
+  //
+  // Le tableau de bord ne les recalcule donc pas -- il chargerait les
+  // memes lignes pour arriver, un jour ou l'autre, a une reponse
+  // differente. Il charge ce dont cette fonction a besoin, et lit sa
+  // reponse. Une seule definition de « pret », deux endroits qui
+  // l'affichent.
+  // ---------------------------------------------------------------------
+  function pcEtapesPour(m){
+    if (!m || m.id == null) return Promise.resolve(null);
+    function q(u){ return sbGet(u).catch(function(){ return []; }); }
+    var id = m.id;
+    return Promise.all([
+      q('match_convocations?select=*&match_id=eq.' + id),
+      q('match_stats?select=player_id,is_starter&match_id=eq.' + id),
+      q('news?select=id,title,status,published_at&match_id=eq.' + id + '&order=created_at.desc'),
+      q('gallery?select=id&match_id=eq.' + id),
+      q('studio_projets?select=id,nom,modifie_le&doc-%3E%3EmatchId=eq.' + id),
+      q('match_live?select=*&match_id=eq.' + id),
+      q('standings?select=*'),
+      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note,birth_year&order=sort.asc,jersey_number.asc&limit=100'),
+      q('players_contacts?select=player_id,phone')
+    ]).then(function(r){
+      try {
+        return pcEtapes({ m: m, conv: r[0] || [], stats: r[1] || [], articles: r[2] || [], photos: r[3] || [],
+                          affiches: r[4] || [], live: (r[5] || [])[0] || null, classement: r[6] || [],
+                          joueuses: r[7] || [], contacts: r[8] || [] });
+      } catch(e){ return null; }
+    }).catch(function(){ return null; });
+  }
+
+  // ---------------------------------------------------------------------
+  // LA PREPARATION, DANS LE HERO
+  //
+  // « Preparer le match » etait un bouton. Un bouton annonce du travail ;
+  // il ne dit pas si on l'a commence, ni ce qu'il en reste. La barre dit
+  // les deux -- et chaque pastille mene a son etape, parce qu'une mesure
+  // qu'on ne peut pas suivre n'est qu'un reproche.
+  //
+  // Les etapes qui ne concernent pas encore un match a venir (le
+  // resultat, l'article, le classement) restent dans la barre, en
+  // attente : les cacher donnerait une avance qui n'existe pas.
+  // ---------------------------------------------------------------------
+  var TB_PREP_ETAT = { fait:'Fait', retard:'En retard', partiel:'Commencé', a_faire:'À faire', attente:'Plus tard' };
+  function tbRenderPrep(m){
+    var box = document.getElementById('db-prep'); if (!box) return;
+    if (!m || !m.id){ box.classList.add('hide'); box.innerHTML = ''; return; }
+    box.classList.remove('hide');
+    box.innerHTML = '<span class="db-prep-att">Lecture de la préparation…</span>';
+    pcEtapesPour(m).then(function(E){
+      if (!E || !E.length){ box.classList.add('hide'); box.innerHTML = ''; return; }
+      var faits = E.filter(function(e){ return e.etat === 'fait'; }).length;
+      var retard = E.filter(function(e){ return e.etat === 'retard'; }).length;
+      box.innerHTML =
+        '<div class="db-prep-h">' +
+          '<b>' + faits + ' <span>/ ' + E.length + '</span></b>' +
+          '<span class="db-prep-l">étape' + (faits > 1 ? 's' : '') + ' réglée' + (faits > 1 ? 's' : '') +
+            (retard ? ' · <em>' + retard + ' en retard</em>' : '') + '</span>' +
+        '</div>' +
+        '<div class="db-prep-p">' + E.map(function(e){
+          return '<button type="button" class="db-prep-i est-' + esc(e.etat) + '" data-go="parcours"' +
+                 ' title="' + esc(e.titre) + ' — ' + esc(TB_PREP_ETAT[e.etat] || e.etat) + '">' +
+                 // « La fiche du match » devient « fiche du match » : l'article
+                 // en tete de pastille vole une place a chaque fois, et neuf
+                 // pastilles alignees se lisent mieux sans.
+                 '<i></i><span>' + esc(e.titre.replace(/^(L[ae]s?|Le|L’|L')\s*/i, '')) + '</span></button>';
+        }).join('') + '</div>';
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // LE CLUB, MOIS PAR MOIS
+  //
+  // Remplace « En un coup d'oeil » ET « Le club, mois par mois » : les
+  // deux montraient les memes trois chiffres, l'un nu, l'autre en
+  // courbe. Une carte porte maintenant les trois choses qui font un
+  // chiffre utile -- le total, la courbe des six derniers mois, et ce
+  // que le mois en cours a fait de plus ou de moins que le precedent.
+  //
+  // AUCUNE REQUETE DE PLUS : tout vient de tbD, deja charge pour
+  // l'activite recente et l'agenda.
+  // ---------------------------------------------------------------------
+  function tbRenderChiffres(){
+    var D = tbD, box = document.getElementById('tb-chiffres'); if (!box) return;
+    if (!D){ box.innerHTML = ''; return; }
     var moisListe = [], d = new Date();
-    for (var i = 5; i >= 0; i--){ var m = new Date(d.getFullYear(), d.getMonth() - i, 1); moisListe.push(tbMoisIso(m)); }
-    function compte(rows, champ){ var c = {}; moisListe.forEach(function(m){ c[m] = 0; }); (rows || []).forEach(function(r){ var k = String(r[champ] || '').slice(0, 7); if (c[k] !== undefined) c[k]++; }); return moisListe.map(function(m){ return c[m]; }); }
+    for (var i = 5; i >= 0; i--) moisListe.push(tbMoisIso(new Date(d.getFullYear(), d.getMonth() - i, 1)));
+
+    function parMois(rows, champ){
+      var c = {}; moisListe.forEach(function(m){ c[m] = 0; });
+      (rows || []).forEach(function(r){
+        var k = String(r[champ] || '').slice(0, 7);
+        if (c[k] !== undefined) c[k]++;
+      });
+      return moisListe.map(function(m){ return c[m]; });
+    }
+
     var series = [];
-    if (D.peut('inscriptions')) series.push({ nom: 'Dossiers de l\'école', v: compte(D.dossiers, 'created_at'), go: 'inscriptions' });
-    if (D.peut('recrutement')) series.push({ nom: 'Candidatures', v: compte(D.candidatures, 'created_at'), go: 'applications' });
-    if (D.peut('boutique')) series.push({ nom: 'Commandes', v: compte(D.commandes, 'created_at'), go: 'orders2' });
-    if (D.peut('billetterie')) series.push({ nom: 'Réservations de billets', v: compte(D.billets, 'created_at'), go: 'tickets' });
-    if (D.peut('contenu')) series.push({ nom: 'Abonnés à la newsletter', v: compte(D.abonnes, 'created_at'), go: 'newsl' });
+    function serie(module, nom, rows, go, note){
+      if (module && !D.peut(module)) return;
+      if (!rows) return;
+      series.push({ nom: nom, total: rows.length, v: parMois(rows, 'created_at'), go: go, note: note || '' });
+    }
+    var nonLus = (D.messages || []).filter(function(r){ return !r.is_read; }).length;
+    var enAttente = (D.commandes || []).filter(function(r){
+      var s = (typeof normalizeOrderStatus === 'function') ? normalizeOrderStatus(r.status) : r.status;
+      return s !== 'récupérée' && s !== 'annulée';
+    }).length;
+
+    serie('inscriptions', 'Dossiers de l’école',     D.dossiers,      'inscriptions');
+    serie('recrutement',  'Candidatures',            D.candidatures,  'applications');
+    serie('boutique',     'Commandes',               D.commandes,     'orders2',  enAttente ? enAttente + ' en attente' : 'Tout traité');
+    serie('billetterie',  'Réservations de billets', D.billets,       'tickets');
+    serie('contenu',      'Messages',                D.messages,      'forms',    nonLus ? nonLus + ' à traiter' : 'Tout traité');
+    serie('contenu',      'Abonnés à la newsletter', D.abonnes,       'newsl');
+
     if (!series.length){ box.innerHTML = ''; return; }
+
     box.innerHTML = series.map(function(s){
-      var max = Math.max.apply(null, s.v.concat([1])), ce = s.v[5], avant = s.v[4];
-      var diff = ce - avant, txt = ce + ' ce mois-ci · ' + avant + ' le mois dernier' + (avant || ce ? (diff > 0 ? ' · +' + diff : (diff < 0 ? ' · ' + diff : ' · égal')) : '');
-      return '<button type="button" class="tb-serie" data-tb-go="' + s.go + '"><span class="tb-serie-t"><b>' + esc(s.nom) + '</b><span>' + esc(txt) + '</span></span>' +
-        '<span class="tb-barres">' + s.v.map(function(n, i){ return '<i style="height:' + Math.max(3, Math.round(100 * n / max)) + '%" title="' + esc(IN_MOIS_COURT[parseInt(moisListe[i].slice(5), 10) - 1] + ' : ' + n) + '"' + (i === 5 ? ' class="on"' : '') + '></i>'; }).join('') + '</span></button>';
+      var max = Math.max.apply(null, s.v.concat([1]));
+      var ce = s.v[5], avant = s.v[4], diff = ce - avant;
+      // UNE SERIE ENTIEREMENT A ZERO N'A PAS DE COURBE A MONTRER.
+      // Six batonnets de deux pixels sous un zero, c'est un graphique
+      // qui fait semblant. On dit ce qui est vrai : rien n'est encore
+      // arrive.
+      var vide = !s.total && s.v.every(function(n){ return !n; });
+      // LE DELTA NE S'AFFICHE QUE S'IL VEUT DIRE QUELQUE CHOSE. « +0 »
+      // sur deux mois a zero n'apprend rien et fait du bruit vert.
+      var delta = (!ce && !avant) ? ''
+        : (diff > 0 ? '<em class="hausse">+' + diff + '</em>'
+        : (diff < 0 ? '<em class="baisse">' + diff + '</em>' : '<em>égal</em>'));
+      var barres = s.v.map(function(n, i){
+        var m = moisListe[i];
+        return '<i class="' + (i === 5 ? 'on' : '') + '" style="height:' + Math.max(2, Math.round(100 * n / max)) + '%"' +
+               ' title="' + esc(IN_MOIS_COURT[parseInt(m.slice(5), 10) - 1] || '') + ' : ' + n + '"></i>';
+      }).join('');
+      return '<button type="button" class="tbc' + (vide ? ' est-vide' : '') + '" data-tb-go="' + esc(s.go) + '">' +
+        '<span class="tbc-h">' + esc(s.nom) + '<i>›</i></span>' +
+        '<span class="tbc-n">' + tbF(s.total) + '</span>' +
+        (vide ? '' : '<span class="tbc-g">' + barres + '</span>') +
+        '<span class="tbc-d">' + (vide
+          ? 'Rien pour l’instant'
+          : '<b>' + ce + '</b> ce mois-ci ' + delta) +
+          (s.note ? '<span class="tbc-note">' + esc(s.note) + '</span>' : '') + '</span>' +
+      '</button>';
     }).join('');
   }
 
   function tbRender(){
     if (!tbD) return;
-    tbRenderActivite(); tbRenderAgenda(); tbRenderMois();
+    tbRenderActivite(); tbRenderAgenda(); tbRenderChiffres();
   }
   // La bande de chiffres du haut a ete retiree a la demande du club
   // (14 septembre 2026, « je le trouve pas beau ») : les six compteurs
@@ -17454,6 +17683,10 @@
       // cochee l'emporte sur les categories, comme sur le site et dans
       // la Billetterie. Sinon on lisait « 0 / 1250 places restantes »
       // pour un match ou personne ne vend rien.
+      // La preparation : lue une fois le match connu, et depuis le
+      // calcul de l'ecran « Le match », pas un second.
+      tbRenderPrep(m);
+
       var t=Number(m.places_totales)||0, v=Number(m.places_reservees)||0, libre=m.free_entry===true;
       document.getElementById('db-tick').classList.toggle('hide', t===0 && !libre);
       document.getElementById('db-tick-n').innerHTML = libre ? '<em>Entrée gratuite</em>' : (t? v+' <em>/ '+t+'</em>' : '—');
