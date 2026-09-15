@@ -7449,8 +7449,14 @@ window.bbCloud = function(url, w){
               return (parseInt(a.no, 10) || 99) - (parseInt(b.no, 10) || 99);
             }));
 
-            return sbFetch('staff?select=*&order=sort.asc').then(function(sr){
-              var coach = (sr || []).filter(function(s){ return /coach|entra/i.test(s.role || ''); })[0] || null;
+            // Le coach affiche sur la feuille de match : meme regle,
+            // sinon un profil en attente s'afficherait en direct.
+            return sbFetch('staff?select=*&fiche_etat=eq.publiee&order=sort.asc')
+              .catch(function(){ return sbFetch('staff?select=*&order=sort.asc'); })
+              .then(function(sr){
+              var coach = (sr || []).filter(function(s){
+                return (s.fiche_etat || 'publiee') === 'publiee' && /coach|entra/i.test(s.role || '');
+              })[0] || null;
               bbLuRendre(m, cinq.slice(0, 5), banc, coach);
             }).catch(function(){ bbLuRendre(m, cinq.slice(0, 5), banc, null); });
           });
@@ -7529,9 +7535,16 @@ window.bbCloud = function(url, w){
       if(rows && rows.length) renderPartners(rows);
     }).catch(function(){});
 
-    sbFetch('staff?select=*&order=sort.asc').then(bbPoser.staff = function(rows){
-      if(rows && rows.length) renderStaff(rows);
-    }).catch(function(){});
+    // UNE FICHE DE STAFF NON PUBLIEE NE DESCEND PAS NON PLUS.
+    // Le meme filtre que pour les joueuses : un coach qui vient de
+    // remplir le formulaire de collecte n'est pas encore verifie.
+    // J'avais ferme la page Equipe et oublie celle-ci.
+    sbFetch('staff?select=*&fiche_etat=eq.publiee&order=sort.asc')
+      .catch(function(){ return sbFetch('staff?select=*&order=sort.asc'); })
+      .then(bbPoser.staff = function(rows){
+        rows = (rows || []).filter(function(r){ return (r.fiche_etat || 'publiee') === 'publiee'; });
+        if(rows.length) renderStaff(rows);
+      }).catch(function(){});
 
     sbFetch('timeline_events?select=*&order=sort.asc').then(bbPoser.timeline_events = function(rows){
       if(rows && rows.length){ timeline = rows.map(function(r){ return { year:r.year||'', title:r.title||'', text:r.body||'' }; }); renderTimeline(); }

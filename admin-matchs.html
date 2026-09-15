@@ -29755,9 +29755,87 @@
   function qgvSelect(key,id){ var S=qgvState(key); S.sel=id; qgvRenderCards(key); qgvRenderInspector(key); }
   function qgvAdd(key){ var c=COLLECTIONS[key]; var d={}; c.fields.forEach(function(f){ if(f.type==='date'&&f.default==='today') d[f.name]=todayISO(); else if(f.type==='boolean') d[f.name]=(f.bdefault===true); else if(f.type==='gallery') d[f.name]=[]; else d[f.name]=''; if(f.type==='image'&&f.pos){ d[f.name+'_x']=50; d[f.name+'_y']=50; d[f.name+'_zoom']=100; } }); var S=qgvState(key); S.draft=d; S.sel='__new__'; qgvRenderCards(key); qgvRenderInspector(key); window.scrollTo({top:0,behavior:'smooth'}); }
 
+  // ============ LES PROFILS RECUS, SUR TOUTE COLLECTION ============
+  // L'ecran Staff n'est pas un module ecrit a la main comme Joueuses :
+  // c'est une collection generique. Recopier le bloc aurait donne deux
+  // implementations a maintenir, et la troisieme -- dirigeants, ou ce
+  // que le club voudra demain -- aurait ete oubliee.
+  //
+  // Une collection dont les lignes portent un fiche_etat en attente
+  // recoit le bloc. Les autres ne voient aucune difference.
+  function qgvAttente(key, rows){
+    var box = document.getElementById('qgv-att-' + key);
+    var liste = rows.filter(function(r){
+      return typeof efEnAttente === 'function' && r.fiche_etat && efEnAttente(r);
+    });
+    if (!box){
+      if (!liste.length) return liste;
+      var corps = document.getElementById('qgv-body-' + key);
+      if (!corps || !corps.parentNode) return liste;
+      box = document.createElement('div');
+      box.id = 'qgv-att-' + key;
+      box.className = 'co-panneau';
+      corps.parentNode.insertBefore(box, corps);
+    }
+    if (!liste.length){ box.classList.add('hide'); box.innerHTML = ''; return liste; }
+    box.classList.remove('hide');
+    var quoi = (COLLECTIONS[key] && COLLECTIONS[key].title) || 'profil';
+    box.innerHTML =
+      '<div class="co-tete"><h3>' + liste.length + ' profil' + (liste.length > 1 ? 's re\u00e7us' : ' re\u00e7u') + '</h3>' +
+        '<span class="co-sous">\u00e0 v\u00e9rifier avant publication</span></div>' +
+      '<div class="ef-att-liste">' + liste.map(function(r){
+        var et = (typeof EF_DOSSIER === 'object' && EF_DOSSIER[r.fiche_etat]) || ['Reçu', ''];
+        var img = r.photo_source_url || r.photo_url;
+        return '<div class="ef-att" data-qgv-att="' + esc(r.id) + '">' +
+          '<span class="ef-att-p">' + (img
+              ? '<img src="' + esc(img) + '" alt="" loading="lazy">'
+              : '<i>' + esc(initials(r.name || '?').slice(0, 2)) + '</i>') + '</span>' +
+          '<span class="ef-att-c"><b>' + esc(r.name || 'Sans nom') + '</b>' +
+            '<span>' + esc(r.role || 'Fiche \u00e0 lire') + '</span>' +
+            (!r.photo_url ? '<span class="ef-att-m">il manque : photo finale</span>' : '') +
+          '</span>' +
+          '<span class="ds-quick">' +
+            '<button type="button" class="qgv-att-ouvrir" data-id="' + esc(r.id) + '">Ouvrir</button>' +
+            '<button type="button" class="qgv-att-pub" data-id="' + esc(r.id) + '">Publier</button>' +
+          '</span></div>';
+      }).join('') + '</div>';
+    // Ouvrir : la collection generique n'a pas de « fiche », c'est
+    // l'inspecteur de droite qui joue ce role.
+    box.querySelectorAll('.qgv-att-ouvrir').forEach(function(b){
+      b.addEventListener('click', function(){ qgvSelect(key, b.getAttribute('data-id')); });
+    });
+    box.querySelectorAll('.qgv-att-pub').forEach(function(b){
+      b.addEventListener('click', function(){
+        var id = b.getAttribute('data-id');
+        var r = rows.filter(function(x){ return String(x.id) === String(id); })[0] || {};
+        confirmer({
+          titre: 'Publier ' + (r.name || 'cette fiche') + ' ?',
+          detail: r.photo_url
+            ? 'La fiche appara\u00eet sur le site public.'
+            : 'Il manque encore la photo finale. Vous pouvez publier quand m\u00eame : ' +
+              'la fiche appara\u00eetra sur le site telle qu\u2019elle est.',
+          ok: 'Publier', annuler: 'Pas maintenant'
+        }).then(function(oui){
+          if (!oui) return;
+          b.disabled = true;
+          sbUpdate(COLLECTIONS[key].table, id, { fiche_etat: 'publiee' }, key)
+            .then(function(){ qgvLoad(key); qgToast((r.name || 'La fiche') + ' est publi\u00e9e \u2713'); })
+            .catch(function(){ b.disabled = false; qgToast('La publication a \u00e9chou\u00e9.', true); });
+        });
+      });
+    });
+    return liste;
+  }
+
   function qgvRenderCards(key){
     var box=document.getElementById('qgv-body-'+key); if(!box) return; var S=qgvState(key);
     var rows=S.rows;
+    // Ce qui attend se traite au-dessus ; la liste montre ce qui est en
+    // place. Un profil recu n'est pas encore un membre du staff.
+    var enAttente = qgvAttente(key, rows);
+    if (enAttente.length){
+      rows = rows.filter(function(r){ return enAttente.indexOf(r) < 0; });
+    }
     if(S.q && S.q.trim()){ var q=S.q.trim().toLowerCase(); rows=rows.filter(function(r){ return Object.keys(r).some(function(k){ var val=r[k]; return val!=null && typeof val!=='object' && String(val).toLowerCase().indexOf(q)>=0; }); }); }
     box.innerHTML=(QGV_RENDER[key]||function(){return '';})(rows, S.draft, S.sel);
     if(S.q && S.q.trim() && !rows.length && !S.draft){ box.insertAdjacentHTML('afterbegin','<div class="qg-loading">Aucun résultat pour « '+esc(S.q)+' ».</div>'); }
