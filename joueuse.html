@@ -296,30 +296,56 @@
   // Ils sont ECRITS POUR ETRE CHANGES, pas recopies : aucun ne reprend
   // le texte d'une joueuse existante, sinon deux fiches diraient la
   // meme chose mot pour mot.
+  // DES MODELES DANS LA VOIX DES FICHES DU SITE.
+  //
+  // Les huit bios en ligne suivent toutes le meme patron :
+  //   1. une apposition qui la situe      « Interieure travailleuse, »
+  //   2. SON PRENOM, puis ce qu'elle fait « Ndeye pose des ecrans »
+  //   3. une phrase nominale qui conclut  « Un vrai relais. »
+  //
+  // Troisieme personne, avec le prenom -- pas « je ». Le prenom se pose
+  // tout seul depuis le champ du haut ; tant qu'il est vide, un
+  // marqueur visible tient sa place.
+  //
+  // Quatre par poste : avec deux, celle qui n'aime ni l'un ni l'autre
+  // repart a la page blanche. Et aucun ne reprend le texte d'une
+  // joueuse deja en ligne, sinon deux fiches diraient la meme chose.
   var MODELES = {
     'Meneuse': [
-      'Meneuse de jeu, je dicte le tempo et j’aime faire briller mes coéquipières. Lucide dans les fins de match serrées.',
-      'Rapide balle en main, je presse tout terrain et je déclenche le jeu de contre. Une gagneuse au caractère bien trempé.'
+      'Meneuse de métier, {P} tient le ballon dans les fins de match et sait quand accélérer. Une tête froide au service du collectif.',
+      'Vive balle en main, {P} met la pression sur tout le terrain et lance la contre-attaque. Elle ne lâche jamais un ballon.',
+      'Petite par la taille, grande par la vision, {P} trouve la passe que personne n’a vue. Le métronome de l’équipe.',
+      'Formée au club, {P} organise le jeu avec sang-froid et sait aussi marquer quand il le faut. Une meneuse complète.'
     ],
     'Arrière': [
-      'Arrière adroite de loin, je sanctionne à trois points et je prends mes responsabilités dans les grands rendez-vous.',
-      'Défensive avant tout, je prends le meilleur shooteur adverse et je me bats sur chaque ballon. Fiable et régulière.'
+      'Adroite de loin, {P} sanctionne à trois points et prend ses responsabilités dans les grands rendez-vous.',
+      'Arrière défensive, {P} prend le meilleur shooteur adverse et se bat sur chaque ballon. Fiable et régulière.',
+      'Scoreuse dans l’âme, {P} porte l’attaque quand le match se tend. Un shoot sûr, balle en main.',
+      'Polyvalente sur les postes extérieurs, {P} défend dur et enchaîne vite vers l’avant. Précieuse en sortie de banc.'
     ],
     'Ailière': [
-      'Ailière athlétique, j’étire les défenses et je me projette vite en transition. Précieuse des deux côtés du terrain.',
-      'Je joue simple et juste : bon shoot, bonne passe, et je cours toujours le contre-attaque jusqu’au bout.'
+      'Ailière athlétique, {P} étire les défenses et se projette vite en transition. Précieuse des deux côtés du terrain.',
+      'Joueuse de couloir, {P} attaque le cercle en un dribble et finit au contact. Une slasheuse.',
+      'Adroite et travailleuse, {P} joue simple, défend sur plusieurs postes et court chaque contre-attaque jusqu’au bout.',
+      'Arrivée au club cette saison, {P} apporte de l’énergie sur les ailes et ne recule devant aucun duel.'
     ],
     'Ailière forte': [
-      'Ailière forte au contact, j’apporte de l’énergie et de l’impact défensif. Je prends les rebonds qui font gagner.',
-      'Solide dans la peinture et capable de s’écarter, je pose des écrans propres et je finis près du cercle.'
+      'Solide au contact, {P} apporte énergie et impact défensif. Elle prend les rebonds qui font gagner.',
+      'Intérieure mobile, {P} pose des écrans propres, s’écarte pour shooter et finit près du cercle. Un profil moderne.',
+      'Guerrière de la raquette, {P} ne lâche rien au rebond et fait le travail de l’ombre. L’équipe compte sur elle.',
+      'Capable de tenir les deux postes intérieurs, {P} défend sur les grandes et court le terrain. Une vraie polyvalente.'
     ],
     'Pivot': [
-      'Intérieure travailleuse, je domine la raquette au rebond et je protège le cercle. Un vrai relais dans la rotation.',
-      'Pivot de métier, je pose des écrans propres, je finis près du cercle et je tiens le poste bas des deux côtés.'
+      'Présence dans la raquette, {P} domine au rebond et protège le cercle. La dernière ligne de la défense.',
+      'Pivot de métier, {P} tient le poste bas des deux côtés et fait vivre le ballon depuis l’intérieur.',
+      'Intérieure travailleuse, {P} pose des écrans propres et se replace sans qu’on le lui demande. Un vrai relais.',
+      'Jeune intérieure au potentiel immense, {P} prend de la place chaque semaine. Une révélation de la formation.'
     ],
     '_': [
-      'Passée par le basket de quartier avant de rejoindre les Baobabs, je joue avec le cœur et je ne lâche rien.',
-      'J’aime le jeu collectif, la défense et les fins de match serrées. Je donne tout ce que j’ai à chaque entraînement.'
+      'Passée par le basket de quartier avant de rejoindre les Baobabs, {P} joue avec le cœur et ne lâche rien.',
+      'Formée au club, {P} a grandi avec le maillot et connaît la maison mieux que personne.',
+      'Arrivée cette saison, {P} s’est imposée vite par son travail et son état d’esprit.',
+      'Discrète en dehors, décisive sur le terrain, {P} fait ce que les statistiques ne montrent pas.'
     ]
   };
   var MAX_OCTETS = 12 * 1024 * 1024;   // avant compression
@@ -415,8 +441,20 @@
       var c = el('po-' + i);
       if (c) c.addEventListener('change', modeles);
     });
-    if (TYPE === 'joueuse') modeles();
+    if (TYPE === 'joueuse'){
+      modeles();
+      // Elle tape son prenom : les modeles le reprennent aussitot.
+      el('prenom').addEventListener('input', modeles);
+    }
     montrer('ecran-form');
+  }
+
+  // Le prenom tel qu'elle vient de le taper. Vide, un marqueur visible
+  // tient sa place : elle comprend ou son prenom ira, et les modeles se
+  // reecrivent des qu'elle le saisit.
+  function prenomVivant(){
+    var p = (el('prenom').value || '').trim();
+    return p ? p.split(/\s+/)[0] : '[ton prénom]';
   }
 
   function modeles(){
@@ -424,7 +462,20 @@
     var liste = [];
     choisis.forEach(function(p){ (MODELES[p] || []).forEach(function(t){ liste.push(t); }); });
     if (!liste.length) liste = MODELES._;
-    liste = liste.slice(0, 4);
+    // Sur deux postes coches, huit modeles : trop long a lire sur un
+    // telephone. On en garde six, pris en alternance pour que chaque
+    // poste soit represente plutot que le premier seul.
+    if (choisis.length > 1){
+      var melange = [];
+      for (var t = 0; t < 4; t++){
+        choisis.forEach(function(p){
+          var m = (MODELES[p] || [])[t];
+          if (m) melange.push(m);
+        });
+      }
+      liste = melange;
+    }
+    liste = liste.slice(0, 6).map(function(t){ return t.replace(/\{P\}/g, prenomVivant()); });
     el('modeles').innerHTML = liste.map(function(t, i){
       return '<button type="button" class="modele" data-i="' + i + '">' + t + '</button>';
     }).join('');

@@ -7539,6 +7539,21 @@
   // appels lances dans la meme milliseconde -- ce qui arrive a chaque
   // Promise.all -- partagent alors la meme requete.
   // ---------------------------------------------------------------------
+  // UNE FICHE QUI ATTEND N'EST PROPOSEE NULLE PART.
+  // Dix-huit endroits de l'admin lisent players. Sans cette regle, une
+  // inconnue qui vient de remplir le formulaire de collecte pouvait
+  // etre convoquee a un match, placee sur une affiche du Studio ou
+  // inscrite sur une feuille de match avant que quiconque l'ait ouverte.
+  //
+  // On l'ajoute la ou une joueuse est PROPOSEE POUR ETRE UTILISEE. Les
+  // ecrans qui la GERENT -- sa liste, l'editeur generique -- continuent
+  // de tout voir : c'est leur travail.
+  //
+  // « not.in » et non « eq.publiee » : une fiche creee a la main n'a pas
+  // d'etat tant que personne n'y touche, et « eq.publiee » l'aurait fait
+  // disparaitre de partout.
+  var SANS_ATTENTE = '&fiche_etat=not.in.(recue,a_verifier,a_completer)';
+
   var SB_MEMO = {}, SB_MEMO_MS = 10000;
   function sbMemoVider(){ SB_MEMO = {}; }
   function sbMemo(path, faire){
@@ -8874,7 +8889,7 @@
         },
 
         players: function(){
-          return sbGet('players?select=name,jersey_number,position,photo_url&order=sort.asc&limit=60')
+          return sbGet('players?select=name,jersey_number,position,photo_url&order=sort.asc&limit=60' + SANS_ATTENTE)
             .then(function(rows){
               return (rows || []).map(function(p){
                 return { name: p.name || '', number: p.jersey_number, position: p.position || '', photo: p.photo_url || '' };
@@ -8921,7 +8936,7 @@
           }).catch(function(){ return []; });
 
           var fiches = Promise.all([
-            sbGet('players?select=name,photo_url&order=sort.asc&limit=60').catch(function(){ return []; }),
+            sbGet('players?select=name,photo_url&order=sort.asc&limit=60' + SANS_ATTENTE).catch(function(){ return []; }),
             sbGet('matches?select=opponent_name,photo_url,opponent_logo_url&order=match_date.desc&limit=30').catch(function(){ return []; }),
             sbGet('news?select=title,image_url&order=published_at.desc&limit=30').catch(function(){ return []; })
           ]).then(function(r){
@@ -10972,7 +10987,7 @@
     Promise.all([
       q('matches?select=id,opponent_name,opponent_logo_url,match_date,is_home,score_baobabs,score_opponent&order=match_date.desc&limit=300'),
       q('teams?select=id,name,logo_url&order=name.asc'),
-      q('players?select=id,name,jersey_number,position,photo_url&limit=200'),
+      q('players?select=id,name,jersey_number,position,photo_url&limit=200' + SANS_ATTENTE),
       q('products?select=id,name,price&limit=200'),
       q('news?select=id,title&order=created_at.desc&limit=200'),
       q('reservations?select=id,reference,buyer_name,quantity&order=created_at.desc&limit=300'),
@@ -11317,7 +11332,7 @@
       q('studio_projets?select=id,nom,modifie_le&doc-%3E%3EmatchId=eq.' + id),
       q('match_live?select=*&match_id=eq.' + id),
       q('standings?select=*'),
-      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note,birth_year&order=sort.asc,jersey_number.asc&limit=100'),
+      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note,birth_year&order=sort.asc,jersey_number.asc&limit=100' + SANS_ATTENTE),
       q('players_contacts?select=player_id,phone')
     ]).then(function(r){
       if (jeton !== pcChargement) return;
@@ -12967,7 +12982,7 @@
     return Promise.all([
       q('team_sessions?select=*&session_date=gte.' + avantIso + '&session_date=lte.' + b.fin + '&order=session_date.asc,start_time.asc'),
       q('team_schedule?select=*&order=weekday.asc,start_time.asc'),
-      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note,birth_year&order=sort.asc,jersey_number.asc&limit=100')
+      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note,birth_year&order=sort.asc,jersey_number.asc&limit=100' + SANS_ATTENTE)
     ]).then(function(r){
       if (jeton !== trChargement) return;
       trSessions = r[0] || []; trPlanning = r[1] || []; trJoueuses = (r[2] || []).filter(function(p){ return (p.status || 'active') !== 'partie'; });
@@ -13820,7 +13835,7 @@
       q('studio_projets?select=id,nom,modifie_le&doc-%3E%3EmatchId=eq.' + id),
       q('match_live?select=*&match_id=eq.' + id),
       q('standings?select=*'),
-      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note,birth_year&order=sort.asc,jersey_number.asc&limit=100'),
+      q('players?select=id,name,jersey_number,position,photo_url,status,injury_note,birth_year&order=sort.asc,jersey_number.asc&limit=100' + SANS_ATTENTE),
       q('players_contacts?select=player_id,phone')
     ]).then(function(r){
       try {
@@ -15226,7 +15241,7 @@
 
     // --- L'equipe : licence ou certificat manquant, expire, ou bientot ---
     travaux.push(Promise.all([
-      sbGet('players?select=id,name,status'), sbGet('players_documents?select=player_id,kind,expires_on&kind=in.(licence,medical)')
+      sbGet('players?select=id,name,status' + SANS_ATTENTE), sbGet('players_documents?select=player_id,kind,expires_on&kind=in.(licence,medical)')
     ]).then(function(r){
       var actives = (r[0]||[]).filter(function(p){ return (p.status||'active') === 'active'; }); if (!actives.length) return;
       var meilleur = {}; (r[1]||[]).forEach(function(d){ var k = d.player_id + '|' + d.kind; if (!meilleur[k] || (d.expires_on||'') > (meilleur[k].expires_on||'')) meilleur[k] = d; });
@@ -15524,7 +15539,7 @@
   ];
 
   function gdLoadRoster(){
-    sbGet('players?select=id,name,jersey_number,status&order=jersey_number.asc')
+    sbGet('players?select=id,name,jersey_number,status&order=jersey_number.asc' + SANS_ATTENTE)
       .then(function(rows){
         // Une joueuse partie ou blessée n'entre pas sur le terrain : la
         // proposer, c'est inviter une erreur de saisie.
@@ -20871,7 +20886,7 @@
     // mais requête refusée : les deux dossiers restaient donc vides sans
     // rien dire, et l'inventaire des médias comptait ces images comme
     // inutilisées.
-    { id:'@players',  name:'Photos des joueuses',    query:'players?select=name,photo_url' },
+    { id:'@players',  name:'Photos des joueuses',    query:'players?select=name,photo_url' + SANS_ATTENTE },
     { id:'@products', name:'Visuels de la boutique', query:'products?select=name,image_url,images' },
     { id:'@news',     name:'Images des articles',    query:'news?select=title,image_url&order=created_at.desc' },
     { id:'@partners', name:'Logos des partenaires',  query:'partners?select=name,logo_url' },
@@ -22639,7 +22654,7 @@
     mcCompo.mid = m.id;
     var box = document.getElementById('mc-compo-list'); if (!box) return;
     Promise.all([
-      sbGet('players?select=id,name,jersey_number,position,status,photo_url,photo_x,photo_y,photo_zoom&order=jersey_number.asc'),
+      sbGet('players?select=id,name,jersey_number,position,status,photo_url,photo_x,photo_y,photo_zoom&order=jersey_number.asc' + SANS_ATTENTE),
       mcCompoLire(m.id)
     ]).then(function(res){
       // Une joueuse partie du club ne peut plus etre alignee. Les
@@ -31512,7 +31527,7 @@
       pied: 'L’effectif est lu au moment où vous ouvrez cette fenêtre&nbsp;: une joueuse ' +
             'ajoutée ce matin dans <b>Joueuses</b> est déjà ici, sans rien à reporter.',
       charger: function(){
-        return sbGet('players?select=id,name,jersey_number,position,status,photo_url&order=jersey_number.asc');
+        return sbGet('players?select=id,name,jersey_number,position,status,photo_url&order=jersey_number.asc' + SANS_ATTENTE);
       },
       filtre: function(r, q){
         return [r.name, r.jersey_number, r.position].join(' ').toLowerCase().indexOf(q) >= 0;
