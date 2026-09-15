@@ -26596,7 +26596,7 @@
       sbGet('inscriptions_admin?select=status,periodes_payees,fee_monthly_fcfa,inscription_payee,medical_recu').catch(function(){ return []; }),
       sbGet('news?select=published_at,status').catch(function(){ return []; }),
       sbGet('reservations?select=id,status').catch(function(){ return []; }),
-      sbGet('orders?select=id,total,status').catch(function(){ return []; })
+      sbGet('orders?select=id,total,status,paid').catch(function(){ return []; })
     ]).then(function(r){
       anRecettes = r[0]||[];
       var aud = r[1]||[], insc = r[2]||[], news = r[3]||[], resa = r[4]||[], cmd = r[5]||[];
@@ -26613,6 +26613,13 @@
       var taux = attendu ? Math.round(recu/attendu*100) : null;
       var cmdOk = cmd.filter(function(o){ return String(o.status||'').toLowerCase().indexOf('annul') < 0; });
       var panier = cmdOk.length ? Math.round(cmdOk.reduce(function(a,o){ return a+(Number(o.total)||0); },0)/cmdOk.length) : 0;
+      // CE QUI EXPLIQUE « 0 FCFA ENCAISSE » A COTE DE « 41 667 DE PANIER ».
+      // Le panier moyen compte les commandes passees, payees ou non ;
+      // « Encaisse » ne compte que l'argent rentre. Les deux sont justes
+      // et se contredisent a la lecture. On nomme donc l'ecart, qui est
+      // justement de l'argent sur lequel on peut agir.
+      var duesL = cmdOk.filter(function(o){ return !o.paid; });
+      var dues  = duesL.reduce(function(a,o){ return a+(Number(o.total)||0); }, 0);
 
       document.getElementById('an-kpis').innerHTML =
         // Le releve passe a .ds-fig : le libelle AU-DESSUS du chiffre, comme
@@ -26625,8 +26632,12 @@
         // le designer par son rang le ferait glisser au premier ajout.
         '<div class="ds-fig'+(taux!=null&&taux<70?' sig':'')+'" id="an-kpi-recouvrees"><i>Mensualités recouvrées</i>'+
           '<b>'+(taux==null?'—':taux+'%')+'</b>'+(taux!=null&&taux<70?'<small>sous les 70 % attendus</small>':'')+'</div>'+
-        '<div class="ds-fig"><i>Commandes</i><b>'+cmdOk.length+'</b></div>'+
-        '<div class="ds-fig"><i>Panier moyen</i><b>'+esc(panier?inFcfa(panier):'—')+'</b></div>';
+        '<div class="ds-fig'+(duesL.length?' sig':'')+'"><i>Commandes</i><b>'+cmdOk.length+'</b>'+
+          (duesL.length
+            ? '<small>'+duesL.length+' pas encore encaiss\u00e9'+(duesL.length>1?'es':'e')+' \u00b7 '+esc(inFcfa(dues))+'</small>'
+            : (cmdOk.length ? '<small>toutes encaiss\u00e9es</small>' : ''))+'</div>'+
+        '<div class="ds-fig"><i>Panier moyen</i><b>'+esc(panier?inFcfa(panier):'—')+'</b>'+
+          (cmdOk.length?'<small>commandes pass\u00e9es, pay\u00e9es ou non</small>':'')+'</div>';
 
       // --- Recettes ---
       var parSource = {};
