@@ -872,6 +872,19 @@
   .list-count{font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.04em;color:var(--gold-bright);background:var(--gold-soft);border:1px solid rgba(70,191,29,.25);border-radius:20px;padding:3px 10px}
   .empty{color:var(--muted);font-size:13.5px;padding:16px;text-align:center;background:var(--surface);border:1px dashed var(--line-strong);border-radius:10px}
 
+  /* ===================== UNE LISTE VIDE =====================
+     Deux situations, deux messages. Un debut de saison n'est pas une
+     recherche infructueuse : le premier demande un geste, le second
+     demande de relacher un filtre. Le trait reste pointille dans les
+     deux cas -- c'est un emplacement en attente, pas une carte. */
+  .ds-vide{display:flex;flex-direction:column;align-items:center;gap:10px;
+    padding:38px 26px;text-align:center;background:var(--surface);
+    border:1px dashed var(--line-strong);border-radius:var(--r-md)}
+  .ds-vide b{font-family:var(--font-ui);font-weight:700;font-size:15px;
+    letter-spacing:-.01em;color:var(--text)}
+  .ds-vide p{margin:0;font-size:13px;line-height:1.5;color:var(--faint);max-width:44ch}
+  .ds-vide .ds-mini-btn{margin-top:4px}
+
   .rec-item{display:flex;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:9px;transition:border-color .15s,background .15s}
   .rec-item:hover{border-color:rgba(70,191,29,.28);background:var(--surface-2)}
   .rec-thumb{width:44px;height:44px;border-radius:10px;object-fit:cover;background:var(--surface-2);border:1px solid var(--line-strong);flex:none;box-shadow:0 2px 6px rgba(0,0,0,.25)}
@@ -1900,13 +1913,27 @@
   }
 
   /* ===== DEMANDER QUELQUE CHOSE ===== */
+  /* `safe center` : centre tant que ca tient, et retombe sur le haut
+     quand ca ne tient pas. Un `center` ordinaire coupe des DEUX cotes
+     et rend le debut du formulaire inatteignable, meme en defilant. */
   #dem{ position:fixed; inset:0; z-index:480;
     background:rgba(4,9,6,.74); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
-    display:flex; align-items:center; justify-content:center; padding:24px }
+    display:flex; align-items:safe center; justify-content:center; padding:24px;
+    overflow-y:auto; overscroll-behavior:contain }
   #dem.hide{ display:none }
   .dem-boite{ width:min(460px,100%); background:var(--surface);
-    border:1px solid var(--line-strong); border-radius:16px; padding:22px 24px 20px;
-    box-shadow:0 24px 70px rgba(0,0,0,.55) }
+    border:1px solid var(--line-strong); border-radius:16px;
+    box-shadow:0 24px 70px rgba(0,0,0,.55);
+    /* 48px = les deux paddings de la couche. La boite ne depasse donc
+       jamais la fenetre, quel que soit le nombre de champs. */
+    display:flex; flex-direction:column; max-height:calc(100dvh - 48px); overflow:hidden }
+  /* Le rembourrage est descendu du cadre vers le corps : c'est lui qui
+     defile, et une barre de defilement doit longer le bord interieur,
+     pas flotter au milieu du rembourrage. */
+  .dem-corps{ flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+    padding:22px 24px 4px }
+  .dem-pied{ flex:none; padding:15px 24px 17px; border-top:1px solid var(--line);
+    background:var(--surface); border-radius:0 0 15px 15px }
   .dem-t{ margin:0 0 6px; font-family:var(--font-display); font-weight:var(--display-weight);
     letter-spacing:var(--display-tracking); font-size:20px; color:var(--text) }
   .dem-d{ margin:0 0 18px; font-size:13px; line-height:1.55; color:var(--muted) }
@@ -1949,7 +1976,7 @@
   .dem-ap-meta{ display:block; font-size:11.5px; color:var(--faint); margin-top:3px; line-height:1.45 }
   .dem-ap-manque{ color:var(--gold) }
   .dem-err{ margin:14px 0 0; font-size:12.5px; color:var(--danger) }
-  .dem-pied{ display:flex; justify-content:flex-end; gap:10px; margin-top:20px }
+  .dem-pied{ display:flex; justify-content:flex-end; gap:10px }
   .dem-pied .btn{ min-height:44px; padding:11px 20px; width:auto; min-width:0 }
   @media(max-width:520px){ .dem-pied{ flex-direction:column-reverse } .dem-pied .btn{ width:100% } }
 
@@ -4196,12 +4223,21 @@
        qui allait se passer ensuite -- on ne savait pas si l'on creait
        une fiche ou si l'on cherchait quelqu'un. -->
   <div id="dem" class="hide" role="dialog" aria-modal="true" aria-labelledby="dem-t">
+    <!-- LE CORPS DEFILE, LE PIED RESTE.
+         Sans cette separation, une boite plus haute que la fenetre etait
+         centree puis coupee des deux cotes : le titre passait au-dessus
+         du bord, « Créer le match » en dessous, et rien ne defilait. Sur
+         un ecran de 1536x730 -- un portable courant a 100 % -- le bouton
+         tombait 33 px trop bas. Il fallait reduire le zoom du navigateur
+         pour le voir : une manipulation qu'on ne doit jamais demander. -->
     <form class="dem-boite" id="dem-form">
-      <h3 class="dem-t" id="dem-t"></h3>
-      <p class="dem-d" id="dem-d"></p>
-      <div class="dem-champs" id="dem-champs"></div>
-      <div class="dem-apercu hide" id="dem-apercu"></div>
-      <p class="dem-err hide" id="dem-err"></p>
+      <div class="dem-corps">
+        <h3 class="dem-t" id="dem-t"></h3>
+        <p class="dem-d" id="dem-d"></p>
+        <div class="dem-champs" id="dem-champs"></div>
+        <div class="dem-apercu hide" id="dem-apercu"></div>
+        <p class="dem-err hide" id="dem-err"></p>
+      </div>
       <div class="dem-pied">
         <button type="button" class="btn btn-ghost" id="dem-annuler">Annuler</button>
         <button type="submit" class="btn btn-primary" id="dem-ok">Créer</button>
@@ -6654,7 +6690,13 @@
     // Les reglages entrent ici : les badges des dossiers et les couleurs
     // de categorie en viennent, et ils servent des le premier ecran
     // ouvert. Une seule lecture, avant tout le monde.
+    // lienClubPret() entre ici pour une raison precise : la reponse doit
+    // etre connue AVANT qu'on puisse enregistrer un match. La demander
+    // au moment du clic obligerait a attendre le reseau une commande a
+    // la main. Elle ne bloque rien : elle ne peut pas echouer, elle rend
+    // vrai ou faux.
     return Promise.all([role, profil(), chargerListes(), chargerProprietaire(),
+                        lienClubPret(),
                         loadSettings().then(badgesAppliquer)])
       // Le bouton du Greffe n'apparait qu'ici : c'est le premier moment
       // ou CP_PROPRIETAIRE vient de la base et non de son repli.
@@ -9861,6 +9903,64 @@
   // objet {page, parPage}. Changer de filtre doit remettre page à 1,
   // sinon on cherche « Diop » et on atterrit sur une page vide.
   // ---------------------------------------------------------------------
+  // ---------------------------------------------------------------------
+  // UNE LISTE VIDE A DEUX RAISONS DE L'ETRE
+  //
+  // « Aucun match pour ce filtre. » s'affichait aussi quand il n'y avait
+  // aucun match ET aucun filtre. C'est la toute premiere phrase que lit
+  // le club en debut de saison, et elle accuse un filtre qui n'existe
+  // pas : on cherche ce qu'on a mal reglé, il n'y a rien a regler.
+  // Mesure le 15 septembre sur le jeu « debut de saison » : quatre
+  // ecrans disaient cela sur une base entierement vide.
+  //
+  // `total` est le nombre de lignes AVANT filtrage : c'est lui qui
+  // tranche. Chaque cas porte le geste qui le resout -- creer la
+  // premiere ligne, ou relacher les filtres. Le bouton d'action ne fait
+  // que cliquer un bouton qui existe deja a l'ecran : aucune logique
+  // nouvelle, donc rien de plus a maintenir.
+  // ---------------------------------------------------------------------
+  var VIDE_RAZ = {};        // cle d'ecran -> fonction qui remet les filtres a zero
+  // Une remise a zero se decrit par les champs a vider et le redessin a
+  // rappeler. Six ecrans, six lignes : rien a maintenir en double.
+  function videRaz(cle, champs, redessiner){
+    VIDE_RAZ[cle] = function(){
+      champs.forEach(function(id){
+        var e = document.getElementById(id); if (!e) return;
+        // Un tri n'est pas un filtre : le remettre a zero, c'est le
+        // remettre a sa PREMIERE option, pas a la chaine vide -- qui
+        // n'existe pas dans la liste et laisserait le select blanc.
+        if (e.tagName === 'SELECT') e.selectedIndex = 0; else e.value = '';
+      });
+      if (typeof redessiner === 'function') redessiner();
+    };
+  }
+  function videListe(cfg){
+    var rien = !cfg.total;
+    var fem  = cfg.genre === 'f';
+    var titre, sous, geste = '';
+    if (rien){
+      titre = cfg.titre;
+      sous  = cfg.sous || '';
+      if (cfg.actionSel && cfg.action)
+        geste = '<button type="button" class="ds-mini-btn" data-vide-agir="' + esc(cfg.actionSel) + '">' + esc(cfg.action) + '</button>';
+    } else {
+      titre = fem ? 'Aucune ne correspond' : 'Aucun ne correspond';
+      sous  = 'Sur ' + cfg.total + ' ' + (cfg.total > 1 ? cfg.pluriel : cfg.singulier) + ' ' +
+              (cfg.total > 1 ? (fem ? 'enregistrées' : 'enregistrés') : (fem ? 'enregistrée' : 'enregistré')) +
+              ', ' + (fem ? 'aucune' : 'aucun') + ' ne passe la recherche ou les filtres en cours.';
+      if (VIDE_RAZ[cfg.cle])
+        geste = '<button type="button" class="ds-mini-btn" data-vide-raz="' + esc(cfg.cle) + '">Tout afficher</button>';
+    }
+    return '<div class="ds-vide"><b>' + esc(titre) + '</b>' +
+           (sous ? '<p>' + esc(sous) + '</p>' : '') + geste + '</div>';
+  }
+  document.addEventListener('click', function(e){
+    var raz = e.target.closest('[data-vide-raz]');
+    if (raz){ var f = VIDE_RAZ[raz.getAttribute('data-vide-raz')]; if (f) f(); return; }
+    var agir = e.target.closest('[data-vide-agir]');
+    if (agir){ var b = document.querySelector(agir.getAttribute('data-vide-agir')); if (b) b.click(); }
+  });
+
   var PGN_PAR_PAGE = 50;
   function pgnPage(rows, etat){
     rows = rows || [];
@@ -15159,6 +15259,38 @@
   // a besoin de la meme liste pour proposer un rattachement. Trois
   // colonnes suffisent : on ne sort ni les contacts ni les notes.
   var clubsRef = [];
+
+  // ---------------------------------------------------------------------
+  // LA MIGRATION EST-ELLE PASSEE ?
+  //
+  // Le lien vers la fiche du club (matches.opponent_team_id,
+  // standings.team_id) arrive avec la migration du 15 septembre. Tant
+  // qu'elle n'a pas ete jouee, ces colonnes n'existent pas -- et
+  // PostgREST refuse toute ecriture qui les nomme, avec un 400. Envoyer
+  // le lien sans verifier casserait donc la creation d'un match sur une
+  // base pas encore migree : exactement le genre de panne qu'on ne voit
+  // qu'en production, un soir de match.
+  //
+  // On demande une fois, au premier besoin, et on retient la reponse.
+  // Rien ne depend du resultat a l'affichage : sans lien, l'admin
+  // retombe sur l'ancien comportement (la copie du logo a la creation),
+  // et le dit quand on enregistre un logo.
+  // ---------------------------------------------------------------------
+  var LIEN_CLUB = null;            // null = pas encore demande
+  function lienClubPret(){
+    if (LIEN_CLUB !== null) return Promise.resolve(LIEN_CLUB);
+    return sbGet('matches?select=opponent_team_id&limit=1')
+      .then(function(){ LIEN_CLUB = true;  return true; })
+      .catch(function(){ LIEN_CLUB = false;
+        console.warn('[Baobabs] MIGRATION-2026-09-15-un-club-un-logo.sql n\'a pas ete jouee : le logo d\'un club ne suivra pas ses matchs.');
+        return false; });
+  }
+  // Retire du corps les colonnes de liaison quand la base ne les a pas.
+  function sansLienClub(corps, champ){
+    if (LIEN_CLUB === false && corps && champ in corps) delete corps[champ];
+    return corps;
+  }
+
   function clubsRefCharger(){
     if (clubsRef.length) return Promise.resolve(clubsRef);
     return sbGet('teams?select=id,name,logo_url&order=name.asc')
@@ -16320,6 +16452,7 @@
         // fiche, et ils servent de secours si la migration n'est pas
         // encore passee.
         var payload={ opponent_team_id:f.team.id, opponent_name:f.team.name, opponent_logo_url:f.team.logo_url||null, match_date:f.match_date, match_time:f.match_time||null, is_home:f.is_home, venue:f.venue||null, competition:f.competition||null, photo_url:photoUrl||null, stream_url:f.stream_url||null, notes:f.notes||null, score_baobabs:f.bothScores?parseInt(f.sb,10):null, score_opponent:f.bothScores?parseInt(f.so,10):null };
+        sansLienClub(payload, 'opponent_team_id');
         return editingMatchId ? sbUpdate('matches',editingMatchId,payload,'Matchs') : sbInsert('matches',payload,'Matchs');
       })
       .then(function(){ showMsg(msg,editingMatchId?'Match mis à jour.':'Match ajouté.',true); resetMatchForm(); loadMatches(); })
@@ -17942,6 +18075,7 @@
   }
 
   function prInit(){
+    videRaz('products', ['pr-search','pr-filter'], function(){ prRender(); });
     if (prStarted){ prRender(); return; }
     prStarted = true;
     document.getElementById('pr-search').addEventListener('input', prRender);
@@ -17988,7 +18122,11 @@
     document.getElementById('pr-count').textContent = rows.length + (rows.length > 1 ? ' produits' : ' produit');
     prKpis();
     var box = document.getElementById('pr-rows');
-    if (!rows.length){ box.innerHTML = '<div class="empty">Aucun produit pour ce filtre.</div>'; return; }
+    if (!rows.length){ box.innerHTML = videListe({ cle:'products', total:prRows.length, genre:'m',
+      singulier:'produit', pluriel:'produits',
+      titre:'La boutique est vide',
+      sous:'Un maillot, un ballon, une casquette : la fiche demande un nom et un prix, le reste peut attendre.',
+      action:'Créer le premier produit', actionSel:'#pr-new' }); return; }
 
     // Le prix et le stock etaient poses en fin de phrase, chacun a une
     // abscisse differente selon la longueur du nom : impossible de
@@ -18708,6 +18846,7 @@
   }
 
   function efInit(){
+    videRaz('squad', ['ef-search','ef-filter'], function(){ efRender(); });
     if (efStarted){ efRender(); return; }
     efStarted = true;
     document.getElementById('ef-search').addEventListener('input', efRender);
@@ -18806,7 +18945,11 @@
     document.getElementById('ef-count').textContent = rows.length + (rows.length > 1 ? ' fiches' : ' fiche');
     efKpis();
     var box = document.getElementById('ef-grid');
-    if (!rows.length){ box.innerHTML = '<div class="empty" style="grid-column:1/-1">Aucune fiche pour ce filtre.</div>'; return; }
+    if (!rows.length){ box.innerHTML = '<div style="grid-column:1/-1">' + videListe({ cle:'squad', total:efRows.length, genre:'f',
+      singulier:'fiche', pluriel:'fiches',
+      titre:'L’effectif est vide',
+      sous:'Une fiche par joueuse. Le nom suffit pour commencer ; numéro, poste et photo enrichissent la page Équipe du site.',
+      action:'Créer la première fiche', actionSel:'#ef-new' }) + '</div>'; return; }
 
     box.innerHTML = rows.map(function(r){
       var st = efStats(r);
@@ -19126,6 +19269,7 @@
   }
 
   function arInit(){
+    videRaz('articles', ['ar-search','ar-filter'], function(){ arRender(); });
     if (arStarted){ arRender(); return; }
     arStarted = true;
     document.getElementById('ar-search').addEventListener('input', arRender);
@@ -19193,7 +19337,11 @@
     arKpis();
     document.getElementById('ar-count').textContent = rows.length + (rows.length > 1 ? ' articles' : ' article');
     var box = document.getElementById('ar-rows');
-    if (!rows.length){ box.innerHTML = '<div class="empty">Aucun article pour ce filtre.</div>'; return; }
+    if (!rows.length){ box.innerHTML = videListe({ cle:'articles', total:arRows.length, genre:'m',
+      singulier:'article', pluriel:'articles',
+      titre:'Aucun article',
+      sous:'Les articles alimentent la page Actualités du site. Un brouillon ne s’y affiche pas tant qu’il n’est pas publié.',
+      action:'Écrire le premier article', actionSel:'#ar-new' }); return; }
 
     // La date, l'auteur et le temps de lecture etaient enfiles en une
     // phrase sous le titre : trois donnees qu'on compare et qui ne
@@ -20648,6 +20796,7 @@
 
   // ---------- Module Matchs : liste puis fiche ----------
   function mcInit(){
+    videRaz('matches2', ['mc-search','mc-filter'], function(){ mcRender(); });
     if (mcStarted){ mcRender(); return; }
     mcStarted = true;
     document.getElementById('mc-search').addEventListener('input', mcRender);
@@ -20678,7 +20827,11 @@
     var rows = mcVisible();
     document.getElementById('mc-count').textContent = rows.length + (rows.length>1?' matchs':' match');
     var box = document.getElementById('mc-rows');
-    if (!rows.length){ box.innerHTML = '<div class="empty">Aucun match pour ce filtre.</div>'; return; }
+    if (!rows.length){ box.innerHTML = videListe({ cle:'matches2', total:mcRows.length, genre:'m',
+      singulier:'match', pluriel:'matchs',
+      titre:'Aucun match au calendrier',
+      sous:'La saison commence par une rencontre : date, adversaire, salle. Tout le reste (feuille, score, billetterie, diffusion) vient ensuite dans sa fiche.',
+      action:'Créer le premier match', actionSel:'#mc-new' }); return; }
 
     // Des colonnes alignees se comparent d'un coup d'oeil ; une pile de
     // cartes non. Le geste qui compte reste : les deux cases de score
@@ -20861,7 +21014,7 @@
       if (!iso){ qgToast('Date incomprise — écrivez-la 19/09/2026.', true); return; }
       var h = String(v.heure||'').trim();
       if (h && !/^\d{1,2}:\d{2}$/.test(h)){ qgToast('Heure incomprise — écrivez-la 19:00.', true); return; }
-      return sbInsert('matches', {
+      return sbInsert('matches', sansLienClub({
         opponent_team_id: club ? club.id : null,
         opponent_name: club ? club.name : null,
         opponent_logo_url: (club && club.logo_url) || null,
@@ -20870,7 +21023,7 @@
         is_home: v.ou === '1',
         venue: v.lieu || null,
         competition: v.comp || null
-      }, 'Matchs').then(function(cree){
+      }, 'opponent_team_id'), 'Matchs').then(function(cree){
         qgToast('Match créé ✓ Complétez la fiche.');
         return mcLoad().then(function(){
           if (cree && cree.id != null) mcOpen(cree.id, 'feuille');
@@ -22770,6 +22923,7 @@
   var clRows = [], clSel = null, clStarted = false, clOrders = [], clResa = [];
 
   function clInit(){
+    videRaz('clients', ['cl-search','cl-sort'], function(){ clRender(); });
     if (clStarted){ clRender(); return; }
     clStarted = true;
     document.getElementById('cl-search').addEventListener('input', clRender);
@@ -22810,7 +22964,10 @@
     clKpis();
     document.getElementById('cl-count').textContent = rows.length + (rows.length>1?' clients':' client');
     var box = document.getElementById('cl-rows');
-    if (!rows.length){ box.innerHTML = '<div class="empty">Aucun client pour ce filtre.</div>'; return; }
+    if (!rows.length){ box.innerHTML = videListe({ cle:'clients', total:clRows.length, genre:'m',
+      singulier:'client', pluriel:'clients',
+      titre:'Aucun client',
+      sous:'Cette liste se remplit toute seule : elle vient des commandes passées sur la boutique. Rien ne se crée ici.' }); return; }
     // Une pastille d'initiale tiree au sort dans huit couleurs saturees,
     // puis le total colle a droite de chaque carte : rien ne s'alignait
     // d'une ligne a l'autre alors que c'est justement ce qu'on vient
@@ -27273,6 +27430,7 @@
   }
 
   function tkInit(){
+    videRaz('tickets', ['tk-resa-match','tk-resa-status','tk-resa-search'], function(){ tkRenderResa(); });
     if(tkStarted) return; tkStarted=true;
     var row=document.getElementById('tk-preset-row');
     row.innerHTML=TK_PRESETS.map(function(p,i){ return '<button type="button" class="tk-preset" data-i="'+i+'">'+esc(p.label)+' · '+esc(tkFcfa(p.price))+'</button>'; }).join('');
@@ -27572,7 +27730,10 @@
       return true;
     });
     document.getElementById('tk-resa-count').textContent=rows.length+(rows.length>1?' réservations':' réservation');
-    if(!rows.length){ box.innerHTML='<div class="empty">Aucune réservation pour ce filtre.</div>'; return; }
+    if(!rows.length){ box.innerHTML = videListe({ cle:'tickets', total:tkResa.length, genre:'f',
+      singulier:'réservation', pluriel:'réservations',
+      titre:'Aucune réservation',
+      sous:'Les réservations arrivent du site public dès qu’une catégorie de billets est ouverte pour un match.' }); return; }
     // Sept informations par ligne, ecrites en phrase et separees par des
     // points medians : rien ne s'alignait d'une ligne a l'autre. Le
     // guichet cherche une reference et un nom, il les lit maintenant en
@@ -28664,6 +28825,9 @@
     if(key==='shop' && (cur.in_stock!==false && cur.in_stock!=='false') && !(Array.isArray(cur.images)&&cur.images.filter(Boolean).length)){ if(!confirm('Ce produit est marqué « En stock » mais n\'a aucune photo. Enregistrer quand même ?')) return; }
     if(key==='partners' && !cur.logo_url && !cur.website_url){ if(!confirm('Ce partenaire n\'a ni logo ni site web. Enregistrer quand même ?')) return; }
     var isNew=qgvState(key).sel==='__new__'; var payload=qgvPayload(key,cur);
+    // Meme precaution que pour les matchs : sans la migration, la
+    // colonne team_id n'existe pas et PostgREST refuserait la ligne.
+    sansLienClub(payload, 'team_id');
     var makeFeatured=(key==='partners' && (payload.featured===true));
     var btn=document.getElementById('qgv-save-'+key); if(btn){ btn.disabled=true; btn.textContent='Enregistrement…'; }
     var qgvLbl=c.title||key;
