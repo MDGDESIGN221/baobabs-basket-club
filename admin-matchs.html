@@ -10495,6 +10495,35 @@
                      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var MV_CIBLES = '.ds-fig b, .tbc-n, .db-nums b';
 
+  // LA MEMOIRE NE PEUT PAS VIVRE SUR L'ELEMENT.
+  //
+  // Premiere version : la derniere valeur etait rangee dans un attribut
+  // data-mv de l'element lui-meme. Mais un bandeau se redessine par
+  // innerHTML -- l'element est DETRUIT et remplace. Le neuf n'avait donc
+  // aucune memoire, et le compteur repartait de zero pour une valeur qui
+  // n'avait pas bouge.
+  //
+  // Vu le 15 septembre sur Joueuses : le bandeau affichait
+  // « EFFECTIF 6 » pendant que la liste dessous disait « 8 FICHES ».
+  // Rien n'etait incoherent -- c'etait le compteur qui remontait une
+  // seconde fois, et la capture l'a pris a six.
+  //
+  // La memoire est donc rangee DEHORS, sous une cle stable : l'ecran et
+  // l'etiquette du chiffre. « squad|Effectif » survit a tous les
+  // redessins, et deux ecrans peuvent avoir un « Total » sans se
+  // marcher dessus.
+  var MV_VU = {};
+  function mvCle(el){
+    var sec = el.closest('section[id]');
+    var boite = el.closest('.ds-fig, .tbc') || el.parentNode;
+    var lab = boite && boite.querySelector('i, .tbc-h');
+    var nom = lab ? (lab.textContent || '').replace(/\s+/g, ' ').trim() : '';
+    if (!nom && boite && boite.parentNode){
+      nom = '#' + [].indexOf.call(boite.parentNode.children, boite);
+    }
+    return (sec ? sec.id : '?') + '|' + nom;
+  }
+
   function mvTexte(el){
     for (var i = 0; i < el.childNodes.length; i++){
       var n = el.childNodes[i];
@@ -10525,11 +10554,20 @@
     var brut = m[2].replace(/[\s\u00a0\u202f]/g, '');
     var cible = parseInt(brut, 10);
     if (!isFinite(cible) || cible < 1) return;
-    var avant = el.getAttribute('data-mv');
-    if (avant !== null && Number(avant) === cible) return;   // deja a jour
-    el.setAttribute('data-mv', String(cible));
+    // UN SEUL NOMBRE DANS UNE PAIRE NE MONTE PAS.
+    // Releve sur les 50 ecrans : deux valeurs sont composites --
+    // \u00ab 1 V \u00b7 0 D \u00bb sur La saison, \u00ab 0 / 4 \u00bb sur Produits. Faire monter
+    // le premier nombre pendant que le second reste fige se lit comme un
+    // defaut d'affichage, pas comme une arrivee. Des qu'un autre chiffre
+    // suit, on pose la valeur sans l'animer.
+    if (/[0-9]/.test(m[3] || '')) return;
+    var cle = mvCle(el);
+    var avant = MV_VU.hasOwnProperty(cle) ? MV_VU[cle] : null;
+    if (avant !== null && avant === cible) return;   // rien n'a bouge
+    MV_VU[cle] = cible;
+    el.setAttribute('data-mv', String(cible));       // lisible a la sonde
     if (MV_REDUIT) return;
-    var depart = (avant === null) ? 0 : Number(avant);
+    var depart = (avant === null) ? 0 : avant;
     if (depart === cible) return;
     var espace = /[\s\u00a0\u202f]/.test(m[2]);
     var tete = m[1] || '', queue = m[3] || '';
@@ -10543,15 +10581,29 @@
     var mettre = function(v){
       noeud.nodeValue = tete + (espace ? v.toLocaleString('fr-FR') : String(v)) + queue;
     };
+    // ON N'ECRIT RIEN AVANT LA PREMIERE IMAGE REELLE.
+    //
+    // La premiere version posait sa valeur de depart tout de suite, en
+    // synchrone, puis demandait une image. Mais une page qui ne dessine
+    // pas -- onglet en arriere-plan, fenetre masquee -- ne rend AUCUNE
+    // image : le compteur restait alors fige sur son premier pas.
+    // Releve le 15 septembre : <b data-mv="8">0</b>, un zero affiche a
+    // la place d'un huit, pendant que la liste dessous disait
+    // « 8 fiches ».
+    //
+    // Cela se repare tout seul des que la page redessine -- mais « cela
+    // finit par se corriger » n'est pas une reponse quand le chiffre
+    // faux est PLAUSIBLE. En partant a la premiere image reelle, le
+    // texte reste celui de l'ecran tant que rien ne bouge : au pire
+    // l'animation n'a pas lieu, jamais elle n'affiche faux.
     var t0 = 0, duree = 520;
-    (function pas(t){
+    requestAnimationFrame(function pas(t){
       if (!t0) t0 = t;
       var p = Math.min((t - t0) / duree, 1);
       var e = 1 - Math.pow(1 - p, 3);            // sortie douce
-      mettre(Math.round(depart + (cible - depart) * e));
-      if (p < 1) requestAnimationFrame(pas);
+      if (p < 1){ mettre(Math.round(depart + (cible - depart) * e)); requestAnimationFrame(pas); }
       else noeud.nodeValue = origine;             // exactement ce que l'ecran avait ecrit
-    })(performance.now());
+    });
   }
   // La donnee n'arrive pas avec l'ecran : quatre passages couvrent le
   // premier dessin puis les requetes qui reviennent. Un chiffre deja a
