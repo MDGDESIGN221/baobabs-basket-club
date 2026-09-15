@@ -1491,6 +1491,42 @@
   .tv-carte.sig{border-color:rgba(232,169,60,.45);cursor:pointer} .tv-carte.sig:hover{background:var(--surface-2)}
   /* Une carte qui signale doit dire ce qu'elle repare. Sans ce libelle,
      rien n'indiquait qu'elle etait cliquable, ni ce que le clic ferait. */
+  /* ===================== CE QUI EN DEPEND =====================
+     Le panneau des liens d'une fiche. Trois etats, trois traitements,
+     et l'etat se LIT : il n'est pas seulement peint.
+
+       part avec elle ......... le seul qui alarme, donc le seul en rouge
+       empeche la suppression . le sable de l'attente
+       survit ................. rien, c'est la normale
+
+     Le chiffre d'abord, gros et tabulaire : c'est lui qu'on vient
+     chercher. Le libelle dessous, l'effet en petit. Chaque bloc est un
+     bouton -- un lien qu'on ne peut pas suivre n'est qu'un reproche. */
+  .dep{margin-top:var(--s5)}
+  .dep-t{font-family:var(--font-ui);font-weight:700;font-size:10px;
+    letter-spacing:.15em;text-transform:uppercase;color:var(--faint);
+    margin-bottom:var(--s3)}
+  .dep-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:var(--s2)}
+  .dep-i{display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+    padding:11px 13px;text-align:left;font:inherit;cursor:pointer;
+    background:var(--surface-2);border:1px solid var(--line);
+    border-radius:var(--r-sm);color:var(--text);
+    transition:border-color .15s,background .15s}
+  .dep-i:hover{border-color:var(--line-loud);background:var(--surface-3)}
+  .dep-i:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+  .dep-i > b{font-family:var(--font-ui);font-weight:700;font-size:21px;
+    font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-.02em}
+  .dep-i > span{font-size:12px;line-height:1.35;color:var(--muted)}
+  .dep-i > i{font-style:normal;font-size:10px;font-weight:600;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-top:3px}
+  /* Le seul cas qui coute quelque chose au club. */
+  .dep-i.est-perdu{border-color:var(--danger-wash)}
+  .dep-i.est-perdu > b{color:var(--danger)}
+  .dep-i.est-perdu > i{color:var(--danger)}
+  .dep-i.est-bloque{border-color:var(--attente-edge)}
+  .dep-i.est-bloque > i{color:var(--attente)}
+  .dep-attente,.dep-vide{font-size:12.5px;color:var(--faint);
+    padding:12px 14px;border:1px dashed var(--line-strong);border-radius:var(--r-sm)}
   .tv-carte-cta{display:inline-flex;align-items:center;gap:5px;margin-top:9px;
     font-style:normal;font-size:11.5px;font-weight:600;color:var(--warn)}
   .tv-carte-cta::after{content:'›';font-size:15px;line-height:1;transition:transform .16s}
@@ -7100,6 +7136,151 @@
   function sbUpsert(table,body,sectionLabel){
     return fetch(SUPABASE_URL+'/rest/v1/'+table,{method:'POST',headers:sbHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)})
       .then(function(r){ if(!r.ok) return sbThrow(r, 'upsert', table); auditLogUpsert(table,body,sectionLabel); }, sbNet(table,'upsert'));
+  }
+
+  // =====================================================================
+  //  LES LIENS : L'ADMINISTRATION SAIT CE QUI DEPEND DE QUOI
+  //
+  //  Elle savait charger chaque table ; elle ne savait pas ce qui les
+  //  relie. On supprimait une joueuse sans savoir qu'on effacait sa
+  //  saison de feuilles de match ; on renommait une rubrique sans savoir
+  //  combien d'articles la portaient ; on supprimait un club en esperant
+  //  que « les matchs gardent son nom » -- sans jamais voir combien.
+  //
+  //  LA CARTE CI-DESSOUS EST RELEVEE DANS LA BASE, pas devinee : elle
+  //  vient de pg_constraint, lu le 15 septembre 2026. Chaque ligne dit
+  //  quelle table pointe vers l'entite, par quelle colonne, et CE QUI
+  //  ARRIVE a ces lignes quand l'entite disparait. Ce n'est pas une
+  //  supposition : c'est la clause `on delete` de la contrainte.
+  //
+  //    perdu   : on delete cascade   -- la ligne part avec l'entite
+  //    survit  : on delete set null  -- la ligne reste, le lien se vide
+  //    bloque  : on delete restrict  -- la base REFUSERA la suppression
+  //
+  //  Deux choses s'en servent, et c'est tout l'interet d'une seule
+  //  carte : le panneau « Ce qui en depend », visible dans la fiche
+  //  AVANT tout geste, et la confirmation de suppression. Les deux
+  //  disent donc toujours la meme chose, et ajouter une relation se
+  //  fait a un seul endroit.
+  // =====================================================================
+  var DEP_CARTE = {
+    club: { quoi: 'ce club', liens: [
+      { table:'matches',   col:'opponent_team_id', un:'match',               des:'matchs',               ecran:'matches2',  etat:'survit',
+        devient:'garderont le nom et le logo qu’ils affichent aujourd’hui',
+        devientUn:'gardera le nom et le logo qu’il affiche aujourd’hui' },
+      { table:'standings', col:'team_id',          un:'ligne de classement', des:'lignes de classement', ecran:'standings', etat:'survit',
+        devient:'garderont le nom et le logo d’aujourd’hui',
+        devientUn:'gardera le nom et le logo d’aujourd’hui' }
+    ]},
+    joueuse: { quoi: 'cette joueuse', liens: [
+      { table:'match_stats',        col:'player_id', un:'ligne de feuille de match',   des:'lignes de feuille de match',   ecran:'matches2',      etat:'perdu' },
+      { table:'match_convocations', col:'player_id', un:'convocation',                 des:'convocations',                 ecran:'parcours',      etat:'perdu' },
+      { table:'team_attendance',    col:'player_id', un:'présence à l’entraînement',   des:'présences à l’entraînement',   ecran:'entrainements', etat:'perdu' },
+      { table:'players_documents',  col:'player_id', un:'pièce du dossier',            des:'pièces du dossier',            ecran:'squad',         etat:'perdu' },
+      { table:'match_events',       col:'player_id', un:'action au tableau de marque', des:'actions au tableau de marque', ecran:'gameday',       etat:'survit',
+        devient:'resteront au tableau de marque, sans nom',
+        devientUn:'restera au tableau de marque, sans nom' }
+    ]},
+    match: { quoi: 'ce match', liens: [
+      { table:'match_stats',        col:'match_id', un:'ligne de feuille',     des:'lignes de feuille',     ecran:'matches2', etat:'perdu' },
+      { table:'match_convocations', col:'match_id', un:'convocation',          des:'convocations',          ecran:'parcours', etat:'perdu' },
+      { table:'match_events',       col:'match_id', un:'action',               des:'actions',               ecran:'gameday',  etat:'perdu' },
+      { table:'ticket_offers',      col:'match_id', un:'catégorie de billets', des:'catégories de billets', ecran:'tickets',  etat:'perdu' },
+      { table:'news',               col:'match_id', un:'article',              des:'articles',              ecran:'articles', etat:'survit',
+        devient:'resteront, sans lien vers le match',
+        devientUn:'restera, sans lien vers le match' },
+      { table:'gallery',            col:'match_id', un:'photo de la galerie',  des:'photos de la galerie',  ecran:'galerie',  etat:'survit',
+        devient:'resteront dans la galerie, sans lien vers le match',
+        devientUn:'restera dans la galerie, sans lien vers le match' }
+    ]},
+    rubrique: { quoi: 'cette rubrique', liens: [
+      { table:'news', col:'category_id', un:'article', des:'articles', ecran:'articles', etat:'survit',
+        devient:'garderont le nom de la rubrique, mais plus sa couleur',
+        devientUn:'gardera le nom de la rubrique, mais plus sa couleur' }
+    ]},
+    offre: { quoi: 'cette catégorie de billets', liens: [
+      { table:'reservations', col:'offer_id', un:'réservation', des:'réservations', ecran:'tickets', etat:'bloque' }
+    ]}
+  };
+
+  // Compte, une table a la fois. Une table absente ou un droit refuse
+  // rend null, et on le DIT : un garde-fou ne suppose pas zero.
+  function depCompter(type, id){
+    var c = DEP_CARTE[type];
+    if (!c || id == null) return Promise.resolve(null);
+    return Promise.all(c.liens.map(function(l){
+      return sbGet(l.table + '?select=' + l.col + '&' + l.col + '=eq.' + encodeURIComponent(id) + '&limit=2000')
+        .then(function(r){ return { l: l, n: (r || []).length }; })
+        .catch(function(){ return { l: l, n: null }; });
+    })).then(function(res){
+      if (res.every(function(x){ return x.n === null; })) return null;
+      return res;
+    });
+  }
+  function depPhrase(x){ return x.n + ' ' + (x.n > 1 ? x.l.des : x.l.un); }
+
+  // LE PANNEAU, DANS LA FICHE. Il ne parle que de ce qui existe : une
+  // liste de zeros n'apprend rien et prend une colonne.
+  function depPanneau(type, id, hote){
+    if (!hote) return Promise.resolve();
+    hote.innerHTML = '<div class="dep-attente">Lecture des liens…</div>';
+    return depCompter(type, id).then(function(res){
+      if (!res){ hote.innerHTML = '<div class="dep-vide">Les liens de cette fiche n’ont pas pu être lus.</div>'; return; }
+      var vivants = res.filter(function(x){ return x.n; });
+      if (!vivants.length){ hote.innerHTML = '<div class="dep-vide">Rien d’autre ne dépend de cette fiche.</div>'; return; }
+      var mots = { perdu:'part avec elle', bloque:'empêche la suppression', survit:'survit' };
+      hote.innerHTML =
+        '<div class="dep-t">Ce qui en dépend</div>' +
+        '<div class="dep-l">' + vivants.map(function(x){
+          var cls = x.l.etat === 'perdu' ? ' est-perdu' : (x.l.etat === 'bloque' ? ' est-bloque' : '');
+          return '<button type="button" class="dep-i' + cls + '" data-dep-ecran="' + esc(x.l.ecran || '') + '"' +
+                 ' title="Ouvrir ' + esc(x.l.des) + '">' +
+                   '<b>' + x.n + '</b>' +
+                   '<span>' + esc(x.n > 1 ? x.l.des : x.l.un) + '</span>' +
+                   '<i>' + mots[x.l.etat] + '</i>' +
+                 '</button>';
+        }).join('') + '</div>';
+    });
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-dep-ecran]');
+    if (b && b.getAttribute('data-dep-ecran')) showSection(b.getAttribute('data-dep-ecran'));
+  });
+
+  // LA CONFIRMATION, TIREE DE LA MEME CARTE. Elle nomme ce qui part, ce
+  // qui reste, et ce qui bloquera. Elle rend une promesse : le comptage
+  // passe par le reseau.
+  function depConfirmer(type, id, nom){
+    var c = DEP_CARTE[type];
+    var SL = String.fromCharCode(10);
+    if (!c) return Promise.resolve(confirm('Supprimer ' + (nom || 'cet élément') + ' ?'));
+    var qui = nom || c.quoi;
+    return depCompter(type, id).then(function(res){
+      if (!res)
+        return confirm('Supprimer ' + qui + ' ?' + SL + SL +
+          'Impossible de vérifier ce qui en dépend. Tout ce qui y est rattaché pourrait être effacé.' + SL + SL +
+          'Supprimer quand même ?');
+      var perdus   = res.filter(function(x){ return x.n && x.l.etat === 'perdu'; });
+      var restent  = res.filter(function(x){ return x.n && x.l.etat === 'survit'; });
+      var bloquent = res.filter(function(x){ return x.n && x.l.etat === 'bloque'; });
+      if (bloquent.length){
+        qgToast('Suppression impossible : ' + bloquent.map(depPhrase).join(', ') +
+                ' y ' + (bloquent[0].n > 1 ? 'sont rattachées' : 'est rattachée') + '. Retirez-les d’abord.', true);
+        return false;
+      }
+      if (!perdus.length && !restent.length)
+        return confirm('Supprimer ' + qui + ' ?' + SL + SL + 'Rien d’autre n’en dépend.');
+      var txt = 'Supprimer définitivement ' + qui + ' ?' + SL;
+      if (perdus.length)
+        txt += SL + 'Ceci efface AUSSI, sans retour possible :' + SL +
+               perdus.map(function(x){ return '• ' + depPhrase(x); }).join(SL) + SL;
+      if (restent.length)
+        txt += SL + 'Ce qui reste :' + SL +
+               restent.map(function(x){
+                 var d = x.n > 1 ? x.l.devient : (x.l.devientUn || x.l.devient);
+                 return '• ' + depPhrase(x) + ' — ' + (d || 'sans lien'); }).join(SL) + SL;
+      return confirm(txt);
+    });
   }
 
   // ===================== BAOBABS STUDIO =====================
@@ -13076,7 +13257,12 @@
     var histo = '<div class="tv-p-bloc"><i>Historique complet</i>' + (ms.length ? '<table class="tv-p-tbl"><thead><tr><th>Date</th><th>Compétition</th><th class="r">Score</th><th></th></tr></thead><tbody>' + ms.map(function(m){ var iss = tvIssue(m); return '<tr data-tv="fiche-match" data-id="' + esc(m.id) + '"><td>' + esc(ecDateFr(m.match_date)) + ' ' + m.match_date.slice(2, 4) + '</td><td class="m">' + esc([m.competition, m.round_label].filter(Boolean).join(' · ').replace(/Championnat National de /i, '')) + '</td><td class="r">' + (tvJoue(m) ? '<b>' + esc(tvScore(m)) + '</b>' : '<span class="m">à jouer</span>') + '</td><td>' + (iss ? '<b class="tv-iss ' + iss + '">' + iss + '</b>' : '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="m">Aucun match contre ce club.</p>') + '</div>';
     var notes = t.notes ? '<div class="tv-p-bloc"><i>Notes</i><p class="tv-p-notes">' + esc(t.notes).replace(/\n/g, '<br>') + '</p></div>' : '';
     var pied = '<div class="tv-p-pied">' + (tvPeut('modifier') ? '<button type="button" class="ds-mini-btn" data-tv="modifier">' + (tvEdit ? 'Fermer le formulaire' : 'Modifier la fiche') + '</button>' : '') + (tvPeut('supprimer') ? '<button type="button" class="ds-act danger" data-tv="supprimer">Supprimer le club</button>' : '') + '</div>';
-    box.innerHTML = '<div class="tv-p"><div class="tv-p-kick">Profil de l\'adversaire</div>' + tete + (tvEdit ? tvFormHtml(t) : '') + contact + bilan + recents + prochain + histo + notes + pied + '</div>';
+    // CE QUI DEPEND DE CE CLUB. Le compte passe par le reseau : on
+    // pose l'emplacement tout de suite et on le remplit ensuite, plutot
+    // que de retarder l'affichage de la fiche entiere.
+    var liens = '<div class="dep" id="tv-dep"></div>';
+    box.innerHTML = '<div class="tv-p"><div class="tv-p-kick">Profil de l\'adversaire</div>' + tete + (tvEdit ? tvFormHtml(t) : '') + contact + bilan + recents + prochain + histo + notes + liens + pied + '</div>';
+    depPanneau('club', t.id, document.getElementById('tv-dep'));
     if (!box.dataset.cable){ box.dataset.cable = '1'; box.addEventListener('click', tvClic); }
   }
   function tvFormHtml(t){
@@ -15111,8 +15297,17 @@
   }
   function addTeam(name,logoUrl){ return sbInsert('teams',{name:name,logo_url:logoUrl||null},'Adversaires').then(function(){ return loadTeams(); }); }
   function deleteTeam(id){
-    if(!confirm('Supprimer cet adversaire ? Les matchs déjà enregistrés gardent son nom et son logo.')) return;
-    sbDelete('teams',id,'Adversaires').then(loadTeams).catch(function(){ alert('Erreur lors de la suppression.'); });
+    // « Les matchs gardent son nom et son logo » etait vrai, mais muet :
+    // on ne savait pas COMBIEN. Le moteur des liens le compte, et nomme
+    // aussi la ligne de classement, que l'ancien message oubliait.
+    var t = teamsCache.filter(function(x){ return String(x.id) === String(id); })[0];
+    depConfirmer('club', id, t ? '« ' + t.name + ' »' : null).then(function(ok){
+      if (!ok) return;
+      sbDelete('teams', id, 'Adversaires')
+        .then(function(){ tvSel = null; return loadTeams(); })
+        .then(function(){ qgToast('Adversaire supprimé ✓'); })
+        .catch(function(){ qgToast('La suppression a échoué.', true); });
+    });
   }
   // LE LOGO D'UN CLUB NE SE RECOPIE PLUS.
   //
@@ -18429,6 +18624,7 @@
           '<div id="ef-real"></div>' +
           '<div id="ef-pieces" style="margin-top:18px"></div>' +
           '<div id="ef-entrainements" style="margin-top:18px"></div>' +
+          '<div class="dep" id="ef-dep"></div>' +
           '<p class="ar-side-h">Statistiques de la saison — saisie manuelle</p>' +
           '<p style="font-size:12.5px;color:var(--faint);margin:-6px 0 12px;max-width:62ch">Ces chiffres alimentent le site. Ils restent utiles pour une saison passée&nbsp;; dès qu\'un match est saisi à la table de marque, fiez-vous au bloc calculé ci-dessus.</p>' +
           '<div class="ef-statgrid" style="margin-bottom:22px">' +
@@ -18566,10 +18762,9 @@
 
     document.getElementById('ef-del').addEventListener('click', function(){
       var bd = this; bd.disabled = true;
-      joueuseDependances(r.id).then(function(dep){
+      depConfirmer('joueuse', r.id, r.name).then(function(ok){
         bd.disabled = false;
-        if (!joueuseConfirmerSuppression(r.name, dep)) return;
-        efSupprimerVraiment(r, note);
+        if (ok) efSupprimerVraiment(r, note);
       });
     });
     function efSupprimerVraiment(r, note){
@@ -18580,6 +18775,7 @@
 
     efLoadReal(r.id);
     efChargerPieces(r.id);
+    depPanneau('joueuse', r.id, document.getElementById('ef-dep'));
   }
 
   // Ce que les feuilles de match disent d'une joueuse. Aucun chiffre
@@ -27969,63 +28165,12 @@
     }).then(function(rows){ QG.rows=(rows||[]).map(function(r,i){ if(r.sort==null) r.sort=i; return r; }); qgRenderCards(); qgRenderInspector(); })
       .catch(function(){ qgToast('Erreur lors de l\'enregistrement (table / migration SQL ?).',true); if(btn){ btn.disabled=false; btn.textContent=isNew?'Ajouter au site':'Enregistrer'; } });
   }
-  // ---------------------------------------------------------------------
-  // CE QUI PART AVEC UNE JOUEUSE
-  //
-  // Six tables la referencent en `on delete cascade` : sa feuille de
-  // match ligne par ligne, ses convocations, ses presences aux
-  // entrainements, ses pieces, ses coordonnees, ses statistiques de
-  // saison. La confirmation disait « Supprimer definitivement la fiche
-  // de X ? » -- le mot « fiche » laisse croire qu'on retire une carte
-  // d'un trombinoscope. On efface une saison entiere de releves, et
-  // rien ne le rattrape : le journal d'audit garde la trace du geste,
-  // pas les lignes.
-  //
-  // On compte avant de demander. Si le comptage echoue, on le DIT : une
-  // suppression ne se confirme pas sur un chiffre qu'on n'a pas.
-  // ---------------------------------------------------------------------
-  function joueuseDependances(id){
-    var q = function(t, c){
-      return sbGet(t + '?select=' + (c || 'player_id') + '&player_id=eq.' + encodeURIComponent(id) + '&limit=1000')
-        .then(function(r){ return (r || []).length; })
-        .catch(function(){ return null; });
-    };
-    return Promise.all([
-      q('match_stats'), q('match_convocations'), q('team_attendance'), q('players_documents')
-    ]).then(function(n){
-      if (n.some(function(x){ return x === null; })) return null;
-      return { feuilles:n[0], convocations:n[1], presences:n[2], pieces:n[3],
-               total:n[0]+n[1]+n[2]+n[3] };
-    });
-  }
-  function joueuseConfirmerSuppression(nom, dep){
-    var SL = String.fromCharCode(10);
-    var qui = nom || 'cette joueuse';
-    if (dep === null)
-      return confirm('Supprimer la fiche de ' + qui + ' ?' + SL + SL +
-        'Impossible de vérifier ce qui y est rattaché. Tout ce qui la concerne (feuille de match, convocations, présences, pièces) serait effacé avec elle.' + SL + SL +
-        'Supprimer quand même ?');
-    if (!dep.total)
-      return confirm('Supprimer la fiche de ' + qui + ' ?' + SL + SL + 'Rien d’autre n’y est rattaché.');
-    var bouts = [];
-    if (dep.feuilles)     bouts.push(dep.feuilles + ' ligne' + (dep.feuilles > 1 ? 's' : '') + ' de feuille de match');
-    if (dep.convocations) bouts.push(dep.convocations + ' convocation' + (dep.convocations > 1 ? 's' : ''));
-    if (dep.presences)    bouts.push(dep.presences + ' présence' + (dep.presences > 1 ? 's' : '') + ' à l’entraînement');
-    if (dep.pieces)       bouts.push(dep.pieces + ' pièce' + (dep.pieces > 1 ? 's' : '') + ' du dossier');
-    return confirm('Supprimer définitivement ' + qui + ' ?' + SL + SL +
-      'Ceci efface AUSSI, sans retour possible :' + SL +
-      bouts.map(function(b){ return '• ' + b; }).join(SL) + SL + SL +
-      'Ses statistiques disparaîtront des matchs déjà joués.' + SL + SL +
-      'Pour la retirer de l’effectif sans rien perdre, passez son statut à « partie ».');
-  }
-
   function qgDeleteId(id){
     if(id==='__new__'){ QG.sel=null; QG.draft=null; qgRenderCards(); qgRenderInspector(); return; }
     var r=QG.rows.filter(function(x){return String(x.id)===String(id);})[0];
     var nom=(r&&r.name)?r.name:null;
-    joueuseDependances(id).then(function(dep){
-      if(!joueuseConfirmerSuppression(nom, dep)) return;
-      return qgSupprimerVraiment(id, r);
+    depConfirmer('joueuse', id, nom).then(function(ok){
+      if (ok) return qgSupprimerVraiment(id, r);
     });
   }
   function qgSupprimerVraiment(id, r){
