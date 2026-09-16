@@ -62,6 +62,19 @@ end $$;
 
 
 -- ---------------------------------------------------------------------
+-- 0 bis. UN INDEX, SINON CHAQUE OUVERTURE RELIT TOUT LE JOURNAL
+--
+--    Le journal n'a qu'un index, sur la date. Chercher « les images de
+--    CETTE fiche » le parcourrait donc en entier a chaque clic. Il ne
+--    s'agit pas d'optimisation prematuree : c'est exactement la lecture
+--    que l'ecran fera, et elle doit rester instantanee quand le journal
+--    aura grossi.
+-- ---------------------------------------------------------------------
+create index if not exists admin_audit_log_cible_idx
+  on admin_audit_log (table_name, record_id, created_at desc);
+
+
+-- ---------------------------------------------------------------------
 -- 1. L'HISTORIQUE D'UNE IMAGE PRECISE
 --
 --    p_champ a null = tous les champs image de la fiche (une fiche
@@ -160,8 +173,11 @@ grant execute on function bbc_images_remplacees(int) to authenticated;
 -- ---------------------------------------------------------------------
 -- 3. VERIFICATION — a lire dans le resultat, pas a croire sur parole
 -- ---------------------------------------------------------------------
-select 'images remplacees retrouvables' as quoi, count(*) as combien
+-- Borne sur la date : le journal grossit, et une verification ne doit
+-- jamais devenir la requete la plus lourde de la base.
+select 'images remplacees retrouvables (1 an)' as quoi, count(*) as combien
   from admin_audit_log
- where field_key ~* '(photo|image|logo|visuel|cover|banner|affiche|media|url_media)'
+ where created_at >= now() - interval '365 days'
+   and field_key ~* '(photo|image|logo|visuel|cover|banner|affiche|media|url_media)'
    and coalesce(old_value,'') like 'http%'
    and coalesce(old_value,'') is distinct from coalesce(new_value,'');
