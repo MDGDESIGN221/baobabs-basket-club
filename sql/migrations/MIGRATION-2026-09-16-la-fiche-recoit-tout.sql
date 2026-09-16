@@ -105,7 +105,7 @@ begin
 
   if c.type = 'joueuse' then
     insert into players (
-      name, city, bio, jersey_number, positions, birth_date, height, weight,
+      name, city, bio, jersey_number, positions, birth_date, birth_year, height, weight,
       nationality, strong_hand, previous_club, instagram, gender,
       photo_source_url, fiche_etat, soumission, soumis_le, campagne_id,
       reprise_jeton, consent_image, consent_le, status, sort
@@ -117,6 +117,13 @@ begin
       case when jsonb_typeof(p_data->'postes') = 'array'
            then array(select jsonb_array_elements_text(p_data->'postes')) end,
       nullif(p_data->>'naissance','')::date,
+      -- L'ANNEE SEULE, quand la date complete manque. Le formulaire ne
+      -- rendait « naissance » que si le jour, le mois ET l'annee etaient
+      -- remplis : une joueuse qui tapait son annee sans choisir le jour
+      -- perdait tout, en silence. Elle envoie « annee » a part, et le
+      -- declencheur bbc_player_derive ecrase de toute facon cette valeur
+      -- des qu'une date complete existe.
+      nullif(btrim(coalesce(p_data->>'annee','')), '')::int,
       nullif(btrim(coalesce(p_data->>'taille','')), ''),
       nullif(btrim(coalesce(p_data->>'poids','')), ''),
       nullif(btrim(coalesce(p_data->>'nationalite','')), ''),
@@ -198,6 +205,7 @@ begin
                        then array(select jsonb_array_elements_text(p_data->'postes'))
                        else positions end,
       birth_date = coalesce(nullif(p_data->>'naissance','')::date, birth_date),
+      birth_year = coalesce(nullif(btrim(coalesce(p_data->>'annee','')), '')::int, birth_year),
       height = coalesce(nullif(btrim(coalesce(p_data->>'taille','')),''), height),
       weight = coalesce(nullif(btrim(coalesce(p_data->>'poids','')),''), weight),
       nationality = coalesce(nullif(btrim(coalesce(p_data->>'nationalite','')),''), nationality),
@@ -241,6 +249,53 @@ begin
 end $fn$;
 
 grant execute on function public.bbc_collecte_majour(text, jsonb) to anon, authenticated;
+
+
+-- ---------------------------------------------------------------------
+--  4 bis) LA REPRISE REND AUSSI L'ANNEE SEULE
+--  ---------------------------------------------------------------------
+--  Sans cela, une joueuse qui n'avait donne que son annee et qui rouvre
+--  son lien personnel verrait le champ vide, et le renvoi l'effacerait.
+-- ---------------------------------------------------------------------
+create or replace function public.bbc_collecte_reprendre(p_reprise text)
+returns table (ok boolean, type text, modifiable boolean, donnees jsonb, motif text)
+language plpgsql security definer set search_path to 'public' as $fn$
+declare p players%rowtype; s staff%rowtype; c text;
+begin
+  select * into p from players where reprise_jeton = p_reprise;
+  if found then
+    select phone into c from players_contacts where player_id = p.id;
+    return query select true, 'joueuse'::text,
+      (p.fiche_etat in ('recue','a_verifier','a_completer')),
+      jsonb_build_object('nom_complet', p.name, 'ville', p.city, 'bio', p.bio,
+        'numero', p.jersey_number, 'postes', to_jsonb(coalesce(p.positions, '{}'::text[])),
+        'naissance', p.birth_date,
+        'annee', case when p.birth_year is not null then p.birth_year::text end,
+        'tel', c,
+        'taille', p.height, 'poids', p.weight,
+        'nationalite', p.nationality, 'main', p.strong_hand,
+        'ancien_club', p.previous_club, 'instagram', p.instagram,
+        'photo', p.photo_source_url, 'etat', p.fiche_etat), null::text;
+    return;
+  end if;
+
+  select * into s from staff where reprise_jeton = p_reprise;
+  if found then
+    return query select true, 'staff'::text,
+      (s.fiche_etat in ('recue','a_verifier','a_completer')),
+      jsonb_build_object('nom_complet', s.name, 'fonction', s.role,
+        'bio', s.bio, 'qualification', s.qualification,
+        'depuis', case when s.joined_at is not null
+                       then extract(year from s.joined_at)::text end,
+        'tel', s.phone,
+        'photo', s.photo_source_url, 'etat', s.fiche_etat), null::text;
+    return;
+  end if;
+
+  return query select false, null::text, false, null::jsonb, 'introuvable'::text;
+end $fn$;
+
+grant execute on function public.bbc_collecte_reprendre(text) to anon, authenticated;
 
 
 -- ---------------------------------------------------------------------

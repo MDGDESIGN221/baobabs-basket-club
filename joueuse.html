@@ -491,6 +491,23 @@
     var d = el('n-jour').value, m = el('n-mois').value, a = anneeTientDebout();
     return (d && m && a) ? (a + '-' + m + '-' + d) : '';
   }
+  // L'ANNEE SEULE VAUT MIEUX QUE RIEN.
+  // naissanceLue() ne rend une date que si les TROIS listes sont
+  // remplies. Une joueuse qui tapait son annee sans choisir le jour ni le
+  // mois voyait donc sa date disparaitre en silence : ni date, ni annee,
+  // aucun message. La base porte birth_year depuis toujours, exactement
+  // pour ce cas -- et c'est elle qui donne l'age affiche sur le site.
+  function anneeSeule(){
+    var a = anneeTientDebout();
+    return a ? String(a) : '';
+  }
+  // Une date a moitie remplie se signale AVANT l'envoi, pas apres.
+  function naissanceIncomplete(){
+    var d = el('n-jour').value, m = el('n-mois').value, a = anneeTientDebout();
+    if ((d || m) && !a) return 'annee';        // rien ne serait garde
+    if (a && (!d || !m)) return 'jourmois';    // l'annee seule part
+    return '';
+  }
   function nationaliteLue(){
     var v = el('nationalite').value;
     return v === '_autre' ? el('nat-autre').value.trim() : v;
@@ -711,7 +728,9 @@
     var nom = String(d.nom_complet || '').trim().split(/\s+/);
     el('prenom').value = nom.length > 1 ? nom.slice(0, -1).join(' ') : (nom[0] || '');
     el('nom').value    = nom.length > 1 ? nom[nom.length - 1] : '';
-    ['ville','bio'].forEach(function(k){ if (d[k]) el(k).value = d[k]; });
+    // « tel » revient avec le reste : sans lui, rouvrir son lien pour
+    // corriger une ligne effaçait le téléphone donné la première fois.
+    ['ville','bio','tel'].forEach(function(k){ if (d[k]) el(k).value = d[k]; });
     if (TYPE === 'joueuse'){
       if (d.numero != null) el('numero').value = d.numero;
       if (d.taille) el('taille').value = d.taille;
@@ -733,6 +752,8 @@
       if (d.main) el('main').value = d.main;
       if (d.ancien_club) el('ancien').value = d.ancien_club;
       if (d.instagram) el('instagram').value = d.instagram;
+      // Une fiche n'ayant que l'annee la retrouve dans sa liste.
+      if (!d.naissance && d.annee) el('n-an').value = d.annee;
       (d.postes || []).forEach(function(p){
         var i = POSTES.indexOf(p);
         if (i >= 0) el('po-' + i).checked = true;
@@ -849,6 +870,13 @@
       dire('Vérifie ton année de naissance : quatre chiffres, par exemple 2004.');
       el('n-an').focus(); return;
     }
+    // Un jour ou un mois sans annee : rien ne serait garde du tout. On
+    // arrete, parce que c'est l'annee qui porte l'age sur le site.
+    if (naissanceIncomplete() === 'annee'){
+      el('n-an').closest('div').classList.add('champ-mal');
+      dire('Il manque ton année de naissance. Le jour et le mois seuls ne peuvent pas être enregistrés.');
+      el('n-an').focus(); return;
+    }
     if (!el('consent').checked){
       dire('Cochez l’autorisation de publication pour envoyer votre profil.');
       el('consent').focus(); return;
@@ -880,6 +908,9 @@
         d.taille = el('taille').value.trim();
         d.poids = el('poids').value.trim();
         d.naissance = naissanceLue();
+        // Envoyee meme quand la date complete manque : l'annee seule
+        // suffit a l'age, et c'est mieux que de tout perdre.
+        d.annee = anneeSeule();
         d.nationalite = nationaliteLue();
         d.main = el('main').value;
         d.ancien_club = el('ancien').value.trim();
