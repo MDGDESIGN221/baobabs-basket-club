@@ -1542,6 +1542,11 @@
   .ef-relance-b{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px}
   .ef-relance .co-url{display:block;margin:0}
   .ef-cp-msg{border-color:var(--attente);color:var(--attente-clair)}
+  /* Ce qui empêche la page d'accueil de montrer le cinq. La couleur
+     d'attente, pas celle d'erreur : rien n'est cassé, il manque juste
+     quelque chose. */
+  .pc-att{color:var(--attente-clair)}
+
   /* La photo envoyée, dans l'inspecteur du staff. */
   .qgv-src{display:flex;gap:12px;align-items:flex-start;margin:4px 0 16px;padding:11px 12px;
     background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--attente);
@@ -11404,6 +11409,25 @@
     return pcRows.length ? pcRows[pcRows.length - 1].id : null;
   }
 
+  // LE MATCH QUE LE SITE MONTRE, ET LUI SEUL.
+  // L'accueil publie le cinq du PROCHAIN match par la date. Composer le
+  // cinq d'un match de la semaine prochaine ne fait donc rien apparaitre
+  // tant que celui d'aujourd'hui n'en a pas -- et l'etape disait
+  // pourtant « le site publie la composition », ce qui etait vrai de ce
+  // match et faux de la page d'accueil. Deux compositions completes, une
+  // page vide, et rien pour comprendre.
+  function pcMatchDuSite(){
+    var auj = todayISO();
+    var fut = (pcRows || []).filter(function(m){ return m.match_date >= auj; });
+    return fut.length ? fut[0] : null;
+  }
+  function pcQuandCourt(m){
+    if (!m || !m.match_date) return '';
+    try { return new Date(m.match_date + 'T00:00:00')
+      .toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }); }
+    catch(e){ return m.match_date; }
+  }
+
   function pcJours(m){ return m && m.match_date ? daysUntil(m.match_date) : null; }
   function pcScore(m){ return m && m.score_baobabs != null && m.score_opponent != null; }
 
@@ -11517,8 +11541,30 @@
         (p.jersey_number != null ? '#' + p.jersey_number + ' ' : '') + esc(p.name) + '</span>';
     }).join('') + (function(){ var h = ''; for (var i = tit.length; i < 5; i++) h += '<span class="vide"><i>·</i>poste libre</span>'; return h; })() + '</div>';
     E.push({ cle:'cinq', titre:'Le cinq de départ', etat: etatCinq,
-      resume: cinqOk ? '<b>Le cinq est posé.</b> ' + d.stats.length + ' joueuse' + (d.stats.length > 1 ? 's' : '') + ' sur la feuille de match ; le site publie la composition.'
-                     : (tit.length ? '<b>' + tit.length + ' titulaire' + (tit.length > 1 ? 's' : '') + ' sur 5.</b> Le site n\'affiche la composition que complète.' : 'Aucune titulaire désignée. La composition se fait avec les visages, dans la fiche.'),
+      resume: (function(){
+        // Ce que le site fait de CE cinq-la, pas du cinq en general.
+        var duSite = pcMatchDuSite();
+        var ceMatch = duSite && String(duSite.id) === String(m.id);
+        var combien = d.stats.length + ' joueuse' + (d.stats.length > 1 ? 's' : '') + ' sur la feuille de match';
+        if (cinqOk && ceMatch)
+          return '<b>Le cinq est posé.</b> ' + combien + ' ; <b>le site l’affiche</b> sur la page d’accueil.';
+        if (cinqOk && duSite)
+          return '<b>Le cinq est posé</b> (' + combien + '), mais <b class="pc-att">le site ne le montre pas encore</b> : ' +
+                 'l’accueil affiche toujours le cinq du prochain match, <b>' + esc(duSite.opponent_name || 'le suivant') +
+                 '</b>, ' + esc(pcQuandCourt(duSite)) + '. Il apparaîtra quand ce match-là sera passé, ou dès que vous ' +
+                 'composerez le sien.';
+        if (cinqOk)
+          return '<b>Le cinq est posé.</b> ' + combien + '.';
+        if (tit.length && ceMatch)
+          return '<b>' + tit.length + ' titulaire' + (tit.length > 1 ? 's' : '') + ' sur 5.</b> ' +
+                 '<b class="pc-att">C’est ce match que le site affiche</b> : il n’y publiera rien tant que le cinq n’est pas complet.';
+        if (tit.length)
+          return '<b>' + tit.length + ' titulaire' + (tit.length > 1 ? 's' : '') + ' sur 5.</b> Le site n’affiche la composition que complète.';
+        if (ceMatch)
+          return 'Aucune titulaire désignée. <b class="pc-att">C’est ce match que le site affiche</b> : ' +
+                 'la page d’accueil reste sans composition tant qu’il n’a pas son cinq.';
+        return 'Aucune titulaire désignée. La composition se fait avec les visages, dans la fiche.';
+      })(),
       detail: cinqHtml,
       actions: '<button type="button" data-pc="fiche" data-tab="feuille">' + (cinqOk ? 'Revoir la composition' : 'Composer le cinq') + '</button>' });
 
