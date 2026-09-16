@@ -19719,17 +19719,39 @@
   /* Ce qui manque, dans SES mots à elle : « ta taille », pas « height ».
      On ne réclame que ce que le formulaire sait donner -- le statut
      sportif ou le cadrage de la photo ne la regardent pas. */
-  function efManque(r){
+  /* DEUX VOIX POUR LA MEME LISTE. L'écran parle du club (« il manque la
+     taille »), le message parle à la joueuse (« il manque ta taille »).
+     Une seule liste de manques, deux libellés : sinon l'un des deux
+     finit par dire « il manque ta taille » dans l'admin. */
+  var EF_MANQUES = [
+    ['photo',   'une photo',              'une photo'],
+    ['numero',  'le numéro de maillot',   'ton numéro de maillot'],
+    ['naiss',   'la date de naissance',   'ta date de naissance'],
+    ['poste',   'le poste',               'ton poste'],
+    ['taille',  'la taille',              'ta taille'],
+    ['ville',   'la ville',               'ta ville'],
+    ['bio',     'la présentation',        'quelques mots sur toi']
+  ];
+  function efManqueCles(r){
     var m = [];
-    if (!r.photo_source_url && !r.photo_url) m.push('une photo');
-    if (r.jersey_number == null)             m.push('ton numéro de maillot');
-    if (!r.birth_date && !r.birth_year)      m.push('ta date de naissance');
-    if (!String(r.position || '').trim())    m.push('ton poste');
-    if (!String(r.height || '').trim())      m.push('ta taille');
-    if (!String(r.city || '').trim())        m.push('ta ville');
-    if (!String(r.bio || '').trim())         m.push('quelques mots sur toi');
+    if (!r.photo_source_url && !r.photo_url) m.push('photo');
+    if (r.jersey_number == null)             m.push('numero');
+    if (!r.birth_date && !r.birth_year)      m.push('naiss');
+    if (!String(r.position || '').trim())    m.push('poste');
+    if (!String(r.height || '').trim())      m.push('taille');
+    if (!String(r.city || '').trim())        m.push('ville');
+    if (!String(r.bio || '').trim())         m.push('bio');
     return m;
   }
+  function efManqueMots(r, pourElle){
+    var i = pourElle ? 2 : 1;
+    return efManqueCles(r).map(function(k){
+      var e = EF_MANQUES.filter(function(x){ return x[0] === k; })[0];
+      return e ? e[i] : k;
+    });
+  }
+  /* Gardé pour le message de relance, qui tutoie. */
+  function efManque(r){ return efManqueMots(r, true); }
   function efEnumere(l){
     if (l.length < 2) return l[0] || '';
     return l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1];
@@ -19778,6 +19800,82 @@
   function efEnAttente(r){
     var k = efDos(r);
     return k === 'recue' || k === 'a_verifier' || k === 'a_completer';
+  }
+
+  /* ==================================================================
+     LES DOUBLONS, SIGNALES AVANT QU'ILS NE FASSENT DEGAT
+     ------------------------------------------------------------------
+     Un lien de collecte se partage : la meme personne peut le remplir
+     deux fois, deux personnes peuvent choisir le meme numero de maillot.
+     Rien ne l'empechait, et rien ne le disait -- au 16 septembre 2026,
+     deux joueuses portaient deja le n° 5 sans que l'ecran en souffle mot.
+     Un numero en double casse la feuille de match, pas seulement
+     l'affichage.
+
+     On SIGNALE, on ne bloque pas : deux soeurs peuvent porter le meme
+     nom de famille, et une fiche recree apres une erreur est legitime.
+     C'est au club de trancher, pas au code.
+     ================================================================== */
+  function efCle(s){
+    s = String(s == null ? '' : s).toLowerCase();
+    if (s.normalize) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return s.replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+  function efChiffres(s){ return String(s == null ? '' : s).replace(/\D+/g, ''); }
+
+  /* Rend { <id>: ['numero 5', 'meme nom', ...] }. Les fiches archivees
+     et les parties ne comptent pas : elles ne se disputent plus rien. */
+  function efDoublons(rows){
+    var vus = { num: {}, nom: {}, tel: {}, naiss: {} }, out = {};
+    var utiles = (rows || []).filter(function(r){
+      return efDos(r) !== 'refusee' && (r.status || 'active') !== 'partie';
+    });
+    function pousser(id, quoi){
+      (out[id] = out[id] || []);
+      if (out[id].indexOf(quoi) < 0) out[id].push(quoi);
+    }
+    function croiser(bac, cle, quoi, r){
+      if (!cle) return;
+      if (bac[cle]){ pousser(bac[cle].id, quoi); pousser(r.id, quoi); }
+      else bac[cle] = r;
+    }
+    utiles.forEach(function(r){
+      croiser(vus.num, r.jersey_number == null || r.jersey_number === '' ? '' : 'n' + r.jersey_number,
+              'le n° ' + r.jersey_number, r);
+      croiser(vus.nom, efCle(r.name), 'le même nom', r);
+      var tel = efChiffres((efContacts[r.id] || {}).phone);
+      croiser(vus.tel, tel.length >= 7 ? tel.slice(-9) : '', 'le même téléphone', r);
+      croiser(vus.naiss, r.birth_date ? 'd' + String(r.birth_date).slice(0, 10) : '',
+              'la même date de naissance', r);
+    });
+    return out;
+  }
+  function efDoublonMot(l){
+    if (!l || !l.length) return '';
+    return l.length === 1 ? 'Partage ' + l[0] + ' avec une autre fiche'
+                          : 'Partage ' + l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1] + ' avec une autre fiche';
+  }
+
+  /* Ce qu'on veut savoir d'un profil AVANT de l'ouvrir : qui, quel
+     poste, quel âge, d'où, et ce qui manque. Une pile de noms oblige à
+     entrer dans chacun pour savoir lequel traiter. */
+  /* Vide et jamais rempli : on n'envoie pas la clé du tout, la valeur en
+     base reste. Vide APRES avoir été rempli : c'est un geste, on envoie
+     null. Rempli : on envoie ce qui est écrit. */
+  function efPhotoAEnvoyer(){
+    var el = document.getElementById('ef-photo');
+    if (!el) return undefined;
+    var val = String(el.value || '').trim();
+    var init = String(el.getAttribute('data-init') || '').trim();
+    if (val) return val;
+    return init ? null : undefined;
+  }
+
+  function efApercuLignes(r){
+    var l1 = [r.position, r.height, r.weight, (r.age ? r.age + ' ans' : '')].filter(Boolean).join(' · ');
+    var tel = (efContacts[r.id] || {}).phone || '';
+    var l2 = [r.city, r.nationality, tel].filter(Boolean).join(' · ');
+    return [l1, l2];
   }
 
   function efSt(s){ return EF_STATUS[s || 'active'] || EF_STATUS.active; }
@@ -20239,19 +20337,28 @@
     box.innerHTML =
       '<div class="co-tete"><h3>' + liste.length + ' profil' + (liste.length > 1 ? 's re\u00e7us' : ' re\u00e7u') + '</h3>' +
         '<span class="co-sous">\u00e0 v\u00e9rifier avant de rejoindre l\u2019effectif</span></div>' +
+      // CE QU'ON VOIT AVANT D'OUVRIR.
+      // La ligne ne disait que le nom et le poste : pour savoir laquelle
+      // traiter il fallait entrer dans chacune, et revenir. Elle porte
+      // maintenant l'\u00e2ge, la taille, la ville, le t\u00e9l\u00e9phone, la date
+      // d'arriv\u00e9e, ce qui manque, et l'alerte de doublon.
       '<div class="ef-att-liste">' + liste.map(function(r){
         var d = EF_DOSSIER[efDos(r)] || EF_DOSSIER.recue;
-        var manque = [];
-        if (r.jersey_number == null) manque.push('num\u00e9ro');
-        if (!r.photo_url) manque.push('photo finale');
+        var manque = efManqueMots(r, false);
+        var dbl = efDoublonMot(efDoublons(efRows)[r.id]);
+        var ap = efApercuLignes(r);
         return '<button type="button" class="ef-att" data-id="' + esc(r.id) + '">' +
           '<span class="ef-att-p">' + (r.photo_source_url || r.photo_url
               ? '<img src="' + esc(r.photo_source_url || r.photo_url) + '" alt="" loading="lazy">'
               : '<i>' + esc(initials(r.name).slice(0, 2)) + '</i>') + '</span>' +
           '<span class="ef-att-c">' +
-            '<b>' + esc(r.name || 'Sans nom') + '</b>' +
-            '<span>' + esc([r.position, r.city].filter(Boolean).join(' \u00b7 ') || 'Fiche \u00e0 lire') + '</span>' +
-            (manque.length ? '<span class="ef-att-m">il manque : ' + esc(manque.join(', ')) + '</span>' : '') +
+            '<b>' + esc(r.name || 'Sans nom') +
+              (r.jersey_number != null ? '<em class="ef-att-n">n\u00b0 ' + esc(r.jersey_number) + '</em>' : '') + '</b>' +
+            '<span>' + esc(ap[0] || 'Fiche \u00e0 lire') + '</span>' +
+            (ap[1] ? '<span>' + esc(ap[1]) + '</span>' : '') +
+            (r.soumis_le ? '<span class="ef-att-q">Re\u00e7u le ' + esc(fmtDateTime(r.soumis_le)) + '</span>' : '') +
+            (dbl ? '<span class="ef-att-d">' + esc(dbl) + '</span>' : '') +
+            (manque.length ? '<span class="ef-att-m">il manque : ' + esc(efEnumere(manque)) + '</span>' : '') +
           '</span>' +
           '<span class="ds-tag warn">' + esc(d[0]) + '</span>' +
         '</button>';
@@ -20488,7 +20595,20 @@
         previous_club: v('ef-prev').trim() || null,
         instagram: v('ef-insta').trim() || null,
         sort: v('ef-sort') === '' ? null : parseInt(v('ef-sort'), 10),
-        photo_url: v('ef-photo').trim() || null,
+        // UN CHAMP VIDE QU'ON N'A PAS TOUCHE NE DETRUIT RIEN.
+        // Le 16 septembre 2026, ouvrir une fiche puis l'enregistrer a
+        // efface la photo d'une joueuse publiee : le champ « Photo
+        // (adresse) » s'affichait vide -- la fiche en memoire datait
+        // d'avant la publication faite dans un autre onglet -- et
+        // l'enregistrement a envoye null par-dessus l'adresse reelle.
+        // Personne n'avait rien tape ; on ne peut pas appeler ca une
+        // suppression voulue.
+        //
+        // Regle : si le champ est vide ET qu'il etait DEJA vide a
+        // l'affichage, on ne l'envoie pas du tout. Effacer une adresse
+        // qu'on a sous les yeux reste possible -- le champ n'etait alors
+        // pas vide au depart, et le null part normalement.
+        photo_url: efPhotoAEnvoyer(r),
         // Les trois nombres du cadrage voyagent avec la photo. Ils sont
         // poses par cadrerCollection() sur l'objet r, et repartent ici.
         photo_x: (r.photo_x == null ? null : r.photo_x),
@@ -20560,6 +20680,12 @@
     // Reprendre la photo envoyée : on remplit le champ, on ne l'enregistre
     // pas. Écraser la photo du site d'un clic, sans que rien ne soit
     // encore cadré, serait un geste qu'on ne peut pas reprendre.
+    // On retient ce que le champ Photo affichait EN ARRIVANT : c'est lui
+    // qui distingue « vide parce que rien n'a jamais été mis » de « vidé
+    // exprès ». Voir efPhotoAEnvoyer.
+    var champPhoto = document.getElementById('ef-photo');
+    if (champPhoto) champPhoto.setAttribute('data-init', champPhoto.value || '');
+
     // Le lien et le message se copient. Le presse-papier moderne échoue
     // hors HTTPS et sans geste : on garde le vieux chemin, qui marche
     // partout (même code que les liens de collecte).
