@@ -18042,7 +18042,19 @@
     var id=key+'__'+f.name; var opt=f.opt?' <span class="opt">(optionnel)</span>':'';
     var lab='<label for="'+id+'">'+esc(f.label)+opt+'</label>';
     if(f.type==='textarea'||f.type==='rich') return '<div class="field">'+lab+'<textarea id="'+id+'" placeholder="'+esc(f.ph||'')+'"></textarea></div>';
-    if(f.type==='select') return '<div class="field">'+lab+'<select id="'+id+'">'+f.options.map(function(o){ return '<option value="'+esc(o)+'">'+(o?esc(o):'— Choisir —')+'</option>'; }).join('')+'</select></div>';
+    // optionsKV : une valeur qui n'est pas son libellé (« president » /
+    // « Président »). Ce moteur-ci ne connaissait que `options`, et un
+    // champ qui n'en avait pas le faisait planter sur `.map` de undefined
+    // -- au moment de CONSTRUIRE l'écran, donc l'écran entier restait
+    // vide, sans liste ni profils reçus. Les deux moteurs de formulaire
+    // doivent connaître les mêmes sortes de champ.
+    if(f.type==='select'&&f.optionsKV){
+      var kv=(typeof f.optionsKV==='function'?f.optionsKV():f.optionsKV)||[];
+      return '<div class="field">'+lab+'<select id="'+id+'">'+kv.map(function(p){
+        return '<option value="'+esc(p[0])+'">'+esc(p[1])+'</option>'; }).join('')+'</select>'+
+        (f.hint?'<p class="hint">'+esc(f.hint)+'</p>':'')+'</div>';
+    }
+    if(f.type==='select') return '<div class="field">'+lab+'<select id="'+id+'">'+(f.options||[]).map(function(o){ return '<option value="'+esc(o)+'">'+(o?esc(o):'— Choisir —')+'</option>'; }).join('')+'</select></div>';
     if(f.type==='boolean') return '<div class="field">'+lab+'<select id="'+id+'"><option value="true">En stock</option><option value="false">Épuisé</option></select></div>';
     if(f.type==='image') return '<div class="field">'+lab+'<div class="logo-choice"><button type="button" class="active" id="'+id+'_mu">Uploader</button><button type="button" id="'+id+'_ml">Coller un lien</button></div><input type="file" id="'+id+'_file" accept="image/*"><input type="text" id="'+id+'_url" class="hide" placeholder="https://…"><img id="'+id+'_pv" alt="" class="logo-preview"'+(f.name==='logo_url'?' style="border-radius:50%;object-fit:contain"':'')+' alt=""></div>';
     if(f.type==='gallery'){
