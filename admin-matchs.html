@@ -3863,6 +3863,21 @@
   .in-apercu-b{flex:1;min-height:240px;display:flex;align-items:center;justify-content:center;background:var(--surface);overflow:auto}
   .in-apercu-b img{max-width:100%;max-height:78vh;object-fit:contain}
   .in-apercu-b iframe{width:100%;height:78vh;border:none;background:#fff}
+  /* Retrouver une image remplacee : une vignette par version, la date
+     dessous, un seul geste. La vignette est posee sur un damier clair
+     parce qu'un logo detoure sur fond sombre ne se voit pas. */
+  .mem-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px;width:100%;align-content:start}
+  .mem-item{margin:0;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:var(--r-sm);padding:10px}
+  .mem-item a{display:flex;align-items:center;justify-content:center;height:118px;border-radius:var(--r-sm);
+    background:#12211a;background-image:linear-gradient(45deg,rgba(243,239,230,.05) 25%,transparent 25%,transparent 75%,rgba(243,239,230,.05) 75%),linear-gradient(45deg,rgba(243,239,230,.05) 25%,transparent 25%,transparent 75%,rgba(243,239,230,.05) 75%);
+    background-size:16px 16px;background-position:0 0,8px 8px;overflow:hidden}
+  .mem-item img{max-width:100%;max-height:100%;object-fit:contain}
+  .mem-item figcaption{font-size:11px;line-height:1.45;color:var(--faint)}
+  .mem-ou{color:var(--gold-bright);font-weight:600}
+  .mem-remettre{font:inherit;font-size:11.5px;font-weight:700;padding:7px 10px;border-radius:var(--r-sm);
+    background:transparent;border:1px solid var(--line-strong);color:var(--muted);cursor:pointer;margin-top:auto}
+  .mem-remettre:hover{border-color:var(--gold);color:var(--text)}
   .in-apercu-b .in-apercu-attente{font-size:12.5px;color:var(--faint);padding:40px}
   /* Le recadrage : la photo se deplace sous un cadre 3:4 fixe (le format
      d'une photo d'identite), la molette ou le curseur zooment. */
@@ -5864,6 +5879,7 @@
         <span class="ds-count" id="md-count">—</span>
         <input type="search" class="ds-search" id="md-search" placeholder="Nom de fichier…">
         <button type="button" class="ds-act" id="md-refresh">Rafraîchir</button>
+        <button type="button" class="ds-act" id="md-retrouver" title="Les images qu'une fiche a cessé d'afficher, même si vous ne savez plus laquelle.">Retrouver une image remplacée</button>
       </div>
       <div class="callout ds-note">Vos images viennent de quatre endroits, et la colonne de gauche les sépare.
         <b>Vos envois</b>&nbsp;: ce que vous déposez ici — visible sur le site seulement si vous collez son adresse quelque part.
@@ -9671,6 +9687,162 @@
         if(!r.ok) throw new Error('upload');
         return SUPABASE_URL+'/storage/v1/object/public/'+bucket+'/'+path;
       });
+    });
+  }
+
+  /* ==================================================================
+     RETROUVER UNE IMAGE REMPLACEE PAR ERREUR
+     ------------------------------------------------------------------
+     « par megarde j'ai remplace la photo de Mouhamed Salif AW sans
+       faire expres et je ne retrouve plus la photo »
+
+     Le fichier n'a jamais ete perdu. uploadFile (juste au-dessus) ecrit
+     un chemin unique -- Date.now() + le nom -- donc rien ne s'ecrase
+     dans le stockage, et changer la photo d'une fiche ne supprime pas
+     l'ancien fichier. Ce qui manquait, c'est l'ADRESSE : la fiche ne
+     pointait plus dessus et personne ne savait plus laquelle c'etait.
+
+     Or cette adresse est ecrite depuis le premier jour. auditDiffFields
+     envoie, a chaque sauvegarde, le champ touche avec sa valeur d'avant
+     et sa valeur d'apres. L'ancienne photo etait donc deja en base --
+     simplement illisible : la seule lecture existante demande un mot de
+     passe et rend le journal entier.
+
+     Deux fonctions SQL etroites (MIGRATION-2026-09-16-retrouver-une-
+     image.sql) la rendent lisible fiche par fiche, et deux entrees la
+     rendent atteignable : sous la photo d'une fiche, et dans la
+     mediatheque quand on ne sait plus de quelle fiche il s'agissait.
+     ================================================================== */
+  function memHistorique(table, id, champ){
+    return tkRpc('bbc_image_historique', { p_table:table, p_record_id:String(id), p_champ:champ || null });
+  }
+  function memRemplacees(jours){
+    return tkRpc('bbc_images_remplacees', { p_jours: jours || 120 });
+  }
+  /* Le journal donne des lignes (avant -> apres). Ce qu'on veut montrer,
+     c'est la liste des ADRESSES qui ont existe a cet endroit, sans la
+     photo actuelle et sans doublon : la meme image peut apparaitre en
+     « apres » d'une ligne et en « avant » de la suivante. */
+  function memVersions(lignes, actuelle){
+    var vues = {}, out = [];
+    (lignes || []).forEach(function(l){
+      [l.avant, l.apres].forEach(function(u){
+        if (!u || String(u).slice(0,4) !== 'http') return;
+        if (actuelle && String(u) === String(actuelle)) return;
+        if (vues[u]) return;
+        vues[u] = 1;
+        out.push({ url:u, quand:l.quand, qui:l.qui, champ:l.champ,
+                   section:l.section, table:l.table_nom, ligne:l.record_id });
+      });
+    });
+    return out;
+  }
+  function memQuand(t){
+    if (!t) return '';
+    var d = new Date(t); if (isNaN(d)) return '';
+    return d.toLocaleDateString('fr-FR', { day:'numeric', month:'long' }) +
+           ' à ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+  }
+  function memQui(e){
+    if (!e) return '';
+    return (typeof AUDIT_NAMES !== 'undefined' && AUDIT_NAMES[e]) ? AUDIT_NAMES[e] : e;
+  }
+
+  /* L'ECRAN. Une vignette par version, la date et l'auteur dessous, et
+     un seul geste : remettre celle-la. On ne supprime jamais rien ici --
+     remettre une ancienne photo est une modification comme une autre,
+     elle passe par la sauvegarde normale et se retrouve donc, elle
+     aussi, dans le journal. */
+  function memOuvrir(o){
+    var ancien = document.getElementById('mem-boite'); if (ancien) ancien.remove();
+    var boite = document.createElement('div');
+    boite.className = 'in-apercu'; boite.id = 'mem-boite';
+    boite.innerHTML = '<div class="in-apercu-p" role="dialog" aria-label="Retrouver une image">' +
+      '<div class="in-apercu-h"><div><b>' + esc(o.titre) + '</b><s>' + esc(o.sous || '') + '</s></div>' +
+      '<button type="button" id="mem-fermer">Fermer</button></div>' +
+      '<div class="in-apercu-b" style="align-items:flex-start;padding:16px">' +
+      '<div class="mem-grille" id="mem-liste"><div class="in-apercu-attente">Lecture du journal\u2026</div></div>' +
+      '</div></div>';
+    document.body.appendChild(boite);
+    function fermer(){ boite.remove(); document.removeEventListener('keydown', surTouche); }
+    function surTouche(e){ if (e.key === 'Escape') fermer(); }
+    document.addEventListener('keydown', surTouche);
+    boite.querySelector('#mem-fermer').addEventListener('click', fermer);
+    boite.addEventListener('click', function(e){ if (e.target === boite) fermer(); });
+
+    var liste = boite.querySelector('#mem-liste');
+    o.charger().then(function(versions){
+      if (!versions || !versions.length){
+        liste.innerHTML = '<div class="in-apercu-attente">' + esc(o.vide ||
+          'Aucune version pr\u00e9c\u00e9dente n\u2019a \u00e9t\u00e9 enregistr\u00e9e pour cette image.') + '</div>';
+        return;
+      }
+      liste.innerHTML = versions.map(function(v, i){
+        var ou = v.section ? esc(v.section) : (v.table ? esc(v.table) : '');
+        return '<figure class="mem-item">' +
+          '<a href="' + esc(v.url) + '" target="_blank" rel="noopener" title="Ouvrir l\u2019image en grand">' +
+          '<img src="' + esc(v.url) + '" alt="" loading="lazy"></a>' +
+          '<figcaption>' + esc(memQuand(v.quand)) +
+          (v.qui ? ' \u00b7 ' + esc(memQui(v.qui)) : '') +
+          (ou && o.avecOu ? '<br><span class="mem-ou">' + ou + '</span>' : '') +
+          '</figcaption>' +
+          (o.poser ? '<button type="button" class="mem-remettre" data-i="' + i + '">Remettre celle-ci</button>'
+                   : '<button type="button" class="mem-remettre" data-copier="' + esc(v.url) + '">Copier l\u2019adresse</button>') +
+          '</figure>';
+      }).join('');
+      liste.querySelectorAll('.mem-remettre').forEach(function(b){
+        b.addEventListener('click', function(){
+          var cp = b.getAttribute('data-copier');
+          if (cp){ ecCopier(cp, 'Adresse copi\u00e9e \u2713'); return; }
+          o.poser(versions[parseInt(b.getAttribute('data-i'), 10)].url);
+          fermer();
+        });
+      });
+    }).catch(function(err){
+      // Une fonction absente en base n'est pas la meme chose qu'un
+      // journal vide : on ne raconte pas la meme histoire.
+      var m = String((err && err.message) || '');
+      liste.innerHTML = '<div class="in-apercu-attente">' + esc(
+        /(does not exist|not find|schema cache)/i.test(m)
+          ? 'La lecture du journal n\u2019est pas encore install\u00e9e en base. Lancez sql/migrations/MIGRATION-2026-09-16-retrouver-une-image.sql dans Supabase.'
+          : /administration/i.test(m)
+          ? m
+          : 'Le journal n\u2019a pas pu \u00eatre lu. ' + m) + '</div>';
+    });
+  }
+
+  /* Sous une photo de fiche : les versions de CE champ, de CETTE ligne. */
+  function memOuvrirChamp(table, id, champ, actuelle, poser, quoi){
+    memOuvrir({
+      titre: 'Les photos pr\u00e9c\u00e9dentes' + (quoi ? ' \u2014 ' + quoi : ''),
+      sous: 'Le fichier n\u2019a pas \u00e9t\u00e9 supprim\u00e9 : seule la fiche avait cess\u00e9 de pointer dessus.',
+      vide: 'Cette image n\u2019a jamais \u00e9t\u00e9 remplac\u00e9e depuis cette fiche.',
+      poser: poser,
+      charger: function(){
+        return memHistorique(table, id, champ).then(function(l){ return memVersions(l, actuelle); });
+      }
+    });
+  }
+  /* Quand on ne sait plus de quelle fiche il s'agissait. */
+  function memOuvrirToutes(){
+    memOuvrir({
+      titre: 'Retrouver une image remplac\u00e9e',
+      sous: 'Toutes les images qu\u2019une fiche a cess\u00e9 d\u2019afficher, les plus r\u00e9centes en premier.',
+      vide: 'Aucune image n\u2019a \u00e9t\u00e9 remplac\u00e9e ces quatre derniers mois.',
+      avecOu: true,
+      charger: function(){
+        return memRemplacees(120).then(function(lignes){
+          // Ici on ne veut QUE ce qui a disparu : la valeur d'avant.
+          var vues = {}, out = [];
+          (lignes || []).forEach(function(l){
+            if (!l.avant || String(l.avant).slice(0,4) !== 'http' || vues[l.avant]) return;
+            vues[l.avant] = 1;
+            out.push({ url:l.avant, quand:l.quand, qui:l.qui, champ:l.champ,
+                       section:l.section, table:l.table_nom, ligne:l.record_id });
+          });
+          return out;
+        });
+      }
     });
   }
 
@@ -22360,6 +22532,8 @@
 
     document.getElementById('md-search').addEventListener('input', mdRender);
     document.getElementById('md-refresh').addEventListener('click', function(){ mdList(); });
+    var mdR = document.getElementById('md-retrouver');
+    if (mdR) mdR.addEventListener('click', function(){ memOuvrirToutes(); });
     document.getElementById('md-file').addEventListener('change', function(){
       if (this.files && this.files.length) mdUpload(this.files);
       this.value = '';
@@ -31033,7 +31207,12 @@
         posHtml='<div class="qg-pos" id="'+id+'-pos"><div class="qg-pos-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>Cadrage de l\'image</div>'+
           '<div class="qg-pos-preview" id="'+id+'-pos-pv"><img alt=""></div>'+
           '<div class="qg-photo-actions">'+'<button type="button" class="qg-file-btn qg-pos-ouvrir" data-poscadre="'+f.name+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg><span>Cadrer</span></button>'+'<button type="button" class="qg-pos-reset" data-posreset="'+f.name+'">Recentrer</button></div></div>'; }
-      return '<div class="qg-field">'+lab+'<input class="qg-in" id="'+id+'" placeholder="https://…" value="'+esc(v)+'" style="font-size:12.5px"><div class="qg-photo-actions"><label class="qg-file-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span id="'+id+'-lbl">Téléverser</span><input type="file" id="'+id+'-file" accept="image/*" style="display:none"></label></div>'+posHtml+'</div>';
+      // LES PHOTOS PRECEDENTES. Seulement sur une fiche deja
+      // enregistree : un brouillon n'a pas de passe. Le bouton n'est pas
+      // une promesse -- s'il n'y a rien, l'ecran le dira en clair.
+      var memBt = (cur && cur.id != null && String(cur.id) !== '__new__')
+        ? '<button type="button" class="qg-pos-reset" id="'+id+'-mem" title="Une photo remplac\u00e9e par erreur se retrouve ici.">Photos pr\u00e9c\u00e9dentes</button>' : '';
+      return '<div class="qg-field">'+lab+'<input class="qg-in" id="'+id+'" placeholder="https://…" value="'+esc(v)+'" style="font-size:12.5px"><div class="qg-photo-actions"><label class="qg-file-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg><span id="'+id+'-lbl">Téléverser</span><input type="file" id="'+id+'-file" accept="image/*" style="display:none"></label>'+memBt+'</div>'+posHtml+'</div>';
     }
     var t=(f.type==='number')?'number':(f.type==='date'?'date':(f.type==='url'?'url':'text'));
     return '<div class="qg-field">'+lab+'<input type="'+t+'" class="qg-in" id="'+id+'" placeholder="'+esc(f.ph||'')+'" value="'+esc(v)+'"'+(t==='number'?' min="0"':'')+'></div>';
@@ -31056,6 +31235,21 @@
     var h=function(){ var cur=qgvCurrent(key); if(!cur) return; cur[f.name]=e.value; qgvRenderCards(key); };
     e.addEventListener('input',h); e.addEventListener('change',h);
     if(f.type==='image'){ var fe=document.getElementById(id+'-file'); if(fe) fe.addEventListener('change',function(){ var file=fe.files[0]; if(!file) return; var lbl=document.getElementById(id+'-lbl'); if(lbl) lbl.textContent='Envoi…'; uploadFile(MEDIA_BUCKET,file).then(function(url){ var cur=qgvCurrent(key); if(cur) cur[f.name]=url; e.value=url; if(lbl) lbl.textContent='Téléverser'; qgvRenderCards(key); if(f.pos) qgvPosPreview(key,id,f.name); qgToast('Image envoyée ✓'); }).catch(function(){ if(lbl) lbl.textContent='Téléverser'; qgToast('Échec de l\'envoi de l\'image',true); }); }); }
+    if(f.type==='image'){
+      var memB=document.getElementById(id+'-mem');
+      if(memB) memB.addEventListener('click',function(){
+        var cur=qgvCurrent(key); if(!cur||cur.id==null) return;
+        var c=COLLECTIONS[key]||{};
+        memOuvrirChamp(c.table, cur.id, f.name, e.value||cur[f.name],
+          function(url){
+            cur[f.name]=url; e.value=url; qgvRenderCards(key);
+            if(f.pos) qgvPosPreview(key,id,f.name);
+            // On ne sauvegarde pas a sa place : le geste reste le sien.
+            qgToast('Photo remise \u2014 enregistrez la fiche pour la garder.');
+          },
+          (c.primary && cur[c.primary]) || '');
+      });
+    }
     if(f.type==='image' && f.pos){
       var box=document.getElementById(id+'-pos'); if(box){
         var ouvrir=box.querySelector('.qg-pos-ouvrir');
