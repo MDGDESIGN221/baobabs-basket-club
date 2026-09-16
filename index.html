@@ -7406,11 +7406,35 @@ window.bbCloud = function(url, w){
       .catch(function(){ return sbFetch('match_stats?select=player_id,is_starter' + q); });
   }
 
+  // LE CLUB CHOISIT CE QUE L'ACCUEIL MONTRE.
+  // La section prenait TOUJOURS le prochain match par la date. Une
+  // composition faite pour le match de vendredi ne s'affichait donc pas
+  // tant que celui de mercredi n'avait pas la sienne, et rien ne
+  // permettait de le vouloir autrement. Trois réglages, dans
+  // site_settings :
+  //   lineup_mode     auto (défaut) · match · off
+  //   lineup_match_id le match à montrer, quand le mode est « match »
+  // Sans réglage, rien ne change : c'est le comportement d'avant.
+  function bbLineupReglage(){
+    var s = bbReglagesCourants || {};
+    var mode = String(s.lineup_mode || 'auto').trim().toLowerCase();
+    if (mode !== 'match' && mode !== 'off') mode = 'auto';
+    return { mode: mode, id: String(s.lineup_match_id || '').trim() };
+  }
+
   function bbLineup(){
-    if (!document.getElementById('bb-lineup')) return;
+    var hote = document.getElementById('bb-lineup');
+    if (!hote) return;
+    var reg = bbLineupReglage();
+    // Masqué à la demande : on le cache VRAIMENT, même si une
+    // composition complète existe. C'est un choix du club.
+    if (reg.mode === 'off'){ hote.style.display = 'none'; return; }
+    var champs = 'id,opponent_name,opponent_logo_url,match_date,match_time,venue,is_home,competition,round_label';
     var auj = new Date().toISOString().slice(0, 10);
-    sbFetch('matches?select=id,opponent_name,opponent_logo_url,match_date,match_time,venue,is_home,competition,round_label' +
-            '&match_date=gte.' + auj + '&order=match_date.asc&limit=1')
+    var req = (reg.mode === 'match' && reg.id)
+      ? 'matches?select=' + champs + '&id=eq.' + encodeURIComponent(reg.id) + '&limit=1'
+      : 'matches?select=' + champs + '&match_date=gte.' + auj + '&order=match_date.asc&limit=1';
+    sbFetch(req)
       .then(function(ms){
         var m = (ms || [])[0];
         if (!m) return;
@@ -7684,6 +7708,11 @@ window.bbCloud = function(url, w){
   var bbReglagesCourants = {};
   function bbAppliquerReglages(s){
     applyFounder(s); applyHero(s); applyHeroSplit(s); applyContent(s); applySiteSettings(s); applyFaceOff(s); applyNewsletter(s); applyLegal(s); applyMedia(s); applyApp(s); applyAppScreens(s); applyTryouts(s); applyTryMedia(s); applyEvenement(s); applyPresaison(s); applyDetection(s); applyEntetes(s); applyInscriptions(s); applyStats(s); applyTribu(s); applyCamp(s); applyFooterCols(s); applyCtaModals(s); applyApparence(s); bbSeoEnrich(s);
+    // Le cinq dépend maintenant d'un réglage : il se refait quand les
+    // réglages arrivent, et à chaque frappe du témoin de l'admin. Sans
+    // cela, changer « quel match afficher » ne se verrait qu'au
+    // rechargement de la page.
+    try { bbLineup(); } catch (e) {}
     // Les reglages viennent de reecrire le bouton « Billetterie » du
     // hero : on repose le mot juste par-dessus.
     bbTkEtiquette();

@@ -1546,6 +1546,18 @@
      d'attente, pas celle d'erreur : rien n'est cassé, il manque juste
      quelque chose. */
   .pc-att{color:var(--attente-clair)}
+  /* Ce que l'accueil montre : le club choisit, et l'ecran le dit. */
+  .pc-vis-bloc{margin-top:14px;padding:12px 13px;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:var(--r-sm)}
+  .pc-vis-t{display:block;font-family:var(--font-ui);font-weight:700;font-size:10.5px;
+    letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin-bottom:9px}
+  .pc-vis-b{display:flex;gap:7px;flex-wrap:wrap}
+  .pc-vis{font:inherit;font-size:12px;padding:7px 12px;border-radius:var(--r-full);cursor:pointer;
+    background:transparent;border:1px solid var(--line-strong);color:var(--muted);
+    transition:border-color .14s,color .14s,background .14s}
+  .pc-vis:hover{border-color:var(--gold);color:var(--text)}
+  .pc-vis.on{background:var(--gold);border-color:var(--gold);color:#06180E;font-weight:700}
+  .pc-vis-m{margin:9px 0 0;font-size:11.5px;color:var(--faint);line-height:1.5}
 
   /* La photo envoyée, dans l'inspecteur du staff. */
   .qgv-src{display:flex;gap:12px;align-items:flex-start;margin:4px 0 16px;padding:11px 12px;
@@ -11428,6 +11440,67 @@
     catch(e){ return m.match_date; }
   }
 
+  /* ==================================================================
+     QUEL CINQ L'ACCUEIL MONTRE : C'EST LE CLUB QUI DECIDE
+     ------------------------------------------------------------------
+     Le site prenait toujours le prochain match par la date. Une
+     composition faite pour vendredi restait donc invisible tant que
+     mercredi n'avait pas la sienne, sans qu'on puisse en decider
+     autrement -- ni meme masquer la section quand on ne veut rien
+     montrer.
+
+     Trois choix, ecrits dans site_settings (lineup_mode,
+     lineup_match_id). Sans reglage, « auto » : le comportement d'avant,
+     rien ne change pour qui n'y touche pas.
+     ================================================================== */
+  function pcLineupMode(){
+    var m = String((settings && settings.lineup_mode) || 'auto').trim().toLowerCase();
+    return (m === 'match' || m === 'off') ? m : 'auto';
+  }
+  function pcLineupId(){ return String((settings && settings.lineup_match_id) || '').trim(); }
+
+  function pcChoixSiteHtml(m){
+    var mode = pcLineupMode(), id = pcLineupId();
+    var estFige = mode === 'match' && String(id) === String(m.id);
+    function bt(val, lib, actif, titre){
+      return '<button type="button" class="pc-vis' + (actif ? ' on' : '') + '" data-pcvis="' + val +
+             '" data-id="' + esc(m.id) + '" title="' + esc(titre) + '">' + esc(lib) + '</button>';
+    }
+    var duSite = pcMatchDuSite();
+    var auto = mode === 'auto'
+      ? 'Le prochain match' + (duSite ? ' — ' + esc(duSite.opponent_name || '') : '')
+      : 'Le prochain match';
+    return '<div class="pc-vis-bloc">' +
+      '<span class="pc-vis-t">Sur la page d’accueil</span>' +
+      '<div class="pc-vis-b">' +
+        bt('auto',  auto,           mode === 'auto',  'Le site suit le calendrier tout seul.') +
+        bt('match', 'Ce match-ci',  estFige,          'Figer l’accueil sur ce match, quelle que soit la date.') +
+        bt('off',   'Ne rien montrer', mode === 'off', 'Masquer la section « Cinq majeur » du site.') +
+      '</div>' +
+      '<p class="pc-vis-m">' + (
+        mode === 'off'    ? 'La section est masquée : l’accueil ne montre aucun cinq.' :
+        mode === 'match'  ? (estFige ? 'L’accueil est figé sur ce match.'
+                                     : 'L’accueil est figé sur un autre match. « Ce match-ci » le déplace ici.')
+                          : 'L’accueil suit le calendrier : il montre le cinq du prochain match, et rien d’autre.'
+      ) + '</p></div>';
+  }
+
+  /* Un seul endroit ecrit ces deux reglages, et il rafraichit l'ecran :
+     un bouton qui s'allume sans que la page suive ne prouve rien. */
+  function pcPoserVisibilite(val, id){
+    var paires = (val === 'match')
+      ? [{ key:'lineup_mode', value:'match' }, { key:'lineup_match_id', value:String(id) }]
+      : [{ key:'lineup_mode', value:val }];
+    return sbUpsert('site_settings', paires, 'Le match').then(function(){
+      settings.lineup_mode = val;
+      if (val === 'match') settings.lineup_match_id = String(id);
+      qgToast(val === 'off'   ? 'Le cinq est masqué du site ✓'
+            : val === 'match' ? 'L’accueil affiche ce match ✓'
+                              : 'L’accueil suit le calendrier ✓');
+      pcRender();
+    }).catch(function(){ qgToast('Le réglage n’a pas pu être enregistré.', true); });
+  }
+
   function pcJours(m){ return m && m.match_date ? daysUntil(m.match_date) : null; }
   function pcScore(m){ return m && m.score_baobabs != null && m.score_opponent != null; }
 
@@ -11565,7 +11638,7 @@
                  'la page d’accueil reste sans composition tant qu’il n’a pas son cinq.';
         return 'Aucune titulaire désignée. La composition se fait avec les visages, dans la fiche.';
       })(),
-      detail: cinqHtml,
+      detail: cinqHtml + pcChoixSiteHtml(m),
       actions: '<button type="button" data-pc="fiche" data-tab="feuille">' + (cinqOk ? 'Revoir la composition' : 'Composer le cinq') + '</button>' });
 
     // 4. L'affiche
@@ -11763,6 +11836,9 @@
 
   // ---------- les gestes ----------
   function pcClic(e){
+    // Le choix de ce que l'accueil montre : trois boutons, un reglage.
+    var v = e.target.closest('[data-pcvis]');
+    if (v){ pcPoserVisibilite(v.getAttribute('data-pcvis'), v.getAttribute('data-id')); return; }
     var b = e.target.closest('[data-pc]'); if (!b) return;
     var act = b.getAttribute('data-pc'), d = pcData;
     if (act === 'choisir'){ pcSel = b.getAttribute('data-id'); pcRenderChoix(); pcCharger(); return; }
