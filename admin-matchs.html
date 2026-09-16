@@ -12716,7 +12716,7 @@
     galerie:   { titre:'La galerie, sur le site', cible:{page:'accueil',sel:'#bb-galerie'}, table:'gallery', lignes:function(){ return galRows.filter(function(g){ return g.published !== false; }); } },
     staff:     { titre:'Le staff, sur le site', cible:{page:'club',sel:'#bb-staff-list'}, table:'staff', lignes:function(){ return qgvState('staff').rows; } },
     bureau:    { titre:'L\'organigramme, sur le site', cible:{page:'club',sel:'#bb-org'} },
-    partners:  { titre:'Les partenaires, sur le site', cible:{page:'accueil',sel:'#bb-partners-grid'}, table:'partners', lignes:function(){ return qgvState('partners').rows; } },
+    partners:  { titre:'Les partenaires, sur le site', cible:{page:'accueil',sel:'#bb-partners-grid'}, table:'partners', reglages:true, lignes:function(){ return qgvState('partners').rows; } },
     timeline:  { titre:'Notre histoire, sur le site', cible:{page:'club',sel:'#bb-timeline'}, table:'timeline_events', lignes:function(){ return qgvState('timeline').rows; } },
     standings: { titre:'Le classement, sur le site', cible:{page:'competitions',sel:'#bb-standings-wrap'}, table:'standings', lignes:function(){ return qgvState('standings').rows; } },
     news:      { titre:'Les actualités, sur le site', cible:{page:'actualites',sel:'#bb-ac-liste'} },
@@ -30794,11 +30794,60 @@
         });
       });
     }
+    box.querySelectorAll('[data-pstyle]').forEach(function(b){ b.addEventListener('click',function(){ pnPoserStyle(b.getAttribute('data-pstyle')); }); });
     box.querySelectorAll('.qgv-add').forEach(function(b){ b.addEventListener('click',function(){ qgvAdd(key); }); });
     box.querySelectorAll('.qgv-del').forEach(function(b){ b.addEventListener('click',function(e){ e.stopPropagation(); qgvDeleteId(key,b.getAttribute('data-qgv-id')); }); });
   }
 
   function bbRichAdmin(h){ var s=(h==null?'':String(h)); return s.replace(/<\s*script/gi,'&lt;script').replace(/on\w+\s*=/gi,'data-x='); }
+
+  /* ==================================================================
+     COMMENT LES PARTENAIRES S'AFFICHENT SUR LE SITE
+     ------------------------------------------------------------------
+     Une seule presentation ne peut pas convenir a deux partenaires ET a
+     quinze : les grandes cartes font vide a deux, et un mur a quinze.
+     Quatre prereglages, un seul reglage (partners_style), et le conseil
+     ecrit a cote parce qu'il depend du nombre de logos -- c'est la
+     seule chose que l'ecran sait et que l'oeil ne calcule pas.
+     ================================================================== */
+  var PN_STYLES = [
+    { v:'cartes', lib:'Cartes',  aide:'Une carte par partenaire, comme aujourd’hui. Genereux jusqu’a 6 logos.' },
+    { v:'grille', lib:'Grille',  aide:'Les memes cartes en plus petit, rangees. Pour en montrer beaucoup.' },
+    { v:'bande',  lib:'Bande',   aide:'Des logos nus, alignes, sans cadre. La presentation la plus discrete.' },
+    { v:'defile', lib:'Defile',  aide:'Une ligne qui avance toute seule. Beaucoup de logos, une seule ligne de haut.' }
+  ];
+  function pnStyle(){
+    var v = String((settings && settings.partners_style) || 'cartes').trim().toLowerCase();
+    for (var i = 0; i < PN_STYLES.length; i++) if (PN_STYLES[i].v === v) return v;
+    return 'cartes';
+  }
+  function pnConseil(n){
+    if (!n) return 'Ajoutez un premier partenaire pour voir la difference.';
+    if (n <= 2) return n + (n > 1 ? ' partenaires' : ' partenaire') + ' · les cartes leur donnent de la place ; la bande les ferait paraître perdus.';
+    if (n <= 6) return n + ' partenaires · les cartes tiennent sur une a deux rangees. Tout va bien.';
+    return n + ' partenaires · en cartes, le bloc occupe plusieurs rangees et repousse le bas de la page. La grille ou le defile le ramenent a une hauteur normale.';
+  }
+  function pnStyleHtml(n){
+    var cur = pnStyle(), aide = '';
+    var b = PN_STYLES.map(function(s){
+      if (s.v === cur) aide = s.aide;
+      return '<button type="button" class="pc-vis' + (s.v === cur ? ' on' : '') +
+             '" data-pstyle="' + s.v + '" title="' + esc(s.aide) + '">' + esc(s.lib) + '</button>';
+    }).join('');
+    return '<div class="pc-vis-bloc" style="margin:0 0 16px">' +
+      '<span class="pc-vis-t">Sur le site, les partenaires s’affichent en</span>' +
+      '<div class="pc-vis-b">' + b + '</div>' +
+      '<p class="pc-vis-m">' + esc(aide) + '<br><span style="color:var(--muted)">' + esc(pnConseil(n)) + '</span></p></div>';
+  }
+  function pnPoserStyle(v){
+    return sbUpsert('site_settings', [{ key:'partners_style', value:v }], 'Les partenaires').then(function(){
+      settings.partners_style = v;
+      qgToast('Les partenaires s’affichent en ' + v + ' ✓');
+      qgvRenderCards('partners');
+      tmApresEcriture();
+    }).catch(function(){ qgToast('Le réglage n’a pas pu être enregistré.', true); });
+  }
+
   var QGV_RENDER = {
     // Le classement était une grille de div à styles en ligne, couleurs
     // codées en dur comprises. Il passe aux classes et aux jetons, et
@@ -30862,7 +30911,7 @@
       var sorted=rows.slice().sort(function(a,b){ var fa=(a.featured===true||a.featured==='true')?0:1, fb=(b.featured===true||b.featured==='true')?0:1; if(fa!==fb) return fa-fb; return (a.sort||0)-(b.sort||0); });
       var out=''; sorted.forEach(function(p){ out+=tile(p,p.id); }); if(draft) out+=tile(draft,'__new__');
       out+='<button type="button" class="qgv-add" style="aspect-ratio:3/2;border-radius:var(--r-md);border:1px dashed var(--line-loud);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);cursor:pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12px">Ajouter</span></button>';
-      return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px">'+out+'</div>';
+      return pnStyleHtml(sorted.length)+'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px">'+out+'</div>';
     },
     staff:function(rows, draft, sel){
       function card(m,id){

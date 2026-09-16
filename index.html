@@ -1043,6 +1043,73 @@ window.bbLienSur = function (u) {
     .bb-partner,.bb-partner.is-main{width:100%;max-width:320px}
   }
 
+  /* --- quatre presentations, un seul reglage ---
+     « partners_style » pose une classe sur la grille, et rien d'autre
+     ne bouge : les logos, les noms et l'ordre restent ceux de
+     l'administration. Sans reglage, st-cartes : exactement ce que le
+     site montrait avant. Les trois autres existent parce qu'une rangee
+     de cartes de 150 px de haut, passe six partenaires, devient un mur
+     qui repousse le reste de la page. */
+
+  /* BANDE et DEFILE partagent le meme objet : un logo nu, sans cadre.
+     44 px de haut au lieu de 150 : dix partenaires tiennent sur une
+     ligne au lieu de trois rangees. */
+  .st-bande .bb-partner,.st-bande .bb-partner.is-main,
+  .st-defile .bb-partner,.st-defile .bb-partner.is-main{
+    width:auto;min-height:0;background:none;border:none;border-radius:0;padding:4px 0;gap:8px}
+  .st-bande .bb-partner:hover,.st-defile .bb-partner:hover{transform:none}
+  .st-bande .bb-partner-logo,.st-defile .bb-partner-logo{height:44px;width:auto;min-width:70px;max-width:170px}
+  .st-bande .bb-partner.is-main .bb-partner-logo,
+  .st-defile .bb-partner.is-main .bb-partner-logo{height:58px;max-width:210px}
+  .st-bande .bb-partner img,.st-defile .bb-partner img{opacity:.55}
+  .st-bande .bb-partner:hover img,.st-defile .bb-partner:hover img{opacity:1}
+  /* le nom reste la pour les lecteurs d'ecran ; il ne s'affiche que
+     quand il n'y a pas de logo a montrer -- une initiale seule ne
+     designe personne. */
+  .st-bande .bb-partner-nom,.st-defile .bb-partner-nom{
+    position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .st-bande .is-texte .bb-partner-logo,.st-defile .is-texte .bb-partner-logo{display:none}
+  .st-bande .is-texte .bb-partner-nom,.st-defile .is-texte .bb-partner-nom{
+    position:static;width:auto;height:auto;margin:0;padding:0;overflow:visible;
+    clip:auto;white-space:normal;font-size:12px}
+  .bb-partners-grid.st-bande{gap:clamp(24px,5vw,54px);align-items:center}
+
+  /* GRILLE : les memes cartes, en plus petit et rangees. Pour en
+     montrer beaucoup sans que la page s'allonge. */
+  .bb-partners-grid.st-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+    gap:12px;max-width:1080px;margin:0 auto}
+  .st-grille .bb-partner,.st-grille .bb-partner.is-main{width:auto;min-height:0;padding:14px 12px;gap:8px;border-radius:12px}
+  .st-grille .bb-partner-logo,.st-grille .bb-partner.is-main .bb-partner-logo{height:42px}
+  .st-grille .bb-partner-nom,.st-grille .bb-partner.is-main .bb-partner-nom{font-size:10px;letter-spacing:.06em}
+  .st-grille .bb-partner-role{font-size:8.5px;letter-spacing:.1em;margin-bottom:2px}
+
+  /* DEFILE : une seule ligne qui avance. La piste porte deux series
+     identiques et se decale d'exactement la moitie : la boucle ne se
+     voit pas. Le survol l'arrete, pour pouvoir lire et cliquer. */
+  .bb-partners-grid.st-defile{display:block;gap:0;overflow:hidden;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
+  .bb-partners-piste{display:flex;width:max-content;animation:bb-defile 42s linear infinite}
+  .bb-partners-grid.st-defile:hover .bb-partners-piste,
+  .bb-partners-grid.st-defile:focus-within .bb-partners-piste{animation-play-state:paused}
+  .bb-partners-serie{display:flex;align-items:center;flex:none;
+    gap:clamp(28px,5vw,56px);padding-right:clamp(28px,5vw,56px)}
+  @keyframes bb-defile{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  /* qui a demande moins d'animation obtient une bande fixe */
+  @media(prefers-reduced-motion:reduce){
+    .bb-partners-piste{animation:none;width:auto;flex-wrap:wrap;justify-content:center}
+    .bb-partners-serie:nth-child(2){display:none}
+  }
+  @media(max-width:520px){
+    .st-bande .bb-partner-logo,.st-defile .bb-partner-logo{height:34px;min-width:56px;max-width:124px}
+    .st-bande .bb-partner.is-main .bb-partner-logo,
+    .st-defile .bb-partner.is-main .bb-partner-logo{height:44px;max-width:150px}
+    .bb-partners-grid.st-bande{gap:22px 26px}
+    .bb-partners-grid.st-grille{grid-template-columns:repeat(2,1fr);gap:10px}
+    .st-grille .bb-partner,.st-grille .bb-partner.is-main{width:auto;max-width:none}
+  }
+
   /* ===== newsletter ===== */
   .bb-news-band{position:relative;overflow:hidden;background:linear-gradient(135deg,#0F4030 0%,#0A2318 60%,#07130D 100%)}
   .bb-news-inner{position:relative;z-index:1;max-width:1500px;margin:0 auto;padding:clamp(40px,6vw,72px) clamp(16px,4vw,24px);display:grid;grid-template-columns:1.1fr 1fr;gap:clamp(24px,4vw,48px);align-items:center}
@@ -6941,11 +7008,41 @@ window.bbCloud = function(url, w){
   var SB_KEY = "sb_publishable_68RKprorqTmVkzjHrKgdZw_h-AcMXRh";
   function sbFetch(q){ return fetch(SB_URL + '/rest/v1/' + q, { headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY } }).then(function(r){ if(!r.ok) throw new Error('sb'); return r.json(); }); }
 
+  // QUATRE FAÇONS DE MONTRER SES PARTENAIRES.
+  // Une seule présentation convient mal à tout le monde : deux logos
+  // dans de grandes cartes font vide, quinze font un mur. Le réglage
+  // « partners_style » choisit, et il ne touche à rien d'autre -- les
+  // logos, les noms et l'ordre restent ceux de l'administration.
+  //
+  //   cartes  (défaut) ce qui existait : une carte par partenaire
+  //   bande   des logos alignés, sans cadre, plus discrets
+  //   grille  des cartes plus petites, rangées, pour en montrer beaucoup
+  //   defile  une bande qui avance toute seule, pour en montrer beaucoup
+  //           sans prendre de hauteur
+  function bbPartnersStyle(){
+    var v = String((bbReglagesCourants || {}).partners_style || 'cartes').trim().toLowerCase();
+    return ['cartes','bande','grille','defile'].indexOf(v) >= 0 ? v : 'cartes';
+  }
+
+  // Les partenaires arrivent une fois ; la presentation, elle, peut
+  // changer a chaque frappe du temoin de l'administration. On garde donc
+  // la derniere liste recue pour pouvoir la redessiner sans rien
+  // redemander au serveur.
+  var bbPartenairesRecus = null;
+  function bbPartners(){
+    var el = document.getElementById('bb-partners-grid'); if(!el) return;
+    if (bbPartenairesRecus) { renderPartners(bbPartenairesRecus); return; }
+    el.className = 'bb-partners-grid st-' + bbPartnersStyle();
+  }
+
   function renderPartners(rows){
     var el = document.getElementById('bb-partners-grid'); if(!el) return;
+    if (rows) bbPartenairesRecus = rows;
+    var style = bbPartnersStyle();
+    el.className = 'bb-partners-grid st-' + style;
     var list = (rows||[]).filter(function(p){ return !(p.hidden===true||p.hidden==='true'); });
     list.sort(function(a,b){ var fa=(a.featured===true||a.featured==='true')?0:1, fb=(b.featured===true||b.featured==='true')?0:1; if(fa!==fb) return fa-fb; return (a.sort||0)-(b.sort||0); });
-    el.innerHTML = list.map(function(p){
+    var html = list.map(function(p){
       var featured=(p.featured===true||p.featured==='true');
       var color=(p.force_white===false||p.force_white==='false');
       // La zone du logo a une hauteur fixe et le logo la remplit déjà au
@@ -6965,11 +7062,33 @@ window.bbCloud = function(url, w){
                + '<span class="bb-partner-nom">'
                + (featured?'<span class="bb-partner-role">Partenaire principal</span>':'')
                + esc(p.name||'')+'</span>';
-      var cls='bb-partner'+(color?' is-color':'')+(featured?' is-main':'');
+      // Sans logo, la bande n'a rien a montrer qu'une initiale : on le
+      // dit a la feuille de style, qui ecrira le nom a la place.
+      var cls='bb-partner'+(color?' is-color':'')+(featured?' is-main':'')+(p.logo_url?'':' is-texte');
       return p.website_url
         ? '<a class="'+cls+'" href="'+window.bbSafeUrl(p.website_url)+'" target="_blank" rel="noopener">'+bloc+'</a>'
         : '<div class="'+cls+'">'+bloc+'</div>';
     }).join('');
+
+    if (style === 'defile' && list.length){
+      // Deux series identiques, et la piste se decale de la moitie : la
+      // boucle se referme sans saut. La copie n'est la que pour l'oeil,
+      // on la retire du clavier et des lecteurs d'ecran.
+      el.innerHTML = '<div class="bb-partners-piste">' +
+        '<div class="bb-partners-serie">' + html + '</div>' +
+        '<div class="bb-partners-serie" aria-hidden="true">' + html + '</div></div>';
+      // MESURE : deux logos ne remplissent pas un ecran large. La serie
+      // serait alors plus courte que la bande, et on verrait un trou
+      // traverser la boucle. On repete la serie jusqu'a couvrir la
+      // largeur -- les deux series restent identiques, la boucle tient.
+      var series = el.querySelectorAll('.bb-partners-serie'), garde = 0;
+      while (series[0] && series[0].scrollWidth < el.clientWidth && garde++ < 6){
+        for (var i = 0; i < series.length; i++) series[i].insertAdjacentHTML('beforeend', html);
+      }
+      el.querySelectorAll('.bb-partners-serie[aria-hidden] a').forEach(function(a){ a.tabIndex = -1; });
+    } else {
+      el.innerHTML = html;
+    }
   }
 
   // Un rond avec le visage dedans : les trois nombres de l'admin (staff et
@@ -7776,6 +7895,9 @@ window.bbCloud = function(url, w){
     // cela, changer « quel match afficher » ne se verrait qu'au
     // rechargement de la page.
     try { bbLineup(); } catch (e) {}
+    // Pareil pour la presentation des partenaires : changer le
+    // prereglage doit se voir tout de suite, pas au rechargement.
+    try { bbPartners(); } catch (e) {}
     // Les reglages viennent de reecrire le bouton « Billetterie » du
     // hero : on repose le mot juste par-dessus.
     bbTkEtiquette();
@@ -7824,6 +7946,11 @@ window.bbCloud = function(url, w){
         var s = {}, k;
         for (k in bbReglagesCourants) s[k] = bbReglagesCourants[k];
         for (k in (m.reglages || {})) s[k] = m.reglages[k];
+        // LE TEMOIN DOIT AUSSI SE SOUVENIR. Certains blocs ne lisent pas
+        // l'objet qu'on leur passe mais le dernier reglage connu (le
+        // cinq, les partenaires). Sans cette ligne, l'apercu ignorait
+        // tout changement de « quel match » ou « quelle presentation ».
+        bbReglagesCourants = s;
         try { bbAppliquerReglages(s); } catch(err){ console.warn('[temoin]', err); }
       }
       if (m.type === 'bbc-temoin-lignes' && bbPoser[m.table]){
