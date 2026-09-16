@@ -26,6 +26,13 @@
 --  fonction range l'integralite de l'envoi dans la colonne
 --  « soumission » (jsonb) -- les champs neufs y etaient deja, faute
 --  d'etre ranges dans des colonnes. Le filet a tenu.
+--
+--  APPLIQUEE EN PRODUCTION LE 16 SEPTEMBRE 2026, et verifiee par un
+--  envoi reel depuis le formulaire : role « Entraineur principal »,
+--  qualification « Brevet d'Etat 2e degre », joined_at 2019-01-01,
+--  fiche_etat « recue », et le coach en attente n'apparait pas sur le
+--  site. Les trois campagnes manquantes (Encadrement, Staff technique,
+--  Bureau) ont ete ouvertes dans la foulee.
 -- =====================================================================
 
 alter table public.staff
