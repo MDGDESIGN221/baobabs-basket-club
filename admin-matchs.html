@@ -1546,6 +1546,11 @@
      d'attente, pas celle d'erreur : rien n'est cassé, il manque juste
      quelque chose. */
   .pc-att{color:var(--attente-clair)}
+  /* GLISSER POUR RANGER. La main dit qu'on peut prendre ; l'element tire
+     s'efface pour qu'on voie la place ou il va tomber. */
+  [data-dnd="1"] > [draggable="true"]{cursor:grab}
+  [data-dnd="1"] > [draggable="true"]:active{cursor:grabbing}
+  .dnd-tire{opacity:.35;outline:2px dashed var(--gold);outline-offset:2px}
   /* La carte qu'on vient de quitter se signale une seconde : sans elle,
      on retrouve sa place mais pas sa ligne. */
   @keyframes ef-revient{0%,100%{box-shadow:0 0 0 0 rgba(198,162,87,0)}
@@ -20537,7 +20542,17 @@
         '</div></div>';
     }).join('');
 
+    // L'effectif se range aussi a la souris : c'est cet ordre-la que la
+    // page Equipe du site suit.
+    dndRanger(box, '.ef-card', 'data-id', function(ordre){
+      var avant = {}; efRows.forEach(function(r){ avant[String(r.id)] = r.sort; });
+      dndEcrireOrdre('players', ordre, avant, 'Joueuses').then(function(n){
+        if (n){ qgToast('Ordre de l’effectif enregistré ✓'); efLoad(); }
+      }).catch(function(){ qgToast('L’ordre n’a pas pu être enregistré.', true); efLoad(); });
+    });
+
     box.querySelectorAll('.ef-card').forEach(function(el){
+      el.setAttribute('draggable', 'true');
       el.addEventListener('click', function(){ efOuvrir(el.getAttribute('data-id')); });
     });
   }
@@ -30510,6 +30525,81 @@
     timeline:{ k:'Le club', h:'Notre histoire', p:'Clique une étape pour l\'éditer · ajoute une étape · le texte accepte gras, surligné, couleur.' },
     shop:{ k:'La boutique', h:'Produits', p:'Clique une fiche produit pour l\'éditer.' }
   };
+  /* ==================================================================
+     GLISSER POUR RANGER, PARTOUT
+     ------------------------------------------------------------------
+     Dix-huit écrans promettaient « glissez pour réordonner ». Un seul le
+     faisait vraiment : la composition du match. Partout ailleurs il
+     fallait ouvrir chaque fiche et taper un numéro d'ordre, en devinant
+     lesquels étaient déjà pris.
+
+     Un seul mécanisme, pose sur n'importe quelle liste : on lui donne un
+     conteneur, le sélecteur de ses éléments, et ce qu'il faut faire de
+     l'ordre obtenu. Il ne connaît ni les joueuses ni le staff.
+
+     Le glisser ne franchit pas les frontières d'un conteneur : sur
+     l'écran Staff, coupé en Encadrement / Staff technique / Bureau, on
+     range DANS son groupe. Changer de famille est un choix de fiche, pas
+     un geste de souris -- on ne veut pas qu'un coach devienne dirigeant
+     parce que la main a glissé.
+     ================================================================== */
+  function dndRanger(conteneur, selecteur, attribut, appliquer){
+    if (!conteneur || conteneur.getAttribute('data-dnd') === '1') return;
+    conteneur.setAttribute('data-dnd', '1');
+    var tire = null;
+
+    function apres(y){
+      /* l'élément avant lequel on va poser : le premier dont le milieu
+         est sous le curseur. Sans ça, on ne peut jamais insérer en fin. */
+      var autres = Array.prototype.filter.call(
+        conteneur.querySelectorAll(selecteur), function(n){ return n !== tire; });
+      for (var i = 0; i < autres.length; i++){
+        var r = autres[i].getBoundingClientRect();
+        if (y < r.top + r.height / 2) return autres[i];
+      }
+      return null;
+    }
+
+    conteneur.addEventListener('dragstart', function(e){
+      var n = e.target.closest(selecteur);
+      if (!n || !conteneur.contains(n)) return;
+      tire = n; n.classList.add('dnd-tire');
+      try { e.dataTransfer.setData('text/plain', n.getAttribute(attribut) || '');
+            e.dataTransfer.effectAllowed = 'move'; } catch(_){}
+    });
+    conteneur.addEventListener('dragover', function(e){
+      if (!tire) return;
+      e.preventDefault();
+      try { e.dataTransfer.dropEffect = 'move'; } catch(_){}
+      var cible = apres(e.clientY);
+      if (cible) conteneur.insertBefore(tire, cible); else conteneur.appendChild(tire);
+    });
+    conteneur.addEventListener('drop', function(e){ e.preventDefault(); });
+    conteneur.addEventListener('dragend', function(){
+      if (!tire) return;
+      tire.classList.remove('dnd-tire'); tire = null;
+      var ordre = Array.prototype.map.call(conteneur.querySelectorAll(selecteur),
+        function(n){ return n.getAttribute(attribut); }).filter(Boolean);
+      appliquer(ordre);
+    });
+  }
+
+  /* Écrire l'ordre : on ne touche QUE les lignes qui ont bougé. Réécrire
+     les quinze à chaque glissement ferait quinze écritures et quinze
+     lignes de journal pour un seul geste. */
+  function dndEcrireOrdre(table, ordre, avant, section){
+    var ecritures = [];
+    ordre.forEach(function(id, i){
+      var neuf = (i + 1) * 10;
+      if (String(avant[String(id)]) !== String(neuf))
+        ecritures.push({ id:id, sort:neuf });
+    });
+    if (!ecritures.length) return Promise.resolve(0);
+    return Promise.all(ecritures.map(function(e){
+      return sbUpdate(table, e.id, { sort: e.sort }, section);
+    })).then(function(){ return ecritures.length; });
+  }
+
   function qgvState(key){ if(!QGV[key]) QGV[key]={rows:[],sel:null,draft:null,built:false}; return QGV[key]; }
   function qgvInit(key){
     buildCollection(key);
@@ -30648,6 +30738,27 @@
     box.innerHTML=(QGV_RENDER[key]||function(){return '';})(rows, S.draft, S.sel);
     if(S.q && S.q.trim() && !rows.length && !S.draft){ box.insertAdjacentHTML('afterbegin','<div class="qg-loading">Aucun résultat pour « '+esc(S.q)+' ».</div>'); }
     box.querySelectorAll('[data-qgv-id]').forEach(function(el){ el.addEventListener('click',function(e){ if(e.target.closest('.qgv-tb')) return; qgvSelect(key, el.getAttribute('data-qgv-id')); }); });
+    // GLISSER POUR RANGER. Seules les collections qui tiennent un ordre
+    // le proposent : ranger une liste triee par date ne veut rien dire.
+    if (/sort/.test((COLLECTIONS[key] || {}).order || '')){
+      box.querySelectorAll('[data-qgv-id]').forEach(function(el){
+        if (el.getAttribute('data-qgv-id') !== '__new__') el.setAttribute('draggable', 'true');
+      });
+      // Un conteneur par groupe : sur Staff, on range dans sa famille.
+      var vus = [];
+      box.querySelectorAll('[data-qgv-id]').forEach(function(el){
+        var p = el.parentNode;
+        if (!p || vus.indexOf(p) >= 0) return;
+        vus.push(p);
+        dndRanger(p, '[data-qgv-id]', 'data-qgv-id', function(ordre){
+          var avant = {}; qgvState(key).rows.forEach(function(r){ avant[String(r.id)] = r.sort; });
+          dndEcrireOrdre(COLLECTIONS[key].table, ordre.filter(function(i){ return i !== '__new__'; }),
+                         avant, key).then(function(n){
+            if (n){ qgToast('Ordre enregistré ✓'); qgvLoad(key); }
+          }).catch(function(){ qgToast('L’ordre n’a pas pu être enregistré.', true); qgvLoad(key); });
+        });
+      });
+    }
     box.querySelectorAll('.qgv-add').forEach(function(b){ b.addEventListener('click',function(){ qgvAdd(key); }); });
     box.querySelectorAll('.qgv-del').forEach(function(b){ b.addEventListener('click',function(e){ e.stopPropagation(); qgvDeleteId(key,b.getAttribute('data-qgv-id')); }); });
   }
