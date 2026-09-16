@@ -246,10 +246,30 @@
       </div>
 
       <!-- ce qui ne concerne que l'encadrement -->
+      <!-- L'ENCADREMENT : coach, staff technique, dirigeant.
+           Le bloc est commun, mais son contenu se regle par metier --
+           la liste des fonctions change, et le diplome n'apparait que
+           pour ceux qui en ont un. -->
       <div id="part-staff" class="cache">
-        <div class="bloc"><label class="t" for="fonction">Fonction au club</label>
-          <input type="text" id="fonction" placeholder="Entraîneur, préparateur physique, trésorier…">
-          <p class="aide">Telle qu’elle apparaîtra sur le site.</p></div>
+        <div class="bloc">
+          <label class="t" for="fonction">Ta fonction au club</label>
+          <select id="fonction"></select>
+          <input type="text" id="fonction-autre" class="cache" placeholder="Laquelle ?" style="margin-top:9px">
+          <p class="aide" id="fonction-aide">Telle qu’elle apparaîtra sur le site.</p>
+        </div>
+
+        <div class="bloc duo">
+          <div id="bloc-qualif" class="cache">
+            <label class="t" for="qualification">Diplôme</label>
+            <input type="text" id="qualification" placeholder="Brevet d’État, licence FIBA…">
+          </div>
+          <div>
+            <label class="t" for="depuis">Au club depuis</label>
+            <input type="number" id="depuis" list="l-depuis" inputmode="numeric"
+                   placeholder="Année" autocomplete="off">
+            <datalist id="l-depuis"></datalist>
+          </div>
+        </div>
       </div>
 
       <div class="bloc duo">
@@ -325,9 +345,87 @@
   var MOIS = ['janvier','février','mars','avril','mai','juin',
               'juillet','août','septembre','octobre','novembre','décembre'];
 
+  // ============== CE QUE CHAQUE METIER DOIT REMPLIR ==============
+  //
+  // Ce qui est commun reste commun : photo, nom, ville, telephone, bio,
+  // autorisation. Chacun recoit ensuite ce qui le concerne, ET RIEN
+  // D'AUTRE -- demander son diplome d'entraineur a un tresorier lui
+  // ferait douter d'etre au bon endroit.
+  //
+  // Chaque liste finit par « Autre… » : aucun club ne rentre
+  // entierement dans une liste ecrite d'avance.
+  var METIERS = {
+    joueuse: {
+      titre: 'Ta fiche de joueuse',
+      chapo: 'Ta photo et tes informations pour la page <b>Équipe</b> du site. ' +
+             'Quelques minutes, une seule fois dans la saison.'
+    },
+    coach: {
+      titre: 'Ta fiche de coach',
+      chapo: 'Ta photo et tes informations pour la page <b>Staff</b> du site.',
+      fonctions: ['Entraîneur principal','Entraîneure principale','Entraîneur adjoint',
+                  'Entraîneure adjointe','Entraîneur des jeunes','Assistant coach'],
+      qualif: 'Diplôme',
+      qualifAide: 'Brevet d’État, licence FIBA, formation fédérale…',
+      aide: 'Telle qu’elle apparaîtra sous ton nom sur le site.'
+    },
+    staff: {
+      titre: 'Ta fiche au club',
+      chapo: 'Ta photo et tes informations pour la page <b>Staff</b> du site.',
+      fonctions: ['Préparateur physique','Préparatrice physique','Kinésithérapeute',
+                  'Médecin','Statisticien','Statisticienne','Table de marque',
+                  'Responsable matériel','Intendant'],
+      qualif: 'Spécialité ou diplôme',
+      qualifAide: 'Ce sur quoi tu interviens, ou ton diplôme s’il y en a un.',
+      aide: 'Telle qu’elle apparaîtra sous ton nom sur le site.'
+    },
+    dirigeant: {
+      titre: 'Ta fiche de dirigeant',
+      chapo: 'Ta photo et tes informations pour la page <b>Le club</b> du site.',
+      fonctions: ['Président','Présidente','Vice-président','Vice-présidente',
+                  'Secrétaire général','Secrétaire générale','Trésorier','Trésorière',
+                  'Membre du bureau'],
+      // Pas de diplome : un tresorier n'en a pas, et le lui demander
+      // ferait douter qu'il soit au bon endroit.
+      aide: 'Telle qu’elle apparaîtra sous ton nom sur le site.'
+    }
+  };
+  function metier(){ return METIERS[TYPE] || METIERS.staff; }
+
   function opt(v, t, sel){
     return '<option value="' + v + '"' + (sel ? ' selected' : '') + '>' + (t == null ? v : t) + '</option>';
   }
+  // Les fonctions du metier, son diplome s'il en a un, et les annees
+  // d'entree au club.
+  function batirMetier(){
+    var m = metier();
+    el('fonction').innerHTML = '<option value="">—</option>' +
+      (m.fonctions || []).map(function(f){ return opt(f); }).join('') +
+      opt('_autre', 'Autre…');
+    el('fonction-aide').textContent = m.aide || '';
+    el('fonction').addEventListener('change', function(){
+      var libre = this.value === '_autre';
+      el('fonction-autre').classList.toggle('cache', !libre);
+      if (libre) el('fonction-autre').focus();
+    });
+    // Le diplome n'apparait que pour ceux qui en ont un.
+    var q = !!m.qualif;
+    el('bloc-qualif').classList.toggle('cache', !q);
+    if (q){
+      el('bloc-qualif').querySelector('label').textContent = m.qualif;
+      el('qualification').placeholder = m.qualifAide || '';
+    }
+    var an = new Date().getFullYear(), a = [];
+    for (var y = an; y >= an - 30; y--) a.push(opt(String(y)));
+    el('l-depuis').innerHTML = a.join('');
+    el('depuis').min = an - 60;
+    el('depuis').max = an;
+  }
+  function fonctionLue(){
+    var v = el('fonction').value;
+    return v === '_autre' ? el('fonction-autre').value.trim() : v;
+  }
+
   function remplirListes(){
     // Taille et poids : DES SUGGESTIONS, PAS UNE LISTE FERMEE.
     // Le champ reste libre -- celle qui mesure 1,785 m ou qui prefere
@@ -487,7 +585,11 @@
   } else if (REPRISE){
     rpc('bbc_collecte_reprendre', { p_reprise: REPRISE }).then(function(r){
       if (!r || !r.ok){ montrer('ecran-refus'); return; }
-      TYPE = r.type === 'joueuse' ? 'joueuse' : 'staff';
+      // Une reprise ne connait que « joueuse » ou « staff » : la base
+      // ne retient pas le metier exact, il vit dans la campagne. On
+      // retombe donc sur la fiche la plus generale, qui accepte tout ce
+      // qui a ete envoye.
+      TYPE = METIERS[r.type] ? r.type : 'staff';
       if (!r.modifiable){
         montrer('ecran-refus');
         el('ecran-refus').querySelector('h1').textContent = 'Votre profil est validé';
@@ -507,18 +609,16 @@
         el('refus-mot').textContent = (r && mots[r.motif]) || 'Demandez au club un nouveau lien.';
         return;
       }
-      TYPE = r.type === 'joueuse' ? 'joueuse' : 'staff';
-      // CE NE SONT PAS DES CANDIDATES. Elles font deja partie du club :
-      // le formulaire sert a recueillir leurs informations pour le site,
-      // pas a postuler. « Rejoindre l'effectif » etait un contresens --
-      // elles y sont deja.
+      // Un type inconnu -- une campagne creee demain avec une valeur
+      // qu'on n'a pas prevue -- retombe sur la fiche la plus generale.
+      // Jamais un ecran blanc.
+      TYPE = METIERS[r.type] ? r.type : 'staff';
+      // CE NE SONT PAS DES CANDIDATS. Ils font deja partie du club : le
+      // formulaire sert a recueillir leurs informations pour le site,
+      // pas a postuler.
       el('saison').textContent = r.libelle || 'Saison en cours';
       el('saison').classList.remove('cache');
-      batir(r.type === 'joueuse' ? 'Ta fiche de joueuse' : 'Ta fiche au club',
-            r.type === 'joueuse'
-              ? 'Ta photo et tes informations pour la page <b>Équipe</b> du site. '
-                + 'Quelques minutes, une seule fois dans la saison.'
-              : 'Ta photo et tes informations pour la page <b>Staff</b> du site.');
+      batir(metier().titre, metier().chapo);
     }).catch(panne);
   }
   function panne(){
@@ -534,6 +634,7 @@
     el('part-joueuse').classList.toggle('cache', TYPE !== 'joueuse');
     el('part-staff').classList.toggle('cache', TYPE === 'joueuse');
     remplirListes();
+    if (TYPE !== 'joueuse') batirMetier();
     el('postes').innerHTML = POSTES.map(function(p, i){
       return '<label><input type="checkbox" value="' + p + '" id="po-' + i + '"><span>' + p + '</span></label>';
     }).join('');
@@ -625,7 +726,21 @@
         var i = POSTES.indexOf(p);
         if (i >= 0) el('po-' + i).checked = true;
       });
-    } else if (d.fonction) el('fonction').value = d.fonction;
+    } else {
+      if (d.fonction){
+        // Une fonction hors liste revient dans le champ libre, pas dans
+        // le vide : elle doit se retrouver telle qu'elle a ete ecrite.
+        var connue = (metier().fonctions || []).indexOf(d.fonction) >= 0;
+        if (connue) el('fonction').value = d.fonction;
+        else {
+          el('fonction').value = '_autre';
+          el('fonction-autre').value = d.fonction;
+          el('fonction-autre').classList.remove('cache');
+        }
+      }
+      if (d.qualification) el('qualification').value = d.qualification;
+      if (d.depuis) el('depuis').value = d.depuis;
+    }
     if (d.photo){
       photoUrl = d.photo;
       el('vignette').innerHTML = '<img src="' + d.photo + '" alt="">';
@@ -706,9 +821,11 @@
       (!prenom ? el('prenom') : el('nom')).focus();
       return;
     }
-    if (TYPE !== 'joueuse' && !el('fonction').value.trim()){
+    if (TYPE !== 'joueuse' && !fonctionLue()){
       el('fonction').closest('div').classList.add('champ-mal');
-      dire('Indiquez votre fonction au club.'); el('fonction').focus(); return;
+      dire('Choisis ta fonction au club.');
+      (el('fonction').value === '_autre' ? el('fonction-autre') : el('fonction')).focus();
+      return;
     }
     // Une annee commencee mais impossible ne part pas sans un mot : la
     // date disparaitrait de la fiche sans que personne ne comprenne.
@@ -753,7 +870,9 @@
         d.ancien_club = el('ancien').value.trim();
         d.postes = POSTES.filter(function(p, i){ return el('po-' + i) && el('po-' + i).checked; });
       } else {
-        d.fonction = el('fonction').value.trim();
+        d.fonction = fonctionLue();
+        d.qualification = el('qualification').value.trim();
+        d.depuis = el('depuis').value.trim();
       }
       return REPRISE ? rpc('bbc_collecte_majour', { p_reprise: REPRISE, p_data: d })
                      : rpc('bbc_collecte_deposer', { p_jeton: JETON, p_data: d });
