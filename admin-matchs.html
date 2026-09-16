@@ -17889,6 +17889,10 @@
         // tombait dans la base et n'était visible nulle part.
         {name:'qualification',label:'Diplôme ou spécialité',type:'text',opt:true,ph:'Ex : Brevet d\'État 2e degré'},
         {name:'joined_at',label:'Au club depuis',type:'date',opt:true},
+        // Demandé à tout le monde par le formulaire, et rangé nulle part
+        // jusqu'au 16 septembre 2026 : il ne survivait que dans la
+        // colonne « soumission », que rien ne lit.
+        {name:'phone',label:'Téléphone',type:'text',opt:true,ph:'77 000 00 00'},
         // Un dirigeant existe aussi dans l'organigramme, qui porte ses
         // responsabilités et ses pouvoirs. Le rattacher évite deux fiches
         // pour une seule personne.
@@ -18966,9 +18970,19 @@
 
     var fld = function(id, label, val, type, ph, opts){
       var inner;
-      if (opts) inner = '<select id="' + id + '">' + opts.map(function(o){
-        return '<option value="' + esc(o[0]) + '"' + (String(val || '') === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
-      }).join('') + '</select>';
+      if (opts){
+        // UNE VALEUR HORS LISTE RESTE DANS LA LISTE.
+        // Le formulaire de collecte écrit « Meneuse », la fiche n'offrait
+        // que « Meneur / Meneuse » : le poste envoyé ne s'affichait pas,
+        // et surtout le premier enregistrement l'écrasait par la valeur
+        // vide en tête de liste. On perdait la donnée en ouvrant la fiche.
+        // Ce qui est en base s'affiche, toujours.
+        var oo = opts.slice(), vv = String(val == null ? '' : val);
+        if (vv && !oo.some(function(x){ return String(x[0]) === vv; })) oo.push([vv, vv + ' (envoyé)']);
+        inner = '<select id="' + id + '">' + oo.map(function(o){
+          return '<option value="' + esc(o[0]) + '"' + (vv === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+        }).join('') + '</select>';
+      }
       else if (type === 'textarea') inner = '<textarea id="' + id + '" style="min-height:96px;resize:vertical" placeholder="' + esc(ph || '') + '">' + esc(val == null ? '' : val) + '</textarea>';
       else inner = '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '">';
       return '<div class="pr-field"><label for="' + id + '">' + esc(label) + '</label>' + inner + '</div>';
@@ -20144,9 +20158,19 @@
 
     var fld = function(id, label, val, type, ph, opts){
       var inner;
-      if (opts) inner = '<select id="' + id + '">' + opts.map(function(o){
-        return '<option value="' + esc(o[0]) + '"' + (String(val || '') === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
-      }).join('') + '</select>';
+      if (opts){
+        // UNE VALEUR HORS LISTE RESTE DANS LA LISTE.
+        // Le formulaire de collecte écrit « Meneuse », la fiche n'offrait
+        // que « Meneur / Meneuse » : le poste envoyé ne s'affichait pas,
+        // et surtout le premier enregistrement l'écrasait par la valeur
+        // vide en tête de liste. On perdait la donnée en ouvrant la fiche.
+        // Ce qui est en base s'affiche, toujours.
+        var oo = opts.slice(), vv = String(val == null ? '' : val);
+        if (vv && !oo.some(function(x){ return String(x[0]) === vv; })) oo.push([vv, vv + ' (envoyé)']);
+        inner = '<select id="' + id + '">' + oo.map(function(o){
+          return '<option value="' + esc(o[0]) + '"' + (vv === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+        }).join('') + '</select>';
+      }
       else if (type === 'textarea') inner = '<textarea id="' + id + '" style="min-height:96px;resize:vertical" placeholder="' + esc(ph || '') + '">' + esc(val == null ? '' : val) + '</textarea>';
       else inner = '<input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '">';
       return '<div class="pr-field"><label for="' + id + '">' + esc(label) + '</label>' + inner + '</div>';
@@ -20198,6 +20222,13 @@
                 Object.keys(EF_DOSSIER).map(function(k){ return [k, EF_DOSSIER[k][0]]; })) +
             fld('ef-h', 'Taille', r.height, 'text', '1,92 m') +
             fld('ef-w', 'Poids', r.weight, 'text', '72 kg') +
+            // LA DATE ENVOYÉE, PAS SEULEMENT SON ANNÉE.
+            // Le formulaire demande le jour, le mois et l'année, et la
+            // base les garde dans birth_date. La fiche n'avait qu'un champ
+            // « Année » : la date complète arrivait et ne se voyait nulle
+            // part. Les deux coexistent, l'année seule restant vraie pour
+            // les fiches anciennes, saisies à la main.
+            fld('ef-bd', 'Date de naissance', String(r.birth_date || '').slice(0, 10), 'date') +
             fld('ef-by', 'Année de naissance', r.birth_year, 'number', '2004') +
             fld('ef-city', 'Ville', r.city, 'text', 'Dakar') +
             fld('ef-nat', 'Nationalité', r.nationality, 'text', 'Sénégalaise') +
@@ -20275,7 +20306,7 @@
       '</div>';
 
     var note = document.getElementById('ef-note');
-    var ids = ['ef-name','ef-num','ef-pos','ef-status','ef-h','ef-w','ef-by','ef-city','ef-nat','ef-join','ef-prev','ef-insta','ef-tel','ef-sort','ef-photo','ef-inj','ef-bio']
+    var ids = ['ef-name','ef-num','ef-pos','ef-status','ef-h','ef-w','ef-bd','ef-by','ef-city','ef-nat','ef-join','ef-prev','ef-insta','ef-tel','ef-sort','ef-photo','ef-inj','ef-bio']
       .concat(EF_STATS.map(function(k){ return 'ef-s-' + k[0]; }));
     ids.forEach(function(id){
       var el = document.getElementById(id); if (!el) return;
@@ -20299,6 +20330,7 @@
         fiche_etat: v('ef-dossier') || 'publiee',
         height: v('ef-h').trim() || null,
         weight: v('ef-w').trim() || null,
+        birth_date: v('ef-bd') || null,
         birth_year: v('ef-by') === '' ? null : parseInt(v('ef-by'), 10),
         city: v('ef-city').trim() || null,
         nationality: v('ef-nat').trim() || null,
