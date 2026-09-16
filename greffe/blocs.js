@@ -118,6 +118,98 @@
       "  line-height:1.2; color:var(--vert); letter-spacing:-.01em; }",
       ".fact em{ display:block; margin-top:2pt; font-style:normal; font-size:6.3pt;",
       "  line-height:1.34; color:var(--gris); }",
+      /* les mêmes repères EMPILÉS : des cartes l'une sous l'autre, pour
+         la colonne étroite d'un document à deux colonnes */
+      ".facts.pile{ flex-direction:column; border:0; border-radius:0; background:transparent; overflow:visible; }",
+      ".facts.pile .fact{ flex:0 0 auto; border:1px solid var(--filet); border-radius:7pt;",
+      "  background:#fff; padding:4.5pt 7pt 5pt 7pt; }",
+      ".facts.pile .fact + .fact{ margin-top:4.5pt; }",
+      ".facts.pile .fact b{ font-size:12pt; line-height:1.05; }",
+      ".facts.pile .fact .label{ margin-bottom:2pt; }",
+
+      /* les mêmes repères sur fond plein, pour une bande de contact */
+      ".facts.ton-vert{ background:var(--vert); border-color:var(--vert); }",
+      ".facts.ton-vert .fact{ border-left-color:rgba(255,255,255,.22); }",
+      ".facts.ton-vert .fact .label{ color:rgba(255,255,255,.66); }",
+      ".facts.ton-vert .fact b{ color:#fff; }",
+      ".facts.ton-vert .fact em{ color:rgba(255,255,255,.7); }",
+      ".facts.ton-or{ background:var(--or); border-color:var(--or); }",
+      ".facts.ton-or .fact{ border-left-color:rgba(21,32,26,.18); }",
+      ".facts.ton-or .fact .label{ color:rgba(21,32,26,.6); }",
+      ".facts.ton-or .fact b{ color:var(--encre); }",
+
+      /* ---- le fronton : l'en-tête et le grand titre en UN objet ---- */
+      /* Le blason d'un en-tête ordinaire fait 34 points : à cette taille
+         le texte de son cercle s'écrase en tache. Ici il fait 62 points,
+         posé sur un disque clair, comme un badge. */
+      ".fronton{ background:var(--vert); color:#fff; border-radius:11pt; overflow:hidden;",
+      "  padding:11pt 14pt 11pt 14pt; position:relative; }",
+      ".fronton.ton-noir{ background:#15201A; } .fronton.ton-or{ background:var(--or); color:var(--encre); }",
+      ".fronton::after{ content:''; position:absolute; right:-26pt; top:-40pt; width:150pt; height:150pt;",
+      "  border:1.6pt solid rgba(255,255,255,.10); border-radius:99pt; pointer-events:none; }",
+      ".fronton-haut{ display:flex; align-items:center; justify-content:space-between; gap:24pt; }",
+      ".fronton-id{ display:flex; align-items:center; gap:11pt; min-width:0; }",
+      ".fronton-disque{ flex:0 0 auto; width:55pt; height:55pt; border-radius:99pt; background:#FBFAF6;",
+      "  box-shadow:0 0 0 2pt var(--or); display:flex; align-items:center; justify-content:center; }",
+      ".fronton-disque i{ display:block; width:47pt; height:47pt; background-size:contain;",
+      "  background-repeat:no-repeat; background-position:center; }",
+      ".fronton .wordmark{ font-family:'Organetto','Gilroy',sans-serif; font-weight:800; font-size:11.2pt;",
+      "  letter-spacing:.03em; text-transform:uppercase; color:inherit; line-height:1.05; }",
+      ".fronton .tagline{ font-size:7.2pt; font-style:italic; color:rgba(255,255,255,.72); margin-top:2.5pt; }",
+      ".fronton.ton-or .tagline{ color:rgba(21,32,26,.66); }",
+      ".fronton-meta{ text-align:right; flex:0 0 auto; font-size:7pt; line-height:1.45;",
+      "  padding-left:14pt; border-left:1px solid rgba(255,255,255,.18); }",
+      ".fronton-meta b{ display:block; font-family:'Gilroy',sans-serif; font-weight:700; font-size:8pt; color:inherit; }",
+      ".fronton-meta span{ display:block; color:rgba(255,255,255,.7); }",
+      ".fronton.ton-or .fronton-meta span{ color:rgba(21,32,26,.66); }",
+      ".fronton-meta .flagwrap{ display:inline-block; width:17pt; margin-bottom:3.5pt; }",
+      ".fronton-meta .flagwrap svg{ display:block; width:100%; height:auto; border-radius:1pt; }",
+      ".fronton-filet{ height:1.6pt; background:var(--or); margin:8pt 0 8pt 0; border-radius:2pt; }",
+      ".fronton.ton-or .fronton-filet{ background:var(--vert); }",
+      ".fronton-bas{ display:flex; align-items:flex-end; justify-content:space-between; gap:14pt; }",
+      ".fronton-bas .label{ color:var(--or); display:block; margin-bottom:4pt; }",
+      ".fronton.ton-or .fronton-bas .label{ color:var(--vert); }",
+      ".fronton h1{ font-family:'Gilroy',sans-serif; font-weight:800; font-size:22.5pt; line-height:.96;",
+      "  letter-spacing:-.022em; text-transform:uppercase; color:inherit; }",
+      ".fronton-sous{ font-size:8.2pt; margin-top:5pt; max-width:118mm; color:rgba(255,255,255,.86); }",
+      ".fronton.ton-or .fronton-sous{ color:rgba(21,32,26,.8); }",
+      ".fronton-droite{ flex:0 0 auto; text-align:right; }",
+      ".fronton-droite b{ display:block; font-family:'Gilroy',sans-serif; font-weight:800; font-size:11.4pt;",
+      "  line-height:1.1; color:var(--or); white-space:nowrap; }",
+      ".fronton.ton-or .fronton-droite b{ color:var(--vert); }",
+      ".fronton-droite span{ display:block; font-size:7.2pt; margin-top:2pt; color:rgba(255,255,255,.72); }",
+      ".fronton.ton-or .fronton-droite span{ color:rgba(21,32,26,.66); }",
+
+      /* ---- deux colonnes : la lettre, et un panneau à côté ---- */
+      /* Chaque colonne est une LISTE DE BLOCS : tout ce que le Greffe sait
+         poser peut y entrer. Le bloc ne se coupe jamais entre deux pages. */
+      ".colonnes{ display:flex; align-items:stretch; gap:9pt; }",
+      ".colonnes .col-g{ flex:1 1 var(--gf-part,62%); min-width:0; }",
+      ".colonnes .col-d{ flex:1 1 auto; min-width:0; width:calc(100% - var(--gf-part,62%));",
+      "  padding:8.5pt 9.5pt 10pt 9.5pt; border-radius:9pt; }",
+      ".colonnes.ton-or .col-d{ background:var(--or); color:var(--encre); }",
+      ".colonnes.ton-vert .col-d{ background:var(--vert); color:#fff; }",
+      ".colonnes.ton-noir .col-d{ background:#15201A; color:#fff; }",
+      ".colonnes.ton-clair .col-d{ background:var(--fond-bloc); color:var(--encre); }",
+      ".colonnes.ton-blanc .col-d{ background:#fff; border:1px solid var(--filet); }",
+      /* nu : deux colonnes simples, sans panneau (un destinataire à gauche,
+         l'objet à droite), pour tenir sur une hauteur au lieu de deux */
+      ".colonnes.ton-nu{ align-items:flex-start; gap:12pt; }",
+      ".colonnes.ton-nu .col-d{ background:transparent; border:0; padding:0; }",
+      ".colonnes .col-d > .titre-col{ display:block; font-family:'Gilroy',sans-serif; font-weight:800;",
+      "  font-size:8.4pt; letter-spacing:.12em; text-transform:uppercase; color:inherit;",
+      "  margin-bottom:7pt; padding-bottom:5pt; border-bottom:1.4pt solid currentColor; }",
+      ".colonnes .col-d .bloc + .bloc{ margin-top:6pt; }",
+      /* dans un panneau sombre ou coloré, les textes reprennent sa teinte */
+      ".colonnes.ton-or .col-d .libre p, .colonnes.ton-vert .col-d .libre p,",
+      ".colonnes.ton-noir .col-d .libre p, .colonnes.ton-or .col-d .case span,",
+      ".colonnes.ton-vert .col-d .case span, .colonnes.ton-noir .col-d .case span{ color:inherit; }",
+      ".colonnes.ton-vert .col-d .label, .colonnes.ton-noir .col-d .label{ color:rgba(255,255,255,.72); }",
+      ".colonnes.ton-or .col-d .label{ color:rgba(21,32,26,.62); }",
+      ".colonnes.ton-vert .col-d .case i, .colonnes.ton-noir .col-d .case i{ border-color:#fff; }",
+      ".colonnes.ton-vert .col-d .case.cochee i::after, .colonnes.ton-noir .col-d .case.cochee i::after{ border-color:#fff; }",
+      ".colonnes .col-d .libre p{ font-size:7.4pt; line-height:1.45; }",
+      ".colonnes .col-g .lettre p, .colonnes .col-g .libre p, .colonnes .col-g .txt p{ max-width:none; }",
 
       /* ---- encadré (objet, mandatement, avertissement) ---- */
       ".encadre{ background:var(--fond-bloc); border-radius:8pt;",
@@ -781,12 +873,21 @@
         return c && (c.chemin || String(c.valeur || '').trim());
       });
       if (!cells.length) return '';
-      return '<section class="facts avoid">' + cells.map(function (c, j) {
+      /* pile : les repères l'un SOUS l'autre, en cartes (colonne étroite)
+         ton : sur fond plein, pour une bande de contact ou de rappel */
+      var ton = val(cfg.ton, d, ctx);
+      return '<section class="facts avoid' + (val(cfg.pile, d, ctx) ? ' pile' : '')
+        + (ton ? ' ton-' + U.ech(ton) : '') + '">' + cells.map(function (c, j) {
         /* une case libre écrit dans sa donnée ; une case calculée, dans fixes */
         var L, V, S;
         if (c.chemin) {
+          /* declare : une carte annoncée par le modèle s'affiche même vide,
+             et se remplit d'un clic. Sans lui, un chiffre encore inconnu
+             n'avait pas de ligne où l'écrire. */
           var ch = c.chemin + '.';
-          L = { t: c.label, a: editChemin(ch + 'label') }; V = { t: c.valeur, a: editChemin(ch + 'valeur') }; S = { t: c.sous, a: editChemin(ch + 'sous') };
+          L = { t: c.label, a: editChemin(ch + 'label'), declare: true };
+          V = { t: c.valeur, a: editChemin(ch + 'valeur'), declare: true };
+          S = { t: c.sous, a: editChemin(ch + 'sous'), declare: true };
         } else {
           L = slot(c, 'label', d, ctx, '', 'cellules.' + j); V = slot(c, 'valeur', d, ctx, '', 'cellules.' + j); S = slot(c, 'sous', d, ctx, '', 'cellules.' + j);
         }
@@ -1029,6 +1130,75 @@
           }).join('') + '</div>' : '') + '</section>';
     },
 
+    /* Le fronton : l'en-tête du club ET le grand titre dans UN seul
+       objet plein. Un en-tête ordinaire pose le blason à 34 points ;
+       à cette taille le texte de son cercle s'écrase en tache, et on
+       croit à un logo cassé. Ici il fait 62 points, sur un disque clair
+       cerclé d'or, comme le badge d'une page de communication. */
+    fronton: function (cfg, d, ctx) {
+      var ton = val(cfg.ton, d, ctx) || 'vert';
+      var meta = val(cfg.meta, d, ctx) || [];
+      var droite = val(cfg.droite, d, ctx) || [];
+      var drapeau = val(cfg.drapeau, d, ctx);
+      var t = slot(cfg, 'texte', d, ctx);
+      return '<section class="fronton avoid ton-' + U.ech(ton) + '">'
+        + '<div class="fronton-haut">'
+        +   '<div class="fronton-id">'
+        +     (fond(ctx) ? '<div class="fronton-disque"><i' + fond(ctx) + '></i></div>' : '')
+        +     '<div>'
+        +     ligne('div', 'wordmark', slot(cfg, 'nom', d, ctx, 'BAOBABS BASKET CLUB'))
+        +     ligne('div', 'tagline', slot(cfg, 'devise', d, ctx, 'Grandir ici. Régner partout.'))
+        +   '</div></div>'
+        +   '<div class="fronton-meta">'
+        +     (drapeau === false ? '' : '<span class="flagwrap">' + B.DRAPEAU + '</span>')
+        +     meta.map(function (l, i) {
+              return ligne(i === 0 ? 'b' : 'span', '', slot({ l: l }, 'l', d, ctx, '', 'meta.' + i));
+            }).join('')
+        +   '</div>'
+        + '</div>'
+        + '<div class="fronton-filet"></div>'
+        + '<div class="fronton-bas"><div>'
+        +   ligne('span', 'label', slot(cfg, 'etiquette', d, ctx))
+        +   '<h1' + t.a + '>' + U.enLigne(t.t || '') + '</h1>'
+        +   ligne('p', 'fronton-sous', slot(cfg, 'sous', d, ctx))
+        + '</div>'
+        + (droite.length ? '<div class="fronton-droite">' + droite.map(function (l, i) {
+            return ligne(i === 0 ? 'b' : 'span', '', slot({ l: l }, 'l', d, ctx, '', 'droite.' + i));
+          }).join('') + '</div>' : '')
+        + '</div></section>';
+    },
+
+    /* Deux colonnes côte à côte : le texte à gauche, un panneau à droite
+       (les chiffres d'un projet, ce qu'on sollicite, un contact). Chaque
+       colonne est une LISTE DE BLOCS, comme la page elle-même : tout ce
+       que le Greffe sait poser peut entrer dans l'une ou dans l'autre.
+
+       poids : la part de la colonne de gauche, en pour cent (62 par
+       défaut). ton : la couleur du panneau de droite (or, vert, noir,
+       clair, blanc). titre : le titre du panneau, modifiable.
+
+       Le bloc ne se coupe PAS entre deux pages : il tient sur une
+       feuille, ou il passe entier sur la suivante (voir eclater). */
+    colonnes: function (cfg, d, ctx) {
+      var poids = parseFloat(val(cfg.poids, d, ctx));
+      if (!(poids > 20 && poids < 85)) poids = 62;
+      var ton = val(cfg.ton, d, ctx) || 'clair';
+      function colonne(cle) {
+        return (val(cfg[cle], d, ctx) || []).map(function (b, j) {
+          return B.rendre(b, d, ctx, ctx.bi + '_' + cle.charAt(0) + j);
+        }).join('');
+      }
+      var g = colonne('gauche'), dr = colonne('droite');
+      var t = slot(cfg, 'titre', d, ctx);
+      if (!g && !dr && !t.t) return '';
+      return '<section class="colonnes avoid ton-' + U.ech(ton) + '" style="--gf-part:' + poids + '%">'
+        + '<div class="col col-g">' + g + '</div>'
+        + '<aside class="col col-d">'
+        + ((t.t || t.a) ? '<span class="titre-col"' + t.a + '>' + U.enLigne(t.t || '') + '</span>' : '')
+        + dr + '</aside>'
+        + '</section>';
+    },
+
     /* Des lignes « Étiquette : valeur », à compléter sur la feuille ou au
        stylo (une ligne pointillée quand c'est vide). champs : [{label,
        chemin|valeur, large}] ; colonnes : 1, 2 (défaut) ou 3. */
@@ -1259,6 +1429,11 @@
     }
     function eclater(bloc) {
       if (bloc.querySelector(':scope > .saut')) { unites.push({ saut: true }); return; }
+      /* Deux colonnes : un tout, qui passe entier à la page suivante.
+         Sans cette ligne, le .txt de la lettre posée dans la colonne de
+         gauche serait sorti de sa colonne et coupé paragraphe par
+         paragraphe, plus bas, par la recherche de '.txt, .pg-groupe'. */
+      if (bloc.querySelector(':scope > .colonnes')) { pousser(bloc, null); return; }
       if (bloc.querySelector(':scope > .arts')) {
         return groupe(bloc, function (b) { return b.querySelector(':scope > .arts'); }, ':scope > .art');
       }

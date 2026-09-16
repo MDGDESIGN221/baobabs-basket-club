@@ -172,6 +172,52 @@
                  droite: ['@' + ch + 'droite1', '@' + ch + 'droite2'] };
       } },
 
+    { type: 'fronton', nom: "Fronton", famille: "Structure",
+      resume: "L'en-tête et le grand titre en un seul bloc plein, blason en grand sur un disque cerclé d'or.",
+      neuf: function () {
+        return { b: 'fronton', ton: 'vert', drapeau: true,
+                 nom: "BAOBABS BASKET CLUB", devise: "Grandir ici. Régner partout.",
+                 meta1: "Dakar, le " + U.dateLongue(U.isoDuJour(), false), meta2: "Récépissé n° 8280",
+                 etiquette: "Le club", texte: "Grand titre", sous: "",
+                 droite1: "", droite2: "" };
+      },
+      reglages: [
+        { cle: 'ton', lab: "Couleur", type: 'choix', choix: ['vert', 'noir', 'or'] },
+        { cle: 'drapeau', lab: "Drapeau du Sénégal", type: 'bascule' }],
+      bloc: function (x, ch) {
+        return { b: 'fronton', ton: '@' + ch + 'ton', drapeau: '@' + ch + 'drapeau',
+                 nom: '@' + ch + 'nom', devise: '@' + ch + 'devise',
+                 meta: ['@' + ch + 'meta1', '@' + ch + 'meta2'],
+                 etiquette: '@' + ch + 'etiquette', texte: '@' + ch + 'texte', sous: '@' + ch + 'sous',
+                 droite: ['@' + ch + 'droite1', '@' + ch + 'droite2'] };
+      } },
+
+    { type: 'colonnes', nom: "Deux colonnes", famille: "Structure",
+      resume: "Le texte à gauche, un panneau de chiffres à droite : la page d'un projet, d'une demande d'appui.",
+      neuf: function () {
+        return { b: 'colonnes', ton: 'or', poids: '62', titre: "Quelques chiffres", nb: 3,
+                 texte: "Le texte de la colonne de gauche.",
+                 cellules: [{ label: "Dates", valeur: "", sous: "" },
+                            { label: "Lieu", valeur: "", sous: "" },
+                            { label: "Délégation", valeur: "", sous: "" },
+                            { label: "", valeur: "", sous: "" },
+                            { label: "", valeur: "", sous: "" }] };
+      },
+      reglages: [
+        { cle: 'ton', lab: "Couleur du panneau", type: 'choix', choix: ['or', 'vert', 'noir', 'clair', 'blanc'] },
+        { cle: 'poids', lab: "Largeur du texte", type: 'choix', choix: ['70', '62', '55', '45'], duo: true },
+        { cle: 'nb', lab: "Chiffres", type: 'choix', choix: ['1', '2', '3', '4', '5'], duo: true }],
+      bloc: function (x, ch) {
+        var n = Math.max(1, Math.min(5, parseInt(x.nb, 10) || 3)), cells = [];
+        for (var j = 0; j < n; j++) {
+          var c = (x.cellules && x.cellules[j]) || {};
+          cells.push({ chemin: ch + 'cellules.' + j, label: c.label || '', valeur: c.valeur || '', sous: c.sous || '' });
+        }
+        return { b: 'colonnes', ton: '@' + ch + 'ton', poids: x.poids, titre: '@' + ch + 'titre',
+                 gauche: [{ b: 'texte', texte: '@' + ch + 'texte' }],
+                 droite: [{ b: 'reperes', pile: true, cellules: cells }] };
+      } },
+
     { type: 'grille', nom: "Lignes à compléter", famille: "Cases",
       resume: "« Nom : ……… », « Né le : ……… » : des lignes pointillées, au clavier ou au stylo.",
       neuf: function () {

@@ -89,6 +89,86 @@
     { cle: 'piece', titre: "Justificatif", poids: 26 },
     { cle: 'montant', titre: "Montant (FCFA)", poids: 26, align: 'droite', forme: 'nombre', total: true }], 8);
 
+  /* ================================================================
+     LA DEMANDE D'APPUI, UN EXEMPLAIRE PAR DESTINATAIRE
+     Le même courrier part à plusieurs personnes : seuls changent le
+     nom, la qualité et l'appel (« Monsieur le Maire », « Monsieur le
+     Président »). Tout le reste est écrit une fois, ici.
+
+     Les deux chiffres qu'aucune source ne donne (la taille de la
+     délégation, le budget) restent VIDES à dessein : la carte s'affiche
+     quand même et s'écrit d'un clic sur la feuille, et le contrôle de
+     l'acte les signale tant qu'ils ne sont pas posés.
+     ================================================================ */
+  function appui(nom, destNom, destQualite, appel) {
+    return {
+      nom: nom, modele: 'demande-appui',
+      donnees: {
+        titre: "Demande d'appui", numero: "", dateActe: U.isoDuJour(), lieu: "Dakar",
+        recepisse: "",
+        destNom: destNom, destQualite: destQualite, destAdresse: "",
+        evenement: "Tournoi international de basketball",
+        lieuEvenement: "Nouakchott, Mauritanie",
+        equipe: "L'équipe féminine",
+        dateDebut: "2026-09-23", dateFin: "2026-09-28",
+        objet: "Demande d'appui financier, matériel et logistique",
+        chapeau: "",
+        salutation: appel + ",",
+        corps: "Dans le cadre de sa participation à un tournoi international de basketball prévu "
+             + "en Mauritanie du 23 au 28 septembre 2026, le Baobabs Basket Club sollicite "
+             + "respectueusement votre accompagnement pour la prise en charge de sa délégation "
+             + "de quinze (15) membres."
+             + "\n\nCette compétition constitue une étape majeure dans le développement de notre "
+             + "jeune équipe féminine. Elle lui permettra de représenter dignement notre quartier "
+             + "et, au-delà, de porter les couleurs du Sénégal sur la scène internationale."
+             + "\n\nÀ cet effet, nous sollicitons votre appui financier, matériel ou logistique "
+             + "afin de contribuer aux frais de transport, d'hébergement, de restauration et "
+             + "d'équipement de la délégation."
+             + "\n\nConvaincus de votre engagement en faveur de la jeunesse et du développement "
+             + "du sport, nous espérons pouvoir compter sur votre précieux soutien pour la "
+             + "réussite de cette mission.",
+        formule: "Dans l'attente d'une suite favorable, nous vous prions d'agréer, " + appel
+               + ", l'expression de notre haute considération.",
+        aproposTitre: "À propos du club",
+        apropos: "Baobabs Basket Club forme des joueuses et des joueurs du quartier, à Sicap "
+               + "Baobab (Dakar), de l'école de basket aux équipes seniors, sous la devise "
+               + "« Grandir ici. Régner partout. »",
+        signNom: "Antoine Jean Pierre Ndong", signQualite: "Président",
+        tel: "77 858 74 53",
+        avecSignature: true, avecCachet: true, tonPanneau: 'or',
+        tables: {
+          chiffres: {
+            titre: "Les chiffres du panneau", singulier: "chiffre", vide: 0,
+            colonnes: [
+              { cle: 'label',  titre: "Libellé", poids: 34 },
+              { cle: 'valeur', titre: "Le chiffre", poids: 34, forme: 'fort' },
+              { cle: 'sous',   titre: "Précision", poids: 42 }],
+            /* Trois chiffres sur quatre viennent de l'ordre de mission
+               n° 01/26 et du courrier à Woman Sport Rim du 13 août 2026,
+               dans les actes du club. Le budget, lui, n'est nulle part :
+               il reste vide, et l'acte le signale. */
+            lignes: [
+              { label: "Dates du tournoi", valeur: "23 → 28 sept. 2026", sous: "Six jours de compétition" },
+              { label: "Lieu", valeur: "Nouakchott", sous: "République islamique de Mauritanie" },
+              { label: "La délégation", valeur: "15 membres", sous: "12 joueuses, 2 coachs, 1 chef de délégation" },
+              { label: "Budget du déplacement", valeur: "", sous: "FCFA" }]
+          },
+          besoins: {
+            titre: "Ce que nous sollicitons", singulier: "besoin", vide: 0,
+            colonnes: [
+              { cle: 'texte',  titre: "Poste", poids: 70, forme: 'fort' },
+              { cle: 'retenu', titre: "Coché", poids: 20, align: 'centre', forme: 'pastille', choix: ['oui', 'non'] }],
+            lignes: [
+              { texte: "Transport", retenu: true },
+              { texte: "Hébergement", retenu: true },
+              { texte: "Restauration", retenu: true },
+              { texte: "Équipement", retenu: true }]
+          }
+        }
+      }
+    };
+  }
+
   G.prereglages = [
     libre("Attestation", [
       entete(),
@@ -206,7 +286,13 @@
       texte("Arrêté le présent état à la somme totale figurant au pied du tableau, pièces justificatives jointes."),
       signatures([{ pour: "La Trésorière", nom: "", qualite: "Trésorière", mention: "Signature", encre: false },
                   { pour: "Pour Baobabs Basket Club", nom: "Antoine Jean Pierre Ndong", qualite: "Président", mention: "Visa du Président", encre: true }])
-    ], { dep_lignes: dep.table })
+    ], { dep_lignes: dep.table }),
+
+    appui("Mauritanie 2026 · Maire de Mermoz Sacré Cœur",
+          "Monsieur Alioune Tall", "Maire de la commune de Mermoz Sacré Cœur", "Monsieur le Maire"),
+
+    appui("Mauritanie 2026 · Président de Sénégal Bi Nu Bokk",
+          "Monsieur Barthélemy Diaz", "Président de Sénégal Bi Nu Bokk", "Monsieur le Président")
   ];
 
   /* ================================================================

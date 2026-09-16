@@ -45,7 +45,7 @@
   /* AJOUTER UN TYPE D'ACTE : un fichier dans modeles/, son nom ici. */
   var MODELES = ['ordre-mission', 'acte-libre', 'page-blanche', 'courrier',
                  'convention', 'contrat', 'fiche-fonction', 'budget',
-                 'pv-reunion', 'ordre-du-jour', 'rapport-saison', 'recu', 'note-frais', 'demande-subvention',
+                 'pv-reunion', 'ordre-du-jour', 'rapport-saison', 'recu', 'note-frais', 'demande-subvention', 'demande-appui',
                  'convocation', 'feuille-presence', 'planning', 'fiche-joueuse', 'cartes-membre',
                  'autorisation-parentale', 'decharge', 'certificat', 'communique', 'invitation'];
 
@@ -1318,7 +1318,9 @@
               bandeau: '<div class="gm-titre gm-bande"></div>', grille: '<div class="gm-cases"><i></i><i></i><i></i><i></i><i></i><i></i></div>',
               cases: '<div class="gm-txt"><i style="width:55%"></i><i style="width:45%"></i><i style="width:60%"></i></div>', signatureLibre: '<div class="gm-sign"><i></i><i></i></div>',
               diplome: '<div class="gm-diplome"><b></b><i></i></div>', cartes: '<div class="gm-cartes"><i></i><i></i><i></i><i></i></div>',
-              talon: '<div class="gm-sep"></div>', ordreDuJour: '<div class="gm-arts"><i></i><i></i><i></i></div>' };
+              talon: '<div class="gm-sep"></div>', ordreDuJour: '<div class="gm-arts"><i></i><i></i><i></i></div>',
+              colonnes: '<div class="gm-cols"><span><i></i><i></i><i></i><i></i></span><b></b></div>',
+              fronton: '<div class="gm-fronton"><u></u><span><i></i><i></i></span></div>' };
     return '<div class="gf-schema"><div class="gf-schema-page">' + (types || []).slice(0, 9).map(function (t) { return g[t] || ''; }).join('') + '</div></div>';
   }
   function apercuModele(m) { return apercuSchema(typesDeBlocs(m)); }
@@ -5493,8 +5495,16 @@
     return fetch('/media/img/BBC_-_COLORED_LOGO_jjcrux.webp', { cache: 'force-cache' })
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.blob(); })
       .then(function (b) { return lireFichier(b); })
-      .then(function (uri) { res.blason = uri; })
-      .catch(function () { /* sans blason, l'acte sort quand même */ });
+      .then(function (uri) { res.blason = uri; res.blasonEchec = false; })
+      .catch(function (e) {
+        /* L'acte sort quand même, mais SANS logo. Le dire : sinon un
+           courrier part sans blason et personne ne s'en aperçoit avant
+           le destinataire. Le fronton, lui, retire son disque plutôt
+           que d'imprimer un rond vide. */
+        res.blasonEchec = true;
+        if (window.console) console.warn('[Greffe] blason introuvable (' + e
+          + ') : les actes sortiront sans logo.');
+      });
   }
 
   function charger(src, test) {
