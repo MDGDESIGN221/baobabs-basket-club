@@ -8151,9 +8151,29 @@
       }
     };
   }
+  /* ==================================================================
+     LE GREFFE S'OUVRE A TROIS CASQUETTES
+     ------------------------------------------------------------------
+     Il etait reserve au seul compte proprietaire. Le club a grandi :
+     l'administration, la presidence et les coachs en ont besoin, chacun
+     pour ce qui le concerne.
+
+     CREER N'EST PAS SIGNER, et c'est le coeur du sujet. Le Greffe appose
+     la signature et le cachet du president ; si un coach pouvait
+     emettre, n'importe quel compte coach engagerait le club sous cette
+     signature. Un coach compose donc, enregistre, et l'acte attend. Le
+     Greffe lui-meme tient cette regle (voir DROITS dans greffe.js) : ici
+     on decide seulement qui voit la porte.
+     ================================================================== */
+  var GREFFE_CASQUETTES = ['super_admin', 'president', 'coach'];
+  function greffeAutorise(){
+    if (typeof cpJeSuisProprio === 'function' && cpJeSuisProprio()) return true;
+    return GREFFE_CASQUETTES.indexOf(currentRole) >= 0;
+  }
+
   function greffeOuvrir(){
     if (greffeEnCours) return;
-    if (!cpJeSuisProprio()){ qgToast('Le Greffe est reserve au proprietaire du site', true); return; }
+    if (!greffeAutorise()){ qgToast('Le Greffe n’est pas ouvert à votre casquette', true); return; }
     if (greffePret){ window.BaobabsGreffe.open(); return; }
     greffeEnCours = true;
     // ?greffe=<id d'acte> : une deuxieme fenetre, ouverte par le Greffe
@@ -8161,7 +8181,7 @@
     var demande = null;
     try { demande = new URLSearchParams(location.search).get('greffe'); } catch(e){}
     greffeCharger().then(function(){
-      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), { acte: demande, proprietaire: cpJeSuisProprio(), base: greffeBase() });
+      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), { acte: demande, proprietaire: cpJeSuisProprio(), role: currentRole, base: greffeBase() });
     }).then(function(){
       greffePret = true;
       window.BaobabsGreffe.open();
@@ -8177,23 +8197,23 @@
   // UN ACTE DU GREFFE PRE-REMPLI DEPUIS UN ECRAN. Reserve au proprietaire,
   // comme le Greffe : le bouton ne s'affiche qu'a lui (greffeBoutonHtml).
   function greffeNouvelActe(cle, apport, options){
-    if (!cpJeSuisProprio()){ qgToast('Le Greffe est reserve au proprietaire du site', true); return; }
+    if (!greffeAutorise()){ qgToast('Le Greffe n’est pas ouvert à votre casquette', true); return; }
     var lancer = function(){ if (!window.BaobabsGreffe.nouvelActe(cle, apport, options)) qgToast('Ce modele n\'existe pas dans le Greffe : ' + cle, true); };
     if (greffePret){ lancer(); return; }
     if (greffeEnCours) return;
     greffeEnCours = true;
     greffeCharger().then(function(){
-      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), { acte: null, proprietaire: cpJeSuisProprio(), base: greffeBase() });
+      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), { acte: null, proprietaire: cpJeSuisProprio(), role: currentRole, base: greffeBase() });
     }).then(function(){ greffePret = true; lancer(); })
       .catch(function(e){ console.error('[Greffe]', e); qgToast('Le Greffe n\'a pas pu se charger', true); })
       .then(function(){ greffeEnCours = false; });
   }
   function greffeBoutonHtml(attrs, libelle){
-    return (typeof cpJeSuisProprio === 'function' && cpJeSuisProprio()) ? '<button type="button" ' + attrs + ' title="Un acte du Greffe, deja rempli avec ces donnees">' + libelle + '</button>' : '';
+    return greffeAutorise() ? '<button type="button" ' + attrs + ' title="Un acte du Greffe, deja rempli avec ces donnees">' + libelle + '</button>' : '';
   }
   function greffeMoyen(code){ var m = (typeof IN_METHODES !== 'undefined' ? IN_METHODES : []).filter(function(x){ return x[0] === code; })[0]; return m ? m[1] : (code || 'Espèces'); }
   function greffeSerie(titre, lignes){
-    if (!cpJeSuisProprio()){ qgToast('Le Greffe est reserve au proprietaire du site', true); return; }
+    if (!greffeAutorise()){ qgToast('Le Greffe n’est pas ouvert à votre casquette', true); return; }
     if (!lignes || !lignes.length){ qgToast('Aucune ligne a envoyer', true); return; }
     try {
       localStorage.setItem('bbc-greffe-serie', JSON.stringify({ titre: titre, colonnes: Object.keys(lignes[0]), lignes: lignes, quand: Date.now() }));

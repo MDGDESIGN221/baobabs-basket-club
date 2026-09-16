@@ -491,6 +491,10 @@
       "  padding:7pt 10pt 6pt 10pt; position:relative; }",
       ".signs-2 .sign-card{ flex:1 1 0; }",
       ".sign-card .label{ display:block; color:var(--vert); margin-bottom:4pt; }",
+      /* une carte qui attend la signature du president : le cadre le dit,
+         pour qu'on ne prenne pas la feuille pour un acte signe */
+      ".sign-attente{ border-style:dashed; border-color:var(--or); }",
+      ".sign-attente .sign-cta{ color:var(--or); font-style:italic; }",
       ".sign-who{ display:flex; align-items:baseline; gap:6pt; white-space:nowrap; }",
       ".sign-name{ font-family:'Gilroy',sans-serif; font-weight:700; font-size:8.9pt;",
       "  color:var(--encre); line-height:1.3; }",
@@ -1325,6 +1329,20 @@
     var nom = slot(c, 'nom', d, ctx, '', prefixe), qualite = slot(c, 'qualite', d, ctx, '', prefixe);
     var pour = slot(c, 'pour', d, ctx, '', prefixe), mention = slot(c, 'mention', d, ctx, 'Signature et cachet', prefixe);
     var encre = '';
+    /* SANS ENCRE POUR QUI NE SIGNE PAS.
+       Un coach compose l'acte mais ne l'engage pas : sa feuille montre
+       la carte de signature vide, avec la mention de ce qui manque. Le
+       président ouvre le même acte et l'encre y est. Rien n'est écrit
+       dans la donnée : c'est le rendu qui change, pas le document. */
+    if (ctx.sansEncre) {
+      return '<div class="sign-card sign-attente">'
+        + '<span class="label"' + pour.a + '>' + U.enLigne(pour.t || '') + '</span>'
+        + '<div class="sign-who"><span class="sign-name"' + nom.a + '>' + U.enLigne(nom.t || '') + '</span>'
+        + '<span class="sign-role"' + qualite.a + '>' + U.enLigne(qualite.t || '') + '</span></div>'
+        + '<div class="ink-zone"></div>'
+        + '<div class="sign-cta">À faire signer par le Président</div>'
+        + '</div>';
+    }
     /* détachés de la carte à la souris, l'encre et le cachet vivent en objets posés */
     if (d.avecSignature !== false && c.signer !== false && !d.signatureDetachee) {
       encre += '<div class="sig-ink"><div class="sig-name">'

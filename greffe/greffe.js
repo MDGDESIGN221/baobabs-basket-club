@@ -42,6 +42,53 @@
 
   var MM = 96 / 25.4;                    /* 1 mm en pixels CSS */
 
+  /* ===================================================================
+     QUI PEUT QUOI
+     -------------------------------------------------------------------
+     Le Greffe n'était ouvert qu'au compte propriétaire. Il s'ouvre
+     maintenant à trois casquettes, et CRÉER n'est pas SIGNER.
+
+     C'est toute la difficulté : le Greffe appose la signature et le
+     cachet du président. Si un coach pouvait émettre, n'importe quel
+     compte coach engagerait le club sous la signature du président.
+     Donc un coach COMPOSE, et l'acte attend. Le président l'ouvre, le
+     lit, et c'est son geste à lui qui pose l'encre.
+
+     D'où deux droits distincts :
+       familles  ce qu'on peut créer  (null = tout)
+       signer    le droit d'émettre, donc d'apposer la signature
+
+     Et une conséquence voulue : le président SIGNE des familles qu'il ne
+     crée pas. Il ne compose pas une convocation, mais c'est sa signature
+     qui la valide -- refuser de la lui laisser émettre bloquerait le
+     travail du coach pour rien.
+     =================================================================== */
+  var DROITS_TOUT = { familles: null, signer: true, nom: 'Administration' };
+  var DROITS = {
+    super_admin: DROITS_TOUT,
+    president: {
+      familles: ['Correspondance', 'Conventions et contrats', 'Gouvernance', 'Actes',
+                 'Bureau du club', 'Structure', 'Communication'],
+      signer: true, nom: 'Présidence'
+    },
+    coach: {
+      familles: ['Vie sportive', 'Familles', 'Distinctions'],
+      signer: false, nom: 'Coach'
+    }
+  };
+  var droits = DROITS_TOUT;
+
+  /* Le modèle est-il ouvert à cette casquette ? */
+  G.peutCreer = function (cle) {
+    var m = G.modeles[cle];
+    if (!m) return false;
+    if (!droits || !droits.familles) return true;
+    return droits.familles.indexOf(m.famille || 'Actes') >= 0;
+  };
+  /* Le droit d'apposer la signature et le cachet du président. */
+  G.peutSigner = function () { return !droits || droits.signer !== false; };
+  G.casquette  = function () { return (droits && droits.nom) || ''; };
+
   /* AJOUTER UN TYPE D'ACTE : un fichier dans modeles/, son nom ici. */
   var MODELES = ['ordre-mission', 'acte-libre', 'page-blanche', 'courrier',
                  'convention', 'contrat', 'fiche-fonction', 'budget',
@@ -1032,6 +1079,14 @@
 
   function emettreActe() {
     if (!modeleActif || lectureSeule()) return;
+    /* ÉMETTRE, C'EST SIGNER. Un coach compose et enregistre ; il n'engage
+       pas le club. Le refus dit quoi faire ensuite : l'acte est là, il
+       attend le président, et il ne se perd pas. */
+    if (!G.peutSigner()) {
+      dire('Cet acte est enregistré. Émettre appose la signature et le cachet '
+         + 'du Président : c’est à lui de le faire depuis son propre accès.', 'info');
+      return;
+    }
     rafraichir();
     var c = verifierActe();
     if (c.erreurs) { panneau = 'controle'; peindreFormulaire(); majTitreBarre(); return; }
@@ -1478,7 +1533,10 @@
     var familles = {};
     MODELES.forEach(function (k) {
       var m = G.modeles[k];
-      if (!m) return;
+      /* Une casquette ne voit QUE ce qu'elle peut creer. Griser les
+         autres donnerait une liste de portes fermees ; les retirer dit
+         la meme chose sans le reproche. */
+      if (!m || !G.peutCreer(k)) return;
       (familles[m.famille || 'Actes'] = familles[m.famille || 'Actes'] || []).push(m);
     });
     var htmlModeles = Object.keys(familles).map(function (f) {
@@ -3165,7 +3223,13 @@
   }
 
   function corpsDocument() {
-    return identiteAppliquee(G.blocs.assembler(modeleActif, donnees, { res: res, brouillon: acteEtat === 'brouillon' }));
+    /* SANS ENCRE POUR QUI NE SIGNE PAS. On ne touche pas aux donnees de
+       l'acte -- avecSignature reste ce qu'il est -- on retire seulement
+       le cachet des ressources du rendu. Le president rouvrira le meme
+       acte et l'encre y sera, sans qu'il ait rien a recocher. */
+    var ressources = G.peutSigner() ? res : Object.assign({}, res, { cachet: null });
+    return identiteAppliquee(G.blocs.assembler(modeleActif, donnees,
+      { res: ressources, brouillon: acteEtat === 'brouillon', sansEncre: !G.peutSigner() }));
   }
 
   /* À l'écran seulement : le cadre est transparent (la scène de
@@ -5747,8 +5811,10 @@
     /* Le Greffe est réservé au propriétaire du site : l'admin le dit au
        montage, après avoir comparé la session à bbc_proprietaire_email().
        Sans ce mot, rien ne se monte, même si un bouton a fui. */
-    if (!contexte || contexte.proprietaire !== true) return Promise.reject(new Error('Le Greffe est réservé au propriétaire du site'));
+    if (!contexte || (contexte.proprietaire !== true && !DROITS[contexte.role]))
+      return Promise.reject(new Error('Le Greffe n’est pas ouvert à cette casquette'));
     racine = root; api = contexte || {};
+    droits = contexte.proprietaire === true ? DROITS_TOUT : DROITS[contexte.role];
     brancher();
     /* le registre en base d'abord : ce poste recoit ce qu'il n'a pas,
        et seulement ensuite on lit le poste */
