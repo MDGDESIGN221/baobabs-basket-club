@@ -343,6 +343,24 @@
   margin:0; flex:1 1 auto; font-family:var(--gf-titre);
   font-weight:600; font-size:14.5px; letter-spacing:-.01em;
 }
+/* le champ de recherche de la modale « Quel acte » : vingt-cinq modèles
+   et autant de préréglages, on ne les parcourt pas à l'oeil */
+.gf-chercher{
+  flex:0 1 300px; display:flex; align-items:center; gap:7px; min-width:140px;
+  padding:0 10px; height:32px; border-radius:8px;
+  background:var(--gf-surf2); border:1px solid var(--gf-line-fort);
+}
+.gf-chercher:focus-within{ border-color:var(--gf-accent); }
+.gf-chercher svg{ width:14px; height:14px; flex:0 0 14px; color:var(--gf-pale); }
+.gf-chercher input{
+  flex:1 1 auto; min-width:0; border:0; background:transparent; outline:none;
+  color:var(--gf-texte); font:inherit; font-size:12.5px;
+}
+.gf-chercher input::placeholder{ color:var(--gf-pale); }
+.gf-chercher input::-webkit-search-cancel-button{ filter:invert(.6); cursor:pointer; }
+.gf-rien{ margin:0; padding:16px 14px 0 14px; font-size:12.5px; color:var(--gf-doux); }
+/* en recherche, les familles se suivent sans leurs grands écarts */
+.gf-en-recherche .gf-fam{ margin-top:10px; }
 .gf-modale-corps{ flex:1 1 auto; min-height:0; overflow-y:auto; padding:14px; }
 .gf-modale-aide{ margin:0 0 10px 0; font-size:12.5px; color:var(--gf-doux); }
 .gf-modale-aide em{ color:var(--gf-texte); font-style:normal; }
@@ -385,7 +403,7 @@
 .gf-fam{ margin-top:14px; }
 .gf-fam:first-of-type{ margin-top:10px; }
 .gf-fam > .gf-lab{ display:block; margin-bottom:8px; }
-.gf-cartes{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:9px; }
+.gf-cartes{ display:grid; grid-template-columns:repeat(auto-fill,minmax(268px,1fr)); gap:9px; }
 .gf-carte{
   display:flex; flex-direction:column; gap:4px; align-items:flex-start; text-align:left;
   padding:13px 14px; border-radius:10px; cursor:pointer;
@@ -805,8 +823,25 @@
 .gf-slash-groupe{ font-size:10.5px; color:var(--gf-pale); padding:8px 9px 2px 9px; border-top:1px solid var(--gf-line); margin-top:4px; }
 .gf-flot-slash .gf-vide{ padding:6px 9px; }
 
-/* ============================== LES APERÇUS SCHÉMATIQUES ============================== */
-.gf-schema{ flex:0 0 auto; width:54px; height:76px; border-radius:4px; background:#F4F5F3; border:1px solid rgba(0,0,0,.25); padding:5px 5px; overflow:hidden; }
+/* ============================== LES APERÇUS ==============================
+   .gf-schema est la boîte de la vignette. Elle contient d'abord le schéma
+   de barres grises (instantané, aucun coût), remplacé par la vraie feuille
+   dès que la carte arrive à l'écran. */
+/* padding ZÉRO sur la boîte : le cadre de la vraie feuille se pose en
+   absolu depuis son bord, et doit le remplir exactement. Ce sont les
+   barres du schéma qui portent la marge, dans leur propre enveloppe. */
+.gf-schema{ position:relative; flex:0 0 auto; width:92px; height:130px; border-radius:4px; background:#F4F5F3; border:1px solid rgba(0,0,0,.25); padding:0; overflow:hidden; }
+.gf-vue-cadre{ position:absolute; left:0; top:0; border:0; transform-origin:0 0; pointer-events:none; background:#fff; }
+.gf-schema .gf-schema-page{ padding:5px; transition:opacity .18s; }
+.gf-schema.gf-vue-prete .gf-schema-page{ opacity:0; }
+
+/* l'aperçu au survol : un seul cadre, déplacé d'une carte à l'autre */
+.gf-vue-grande{ position:fixed; z-index:60; pointer-events:none; }
+.gf-vue-boite{
+  position:relative; overflow:hidden; background:#fff; border-radius:6px;
+  border:1px solid rgba(0,0,0,.35); box-shadow:0 18px 44px rgba(0,0,0,.55);
+}
+@media (max-width:900px){ .gf-vue-grande{ display:none; } }
 .gf-schema-page{ display:flex; flex-direction:column; gap:3px; }
 .gf-schema-page > div{ display:flex; gap:2px; }
 .gf-schema i, .gf-schema b{ display:block; border-radius:1px; }

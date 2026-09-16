@@ -1332,6 +1332,78 @@
     return apercuSchema(typesDeBlocs(m, d));
   }
 
+  /* =================================================================
+     LES VRAIES MINIATURES
+     Le schéma de barres grises disait la STRUCTURE d'un acte, pas son
+     allure : avec vingt-cinq modèles et autant de préréglages, deux
+     cartes voisines se ressemblaient. Ici, la miniature est la feuille
+     elle-même, rendue en petit dans son propre cadre.
+
+     Deux tailles, deux coûts :
+     - la vignette de carte n'emporte PAS les polices (à 92 px, personne
+       ne distingue Organetto d'une sans-serif, et dix @font-face en
+       base64 par carte coûteraient une fortune) ;
+     - l'aperçu au survol, LUI, les emporte : c'est là qu'on lit.
+     Une carte ne fabrique son cadre qu'en arrivant à l'écran.
+     ================================================================= */
+  var MINI_L = 794;                       /* 210 mm en pixels CSS */
+  var MINI_H = Math.round(MINI_L * 297 / 210);
+
+  function donneesApercu(m, p) {
+    var d = m.defauts();
+    if (p) Object.keys(p.donnees || {}).forEach(function (k) { d[k] = p.donnees[k]; });
+    return d;
+  }
+
+  function htmlApercu(m, d, avecPolices) {
+    var css = (avecPolices ? cssPolices() + '\n' : '') + G.blocs.css()
+            + (m.css ? '\n' + m.css() : '')
+            + '\nhtml,body{background:#fff;margin:0}.pages{display:block!important;padding:0!important;gap:0!important}'
+            + '.page{box-shadow:none!important;border-radius:0!important;margin:0!important}';
+    return '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><style>' + css
+         + '</style></head><body class="pagine">'
+         + G.blocs.assembler(m, d, { res: res, brouillon: false }) + '</body></html>';
+  }
+
+  /* On met en pages pour de vrai, puis on ne garde que la première :
+     une miniature doit montrer ce qui sort de l'imprimante, pas un
+     empilement de blocs qui déborde. La mesure passe par setTimeout et
+     non requestAnimationFrame, qui ne se déclenche pas dans un onglet
+     que personne ne regarde. */
+  function poserApercu(hote, m, d, largeur, avecPolices) {
+    if (!hote || !m || hote.getAttribute('data-pose') === '1') return;
+    hote.setAttribute('data-pose', '1');
+    var cadreMini = document.createElement('iframe');
+    cadreMini.className = 'gf-vue-cadre';
+    cadreMini.setAttribute('aria-hidden', 'true');
+    cadreMini.setAttribute('tabindex', '-1');
+    cadreMini.style.width = MINI_L + 'px';
+    cadreMini.style.height = MINI_H + 'px';
+    cadreMini.style.transform = 'scale(' + (largeur / MINI_L) + ')';
+    hote.appendChild(cadreMini);
+    try {
+      var doc = cadreMini.contentDocument;
+      doc.open(); doc.write(htmlApercu(m, d, avecPolices)); doc.close();
+      setTimeout(function () {
+        try {
+          G.blocs.paginer(doc);
+          var pages = doc.querySelectorAll('.page');
+          for (var i = pages.length - 1; i > 0; i--) pages[i].remove();
+          hote.classList.add('gf-vue-prete');
+        } catch (e) { hote.classList.add('gf-vue-prete'); }
+      }, 0);
+    } catch (e) { hote.removeAttribute('data-pose'); }
+  }
+
+  /* « Sénégal Bi Nu Bokk » devient « senegal bi nu bokk ». normaliser()
+     ne convient pas ici : elle colle tout, et « bi nu » ne trouverait
+     plus rien. On cherche mot à mot, tous les mots devant être présents. */
+  function cleRecherche(s) {
+    s = String(s == null ? '' : s).toLowerCase();
+    if (s.normalize) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return s.replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
   /* ---- l'accueil : que voulez-vous faire ? ---- */
   /* Le registre vit dans CE navigateur : sans sauvegarde, un profil vidé
      ou un autre poste ne le connaît pas. L'accueil le rappelle quand il faut. */
@@ -1438,21 +1510,158 @@
     voile.innerHTML =
       '<div class="gf-modale gf-modale-large" role="dialog" aria-modal="true">'
       + '<header class="gf-modale-top"><h3>Quel acte voulez-vous établir ?</h3>'
+      + '<div class="gf-chercher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+      + '<input type="search" id="gf-nouveau-q" autocomplete="off" spellcheck="false"'
+      + ' placeholder="Chercher : maire, tournoi, reçu, convocation…" aria-label="Chercher un acte"></div>'
       + '<div class="gf-onglets"><button type="button" class="gf-onglet is-actif" data-onglet="modeles">Modèles</button>'
       + '<button type="button" class="gf-onglet" data-onglet="prereglages">Préréglages</button></div>'
       + '<button type="button" class="gf-ico gf-ico-close" data-x aria-label="Fermer">'
       + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>'
+      + '<p class="gf-rien" hidden>Rien ne correspond. Essayez un mot du nom de l\'acte, ou du destinataire.</p>'
       + '<div class="gf-modale-corps"><div data-page="modeles">' + htmlModeles + '</div>'
       + '<div data-page="prereglages" hidden><p class="gf-modale-aide">Depuis l\'atelier, « Préréglage » garde l\'acte en cours sous cette forme ; un fichier .json le fait voyager d\'un poste à l\'autre.</p>' + htmlPre + '</div></div>'
       + '</div>';
     racine.appendChild(voile);
-    function fermer() { if (voile.parentNode) voile.remove(); }
+
+    /* ---- les cartes, leur acte et leur texte cherchable ---- */
+    var cartes = [];
+    voile.querySelectorAll('.gf-carte').forEach(function (c) {
+      var m, d, mots;
+      if (c.hasAttribute('data-modele')) {
+        m = G.modeles[c.getAttribute('data-modele')];
+        if (!m) return;
+        d = donneesApercu(m, null);
+        mots = [m.nom, m.resume, m.famille, m.cle];
+      } else {
+        var p = pres[+c.getAttribute('data-pre')];
+        m = p && G.modeles[p.modele];
+        if (!m) return;
+        d = donneesApercu(m, p);
+        /* un préréglage se cherche aussi par son destinataire et son
+           objet : « maire », « Mermoz », « tournoi » doivent le trouver */
+        mots = [p.nom, m.nom, m.famille, d.destNom, d.destQualite, d.objet, d.titre, d.evenement, d.lieuEvenement];
+      }
+      c.setAttribute('data-q', cleRecherche(mots.join(' ')));
+      cartes.push({ el: c, m: m, d: d, hote: c.querySelector('.gf-schema') });
+    });
+
+    /* ---- la vignette, fabriquée à l'arrivée à l'écran ---- */
+    function poserVignette(c) {
+      if (c && c.hote) poserApercu(c.hote, c.m, c.d, c.hote.clientWidth || 90, false);
+    }
+    var guetteur = null;
+    if (window.IntersectionObserver) {
+      guetteur = new IntersectionObserver(function (entrees) {
+        entrees.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          guetteur.unobserve(e.target);
+          poserVignette(cartes.filter(function (x) { return x.hote === e.target; })[0]);
+        });
+      }, { root: voile.querySelector('.gf-modale-corps'), rootMargin: '220px' });
+      cartes.forEach(function (c) { if (c.hote) guetteur.observe(c.hote); });
+    } else {
+      cartes.forEach(poserVignette);
+    }
+    /* Une carte de l'onglet caché n'est jamais « à l'écran » : le guetteur
+       ne la voit pas, et une recherche qui la révèle la laissait avec son
+       schéma de barres. On rattrape après chaque filtrage. */
+    function rattraperVignettes() {
+      var n = 0;
+      cartes.forEach(function (c) {
+        if (n >= 24 || c.el.hidden || !c.hote || c.hote.getAttribute('data-pose') === '1') return;
+        if (!c.hote.clientWidth) return;
+        poserVignette(c); n++;
+      });
+    }
+
+    /* ---- l'aperçu en grand, au survol : UN seul cadre pour toutes ---- */
+    var grande = document.createElement('div');
+    grande.className = 'gf-vue-grande';
+    grande.hidden = true;
+    voile.appendChild(grande);
+    var minuteurVue = null, carteVue = null;
+    function cacherGrande() {
+      clearTimeout(minuteurVue); carteVue = null;
+      grande.hidden = true; grande.innerHTML = '';
+    }
+    function montrerGrande(c) {
+      if (carteVue === c.el) return;
+      carteVue = c.el;
+      grande.innerHTML = '';
+      grande.hidden = false;
+      var boite = document.createElement('div');
+      boite.className = 'gf-vue-boite';
+      grande.appendChild(boite);
+      var L = 330;
+      boite.style.width = L + 'px';
+      boite.style.height = Math.round(L * 297 / 210) + 'px';
+      poserApercu(boite, c.m, c.d, L, true);
+      var r = c.el.getBoundingClientRect(), rv = voile.getBoundingClientRect();
+      var x = r.right + 12, H = Math.round(L * 297 / 210);
+      if (x + L + 12 > rv.right) x = r.left - L - 12;
+      if (x < rv.left + 8) x = Math.max(rv.left + 8, Math.min(r.left, rv.right - L - 8));
+      grande.style.left = Math.round(x) + 'px';
+      grande.style.top = Math.round(Math.max(rv.top + 8, Math.min(r.top, rv.bottom - H - 8))) + 'px';
+    }
+    cartes.forEach(function (c) {
+      var ouvrir = c.el.querySelector('.gf-carte-ouvrir') || c.el;
+      function entrer() { clearTimeout(minuteurVue); minuteurVue = setTimeout(function () { montrerGrande(c); }, 260); }
+      c.el.addEventListener('mouseenter', entrer);
+      ouvrir.addEventListener('focus', entrer);
+      c.el.addEventListener('mouseleave', cacherGrande);
+      ouvrir.addEventListener('blur', cacherGrande);
+    });
+
+    function fermer() { cacherGrande(); if (guetteur) guetteur.disconnect(); if (voile.parentNode) voile.remove(); }
     voile.querySelector('[data-x]').addEventListener('click', fermer);
-    voile.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fermer(); } });
+
+    /* ---- la recherche ---- */
+    var champ = voile.querySelector('#gf-nouveau-q');
+    var rien = voile.querySelector('.gf-rien');
+    var onglets = voile.querySelector('.gf-onglets');
+    function filtrer() {
+      var q = cleRecherche(champ.value);
+      var mots = q ? q.split(' ') : [];
+      voile.classList.toggle('gf-en-recherche', !!mots.length);
+      var vus = 0;
+      cartes.forEach(function (c) {
+        var texte = c.el.getAttribute('data-q') || '';
+        var ok = mots.every(function (w) { return texte.indexOf(w) >= 0; });
+        c.el.hidden = !ok;
+        if (ok) vus++;
+      });
+      /* une famille dont toutes les cartes sont masquées disparaît aussi,
+         sinon la liste garde des titres qui ne mènent à rien */
+      voile.querySelectorAll('.gf-fam').forEach(function (f) {
+        f.hidden = !!mots.length && !f.querySelector('.gf-carte:not([hidden])');
+      });
+      /* en recherche, les deux onglets s'affichent d'un coup : c'est ce
+         qu'on veut quand on cherche « maire » sans savoir où il est */
+      voile.querySelectorAll('[data-page]').forEach(function (p) {
+        p.hidden = mots.length ? !p.querySelector('.gf-carte:not([hidden])')
+          : p.getAttribute('data-page') !== (voile.querySelector('.gf-onglet.is-actif') || {}).getAttribute('data-onglet');
+      });
+      if (onglets) onglets.hidden = !!mots.length;
+      rien.hidden = !(mots.length && !vus);
+      cacherGrande();
+      setTimeout(rattraperVignettes, 0);
+    }
+    champ.addEventListener('input', filtrer);
+    setTimeout(function () { try { champ.focus(); } catch (e) {} }, 60);
+
+    voile.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      e.preventDefault(); e.stopPropagation();
+      /* Échap efface d'abord la recherche : on ne perd pas la modale
+         parce qu'on voulait juste repartir de la liste entière */
+      if (champ.value) { champ.value = ''; filtrer(); champ.focus(); return; }
+      fermer();
+    });
     voile.querySelectorAll('.gf-onglet').forEach(function (o) {
       o.addEventListener('click', function () {
         voile.querySelectorAll('.gf-onglet').forEach(function (x) { x.classList.toggle('is-actif', x === o); });
         voile.querySelectorAll('[data-page]').forEach(function (p) { p.hidden = p.getAttribute('data-page') !== o.getAttribute('data-onglet'); });
+        setTimeout(rattraperVignettes, 0);
       });
     });
     if (onglet === 'prereglages') voile.querySelector('[data-onglet="prereglages"]').click();
