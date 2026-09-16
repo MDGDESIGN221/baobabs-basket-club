@@ -1542,6 +1542,17 @@
   .ef-relance-b{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px}
   .ef-relance .co-url{display:block;margin:0}
   .ef-cp-msg{border-color:var(--attente);color:var(--attente-clair)}
+  /* La photo envoyée, dans l'inspecteur du staff. */
+  .qgv-src{display:flex;gap:12px;align-items:flex-start;margin:4px 0 16px;padding:11px 12px;
+    background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--attente);
+    border-radius:var(--r-sm)}
+  .qgv-src img{width:76px;height:100px;object-fit:cover;object-position:top center;flex:none;
+    border-radius:var(--r-sm);background:var(--surface-3);display:block}
+  .qgv-src.ko img{visibility:hidden}
+  .qgv-src b{display:block;font-family:var(--font-ui);font-weight:700;font-size:12.5px;color:var(--text)}
+  .qgv-src span{display:block;font-size:11.5px;color:var(--faint);line-height:1.5;margin-top:3px}
+  .qgv-src-b{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:9px}
+  .qgv-src-b a{color:var(--gold-bright);font-size:11.5px}
   .ef-statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:11px}
   .ef-statbox{background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:12px}
   .ef-statbox input{background:transparent;border:none;color:var(--gold);font-family:var(--font-ui);font-weight:700;font-size:21px;letter-spacing:-.02em;width:100%;padding:0}
@@ -30698,10 +30709,40 @@
     var title=cur[c.primary]&&String(cur[c.primary]).trim()?cur[c.primary]:'Nouvel élément';
     el.innerHTML=
       '<div class="qg-insp-head"><div><div class="lbl">'+(isNew?'Nouvel élément':esc(QGV_HEAD[key].h))+'</div><div class="nm">'+esc(title)+'</div></div><button type="button" class="qg-x" id="qgv-close-'+key+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>'+
-      '<div class="qg-insp-body">'+c.fields.map(function(f){ return qgvFieldHtml(key,f,cur); }).join('')+'</div>'+
+      '<div class="qg-insp-body">'+c.fields.map(function(f){ return qgvFieldHtml(key,f,cur); }).join('')+
+        // LA PHOTO ENVOYEE RESTE ATTEIGNABLE APRES LA PUBLICATION.
+        // « Reprendre sa photo » ne vivait que dans le bloc des profils
+        // reçus : une fois la fiche publiée, le bloc disparaît et la photo
+        // d'origine devenait inaccessible. Mouhamed Salif AW s'est
+        // retrouvé publié sans photo, la sienne intacte en base, et aucun
+        // bouton pour la poser.
+        (cur.photo_source_url && cur.photo_source_url !== cur.photo_url
+          ? '<div class="qgv-src"><img src="'+esc(cur.photo_source_url)+'" alt="" loading="lazy"'+
+            ' onerror="this.closest(\'.qgv-src\').classList.add(\'ko\')">'+
+            '<div><b>La photo qu\'il a envoyée</b>'+
+            '<span>Telle quelle, sans réduction. Elle n\'est pas encore celle du site.</span>'+
+            '<span class="qgv-src-b">'+
+              '<button type="button" class="qg-btn" id="qgv-src-'+key+'">Utiliser cette photo</button>'+
+              '<a href="'+esc(cur.photo_source_url)+'" target="_blank" rel="noopener">L\'ouvrir en grand</a>'+
+            '</span></div></div>'
+          : '')+
+      '</div>'+
       '<div class="qg-insp-foot"><button type="button" class="qg-btn danger" id="qgv-del-'+key+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>'+(isNew?'Annuler':'Supprimer')+'</button><button type="button" class="qg-btn primary" id="qgv-save-'+key+'">'+(isNew?'Ajouter au site':'Enregistrer')+'</button></div>';
     c.fields.forEach(function(f){ qgvBindField(key,f); });
     document.getElementById('qgv-close-'+key).addEventListener('click',function(){ var S=qgvState(key); S.sel=null; S.draft=null; qgvRenderCards(key); qgvRenderInspector(key); });
+    // Le bouton remplit le champ « Photo » et ne l'enregistre pas : on
+    // cadre d'abord, on enregistre ensuite. Même règle que pour une
+    // joueuse -- écraser la photo du site d'un clic serait un geste
+    // qu'on ne peut pas reprendre.
+    var bSrcQ = document.getElementById('qgv-src-'+key);
+    if (bSrcQ) bSrcQ.addEventListener('click', function(){
+      var champ = document.getElementById('qgv-f-'+key+'-photo_url') ||
+                  el.querySelector('input[id*="photo_url"]');
+      cur.photo_url = cur.photo_source_url;
+      if (champ){ champ.value = cur.photo_source_url; champ.dispatchEvent(new Event('input',{bubbles:true})); }
+      qgvRenderInspector(key);
+      qgToast('Photo reprise ✓ Cadrez-la si besoin, puis Enregistrer.');
+    });
     document.getElementById('qgv-save-'+key).addEventListener('click',function(){ qgvSave(key); });
     document.getElementById('qgv-del-'+key).addEventListener('click',function(){ qgvDeleteId(key, qgvState(key).sel); });
   }
