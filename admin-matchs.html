@@ -1418,6 +1418,24 @@
   .co-att{font-style:normal;color:var(--attente);font-weight:700}
   .co-sec.est-vide .co-sec-e{flex:1}
   .co-doublon{font-size:11.5px;color:var(--attente);margin:8px 0 0}
+  /* LA PHOTO ENVOYÉE, SOUS LES YEUX.
+     Elle arrive sans réduction depuis le 16 septembre 2026 : elle peut
+     donc être très grande. On la borne à 120 px de haut et le navigateur
+     la réduit à l'affichage, l'original reste intact derrière le lien. */
+  .ef-src{display:flex;gap:12px;align-items:flex-start;margin:0 0 16px;
+    padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);
+    border-radius:var(--r-sm)}
+  .ef-src img{width:90px;height:120px;object-fit:cover;object-position:top center;
+    border-radius:var(--r-sm);background:var(--surface-3);flex:none;display:block}
+  .ef-src span{font-size:11.5px;color:var(--faint);line-height:1.55}
+  .ef-src a{color:var(--gold-bright)}
+  /* Un format que le navigateur ne sait pas ouvrir (HEIC d'iPhone) : la
+     photo EST là, c'est l'aperçu qui manque. Le dire vaut mieux qu'un
+     carré vide, qu'on lirait comme « pas de photo ». */
+  .ef-src img.ko{display:grid;place-items:center;border:1px dashed var(--line-strong)}
+  .ef-src img.ko::after{content:"Format non affichable ici — ouvrez-la en grand";
+    font-size:10px;line-height:1.4;color:var(--faint);text-align:center;padding:6px}
+
   /* Les métiers que la section couvre, sous son nom. */
   .co-pour{display:inline-block;margin-top:3px;font-size:11.5px;color:var(--faint);
     line-height:1.5;max-width:68ch}
@@ -20200,8 +20218,31 @@
             '<button type="button" class="qg-file-btn" id="ef-cadrer">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>' +
             '<span>Cadrer la photo</span></button>' +
+            // LA PHOTO ENVOYÉE, EN UN CLIC.
+            // Elle arrive telle qu'elle est sur le téléphone, sans
+            // réduction (voir joueuse.html). Elle vivait pourtant dans
+            // une colonne à part, et la seule façon de s'en servir était
+            // de recopier son adresse à la main dans le champ ci-dessus.
+            // Le bouton n'écrase rien tout seul : il remplit le champ,
+            // on cadre, puis on enregistre.
+            (r.photo_source_url && r.photo_source_url !== r.photo_url
+              ? '<button type="button" class="qg-file-btn" id="ef-src" data-u="' + esc(r.photo_source_url) + '">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>' +
+                '<span>Utiliser la photo envoyée</span></button>'
+              : '') +
             '<span class="hint" style="margin:0">Le site affiche un portrait : choisissez ce qu’il garde.</span>' +
           '</div>' +
+          // Ce qui est arrivé, montré. Sans l'image sous les yeux, le
+          // bouton ci-dessus demande de faire confiance à une adresse.
+          (r.photo_source_url
+            // onerror : la photo arrive dans son format d'origine, HEIC
+            // compris. Le navigateur ne l'affiche pas, et un carré vide
+            // ferait croire à une photo manquante alors qu'elle est là.
+            ? '<div class="ef-src"><img src="' + esc(r.photo_source_url) + '" alt="" loading="lazy"' +
+              ' onerror="this.classList.add(\'ko\');this.removeAttribute(\'src\')">' +
+              '<span>La photo envoyée, telle quelle, sans réduction.<br>' +
+              '<a href="' + esc(r.photo_source_url) + '" target="_blank" rel="noopener">L’ouvrir en grand</a></span></div>'
+            : '') +
           '<p class="po-hint" id="ef-dossier-mot">' + esc((EF_DOSSIER[efDos(r)] || EF_DOSSIER.publiee)[1]) + '</p>' +
           // CE QU'ELLE A ENVOYE, tel quel. L'admin corrige librement la
           // fiche ; l'instantane garde la trace de ce qui est arrive --
@@ -20333,6 +20374,18 @@
         motif: 'joueuse licenciée du Baobabs Basket Club pour la saison ' + an + '-' + (an + 1) + (r.jersey_number != null ? ', maillot n° ' + r.jersey_number : '') + (r.position ? ', au poste de ' + r.position.toLowerCase() : '') + '. La présente attestation est délivrée pour servir et valoir ce que de droit.',
         secondNom: '', secondQualite: ''
       }, { origine: 'Les joueuses' });
+    });
+    // Reprendre la photo envoyée : on remplit le champ, on ne l'enregistre
+    // pas. Écraser la photo du site d'un clic, sans que rien ne soit
+    // encore cadré, serait un geste qu'on ne peut pas reprendre.
+    var bSrc = document.getElementById('ef-src');
+    if (bSrc) bSrc.addEventListener('click', function(){
+      var champ = document.getElementById('ef-photo');
+      if (!champ) return;
+      champ.value = bSrc.getAttribute('data-u') || '';
+      champ.dispatchEvent(new Event('input', { bubbles: true }));
+      efDirty = true;
+      if (note) note.textContent = 'Photo reprise — cadrez-la, puis enregistrez.';
     });
     var bCadre = document.getElementById('ef-cadrer');
     if (bCadre) bCadre.addEventListener('click', function(){
@@ -29989,6 +30042,12 @@
           '</span>' +
           '<span class="ds-quick">' +
             '<button type="button" class="qgv-att-ouvrir" data-id="' + esc(r.id) + '">Ouvrir</button>' +
+            // La photo arrive telle quelle depuis le téléphone, dans une
+            // colonne à part. Sans ce bouton, la seule façon d'en faire la
+            // photo du site était d'en recopier l'adresse à la main.
+            (r.photo_source_url && r.photo_source_url !== r.photo_url
+              ? '<button type="button" class="qgv-att-photo" data-id="' + esc(r.id) + '">Reprendre sa photo</button>'
+              : '') +
             '<button type="button" class="qgv-att-pub" data-id="' + esc(r.id) + '">Publier</button>' +
           '</span></div>';
       }).join('') + '</div>';
@@ -29996,6 +30055,17 @@
     // l'inspecteur de droite qui joue ce role.
     box.querySelectorAll('.qgv-att-ouvrir').forEach(function(b){
       b.addEventListener('click', function(){ qgvSelect(key, b.getAttribute('data-id')); });
+    });
+    box.querySelectorAll('.qgv-att-photo').forEach(function(b){
+      b.addEventListener('click', function(){
+        var id = b.getAttribute('data-id');
+        var r = rows.filter(function(x){ return String(x.id) === String(id); })[0] || {};
+        if (!r.photo_source_url) return;
+        b.disabled = true;
+        sbUpdate(COLLECTIONS[key].table, id, { photo_url: r.photo_source_url }, key)
+          .then(function(){ qgvLoad(key); qgToast('Photo reprise ✓ Ouvrez la fiche pour la cadrer.'); })
+          .catch(function(){ b.disabled = false; qgToast('La photo n’a pas pu être reprise.', true); });
+      });
     });
     box.querySelectorAll('.qgv-att-pub').forEach(function(b){
       b.addEventListener('click', function(){

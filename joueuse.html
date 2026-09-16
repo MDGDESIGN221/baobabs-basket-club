@@ -180,13 +180,13 @@
     <form id="form" novalidate>
 
       <div class="bloc">
-        <label class="t" for="photo">Photo <i>— le club la retravaillera</i></label>
+        <label class="t" for="photo">Photo <i>— le club la recadrera</i></label>
         <div class="photo">
           <span class="vignette" id="vignette">Aucune<br>photo</span>
           <div>
             <label class="bouton-fichier" for="photo">Choisir une photo</label>
             <input type="file" id="photo" accept="image/*">
-            <p class="aide" id="photo-mot">JPG ou PNG. Elle est allégée toute seule.</p>
+            <p class="aide" id="photo-mot">Le club la reçoit telle qu’elle est sur ton téléphone, sans réduction. Une grande photo met plus de temps à partir.</p>
           </div>
         </div>
       </div>
@@ -548,7 +548,9 @@
       'Discrète en dehors, décisive sur le terrain, {P} fait ce que les statistiques ne montrent pas.'
     ]
   };
-  var MAX_OCTETS = 12 * 1024 * 1024;   // avant compression
+  // 25 Mo : la photo part telle quelle, sans etre reduite, et un
+  // telephone recent depasse facilement les 12 Mo d’avant.
+  var MAX_OCTETS = 25 * 1024 * 1024;
 
   var q = new URLSearchParams(location.search);
   var JETON = q.get('t') || '';
@@ -762,7 +764,7 @@
       this.value = ''; return;
     }
     if (f.size > MAX_OCTETS){
-      dire('Cette image est trop lourde (' + Math.round(f.size / 1048576) + ' Mo). Le maximum est 12 Mo.');
+      dire('Cette image est trop lourde (' + Math.round(f.size / 1048576) + ' Mo). Le maximum est 25 Mo.');
       this.value = ''; return;
     }
     photoFichier = f;
@@ -770,39 +772,43 @@
     lecteur.onload = function(e){ el('vignette').innerHTML = '<img src="' + e.target.result + '" alt="">'; };
     lecteur.readAsDataURL(f);
     el('photo-mot').textContent = f.name.slice(0, 34) + ' · ' + Math.max(1, Math.round(f.size / 1024)) + ' Ko';
+    // La photo part telle quelle : son format part avec elle. Un HEIC
+    // d’iPhone arrive intact mais aucun navigateur ne l’affiche, et le
+    // club verrait une image cassée sans savoir pourquoi. Safari le
+    // convertit tout seul quand on choisit dans la galerie ; c’est en
+    // passant par Fichiers qu’on le rencontre. On le dit ici, une fois.
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(f.type)){
+      el('photo-mot').textContent +=
+        ' · format inhabituel : choisis-la plutôt dans ta galerie, sinon le club te la redemandera.';
+    }
   });
 
-  function reduire(f){
-    return new Promise(function(res){
-      var u = URL.createObjectURL(f), img = new Image();
-      img.onload = function(){
-        try {
-          var cote = 1400, e = Math.min(1, cote / Math.max(img.width, img.height));
-          var c = document.createElement('canvas');
-          c.width = Math.round(img.width * e); c.height = Math.round(img.height * e);
-          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-          URL.revokeObjectURL(u);
-          c.toBlob(function(b){
-            if (!b) return res(f);
-            res(new File([b], f.name.replace(/\.[a-z0-9]+$/i, '') + '.jpg', { type:'image/jpeg' }));
-          }, 'image/jpeg', .86);
-        } catch(e){ URL.revokeObjectURL(u); res(f); }
-      };
-      img.onerror = function(){ URL.revokeObjectURL(u); res(f); };
-      img.src = u;
-    });
-  }
+  // LA PHOTO PART TELLE QUELLE.
+  // Elle passait avant par un canvas : plus grand côté ramené à 1400 px,
+  // ré-encodage en JPEG à 86 %, extension forcée en .jpg. Rien n'était
+  // rogné, mais le club ne recevait pas la photo de l'appareil : il
+  // recevait une copie plus petite, déjà compressée une fois, sans sa
+  // transparence ni ses données d'origine. Impossible ensuite de cadrer
+  // serré sans que ça pique, et impossible de revenir en arrière.
+  //
+  // Le club veut l'original et fera lui-même le cadrage, fiche par fiche
+  // (bouton « Cadrer » de chaque fiche). Donc : aucun traitement ici, le
+  // fichier choisi est envoyé octet pour octet, avec son nom, son type et
+  // son extension.
+  //
+  // Ce que ça coûte, et qui est assumé : l'envoi est plus long sur une
+  // connexion mobile. Le bouton le dit pendant qu'il travaille, et le
+  // plafond monte à 25 Mo pour laisser passer les photos des téléphones
+  // récents (48 Mpx) qui dépassaient 12 Mo.
   function envoyerPhoto(f){
-    return reduire(f).then(function(petit){
-      var chemin = 'profils/' + Date.now() + '-' + petit.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      return fetch(URL_BASE + '/storage/v1/object/' + BUCKET + '/' + chemin, {
-        method:'POST',
-        headers:{ apikey:CLE, Authorization:'Bearer ' + CLE, 'Content-Type': petit.type || 'application/octet-stream' },
-        body: petit
-      }).then(function(r){
-        if (!r.ok) throw new Error('photo');
-        return URL_BASE + '/storage/v1/object/public/' + BUCKET + '/' + chemin;
-      });
+    var chemin = 'profils/' + Date.now() + '-' + f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return fetch(URL_BASE + '/storage/v1/object/' + BUCKET + '/' + chemin, {
+      method:'POST',
+      headers:{ apikey:CLE, Authorization:'Bearer ' + CLE, 'Content-Type': f.type || 'application/octet-stream' },
+      body: f
+    }).then(function(r){
+      if (!r.ok) throw new Error('photo');
+      return URL_BASE + '/storage/v1/object/public/' + BUCKET + '/' + chemin;
     });
   }
 
