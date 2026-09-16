@@ -1418,6 +1418,24 @@
   .co-att{font-style:normal;color:var(--attente);font-weight:700}
   .co-sec.est-vide .co-sec-e{flex:1}
   .co-doublon{font-size:11.5px;color:var(--attente);margin:8px 0 0}
+  /* Les métiers que la section couvre, sous son nom. */
+  .co-pour{display:inline-block;margin-top:3px;font-size:11.5px;color:var(--faint);
+    line-height:1.5;max-width:68ch}
+  /* LE MESSAGE À ENVOYER, REPLIÉ.
+     Il tient en huit lignes : déplié d'office, les quatre sections
+     devenaient un mur de texte et on ne voyait plus les liens. */
+  .co-msg{border-color:var(--gold);color:var(--gold-bright)}
+  .co-apercu{margin-top:9px}
+  .co-apercu summary{cursor:pointer;font-size:11.5px;color:var(--faint);
+    list-style:none;display:inline-flex;align-items:center;gap:6px}
+  .co-apercu summary::-webkit-details-marker{display:none}
+  .co-apercu summary::before{content:"\25B8";font-size:10px;transition:transform .15s}
+  .co-apercu[open] summary::before{transform:rotate(90deg)}
+  .co-apercu summary:hover{color:var(--text)}
+  .co-apercu pre{margin:8px 0 0;padding:11px 13px;max-width:70ch;
+    background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);
+    font-family:inherit;font-size:12px;line-height:1.55;color:var(--text);
+    white-space:pre-wrap;overflow-wrap:anywhere}
 
   /* LES POSTES : on en coche autant qu'il en faut. */
   .po-choix{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 4px}
@@ -17841,11 +17859,24 @@
           '</div></div>'+
         '<p class="pv-hint">Rendu simplifié — la fiche publique utilise un effet retourné (flip) avec la bio au verso.</p>';
       }},
-    staff:{ table:'staff', guide:'Ajoutez les membres du bureau et de l\'encadrement : un nom et une fonction (Président, Entraîneur, Manager…). La photo et la présentation sont optionnelles ; « Cadrer » place le visage dans le rond du site.', empty:'Aucun membre pour l\'instant.', title:'membre du bureau / staff', order:'sort.asc', circle:true, imageField:'photo_url', primary:'name',
-      meta:function(r){ return r.role||''; },
+    staff:{ table:'staff', guide:'L\'encadrement, le staff technique et le bureau. La famille range la fiche : elle décide du groupe ici et sur le site. Elle est posée toute seule quand la personne arrive par un lien de collecte ; à vous de la choisir pour une fiche saisie à la main.', empty:'Aucun membre pour l\'instant.', title:'membre de l\'encadrement / du bureau', order:'sort.asc', circle:true, imageField:'photo_url', primary:'name',
+      meta:function(r){ return [r.role, r.categorie].filter(Boolean).join(' · '); },
       fields:[
         {name:'name',label:'Nom',type:'text',required:true},
         {name:'role',label:'Fonction',type:'text',required:true,ph:'Ex : Président, Entraîneur…'},
+        // La famille, et non « le type » : c'est le mot de l'écran des liens.
+        {name:'categorie',label:'Famille',type:'select',opt:true,options:['','Encadrement','Staff technique','Bureau']},
+        // Arrivées par le formulaire depuis le 16 septembre 2026, elles
+        // n'avaient aucun champ où se montrer : le diplôme d'un entraîneur
+        // tombait dans la base et n'était visible nulle part.
+        {name:'qualification',label:'Diplôme ou spécialité',type:'text',opt:true,ph:'Ex : Brevet d\'État 2e degré'},
+        {name:'joined_at',label:'Au club depuis',type:'date',opt:true},
+        // Un dirigeant existe aussi dans l'organigramme, qui porte ses
+        // responsabilités et ses pouvoirs. Le rattacher évite deux fiches
+        // pour une seule personne.
+        {name:'org_role_key',label:'Sa fonction à l\'organigramme',type:'select',opt:true,
+         optionsKV:function(){ return [['','— Aucune —']].concat((typeof ORG_ROLES!=='undefined'?ORG_ROLES:[]).map(function(o){ return [o.key,o.label]; })); },
+         hint:'Pour un membre du bureau. Ses responsabilités et ses pouvoirs se remplissent dans l\'écran Organigramme.'},
         {name:'photo_url',label:'Photo',type:'image',opt:true,pos:true},
         {name:'bio',label:'Présentation',type:'textarea',opt:true},
         {name:'sort',label:'Ordre d\'affichage',type:'number',opt:true,ph:'0 = en premier'}
@@ -19665,10 +19696,15 @@
     }
     var lignes = Object.keys(CO_TYPES).map(function(t){
       var v = vivantsDe(t), c = v[0];   // le plus recent : coCharger trie par date
+      // Les métiers sous le nom de la section : « Dirigeants » ne disait
+      // pas à qui envoyer le lien. Ils sont là même quand aucun lien
+      // n'est ouvert, parce que c'est à ce moment-là qu'on se demande
+      // lequel ouvrir.
+      var pourQui = '<span class="co-pour">' + esc((CO_MESSAGES[t] || {}).pour || '') + '</span>';
       if (!c){
         return '<div class="co-sec est-vide">' +
           '<span class="co-sec-n">' + esc(CO_TYPES[t]) + '</span>' +
-          '<span class="co-sec-e">aucun lien ouvert</span>' +
+          '<span class="co-sec-e">aucun lien ouvert<br>' + pourQui + '</span>' +
           '<button type="button" class="ds-act co-ouvrir" data-type="' + t + '">Ouvrir un lien</button>' +
         '</div>';
       }
@@ -19684,14 +19720,20 @@
             // Un total sans la part qui attend ne dit pas quoi faire.
             (q.attente ? ' \u00b7 <em class="co-att">' + q.attente + ' \u00e0 v\u00e9rifier</em>' : '') +
             (c.expire_le ? ' \u00b7 jusqu\u2019au ' + esc(formatDateShort(c.expire_le)) : '') +
+            '<br>' + pourQui +
           '</span>' +
         '</div>' +
         '<div class="co-ligne">' +
           '<code class="co-url">' + esc(u) + '</code>' +
-          '<button type="button" class="ds-mini-btn co-copier" data-u="' + esc(u) + '">Copier</button>' +
+          '<button type="button" class="ds-mini-btn co-copier" data-u="' + esc(u) + '">Copier le lien</button>' +
+          // Le message entier, prêt à coller dans une conversation : c'est
+          // ce qui part vraiment, le lien seul ne se suffit pas.
+          '<button type="button" class="ds-mini-btn co-copier co-msg" data-u="' + esc(coMessage(t, u)) + '">Copier le message</button>' +
           '<a class="ds-act" href="' + esc(u) + '" target="_blank" rel="noopener">Ouvrir</a>' +
           '<button type="button" class="ds-act co-fermer" data-id="' + esc(c.id) + '">Fermer</button>' +
         '</div>' +
+        '<details class="co-apercu"><summary>Voir le message</summary>' +
+          '<pre>' + esc(coMessage(t, u)) + '</pre></details>' +
         // Deux liens pour la meme section, c'est deux verites sur ce
         // qu'il faut envoyer. Rien ne l'interdit en base : on le dit.
         (v.length > 1
@@ -19711,6 +19753,71 @@
   }
 
   var CO_TYPES = { joueuse:'Joueuses', coach:'Coachs', staff:'Staff', dirigeant:'Dirigeants' };
+
+  // LE MESSAGE QUI ACCOMPAGNE LE LIEN.
+  // Un lien nu, collé dans une conversation, ne dit ni à qui il s'adresse
+  // ni ce qu'il attend : le président devait réécrire quatre fois le même
+  // texte, et un coach pouvait recevoir celui des joueuses.
+  //
+  // Chaque message ne promet QUE ce que son formulaire demande vraiment :
+  // le diplôme pour un coach, la spécialité pour le staff technique, et
+  // rien de tel pour un dirigeant, à qui la page ne le demande pas
+  // (voir METIERS dans joueuse.html). Et la page du site nommée est la
+  // vraie destination : Équipe, Staff, Le club.
+  //
+  // Tutoiement partout, parce que le formulaire tutoie : deux voix entre
+  // le message et la page qu'il ouvre feraient douter du lien.
+  // « pour » nomme les métiers, un par un. Sans eux, « Dirigeants » ne
+  // dit pas à une trésorière que c'est son lien : elle n'est pas
+  // « dirigeante » dans sa tête, elle est trésorière. Les métiers sont
+  // repris MOT POUR MOT de la liste que le formulaire lui proposera
+  // (METIERS dans joueuse.html) : promettre une fonction absente de la
+  // liste ferait douter du lien une fois la page ouverte.
+  var CO_MESSAGES = {
+    joueuse: {
+      titre: 'Ta fiche joueuse',
+      pour: 'les joueuses de l’effectif, de l’école de basket aux seniors',
+      quoi: 'les fiches des joueuses',
+      page: 'Équipe',
+      champs: 'ton nom, ta date de naissance, ton numéro de maillot, tes postes, et une photo'
+    },
+    coach: {
+      titre: 'Ta fiche de coach',
+      pour: 'l’encadrement sportif : entraîneur principal, entraîneur adjoint, ' +
+            'entraîneur des jeunes, assistant coach',
+      quoi: 'les fiches de l’encadrement',
+      page: 'Staff',
+      champs: 'ton nom, ta fonction, ton diplôme, depuis quand tu es au club, et une photo'
+    },
+    staff: {
+      titre: 'Ta fiche au club',
+      pour: 'le staff technique : préparateur physique, kinésithérapeute, médecin, ' +
+            'statisticien, table de marque, responsable matériel, intendant',
+      quoi: 'ces fiches',
+      page: 'Staff',
+      champs: 'ton nom, ta fonction, ta spécialité, depuis quand tu es au club, et une photo'
+    },
+    dirigeant: {
+      titre: 'Ta fiche de dirigeant',
+      pour: 'les membres du bureau : président, vice-président, secrétaire général, ' +
+            'trésorier, et tout autre membre du bureau',
+      quoi: 'les fiches du bureau',
+      page: 'Le club',
+      champs: 'ton nom, ta fonction au bureau, depuis quand tu es au club, et une photo'
+    }
+  };
+  function coMessage(type, url){
+    var m = CO_MESSAGES[type] || CO_MESSAGES.staff;
+    return 'Baobabs Basket Club · ' + m.titre + '\n\n' +
+      'Ce lien est pour ' + m.pour + '.\n' +
+      'Si tu n’es pas dans cette liste, demande le bon lien : il y en a un par groupe.\n\n' +
+      'Le club met à jour ' + m.quoi + ' pour la page ' + m.page + ' du site. ' +
+      'Remplis la tienne depuis ton téléphone, c’est quelques minutes : ' + m.champs + '.\n\n' +
+      url + '\n\n' +
+      'Après l’envoi, tu reçois un lien personnel pour revenir corriger ta fiche. ' +
+      'Rien n’apparaît sur le site avant la validation du club.\n\n' +
+      'Merci !';
+  }
   function coCabler(){
     var box = document.getElementById('ef-collecte'); if (!box) return;
     box.querySelectorAll('.co-copier').forEach(function(b){
@@ -30002,9 +30109,53 @@
         var photo=m.photo_url?'<img src="'+esc(m.photo_url)+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none;background:var(--surface-3);pointer-events:none">':'<span style="width:64px;height:64px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border:1px solid var(--line-strong);font-family:var(--font-ui);font-weight:700;font-size:18px;color:#46BF1D">'+esc(initials(m.name||'?'))+'</span>';
         return '<div data-qgv-id="'+esc(id)+'" style="position:relative;display:flex;align-items:center;gap:14px;background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:16px 18px;cursor:pointer'+(isSel?';box-shadow:0 0 0 1px var(--gold)':'')+'">'+photo+'<div style="min-width:0"><div style="font-family:var(--font-ui);font-weight:700;font-size:16px;color:#F3EFE6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name||'Nouveau membre')+'</div><div style="font-family:var(--font-ui);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-top:5px">'+esc(m.role||'Fonction')+'</div></div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:var(--r-sm);color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
       }
-      var out=''; rows.forEach(function(m){ out+=card(m,m.id); }); if(draft) out+=card(draft,'__new__');
-      out+='<button type="button" class="qgv-add" style="display:flex;align-items:center;justify-content:center;gap:9px;min-height:96px;border-radius:var(--r-md);border:1px dashed var(--line-loud);background:transparent;color:var(--faint);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12.5px">Ajouter un membre</span></button>';
-      return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">'+out+'</div>';
+      // TROIS FAMILLES, TROIS GROUPES. Une seule liste mettait le
+      // président, l'entraîneur et le kiné à la suite : « ça va mélanger
+      // joueuses, staff, etc., j'ai pas demandé ça ». Ce n'est plus une
+      // liste, ce sont trois listes titrées sur un seul écran.
+      //
+      // « À classer » n'est pas un quatrième métier : c'est le groupe des
+      // fiches saisies à la main avant que la famille existe. Leur
+      // inventer une famille aurait été pire que de les montrer telles
+      // quelles. Il disparaît dès qu'il est vide.
+      var GRP=['Encadrement','Staff technique','Bureau'];
+      var GRP_SOUS={ 'Encadrement':'Les coachs',
+                     'Staff technique':'Kiné, préparateur, matériel',
+                     'Bureau':'Les dirigeants' };
+      var grille='display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px';
+      function titre(n,sous,combien){
+        return '<div style="display:flex;align-items:baseline;gap:10px;margin:22px 0 12px">'+
+          '<span style="font-family:var(--font-ui);font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#46BF1D">'+esc(n)+'</span>'+
+          '<span style="font-size:12px;color:var(--faint)">'+esc(sous)+' · '+combien+'</span></div>';
+      }
+      var classees={}, aClasser=[];
+      GRP.forEach(function(g){ classees[g]=[]; });
+      rows.forEach(function(m){
+        if (m.categorie && classees[m.categorie]) classees[m.categorie].push(m);
+        else aClasser.push(m);
+      });
+      // Sans aucune famille posée (la migration n'est pas passée, ou rien
+      // n'est encore classé), on rend la liste d'avant : un écran coupé en
+      // un seul groupe vide dirait quelque chose de faux.
+      var aucune = GRP.every(function(g){ return !classees[g].length; });
+      var ajouter='<button type="button" class="qgv-add" style="display:flex;align-items:center;justify-content:center;gap:9px;min-height:96px;border-radius:var(--r-md);border:1px dashed var(--line-loud);background:transparent;color:var(--faint);cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-weight:700;font-size:12.5px">Ajouter un membre</span></button>';
+      if (aucune && !draft){
+        var plat=''; rows.forEach(function(m){ plat+=card(m,m.id); });
+        return '<div style="'+grille+'">'+plat+ajouter+'</div>';
+      }
+      var out='';
+      GRP.forEach(function(g){
+        var l=classees[g];
+        if (!l.length) return;
+        out+=titre(g, GRP_SOUS[g], l.length+(l.length>1?' membres':' membre'));
+        out+='<div style="'+grille+'">'+l.map(function(m){ return card(m,m.id); }).join('')+'</div>';
+      });
+      if (aClasser.length){
+        out+=titre('À classer','Ouvrez la fiche et choisissez sa famille', aClasser.length+(aClasser.length>1?' fiches':' fiche'));
+        out+='<div style="'+grille+'">'+aClasser.map(function(m){ return card(m,m.id); }).join('')+'</div>';
+      }
+      out+='<div style="margin-top:22px;'+grille+'">'+(draft?card(draft,'__new__'):'')+ajouter+'</div>';
+      return out;
     },
     timeline:function(rows, draft, sel){
       function item(t,id){
@@ -30056,6 +30207,16 @@
     }
     if(f.type==='rich') return '<div class="qg-field">'+lab+qgRTField(id,v,f.ph||'')+'</div>';
     if(f.type==='textarea') return '<div class="qg-field">'+lab+'<textarea class="qg-in" id="'+id+'" rows="4" placeholder="'+esc(f.ph||'')+'">'+esc(v)+'</textarea></div>';
+    // optionsKV : une valeur qui n'est pas son libellé (« president » /
+    // « Président »). options seul ne suffisait pas : la fonction d'un
+    // dirigeant se stocke par sa clé, pas par le mot affiché.
+    if(f.type==='select' && f.optionsKV){
+      var kv=(typeof f.optionsKV==='function'?f.optionsKV():f.optionsKV)||[];
+      if(v&&!kv.some(function(p){ return String(p[0])===String(v); })) kv=kv.concat([[v,v]]);
+      return '<div class="qg-field">'+lab+'<select class="qg-in" id="'+id+'">'+kv.map(function(p){
+        return '<option value="'+esc(p[0])+'"'+(String(v)===String(p[0])?' selected':'')+'>'+esc(p[1])+'</option>'; }).join('')+'</select>'+
+        (f.hint?'<p class="qg-hint">'+esc(f.hint)+'</p>':'')+'</div>';
+    }
     if(f.type==='select'){ var o=(f.options||[]).slice(); if(v&&o.indexOf(v)<0) o.push(v); return '<div class="qg-field">'+lab+'<select class="qg-in" id="'+id+'">'+o.map(function(x){ return '<option value="'+esc(x)+'"'+(String(v)===x?' selected':'')+'>'+(x?esc(x):'—')+'</option>'; }).join('')+'</select></div>'; }
     if(f.type==='boolean'){ var isOn=(v===true||v==='true')?true:((v===false||v==='false')?false:(f.bdefault===true)); var onL=f.onLabel||(f.name==='in_stock'?'En stock':'Oui'); var offL=f.offLabel||(f.name==='in_stock'?'Épuisé':'Non'); return '<div class="qg-field">'+lab+'<select class="qg-in" id="'+id+'"><option value="true"'+(isOn?' selected':'')+'>'+esc(onL)+'</option><option value="false"'+(!isOn?' selected':'')+'>'+esc(offL)+'</option></select></div>'; }
     if(f.type==='image'){ var posHtml=''; if(f.pos){ var px=(cur[f.name+'_x']==null||cur[f.name+'_x']==='')?50:cur[f.name+'_x'], py=(cur[f.name+'_y']==null||cur[f.name+'_y']==='')?50:cur[f.name+'_y'], pz=(cur[f.name+'_zoom']==null||cur[f.name+'_zoom']==='')?100:cur[f.name+'_zoom'];

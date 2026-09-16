@@ -6981,14 +6981,40 @@ window.bbCloud = function(url, w){
     return '<span style="display:block;width:' + taille + 'px;height:' + taille + 'px;border-radius:50%;overflow:hidden;flex:none;' + (bordure || '') + '">' +
       '<img src="' + window.bbSafeUrl(url) + '" alt="' + esc(alt || '') + '" style="display:block;width:100%;height:100%;object-fit:cover;object-position:' + x + '% ' + y + '%;transform:scale(' + (z / 100) + ');transform-origin:' + x + '% ' + y + '%" loading="lazy" decoding="async"></span>';
   }
+  // TROIS FAMILLES, TROIS GROUPES TITRÉS.
+  // La liste était plate : le président, l'entraîneur et le kiné se
+  // suivaient sans que rien ne dise qui faisait quoi. La colonne
+  // « categorie » les sépare, et le visiteur lit enfin l'organisation.
+  //
+  // Repli assumé : tant que personne n'est classé (la migration n'est pas
+  // passée, ou les fiches sont anciennes), la page rend exactement la
+  // liste d'avant. Un titre au-dessus d'un seul groupe dirait quelque
+  // chose de faux.
   function renderStaff(rows){
     var el = document.getElementById('bb-staff-list'); if(!el || !rows || !rows.length) return;
-    el.innerHTML = rows.map(function(m){
+    function ligne(m){
       var ph = m.photo_url
         ? bbRond((window.bbCloud?window.bbCloud(m.photo_url,150):(m.photo_url)), 42, m, m.name||'')
         : '<div style="width:42px;height:42px;border-radius:50%;background:#12211A;border:1px solid rgba(243,239,230,.18);flex:none;display:flex;align-items:center;justify-content:center;font-family:\'Inter\',sans-serif;font-weight:700;font-size:14px;color:var(--bb-or)">'+esc((m.name||'?').trim().charAt(0).toUpperCase())+'</div>';
       return '<div style="display:flex;align-items:center;gap:12px">'+ph+'<div><div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">'+esc(m.role||'')+'</div><div style="font-size:12.5px;color:#B9C2BB">'+esc(m.name||'')+'</div></div></div>';
-    }).join('');
+    }
+    var FAM = ['Encadrement','Staff technique','Bureau'];
+    var parFam = {}, classees = 0;
+    FAM.forEach(function(f){ parFam[f] = []; });
+    rows.forEach(function(m){ if(m.categorie && parFam[m.categorie]){ parFam[m.categorie].push(m); classees++; } });
+    if(!classees){ el.innerHTML = rows.map(ligne).join(''); return; }
+    // Les fiches sans famille ne disparaissent pas : elles closent la
+    // liste, sans titre. Aucun membre du club ne doit tomber de la page
+    // parce qu'une colonne est vide.
+    var reste = rows.filter(function(m){ return !(m.categorie && parFam[m.categorie]); });
+    var html = '';
+    FAM.forEach(function(f){
+      if(!parFam[f].length) return;
+      html += '<div style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--bb-or);margin-top:6px">'+esc(f)+'</div>'
+            + parFam[f].map(ligne).join('');
+    });
+    html += reste.map(ligne).join('');
+    el.innerHTML = html;
   }
 
   // ===================== BANNIÈRES DU HERO =====================
