@@ -7225,6 +7225,50 @@ window.bbCloud = function(url, w){
       if (settings.club_phone) data.telephone = settings.club_phone;
       if (settings.logo_url) data.logo = settings.logo_url;
       if (settings.club_address) data.address.streetAddress = settings.club_address;
+
+      // CE QUE GOOGLE CHERCHE POUR UNE FICHE LOCALE : où, quand, qui
+      // appeler. Tout vient des réglages du club ; RIEN N'EST INVENTÉ.
+      // Un champ vide reste absent plutôt que d'annoncer une adresse ou
+      // des horaires que personne n'a saisis.
+      var tel = settings.club_phone || settings.ins_contact || settings.try_contact;
+      if (tel) data.telephone = String(tel).trim();
+      if (settings.club_maps_url && /^https?:\/\//i.test(settings.club_maps_url))
+        data.hasMap = settings.club_maps_url;
+
+      // Le terrain où l'on s'entraîne, nommé. « Sicap Baobabs » dit plus
+      // à quelqu'un de Dakar que « Dakar » tout court.
+      if (settings.ins_place){
+        data.location = { '@type':'Place', name:String(settings.ins_place).trim(),
+                          address: data.address };
+        if (settings.club_maps_url && /^https?:\/\//i.test(settings.club_maps_url))
+          data.location.hasMap = settings.club_maps_url;
+      }
+
+      // Les créneaux de l'école de basket : c'est quand on trouve le club
+      // sur le terrain. Les jours sont écrits en toutes lettres dans le
+      // réglage (« Mercredi, samedi et dimanche ») et l'heure sous la
+      // forme « 16h00 – 18h00 ».
+      var JOURS = { lundi:'Monday', mardi:'Tuesday', mercredi:'Wednesday', jeudi:'Thursday',
+                    vendredi:'Friday', samedi:'Saturday', dimanche:'Sunday' };
+      var sansAccent = function(x){
+        x = String(x || '').toLowerCase();
+        return x.normalize ? x.normalize('NFD').replace(/[̀-ͯ]/g, '') : x;
+      };
+      var jours = [];
+      sansAccent(settings.ins_days).split(/[,;]|\bet\b|\bou\b/).forEach(function(mot){
+        var j = JOURS[mot.trim()];
+        if (j && jours.indexOf(j) < 0) jours.push(j);
+      });
+      var h = String(settings.ins_time || '').match(/(\d{1,2})\s*h\s*(\d{2})?\D+(\d{1,2})\s*h\s*(\d{2})?/i);
+      if (jours.length && h){
+        var deux = function(n){ n = String(n); return n.length < 2 ? '0' + n : n; };
+        data.openingHoursSpecification = [{
+          '@type': 'OpeningHoursSpecification',
+          dayOfWeek: jours,
+          opens:  deux(h[1]) + ':' + (h[2] || '00'),
+          closes: deux(h[3]) + ':' + (h[4] || '00')
+        }];
+      }
       el.textContent = JSON.stringify(data);
     } catch(e){}
   }
