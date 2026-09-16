@@ -1546,6 +1546,22 @@
      d'attente, pas celle d'erreur : rien n'est cassé, il manque juste
      quelque chose. */
   .pc-att{color:var(--attente-clair)}
+  /* La carte qu'on vient de quitter se signale une seconde : sans elle,
+     on retrouve sa place mais pas sa ligne. */
+  @keyframes ef-revient{0%,100%{box-shadow:0 0 0 0 rgba(198,162,87,0)}
+    18%,62%{box-shadow:0 0 0 2px var(--attente)}}
+  .ef-revient{animation:ef-revient 1.5s ease}
+  @media (prefers-reduced-motion:reduce){ .ef-revient{animation:none;box-shadow:0 0 0 2px var(--attente)} }
+
+  /* LA VEILLE : un profil arrive pendant qu'on travaille.
+     On ne recharge jamais sous les doigts -- une saisie en cours serait
+     perdue. On le DIT, et c'est un clic. */
+  .ef-neuf{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;
+    padding:11px 14px;border-radius:var(--r-sm);
+    background:var(--gold-wash,rgba(70,191,29,.1));border:1px solid var(--gold)}
+  .ef-neuf b{font-family:var(--font-ui);font-weight:700;font-size:13px;color:var(--gold-bright)}
+  .ef-neuf span{font-size:12px;color:var(--muted)}
+  .ef-neuf button{margin-left:auto}
   /* Ce que l'accueil montre : le club choisit, et l'ecran le dit. */
   .pc-vis-bloc{margin-top:14px;padding:12px 13px;background:var(--surface-2);
     border:1px solid var(--line);border-radius:var(--r-sm)}
@@ -19797,6 +19813,70 @@
 
   // ===================== JOUEUSES =====================
   var efRows = [], efSel = null, efStarted = false, efDirty = false, efContacts = {};
+  /* LE RETOUR REND SA PLACE.
+     « Retour » remettait la liste a zero et la page tout en haut : avec
+     quinze profils, on repartait chercher a la main celui qu'on venait
+     de quitter, a chaque fois. On retient la hauteur de defilement et la
+     fiche quittee ; au retour, la page revient ou elle etait et la carte
+     se signale une seconde. */
+  var efPlace = 0, efDerniere = null;
+  /* ==================================================================
+     LA VEILLE : SAVOIR QU'UN PROFIL EST ARRIVE, SANS RECHARGER
+     ------------------------------------------------------------------
+     Un lien de collecte est ouvert : les profils tombent pendant qu'on
+     travaille, et rien ne le disait. Il fallait recharger la page pour
+     s'en apercevoir -- donc le faire souvent, pour rien la plupart du
+     temps.
+
+     On regarde toutes les minutes. Et on NE RECHARGE PAS sous les
+     doigts : une saisie en cours serait perdue, et une liste qui bouge
+     seule fait perdre sa place. On le dit, et c'est un clic.
+     ================================================================== */
+  var efVeilleTimer = null;
+  function efVeilleTic(){
+    var vue = document.getElementById('ef-list-view');
+    if (!vue || vue.classList.contains('hide')) return;  /* pas sur cet ecran */
+    if (efSel || efDirty) return;                        /* une fiche est ouverte */
+    sbGet('players?select=id&fiche_etat=in.(recue,a_verifier,a_completer)&limit=500')
+      .then(function(rows){
+        var connus = {}; efRows.forEach(function(r){ connus[String(r.id)] = 1; });
+        var neufs = (rows || []).filter(function(r){ return !connus[String(r.id)]; }).length;
+        if (neufs) efVeilleDire(neufs);
+      }).catch(function(){ /* la veille ne derange jamais : elle se tait */ });
+  }
+  function efVeilleDire(n){
+    var vue = document.getElementById('ef-list-view'); if (!vue) return;
+    var box = document.getElementById('ef-neuf');
+    if (!box){
+      box = document.createElement('div'); box.id = 'ef-neuf'; box.className = 'ef-neuf';
+      vue.insertBefore(box, vue.firstChild);
+    }
+    box.innerHTML = '<b>' + n + ' nouveau' + (n > 1 ? 'x profils sont arrivés' : ' profil est arrivé') + '</b>' +
+      '<span>pendant que vous travailliez</span>' +
+      '<button type="button" class="ds-act" id="ef-neuf-voir">Les afficher</button>';
+    document.getElementById('ef-neuf-voir').addEventListener('click', function(){
+      box.remove(); efLoad();
+    });
+  }
+  function efVeilleDemarrer(){
+    if (efVeilleTimer) return;
+    efVeilleTimer = setInterval(efVeilleTic, 60000);
+  }
+
+  function efOuvrir(id){
+    efPlace = window.scrollY || document.documentElement.scrollTop || 0;
+    efSel = id; efDirty = false; efRender();
+    window.scrollTo({ top: 0 });
+  }
+  function efFermer(){
+    efDerniere = efSel; efSel = null; efDirty = false; efRender();
+    /* apres le rendu, pas pendant : la liste n'a pas encore sa hauteur */
+    setTimeout(function(){
+      window.scrollTo({ top: efPlace });
+      var c = document.querySelector('.ef-card[data-id="' + efDerniere + '"], .ef-att[data-id="' + efDerniere + '"]');
+      if (c){ c.classList.add('ef-revient'); setTimeout(function(){ c.classList.remove('ef-revient'); }, 1500); }
+    }, 40);
+  }
 
   var EF_STATUS = {
     active:  ['Active',   '#A8D93B'],
@@ -20365,9 +20445,10 @@
     });
     document.getElementById('ef-back').addEventListener('click', function(){
       if (efDirty && !confirm('Des modifications ne sont pas enregistrées. Quitter quand même ?')) return;
-      efSel = null; efDirty = false; efRender();
+      efFermer();
     });
     efLoad();
+    efVeilleDemarrer();
   }
 
   function efLoad(){
@@ -20411,6 +20492,8 @@
     var lv = document.getElementById('ef-list-view'), dv = document.getElementById('ef-doc-view');
     if (efSel){ lv.classList.add('hide'); dv.classList.remove('hide'); efRenderDoc(); return; }
     lv.classList.remove('hide'); dv.classList.add('hide');
+    /* la liste vient d'être refaite : l'annonce n'a plus lieu d'être */
+    var neuf = document.getElementById('ef-neuf'); if (neuf) neuf.remove();
 
     var q = (document.getElementById('ef-search').value || '').trim().toLowerCase();
     var fl = document.getElementById('ef-filter').value;
@@ -20455,7 +20538,7 @@
     }).join('');
 
     box.querySelectorAll('.ef-card').forEach(function(el){
-      el.addEventListener('click', function(){ efSel = el.getAttribute('data-id'); efDirty = false; efRender(); });
+      el.addEventListener('click', function(){ efOuvrir(el.getAttribute('data-id')); });
     });
   }
 
@@ -20498,7 +20581,7 @@
       }).join('') + '</div>';
     box.querySelectorAll('.ef-att').forEach(function(b){
       b.addEventListener('click', function(){
-        efSel = b.getAttribute('data-id'); efDirty = false; efRender();
+        efOuvrir(b.getAttribute('data-id'));
       });
     });
   }
