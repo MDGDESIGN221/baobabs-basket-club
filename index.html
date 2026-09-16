@@ -7235,6 +7235,21 @@ window.bbCloud = function(url, w){
       if (settings.club_maps_url && /^https?:\/\//i.test(settings.club_maps_url))
         data.hasMap = settings.club_maps_url;
 
+      // LE POINT SUR LA CARTE, LU DANS LE LIEN LUI-MÊME.
+      // Un lien Google Maps porte presque toujours ses coordonnées :
+      // « @14.706,-17.462 » dans une adresse de lieu, « destination=... »
+      // ou « query=... » dans un lien d'itinéraire. On les reprend plutôt
+      // que de demander au club de retaper une latitude -- et donc plutôt
+      // que de risquer un chiffre de travers.
+      var co = String(settings.club_maps_url || '')
+        .match(/(?:@|destination=|query=|q=|ll=)(-?\d{1,2}\.\d{3,})[,%2C]+(-?\d{1,3}\.\d{3,})/i);
+      if (co){
+        var lat = parseFloat(co[1]), lng = parseFloat(co[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180){
+          data.geo = { '@type':'GeoCoordinates', latitude:lat, longitude:lng };
+        }
+      }
+
       // Le terrain où l'on s'entraîne, nommé. « Sicap Baobabs » dit plus
       // à quelqu'un de Dakar que « Dakar » tout court.
       if (settings.ins_place){
@@ -7242,6 +7257,10 @@ window.bbCloud = function(url, w){
                           address: data.address };
         if (settings.club_maps_url && /^https?:\/\//i.test(settings.club_maps_url))
           data.location.hasMap = settings.club_maps_url;
+        // Le point est lu plus haut : le lieu le porte aussi, sinon
+        // Google connaît des coordonnées sans savoir à quoi elles se
+        // rapportent.
+        if (data.geo) data.location.geo = data.geo;
       }
 
       // Les créneaux de l'école de basket : c'est quand on trouve le club
