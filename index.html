@@ -7505,6 +7505,28 @@ window.bbCloud = function(url, w){
     // l'ancienne requete et le filtre ci-dessous traite « pas de
     // fiche_etat » comme publiable : exactement ce que faisait le site
     // avant, quand rien n'etait en attente.
+    // L'ÂGE EXACT, ET NON UNE SOUSTRACTION D'ANNÉES.
+    // « 2026 moins 2004 » donne 22 dès le 1er janvier à quelqu'un qui ne
+    // les aura qu'en décembre. La fiche d'une joueuse de dix-sept ans
+    // annonçait donc dix-huit pendant onze mois. Avec la date complète on
+    // sait si l'anniversaire est passé ; sans elle, l'année seule reste
+    // le meilleur repli disponible, et c'est ce que le club a le plus
+    // souvent en base.
+    function bbAge(date, annee){
+      if (date){
+        var d = new Date(String(date).slice(0, 10) + 'T00:00:00');
+        if (!isNaN(d)){
+          var n = new Date(), a = n.getFullYear() - d.getFullYear();
+          var m = n.getMonth() - d.getMonth();
+          if (m < 0 || (m === 0 && n.getDate() < d.getDate())) a--;
+          if (a >= 0 && a < 120) return a;
+        }
+      }
+      var y = parseInt(annee, 10);
+      return (y > 1900 && y <= new Date().getFullYear()) ? (new Date().getFullYear() - y) : '';
+    }
+    window.bbAge = bbAge;
+
     sbFetch('players?select=*&fiche_etat=eq.publiee&order=sort.asc,jersey_number.asc')
       .catch(function(){ return sbFetch('players?select=*&order=sort.asc,jersey_number.asc'); })
       .then(bbPoser.players = function(rows){
@@ -7518,7 +7540,7 @@ window.bbCloud = function(url, w){
       }).map(function(r){
         return { no: (r.jersey_number!=null?r.jersey_number:''), name:r.name||'', pos:r.position||'',
           status:(r.status||'active'),
-          age:(r.birth_year? (new Date().getFullYear()-r.birth_year):''), height:r.height||'', foot:r.city||'',
+          age:bbAge(r.birth_date, r.birth_year), height:r.height||'', foot:r.city||'',
           src:(window.bbCloud?window.bbCloud(r.photo_url||'',800):(r.photo_url||'')),
           srcFull:(window.bbCloud?window.bbCloud(r.photo_url||'',1400):(r.photo_url||'')),
           nameColor:r.name_color||'', bio:r.bio||'', gender:(r.gender==='M'?'M':'F'),

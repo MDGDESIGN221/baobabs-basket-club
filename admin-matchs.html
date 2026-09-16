@@ -1516,6 +1516,19 @@
     background:var(--surface);border-top:2px solid var(--gold);border-bottom:1px solid var(--line-strong)}
   .ef-hero-photo{flex:none;width:132px;aspect-ratio:3/4;border-radius:var(--r-sm);object-fit:cover;
     object-position:top center;background:var(--surface-3);border:1px solid var(--line-strong)}
+  /* La photo envoyée, en attendant celle du site. Le liseré d'attente et
+     la mention disent qu'elle n'est pas publiée : sans eux on croirait la
+     fiche finie. */
+  .ef-hero-src{position:relative;flex:none;width:132px}
+  .ef-hero-src .ef-hero-photo{width:100%;border-color:var(--attente-edge);opacity:.92}
+  .ef-hero-src > span{position:absolute;left:0;right:0;bottom:0;padding:5px 6px;
+    background:rgba(9,15,11,.88);border-radius:0 0 var(--r-sm) var(--r-sm);
+    font-size:9.5px;line-height:1.35;text-align:center;color:var(--attente-clair)}
+  .ef-hero-src.ko .ef-hero-photo{visibility:hidden}
+  .ef-hero-src.ko::after{content:"Format non affichable ici";position:absolute;inset:0;
+    display:grid;place-items:center;padding:10px;text-align:center;
+    border:1px dashed var(--line-strong);border-radius:var(--r-sm);
+    font-size:10px;color:var(--faint)}
   .ef-statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:11px}
   .ef-statbox{background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:12px}
   .ef-statbox input{background:transparent;border:none;color:var(--gold);font-family:var(--font-ui);font-weight:700;font-size:21px;letter-spacing:-.02em;width:100%;padding:0}
@@ -20203,7 +20216,20 @@
     box.innerHTML =
       '<div class="cd-doc">' +
         '<div class="ef-hero">' +
-          (r.photo_url ? '<img class="ef-hero-photo" src="' + esc(r.photo_url) + '" alt="">' : '<div class="ef-hero-photo"></div>') +
+          // LE CADRE NE RESTE PLUS VIDE QUAND UNE PHOTO EST ARRIVÉE.
+          // Le haut de fiche ne montrait que photo_url, la photo du site.
+          // Tant que le club ne l'avait pas choisie, on voyait un
+          // rectangle vide -- et on en concluait qu'aucune photo n'avait
+          // été envoyée, alors qu'elle dormait dans photo_source_url.
+          // Faute de photo finale, on montre celle qu'elle a envoyée, et
+          // on le dit : rien ne laisse croire qu'elle est déjà publiée.
+          (r.photo_url
+            ? '<img class="ef-hero-photo" src="' + esc(r.photo_url) + '" alt="">'
+            : (r.photo_source_url
+                ? '<div class="ef-hero-src"><img class="ef-hero-photo" src="' + esc(r.photo_source_url) + '" alt=""' +
+                  ' onerror="this.closest(\'.ef-hero-src\').classList.add(\'ko\')">' +
+                  '<span>Photo envoyée<br>pas encore publiée</span></div>'
+                : '<div class="ef-hero-photo"></div>')) +
           '<div style="flex:1;min-width:220px">' +
             '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">' +
               (r.jersey_number != null ? '<span style="font-family:var(--font-ui);font-weight:700;font-size:30px;line-height:1;letter-spacing:-.04em;color:var(--gold)">' + r.jersey_number + '</span>' : '') +
@@ -24627,7 +24653,11 @@
           .then(function(rows){
             cdRows = (rows||[]).map(function(r){
               r.full_name = ((r.first_name||'')+' '+(r.last_name||'')).trim();
-              if (r.birth_date){ var d=new Date(r.birth_date); if(!isNaN(d)) r.age = new Date().getFullYear()-d.getFullYear(); }
+              if (r.birth_date){ /* l'age exact : la soustraction d'annees donnait un an de trop a qui n'a pas encore eu son anniversaire */
+                var d=new Date(String(r.birth_date).slice(0,10)+'T00:00:00');
+                if(!isNaN(d)){ var nAuj=new Date(), aAge=nAuj.getFullYear()-d.getFullYear(), mAge=nAuj.getMonth()-d.getMonth();
+                  if(mAge<0||(mAge===0&&nAuj.getDate()<d.getDate())) aAge--;
+                  if(aAge>=0&&aAge<120) r.age=aAge; } }
               return r;
             });
             cdFillCats(); cdRender();
@@ -26129,7 +26159,11 @@
             inDegrade = true;
             inRows = (rows||[]).map(function(r){
               r.full_name = ((r.child_first_name||'')+' '+(r.child_last_name||'')).trim();
-              if (r.birth_date){ var d=new Date(r.birth_date); if(!isNaN(d)) r.age = new Date().getFullYear()-d.getFullYear(); }
+              if (r.birth_date){ /* l'age exact : la soustraction d'annees donnait un an de trop a qui n'a pas encore eu son anniversaire */
+                var d=new Date(String(r.birth_date).slice(0,10)+'T00:00:00');
+                if(!isNaN(d)){ var nAuj=new Date(), aAge=nAuj.getFullYear()-d.getFullYear(), mAge=nAuj.getMonth()-d.getMonth();
+                  if(mAge<0||(mAge===0&&nAuj.getDate()<d.getDate())) aAge--;
+                  if(aAge>=0&&aAge<120) r.age=aAge; } }
               return r;
             });
             inFillCats(); inRender(); inBadge();

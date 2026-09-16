@@ -51,9 +51,18 @@ drop view if exists effectif_admin;
 create view effectif_admin as
 select
   p.*,
-  case when p.birth_year is not null
-       then extract(year from current_date)::integer - p.birth_year
-       else null end as age,
+  -- L'AGE EXACT quand la date complete existe, l'annee seule sinon.
+  -- « 2026 moins 2004 » donne 22 des le 1er janvier a quelqu'un qui ne
+  -- les aura qu'en decembre : une joueuse de dix-sept ans etait annoncee
+  -- a dix-huit pendant onze mois. Cette colonne n'existait pas avant la
+  -- recreation de la vue -- c'est l'occasion de la rendre juste.
+  case
+    when p.birth_date is not null
+      then extract(year from age(current_date, p.birth_date))::integer
+    when p.birth_year is not null
+      then extract(year from current_date)::integer - p.birth_year
+    else null
+  end as age,
   (p.stats->>'points')::numeric   as pts,
   (p.stats->>'rebonds')::numeric  as reb,
   (p.stats->>'passes')::numeric   as ast,
@@ -299,7 +308,61 @@ grant execute on function public.bbc_collecte_reprendre(text) to anon, authentic
 
 
 -- ---------------------------------------------------------------------
---  5) LE TELEPHONE DEJA RECU EST RATTRAPE
+--  5) TOUT CE QUI A ETE ENVOYE EST REMIS A SA PLACE
+--  ---------------------------------------------------------------------
+--  RIEN N'A JAMAIS ETE PERDU. Chaque depot ecrit l'integralite de l'envoi
+--  dans la colonne « soumission » (jsonb) AVANT de le repartir en
+--  colonnes : c'est le filet, pose des le premier jour. Un champ que la
+--  fonction n'a pas su ranger -- le telephone -- ou qu'une colonne
+--  absente a laisse tomber y dort intact.
+--
+--  On le ressort, colonne par colonne, ET SEULEMENT LA OU C'EST VIDE :
+--  ce que le club a corrige a la main depuis gagne toujours sur ce que
+--  la personne avait tape. Une correction ne se fait pas ecraser par un
+--  rattrapage.
+--
+--  Les valeurs qui ne sont pas du bon type sont ecartees plutot que de
+--  faire echouer la migration entiere : un « numero » ou l'on a tape
+--  « douze », une date incomplete. Elles restent dans soumission.
+-- ---------------------------------------------------------------------
+update public.players p set
+  city          = coalesce(nullif(btrim(p.city, ' '), ''),          nullif(btrim(coalesce(p.soumission->>'ville','')), '')),
+  bio           = coalesce(nullif(btrim(coalesce(p.bio,''), ' '), ''), nullif(btrim(coalesce(p.soumission->>'bio','')), '')),
+  height        = coalesce(nullif(btrim(coalesce(p.height,''), ' '), ''), nullif(btrim(coalesce(p.soumission->>'taille','')), '')),
+  weight        = coalesce(nullif(btrim(coalesce(p.weight,''), ' '), ''), nullif(btrim(coalesce(p.soumission->>'poids','')), '')),
+  nationality   = coalesce(nullif(btrim(coalesce(p.nationality,''), ' '), ''), nullif(btrim(coalesce(p.soumission->>'nationalite','')), '')),
+  strong_hand   = coalesce(nullif(btrim(coalesce(p.strong_hand,''), ' '), ''), nullif(btrim(coalesce(p.soumission->>'main','')), '')),
+  previous_club = coalesce(nullif(btrim(coalesce(p.previous_club,''), ' '), ''), nullif(btrim(coalesce(p.soumission->>'ancien_club','')), '')),
+  instagram     = coalesce(nullif(btrim(coalesce(p.instagram,''), ' '), ''), nullif(btrim(coalesce(p.soumission->>'instagram','')), '')),
+  photo_source_url = coalesce(nullif(btrim(coalesce(p.photo_source_url,''), ' '), ''), nullif(btrim(coalesce(p.soumission->>'photo','')), '')),
+  jersey_number = coalesce(p.jersey_number,
+                    case when p.soumission->>'numero' ~ '^[0-9]{1,3}$'
+                         then (p.soumission->>'numero')::int end),
+  birth_date    = coalesce(p.birth_date,
+                    case when p.soumission->>'naissance' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+                         then (p.soumission->>'naissance')::date end),
+  birth_year    = coalesce(p.birth_year,
+                    case when p.soumission->>'annee' ~ '^[0-9]{4}$'
+                         then (p.soumission->>'annee')::int end),
+  positions     = case when p.positions is null or array_length(p.positions, 1) is null
+                       then case when jsonb_typeof(p.soumission->'postes') = 'array'
+                                 then array(select jsonb_array_elements_text(p.soumission->'postes')) end
+                       else p.positions end
+ where p.soumission is not null;
+
+update public.staff s set
+  role          = coalesce(nullif(btrim(coalesce(s.role,''), ' '), ''), nullif(btrim(coalesce(s.soumission->>'fonction','')), '')),
+  bio           = coalesce(nullif(btrim(coalesce(s.bio,''), ' '), ''), nullif(btrim(coalesce(s.soumission->>'bio','')), '')),
+  qualification = coalesce(nullif(btrim(coalesce(s.qualification,''), ' '), ''), nullif(btrim(coalesce(s.soumission->>'qualification','')), '')),
+  photo_source_url = coalesce(nullif(btrim(coalesce(s.photo_source_url,''), ' '), ''), nullif(btrim(coalesce(s.soumission->>'photo','')), '')),
+  joined_at     = coalesce(s.joined_at,
+                    case when s.soumission->>'depuis' ~ '^[0-9]{4}$'
+                         then make_date((s.soumission->>'depuis')::int, 1, 1) end)
+ where s.soumission is not null;
+
+
+-- ---------------------------------------------------------------------
+--  5 bis) LE TELEPHONE DEJA RECU EST RATTRAPE
 --  ---------------------------------------------------------------------
 --  Il dormait dans « soumission » depuis le premier envoi. Rien n'est
 --  ecrase : on ne remplit que ce qui est vide.
