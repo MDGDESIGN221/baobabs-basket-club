@@ -1529,6 +1529,19 @@
     display:grid;place-items:center;padding:10px;text-align:center;
     border:1px dashed var(--line-strong);border-radius:var(--r-sm);
     font-size:10px;color:var(--faint)}
+  /* LA RELANCER : son lien, ce qui manque, et de quoi le lui envoyer. */
+  .ef-relance{margin:4px 0 18px;padding:13px 15px;background:var(--surface-2);
+    border:1px solid var(--line);border-left:3px solid var(--attente);border-radius:var(--r-sm)}
+  .ef-relance-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .ef-relance-t{font-family:var(--font-ui);font-weight:700;font-size:11.5px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--attente-clair)}
+  .ef-relance-d{font-size:11.5px;color:var(--faint)}
+  .ef-relance-m{margin:0 0 10px;font-size:12.5px;color:var(--muted);line-height:1.5}
+  .ef-relance-m b{color:var(--attente-clair);font-weight:600}
+  .ef-relance-m.ok{color:var(--ok)}
+  .ef-relance-b{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px}
+  .ef-relance .co-url{display:block;margin:0}
+  .ef-cp-msg{border-color:var(--attente);color:var(--attente-clair)}
   .ef-statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:11px}
   .ef-statbox{background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:12px}
   .ef-statbox input{background:transparent;border:none;color:var(--gold);font-family:var(--font-ui);font-weight:700;font-size:21px;letter-spacing:-.02em;width:100%;padding:0}
@@ -19672,6 +19685,83 @@
     refusee:     ['Archivée',    'Ne figure plus nulle part, sans rien perdre.']
   };
   function efDos(r){ return r && r.fiche_etat ? r.fiche_etat : 'publiee'; }
+
+  /* ==================================================================
+     LA RELANCER, SANS RIEN RECOPIER À LA MAIN
+     ------------------------------------------------------------------
+     Chaque personne repart du formulaire avec SON lien : il rouvre sa
+     fiche, déjà remplie, tant qu'elle n'est pas validée. C'est par lui
+     qu'on fait ajouter une photo oubliée, sans rien ressaisir soi-même
+     et sans lui renvoyer le lien public, qui créerait un doublon.
+
+     Il était bien là, mais en simple lien à ouvrir : pour le lui
+     renvoyer il fallait l'ouvrir, prendre l'adresse dans la barre, et
+     retaper un message. Ici tout se copie, et le message dit DE
+     LUI-MÊME ce qui manque à sa fiche.
+     ================================================================== */
+  function efLienPerso(r){
+    if (!r || !r.reprise_jeton) return '';
+    try { return new URL('joueuse.html?r=' + encodeURIComponent(r.reprise_jeton), location.href).href; }
+    catch(e){ return 'joueuse.html?r=' + encodeURIComponent(r.reprise_jeton); }
+  }
+  /* Ce qui manque, dans SES mots à elle : « ta taille », pas « height ».
+     On ne réclame que ce que le formulaire sait donner -- le statut
+     sportif ou le cadrage de la photo ne la regardent pas. */
+  function efManque(r){
+    var m = [];
+    if (!r.photo_source_url && !r.photo_url) m.push('une photo');
+    if (r.jersey_number == null)             m.push('ton numéro de maillot');
+    if (!r.birth_date && !r.birth_year)      m.push('ta date de naissance');
+    if (!String(r.position || '').trim())    m.push('ton poste');
+    if (!String(r.height || '').trim())      m.push('ta taille');
+    if (!String(r.city || '').trim())        m.push('ta ville');
+    if (!String(r.bio || '').trim())         m.push('quelques mots sur toi');
+    return m;
+  }
+  function efEnumere(l){
+    if (l.length < 2) return l[0] || '';
+    return l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1];
+  }
+  function efRelanceTexte(r){
+    var prenom = String(r.name || '').trim().split(/\s+/)[0] || '';
+    var m = efManque(r), lien = efLienPerso(r);
+    // Sans lien personnel (fiche saisie à la main), pas de message : il
+    // promettrait « c'est par ce lien » suivi d'un vide.
+    if (!lien) return '';
+    return 'Baobabs Basket Club · Ta fiche\n\n' +
+      'Salut' + (prenom ? ' ' + prenom : '') + ' ! Merci pour ta fiche.\n\n' +
+      (m.length
+        ? 'Il manque encore ' + efEnumere(m) + '. Tu peux la compléter depuis ce lien, ' +
+          'c’est le tien : tout ce que tu as déjà écrit y est.\n\n'
+        : 'Si tu veux corriger quelque chose, c’est par ce lien, il est à toi : ' +
+          'tout ce que tu as écrit y est.\n\n') +
+      lien + '\n\n' +
+      'Rien n’apparaît sur le site avant la validation du club.\n\nMerci !';
+  }
+  function efRelanceHtml(r){
+    var lien = efLienPerso(r), m = efManque(r);
+    var tel = (efContacts[r.id] || {}).phone || '';
+    var msg = efRelanceTexte(r);
+    return '<div class="ef-relance">' +
+      '<div class="ef-relance-h"><span class="ef-relance-t">La relancer</span>' +
+        '<span class="ef-relance-d">Profil reçu le ' + esc(fmtDateTime(r.soumis_le)) + '</span></div>' +
+      (m.length
+        ? '<p class="ef-relance-m">Il manque : <b>' + esc(efEnumere(m)) + '</b></p>'
+        : '<p class="ef-relance-m ok">Sa fiche est complète.</p>') +
+      (lien
+        ? '<code class="co-url">' + esc(lien) + '</code>' +
+          '<div class="ef-relance-b">' +
+            '<button type="button" class="ds-mini-btn ef-cp" data-u="' + esc(lien) + '">Copier son lien</button>' +
+            '<button type="button" class="ds-mini-btn ef-cp ef-cp-msg" data-u="' + esc(msg) + '">Copier le message</button>' +
+            (tel ? '<a class="ds-mini-btn" target="_blank" rel="noopener" href="https://wa.me/' +
+                   esc(telWhatsApp(tel)) + '?text=' + encodeURIComponent(msg) + '">WhatsApp</a>' +
+                   '<a class="ds-mini-btn" href="tel:' + esc(telWhatsApp(tel)) + '">Appeler</a>'
+                 : '<span class="ef-relance-d">Pas de téléphone à sa fiche</span>') +
+          '</div>' +
+          '<details class="co-apercu"><summary>Voir le message</summary><pre>' + esc(msg) + '</pre></details>'
+        : '<p class="ef-relance-d">Cette fiche a été saisie à la main : elle n’a pas de lien personnel.</p>') +
+      '</div>';
+  }
   // Un profil recu attend qu'on l'ouvre : il n'est pas encore du groupe.
   function efEnAttente(r){
     var k = efDos(r);
@@ -20328,9 +20418,7 @@
           // CE QU'ELLE A ENVOYE, tel quel. L'admin corrige librement la
           // fiche ; l'instantane garde la trace de ce qui est arrive --
           // « elle avait ecrit Ndeye Gueye, j'ai corrige en Ndeye Guèye ».
-          (r.soumis_le ? '<p class="po-hint">Profil reçu le ' + esc(fmtDateTime(r.soumis_le)) +
-             (r.reprise_jeton ? ' · <a href="joueuse.html?r=' + esc(r.reprise_jeton) + '" target="_blank" rel="noopener">son lien personnel</a>' : '') +
-             '</p>' : '') +
+          (r.soumis_le ? efRelanceHtml(r) : '') +
           fld('ef-inj', 'Note de blessure', r.injury_note, 'textarea', 'Nature et retour prévu — visible de vous seul.') +
           fld('ef-bio', 'Bio', r.bio, 'textarea', 'Le parcours, le style de jeu, ce qui la caractérise.') +
         '</div>' +
@@ -20460,6 +20548,19 @@
     // Reprendre la photo envoyée : on remplit le champ, on ne l'enregistre
     // pas. Écraser la photo du site d'un clic, sans que rien ne soit
     // encore cadré, serait un geste qu'on ne peut pas reprendre.
+    // Le lien et le message se copient. Le presse-papier moderne échoue
+    // hors HTTPS et sans geste : on garde le vieux chemin, qui marche
+    // partout (même code que les liens de collecte).
+    box.querySelectorAll('.ef-cp').forEach(function(b){
+      b.addEventListener('click', function(){
+        var u = b.getAttribute('data-u');
+        var fini = function(){ var a = b.textContent; b.textContent = 'Copié ✓';
+                               setTimeout(function(){ b.textContent = a; }, 1600); };
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(u).then(fini).catch(function(){ coCopierVieux(u, fini); });
+        } else coCopierVieux(u, fini);
+      });
+    });
     var bSrc = document.getElementById('ef-src');
     if (bSrc) bSrc.addEventListener('click', function(){
       var champ = document.getElementById('ef-photo');
