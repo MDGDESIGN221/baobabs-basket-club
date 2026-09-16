@@ -1407,8 +1407,30 @@
      Meme vide, la ligne reste : c'est ce qui rend evident qu'ouvrir le
      lien des dirigeants ne touche pas celui des joueuses. */
   .co-secs{display:flex;flex-direction:column;margin-top:12px}
-  .co-sec{padding:12px 0;border-top:1px solid var(--line)}
+  /* UNE COULEUR PAR SECTION.
+     Quatre blocs identiques au gris pres : on lisait le titre a chaque
+     fois pour savoir lequel on avait sous les yeux. La couleur porte le
+     filet de gauche ET le nom, jamais l'information seule -- le nom
+     reste ecrit, pour qui distingue mal les teintes.
+       Joueuses   vert, la couleur du club
+       Coachs     bleu
+       Staff      or
+       Dirigeants mauve */
+  .co-sec{position:relative;padding:12px 0 12px 14px;border-top:1px solid var(--line);
+    --co-teinte:var(--faint)}
+  .co-sec::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;
+    border-radius:3px;background:var(--co-teinte)}
+  .co-sec[data-type="joueuse"]  {--co-teinte:#46BF1D}
+  .co-sec[data-type="coach"]    {--co-teinte:#7FA8E0}
+  .co-sec[data-type="staff"]    {--co-teinte:#C6A257}
+  .co-sec[data-type="dirigeant"]{--co-teinte:#C58BE8}
+  .co-sec .co-sec-n{color:var(--co-teinte)}
+  /* Sans lien ouvert, la section est en veille : son filet s'efface,
+     pour que la couleur signale ce qui tourne et pas seulement ce qui
+     existe. */
+  .co-sec.est-vide::before{opacity:.42}
   .co-sec:first-child{border-top:0;padding-top:4px}
+  .co-sec:first-child::before{top:2px}
   .co-sec.est-vide{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
   .co-sec-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
   .co-sec-n{font-family:var(--font-ui);font-weight:700;font-size:12px;letter-spacing:.09em;
@@ -1442,7 +1464,9 @@
   /* LE MESSAGE À ENVOYER, REPLIÉ.
      Il tient en huit lignes : déplié d'office, les quatre sections
      devenaient un mur de texte et on ne voyait plus les liens. */
-  .co-msg{border-color:var(--gold);color:var(--gold-bright)}
+  /* Le bouton du message prend la teinte de sa section : d'un coup d'oeil
+     on sait quel message on s'apprete a copier. */
+  .co-msg{border-color:var(--co-teinte);color:var(--co-teinte)}
   .co-apercu{margin-top:9px}
   .co-apercu summary{cursor:pointer;font-size:11.5px;color:var(--faint);
     list-style:none;display:inline-flex;align-items:center;gap:6px}
@@ -19734,7 +19758,7 @@
       // lequel ouvrir.
       var pourQui = '<span class="co-pour">' + esc((CO_MESSAGES[t] || {}).pour || '') + '</span>';
       if (!c){
-        return '<div class="co-sec est-vide">' +
+        return '<div class="co-sec est-vide" data-type="' + t + '">' +
           '<span class="co-sec-n">' + esc(CO_TYPES[t]) + '</span>' +
           '<span class="co-sec-e">aucun lien ouvert<br>' + pourQui + '</span>' +
           '<button type="button" class="ds-act co-ouvrir" data-type="' + t + '">Ouvrir un lien</button>' +
@@ -19743,7 +19767,7 @@
       var u = coUrl(c.jeton);
       var q = coComptes[String(c.id)] || { total: 0, attente: 0 };
       var n = q.total;
-      return '<div class="co-sec">' +
+      return '<div class="co-sec" data-type="' + t + '">' +
         '<div class="co-sec-h">' +
           '<span class="co-sec-n">' + esc(CO_TYPES[t]) + '</span>' +
           '<span class="co-sec-e">' + esc(c.libelle) + ' \u00b7 ' +
