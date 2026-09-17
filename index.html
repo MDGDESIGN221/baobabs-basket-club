@@ -71,6 +71,32 @@ window.bbLienSur = function (u) {
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script>
+  /* ===================================================================
+     LES ANIMATIONS PASSENT, SAUF SI ON DEMANDE LE CALME
+     -------------------------------------------------------------------
+     Windows annonce « prefers-reduced-motion: reduce » des que les
+     effets d'animation sont desactives dans ses parametres -- ce qui
+     est le cas sur la machine du club sans que personne ne l'ait voulu.
+     Le site eteignait alors TOUTES ses animations, et paraissait mort.
+
+     Le proprietaire a tranche : chez lui, elles jouent. Les regles de
+     repli ne sont pas supprimees pour autant, elles attendent derriere
+     la classe « bb-calme » sur <html>. Le reglage site_animations la
+     pose ou non :
+       toujours (defaut) les animations jouent, quoi qu'en dise le systeme
+       systeme              on suit le systeme, comme avant
+     =================================================================== */
+  window.bbCalme = function(){
+    return document.documentElement.classList.contains('bb-calme');
+  };
+  window.bbAnimationsRegler = function(mode){
+    var calme = String(mode || 'toujours').trim().toLowerCase() === 'systeme'
+      && window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.documentElement.classList.toggle('bb-calme', !!calme);
+  };
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bebas+Neue&family=Big+Shoulders+Display:wght@700;900&family=Inter:wght@300..900&family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet">
 
 <style>
@@ -119,7 +145,8 @@ window.bbLienSur = function (u) {
   @keyframes bbDeriveOut{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-6%) scale(.97)}}
   .bb-page-in{animation:bbDeriveIn .30s cubic-bezier(.4,0,.2,1) both}
   .bb-page-out{animation:bbDeriveOut .17s cubic-bezier(.4,0,.2,1) both;pointer-events:none}
-  @media (prefers-reduced-motion:reduce){.bb-page-in,.bb-page-out{animation:none}}
+  @media (prefers-reduced-motion:reduce){.bb-calme .bb-page-in,
+    .bb-calme .bb-page-out{animation:none}}
   .bb-fade{animation:bbUp .6s cubic-bezier(.16,.8,.3,1) both}
 
   @keyframes bbReveal{0%{opacity:0;transform:perspective(1400px) rotateX(-38deg) translateY(80px) scale(.9)}55%{opacity:1}100%{opacity:1;transform:perspective(1400px) rotateX(0deg) translateY(0) scale(1)}}
@@ -143,7 +170,7 @@ window.bbLienSur = function (u) {
   .bb-try.is-visible .r-cats span:nth-child(4){transition-delay:.51s}
   .bb-try.is-visible .r-cats span:nth-child(5){transition-delay:.58s}
   .bb-try .r-cats span:hover{border-color:#A8D93B!important;background:rgba(168,217,59,.1)!important}
-  @media (prefers-reduced-motion:reduce){.bb-try .r-cats span{opacity:1!important;transform:none!important;transition:none!important}}
+  @media (prefers-reduced-motion:reduce){.bb-calme .bb-try .r-cats span{opacity:1!important;transform:none!important;transition:none!important}}
 
   .bb-try-grid{grid-template-columns:minmax(240px,38%) 1fr;gap:clamp(24px,4vw,56px)}
   @media (max-width:760px){
@@ -207,12 +234,12 @@ window.bbLienSur = function (u) {
   .bb-flip-front{transition:box-shadow .35s ease,border-color .35s ease}
   .bb-player:hover .bb-flip-front{box-shadow:0 26px 60px rgba(0,0,0,.6),0 0 0 1px rgba(168,217,59,.5);border-color:rgba(168,217,59,.55)!important}
   .bb-eff.armed.is-in .bb-player .bb-spot{animation:bbGlow 1.1s ease both}
-  @media (prefers-reduced-motion:reduce){.bb-eff.armed .bb-player .bb-name{opacity:1!important}}
+  @media (prefers-reduced-motion:reduce){.bb-calme .bb-eff.armed .bb-player .bb-name{opacity:1!important}}
 
   .bb-eff-bg{position:absolute;top:0;right:-2%;bottom:0;z-index:0;display:block;pointer-events:none;user-select:none;height:clamp(360px,52vw,760px);width:auto;max-width:60%;filter:grayscale(.35) contrast(1.05);opacity:0;transform:translateX(36px) scale(.95);transition:opacity 1.15s cubic-bezier(.16,.8,.3,1),transform 1.15s cubic-bezier(.16,.8,.3,1)}
   .bb-eff-bg.is-in{opacity:.18;transform:translateX(0) scale(1)}
   @media (max-width:760px){.bb-eff-bg{height:clamp(280px,72vw,420px);max-width:78%}.bb-eff-bg.is-in{opacity:.12}}
-  @media (prefers-reduced-motion:reduce){.bb-eff-bg{transition:opacity .01s linear}.bb-eff-bg.is-in{transform:none}}
+  @media (prefers-reduced-motion:reduce){.bb-calme .bb-eff-bg{transition:opacity .01s linear}.bb-calme .bb-eff-bg.is-in{transform:none}}
 
   .bb-hide{display:none!important}
   /* Le temoin (le site ouvert dans l'administration) souligne la section qu'on edite. */
@@ -248,7 +275,7 @@ window.bbLienSur = function (u) {
     #bb-app .bb-app-badges{justify-content:center}
     #bb-app .bb-app-stage{min-height:clamp(340px,90vw,440px)}
   }
-  @media (prefers-reduced-motion:reduce){#bb-app .bb-phone{animation:none}}
+  @media (prefers-reduced-motion:reduce){.bb-calme #bb-app .bb-phone{animation:none}}
 
   /* ===== splash d'ouverture ===== */
   @keyframes bbSplashLogo{0%{opacity:0;transform:scale(.55) translateY(14px)}55%{opacity:1}100%{opacity:1;transform:scale(1) translateY(0)}}
@@ -278,7 +305,7 @@ window.bbLienSur = function (u) {
      0,186em (deux), 0,179em (trois) : le translateX recule d'autant, plus
      0,06em de marge, pour effleurer le bord sans le franchir. */
   .bb-player .bb-bignum{position:absolute;right:0;top:50%;transform:translateY(-50%) translate(-.22em,-.077em);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:180px;line-height:1;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
-  @media (prefers-reduced-motion:reduce){.bb-player .bb-cardbg{animation:none}.bb-player .bb-bignum{animation:none;opacity:.5}.bb-flip-inner{transition:none!important}@media (hover:hover){.bb-player:hover .bb-flip-inner{transform:none!important}}}
+  @media (prefers-reduced-motion:reduce){.bb-calme .bb-player .bb-cardbg{animation:none}.bb-calme .bb-player .bb-bignum{animation:none;opacity:.5}.bb-calme .bb-flip-inner{transition:none!important}.bb-calme @media (hover:hover){.bb-player:hover .bb-flip-inner{transform:none!important}}}
 
   /* ===== Colonnes de lumière derrière l'effectif =====
      Une seule instance pour toute la section, pas une par carte : le portrait
@@ -303,7 +330,7 @@ window.bbLienSur = function (u) {
       rgba(94,158,74,.11) 56%,rgba(47,92,51,.04) 80%,rgba(12,30,19,0) 100%)}
   .bb-aurora .bb-au-voute{position:absolute;inset:0;
     background:radial-gradient(ellipse 78% 74% at 50% 100%,transparent 26%,rgba(6,13,9,.92) 82%)}
-  @media (prefers-reduced-motion:reduce){.bb-aurora{opacity:.32}}
+  @media (prefers-reduced-motion:reduce){.bb-calme .bb-aurora{opacity:.32}}
 
   /* ===== flip carte joueuse (fiche scouting) ===== */
   .bb-player{perspective:1400px}
@@ -401,7 +428,7 @@ window.bbLienSur = function (u) {
   .bb-halo > i{position:absolute;left:var(--bb-hx,50%);top:var(--bb-hy,50%);width:var(--bb-hs,520px);height:var(--bb-hs,520px);border-radius:50%;background:var(--bb-or);mix-blend-mode:difference;opacity:.5;transform:translate(-50%,-50%) scale(0);transition:transform .55s cubic-bezier(.19,1,.22,1);will-change:transform}
   .bb-tilt-on:hover .bb-halo > i{transform:translate(-50%,-50%) scale(1)}
   .bb-tilt > *:not(.bb-halo):not(.bb-blobs):not(.bb-blobs-fade){position:relative;z-index:2}
-  @media (prefers-reduced-motion:reduce){.bb-tilt{transition:none}.bb-halo{display:none}}
+  @media (prefers-reduced-motion:reduce){.bb-calme .bb-tilt{transition:none}.bb-calme .bb-halo{display:none}}
 
   /* ===== Text Reveal (façon Dia) =====
      Le texte se découvre mot par mot : chaque mot arrive légèrement flou,
@@ -414,7 +441,7 @@ window.bbLienSur = function (u) {
     transition-delay:var(--bb-wd,0ms);will-change:opacity,filter,transform}
   .bb-reveal-in .bb-word{opacity:1;filter:blur(0);transform:translateY(0)}
   @media (prefers-reduced-motion:reduce){
-    .bb-word{opacity:1!important;filter:none!important;transform:none!important;transition:none!important}
+    .bb-calme .bb-word{opacity:1!important;filter:none!important;transform:none!important;transition:none!important}
   }
 
   /* ===== BlobCard : nappe de couleur en haut + liseré dégradé =====
@@ -439,7 +466,7 @@ window.bbLienSur = function (u) {
   .bb-blobs-fade{position:absolute;inset:0;pointer-events:none;z-index:1;
     background:linear-gradient(180deg,rgba(10,21,15,0) 0%,rgba(10,21,15,.35) 30%,rgba(10,21,15,.88) 52%,#0A150F 66%)}
   .bb-blobcard > *:not(.bb-blobs):not(.bb-blobs-fade):not(.bb-halo){position:relative;z-index:2}
-  @media (prefers-reduced-motion:reduce){.bb-blobs > i{animation:none}}
+  @media (prefers-reduced-motion:reduce){.bb-calme .bb-blobs > i{animation:none}}
 
   /* ===== billets ===== */
   .bb-tk{position:relative;display:flex;flex-direction:column;background:#0E1A12;border:1px solid rgba(var(--bb-fil-rgb),.28);border-radius:14px;overflow:hidden;isolation:isolate}
@@ -796,8 +823,8 @@ window.bbLienSur = function (u) {
     .bb-ev-s-a{order:2;width:100%;text-align:center}
   }
   @media (prefers-reduced-motion:reduce){
-    .bb-ev-aff{transition:none} .bb-ev-aff:hover{transform:none}
-    .bb-ev-plus > summary svg{transition:none}
+    .bb-calme .bb-ev-aff{transition:none} .bb-calme .bb-ev-aff:hover{transform:none}
+    .bb-calme .bb-ev-plus > summary svg{transition:none}
   }
 
   /* --- page Inscriptions --- */
@@ -909,7 +936,11 @@ window.bbLienSur = function (u) {
   #bb-fo.in .bb-fo-vs-badge{opacity:1;transform:scale(1)}
   #bb-fo .bb-fo-stats-wrap{opacity:0;transform:translateY(14px);transition:opacity .6s ease .2s,transform .6s ease .2s}
   #bb-fo.in .bb-fo-stats-wrap{opacity:1;transform:translateY(0)}
-  @media (prefers-reduced-motion:reduce){#bb-fo .bb-fo-bar i,#bb-fo .bb-fo-side:first-child,#bb-fo .bb-fo-side:nth-child(3),#bb-fo .bb-fo-vs-badge,#bb-fo .bb-fo-stats-wrap{opacity:1!important;transform:none!important;transition:none!important}#bb-fo.in .bb-fo-bar i{transform:scaleX(1)!important}}
+  @media (prefers-reduced-motion:reduce){.bb-calme #bb-fo .bb-fo-bar i,
+    .bb-calme #bb-fo .bb-fo-side:first-child,
+    .bb-calme #bb-fo .bb-fo-side:nth-child(3),
+    .bb-calme #bb-fo .bb-fo-vs-badge,
+    .bb-calme #bb-fo .bb-fo-stats-wrap{opacity:1!important;transform:none!important;transition:none!important}.bb-calme #bb-fo.in .bb-fo-bar i{transform:scaleX(1)!important}}
 
   /* ===== bracket ===== */
   .bb-bracket{display:flex;gap:clamp(14px,3vw,40px);overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
@@ -1169,7 +1200,8 @@ window.bbLienSur = function (u) {
   @keyframes orgFade{from{opacity:0}to{opacity:1}}
   #bb-org .org-node,#bb-org .org-conseil{opacity:0}
   #bb-org.in .org-node,#bb-org.in .org-conseil{animation:orgFade .55s cubic-bezier(.16,.8,.3,1) both}
-  @media (prefers-reduced-motion:reduce){#bb-org .org-node,#bb-org .org-conseil{opacity:1;animation:none}}
+  @media (prefers-reduced-motion:reduce){.bb-calme #bb-org .org-node,
+    .bb-calme #bb-org .org-conseil{opacity:1;animation:none}}
   /* ===== organigramme mobile : pile verticale, aucun scroll horizontal ===== */
   @media (max-width:760px){
     #bb-org .org-scroll{overflow-x:visible;padding-bottom:0}
@@ -1230,8 +1262,12 @@ window.bbLienSur = function (u) {
   .bb-motion #bb-home-products>*:hover,.bb-motion #bb-actus-grid>*:hover{transform:translateY(-4px)}
   /* Coupure stricte : le réglage système gagne toujours. */
   @media (prefers-reduced-motion:reduce){
-    .bb-motion [data-rv],.bb-motion [data-rv].bb-in{opacity:1!important;animation:none!important;filter:none!important;transform:none!important}
-    #bb-hdr-inner,.bb-motion .bb-player,.bb-motion #bb-home-products>*,.bb-motion #bb-actus-grid>*{transition:none!important}
+    .bb-calme .bb-motion [data-rv],
+    .bb-calme .bb-motion [data-rv].bb-in{opacity:1!important;animation:none!important;filter:none!important;transform:none!important}
+    .bb-calme #bb-hdr-inner,
+    .bb-calme .bb-motion .bb-player,
+    .bb-calme .bb-motion #bb-home-products>*,
+    .bb-calme .bb-motion #bb-actus-grid>*{transition:none!important}
   }
   /* ==================================================================
      Tenue sur téléphone.
@@ -1558,15 +1594,15 @@ window.bbLienSur = function (u) {
      suit. */
   .bb-lu-fig{
     position:relative; margin:0; align-self:end; justify-self:center; min-height:0;
-    width:min(100%,240px); height:auto; aspect-ratio:3/4; overflow:hidden;
-    /* PLUS DE CADRE. Le fond vert et le coin arrondi dessinaient une
-       boite autour de chaque joueuse : on voyait le cadre avant de voir
-       la personne. Les portraits sont pris sur un fond uni sombre, tres
-       proche de celui de la scene -- un masque qui s'eteint sur les
-       quatre bords les y fait entrer au lieu de les y coller. */
-    border-radius:0; background:none;
-    -webkit-mask-image:radial-gradient(116% 88% at 50% 32%, #000 44%, rgba(0,0,0,.72) 70%, transparent 97%);
-    mask-image:radial-gradient(116% 88% at 50% 32%, #000 44%, rgba(0,0,0,.72) 70%, transparent 97%);
+    width:min(100%,240px); height:auto; aspect-ratio:3/4;
+    /* AUCUN DECOUPAGE, PARCE QU'IL N'Y A RIEN A DECOUPER.
+       Mesure faite sur les fichiers eux-memes : les quatre coins de
+       chaque portrait ont un alpha de 0. Les photos sont DEJA
+       detourees. Il n'y avait donc ni fond a cacher ni bord a fondre ;
+       il y avait, en revanche, un « overflow:hidden » qui tranchait la
+       joueuse au ras de la boite des que le ken burns l'agrandissait.
+       C'etait ca, le crop qu'on voyait. */
+    overflow:visible; border-radius:0; background:none;
     transform:translate3d(0,52px,0) scale(.88); opacity:0;
     filter:blur(14px);
     clip-path:polygon(0 0, 0 0, 0 100%, 0 100%);
@@ -1578,15 +1614,20 @@ window.bbLienSur = function (u) {
   /* le balayage en biais decouvre la joueuse, du flou vers le net */
   .bb-lu-act.on .bb-lu-fig{
     transform:none; opacity:1; filter:none;
-    clip-path:polygon(-14% 0, 100% 0, 100% 100%, -4% 100%);
+    clip-path:polygon(-40% -25%, 140% -25%, 140% 125%, -40% 125%);
   }
   /* LE CADRAGE DU CLUB, RESPECTE. object-position place le visage,
      --z applique le zoom : les trois nombres regles dans l'admin. Je
      les avais perdus en passant a la scene, et les joueuses sortaient
      du cadre. */
+  /* contain plutot que cover : sur une silhouette detouree, « cover »
+     n'a aucun interet et peut couper. L'ombre portee lit l'alpha, donc
+     elle epouse la joueuse -- c'est elle qui la pose dans la scene au
+     lieu de la laisser flotter. */
   .bb-lu-ph{
-    width:100%; height:100%; object-fit:cover; display:block;
-    filter:contrast(1.06) saturate(1.06); transform:scale(var(--z,1));
+    width:100%; height:100%; object-fit:contain; display:block;
+    filter:contrast(1.06) saturate(1.06) drop-shadow(0 20px 28px rgba(0,0,0,.62));
+    transform:scale(var(--z,1));
   }
   /* KEN BURNS : la photo respire pendant les quatre secondes. Une image
      parfaitement immobile sous un nom anime a l'air d'un bug. */
@@ -1603,10 +1644,12 @@ window.bbLienSur = function (u) {
     to  { transform:scale(var(--z,1)) translate3d(-1%,.8%,0) }
   }
   .bb-lu-halo{
-    position:absolute; left:50%; bottom:6%; width:78%; aspect-ratio:1;
-    transform:translateX(-50%); pointer-events:none;
-    background:radial-gradient(circle, rgba(168,217,59,.28), transparent 62%);
-    filter:blur(18px); opacity:0; transition:opacity 1.1s ease .18s;
+    position:absolute; left:50%; bottom:1%; width:128%; aspect-ratio:1.1;
+    transform:translateX(-50%); pointer-events:none; z-index:-1;
+    background:
+      radial-gradient(50% 24% at 50% 92%, rgba(0,0,0,.6), transparent 72%),
+      radial-gradient(46% 52% at 50% 46%, rgba(168,217,59,.3), transparent 68%);
+    filter:blur(22px); opacity:0; transition:opacity 1.1s ease .18s;
   }
   .bb-lu-act.on .bb-lu-halo{ opacity:1 }
 
@@ -1808,18 +1851,28 @@ window.bbLienSur = function (u) {
   @keyframes bb-lu-jauge{ from{width:0} to{width:100%} }
 
   @media (prefers-reduced-motion:reduce){
-    .bb-lu-num,.bb-lu-fig,.bb-lu-l,.bb-lu-pos,.bb-lu-banc-t,.bb-lu-banc-l li,.bb-lu-filet{
+    .bb-calme .bb-lu-num,
+    .bb-calme .bb-lu-fig,
+    .bb-calme .bb-lu-l,
+    .bb-calme .bb-lu-pos,
+    .bb-calme .bb-lu-banc-t,
+    .bb-calme .bb-lu-banc-l li,
+    .bb-calme .bb-lu-filet{
       transition:none !important; transform:none !important; opacity:1 !important;
       clip-path:none !important; width:auto }
-    .bb-lu-filet{ width:min(220px,62%) !important }
-    .bb-lu-act.on .bb-lu-ray,.bb-lu-act.on .bb-lu-liq,.bb-lu-act.on .bb-lu-ph,
-    .bb-lu-act.on .bb-lu-num,.bb-lu-scene::before,.bb-lu-scene::after,
-    .bb-lu-court{ animation:none !important }
-    .bb-lu-l{ color:#F3EFE6; text-shadow:none }
-    .bb-lu-pre .bb-lu-l{ color:var(--bb-or-clair) }
-    .bb-lu-act.on .bb-lu-fig{ clip-path:none; filter:none }
-    .bb-lu-act.sort{ transition:none; transform:none }
-    .bb-lu-vg.on .bb-lu-jauge i{ animation:none; width:100% }
+    .bb-calme .bb-lu-filet{ width:min(220px,62%) !important }
+    .bb-calme .bb-lu-act.on .bb-lu-ray,
+    .bb-calme .bb-lu-act.on .bb-lu-liq,
+    .bb-calme .bb-lu-act.on .bb-lu-ph,
+    .bb-calme .bb-lu-act.on .bb-lu-num,
+    .bb-calme .bb-lu-scene::before,
+    .bb-calme .bb-lu-scene::after,
+    .bb-calme .bb-lu-court{ animation:none !important }
+    .bb-calme .bb-lu-l{ color:#F3EFE6; text-shadow:none }
+    .bb-calme .bb-lu-pre .bb-lu-l{ color:var(--bb-or-clair) }
+    .bb-calme .bb-lu-act.on .bb-lu-fig{ clip-path:none; filter:none }
+    .bb-calme .bb-lu-act.sort{ transition:none; transform:none }
+    .bb-calme .bb-lu-vg.on .bb-lu-jauge i{ animation:none; width:100% }
   }
 
   /* ---- le pied : banc, encadrement, match ---- */
@@ -2200,11 +2253,19 @@ window.bbLienSur = function (u) {
   .bb-hh-fleche{ margin-left:auto; flex:none; color:#A8D93B }
 
   @media (prefers-reduced-motion:reduce){
-    #bb-hero-img{ animation:none }
-    #bb-hs-btn1, #bb-hs-btn2, #bb-hs-ticket, #bb-hero-actu,
-    #bb-hs-figures > div, #bb-hs-f1l, #bb-hs-f2l, #bb-hs-f3l{ transition:none }
-    #bb-hs-btn1:hover, #bb-hs-btn2:hover, #bb-hs-ticket:hover,
-    #bb-hs-figures > div:hover{ transform:none }
+    .bb-calme #bb-hero-img{ animation:none }
+    .bb-calme #bb-hs-btn1,
+    .bb-calme #bb-hs-btn2,
+    .bb-calme #bb-hs-ticket,
+    .bb-calme #bb-hero-actu,
+    .bb-calme #bb-hs-figures > div,
+    .bb-calme #bb-hs-f1l,
+    .bb-calme #bb-hs-f2l,
+    .bb-calme #bb-hs-f3l{ transition:none }
+    .bb-calme #bb-hs-btn1:hover,
+    .bb-calme #bb-hs-btn2:hover,
+    .bb-calme #bb-hs-ticket:hover,
+    .bb-calme #bb-hs-figures > div:hover{ transform:none }
   }
 
   /* ================================================================
@@ -2296,7 +2357,7 @@ window.bbLienSur = function (u) {
     position:absolute; inset:0; z-index:1; background:rgba(7,19,13,.5);
   }
   @media (prefers-reduced-motion:reduce){
-    .bb-ac-tete-vis .bb-ac-tete-flou{ filter:none; opacity:.28 }
+    .bb-calme .bb-ac-tete-vis .bb-ac-tete-flou{ filter:none; opacity:.28 }
   }
   .bb-ac-tete:hover .bb-ac-tete-vis img{ transform:scale(1.03) }
   .bb-ac-tete-vis::after{
@@ -2512,7 +2573,7 @@ window.bbLienSur = function (u) {
   .bb-ac-fig .bb-ac-loupe{ z-index:3 }
   .bb-ac-fig.zoom{ padding:clamp(14px,2vw,22px) 0 }
   .bb-ac-fig.zoom img{ box-shadow:0 18px 44px rgba(0,0,0,.5); border-radius:8px }
-  @media (prefers-reduced-motion:reduce){ .bb-ac-fig .bb-ac-flou{ filter:none; opacity:.28 } }
+  @media (prefers-reduced-motion:reduce){ .bb-calme .bb-ac-fig .bb-ac-flou{ filter:none; opacity:.28 } }
   .bb-ac-fig .bb-ac-loupe{
     position:absolute; right:12px; bottom:12px;
     font-family:'Inter',sans-serif; font-weight:800; font-size:9.5px;
@@ -2585,8 +2646,12 @@ window.bbLienSur = function (u) {
   }
 
   @media (prefers-reduced-motion:reduce){
-    .bb-ac-tete-vis img, .bb-ac-mini img, .bb-ac-l, .bb-ac-no{ transition:none }
-    .bb-ac-tete:hover .bb-ac-tete-vis img, .bb-ac-l:hover .bb-ac-mini img{ transform:none }
+    .bb-calme .bb-ac-tete-vis img,
+    .bb-calme .bb-ac-mini img,
+    .bb-calme .bb-ac-l,
+    .bb-calme .bb-ac-no{ transition:none }
+    .bb-calme .bb-ac-tete:hover .bb-ac-tete-vis img,
+    .bb-calme .bb-ac-l:hover .bb-ac-mini img{ transform:none }
   }
 
   /* ================================================================
@@ -2790,7 +2855,7 @@ window.bbLienSur = function (u) {
   @media (max-width:640px){ .bb-bl-savoir{ grid-template-columns:1fr } }
 
   @media (prefers-reduced-motion:reduce){
-    .bb-bl-cta{ transition:none } .bb-bl-cta:hover{ transform:none }
+    .bb-calme .bb-bl-cta{ transition:none } .bb-calme .bb-bl-cta:hover{ transform:none }
   }
 </style>
 </head>
@@ -5444,7 +5509,7 @@ window.bbCloud = function(url, w){
     if (PAGES.indexOf(page) === -1) page = 'accueil';
     var prev = state.page;
     var prevEl = prev ? document.getElementById('bb-page-' + prev) : null;
-    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var reduce = window.bbCalme();
     if (!prevEl || prev === page || reduce || prevEl.classList.contains('bb-hide')) { applyPage(page, noPush); return; }
     clearTimeout(deriveTimer);
     prevEl.classList.remove('bb-page-in');
@@ -6370,7 +6435,7 @@ window.bbCloud = function(url, w){
     // On exclut le tactile (pointeur grossier) plutôt que d'exiger un survol :
     // certains navigateurs de bureau ne déclarent pas hover:hover.
     var enabled = !window.matchMedia('(pointer:coarse)').matches
-      && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      && !window.bbCalme();
     var frame = null;
 
     function mount(el){
@@ -7584,7 +7649,7 @@ window.bbCloud = function(url, w){
   function bbStartSlides(){
     if (bbSlideTimer) clearInterval(bbSlideTimer);
     // Une personne qui lit ne veut pas que ça bouge sous ses yeux.
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.bbCalme()) return;
     bbSlideTimer = setInterval(function(){
       if (document.hidden) return;
       bbGoSlide(bbSlideI + 1, false);
@@ -7809,8 +7874,7 @@ window.bbCloud = function(url, w){
   var bbLuScene = { i:0, n:0, t:null, tSort:null, forme:null, tForme:null, dernier:-1, obs:null, vu:false, survol:false, hote:null };
 
   function bbLuPeu(){
-    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
-    catch(e){ return false; }
+    return window.bbCalme();
   }
   /* Prenom d'un cote, nom de l'autre : c'est ce qui donne la respiration
      d'une annonce. Un nom d'un seul mot reste entier, en grand. */
@@ -8402,6 +8466,9 @@ window.bbCloud = function(url, w){
     // réglages arrivent, et à chaque frappe du témoin de l'admin. Sans
     // cela, changer « quel match afficher » ne se verrait qu'au
     // rechargement de la page.
+    // Le calme se decide avant tout le reste : les blocs qui se
+    // dessinent ensuite lisent bbCalme() pour savoir s'ils s'animent.
+    try { bbAnimationsRegler(s && s.site_animations); } catch (e) {}
     try { bbLineup(); } catch (e) {}
     // Pareil pour la presentation des partenaires : changer le
     // prereglage doit se voir tout de suite, pas au rechargement.
@@ -11622,7 +11689,7 @@ document.addEventListener('keydown', function(e){
   // dispersés. Sans IntersectionObserver, tout est simplement visible.
   function bbSeasonReveal(el){
     var items = el.querySelectorAll('.bb-sm, .bb-today');
-    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var reduced = window.bbCalme();
     if (reduced || !('IntersectionObserver' in window)){
       items.forEach(function(n){ n.classList.add('in'); });
       return;
@@ -11750,7 +11817,7 @@ document.addEventListener('keydown', function(e){
      satureraient un observateur global.
    ========================================================================== */
 (function(){
-  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var reduce = window.bbCalme();
   if (reduce || !('IntersectionObserver' in window)) return;
 
   document.documentElement.classList.add('bb-motion');
@@ -12164,9 +12231,9 @@ window.bbImgOpt = (function(){
     for (var j = 0; j < nb; j++) poser(j);
   }
 
-  var mqReduit = window.matchMedia
-    ? window.matchMedia('(prefers-reduced-motion: reduce)')
-    : { matches: false };
+  // meme decision que partout ailleurs : c'est le site qui tranche,
+  // pas le systeme (voir bbCalme, en tete de page)
+  var mqReduit = { get matches(){ return window.bbCalme(); } };
 
   var visible = true;
   if (window.IntersectionObserver){
