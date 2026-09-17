@@ -1253,6 +1253,67 @@ window.bbLienSur = function (u) {
       .bb-flip-front .bb-pl-ph,.bb-flip-front>img{animation:bbParSoft linear both;animation-timeline:view();animation-range:entry 0% exit 100%}
     }
   }
+  /* ===================================================================
+     TROIS MOUVEMENTS DE PLUS
+     -------------------------------------------------------------------
+     Le site savait deja se reveler au scroll (flou qui se leve, mots
+     decoupes, compteurs, parallaxe). Ce qui manquait :
+
+       1. LE FIL. Une ligne d'or en haut de page qui dit ou l'on en est
+          dans la lecture. Pilotee par le defilement lui-meme, sans une
+          ligne de JavaScript : animation-timeline:scroll(). Les
+          navigateurs qui ne savent pas la faire la laissent a zero,
+          donc invisible -- aucun repli a ecrire.
+
+       2. LA LUMIERE QUI SUIT LE DOIGT. Une carte survolee s'eclaire a
+          l'endroit du curseur. C'est le detail qui fait qu'une
+          interface parait chere, et il ne coute qu'un dégradé.
+
+       3. LE FONDU ENTRE LES PAGES. Le site changeait de page en 110 ms
+          d'opacite. L'API des transitions de vue fait un vrai fondu
+          enchaine entre l'ancienne et la nouvelle, et retombe sur
+          l'ancien comportement la ou elle n'existe pas.
+     =================================================================== */
+
+  /* 1. LE FIL DE LECTURE */
+  .bb-fil{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;pointer-events:none}
+  .bb-fil i{display:block;height:100%;width:100%;transform:scaleX(0);transform-origin:0 50%;
+    background:linear-gradient(90deg,var(--bb-or),#A8D93B 70%,#DCEF8B);
+    box-shadow:0 0 12px rgba(var(--bb-or-rgb),.55)}
+  @supports (animation-timeline:scroll()){
+    .bb-fil i{animation:bb-fil linear both;animation-timeline:scroll(root block)}
+  }
+  @keyframes bb-fil{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  .bb-calme .bb-fil{display:none}
+
+  /* 2. LA LUMIERE QUI SUIT LE POINTEUR */
+  .bb-lueur{position:relative;isolation:isolate}
+  .bb-lueur::after{
+    content:'';position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;
+    opacity:0;transition:opacity .35s ease;
+    background:radial-gradient(180px circle at var(--mx,50%) var(--my,50%),
+      rgba(var(--bb-or-rgb),.16), transparent 62%);
+  }
+  .bb-lueur:hover::after{opacity:1}
+  /* et le bord s'allume du meme cote */
+  .bb-lueur::before{
+    content:'';position:absolute;inset:0;z-index:4;pointer-events:none;border-radius:inherit;
+    opacity:0;transition:opacity .35s ease;
+    background:radial-gradient(240px circle at var(--mx,50%) var(--my,50%),
+      rgba(var(--bb-or-rgb),.5), transparent 46%);
+    -webkit-mask:linear-gradient(#000,#000) content-box, linear-gradient(#000,#000);
+    mask:linear-gradient(#000,#000) content-box, linear-gradient(#000,#000);
+    -webkit-mask-composite:xor;mask-composite:exclude;padding:1px;
+  }
+  .bb-lueur:hover::before{opacity:1}
+  .bb-calme .bb-lueur::after,.bb-calme .bb-lueur::before{display:none}
+
+  /* 3. LE FONDU ENTRE LES PAGES */
+  @keyframes bb-vt-sortie{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-10px) scale(.994)}}
+  @keyframes bb-vt-entree{from{opacity:0;transform:translateY(14px) scale(1.006)}to{opacity:1;transform:none}}
+  ::view-transition-old(root){animation:bb-vt-sortie .26s cubic-bezier(.4,0,1,1) both}
+  ::view-transition-new(root){animation:bb-vt-entree .44s cubic-bezier(.16,.84,.3,1) both}
+
   /* Le header se resserre au scroll. */
   #bb-hdr-inner{transition:padding .5s cubic-bezier(.16,.8,.3,1)}
   header.bb-hdr-scrolled{box-shadow:0 10px 30px rgba(0,0,0,.34)}
@@ -3188,6 +3249,8 @@ window.bbLienSur = function (u) {
 </style>
 </head>
 <body>
+<!-- Le fil de lecture : pilote par le defilement, sans JavaScript. -->
+<div class="bb-fil" aria-hidden="true"><i></i></div>
 
 <div id="bb-splash">
   <div class="bb-splash-logo-wrap">
@@ -5839,6 +5902,13 @@ window.bbCloud = function(url, w){
     var prevEl = prev ? document.getElementById('bb-page-' + prev) : null;
     var reduce = window.bbCalme();
     if (!prevEl || prev === page || reduce || prevEl.classList.contains('bb-hide')) { applyPage(page, noPush); return; }
+    // UN VRAI FONDU ENCHAINE quand le navigateur sait le faire : il
+    // photographie l'ancienne page et la nouvelle, et les croise. La ou
+    // l'API n'existe pas, on garde exactement le comportement d'avant.
+    if (document.startViewTransition){
+      try { document.startViewTransition(function(){ applyPage(page, noPush); }); return; }
+      catch(e){ /* on retombe sur le chemin d'avant */ }
+    }
     clearTimeout(deriveTimer);
     prevEl.classList.remove('bb-page-in');
     prevEl.classList.add('bb-page-out');
@@ -12606,13 +12676,43 @@ document.addEventListener('keydown', function(e){
   // Rebalayage : appelé par le site après le rendu des listes et à chaque
   // changement de page. Rien n'est observé en permanence.
   var pending = null;
+  /* LA LUMIERE SUIT LE POINTEUR.
+     Un seul ecouteur pour toute la page, et une seule ecriture par
+     image : sans ce garde-fou, bouger la souris sur une grille de douze
+     cartes recalculerait le style douze fois par milliseconde. */
+  var lueurEl = null, lueurX = 0, lueurY = 0, lueurEnCours = false;
+  function lueurPoser(){
+    lueurEnCours = false;
+    if (!lueurEl) return;
+    var r = lueurEl.getBoundingClientRect();
+    lueurEl.style.setProperty('--mx', Math.round(lueurX - r.left) + 'px');
+    lueurEl.style.setProperty('--my', Math.round(lueurY - r.top) + 'px');
+  }
+  document.addEventListener('pointermove', function(e){
+    if (e.pointerType === 'touch') return;          // au doigt, rien a suivre
+    var el = e.target.closest && e.target.closest('.bb-lueur');
+    if (!el) { lueurEl = null; return; }
+    lueurEl = el; lueurX = e.clientX; lueurY = e.clientY;
+    if (!lueurEnCours){ lueurEnCours = true; requestAnimationFrame(lueurPoser); }
+  }, { passive: true });
+
+  /* Les cartes qui la recoivent : celles qu'on survole vraiment. */
+  var LUEUR = ['#bb-effectif > *','#bb-effectif-equipes > *','#bb-home-products > *',
+               '#bb-actus-grid > *','#bb-media-grid > *','#bb-shop-grid > *',
+               '.bb-partner','.bb-poster-card','#bb-ac-liste > *'];
+  function lueurArmer(){
+    LUEUR.forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(el){ el.classList.add('bb-lueur'); });
+    });
+  }
+
   window.bbRescanMotion = function(){
     clearTimeout(pending);
-    pending = setTimeout(function(){ scan(); scanNumbers(); scanText(); safetyNet(); }, 60);
+    pending = setTimeout(function(){ scan(); scanNumbers(); scanText(); lueurArmer(); safetyNet(); }, 60);
   };
 
   function boot(){
-    scan(); scanNumbers(); scanText(); onScroll(); sweep(); safetyNet();
+    scan(); scanNumbers(); scanText(); lueurArmer(); onScroll(); sweep(); safetyNet();
     window.addEventListener('resize', onScroll, { passive: true });
     ['bb-actus-grid','bb-home-products','bb-effectif','bb-effectif-equipes','bb-media-grid','bb-lu-five'].forEach(function(id){
       var el = document.getElementById(id);
