@@ -54,6 +54,16 @@
 --
 --  A COLLER DANS L'EDITEUR SQL DE SUPABASE (`supabase db push` ne voit
 --  pas les migrations deja passees a la main : ce depot en compte).
+--
+--  PASSEE EN PRODUCTION le 17 septembre 2026, en trois temps, chacun
+--  verifie de l'exterieur avant le suivant :
+--    1) les deux vues + player_season_stats  -> le site lit toujours ;
+--    2) pg_policies                          -> huit portes ouvertes
+--                                               decouvertes (voir 2) ;
+--    3) les politiques et RLS                -> le trou se referme.
+--  Apres : staff.reprise_jeton, players.birth_date, licence_num et
+--  collecte_suivi rendent 0 ligne a un visiteur anonyme, et le site
+--  affiche toujours ses 16 joueuses et son encadrement.
 -- =====================================================================
 
 
@@ -106,9 +116,29 @@ grant select on public.staff_site    to anon, authenticated;
 --  rendent une fiche que contre son jeton -- qui, lui, redevient
 --  illisible de l'exterieur.
 -- ---------------------------------------------------------------------
-alter table public.players enable row level security;
-alter table public.staff   enable row level security;
-
+--  HUIT POLITIQUES DORMAIENT DEJA SUR CES DEUX TABLES.
+--  Elles ne figurent nulle part dans ce depot : elles ont ete posees a
+--  la main, et `pg_policies` est le seul endroit qui les connaisse. Sans
+--  RLS, elles ne servaient a rien. Les allumer telles quelles aurait ete
+--  PIRE que de ne rien faire :
+--
+--    public read players  {public}        SELECT   qual = true
+--    auth insert players  {authenticated} INSERT   check = true
+--    auth update players  {authenticated} UPDATE   qual  = true
+--    auth delete players  {authenticated} DELETE   qual  = true
+--    ... et les quatre memes sur staff.
+--
+--  « authenticated », c'est AUSSI le supporter qui vient de creer son
+--  compte sur le site. La table aurait donc eu l'air protegee, et tout
+--  compte client aurait pu supprimer l'effectif entier.
+--
+--  Les politiques s'ADDITIONNENT : il ne suffit pas d'en ajouter une
+--  bonne, il faut retirer les mauvaises. D'ou l'ordre ci-dessous, qui
+--  n'ouvre la table a personne, pas meme une seconde :
+--    1. poser les bonnes (inertes, RLS encore eteint) ;
+--    2. retirer les huit anciennes (inertes aussi) ;
+--    3. allumer -- il ne reste alors que la bonne.
+-- ---------------------------------------------------------------------
 drop policy if exists players_admin_tout on public.players;
 create policy players_admin_tout on public.players
   for all to authenticated
@@ -119,13 +149,39 @@ create policy staff_admin_tout on public.staff
   for all to authenticated
   using (is_admin()) with check (is_admin());
 
--- Les anciennes politiques ouvertes, si elles existent sous un autre
--- nom, resteraient actives a cote des nouvelles : les politiques
--- s'additionnent. On enleve celles que ce depot a pu poser.
-drop policy if exists players_public_read on public.players;
-drop policy if exists "players read all"  on public.players;
-drop policy if exists staff_public_read   on public.staff;
-drop policy if exists "staff read all"    on public.staff;
+drop policy if exists "public read players" on public.players;
+drop policy if exists "auth insert players" on public.players;
+drop policy if exists "auth update players" on public.players;
+drop policy if exists "auth delete players" on public.players;
+drop policy if exists "public read staff"   on public.staff;
+drop policy if exists "auth insert staff"   on public.staff;
+drop policy if exists "auth update staff"   on public.staff;
+drop policy if exists "auth delete staff"   on public.staff;
+
+alter table public.players enable row level security;
+alter table public.staff   enable row level security;
+
+
+-- ---------------------------------------------------------------------
+--  2 bis) LA VUE QUI SERAIT MORTE AVEC ELLES
+-- ---------------------------------------------------------------------
+--  `player_season_stats` est en `security_invoker = on` et fait
+--  `join players`. Elle lit donc avec les droits de CELUI QUI INTERROGE :
+--  des que players se ferme, un visiteur anonyme en tire zero ligne, et
+--  les statistiques disparaissent des fiches de joueuses du site -- sans
+--  erreur, sans message, juste des cases vides.
+--
+--  Elle passe donc en `security_invoker = off`, comme
+--  `match_lineup_public` l'est deja. Ce qu'elle expose etait public de
+--  toute facon : un nom, un numero de maillot, et des moyennes de match.
+--  Rien des colonnes qu'on vient de fermer.
+-- ---------------------------------------------------------------------
+alter view public.player_season_stats set (security_invoker = off);
+
+--  Les trois autres vues qui lisent players ou staff restent en
+--  `security_invoker = on`, et se referment donc avec les tables. C'est
+--  voulu : `effectif_admin`, `numeros_en_double` et `collecte_suivi` ne
+--  servent qu'a l'administration.
 
 
 -- ---------------------------------------------------------------------
@@ -133,10 +189,22 @@ drop policy if exists "staff read all"    on public.staff;
 -- ---------------------------------------------------------------------
 --  `collecte_suivi` est en `security_invoker = on` : elle se refermera
 --  d'elle-meme avec les tables. On lui retire quand meme le jeton, pour
---  qu'un futur `grant` distrait ne le rouvre pas. L'administration
---  fabrique le lien de reprise par la fonction ci-dessous.
+--  qu'un futur `grant` distrait ne le rouvre pas.
+--
+--  L'administration ne perd rien : elle ne lit de cette vue que
+--  `campagne_id` et `fiche_etat` (un seul appel, dans l'ecran Collecte),
+--  et le lien de reprise, elle le fabrique depuis `players` -- ou le
+--  jeton lui reste accessible, la securite posee ci-dessus etant au
+--  niveau des LIGNES, pas des colonnes.
+--
+--  ATTENTION : `create or replace view` ne sait qu'AJOUTER des colonnes
+--  a la fin. Retirer `reprise_jeton` exige de supprimer la vue d'abord.
+--  Sans `cascade`, volontairement : si quelque chose en depend, on veut
+--  l'apprendre par une erreur, pas le casser en silence.
 -- ---------------------------------------------------------------------
-create or replace view public.collecte_suivi with (security_invoker = on) as
+drop view if exists public.collecte_suivi;
+
+create view public.collecte_suivi with (security_invoker = on) as
   select 'joueuse'::text as type, p.id, p.name, p.fiche_etat, p.status,
          p.jersey_number, p.campagne_id, p.soumis_le,
          p.photo_source_url, p.photo_url,
@@ -169,25 +237,21 @@ grant  select on public.collecte_suivi to authenticated;
 
 
 -- ---------------------------------------------------------------------
---  4) LE LIEN DE REPRISE, POUR L'ADMINISTRATION SEULE
+--  4) CE QU'ON NE FAIT PAS, ET POURQUOI
 -- ---------------------------------------------------------------------
---  L'ecran « Collecte » affiche, pour chaque membre, le lien personnel a
---  envoyer par WhatsApp. Il lisait `players.reprise_jeton` directement.
---  Il passe maintenant par cette fonction, qui refuse tout ce qui n'est
---  pas un compte d'administration.
+--  Une premiere version ajoutait une fonction `bbc_collecte_liens()`
+--  pour que l'administration recupere les jetons sans lire la table.
+--  Elle a ete retiree : elle ne servait a rien. L'ecran Collecte lit
+--  `players.reprise_jeton` directement, et continuera de le faire --
+--  la securite posee au point 2 filtre les LIGNES selon is_admin(), pas
+--  les colonnes. Un compte d'administration voit donc tout, un compte
+--  client ne voit rien, et aucune fonction n'est necessaire entre les
+--  deux. Une fonction de plus, c'est une porte de plus a surveiller.
+--
+--  On ne revoque pas non plus la colonne `reprise_jeton` : un
+--  `revoke select (colonne)` ferait echouer tout `select=*` de
+--  l'administration, qui en fait partout.
 -- ---------------------------------------------------------------------
-create or replace function public.bbc_collecte_liens()
-returns table (type text, id uuid, reprise_jeton text)
-language sql security definer set search_path = public stable as $$
-  select 'joueuse'::text, p.id, p.reprise_jeton
-    from public.players p where is_admin() and p.reprise_jeton is not null
-  union all
-  select 'staff'::text, s.id, s.reprise_jeton
-    from public.staff s where is_admin() and s.reprise_jeton is not null;
-$$;
-
-revoke all on function public.bbc_collecte_liens() from public, anon;
-grant execute on function public.bbc_collecte_liens() to authenticated;
 
 
 -- =====================================================================
@@ -233,4 +297,26 @@ grant execute on function public.bbc_collecte_liens() to authenticated;
 --      curl -s ".../rest/v1/effectif_site?select=name,jersey_number&limit=3" ...
 --
 --     Attendu : les joueuses publiees.
+--
+--  5. Et ses statistiques, qui passent par une autre vue :
+--
+--      curl -s ".../rest/v1/player_season_stats?select=name,pts_moy&limit=3" ...
+--
+--     Attendu : des lignes. Si c'est vide, le `security_invoker = off`
+--     du point 2 bis n'est pas passe.
+-- =====================================================================
+
+
+-- =====================================================================
+--  REVENIR EN ARRIERE  (si quelque chose disparait du site)
+-- ---------------------------------------------------------------------
+--  Une seule chose a defaire : la fermeture des deux tables. Les vues
+--  ajoutees ne genent personne, et le site sait vivre avec comme sans.
+--  A garder sous la main pendant les premieres minutes.
+--
+--      alter table public.players disable row level security;
+--      alter table public.staff   disable row level security;
+--
+--  Cela remet l'ouverture d'avant, trou compris. Ce n'est pas une
+--  solution : c'est un frein de secours.
 -- =====================================================================
