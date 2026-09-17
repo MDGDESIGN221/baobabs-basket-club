@@ -3863,6 +3863,61 @@
   .in-apercu-b{flex:1;min-height:240px;display:flex;align-items:center;justify-content:center;background:var(--surface);overflow:auto}
   .in-apercu-b img{max-width:100%;max-height:78vh;object-fit:contain}
   .in-apercu-b iframe{width:100%;height:78vh;border:none;background:#fff}
+  /* ==================================================================
+     LA SUITE LOGIQUE : une carte qui arrive dans le coin, et s'en va.
+     Elle ne bloque rien, ne se met devant rien, et se ferme d'un clic
+     ou toute seule. Le flou derriere et le coin tres arrondi viennent
+     de ce qu'on connait deja des notifications de telephone : on sait
+     que ca se ferme sans le lire.
+     ================================================================== */
+  .su-carte{position:fixed;right:20px;bottom:20px;z-index:620;width:min(378px,calc(100vw - 32px));
+    background:rgba(16,28,21,.93);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);
+    border:1px solid rgba(243,239,230,.13);border-radius:20px;overflow:hidden;
+    box-shadow:0 22px 60px -14px rgba(0,0,0,.72),0 2px 8px rgba(0,0,0,.4);
+    transform:translateY(18px) scale(.97);opacity:0;
+    transition:transform .42s cubic-bezier(.2,.9,.28,1),opacity .3s ease}
+  .su-carte.su-la{transform:none;opacity:1}
+  .su-carte.su-part{transform:translateY(12px) scale(.96);opacity:0}
+  .su-haut{display:flex;gap:13px;align-items:flex-start;padding:16px 16px 12px}
+  .su-face{width:54px;height:54px;flex:none;margin-top:-4px}
+  .su-mot{min-width:0;flex:1}
+  .su-mot b{display:block;font-family:var(--font-ui);font-weight:700;font-size:14px;color:var(--text);line-height:1.3}
+  .su-mot p{margin:4px 0 0;font-size:12.5px;line-height:1.5;color:var(--muted)}
+  .su-x{flex:none;width:26px;height:26px;border-radius:50%;border:none;background:transparent;color:var(--faint);
+    cursor:pointer;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
+  .su-x:hover{background:rgba(243,239,230,.08);color:var(--text)}
+  .su-liste{list-style:none;margin:0;padding:0 12px 6px}
+  .su-liste li{margin:0 0 2px}
+  .su-pas{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;font:inherit;
+    background:transparent;border:none;border-radius:11px;padding:9px 10px;cursor:pointer;
+    transition:background .15s}
+  .su-pas:hover{background:rgba(243,239,230,.06)}
+  .su-pas[disabled]{cursor:default}
+  .su-pas[disabled]:hover{background:transparent}
+  .su-coche{flex:none;width:19px;height:19px;margin-top:1px;border-radius:50%;display:flex;
+    align-items:center;justify-content:center;border:1.5px solid var(--line-loud);color:transparent}
+  .su-fait .su-coche{background:var(--gold);border-color:var(--gold);color:#06180E}
+  .su-coche svg{width:11px;height:11px}
+  .su-t{font-size:12.8px;color:var(--text);line-height:1.4}
+  .su-fait .su-t{color:var(--faint);text-decoration:line-through;text-decoration-color:rgba(243,239,230,.25)}
+  .su-p{display:block;font-size:11.5px;color:var(--faint);line-height:1.45;margin-top:2px}
+  .su-fait .su-p{display:none}
+  .su-opt{display:inline-block;margin-left:6px;font-family:var(--font-ui);font-weight:700;font-size:9px;
+    letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+    border:1px solid var(--line-strong);border-radius:var(--r-full);padding:1px 6px;vertical-align:1px}
+  .su-encore{display:block;width:calc(100% - 20px);margin:2px 10px 4px;font:inherit;font-size:11.5px;
+    background:transparent;border:none;color:var(--faint);cursor:pointer;text-align:left;padding:6px 10px;
+    border-radius:9px}
+  .su-encore:hover{background:rgba(243,239,230,.06);color:var(--muted)}
+  .su-bas{display:flex;gap:8px;justify-content:flex-end;padding:8px 14px 14px}
+  .su-bas button{font:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer;
+    background:transparent;border:1px solid var(--line-strong);color:var(--muted)}
+  .su-bas .su-ok{background:var(--gold);border-color:var(--gold);color:#06180E;font-weight:700}
+  .su-bas button:hover{border-color:var(--gold);color:var(--text)}
+  .su-bas .su-ok:hover{background:var(--gold-bright);color:#06180E}
+  @media (max-width:560px){ .su-carte{right:12px;left:12px;bottom:12px;width:auto} }
+  @media (prefers-reduced-motion:reduce){ .su-carte{transition:opacity .2s ease} }
+
   /* Retrouver une image remplacee : une vignette par version, la date
      dessous, un seul geste. La vignette est posee sur un damier clair
      parce qu'un logo detoure sur fond sombre ne se voit pas. */
@@ -9688,6 +9743,317 @@
         return SUPABASE_URL+'/storage/v1/object/public/'+bucket+'/'+path;
       });
     });
+  }
+
+  /* ==================================================================
+     LA SUITE LOGIQUE
+     ------------------------------------------------------------------
+     « quand tu accomplis une tache mais qu'il y a une suite logique que
+       la personne ne sait pas, une notif vient lui dire qu'il lui reste
+       a completer ca, ca et ca, et si des choses sont facultatives, le
+       dire ; et ca doit etre humain, avec un visage, accueillant »
+
+     Creer un match n'est pas finir un match : il manque presque toujours
+     l'heure, le lieu, l'affiche. Personne ne le sait avant que le site
+     n'affiche une date toute seule. L'ecran, lui, le sait -- il a la
+     ligne sous les yeux.
+
+     TROIS REGLES QUE CETTE CARTE S'IMPOSE :
+
+     1. ELLE NE DIT QUE CE QU'ELLE PEUT VERIFIER. Chaque etape a une
+        fonction « fait » qui regarde la donnee reelle. Pas de liste de
+        bonnes intentions : si on ne peut pas savoir, l'etape n'existe
+        pas. Une case cochee ici est une case vraie.
+
+     2. ELLE NE BLOQUE RIEN. Elle arrive dans un coin, on peut ne jamais
+        la lire. Rien n'attend qu'on clique. C'est un collegue qui passe
+        la tete, pas un formulaire.
+
+     3. ELLE DIT CE QUI EST FACULTATIF. « Il reste trois choses, deux
+        comptent vraiment » se supporte ; une liste de dix cases toutes
+        egales se ferme sans lire.
+     ================================================================== */
+
+  /* LE VISAGE. Dessine, pas photographie : personne ne doit croire
+     qu'un humain surveille. Deux humeurs, un seul trait. */
+  function suiteVisage(content){
+    var yeux = content
+      ? '<path d="M17 23.5q2.2-2.6 4.4 0M26.6 23.5q2.2-2.6 4.4 0" stroke="#0A1B0D" stroke-width="2.1" stroke-linecap="round" fill="none"/>'
+      : '<circle cx="19.2" cy="24" r="2.05" fill="#0A1B0D"/><circle cx="28.8" cy="24" r="2.05" fill="#0A1B0D"/>' +
+        '<circle cx="20" cy="23.2" r=".62" fill="#F3EFE6"/><circle cx="29.6" cy="23.2" r=".62" fill="#F3EFE6"/>';
+    var bouche = content
+      ? '<path d="M18.6 29.4q5.4 5 10.8 0" stroke="#0A1B0D" stroke-width="2.1" stroke-linecap="round" fill="none"/>'
+      : '<path d="M19.6 29.8q4.4 3.2 8.8 0" stroke="#0A1B0D" stroke-width="2.1" stroke-linecap="round" fill="none"/>';
+    return '<svg class="su-face" viewBox="0 0 48 48" aria-hidden="true">' +
+      /* le baobab : trois feuilles et un tronc, au-dessus de la tete */
+      '<path d="M24 12.5v-3" stroke="var(--gold)" stroke-width="1.7" stroke-linecap="round"/>' +
+      '<ellipse cx="24" cy="6.6" rx="4.6" ry="2.7" fill="var(--gold)"/>' +
+      '<ellipse cx="17.4" cy="9" rx="3.5" ry="2.1" fill="var(--gold)" opacity=".72"/>' +
+      '<ellipse cx="30.6" cy="9" rx="3.5" ry="2.1" fill="var(--gold)" opacity=".72"/>' +
+      /* la tete */
+      '<circle cx="24" cy="26" r="13.6" fill="#A8D93B"/>' +
+      '<path d="M10.6 26a13.6 13.6 0 0 1 26.8 0Z" fill="#BCE45C" opacity=".55"/>' +
+      yeux + bouche +
+      '<circle cx="13.6" cy="29.6" r="2.1" fill="#7FB32A" opacity=".5"/>' +
+      '<circle cx="34.4" cy="29.6" r="2.1" fill="#7FB32A" opacity=".5"/>' +
+      '</svg>';
+  }
+
+  /* CE QUI SUIT QUOI. Une etape = ce qu'il reste a faire, pourquoi ca
+     compte, et comment savoir si c'est deja fait. « aller » est
+     facultatif : sans lui, l'etape s'affiche sans etre cliquable. */
+  var SUITES = {
+    match: {
+      nom: function(m){ return 'Baobabs ' + (m.is_home ? 'contre ' : 'chez ') + (m.opponent_name || 'l\u2019adversaire'); },
+      etapes: [
+        { quoi:'L\u2019heure et le lieu',
+          pourquoi:'sans eux, le site n\u2019affiche qu\u2019une date',
+          fait:function(m){ return !!(m.match_time && m.venue); },
+          aller:function(m){ mcOpen(m.id, 'feuille'); } },
+        { quoi:'Le rendez-vous de l\u2019\u00e9quipe',
+          pourquoi:'l\u2019heure et le lieu o\u00f9 les joueuses se retrouvent, avant le match',
+          facultatif:true,
+          fait:function(m){ return !!(m.rdv_heure && m.rdv_lieu); },
+          aller:function(m){ mcOpen(m.id, 'feuille'); } },
+        { quoi:'Le logo de l\u2019adversaire',
+          pourquoi:'il appara\u00eet partout o\u00f9 le match est annonc\u00e9',
+          facultatif:true,
+          fait:function(m){ return !!m.opponent_logo_url; },
+          aller:function(){ showSection('teams'); } },
+        { quoi:'La comp\u00e9tition',
+          pourquoi:'championnat, coupe, amical : le visiteur ne le devine pas',
+          facultatif:true,
+          fait:function(m){ return !!m.competition; },
+          aller:function(m){ mcOpen(m.id, 'feuille'); } },
+        { quoi:'L\u2019affiche du match',
+          pourquoi:'c\u2019est elle qu\u2019on partage sur les r\u00e9seaux',
+          facultatif:true,
+          fait:function(m){ return !!m.photo_url; },
+          aller:function(m){ mcOpen(m.id, 'feuille'); } },
+        { quoi:'La billetterie',
+          pourquoi:'sans tarif ni entr\u00e9e libre, personne ne peut r\u00e9server',
+          fait:function(m){
+            if (m.free_entry === true) return true;
+            return sbGet('ticket_offers?select=id&match_id=eq.' + encodeURIComponent(m.id) + '&limit=1')
+              .then(function(r){ return !!(r && r.length); }).catch(function(){ return null; });
+          },
+          aller:function(){ showSection('tickets'); } },
+        { quoi:'La convocation des joueuses',
+          pourquoi:'un acte officiel, pr\u00e9-rempli avec ce match',
+          facultatif:true,
+          quand:function(){ return typeof greffeAutorise === 'function' && greffeAutorise(); },
+          fait:function(){ return null; },
+          aller:function(m){ mcOpen(m.id, 'feuille'); } }
+      ]
+    },
+
+    roster: {
+      nom: function(j){ return j.name || 'La joueuse'; },
+      etapes: [
+        { quoi:'Sa photo',
+          pourquoi:'une fiche sans visage se remarque tout de suite sur la page \u00c9quipe',
+          fait:function(j){ return !!j.photo_url; } },
+        { quoi:'Son num\u00e9ro',
+          pourquoi:'il sert au classement et \u00e0 la feuille de match',
+          fait:function(j){ return j.jersey_number != null && j.jersey_number !== ''; } },
+        { quoi:'Son poste',
+          pourquoi:'meneuse, ailière, pivot : c\u2019est ce qu\u2019on lit en premier',
+          fait:function(j){ return !!(j.position || (j.positions && j.positions.length)); } },
+        { quoi:'Son ann\u00e9e de naissance',
+          pourquoi:'le site calcule l\u2019\u00e2ge tout seul \u00e0 partir d\u2019elle',
+          facultatif:true,
+          fait:function(j){ return !!(j.birth_year || j.birth_date); } },
+        { quoi:'Sa taille',
+          pourquoi:'',
+          facultatif:true,
+          fait:function(j){ return !!j.height; } },
+        { quoi:'Quelques mots sur elle',
+          pourquoi:'deux phrases suffisent \u00e0 rendre une fiche vivante',
+          facultatif:true,
+          fait:function(j){ return !!(j.bio && String(j.bio).trim().length > 20); } },
+        { quoi:'Publier la fiche',
+          pourquoi:'tant qu\u2019elle n\u2019est pas publi\u00e9e, le site ne la montre pas',
+          fait:function(j){ return (j.fiche_etat || 'publiee') === 'publiee'; } }
+      ]
+    },
+
+    partners: {
+      nom: function(p){ return p.name || 'Le partenaire'; },
+      etapes: [
+        { quoi:'Son logo',
+          pourquoi:'sans logo, le site \u00e9crit seulement son nom',
+          fait:function(p){ return !!p.logo_url; } },
+        { quoi:'Le lien vers son site',
+          pourquoi:'le logo devient cliquable, et le partenaire le voit',
+          facultatif:true,
+          fait:function(p){ return !!p.website_url; } },
+        // \u00ab global \u00bb : cette etape ne parle pas de CE partenaire mais du
+        // bloc entier. Elle est donc deja cochee sur une fiche neuve, et
+        // c'est normal -- le banc doit le savoir pour ne pas crier.
+        { quoi:'Choisir comment ils s\u2019affichent',
+          pourquoi:'cartes, grille, bande ou d\u00e9fil\u00e9 : \u00e0 partir de six logos, \u00e7a change la page',
+          facultatif:true, global:true,
+          fait:function(){ return !!(settings && settings.partners_style); },
+          aller:function(){ showSection('partners'); } }
+      ]
+    },
+
+    staff: {
+      nom: function(s){ return s.name || 'Le membre du staff'; },
+      etapes: [
+        { quoi:'Sa photo',
+          pourquoi:'la page Club montre les visages de l\u2019encadrement',
+          fait:function(s){ return !!s.photo_url; } },
+        { quoi:'Sa fonction',
+          pourquoi:'coach, kin\u00e9, tr\u00e9sorier : c\u2019est ce qui s\u2019affiche sous son nom',
+          fait:function(s){ return !!s.role; } },
+        { quoi:'Sa famille',
+          pourquoi:'encadrement, staff technique ou bureau : elle range la fiche dans le bon groupe',
+          fait:function(s){ return !!s.categorie; } },
+        { quoi:'Publier la fiche',
+          pourquoi:'tant qu\u2019elle n\u2019est pas publi\u00e9e, le site ne la montre pas',
+          fait:function(s){ return (s.fiche_etat || 'publiee') === 'publiee'; } }
+      ]
+    },
+
+    news: {
+      nom: function(a){ return a.title || 'L\u2019article'; },
+      etapes: [
+        { quoi:'Le texte',
+          pourquoi:'un titre seul ne fait pas une actualit\u00e9',
+          fait:function(a){ return !!(a.body && String(a.body).replace(/<[^>]*>/g,'').trim().length > 120); } },
+        { quoi:'Une image',
+          pourquoi:'c\u2019est elle qui s\u2019affiche dans la liste et sur les r\u00e9seaux',
+          facultatif:true,
+          fait:function(a){ return !!a.image_url; } },
+        { quoi:'La date de publication',
+          pourquoi:'sans date, l\u2019article se range mal dans la liste',
+          fait:function(a){ return !!a.published_at; } }
+      ]
+    },
+
+    shop: {
+      nom: function(p){ return p.name || 'Le produit'; },
+      etapes: [
+        { quoi:'Au moins une photo',
+          pourquoi:'un produit sans photo ne se vend pas',
+          fait:function(p){ return !!(p.images && p.images.filter(Boolean).length); } },
+        { quoi:'Son prix',
+          pourquoi:'',
+          fait:function(p){ return Number(p.price) > 0; } },
+        { quoi:'Les tailles',
+          pourquoi:'sans tailles, l\u2019acheteur ne peut pas choisir',
+          facultatif:true,
+          fait:function(p){ return !!(p.sizes && String(p.sizes).trim()); } }
+      ]
+    }
+  };
+
+  /* Un affichage a la fois, et jamais deux fois la meme minute : on
+     enregistre souvent d'affilee, et une carte qui revient a chaque
+     frappe devient un moustique. */
+  var suiteQuand = {};
+  function suiteFermer(){
+    var c = document.getElementById('su-carte'); if (!c) return;
+    c.classList.add('su-part'); c.classList.remove('su-la');
+    setTimeout(function(){ if (c.parentNode) c.remove(); }, 380);
+    clearTimeout(suiteFermer.t);
+  }
+  function suiteMontrer(cle, ligne){
+    var S = SUITES[cle]; if (!S || !ligne) return;
+    var sig = cle + ':' + (ligne.id == null ? '?' : ligne.id);
+    if (suiteQuand[sig] && Date.now() - suiteQuand[sig] < 45000) return;
+    suiteQuand[sig] = Date.now();
+
+    var etapes = S.etapes.filter(function(e){ return !e.quand || e.quand(ligne); });
+    Promise.all(etapes.map(function(e){
+      var v; try { v = e.fait(ligne); } catch (err) { v = null; }
+      return Promise.resolve(v).catch(function(){ return null; });
+    })).then(function(etats){
+      // « null » veut dire : je ne sais pas. On ne coche pas, et on ne
+      // reproche pas non plus -- l'etape est montree sans case.
+      var pas = etapes.map(function(e, i){ return { e:e, fait:etats[i] === true, su:etats[i] === null }; });
+      // L'ORDRE DIT DEJA QUELQUE CHOSE. Ce qui compte d'abord, ce qui
+      // est facultatif ensuite, ce qui est fait a la fin : on lit les
+      // deux premieres lignes et on sait quoi faire. Sept lignes a plat
+      // se ferment sans etre lues.
+      pas.sort(function(a, b){
+        return (a.fait ? 2 : 0) - (b.fait ? 2 : 0) ||
+               (a.e.facultatif ? 1 : 0) - (b.e.facultatif ? 1 : 0);
+      });
+      var reste = pas.filter(function(x){ return !x.fait && !x.su; });
+      var durs  = reste.filter(function(x){ return !x.e.facultatif; });
+      if (!reste.length && !pas.some(function(x){ return x.su; })) {
+        suiteRendre(S, ligne, pas, 0, 0);   // tout est fait : on felicite, court
+        return;
+      }
+      suiteRendre(S, ligne, pas, reste.length, durs.length);
+    });
+  }
+
+  function suitePhrase(n, durs){
+    if (!n) return 'Tout y est. Rien ne manque, tu peux passer \u00e0 autre chose.';
+    if (!durs) return n === 1
+      ? 'Il reste une chose, et elle est facultative. C\u2019est d\u00e9j\u00e0 publiable tel quel.'
+      : 'Il reste ' + n + ' choses, toutes facultatives. C\u2019est d\u00e9j\u00e0 publiable tel quel.';
+    if (n === durs) return durs === 1
+      ? 'Il reste une chose \u00e0 faire, et elle compte.'
+      : 'Il reste ' + durs + ' choses \u00e0 faire, et elles comptent toutes.';
+    return 'Il reste ' + n + ' choses, dont ' + (durs === 1 ? 'une seule qui compte vraiment.' : durs + ' qui comptent vraiment.');
+  }
+
+  var SU_VISIBLES = 4;
+  function suiteRendre(S, ligne, pas, reste, durs, tout){
+    var SU_VISIBLES = tout ? pas.length : 4;
+    var ancien = document.getElementById('su-carte'); if (ancien) ancien.remove();
+    var coche = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4 10-10"/></svg>';
+    var c = document.createElement('div');
+    c.className = 'su-carte'; c.id = 'su-carte';
+    c.setAttribute('role', 'status');
+    c.innerHTML =
+      '<div class="su-haut">' + suiteVisage(!reste) +
+        '<span class="su-mot"><b>' + esc(S.nom(ligne)) + '</b>' +
+        '<p>' + suitePhrase(reste, durs) + '</p></span>' +
+        '<button type="button" class="su-x" id="su-x" aria-label="Fermer">\u00d7</button>' +
+      '</div>' +
+      '<ul class="su-liste">' + pas.slice(0, SU_VISIBLES).map(function(x, i){
+        var cliquable = !x.fait && typeof x.e.aller === 'function';
+        return '<li><button type="button" class="su-pas' + (x.fait ? ' su-fait' : '') + '"' +
+          (cliquable ? ' data-su="' + i + '"' : ' disabled') + '>' +
+          '<span class="su-coche">' + coche + '</span>' +
+          '<span class="su-t">' + esc(x.e.quoi) +
+          (x.e.facultatif && !x.fait ? '<span class="su-opt">facultatif</span>' : '') +
+          (x.e.pourquoi && !x.fait ? '<span class="su-p">' + esc(x.e.pourquoi) + '</span>' : '') +
+          '</span></button></li>';
+      }).join('') + '</ul>' +
+      (pas.length > SU_VISIBLES
+        ? '<button type="button" class="su-encore" id="su-encore">et ' + (pas.length - SU_VISIBLES) +
+          ' autre' + (pas.length - SU_VISIBLES > 1 ? 's' : '') + '\u2026</button>'
+        : '') +
+      '<div class="su-bas">' +
+        (reste ? '<button type="button" id="su-tard">Plus tard</button>' : '') +
+        '<button type="button" class="su-ok" id="su-ok">' + (reste ? 'Compris' : 'Parfait') + '</button>' +
+      '</div>';
+    document.body.appendChild(c);
+    requestAnimationFrame(function(){ c.classList.add('su-la'); });
+
+    c.querySelector('#su-x').addEventListener('click', suiteFermer);
+    c.querySelector('#su-ok').addEventListener('click', suiteFermer);
+    var tard = c.querySelector('#su-tard'); if (tard) tard.addEventListener('click', suiteFermer);
+    var enc = c.querySelector('#su-encore');
+    // On redessine avec tout : ouvrir la liste veut dire qu'on la lit,
+    // donc la carte cesse aussi de partir toute seule.
+    if (enc) enc.addEventListener('click', function(){ suiteRendre(S, ligne, pas, reste, durs, true); });
+    c.querySelectorAll('[data-su]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var x = pas[parseInt(b.getAttribute('data-su'), 10)];
+        suiteFermer();
+        try { x.e.aller(ligne); } catch (err) {}
+      });
+    });
+    // Elle s'en va toute seule : c'est un mot, pas une tache de plus.
+    clearTimeout(suiteFermer.t);
+    if (!tout) suiteFermer.t = setTimeout(suiteFermer, reste ? 16000 : 7000);
   }
 
   /* ==================================================================
@@ -23198,9 +23564,12 @@
         venue: v.lieu || null,
         competition: v.comp || null
       }, 'opponent_team_id'), 'Matchs').then(function(cree){
-        qgToast('Match créé ✓ Complétez la fiche.');
+        qgToast('Match créé ✓');
         return mcLoad().then(function(){
           if (cree && cree.id != null) mcOpen(cree.id, 'feuille');
+          // « Completez la fiche » ne disait pas QUOI completer. La
+          // carte, elle, a la ligne sous les yeux et le dit.
+          if (cree) setTimeout(function(){ suiteMontrer('match', cree); }, 700);
         });
       }).catch(function(){ qgToast('La création a échoué.', true); });
     });
@@ -31489,7 +31858,14 @@
       loadDashboard && loadDashboard();
       if(makeFeatured){ var others=qgvState(key).rows.filter(function(r){ return String(r.id)!==String(cur.id) && (r.featured===true||r.featured==='true'); }); return Promise.all(others.map(function(r){ return sbUpdate('partners',r.id,{featured:false},qgvLbl); })).then(function(){ return sbGet(c.table+'?select=*&order='+c.order); }); }
       return sbGet(c.table+'?select=*&order='+c.order);
-    }).then(function(rows){ qgvState(key).rows=rows||[]; qgvRenderCards(key); qgvRenderInspector(key); })
+    }).then(function(rows){ qgvState(key).rows=rows||[]; qgvRenderCards(key); qgvRenderInspector(key);
+      // CE QUI SUIT. La ligne relue (pas celle de l'ecran : elle peut
+      // avoir ete completee par la base) sert a dire ce qui manque.
+      try {
+        var frais = (rows||[]).filter(function(r){ return String(r.id) === String(cur.id); })[0];
+        if (SUITES[key]) suiteMontrer(key, frais || cur);
+      } catch(e){}
+    })
       .catch(function(){ qgToast('Erreur lors de l\'enregistrement (table / migration SQL ?).',true); if(btn){ btn.disabled=false; btn.textContent=isNew?'Ajouter au site':'Enregistrer'; } });
   }
   function qgvDeleteId(key,id){
