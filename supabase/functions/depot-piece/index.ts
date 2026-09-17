@@ -46,6 +46,40 @@ const TYPES: Record<string, string> = {
 // telephone tombe autour de 300 Ko, on est tres loin du plafond.
 const MAX = 8 * 1024 * 1024;
 
+// Douze fichiers par dossier au maximum. Il y a quatre pieces a fournir,
+// et on accepte qu'une famille s'y reprenne : douze laisse de la marge.
+// Sans plafond, le meme couple reference + telephone peut ecrire sans fin
+// dans le bucket -- chaque envoi porte un horodatage, donc un chemin neuf,
+// donc rien n'ecrase rien. Ce n'est pas un vol de donnees, c'est une
+// facture de stockage qui grimpe et un dossier illisible.
+const MAX_PIECES_PAR_DOSSIER = 12;
+
+// LE TYPE ANNONCE N'EST PAS LE TYPE REEL.
+//
+// Le navigateur declare « mime: image/png » et le bucket verifie cette
+// declaration, pas les octets. La liste de types du bucket ne protege
+// donc de rien : un fichier quelconque etiquete image/png entrait.
+//
+// Les quatre formats acceptes se reconnaissent a leurs premiers octets,
+// et ces octets-la, personne ne les choisit sans fabriquer un vrai
+// fichier du bon format.
+//
+//   JPEG  FF D8 FF
+//   PNG   89 P N G CR LF 1A LF
+//   WEBP  « RIFF » .... « WEBP »
+//   PDF   « %PDF- »
+function formatReel(b: Uint8Array): string | null {
+  const a = (i: number) => b[i];
+  if (b.length >= 3 && a(0) === 0xff && a(1) === 0xd8 && a(2) === 0xff) return "image/jpeg";
+  if (b.length >= 8 && a(0) === 0x89 && a(1) === 0x50 && a(2) === 0x4e && a(3) === 0x47 &&
+      a(4) === 0x0d && a(5) === 0x0a && a(6) === 0x1a && a(7) === 0x0a) return "image/png";
+  if (b.length >= 12 && a(0) === 0x52 && a(1) === 0x49 && a(2) === 0x46 && a(3) === 0x46 &&
+      a(8) === 0x57 && a(9) === 0x45 && a(10) === 0x42 && a(11) === 0x50) return "image/webp";
+  if (b.length >= 5 && a(0) === 0x25 && a(1) === 0x50 && a(2) === 0x44 && a(3) === 0x46 &&
+      a(4) === 0x2d) return "application/pdf";
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
@@ -69,6 +103,15 @@ Deno.serve(async (req) => {
     if (bytes.length > MAX) return reply(413, { error: "fichier_trop_lourd" });
     if (bytes.length < 512) return reply(400, { error: "fichier_vide" });
 
+    // LES OCTETS DOIVENT DIRE LA MEME CHOSE QUE L'ANNONCE. Un fichier
+    // dont le contenu ne correspond a aucun des quatre formats, ou qui
+    // se presente sous un autre que le sien, ne passe pas. Le message
+    // reste le meme que pour un format refuse : la famille n'a pas a
+    // apprendre ce qu'est un octet d'en-tete, elle a a savoir que sa
+    // photo n'est pas passee.
+    const reel = formatReel(bytes);
+    if (!reel || reel !== String(mime)) return reply(400, { error: "format_refuse" });
+
     const url = Deno.env.get("SUPABASE_URL")!;
 
     // --- 1. Le couple est-il bon ? On le demande avec la cle publique,
@@ -83,6 +126,17 @@ Deno.serve(async (req) => {
     // --- 2. Le fichier, dans le bucket prive, avec la cle de service.
     const db = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const ref = String(reference).toUpperCase().replace(/[^A-Z0-9-]/g, "");
+
+    // Le dossier est-il deja plein ? On compte avant d'ecrire. Un dossier
+    // qui a atteint douze fichiers a soit quatre pieces et huit
+    // corrections, soit quelqu'un qui joue avec le formulaire : dans les
+    // deux cas, c'est au club de regarder.
+    const { data: deja } = await db.storage.from("dossiers-prives")
+      .list(ref, { limit: MAX_PIECES_PAR_DOSSIER + 1 });
+    if (deja && deja.length >= MAX_PIECES_PAR_DOSSIER) {
+      return reply(429, { error: "dossier_plein" });
+    }
+
     const chemin = `${ref}/${kind}-${Date.now()}.${ext}`;
     const { error: eUp } = await db.storage.from("dossiers-prives").upload(chemin, bytes, {
       contentType: String(mime), upsert: true,

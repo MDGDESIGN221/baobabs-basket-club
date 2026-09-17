@@ -27,6 +27,7 @@
 // =====================================================================
 
 import { withSupabase } from "jsr:@supabase/server@^1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const MODEL = "claude-sonnet-4-6";
@@ -122,6 +123,33 @@ async function callClaude(prompt: string, maxTokens: number): Promise<string> {
   return textBlock?.text?.trim() || "";
 }
 
+// L'APPELANT EST-IL DU CLUB ?
+//
+// « auth: "required" » ci-dessous verifie qu'il y a UNE session valide,
+// pas qu'elle appartient a l'administration. Or index.html permet a
+// n'importe quel visiteur de se creer un compte en dix secondes pour la
+// boutique : un supporter etait donc « authenticated » comme le
+// president, et pouvait appeler cette fonction en boucle. Chaque appel
+// consomme la cle Anthropic du club, qui est facturee.
+//
+// On refait donc la verification que fait envoi-newsletter, et de la
+// meme facon : on rejoue la question a la base avec le jeton de
+// l'appelant, en cle publique. is_admin() repond sur admin_users, pas
+// sur auth.users.
+async function estDuClub(req: Request): Promise<boolean> {
+  try {
+    const caller = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: req.headers.get("Authorization") || "" } } },
+    );
+    const { data } = await caller.rpc("is_admin");
+    return data === true;
+  } catch {
+    return false;
+  }
+}
+
 export default {
   fetch: withSupabase({ auth: "required" }, async (req) => {
     if (req.method === "OPTIONS") {
@@ -129,6 +157,10 @@ export default {
     }
 
     try {
+      if (!(await estDuClub(req))) {
+        return jsonResponse({ error: "reserve_a_l_administration" }, 403);
+      }
+
       if (!ANTHROPIC_API_KEY) {
         console.error("ANTHROPIC_API_KEY manquante dans les secrets de la fonction.");
         return jsonResponse({ error: "no_api_key" }, 500);

@@ -119,13 +119,20 @@ export default {
   fetch: withSupabase({ auth: "none" }, async (req, ctx) => {
     try {
       // Vérification manuelle du webhook — voir note en haut de fichier.
-      if (WEBHOOK_SECRET) {
-        const incomingSecret = req.headers.get("x-webhook-secret");
-        if (incomingSecret !== WEBHOOK_SECRET) {
-          return new Response(JSON.stringify({ error: "invalid_webhook_secret" }), { status: 401 });
-        }
-      } else {
-        console.warn("WEBHOOK_SECRET non configuré — la fonction accepte toute requête. À corriger avant mise en production.");
+      //
+      // ELLE NE S'EFFACE PLUS QUAND LE SECRET MANQUE. Ce bloc disait
+      // avant : « si WEBHOOK_SECRET n'existe pas, on écrit un
+      // avertissement dans les journaux et on accepte tout ». Personne
+      // ne lit les journaux d'une fonction qui marche, et l'adresse
+      // d'une fonction Supabase se devine : n'importe qui pouvait faire
+      // partir un e-mail signé du club. Une porte qui s'ouvre quand la
+      // serrure est absente n'est pas une serrure.
+      if (!WEBHOOK_SECRET) {
+        console.error("WEBHOOK_SECRET absent : la fonction refuse tout appel. À renseigner dans Edge Functions › Secrets.");
+        return new Response(JSON.stringify({ error: "webhook_secret_non_configure" }), { status: 503 });
+      }
+      if (req.headers.get("x-webhook-secret") !== WEBHOOK_SECRET) {
+        return new Response(JSON.stringify({ error: "invalid_webhook_secret" }), { status: 401 });
       }
 
       if (!RESEND_API_KEY) {
@@ -135,10 +142,33 @@ export default {
 
       const payload = await req.json();
       // Format standard d'un Database Webhook Supabase : { type, table, record, old_record }
-      const order = payload.record ?? payload;
+      const recu = payload.record ?? payload;
 
-      if (!order || !order.id) {
+      if (!recu || !recu.id) {
         return new Response(JSON.stringify({ skipped: true, reason: "no_order_in_payload" }), { status: 200 });
+      }
+
+      // ON NE CROIT QUE LA BASE.
+      //
+      // Le corps de la requête portait tout : le nom, l'adresse
+      // destinataire, les articles, le total. L'e-mail était donc
+      // entièrement dicté par l'appelant, et un appelant qui a le
+      // secret pouvait faire envoyer n'importe quel texte à n'importe
+      // quelle adresse, sous la signature du club. alerte-inscription
+      // relit déjà la base pour cette raison exacte ; cette fonction ne
+      // le faisait pas.
+      //
+      // Désormais on ne retient de l'appel que l'identifiant, et on va
+      // chercher la commande. ctx.supabase est un client d'administration
+      // (il passe outre le RLS), voir la note plus bas.
+      const { data: order, error: eLecture } = await ctx.supabase
+        .from("orders")
+        .select("id, order_number, customer_name, customer_email, customer_phone, items, total, pickup_location, payment_method, note, confirmation_email_sent")
+        .eq("id", recu.id)
+        .single();
+
+      if (eLecture || !order) {
+        return new Response(JSON.stringify({ skipped: true, reason: "order_not_found" }), { status: 200 });
       }
 
       if (!order.customer_email) {

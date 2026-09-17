@@ -114,7 +114,12 @@ Deno.serve(async (req) => {
     if (!env.ok) return reply(502, { error: "envoi refusé", detail: env.detail });
 
     await db.from("reservations").update({ confirmation_email_sent: new Date().toISOString() }).eq("id", r.id);
-    return reply(200, { sent: true, to: r.buyer_email });
+    // ON NE REND PAS L'ADRESSE. Cette fonction s'appelle sans compte,
+    // sur un simple identifiant de reservation : rendre « to:
+    // l'adresse du client » faisait d'elle un moyen de lire l'adresse
+    // e-mail de quelqu'un dont on connait la reservation. Le site n'a
+    // besoin que de savoir que c'est parti.
+    return reply(200, { sent: true });
   } catch (e) {
     if (e instanceof CourrielNonConfigure) return reply(500, { error: String(e.message) });
     return reply(500, { error: String(e) });
