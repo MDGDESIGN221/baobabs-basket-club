@@ -11367,15 +11367,94 @@
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
+  /* CE QU'ON TAPE N'EST PAS CE QUI EST ECRIT.
+     « je veux supprimer un match ou en ajouter des passes ; si je tape
+       effacer un match ca doit aussi pouvoir m'aider »
+
+     Deux choses manquaient. D'abord la recherche cherchait la phrase
+     ENTIERE d'un seul tenant : « effacer un match » ne pouvait
+     rencontrer aucun libelle, parce qu'aucun libelle ne contient cette
+     suite de lettres. Elle cherche maintenant mot par mot, et les
+     petits mots (un, le, de, mon...) ne comptent pas.
+
+     Ensuite, personne n'ecrit « supprimer » quand il pense « effacer ».
+     Chaque famille ci-dessous reunit les mots qui veulent dire la meme
+     chose : des qu'un libelle en contient un, il repond a tous les
+     autres. Le test porte sur des racines (« supprim » couvre supprime,
+     supprimer, suppression) -- c'est plus court et ca vieillit mieux
+     qu'une liste de formes conjuguees. */
+  var GS_VIDES = ['un','une','le','la','les','des','de','du','au','aux','a','l','d',
+                  'mon','ma','mes','ce','cet','cette','ces','je','veux','peux','pour',
+                  'sur','dans','et','ou','est','qui','que','quoi','comment','faire'];
+  var GS_FAMILLES = [
+    { test:/(supprim|efface|enlev|retir|vire|jete|jeter|annul|corbeille|delete|degag)/,
+      mots:'supprimer effacer enlever retirer virer jeter annuler suppression corbeille degager' },
+    { test:/(ajout|creer|cree|nouveau|nouvelle|inscri|rajout|enregistr)/,
+      mots:'ajouter creer nouveau nouvelle rajouter inserer mettre enregistrer' },
+    { test:/(modifi|chang|corrig|edit|rectifi|reprend|remplac|refai)/,
+      mots:'modifier changer corriger editer rectifier reprendre remplacer refaire' },
+    { test:/(masqu|cach|invisibl|retire du site|depubli)/,
+      mots:'masquer cacher invisible retirer du site depublier ne plus montrer' },
+    { test:/(publi|mettre en ligne|afficher|montrer|sortir)/,
+      mots:'publier mettre en ligne afficher montrer sortir diffuser' },
+    { test:/(photo|image|visuel|logo|blason|portrait|affiche)/,
+      mots:'photo image visuel logo blason portrait affiche illustration' },
+    { test:/(match|rencontre|adversaire|opposant|affiche du match)/,
+      mots:'match rencontre adversaire opposition partie' },
+    { test:/(score|resultat|marque|points)/,
+      mots:'score resultat marque points feuille' },
+    { test:/(joueus|joueur|effectif|equipe|licenci)/,
+      mots:'joueuse joueur effectif equipe licenciee membre' },
+    { test:/(coach|staff|entraineur|encadr|dirigeant|bureau)/,
+      mots:'coach staff entraineur encadrement dirigeant bureau president' },
+    { test:/(argent|caisse|paiement|cotisation|facture|depense|recette|budget|tresor)/,
+      mots:'argent caisse paiement cotisation facture depense recette budget tresorerie' },
+    { test:/(billet|ticket|place|guichet|reservation)/,
+      mots:'billet ticket place guichet reservation billetterie' },
+    { test:/(ordre|class|ranger|trier|deplacer|glisser|remonter|descendre)/,
+      mots:'ordre classer ranger trier deplacer glisser remonter descendre position' },
+    { test:/(ancien|passe|precedent|avant|historique|archive|retrouv)/,
+      mots:'ancien passe precedent historique archive retrouver revenir' },
+    { test:/(partenaire|sponsor|soutien|mecene)/,
+      mots:'partenaire sponsor soutien mecene' },
+    { test:/(ecole|academie|jeune|enfant|parent|famille|inscription)/,
+      mots:'ecole academie jeune enfant parent famille inscription' },
+    { test:/(entrainement|seance|appel|presence|absence)/,
+      mots:'entrainement seance appel presence absence' },
+    { test:/(cinq|titulaire|banc|composition|compo|five)/,
+      mots:'cinq majeur titulaire banc composition compo five' }
+  ];
+  /* On etend le texte CHERCHE, pas ce qui est tape : « Supprimer un
+     match » repond ainsi a « effacer », sans que la frappe ait a etre
+     devinee ni corrigee. */
+  function gsEtendre(h){
+    var t = gsNorm(h), out = t;
+    for (var i = 0; i < GS_FAMILLES.length; i++)
+      if (GS_FAMILLES[i].test.test(t)) out += ' ' + GS_FAMILLES[i].mots;
+    return out;
+  }
+  function gsMots(term){
+    return gsNorm(term).split(/[^a-z0-9]+/).filter(function(w){
+      return w && GS_VIDES.indexOf(w) < 0;
+    });
+  }
+
   function gsBuild(term){
     var t = gsNorm(term).trim();
     var hits = [];
     var push = function(group, label, sub, act, img, ic){
       hits.push({ group:group, label:label, sub:sub, act:act, img:img, ic:ic });
     };
+    // Chaque mot tape doit se retrouver quelque part ; l'ordre ne
+    // compte pas, et un mot de trop ne fait pas echouer les autres.
+    var mots = gsMots(term);
     var match = function(){
-      for (var i = 0; i < arguments.length; i++) if (gsNorm(arguments[i]).indexOf(t) >= 0) return true;
-      return false;
+      if (!mots.length) return true;
+      var h = '';
+      for (var i = 0; i < arguments.length; i++) h += ' ' + (arguments[i] == null ? '' : arguments[i]);
+      h = gsEtendre(h);
+      for (var j = 0; j < mots.length; j++) if (h.indexOf(mots[j]) < 0) return false;
+      return true;
     };
 
     // Les actions d'abord : Ctrl+K répondait « où aller ? », il répond
@@ -11451,6 +11530,40 @@
       function(){ showSection('products'); }, 'produit boutique maillot ajouter vendre', ICO.produit);
     pushAct('Voir le site public', 'Ouvre le site dans un nouvel onglet',
       function(){ window.open('index.html', '_blank', 'noopener'); }, 'site public voir apercu ligne', ICO.site);
+
+    /* DEFAIRE, RETROUVER, RANGER. La palette ne savait qu'ouvrir et
+       creer. « Effacer un match » ne repondait rien -- non pas parce
+       que l'admin ne sait pas le faire, mais parce que personne ne
+       l'avait ecrit ici. Chacune de ces entrees mene la ou le geste se
+       fait, et la phrase du dessous dit ce qui reste a cliquer : aucune
+       ne supprime quoi que ce soit toute seule. */
+    pushAct('Supprimer un match', 'Ouvrez la rencontre, puis \u00ab Supprimer ce match \u00bb en bas de sa fiche',
+      function(){ showSection('matches2'); },
+      'supprimer effacer match rencontre calendrier', ICO.match);
+    pushAct('Ajouter un match d\u00e9j\u00e0 jou\u00e9', 'Une rencontre pass\u00e9e s\u2019ajoute comme les autres : mettez sa date, puis son score',
+      function(){ showSection('matches2'); },
+      'ajouter match passe ancien deja joue rattraper historique calendrier', ICO.plus);
+    pushAct('Corriger un score d\u00e9j\u00e0 publi\u00e9', 'Les rencontres jou\u00e9es et leur feuille',
+      function(){ showSection('results'); },
+      'corriger modifier score resultat publie erreur', ICO.score);
+    pushAct('Retrouver une photo remplac\u00e9e', 'Les images qu\u2019une fiche a cess\u00e9 d\u2019afficher, m\u00eame anciennes',
+      function(){ showSection('media'); if (typeof memOuvrirToutes === 'function') setTimeout(memOuvrirToutes, 260); },
+      'retrouver photo image perdue remplacee ecrasee erreur ancienne restaurer revenir', ICO.produit);
+    pushAct('Changer l\u2019ordre d\u2019un bloc', 'Glissez les cartes pour les ranger : joueuses, staff, partenaires, \u00e9tapes',
+      function(){ showSection('squad'); },
+      'ordre classer ranger trier glisser deplacer remonter descendre position bloc', ICO.joueuse);
+    pushAct('Choisir comment les partenaires s\u2019affichent', 'Cartes, grille, bande ou d\u00e9fil\u00e9',
+      function(){ showSection('partners'); },
+      'partenaire sponsor affichage presentation prereglage cartes grille bande defile', ICO.site);
+    pushAct('Choisir le cinq majeur montr\u00e9 sur le site', 'Le prochain match, un match pr\u00e9cis, ou rien du tout',
+      function(){ showSection('parcours'); },
+      'cinq majeur titulaire banc composition masquer afficher accueil', ICO.joueuse);
+    pushAct('Annuler ma derni\u00e8re action', 'Le bandeau \u00ab Annuler \u00bb reste quelques secondes apr\u00e8s chaque enregistrement',
+      function(){ qgToast('Le bandeau \u00ab Annuler \u00bb appara\u00eet en bas apr\u00e8s un enregistrement, une cr\u00e9ation ou une suppression.'); },
+      'annuler defaire revenir erreur undo retour arriere', ICO.score);
+    pushAct('Voir qui a modifi\u00e9 quoi', 'Le journal des modifications, champ par champ',
+      function(){ showSection('audit'); },
+      'historique journal audit qui quand modification trace', ICO.article);
 
     // Les écrans ensuite : c'est l'usage le plus fréquent.
     ALL_SECTIONS.forEach(function(k){

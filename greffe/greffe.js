@@ -78,17 +78,6 @@
   };
   var droits = DROITS_TOUT;
 
-  /* Le modèle est-il ouvert à cette casquette ? */
-  G.peutCreer = function (cle) {
-    var m = G.modeles[cle];
-    if (!m) return false;
-    if (!droits || !droits.familles) return true;
-    return droits.familles.indexOf(m.famille || 'Actes') >= 0;
-  };
-  /* Le droit d'apposer la signature et le cachet du président. */
-  G.peutSigner = function () { return !droits || droits.signer !== false; };
-  G.casquette  = function () { return (droits && droits.nom) || ''; };
-
   /* AJOUTER UN TYPE D'ACTE : un fichier dans modeles/, son nom ici. */
   var MODELES = ['ordre-mission', 'acte-libre', 'page-blanche', 'courrier',
                  'convention', 'contrat', 'fiche-fonction', 'budget',
@@ -425,6 +414,23 @@
     }
   };
   window.BaobabsGreffe = G;
+
+  /* LES TROIS QUESTIONS DE DROIT. Elles vivent ICI, et pas la-haut avec
+     la table DROITS, pour une raison qui a coute une soiree : G n'existe
+     qu'a cette ligne. Les poser plus tot, a cote de leur explication,
+     paraissait plus lisible -- et jetait « Cannot set properties of
+     undefined » au premier clic, donc plus de Greffe du tout. Le banc
+     n'avait rien vu : il fournissait G lui-meme au bloc extrait. */
+  /* Le modele est-il ouvert a cette casquette ? */
+  G.peutCreer = function (cle) {
+    var m = G.modeles[cle];
+    if (!m) return false;
+    if (!droits || !droits.familles) return true;
+    return droits.familles.indexOf(m.famille || 'Actes') >= 0;
+  };
+  /* Le droit d'apposer la signature et le cachet du president. */
+  G.peutSigner = function () { return !droits || droits.signer !== false; };
+  G.casquette  = function () { return (droits && droits.nom) || ''; };
 
   /* Les lignes utiles d'un tableau : celles qui portent au moins une
      valeur. Un modèle ne doit jamais compter les lignes vides que
