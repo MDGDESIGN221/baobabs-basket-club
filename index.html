@@ -1743,9 +1743,13 @@ window.bbLienSur = function (u) {
     transition-delay:calc(var(--i,0) * 90ms + .86s);
   }
   .bb-lu-act.on .bb-lu-stats li{ transform:none; opacity:1 }
+  /* Les chiffres de la joueuse ne sont pas une annonce : ils se lisent.
+     La grasse etroite du nom les rendait agressifs -- Space Grotesk,
+     deja dans la page, les pose sans crier. */
   .bb-lu-stats b{
-    font-family:var(--lu-nom); font-size:calc(26px * var(--lu-k)); line-height:1;
-    color:#F3EFE6; letter-spacing:var(--lu-sp);
+    font-family:'Space Grotesk',sans-serif; font-weight:700;
+    font-size:23px; line-height:1.05; color:#F3EFE6; letter-spacing:-.01em;
+    font-variant-numeric:tabular-nums;
   }
   .bb-lu-stats span{
     font-family:'Inter',sans-serif; font-weight:700; font-size:9.5px; letter-spacing:.22em;
@@ -1781,7 +1785,7 @@ window.bbLienSur = function (u) {
         rgba(6,16,11,.95) 0 46%, rgba(6,16,11,.78) 70%, rgba(6,16,11,0) 100%);
     }
     .bb-lu-stats{ gap:0 22px }
-    .bb-lu-stats b{ font-size:calc(21px * var(--lu-k)) }
+    .bb-lu-stats b{ font-size:19px }
     .bb-lu-fam{ font-size:calc(clamp(34px,10vw,56px) * var(--lu-k) * var(--lu-f,1)) }
     .bb-lu-pre{ font-size:calc(clamp(22px,6vw,34px) * var(--lu-k)) }
   }
@@ -2109,21 +2113,37 @@ window.bbLienSur = function (u) {
     position:absolute; left:0; right:0; bottom:0; z-index:3;
     display:flex; gap:8px; align-items:flex-end; overflow-x:auto; scrollbar-width:none;
     padding:12px clamp(16px,3vw,26px) 14px;
-    background:linear-gradient(transparent, rgba(4,10,7,.82) 42%);
+    background:linear-gradient(transparent, rgba(4,10,7,.72) 34%, rgba(4,10,7,.94) 72%);
   }
   .bb-lu-strip::-webkit-scrollbar{ display:none }
+  /* LA VIGNETTE ACTIVE DOIT SE VOIR, MEME SUR UN MAILLOT BLANC.
+     Un simple liseré d'or se perdait des que la bande passait devant la
+     joueuse. Celle qui est a l'ecran prend donc un fond, un anneau
+     complet et un peu de relief : on la trouve sans la chercher. */
   .bb-lu-vg{
-    position:relative; flex:none; display:flex; align-items:center; gap:8px;
-    padding:0; border:none; background:transparent; cursor:pointer; text-align:left;
-    opacity:.44; transition:opacity .3s ease;
+    position:relative; flex:none; display:flex; align-items:center; gap:9px;
+    padding:5px 12px 5px 5px; border:1px solid transparent; border-radius:var(--r-full,999px);
+    background:transparent; cursor:pointer; text-align:left;
+    opacity:.5; transition:opacity .3s ease, background .3s ease, border-color .3s ease;
   }
-  .bb-lu-vg:hover,.bb-lu-vg.on{ opacity:1 }
+  .bb-lu-vg:hover{ opacity:1; background:rgba(243,239,230,.07) }
+  .bb-lu-vg.on{
+    opacity:1;
+    /* la meme couleur que la plaque du nom : l'or. Un anneau d'or dans
+       une pastille verte donnait deux accents pour une seule idee. */
+    background:linear-gradient(100deg, rgba(var(--bb-or-rgb),.26), rgba(var(--bb-or-rgb),.08));
+    border-color:rgba(var(--bb-or-rgb),.6);
+    box-shadow:0 6px 18px -6px rgba(0,0,0,.6);
+  }
   .bb-lu-vg figure{
     margin:0; width:42px; height:42px; border-radius:50%; overflow:hidden; flex:none;
     background:#0F4030; border:1.5px solid transparent;
     transition:border-color .3s ease, transform .45s cubic-bezier(.16,.9,.24,1);
   }
-  .bb-lu-vg.on figure{ border-color:var(--bb-or); transform:scale(1.16) }
+  .bb-lu-vg.on figure{
+    border-color:var(--bb-or); border-width:2px; transform:scale(1.1);
+    box-shadow:0 0 0 3px rgba(var(--bb-or-rgb),.22);
+  }
   .bb-lu-vg:hover figure{ transform:scale(1.08) }
   .bb-lu-vg.on .bb-lu-vn{ color:#F3EFE6 }
   .bb-lu-vg figure img{ width:100%; height:100%; object-fit:cover; display:block }
