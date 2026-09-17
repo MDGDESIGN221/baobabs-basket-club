@@ -1772,17 +1772,27 @@ window.bbLienSur = function (u) {
   @media (max-width:759px){
     .bb-lu-act{ display:block; align-content:start }
     .bb-lu-fig{
-      position:absolute; left:0; right:0; bottom:0; top:auto; margin:0 auto;
-      width:min(94%,330px); height:auto; aspect-ratio:3/4; z-index:0; min-height:0;
+      /* calee en HAUT sur telephone : c'est le visage qu'on veut voir,
+         et le bas se perd de toute facon sous le texte. */
+      position:absolute; left:0; right:0; top:0; bottom:auto; margin:0 auto;
+      width:min(96%,340px); height:auto; aspect-ratio:3/4; z-index:0; min-height:0;
     }
+    /* LE TEXTE EN BAS, PAS SUR LE VISAGE.
+       « sur mobile on voit pas bien les visages des joueuses »
+       Le voile partait du haut et couvrait exactement la tete, qui est
+       en haut de l'image. Il part maintenant du bas : le texte se pose
+       sur le short et les jambes, qui ne disent rien, et le visage
+       reste degage. */
+    .bb-lu-act{ display:flex; flex-direction:column; justify-content:flex-end }
     .bb-lu-id{
       position:relative; z-index:2; height:auto; display:grid;
-      grid-template-rows:auto auto auto; gap:13px;
-      /* le voile : sans lui, le nom se perd sur le maillot blanc */
-      margin:calc(-1 * clamp(22px,3vw,46px)) calc(-1 * clamp(20px,4.5vw,66px)) 0;
-      padding:clamp(22px,3vw,46px) clamp(20px,4.5vw,66px) 52px;
-      background:linear-gradient(180deg,
-        rgba(6,16,11,.95) 0 46%, rgba(6,16,11,.78) 70%, rgba(6,16,11,0) 100%);
+      grid-template-rows:auto auto auto; gap:12px; margin-top:auto;
+      margin-left:calc(-1 * clamp(20px,4.5vw,66px));
+      margin-right:calc(-1 * clamp(20px,4.5vw,66px));
+      margin-bottom:calc(-1 * clamp(96px,9vw,118px));
+      padding:60px clamp(20px,4.5vw,66px) calc(clamp(96px,9vw,118px) + 6px);
+      background:linear-gradient(0deg,
+        rgba(6,16,11,.97) 0 58%, rgba(6,16,11,.8) 78%, rgba(6,16,11,0) 100%);
     }
     .bb-lu-stats{ gap:0 22px }
     .bb-lu-stats b{ font-size:19px }
@@ -8189,7 +8199,9 @@ window.bbCloud = function(url, w){
      la page.
      =================================================================== */
   var BB_LU_DUREE = 4400, BB_LU_BANC = 5600, BB_LU_INTRO = 2700, BB_LU_DUEL = 3200;
-  var bbLuScene = { i:0, n:0, t:null, tSort:null, forme:null, tForme:null, dernier:-1, obs:null, vu:false, survol:false, hote:null };
+  var bbLuScene = { i:0, n:0, t:null, tSort:null, forme:null, tForme:null, dernier:-1,
+                    obs:null, vu:false, survol:false, pauseDepuis:0,
+                    depuis:0, duree:0, hote:null };
 
   function bbLuPeu(){
     return window.bbCalme();
@@ -8540,6 +8552,8 @@ window.bbCloud = function(url, w){
               : h.querySelector('.bb-lu-act.on.bb-lu-act-banc')   ? BB_LU_BANC
               : BB_LU_DUREE;
     h.style.setProperty('--bb-lu-duree', duree + 'ms');
+    bbLuScene.depuis = Date.now();
+    bbLuScene.duree = duree;
     bbLuRelancer(duree);
   }
   function bbLuRelancer(duree){
@@ -8555,10 +8569,47 @@ window.bbCloud = function(url, w){
     bbLuScene.t = setTimeout(function(){ bbLuAller(bbLuScene.i + 1); },
       (duree || BB_LU_DUREE) * (bbLuPeu() ? 1.5 : 1));
   }
+  /* LE PIEGE DU TACTILE.
+     « c'est pas automatique sur les appareils et ca s'arrete parfois »
+
+     Sur un telephone, poser le doigt sur la scene declenche
+     « mouseenter » -- mais « mouseleave » ne vient JAMAIS, parce qu'il
+     n'y a pas de curseur qui s'en va. La boucle se mettait donc en
+     pause au premier contact, et n'en repartait plus. Vu nulle part
+     dans le code : c'est le navigateur qui invente l'evenement.
+
+     Deux garde-fous :
+       - on n'ecoute le survol que sur les appareils qui SURVOLENT
+         vraiment (hover:hover) ;
+       - et un chien de garde regarde toutes les deux secondes si la
+         scene devrait avancer et ne l'a pas fait. Quelle qu'en soit la
+         raison -- une pause restee coincee, un minuteur perdu par une
+         mise en veille, un onglet revenu au premier plan -- elle
+         repart. */
+  var BB_LU_SOURIS = (function(){
+    try { return window.matchMedia('(hover: hover) and (pointer: fine)').matches; }
+    catch(e){ return true; }
+  })();
+
   function bbLuPause(oui){
     bbLuScene.survol = !!oui;
+    bbLuScene.pauseDepuis = oui ? Date.now() : 0;
     if (oui) clearTimeout(bbLuScene.t); else bbLuRelancer();
   }
+
+  setInterval(function(){
+    var h = bbLuScene.hote;
+    if (!h || !bbLuScene.n || !bbLuScene.vu || document.hidden) return;
+    if (!document.body.contains(h)) return;
+    // une pause qui dure plus de vingt secondes n'est pas une pause,
+    // c'est un blocage : on repart.
+    if (bbLuScene.survol){
+      if (Date.now() - (bbLuScene.pauseDepuis || 0) < 20000) return;
+      bbLuScene.survol = false;
+    }
+    var duree = bbLuScene.duree || BB_LU_DUREE;
+    if (Date.now() - (bbLuScene.depuis || 0) > duree + 1500) bbLuAller(bbLuScene.i + 1);
+  }, 2000);
   function bbLuScener(m, cinq, banc){
     var h = document.getElementById('bb-lu-five'); if (!h) return;
     clearTimeout(bbLuScene.t);
@@ -8591,11 +8642,18 @@ window.bbCloud = function(url, w){
 
     h.querySelectorAll('[data-go]').forEach(function(b){
       b.addEventListener('click', function(){ bbLuAller(parseInt(b.getAttribute('data-go'), 10)); });
-      b.addEventListener('focus', function(){ bbLuPause(true); });
-      b.addEventListener('blur',  function(){ bbLuPause(false); });
+      // pareil pour le focus : sur un ecran tactile, un bouton touche
+      // garde le focus et la boucle serait restee en pause.
+      if (BB_LU_SOURIS){
+        b.addEventListener('focus', function(){ bbLuPause(true); });
+        b.addEventListener('blur',  function(){ bbLuPause(false); });
+      }
     });
-    h.addEventListener('mouseenter', function(){ bbLuPause(true); });
-    h.addEventListener('mouseleave', function(){ bbLuPause(false); });
+    // seulement la ou un curseur peut vraiment s'en aller
+    if (BB_LU_SOURIS){
+      h.addEventListener('mouseenter', function(){ bbLuPause(true); });
+      h.addEventListener('mouseleave', function(){ bbLuPause(false); });
+    }
 
     // Hors de l'ecran, la scene ne tourne pas. Sans cela, elle s'anime
     // en bas de page pendant qu'on lit le hero.
