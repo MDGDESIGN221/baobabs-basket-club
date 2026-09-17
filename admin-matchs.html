@@ -3909,6 +3909,19 @@
     background:transparent;border:none;color:var(--faint);cursor:pointer;text-align:left;padding:6px 10px;
     border-radius:9px}
   .su-encore:hover{background:rgba(243,239,230,.06);color:var(--muted)}
+  /* « Et ensuite » : la seule chose qui presse ailleurs dans le club,
+     proposee quand cette fiche-ci est finie. Discrete, mais cliquable
+     en entier -- c'est un chemin, pas une decoration. */
+  .su-suite{display:flex;align-items:flex-start;gap:9px;width:calc(100% - 20px);margin:0 10px 8px;
+    font:inherit;text-align:left;padding:9px 11px;border-radius:10px;cursor:pointer;
+    background:rgba(232,169,60,.07);border:1px solid rgba(232,169,60,.22);color:var(--text)}
+  .su-suite:hover{background:rgba(232,169,60,.13);border-color:rgba(232,169,60,.45)}
+  .su-suite i{flex:none;width:7px;height:7px;border-radius:50%;margin-top:5px;background:var(--gold)}
+  .su-suite.urgent i{background:#E5564A}
+  .su-suite span{display:block;min-width:0}
+  .su-suite b{display:block;font-size:12.5px;font-weight:600;line-height:1.35}
+  .su-suite em{display:block;font-style:normal;font-size:11px;color:var(--faint);margin-top:2px;
+    text-transform:uppercase;letter-spacing:.08em}
   .su-bas{display:flex;gap:8px;justify-content:flex-end;padding:8px 14px 14px}
   .su-bas button{font:inherit;font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer;
     background:transparent;border:1px solid var(--line-strong);color:var(--muted)}
@@ -7899,6 +7912,10 @@
           var ligne = Array.isArray(cree) ? cree[0] : cree;
           if (ligne && ligne.id != null)
             undoPousser({ type:'creation', table:table, id:ligne.id, quoi:undoNom(table, ligne), section:sectionLabel });
+          // CE QUI RESTE SUR CETTE FICHE. Une fiche neuve a toujours une
+          // suite : on ne filtre pas les champs ici, creer n'est pas
+          // ranger.
+          try { suiteApresEcriture(table, ligne, null); } catch(e){}
           return ligne || null;
         }).catch(function(){ return null; });
       }, sbNet(table,'insert'));
@@ -7918,6 +7935,15 @@
             Object.keys(body).forEach(function(k){ avant[k] = before[k] === undefined ? null : before[k]; });
             undoPousser({ type:'modif', table:table, id:id, avant:avant, quoi:undoNom(table, before) , section:sectionLabel });
           }
+          // CE QUI RESTE SUR CETTE FICHE. La ligne d'apres, sans relire
+          // la base : ce qu'elle etait, plus ce qu'on vient d'ecrire.
+          try {
+            var apres = {};
+            if (before) Object.keys(before).forEach(function(k){ apres[k] = before[k]; });
+            Object.keys(body).forEach(function(k){ apres[k] = body[k]; });
+            if (apres.id == null) apres.id = id;
+            suiteApresEcriture(table, apres, body);
+          } catch(e){}
         }, sbNet(table,'update'));
     });
   }
@@ -9944,10 +9970,284 @@
         { quoi:'Les tailles',
           pourquoi:'sans tailles, l\u2019acheteur ne peut pas choisir',
           facultatif:true,
-          fait:function(p){ return !!(p.sizes && String(p.sizes).trim()); } }
+          fait:function(p){ return !!(p.sizes && String(p.sizes).trim()); } },
+        { quoi:'Le mettre en vente',
+          pourquoi:'tant qu\u2019il est hors stock, la boutique ne le propose pas',
+          // Le formulaire pose toujours `in_stock` (il vaut vrai par
+          // defaut). Absent, c'est qu'on lit une ligne qui ne vient pas
+          // de lui : on ne coche pas, et on ne reproche pas non plus.
+          fait:function(p){
+            if (p.in_stock === undefined || p.in_stock === null) return null;
+            return p.in_stock !== false && p.in_stock !== 'false';
+          } }
+      ]
+    },
+
+    /* ================================================================
+       LES NEUF SUITES QUI MANQUAIENT
+       ----------------------------------------------------------------
+       La carte ne connaissait que six choses : un match, une joueuse, un
+       partenaire, un membre du staff, un article, un produit. Or on
+       enregistre dans QUARANTE-SIX ecrans. Poser un evenement sur
+       l'accueil sans date de fin, une banniere sans image, une ligne de
+       classement sans points, une categorie de billets jamais ouverte a
+       la vente : rien ne le disait, et le site affichait le trou.
+
+       Meme regle que les six premieres, sans exception : chaque etape
+       lit la donnee reelle. Rien ici n'est une liste de bonnes
+       intentions.
+       ================================================================ */
+
+    evenements: {
+      nom: function(e){ return e.titre || 'L\u2019\u00e9v\u00e9nement'; },
+      etapes: [
+        { quoi:'L\u2019affiche',
+          pourquoi:'la vignette dit de quoi on parle avant qu\u2019on lise le titre',
+          fait:function(e){ return !!e.affiche_url; } },
+        { quoi:'Le dernier jour',
+          pourquoi:'sans lui, la carte reste en t\u00eate de l\u2019accueil apr\u00e8s l\u2019\u00e9v\u00e9nement',
+          fait:function(e){ return !!e.fin; } },
+        { quoi:'Les dates affich\u00e9es',
+          pourquoi:'la ligne que lit le visiteur, sous le titre',
+          facultatif:true,
+          fait:function(e){ return !!(e.dates && String(e.dates).trim()); } },
+        { quoi:'Le lieu',
+          pourquoi:'',
+          facultatif:true,
+          fait:function(e){ return !!(e.lieu && String(e.lieu).trim()); } },
+        { quoi:'Le programme',
+          pourquoi:'une ligne par \u00e9tape : le jour, ce qui s\u2019y passe, le prix',
+          facultatif:true,
+          fait:function(e){ return !!(e.programme && String(e.programme).trim()); } },
+        { quoi:'Le bouton vers un article',
+          pourquoi:'il m\u00e8ne \u00e0 UN article choisi dans la liste, jamais \u00e0 une adresse retap\u00e9e',
+          facultatif:true,
+          fait:function(e){ return !!e.article_slug; } },
+        { quoi:'Le mettre sur le site',
+          pourquoi:'un \u00e9v\u00e9nement neuf arrive masqu\u00e9 : il faut le montrer',
+          fait:function(e){ return e.actif === true || e.actif === 'true'; } }
+      ]
+    },
+
+    timeline: {
+      nom: function(t){ return t.title || 'L\u2019\u00e9tape'; },
+      etapes: [
+        { quoi:'L\u2019ann\u00e9e',
+          pourquoi:'c\u2019est elle qui place l\u2019\u00e9tape sur la frise',
+          fait:function(t){ return !!(t.year && String(t.year).trim()); } },
+        { quoi:'Le texte',
+          pourquoi:'un titre seul sur une frise laisse le lecteur sur sa faim',
+          facultatif:true,
+          fait:function(t){ return !!(t.body && String(t.body).replace(/<[^>]*>/g,'').trim().length > 30); } }
+      ]
+    },
+
+    standings: {
+      nom: function(s){ return s.team_name || 'La ligne du classement'; },
+      etapes: [
+        { quoi:'Les points',
+          pourquoi:'c\u2019est sur eux que le tableau se trie',
+          fait:function(s){ return s.points != null && s.points !== ''; } },
+        { quoi:'Les matchs jou\u00e9s, les victoires, les d\u00e9faites',
+          pourquoi:'sans eux, la ligne affiche J0 \u00b7 0V 0D \u00e0 c\u00f4t\u00e9 de ses points',
+          fait:function(s){ return s.played != null && s.wins != null && s.losses != null; } },
+        { quoi:'Le logo du club',
+          pourquoi:'sans logo, le tableau n\u2019\u00e9crit que le nom',
+          facultatif:true,
+          fait:function(s){ return !!s.logo_url; } }
+      ]
+    },
+
+    galerie: {
+      nom: function(g){ return g.caption || 'La photo'; },
+      etapes: [
+        { quoi:'L\u2019image ou la vid\u00e9o',
+          pourquoi:'une ligne sans fichier ne montre rien',
+          fait:function(g){ return !!(g.image_url || g.video_url); } },
+        { quoi:'L\u2019affiche du film',
+          pourquoi:'une vid\u00e9o sans image reste un rectangle noir dans la grille',
+          quand:function(g){ return !!(g && g.video_url); },
+          fait:function(g){ return !!g.image_url; } },
+        { quoi:'La l\u00e9gende',
+          pourquoi:'elle s\u2019\u00e9crit sur la vignette, et sert aussi aux moteurs de recherche',
+          facultatif:true,
+          fait:function(g){ return !!(g.caption && String(g.caption).trim()); } },
+        { quoi:'La publier',
+          pourquoi:'masqu\u00e9e, elle reste ici sans jamais para\u00eetre sur le site',
+          fait:function(g){ return g.published === true || g.published === 'true'; } }
+      ]
+    },
+
+    banners: {
+      nom: function(b){ return b.title || 'La banni\u00e8re'; },
+      etapes: [
+        { quoi:'L\u2019image',
+          pourquoi:'c\u2019est elle qui occupe tout le haut de l\u2019accueil',
+          fait:function(b){ return !!b.image_url; } },
+        { quoi:'Le titre',
+          pourquoi:'',
+          fait:function(b){ return !!(b.title && String(b.title).trim()); } },
+        { quoi:'Le texte de remplacement de l\u2019image',
+          pourquoi:'il se lit quand l\u2019image ne charge pas, et par les lecteurs d\u2019\u00e9cran',
+          facultatif:true,
+          fait:function(b){ return !!(b.image_alt && String(b.image_alt).trim()); } },
+        { quoi:'Le bouton',
+          pourquoi:'un libell\u00e9 sans lien, ou l\u2019inverse, ne donne pas de bouton',
+          facultatif:true,
+          fait:function(b){ return !!(b.cta_label && b.cta_href); } },
+        { quoi:'Les dates d\u2019affichage',
+          pourquoi:'elle appara\u00eet et dispara\u00eet seule, sans se lever le matin du match',
+          facultatif:true,
+          fait:function(b){ return !!(b.starts_at || b.ends_at); } },
+        { quoi:'La rendre pr\u00eate',
+          pourquoi:'le grand bloc d\u2019accueil ne fait d\u00e9filer que les banni\u00e8res actives',
+          fait:function(b){ return b.is_active === true || b.is_active === 'true'; } }
+      ]
+    },
+
+    announce: {
+      nom: function(a){ return 'L\u2019annonce en haut du site'; },
+      etapes: [
+        { quoi:'Le message',
+          pourquoi:'',
+          fait:function(a){ return !!(a.message && String(a.message).trim()); } },
+        { quoi:'Le bouton',
+          pourquoi:'un libell\u00e9 sans lien, ou l\u2019inverse, ne donne pas de bouton',
+          facultatif:true,
+          fait:function(a){ return !!(a.cta_label && a.cta_href); } },
+        { quoi:'La date de fin',
+          pourquoi:'une annonce oubli\u00e9e en haut du site fait douter du reste de la page',
+          facultatif:true,
+          fait:function(a){ return !!a.ends_at; } },
+        { quoi:'L\u2019allumer',
+          pourquoi:'tant qu\u2019elle est \u00e9teinte, le bandeau ne para\u00eet pas',
+          fait:function(a){ return a.is_active === true || a.is_active === 'true'; } }
+      ]
+    },
+
+    tickets: {
+      nom: function(t){ return t.category ? 'Billets \u00b7 ' + t.category : 'La cat\u00e9gorie de billets'; },
+      etapes: [
+        { quoi:'Le prix',
+          pourquoi:'',
+          fait:function(t){ return Number(t.price_fcfa) > 0; } },
+        { quoi:'Le nombre de places',
+          pourquoi:'sans quota, la billetterie ne sait pas quand afficher \u00ab complet \u00bb',
+          facultatif:true,
+          fait:function(t){ return t.quota != null && t.quota !== ''; } },
+        { quoi:'L\u2019ouvrir \u00e0 la vente',
+          pourquoi:'ferm\u00e9e, elle s\u2019affiche mais ne se r\u00e9serve pas',
+          fait:function(t){ return t.is_open === true || t.is_open === 'true'; } }
+      ]
+    },
+
+    teams: {
+      nom: function(t){ return t.name || 'L\u2019adversaire'; },
+      etapes: [
+        { quoi:'Son logo',
+          pourquoi:'il appara\u00eet partout o\u00f9 un match contre lui est annonc\u00e9',
+          fait:function(t){ return !!t.logo_url; } }
+      ]
+    },
+
+    saison: {
+      nom: function(s){ return s.label || 'La saison'; },
+      etapes: [
+        { quoi:'Les dates de d\u00e9but et de fin',
+          pourquoi:'elles bornent tout ce qui se compte par saison',
+          fait:function(s){ return !!(s.debut && s.fin); } },
+        { quoi:'La date de reprise',
+          pourquoi:'le jour o\u00f9 l\u2019\u00e9quipe se retrouve, apr\u00e8s la coupure',
+          facultatif:true,
+          fait:function(s){ return !!s.reprise; } },
+        { quoi:'La comp\u00e9tition',
+          pourquoi:'championnat, division : ce que le site \u00e9crit sous les matchs',
+          facultatif:true,
+          fait:function(s){ return !!(s.competition && String(s.competition).trim()); } },
+        { quoi:'L\u2019objectif de la saison',
+          pourquoi:'il se relit en fin d\u2019ann\u00e9e, \u00e0 c\u00f4t\u00e9 du bilan',
+          facultatif:true,
+          fait:function(s){ return !!(s.objectif && String(s.objectif).trim()); } },
+        { quoi:'L\u2019ouvrir',
+          pourquoi:'tant qu\u2019aucune saison n\u2019est ouverte, rien ne s\u2019y rattache',
+          fait:function(s){ return s.etat === 'ouverte'; } }
       ]
     }
   };
+
+  /* ==================================================================
+     ELLE PASSE PAR LA OU PASSENT LES ECRITURES
+     ------------------------------------------------------------------
+     La carte n'apparaissait qu'a DEUX endroits : la creation d'un match,
+     et le gestionnaire generique des collections. Les quarante autres
+     ecrans enregistraient dans le silence. Cabler chacun a la main
+     aurait donne quarante branchements a tenir a jour, et un ecran neuf
+     serait arrive muet -- c'est exactement ce qui s'est passe pour les
+     evenements, les bannieres et la billetterie.
+
+     On se branche donc la ou TOUT passe : sbInsert et sbUpdate. Une
+     table connue de SUITE_TABLES, une ligne avec un identifiant, et la
+     carte arrive -- quel que soit l'ecran qui a enregistre.
+
+     DEUX GARDE-FOUS, parce qu'une carte de trop est pire que pas de
+     carte du tout :
+
+       les champs de rangement ne comptent pas. Monter une photo d'un
+       cran, cocher « publie », changer un statut : ce sont des gestes
+       qu'on enchaine. Douze photos remontees d'un cran donneraient douze
+       cartes. Une ecriture qui ne touche QUE ces champs-la ne dit rien.
+
+       une carte a la fois, et vingt secondes de silence apres. Le reste
+       est deja tenu par suiteQuand, qui empeche la meme fiche de
+       revenir avant quarante-cinq secondes.
+     ================================================================== */
+  var SUITE_TABLES = {
+    matches:'match', players:'roster', staff:'staff', news:'news',
+    partners:'partners', products:'shop', evenements:'evenements',
+    timeline_events:'timeline', standings:'standings', gallery:'galerie',
+    banners:'banners', announcements:'announce', teams:'teams',
+    ticket_offers:'tickets', saisons:'saison'
+  };
+
+  var SUITE_RANGEMENT = {
+    sort:1, ordre:1, sort_order:1, published:1, actif:1, is_active:1,
+    is_open:1, featured:1, is_read:1, in_stock:1, stock:1, sold:1,
+    fiche_etat:1, status:1, etat:1, updated_at:1
+  };
+
+  var suiteDerniere = 0;
+  function suiteApresEcriture(table, ligne, champs){
+    var cle = SUITE_TABLES[table];
+    if (!cle || !SUITES[cle] || !ligne || ligne.id == null) return;
+    if (champs){
+      var vrais = Object.keys(champs).filter(function(k){ return !SUITE_RANGEMENT[k]; });
+      if (!vrais.length) return;
+    }
+    if (Date.now() - suiteDerniere < 20000) return;
+    suiteDerniere = Date.now();
+    // Neuf dixiemes de seconde : le temps qu'un ecran qui relit sa ligne
+    // en base (le gestionnaire de collections le fait) montre la carte
+    // avec la version fraiche. La notre passe alors en second, et
+    // suiteQuand l'ecarte. On ne montre jamais la plus vieille des deux.
+    setTimeout(function(){ try { suiteMontrer(cle, ligne); } catch(e){} }, 900);
+  }
+
+  /* QUAND TOUT EST FAIT, ELLE REGARDE PLUS LOIN.
+     « Tout y est, tu peux passer a autre chose » laissait la personne
+     devant un ecran fini sans lui dire ou aller. Le moteur des attentes
+     (attRegles, plus bas) sait deja ce qui presse dans tout le club : on
+     lui demande la chose la plus urgente du moment, et la carte la
+     propose en un clic. C'est la seule difference entre un rappel et un
+     collegue. On ne prend QUE ce qui est deja en memoire : la carte ne
+     declenche aucune lecture, elle ne doit rien faire attendre. */
+  function suiteEnsuite(){
+    if (typeof attFaits === 'undefined' || !attFaits || !attFaits.length) return null;
+    var rang = { urgent:0, important:1, attention:2 };
+    var candidats = attFaits.filter(function(f){ return rang[f.niveau] != null && f.section; });
+    if (!candidats.length) return null;
+    candidats.sort(function(a,b){ return rang[a.niveau] - rang[b.niveau]; });
+    return candidats[0];
+  }
 
   /* Un affichage a la fois, et jamais deux fois la meme minute : on
      enregistre souvent d'affilee, et une carte qui revient a chaque
@@ -10005,6 +10305,7 @@
   var SU_VISIBLES = 4;
   function suiteRendre(S, ligne, pas, reste, durs, tout){
     var SU_VISIBLES = tout ? pas.length : 4;
+    var ensuite = reste ? null : suiteEnsuite();
     var ancien = document.getElementById('su-carte'); if (ancien) ancien.remove();
     var coche = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4 10-10"/></svg>';
     var c = document.createElement('div');
@@ -10030,6 +10331,11 @@
         ? '<button type="button" class="su-encore" id="su-encore">et ' + (pas.length - SU_VISIBLES) +
           ' autre' + (pas.length - SU_VISIBLES > 1 ? 's' : '') + '\u2026</button>'
         : '') +
+      // Rien ne reste ici : on propose ce qui presse ailleurs.
+      (!reste && ensuite
+        ? '<button type="button" class="su-suite' + (ensuite.niveau === 'urgent' ? ' urgent' : '') + '" id="su-ensuite">' +
+            '<i></i><span><em>Et ensuite</em><b>' + esc(ensuite.titre) + '</b></span></button>'
+        : '') +
       '<div class="su-bas">' +
         (reste ? '<button type="button" id="su-tard">Plus tard</button>' : '') +
         '<button type="button" class="su-ok" id="su-ok">' + (reste ? 'Compris' : 'Parfait') + '</button>' +
@@ -10044,6 +10350,11 @@
     // On redessine avec tout : ouvrir la liste veut dire qu'on la lit,
     // donc la carte cesse aussi de partir toute seule.
     if (enc) enc.addEventListener('click', function(){ suiteRendre(S, ligne, pas, reste, durs, true); });
+    var ens = c.querySelector('#su-ensuite');
+    if (ens) ens.addEventListener('click', function(){
+      suiteFermer();
+      try { showSection(ensuite.section); } catch(e){}
+    });
     c.querySelectorAll('[data-su]').forEach(function(b){
       b.addEventListener('click', function(){
         var x = pas[parseInt(b.getAttribute('data-su'), 10)];
@@ -14826,12 +15137,48 @@
         '</div>' +
         '<div class="db-prep-p">' + E.map(function(e){
           return '<button type="button" class="db-prep-i est-' + esc(e.etat) + '" data-go="parcours"' +
+                 ' data-prep-cle="' + esc(e.cle) + '" data-prep-match="' + esc(m.id) + '"' +
                  ' title="' + esc(e.titre) + ' — ' + esc(TB_PREP_ETAT[e.etat] || e.etat) + '">' +
                  // « La fiche du match » devient « fiche du match » : l'article
                  // en tete de pastille vole une place a chaque fois, et neuf
                  // pastilles alignees se lisent mieux sans.
                  '<i></i><span>' + esc(e.titre.replace(/^(L[ae]s?|Le|L’|L')\s*/i, '')) + '</span></button>';
         }).join('') + '</div>';
+      tbPrepCabler();
+    });
+  }
+
+  /* LES NEUF PASTILLES DU TABLEAU DE BORD MENENT QUELQUE PART.
+     Elles portaient `data-go="parcours"` depuis le debut -- mais le seul
+     branchement de `data-go` ne regarde QUE `#db-hero [data-go]` et
+     `.db-num[data-go]`. Celles-ci vivent dans `.db-prep-p` : dessinees
+     en bouton, avec un curseur et une bulle d'aide, et sans le moindre
+     ecouteur. Sept d'entre elles ne faisaient rien du tout, alors que
+     l'aide de l'ecran promet « un clic sur un noeud descend a la carte ».
+
+     Elles descendent maintenant vraiment : on ouvre Le parcours SUR CE
+     MATCH (pas sur celui qui s'y trouvait), et on vise l'etape. */
+  function tbPrepCabler(){
+    var box = document.getElementById('db-prep');
+    if (!box || box.dataset.cable) return;
+    box.dataset.cable = '1';
+    box.addEventListener('click', function(ev){
+      var b = ev.target.closest('.db-prep-i[data-prep-cle]'); if (!b) return;
+      var cle = b.getAttribute('data-prep-cle');
+      var id  = b.getAttribute('data-prep-match');
+      if (id && typeof pcChoisir === 'function') pcChoisir(id);
+      showSection('parcours');
+      // Le parcours relit ses etapes en arrivant : on vise une fois la
+      // carte posee, et on reessaye une seconde fois si elle tarde.
+      var viser = function(){
+        var c = document.getElementById('pc-etape-' + cle);
+        if (!c) return false;
+        c.scrollIntoView({ behavior:'smooth', block:'start' });
+        c.classList.add('pc-vise');
+        setTimeout(function(){ c.classList.remove('pc-vise'); }, 1600);
+        return true;
+      };
+      setTimeout(function(){ if (!viser()) setTimeout(viser, 900); }, 420);
     });
   }
 

@@ -244,6 +244,12 @@ window.bbLienSur = function (u) {
   .bb-hide{display:none!important}
   /* Le temoin (le site ouvert dans l'administration) souligne la section qu'on edite. */
   .bb-temoin-vise{outline:2px solid #7DFF4F;outline-offset:6px}
+  /* Un bouton a fait remonter la page : on dit brievement OU on arrive,
+     sinon le saut ressemble a un bug. L'en-tete colle en haut, d'ou la
+     marge de defilement. */
+  #bb-bill-list{scroll-margin-top:96px}
+  .bb-vise{outline:2px solid rgba(var(--bb-or-rgb),.85);outline-offset:10px;border-radius:14px;transition:outline-color .5s ease}
+  @media (prefers-reduced-motion:reduce){.bb-vise{transition:none}}
   .bb-temoin .bb-cookie,.bb-temoin #bb-cookie{display:none!important}
   img{-webkit-user-drag:none;-khtml-user-drag:none;-moz-user-drag:none;user-drag:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 
@@ -5157,7 +5163,7 @@ window.bbLienSur = function (u) {
           <button type="button" class="bb-me-tab" data-me-tab="resa">Mes réservations</button>
           <button type="button" class="bb-me-tab" data-me-tab="cmd">Mes commandes</button>
           <button type="button" class="bb-me-tab" data-me-tab="fav">Mes favoris</button>
-          <button type="button" class="bb-me-tab" data-me-tab="info">Mes informations</button>
+          <button type="button" class="bb-me-tab" data-me-tab="info">Mon profil</button>
         </div>
         <div class="bb-legal-body" id="bb-me-body" style="padding-top:18px"></div>
       </div>
@@ -5178,6 +5184,29 @@ window.bbLienSur = function (u) {
     </div>
   </div>
 
+  <!-- ===== modal « choisir un nouveau mot de passe » =====
+       Ouverte uniquement au retour du lien reçu par courrier : c'est
+       supabase-js qui lit le jeton dans l'adresse et émet
+       PASSWORD_RECOVERY. On ne peut pas y arriver autrement. -->
+  <div id="bb-newpass-overlay" class="bb-hide">
+    <div class="bb-scrim" data-close-overlay></div>
+    <div class="bb-modal-wrap">
+      <div id="bb-newpass-modal" style="width:100%;max-width:400px;background:#0C1A12;border-radius:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) 0">
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:24px;color:#F3EFE6;margin:0">Nouveau mot de passe</h3>
+          <button type="button" class="bb-close-btn" data-close-overlay aria-label="Fermer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+        </div>
+        <form id="bb-newpass-form" style="padding:clamp(18px,3vw,24px) clamp(20px,4vw,26px) clamp(22px,3vw,26px);display:flex;flex-direction:column;gap:14px">
+          <p style="font-size:13.5px;line-height:1.6;color:#B9C2BB;margin:0">Choisissez le mot de passe qui ouvrira votre espace à partir de maintenant.</p>
+          <div class="bb-field"><label for="bb-newpass-1">Nouveau mot de passe</label><input id="bb-newpass-1" type="password" placeholder="8 caractères au minimum" autocomplete="new-password" required></div>
+          <div class="bb-field"><label for="bb-newpass-2">Répétez-le</label><input id="bb-newpass-2" type="password" placeholder="Le même, pour être sûr" autocomplete="new-password" required></div>
+          <p id="bb-newpass-msg" class="bb-hide" style="font-size:12.5px;line-height:1.55;margin:0"></p>
+          <button type="submit" class="bb-btn-solid" style="margin-top:4px">Enregistrer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== modal connexion ===== -->
   <div id="bb-login-overlay" class="bb-hide">
     <div class="bb-scrim" data-close-overlay></div>
@@ -5193,6 +5222,10 @@ window.bbLienSur = function (u) {
           <div class="bb-field"><label for="bb-login-password">Mot de passe</label><input id="bb-login-password" type="password" placeholder="Votre mot de passe" required></div>
           <p id="bb-login-error" class="bb-hide" style="font-size:12.5px;color:#E5564A;margin:0"></p>
           <button type="submit" class="bb-btn-solid" style="margin-top:4px">Se connecter</button>
+          <!-- Un compte sans porte de secours n'est un compte qu'une fois :
+               le jour ou le mot de passe est oublie, il est perdu, et le
+               visiteur en recree un autre avec ses commandes ailleurs. -->
+          <p style="font-size:13px;color:#93A099;margin:2px 0 0;text-align:center"><a href="#" id="bb-login-oubli" style="color:#A9B2AB">Mot de passe oublié&nbsp;?</a></p>
           <p style="font-size:13px;color:#93A099;margin:4px 0 0;text-align:center">Pas encore de compte ? <a href="#" data-open-register style="color:var(--bb-or)">Créer un compte</a></p>
         </form>
       </div>
@@ -5862,7 +5895,29 @@ window.bbCloud = function(url, w){
       h = 'actualites';
     }
     if (h && PAGES.indexOf(h) !== -1 && h !== state.page) goTo(h, true);
-    if (!history.state || !history.state.bbPage) history.replaceState({ bbPage: state.page || 'accueil' }, '', '#' + (state.page || 'accueil'));
+    // LA BARRE D'ADRESSE DOIT DIRE LA PAGE QU'ON REGARDE.
+    // Cette ligne lisait `state.page` juste apres goTo -- or goTo passe
+    // par un fondu enchaine, donc la page ne change qu'un instant plus
+    // tard. On relisait donc l'ANCIENNE page : ouvrir /#billetterie
+    // affichait bien la billetterie, mais reecrivait l'adresse en
+    // #accueil. Le lien qu'on recopiait ensuite ramenait a l'accueil, et
+    // « retour » sautait une etape. On ecrit la page VOULUE, pas celle
+    // qui est encore a l'ecran.
+    var voulue = (h && PAGES.indexOf(h) !== -1) ? h : (state.page || 'accueil');
+    if (!history.state || !history.state.bbPage || history.state.bbPage !== voulue)
+      history.replaceState({ bbPage: voulue }, '', '#' + voulue);
+  });
+
+  // CHANGER LE FRAGMENT A LA MAIN DOIT CHANGER DE PAGE.
+  // Le site ecrit « #boutique » dans la barre d'adresse mais ne relisait
+  // le fragment qu'au chargement. Coller une adresse dans un onglet deja
+  // ouvert sur le site, ou suivre un lien « #billetterie » ecrit dans un
+  // article, ne faisait donc rien du tout -- l'adresse changeait, la page
+  // non. popstate ne couvre pas ce cas : il ne parle que des etapes que
+  // le site a lui-meme empilees.
+  window.addEventListener('hashchange', function(){
+    var h = (location.hash || '').replace('#', '');
+    if (h && PAGES.indexOf(h) !== -1 && h !== state.page) { closeOverlays(); goTo(h, true); }
   });
 
   window.addEventListener('popstate', function(e){
@@ -5906,7 +5961,20 @@ window.bbCloud = function(url, w){
     // photographie l'ancienne page et la nouvelle, et les croise. La ou
     // l'API n'existe pas, on garde exactement le comportement d'avant.
     if (document.startViewTransition){
-      try { document.startViewTransition(function(){ applyPage(page, noPush); }); return; }
+      // `finished` et `ready` sont des promesses : quand une transition
+      // est interrompue par la suivante -- deux clics rapides, ou un
+      // changement de page pendant le chargement -- elles sont REJETEES
+      // avec AbortError. Personne ne les attrapait : la console du
+      // visiteur se remplissait d'erreurs rouges pour un fondu qui, lui,
+      // s'etait deroule normalement. On les avale : une transition
+      // sautee n'est pas une panne, c'est le comportement prevu.
+      try {
+        var t = document.startViewTransition(function(){ applyPage(page, noPush); });
+        if (t && t.finished && t.finished.catch) t.finished.catch(function(){});
+        if (t && t.ready && t.ready.catch) t.ready.catch(function(){});
+        if (t && t.updateCallbackDone && t.updateCallbackDone.catch) t.updateCallbackDone.catch(function(){});
+        return;
+      }
       catch(e){ /* on retombe sur le chemin d'avant */ }
     }
     clearTimeout(deriveTimer);
@@ -5990,11 +6058,16 @@ window.bbCloud = function(url, w){
     document.getElementById(id).classList.remove('bb-hide');
     document.body.style.overflow = 'hidden';
   }
+  /* ON FERME TOUTES LES SURCOUCHES, PAS UNE LISTE ECRITE A LA MAIN.
+     La liste nommait onze surcouches sur treize : ni la fiche d'un match
+     (bb-match-overlay) ni le nouveau mot de passe n'y figuraient. Une
+     fiche de match ouverte survivait donc a un changement de page --
+     elle restait par-dessus, avec le defilement du corps toujours
+     bloque. Et le defaut se serait repete a chaque surcouche ajoutee,
+     puisqu'il fallait penser a revenir ici. On les cherche donc par leur
+     nom : toute surcouche du site se termine par « -overlay ». */
   function closeOverlays(){
-    ['bb-cart-overlay','bb-product-overlay','bb-player-overlay','bb-role-overlay','bb-legal-overlay','bb-cta-overlay','bb-recruit-overlay','bb-login-overlay','bb-register-overlay','bb-ticket-overlay','bb-account-overlay'].forEach(function(id){
-      var el = document.getElementById(id);
-      if (el) el.classList.add('bb-hide');
-    });
+    document.querySelectorAll('[id$="-overlay"]').forEach(function(el){ el.classList.add('bb-hide'); });
     document.body.style.overflow = '';
   }
 
@@ -6397,6 +6470,12 @@ window.bbCloud = function(url, w){
     sbSession = session;
     if (event === 'SIGNED_OUT' || !session) { currentCustomer = null; setAccountUI(); if (window.bbFavLoad) bbFavLoad(); return; }
     if (session && session.user) loadCustomerProfile(session.user);
+    // LE RETOUR DU COURRIER DE RECUPERATION.
+    // supabase-js a lu le jeton dans l'adresse et ouvert une session de
+    // recuperation : on doit demander le nouveau mot de passe MAINTENANT.
+    // Sans cet ecran, le visiteur atterrit sur l'accueil, connecte sans
+    // le savoir, et son mot de passe reste celui qu'il a oublie.
+    if (event === 'PASSWORD_RECOVERY') setTimeout(bbOuvrirNouveauMdp, 300);
   });
   sb.auth.getSession().then(function(res){
     if (res.data && res.data.session) { sbSession = res.data.session; loadCustomerProfile(res.data.session.user); }
@@ -6416,6 +6495,82 @@ window.bbCloud = function(url, w){
       closeOverlays();
       toast('Connecté !');
     });
+  });
+
+  /* ===================================================================
+     MOT DE PASSE OUBLIE, ET NOUVEAU MOT DE PASSE
+     -------------------------------------------------------------------
+     Il n'existait aucune sortie de secours : un mot de passe oublie
+     rendait le compte -- ses reservations, ses commandes, ses favoris --
+     definitivement inatteignable. Le visiteur en recreait un autre, et
+     son historique restait accroche a l'ancien.
+
+     Deux moments, deux ecrans :
+       ici                 on demande l'envoi du courrier ;
+       au retour du lien   supabase-js reconnait le jeton dans l'adresse
+                           et emet PASSWORD_RECOVERY. On ouvre alors le
+                           formulaire du nouveau mot de passe, et RIEN
+                           d'autre : a ce moment-la la session est une
+                           session de recuperation, pas une vraie
+                           connexion.
+     =================================================================== */
+  var bbOubliEl = document.getElementById('bb-login-oubli');
+  if (bbOubliEl) bbOubliEl.addEventListener('click', function(e){
+    e.preventDefault();
+    var mail = (document.getElementById('bb-login-email').value || '').trim();
+    var errEl = document.getElementById('bb-login-error');
+    errEl.classList.remove('bb-hide');
+    if (!mail || mail.indexOf('@') < 1){
+      errEl.style.color = '#E5564A';
+      errEl.textContent = 'Écrivez d\'abord votre adresse e-mail au-dessus, puis recliquez ici.';
+      document.getElementById('bb-login-email').focus();
+      return;
+    }
+    errEl.style.color = '#A9B2AB';
+    errEl.textContent = 'Envoi…';
+    // Le lien doit ramener sur le site, sans fragment de page : c'est
+    // supabase-js qui lit le jeton dans l'adresse au chargement.
+    sb.auth.resetPasswordForEmail(mail, { redirectTo: location.origin + location.pathname })
+      .then(function(res){
+        // On ne dit jamais si l'adresse existe : ce serait donner la
+        // liste des comptes du club a qui essaie des adresses.
+        errEl.style.color = '#A8D93B';
+        errEl.textContent = res && res.error
+          ? 'L\'envoi n\'a pas pu se faire. Réessayez dans un instant.'
+          : 'Si un compte existe pour ' + mail + ', un courrier vient d\'y partir. Pensez aux indésirables.';
+      })
+      .catch(function(){
+        errEl.style.color = '#E5564A';
+        errEl.textContent = 'L\'envoi n\'a pas pu se faire. Réessayez dans un instant.';
+      });
+  });
+
+  function bbOuvrirNouveauMdp(){
+    openOverlay('bb-newpass-overlay');
+    var f = document.getElementById('bb-newpass-form'); if (f) f.reset();
+    document.getElementById('bb-newpass-msg').classList.add('bb-hide');
+  }
+
+  var bbNpForm = document.getElementById('bb-newpass-form');
+  if (bbNpForm) bbNpForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var a = document.getElementById('bb-newpass-1').value;
+    var b = document.getElementById('bb-newpass-2').value;
+    var msg = document.getElementById('bb-newpass-msg');
+    var btn = this.querySelector('button[type=submit]');
+    var dire = function(t, bon){ msg.textContent = t; msg.style.color = bon ? '#A8D93B' : '#E5564A'; msg.classList.remove('bb-hide'); };
+    if (a.length < 8) return dire('Huit caractères au minimum.', false);
+    if (a !== b) return dire('Les deux ne sont pas identiques.', false);
+    btn.disabled = true;
+    sb.auth.updateUser({ password: a }).then(function(res){
+      btn.disabled = false;
+      if (res.error) return dire(res.error.message || 'Le mot de passe n\'a pas pu être changé.', false);
+      dire('C\'est fait. Vous êtes connecté·e.', true);
+      // On nettoie l'adresse : le jeton de recuperation n'a rien a faire
+      // dans un lien qu'on recopie ou qu'on garde en historique.
+      try { history.replaceState(history.state, '', location.pathname + location.search); } catch(err){}
+      setTimeout(function(){ closeOverlays(); bbMeOpen(); }, 1200);
+    }).catch(function(){ btn.disabled = false; dire('Le mot de passe n\'a pas pu être changé.', false); });
   });
 
   document.getElementById('bb-register-form').addEventListener('submit', function(e){
@@ -6888,8 +7043,28 @@ window.bbCloud = function(url, w){
      Le score seul ne raconte rien. La fiche ajoute le déroulé par
      quart-temps, le résumé du club, et l'histoire des rencontres contre
      cet adversaire — ce que le supporter veut vraiment savoir. */
-  var bbMatches = [];
-  function bbMatchById(id){ for (var i=0;i<bbMatches.length;i++) if (String(bbMatches[i].id)===String(id)) return bbMatches[i]; return null; }
+  /* LE MAGASIN DES MATCHS EST UNIQUE, ET IL EST GLOBAL.
+     Il etait declare ici en `var`, et rempli plus bas -- dans un AUTRE
+     bloc <script>, donc une autre portee. Deux variables du meme nom :
+     celle qui se remplit n'est pas celle qu'on lit. Resultat, la liste
+     d'ici restait vide pour toujours, bbMatchById ne trouvait jamais
+     rien, et openMatch() sortait par son `if (!m) return;` -- sans une
+     erreur, sans un mot. Toutes les cartes de match de la page
+     Competitions (curseur en main, role="button", « Voir la fiche du
+     match » en etiquette) ne faisaient donc rien du tout, et la fiche
+     de match -- score, quart-temps, recit, affluence -- n'etait
+     atteignable par aucun clic du site.
+     On lit maintenant le seul et meme magasin, celui que le bloc du bas
+     remplit. */
+  function bbTousLesMatchs(){ return window.bbMatches || []; }
+
+  /* Les trois memes utilitaires, vus depuis ici. Ils sont publies par le
+     bloc du bas (window.bbUtil) : on les lit AU MOMENT DE L'APPEL, pas
+     au chargement, car ce bloc-ci s'execute en premier. */
+  function escHtml(s){ return window.bbUtil ? window.bbUtil.ech(s) : String(s == null ? '' : s); }
+  function formatDateShort(d){ return window.bbUtil && d ? window.bbUtil.dateCourte(d) : ''; }
+  function daysUntil(d){ return window.bbUtil && d ? window.bbUtil.joursAvant(d) : null; }
+  function bbMatchById(id){ var t = bbTousLesMatchs(); for (var i=0;i<t.length;i++) if (String(t[i].id)===String(id)) return t[i]; return null; }
   function bbQuarters(m){
     var q = m.quarters;
     if (typeof q === 'string'){ try { q = JSON.parse(q); } catch(e){ q = null; } }
@@ -6929,7 +7104,7 @@ window.bbCloud = function(url, w){
     }
 
     // L'histoire contre cet adversaire : ce que le classement ne dit pas.
-    var hist = bbMatches.filter(function(x){
+    var hist = bbTousLesMatchs().filter(function(x){
       return String(x.id) !== String(m.id) && x.opponent_name === m.opponent_name && x.score_baobabs != null;
     }).sort(function(a, b){ return String(b.match_date || '').localeCompare(String(a.match_date || '')); });
     if (hist.length){
@@ -7203,6 +7378,144 @@ window.bbCloud = function(url, w){
     });
   }
 
+  /* ===================================================================
+     MON PROFIL
+     -------------------------------------------------------------------
+     Cet onglet affichait le nom, l'e-mail et le telephone en lecture
+     seule, sous une phrase qui disait : « Pour modifier vos
+     informations, ecrivez-nous ». Un compte ou l'on ne peut rien
+     changer n'est pas un compte : c'est un identifiant. Le droit
+     existait pourtant depuis le premier jour -- la policy
+     « customers update own » autorise chacun a modifier SA fiche. Il ne
+     manquait que le formulaire.
+
+     Quatre gestes, trois portees differentes :
+       le nom et le telephone      vivent dans `customers` (une ligne)
+       l'adresse e-mail            vit dans le compte (auth), et son
+                                   changement demande une confirmation
+                                   par courrier : elle ne bascule pas
+                                   avant que le lien soit ouvert
+       le mot de passe             vit dans le compte, et s'applique
+                                   tout de suite
+       se deconnecter              ferme la session de cet appareil
+
+     Chaque bloc dit lui-meme ce qu'il a fait, a cote de son bouton :
+     un message unique en haut de page laisserait croire que le dernier
+     geste a porte sur autre chose.
+     =================================================================== */
+  function bbMeMsg(id, texte, bon){
+    var el = document.getElementById(id); if (!el) return;
+    el.textContent = texte;
+    el.style.color = bon ? '#A8D93B' : '#E5564A';
+    el.classList.toggle('bb-hide', !texte);
+  }
+
+  function bbMeProfil(body, note){
+    var c = currentCustomer;
+    var bouton = 'font-family:\'Inter\',sans-serif;font-weight:700;font-size:12px;letter-spacing:.07em;text-transform:uppercase;padding:12px 18px;border-radius:10px;cursor:pointer;flex:none';
+    var titre = 'font-family:\'Inter\',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#A8D93B;margin:0 0 12px';
+    var bloc = 'border:1px solid rgba(243,239,230,.1);border-radius:14px;padding:clamp(16px,2.6vw,20px);margin-bottom:16px';
+    var msg = 'font-size:12.5px;line-height:1.55;margin:10px 0 0';
+
+    body.innerHTML =
+      // --- identite -----------------------------------------------
+      '<div style="' + bloc + '">' +
+        '<p style="' + titre + '">Mes informations</p>' +
+        '<div style="display:flex;flex-direction:column;gap:13px">' +
+          '<div class="bb-field"><label for="bb-pf-nom">Nom</label><input id="bb-pf-nom" type="text" value="' + bbTkEsc(c.name) + '" placeholder="Votre nom" autocomplete="name"></div>' +
+          '<div class="bb-field"><label for="bb-pf-tel">Téléphone</label><input id="bb-pf-tel" type="tel" value="' + bbTkEsc(c.phone) + '" placeholder="77 000 00 00" autocomplete="tel"></div>' +
+          '<div style="display:flex;justify-content:flex-end"><button type="button" id="bb-pf-save" class="bb-btn-solid" style="width:auto">Enregistrer</button></div>' +
+        '</div>' +
+        '<p id="bb-pf-msg" class="bb-hide" style="' + msg + '"></p>' +
+      '</div>' +
+      // --- adresse e-mail -----------------------------------------
+      '<div style="' + bloc + '">' +
+        '<p style="' + titre + '">Mon adresse e-mail</p>' +
+        '<div style="display:flex;flex-direction:column;gap:13px">' +
+          '<div class="bb-field"><label for="bb-pf-mail">Adresse</label><input id="bb-pf-mail" type="email" value="' + bbTkEsc(c.user.email || '') + '" autocomplete="email"></div>' +
+          '<p style="' + note + ';font-size:12.5px">C\'est avec elle que vous vous connectez. Après un changement, un courrier part à la nouvelle adresse&nbsp;: tant que vous n\'avez pas ouvert le lien qu\'il contient, l\'ancienne reste la bonne.</p>' +
+          '<div style="display:flex;justify-content:flex-end"><button type="button" id="bb-pf-mail-btn" style="' + bouton + ';border:1px solid rgba(var(--bb-or-rgb),.5);background:transparent;color:var(--bb-or)">Changer l\'adresse</button></div>' +
+        '</div>' +
+        '<p id="bb-pf-mail-msg" class="bb-hide" style="' + msg + '"></p>' +
+      '</div>' +
+      // --- mot de passe -------------------------------------------
+      '<div style="' + bloc + '">' +
+        '<p style="' + titre + '">Mon mot de passe</p>' +
+        '<div style="display:flex;flex-direction:column;gap:13px">' +
+          '<div class="bb-field"><label for="bb-pf-mdp">Nouveau mot de passe</label><input id="bb-pf-mdp" type="password" placeholder="8 caractères au minimum" autocomplete="new-password"></div>' +
+          '<div class="bb-field"><label for="bb-pf-mdp2">Répétez-le</label><input id="bb-pf-mdp2" type="password" placeholder="Le même, pour être sûr" autocomplete="new-password"></div>' +
+          '<div style="display:flex;justify-content:flex-end"><button type="button" id="bb-pf-mdp-btn" style="' + bouton + ';border:1px solid rgba(var(--bb-or-rgb),.5);background:transparent;color:var(--bb-or)">Changer le mot de passe</button></div>' +
+        '</div>' +
+        '<p id="bb-pf-mdp-msg" class="bb-hide" style="' + msg + '"></p>' +
+      '</div>' +
+      // --- sortie --------------------------------------------------
+      '<button type="button" id="bb-me-logout" style="' + bouton + ';width:100%;border:1px solid rgba(224,86,74,.4);background:transparent;color:#E5564A">Se déconnecter</button>';
+
+    /* --- le nom et le telephone ---------------------------------- */
+    var save = document.getElementById('bb-pf-save');
+    save.addEventListener('click', function(){
+      var nom = document.getElementById('bb-pf-nom').value.trim();
+      var tel = document.getElementById('bb-pf-tel').value.trim();
+      if (!nom){ bbMeMsg('bb-pf-msg', 'Un nom, même un prénom seul : c\'est ce que voit le club sur vos commandes.', false); return; }
+      save.disabled = true; save.textContent = 'Enregistrement…';
+      fetch(SUPABASE_URL + '/rest/v1/customers?user_id=eq.' + c.user.id, {
+        method: 'PATCH',
+        headers: Object.assign(bbTkHeaders(), { 'Prefer': 'return=minimal' }),
+        body: JSON.stringify({ name: nom, phone: tel || null })
+      }).then(function(r){
+        save.disabled = false; save.textContent = 'Enregistrer';
+        if (!r.ok) throw new Error('patch');
+        // L'ecran doit suivre tout de suite : le bouton du haut porte le nom.
+        currentCustomer.name = nom; currentCustomer.phone = tel;
+        setAccountUI();
+        bbMeMsg('bb-pf-msg', 'C\'est enregistré.', true);
+      }).catch(function(){
+        save.disabled = false; save.textContent = 'Enregistrer';
+        bbMeMsg('bb-pf-msg', 'L\'enregistrement n\'est pas passé. Réessayez dans un instant.', false);
+      });
+    });
+
+    /* --- l'adresse e-mail ----------------------------------------- */
+    var mb = document.getElementById('bb-pf-mail-btn');
+    mb.addEventListener('click', function(){
+      var mail = document.getElementById('bb-pf-mail').value.trim();
+      if (!mail || mail.indexOf('@') < 1){ bbMeMsg('bb-pf-mail-msg', 'Cette adresse n\'a pas l\'air complète.', false); return; }
+      if (mail.toLowerCase() === String(c.user.email || '').toLowerCase()){ bbMeMsg('bb-pf-mail-msg', 'C\'est déjà votre adresse.', true); return; }
+      mb.disabled = true; mb.textContent = 'Envoi…';
+      sb.auth.updateUser({ email: mail }).then(function(res){
+        mb.disabled = false; mb.textContent = 'Changer l\'adresse';
+        if (res.error){ bbMeMsg('bb-pf-mail-msg', res.error.message || 'Le changement n\'a pas pu être demandé.', false); return; }
+        bbMeMsg('bb-pf-mail-msg', 'Un courrier vient de partir à ' + mail + '. Ouvrez le lien qu\'il contient pour confirmer — pensez aux indésirables.', true);
+      }).catch(function(){
+        mb.disabled = false; mb.textContent = 'Changer l\'adresse';
+        bbMeMsg('bb-pf-mail-msg', 'Le changement n\'a pas pu être demandé.', false);
+      });
+    });
+
+    /* --- le mot de passe ------------------------------------------ */
+    var pb = document.getElementById('bb-pf-mdp-btn');
+    pb.addEventListener('click', function(){
+      var a = document.getElementById('bb-pf-mdp').value;
+      var b = document.getElementById('bb-pf-mdp2').value;
+      if (a.length < 8){ bbMeMsg('bb-pf-mdp-msg', 'Huit caractères au minimum.', false); return; }
+      if (a !== b){ bbMeMsg('bb-pf-mdp-msg', 'Les deux ne sont pas identiques.', false); return; }
+      pb.disabled = true; pb.textContent = 'Changement…';
+      sb.auth.updateUser({ password: a }).then(function(res){
+        pb.disabled = false; pb.textContent = 'Changer le mot de passe';
+        if (res.error){ bbMeMsg('bb-pf-mdp-msg', res.error.message || 'Le mot de passe n\'a pas pu être changé.', false); return; }
+        document.getElementById('bb-pf-mdp').value = '';
+        document.getElementById('bb-pf-mdp2').value = '';
+        bbMeMsg('bb-pf-mdp-msg', 'Nouveau mot de passe en place. Il servira à votre prochaine connexion.', true);
+      }).catch(function(){
+        pb.disabled = false; pb.textContent = 'Changer le mot de passe';
+        bbMeMsg('bb-pf-mdp-msg', 'Le mot de passe n\'a pas pu être changé.', false);
+      });
+    });
+
+    var lo = document.getElementById('bb-me-logout');
+    if (lo) lo.addEventListener('click', function(){ closeOverlays(); sb.auth.signOut(); });
+  }
+
   function bbMeStatus(s){
     var map = {
       reservee: ['Réservée', 'var(--bb-or)'], retiree: ['Retirée', '#A8D93B'],
@@ -7222,20 +7535,7 @@ window.bbCloud = function(url, w){
 
     if (bbMeTab === 'fav'){ bbFavRenderTab(body, note); return; }
 
-    if (bbMeTab === 'info'){
-      var c = currentCustomer;
-      body.innerHTML =
-        '<div style="display:flex;flex-direction:column;gap:14px">' +
-          '<div class="bb-field"><label>Nom</label><input type="text" value="' + bbTkEsc(c.name) + '" readonly></div>' +
-          '<div class="bb-field"><label>Email</label><input type="email" value="' + bbTkEsc(c.user.email || '') + '" readonly></div>' +
-          '<div class="bb-field"><label>Téléphone</label><input type="tel" value="' + bbTkEsc(c.phone) + '" readonly></div>' +
-          '<p style="' + note + '">Pour modifier vos informations, écrivez-nous — nous mettons votre fiche à jour.</p>' +
-          '<button type="button" id="bb-me-logout" style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:13px;border-radius:10px;border:1px solid rgba(224,86,74,.4);background:transparent;color:#E5564A;cursor:pointer">Se déconnecter</button>' +
-        '</div>';
-      var lo = document.getElementById('bb-me-logout');
-      if (lo) lo.addEventListener('click', function(){ closeOverlays(); sb.auth.signOut(); });
-      return;
-    }
+    if (bbMeTab === 'info'){ bbMeProfil(body, note); return; }
 
     if (bbMeTab === 'resa'){
       if (bbMeResa === null){ body.innerHTML = '<p style="' + note + '">Chargement…</p>'; return; }
@@ -7263,18 +7563,52 @@ window.bbCloud = function(url, w){
         '<button type="button" class="bb-btn-solid" data-me-shop>Voir la boutique</button>';
       return;
     }
+    /* UNE COMMANDE, C'EST D'ABORD OU ELLE EN EST.
+       La ligne disait « 3 article(s) · 45 000 FCFA » et la date. Ni le
+       numero -- celui qu'on donne au guichet -- ni l'etat : le client ne
+       pouvait pas savoir si sa commande etait prete a retirer, ni la
+       retrouver quand il appelle. Les deux existaient en base depuis le
+       debut et ne sortaient nulle part. */
     body.innerHTML = bbMeCmd.map(function(o){
       var items = [];
       try { items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []); } catch(e){ items = []; }
       var n = items.reduce(function(a, it){ return a + (it.qty || 1); }, 0);
       var d = o.created_at ? new Date(o.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }) : '';
-      return '<div class="bb-me-row">' +
-        '<div style="flex:1;min-width:0">' +
-          '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6">' + n + ' article(s) · ' + bbTkEsc(bbTkPrice(o.total)) + '</div>' +
-          '<div style="font-size:12.5px;color:#7E8A82;margin-top:4px">' + bbTkEsc(d) + (o.pickup_location ? ' · retrait : ' + bbTkEsc(o.pickup_location) : '') + '</div>' +
-          (items.length ? '<div style="font-size:12px;color:#5F6B63;margin-top:5px">' + bbTkEsc(items.map(function(it){ return (it.qty > 1 ? it.qty + '× ' : '') + (it.name || ''); }).join(', ')) + '</div>' : '') +
-        '</div></div>';
+      var lignes = items.map(function(it){
+        var q = it.qty || 1;
+        var px = it.price != null ? bbTkPrice(it.price * q) : '';
+        return '<div style="display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:#93A099;padding:3px 0">' +
+          '<span style="min-width:0">' + (q > 1 ? '<b style="color:#B9C2BB">' + q + '×</b> ' : '') + bbTkEsc(it.name || 'Article') +
+          (it.size ? ' <span style="color:#5F6B63">· ' + bbTkEsc(it.size) + '</span>' : '') + '</span>' +
+          (px ? '<span style="flex:none;color:#7E8A82;font-variant-numeric:tabular-nums">' + bbTkEsc(px) + '</span>' : '') +
+        '</div>';
+      }).join('');
+      return '<div class="bb-me-row" style="flex-direction:column;align-items:stretch;gap:9px">' +
+        '<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">' + bbMeCmdStatut(o.status) +
+          (o.order_number ? '<span style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:.04em;color:var(--bb-or);font-size:14px">' + bbTkEsc(o.order_number) + '</span>' : '') +
+          '<span style="font-size:12.5px;color:#7E8A82;margin-left:auto">' + bbTkEsc(d) + '</span>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">' +
+          '<span style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6">' + n + ' article' + (n > 1 ? 's' : '') + '</span>' +
+          '<span style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:16px;color:#F3EFE6;font-variant-numeric:tabular-nums">' + bbTkEsc(bbTkPrice(o.total)) + '</span>' +
+        '</div>' +
+        (lignes ? '<div style="border-top:1px solid rgba(243,239,230,.07);padding-top:7px">' + lignes + '</div>' : '') +
+        (o.pickup_location ? '<div style="font-size:12.5px;color:#7E8A82">Retrait&nbsp;: ' + bbTkEsc(o.pickup_location) + '</div>' : '') +
+        (o.status === 'prête' ? '<div style="font-size:12.5px;color:#A8D93B">Elle vous attend. Donnez ce numéro sur place.</div>' : '') +
+      '</div>';
     }).join('');
+  }
+
+  /* Les cinq etats d'une commande, tels que l'administration les ecrit.
+     Un etat inconnu ne casse rien : il s'affiche tel quel, en gris. */
+  function bbMeCmdStatut(s){
+    var map = {
+      'nouvelle': ['Reçue', '#7E8A82'], 'confirmée': ['Confirmée', 'var(--bb-or)'],
+      'prête': ['Prête au retrait', '#A8D93B'], 'récupérée': ['Récupérée', '#A8D93B'],
+      'annulée': ['Annulée', '#E5564A']
+    };
+    var m = map[s] || [s || 'Reçue', '#7E8A82'];
+    return '<span style="font-family:\'Inter\',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;padding:4px 9px;border-radius:100px;white-space:nowrap;color:' + m[1] + ';border:1px solid ' + m[1] + '55;background:' + m[1] + '14">' + bbTkEsc(m[0]) + '</span>';
   }
 
   function bbMeResaRow(r){
@@ -7469,6 +7803,24 @@ window.bbCloud = function(url, w){
     }).join('');
     if (window.bbTilt) window.bbTilt.scan(box);
   }
+
+  /* « VOIR LES MATCHS », SOUS CHACUN DES CINQ TARIFS.
+     Le bouton etait dessine cinq fois et cable zero fois : l'attribut
+     `data-bill-scroll` n'existait nulle part ailleurs dans le document.
+     On lisait « Virages · 3 000 FCFA · Voir les matchs », on cliquait, et
+     il ne se passait rien -- le visiteur en deduit que la billetterie ne
+     marche pas. La liste des matchs est plus haut sur la meme page : on
+     y remonte, et on la fait clignoter une seconde pour dire ou on
+     vient d'arriver. */
+  document.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('[data-bill-scroll]');
+    if (!b) return;
+    var liste = document.getElementById('bb-bill-list');
+    if (!liste) return;
+    liste.scrollIntoView({ behavior: window.bbCalme() ? 'auto' : 'smooth', block: 'start' });
+    liste.classList.add('bb-vise');
+    setTimeout(function(){ liste.classList.remove('bb-vise'); }, 1600);
+  });
 
   function bbBillLoad(){
     bbTarifsRender();
@@ -8906,7 +9258,10 @@ window.bbCloud = function(url, w){
 
             // Le coach affiche sur la feuille de match : meme regle,
             // sinon un profil en attente s'afficherait en direct.
-            return sbFetch('staff?select=*&fiche_etat=eq.publiee&order=sort.asc')
+            // Meme raison que pour l'effectif : la table staff porte un
+            // telephone et un jeton de reprise. La vue n'en porte pas.
+            return sbFetch('staff_site?select=*&order=sort.asc')
+              .catch(function(){ return sbFetch('staff?select=*&fiche_etat=eq.publiee&order=sort.asc'); })
               .catch(function(){ return sbFetch('staff?select=*&order=sort.asc'); })
               .then(function(sr){
               var coach = (sr || []).filter(function(s){
@@ -8956,7 +9311,18 @@ window.bbCloud = function(url, w){
     }
     window.bbAge = bbAge;
 
-    sbFetch('players?select=*&fiche_etat=eq.publiee&order=sort.asc,jersey_number.asc')
+    // L'EFFECTIF SE LIT PAR UNE VUE, PAS PAR LA TABLE.
+    // `players?select=*` rendait la fiche ENTIERE a n'importe quel
+    // visiteur : date de naissance, numero de licence, note de blessure,
+    // formulaire depose, et le jeton personnel qui ouvre le formulaire
+    // de collecte. Le site n'a jamais eu besoin que d'une quinzaine de
+    // colonnes. `effectif_site` ne porte que celles-la (voir
+    // MIGRATION-2026-09-17-fermer-les-fiches.sql).
+    // Le repli garde le site debout AVANT la migration : tant que la vue
+    // n'existe pas, on relit la table comme avant. Apres, le repli ne
+    // sert plus -- et ne rendrait plus rien, la table etant fermee.
+    sbFetch('effectif_site?select=*&order=sort.asc,jersey_number.asc')
+      .catch(function(){ return sbFetch('players?select=*&fiche_etat=eq.publiee&order=sort.asc,jersey_number.asc'); })
       .catch(function(){ return sbFetch('players?select=*&order=sort.asc,jersey_number.asc'); })
       .then(bbPoser.players = function(rows){
       if(!rows || !rows.length) return;
@@ -9016,7 +9382,8 @@ window.bbCloud = function(url, w){
     // Le meme filtre que pour les joueuses : un coach qui vient de
     // remplir le formulaire de collecte n'est pas encore verifie.
     // J'avais ferme la page Equipe et oublie celle-ci.
-    sbFetch('staff?select=*&fiche_etat=eq.publiee&order=sort.asc')
+    sbFetch('staff_site?select=*&order=sort.asc')
+      .catch(function(){ return sbFetch('staff?select=*&fiche_etat=eq.publiee&order=sort.asc'); })
       .catch(function(){ return sbFetch('staff?select=*&order=sort.asc'); })
       .then(bbPoser.staff = function(rows){
         rows = (rows || []).filter(function(r){ return (r.fiche_etat || 'publiee') === 'publiee'; });
@@ -12124,6 +12491,19 @@ document.addEventListener('keydown', function(e){
            m.score_opponent !== null && m.score_opponent !== undefined;
   }
 
+  /* CES TROIS UTILITAIRES SONT AUSSI APPELES PLUS HAUT.
+     La fiche d'un match (openMatch) vit dans un AUTRE bloc <script>, qui
+     ne voit rien d'ici : elle appelait `formatDateShort`, `escHtml` et
+     `daysUntil` sans qu'aucun des trois n'existe dans sa portee. Le
+     premier appel jetait une ReferenceError, juste apres avoir pose le
+     titre -- la fiche restait donc fermee, en silence, sur TOUS les
+     matchs du site. On les publie une fois, explicitement, au lieu de
+     compter sur une globale qui n'a jamais existe. */
+  window.bbUtil = {
+    ech: escHtml, dateCourte: formatDateShort, dateLongue: formatDateLong,
+    joursAvant: daysUntil, couleurDe: fallbackColor, initiales: initials, estJoue: isPlayed
+  };
+
   // ===== Ticker + liste des résultats (matchs joués) =====
   function tickerItemHtml(m){
     var home = m.is_home ? 'Baobabs' : m.opponent_name;
@@ -12413,7 +12793,11 @@ document.addEventListener('keydown', function(e){
   .then(function(res){ if (!res.ok) throw new Error('Erreur réseau'); return res.json(); })
   .then(function(matches){
     matches = matches || [];
-    bbMatches = matches;
+    // Le magasin partage : le bloc du haut (fiche de match, historique
+    // contre un adversaire) lit `window.bbMatches`. On l'ecrit donc en
+    // clair, au lieu de compter sur la globale implicite -- c'est cette
+    // ambiguite qui avait fait croire a deux listes.
+    window.bbMatches = matches;
     var played = matches.filter(isPlayed).sort(function(a, b){ return b.match_date.localeCompare(a.match_date); });
     var upcoming = matches.filter(function(m){ return !isPlayed(m); });
     renderResults(played);
