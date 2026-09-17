@@ -44,8 +44,9 @@
 
 do $$
 declare
-  t text;
-  r record;
+  t    text;
+  nom  text;
+  noms text[];
   reste_lecture int;
   cibles text[] := array['gallery','match_results','matches','news','org_roles',
                          'partners','products','standings','timeline_events'];
@@ -57,19 +58,24 @@ begin
     --    s'additionnent, donc rien ne se ferme avant l'etape 2. On ne
     --    laisse jamais la table sans aucune porte.
     execute format('drop policy if exists %I on public.%I', t || '_admin_ecrit', t);
-    execute format('create policy %I on public.%I for all to authenticated
-                    using (is_admin()) with check (is_admin())', t || '_admin_ecrit', t);
+    execute format('create policy %I on public.%I for all to authenticated using (is_admin()) with check (is_admin())',
+                   t || '_admin_ecrit', t);
 
     -- 2. TOUTES LES PORTES SANS CONDITION QUI FONT AUTRE CHOSE QUE LIRE.
-    for r in select policyname from pg_policies
-              where schemaname = 'public' and tablename = t
-                and policyname <> t || '_admin_ecrit'
-                and cmd <> 'SELECT'
-                and coalesce(qual, 'true') = 'true'
-                and coalesce(with_check, 'true') = 'true'
-    loop
-      execute format('drop policy %I on public.%I', r.policyname, t);
-      raise notice 'retiree  %.%', t, r.policyname;
+    --    On releve d'abord les noms, on supprime ENSUITE. Parcourir
+    --    pg_policies tout en y supprimant des lignes, c'est scier la
+    --    branche : le curseur lit la vue pendant qu'elle change.
+    select coalesce(array_agg(policyname), '{}') into noms
+      from pg_policies
+     where schemaname = 'public' and tablename = t
+       and policyname <> t || '_admin_ecrit'
+       and cmd <> 'SELECT'
+       and coalesce(qual, 'true') = 'true'
+       and coalesce(with_check, 'true') = 'true';
+
+    foreach nom in array noms loop
+      execute format('drop policy %I on public.%I', nom, t);
+      raise notice 'retiree : %.%', t, nom;
     end loop;
 
     -- 3. S'IL NE RESTE PLUS AUCUNE PORTE DE LECTURE, ON EN REPOSE UNE.
@@ -78,6 +84,7 @@ begin
     select count(*) into reste_lecture from pg_policies
      where schemaname = 'public' and tablename = t
        and cmd in ('SELECT','ALL') and policyname <> t || '_admin_ecrit';
+
     if reste_lecture = 0 then
       execute format('create policy %I on public.%I for select to anon, authenticated using (true)',
                      t || '_lecture_publique', t);
