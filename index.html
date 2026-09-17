@@ -1430,71 +1430,285 @@ window.bbLienSur = function (u) {
   }
 
   /* ---- la grille des cinq : 5 colonnes, puis 3, puis 2 ---- */
-  .bb-lu-grid{
-    display:grid; gap:9px; grid-template-columns:repeat(2,minmax(0,1fr));
-    margin:0; padding:0; list-style:none;
-  }
-  @media (min-width:620px){ .bb-lu-grid{ grid-template-columns:repeat(3,minmax(0,1fr)) } }
-  @media (min-width:980px){ .bb-lu-grid{ grid-template-columns:repeat(5,minmax(0,1fr)) } }
+  /* ===================================================================
+     L'ENTREE DES CINQ
+     -------------------------------------------------------------------
+     « Cinq majeur et l'Effectif ont des similitudes par la mise en
+       forme ; dans le Cinq majeur il faut de l'animation niveau NBA
+       pour introduire les cinq et le banc, un truc continu »
 
-  /* ---- une vignette ---- */
-  .bb-lu-p{ position:relative; aspect-ratio:3/4; overflow:hidden; background:#0F4030 }
+     C'etait cinq cartes 3/4 alignees : exactement le dessin de la page
+     Effectif, donc rien ne distinguait « les titulaires de samedi » de
+     « les joueuses du club ». Ce n'est plus une grille, c'est une
+     SCENE : une joueuse a la fois, annoncee, puis la suivante, en
+     boucle -- et le banc en dernier acte.
+
+     TROIS CHOSES QU'UNE ANIMATION DOIT RESPECTER POUR ETRE SUPPORTABLE :
+       - elle s'arrete quand on la survole, et quand la section n'est
+         pas a l'ecran (une page ne doit pas animer dans le vide) ;
+       - elle se pilote : les vignettes du bas sont des boutons, la
+         barre dit ou on en est ;
+       - qui a demande moins d'animation obtient la scene SANS boucle,
+         jamais une page cassee.
+     =================================================================== */
+  .bb-lu-scene{
+    position:relative; overflow:hidden; border-radius:2px;
+    min-height:clamp(392px,52vw,608px);
+    background:
+      radial-gradient(120% 90% at 78% 12%, rgba(168,217,59,.14), transparent 58%),
+      radial-gradient(90% 70% at 12% 92%, rgba(var(--bb-or-rgb),.11), transparent 60%),
+      linear-gradient(160deg,#0C2418 0%,#081711 55%,#050F0A 100%);
+  }
+  /* les lignes du terrain, tres discretes : on doit les sentir, pas les lire */
+  .bb-lu-court{
+    position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background:
+      radial-gradient(circle at 50% 118%, transparent 0 118px, rgba(243,239,230,.09) 118px 119.5px, transparent 120px),
+      radial-gradient(circle at 50% 118%, transparent 0 210px, rgba(243,239,230,.055) 210px 211.5px, transparent 213px),
+      linear-gradient(90deg, transparent 0 calc(50% - .75px), rgba(243,239,230,.05) calc(50% - .75px) calc(50% + .75px), transparent calc(50% + .75px));
+  }
+  .bb-lu-acts{ position:relative; min-height:inherit }
+  .bb-lu-act{
+    position:absolute; inset:0; display:grid; align-content:center;
+    grid-template-columns:1fr; gap:0;
+    padding:clamp(18px,2.4vw,30px) clamp(16px,3vw,40px) clamp(88px,8vw,98px);
+    opacity:0; visibility:hidden; pointer-events:none;
+  }
+  .bb-lu-act.on{ opacity:1; visibility:visible; pointer-events:auto }
+  @media (min-width:760px){
+    .bb-lu-act{
+      grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
+      /* UNE RANGEE DE HAUTEUR DEFINIE, sinon « height:100% » ne veut
+         rien dire et le rapport 3/4 repart de la largeur -- la photo
+         redevient plus haute que la scene, et la tete disparait. */
+      grid-template-rows:minmax(0,1fr);
+      align-content:stretch; align-items:end; gap:clamp(18px,3vw,44px);
+    }
+    /* max-height plutot que height : avec aspect-ratio, c'est la
+       LARGEUR qui se reduit quand le plafond mord. « height:100% » sur
+       un element etire avec width:auto donnait une photo de 0 pixel. */
+    .bb-lu-fig{ width:min(100%,330px); max-height:100% }
+    .bb-lu-id{ align-self:center; min-width:0 }
+  }
+
+  /* le numero, enorme, derriere tout */
+  .bb-lu-num{
+    position:absolute; right:clamp(-10px,1vw,18px); top:clamp(-18px,-1vw,6px);
+    font-family:'Anton',Impact,sans-serif; line-height:.78;
+    font-size:clamp(150px,30vw,340px); color:rgba(243,239,230,.055);
+    letter-spacing:-.03em; pointer-events:none; user-select:none;
+    opacity:0; transition:opacity .8s ease .06s;
+  }
+  /* il entre, puis il derive tres lentement : rien n'est fige a l'ecran */
+  .bb-lu-act.on .bb-lu-num{
+    opacity:1;
+    animation:bb-lu-num-in 1.05s cubic-bezier(.16,.9,.24,1) forwards,
+              bb-lu-derive 9.5s linear 1.05s forwards;
+  }
+  @keyframes bb-lu-num-in{ from{transform:translate3d(0,30px,0) scale(1.09)} to{transform:none} }
+  @keyframes bb-lu-derive{ from{transform:none} to{transform:translate3d(-20px,12px,0)} }
+
+  /* la photo : un halo derriere, la joueuse detouree par le cadrage */
+  /* LA PHOTO TIENT DANS LA SCENE, TOUJOURS.
+     Elle etait dimensionnee par sa LARGEUR (330 px) et son rapport 3/4
+     lui donnait 440 px de haut -- plus que la scene. Le debordement
+     etait coupe par le haut, et les joueuses arrivaient sans le sommet
+     du crane. C'est la hauteur qui commande maintenant, et la largeur
+     suit. */
+  .bb-lu-fig{
+    position:relative; margin:0; align-self:end; justify-self:center; min-height:0;
+    width:min(100%,240px); height:auto; aspect-ratio:3/4; overflow:hidden;
+    border-radius:3px; background:#0F4030;
+    -webkit-mask-image:linear-gradient(#000 76%, transparent 100%);
+    mask-image:linear-gradient(#000 76%, transparent 100%);
+    transform:translate3d(0,34px,0) scale(.96); opacity:0;
+    transition:transform .92s cubic-bezier(.16,.9,.24,1), opacity .6s ease;
+  }
+  .bb-lu-act.on .bb-lu-fig{ transform:none; opacity:1 }
+  /* LE CADRAGE DU CLUB, RESPECTE. object-position place le visage,
+     --z applique le zoom : les trois nombres regles dans l'admin. Je
+     les avais perdus en passant a la scene, et les joueuses sortaient
+     du cadre. */
   .bb-lu-ph{
-    position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
+    width:100%; height:100%; object-fit:cover; display:block;
     filter:contrast(1.06) saturate(1.06); transform:scale(var(--z,1));
   }
-  /* Le vignetage : ce qui fait tenir cinq photos heterogenes ensemble,
-     sans toucher aux visages. */
-  .bb-lu-vig{
-    position:absolute; inset:0; pointer-events:none;
-    background:radial-gradient(115% 80% at 50% 12%,
-      rgba(15,64,48,0) 38%, rgba(8,28,19,.55) 78%, rgba(5,16,10,.9) 100%);
+  /* KEN BURNS : la photo respire pendant les quatre secondes. Une image
+     parfaitement immobile sous un nom anime a l'air d'un bug. */
+  .bb-lu-act.on .bb-lu-ph{ animation:bb-lu-kb 9.5s cubic-bezier(.24,.6,.3,1) forwards }
+  @keyframes bb-lu-kb{
+    from{ transform:scale(var(--z,1)) }
+    to  { transform:scale(calc(var(--z,1) * 1.09)) translate3d(0,-1.4%,0) }
   }
-  .bb-lu-au{
-    position:absolute; inset:0; pointer-events:none;
-    background:linear-gradient(180deg, rgba(var(--bb-or-rgb),.14) 0%, rgba(var(--bb-or-rgb),0) 30%);
+  .bb-lu-halo{
+    position:absolute; left:50%; bottom:6%; width:78%; aspect-ratio:1;
+    transform:translateX(-50%); pointer-events:none;
+    background:radial-gradient(circle, rgba(168,217,59,.28), transparent 62%);
+    filter:blur(18px); opacity:0; transition:opacity 1.1s ease .18s;
   }
-  .bb-lu-sh{
-    position:absolute; inset:0; pointer-events:none;
-    background:linear-gradient(to top, rgba(5,16,10,.9) 0%, rgba(5,16,10,0) 46%);
-  }
-  .bb-lu-gr{
-    position:absolute; inset:0; pointer-events:none; opacity:.22;
-    background:repeating-linear-gradient(0deg, rgba(5,16,10,.3) 0 1px, transparent 1px 3px);
-  }
-  .bb-lu-ring{
-    position:absolute; inset:0; pointer-events:none;
-    box-shadow:inset 0 0 0 1px rgba(228,193,121,.24);
-    transition:box-shadow .25s ease;
-  }
-  .bb-lu-p:hover .bb-lu-ring{ box-shadow:inset 0 0 0 1px rgba(168,217,59,.75) }
+  .bb-lu-act.on .bb-lu-halo{ opacity:1 }
 
-  .bb-lu-no{
-    position:absolute; right:12px; top:4px; z-index:2;
-    font-family:'Anton',Impact,sans-serif; font-size:clamp(58px,7vw,86px);
-    line-height:1; color:#F3EFE6; transform:skewX(-9deg);
-    text-shadow:0 6px 22px rgba(5,16,10,.6);
-    font-variant-numeric:tabular-nums; pointer-events:none; user-select:none;
+  /* l'identite : prenom d'un cote, nom de l'autre, decales */
+  .bb-lu-id{ position:relative; min-width:0; z-index:2 }
+  /* LE NOM ARRIVE LETTRE PAR LETTRE.
+     Le nom glissait d'un bloc : correct, et sans vie. Chaque lettre
+     bascule maintenant depuis sous la ligne, decalee de 34 ms sur la
+     precedente -- c'est le geste des habillages de match, et c'est ce
+     qui fait qu'on regarde le nom au lieu de le lire.
+     perspective sur la ligne, sinon la bascule est plate. */
+  .bb-lu-pre,.bb-lu-fam{
+    display:block; font-family:'Anton',Impact,sans-serif; text-transform:uppercase;
+    line-height:.92; letter-spacing:-.012em; overflow-wrap:anywhere;
+    overflow:hidden; padding-bottom:.05em; perspective:600px;
   }
-  .bb-lu-band{
-    position:absolute; left:0; right:0; bottom:0; z-index:2;
-    background:#05100A; border-top:2px solid var(--bb-or); padding:8px 10px 9px;
+  .bb-lu-pre{ font-size:clamp(26px,5vw,52px); color:var(--bb-or-clair) }
+  .bb-lu-fam{ font-size:clamp(38px,8.4vw,92px); color:#F3EFE6 }
+  .bb-lu-l{
+    display:inline-block; transform:translate3d(0,112%,0) rotateX(-72deg); opacity:0;
+    transform-origin:50% 0; will-change:transform;
+    transition:transform .66s cubic-bezier(.17,.86,.24,1), opacity .34s ease;
+    transition-delay:calc(var(--i,0) * 34ms + 140ms);
   }
-  .bb-lu-nm{
-    font-family:'Anton',Impact,sans-serif; font-size:clamp(15px,1.55vw,17px);
-    line-height:1; letter-spacing:.015em; text-transform:uppercase;
-    color:#F3EFE6; margin:0;
+  .bb-lu-act.on .bb-lu-l{ transform:none; opacity:1 }
+  .bb-lu-sp{ display:inline-block; width:.26em }
+  /* le nom entier, pour les lecteurs d'ecran seulement : sans lui,
+     ils epelleraient « S, E, Y, N... » */
+  .bb-lu-litt{ position:absolute; width:1px; height:1px; margin:-1px; padding:0;
+    overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }
+  /* la ligne du poste se decouvre de gauche a droite, comme un bandeau */
+  .bb-lu-pos{
+    display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:14px;
+    font-family:'Inter',sans-serif; font-weight:700; font-size:11.5px;
+    letter-spacing:.2em; text-transform:uppercase; color:#8FA096;
+    clip-path:inset(0 100% 0 0); opacity:0;
+    transition:clip-path .72s cubic-bezier(.17,.86,.24,1), opacity .25s ease;
+    transition-delay:.52s;
   }
-  .bb-lu-meta{
-    display:flex; align-items:center; gap:6px;
-    font-family:'Inter',sans-serif; font-weight:700; font-size:9px;
-    letter-spacing:.14em; text-transform:uppercase;
-    color:rgba(243,239,230,.62); margin:3px 0 0;
+  .bb-lu-act.on .bb-lu-pos{ clip-path:inset(0 0 0 0); opacity:1 }
+  /* un filet d'or qui se tire sous le nom, pendant que le poste sort */
+  .bb-lu-filet{
+    display:block; height:2px; width:0; margin:16px 0 0; background:var(--bb-or);
+    transition:width .8s cubic-bezier(.17,.86,.24,1) .42s;
   }
-  .bb-lu-cap{
-    flex:none; width:14px; height:14px; border-radius:50%;
-    background:#A8D93B; color:#05100A; font-family:'Anton',Impact,sans-serif;
-    font-size:9.5px; display:grid; place-items:center;
+  .bb-lu-act.on .bb-lu-filet{ width:min(220px,62%) }
+  .bb-lu-c{
+    display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px;
+    border-radius:50%; background:var(--bb-or); color:#0A1B0D; font-size:10px; letter-spacing:0;
+  }
+  /* LE RIDEAU LIQUIDE.
+     Un fondu enchaine ne fait pas une transition de plateau. Ici un
+     rideau vert borde d'or traverse l'acte, et un filtre SVG de
+     turbulence lui donne un bord qui ondule : c'est le meme principe
+     que les habillages de retransmission. Le bruit est calcule une
+     seule fois (feTurbulence sans animation) ; seul le deplacement
+     bouge, et seulement pendant 1,1 s. */
+  .bb-lu-liq{
+    position:absolute; inset:-14% -22%; pointer-events:none; opacity:0; z-index:4;
+    background:linear-gradient(97deg,
+      transparent 0 26%,
+      rgba(var(--bb-or-rgb),.95) 30% 33%,
+      #10331F 34% 62%,
+      rgba(168,217,59,.55) 62% 65%,
+      transparent 67% 100%);
+    filter:url(#bb-fluide) blur(.4px);
+    transform:translate3d(-128%,0,0);
+  }
+  .bb-lu-act.on .bb-lu-liq{ animation:bb-lu-liq 1.12s cubic-bezier(.58,.02,.3,1) forwards }
+  @keyframes bb-lu-liq{
+    0%  { opacity:1; transform:translate3d(-128%,0,0) }
+    88% { opacity:1 }
+    100%{ opacity:0; transform:translate3d(128%,0,0) }
+  }
+  /* et derriere le rideau, un eclat blanc tres bref : le flash du
+     plateau au moment ou le nom apparait */
+  .bb-lu-ray{
+    position:absolute; inset:0; pointer-events:none; opacity:0; z-index:3;
+    background:linear-gradient(101deg, transparent 40%, rgba(243,239,230,.16) 50%, transparent 60%);
+    transform:translateX(-45%);
+  }
+  .bb-lu-act.on .bb-lu-ray{ animation:bb-lu-ray 1.05s cubic-bezier(.3,.7,.3,1) .26s 1 }
+  @keyframes bb-lu-ray{ 0%{opacity:0;transform:translateX(-45%)} 24%{opacity:1} 100%{opacity:0;transform:translateX(48%)} }
+
+  /* LE BANC : dernier acte, les noms tombent un par un */
+  .bb-lu-act-banc{ align-content:center; grid-template-columns:1fr !important }
+  .bb-lu-banc-t{
+    font-family:'Anton',Impact,sans-serif; text-transform:uppercase; letter-spacing:.02em;
+    font-size:clamp(34px,7vw,74px); line-height:.92; color:#F3EFE6; margin:0 0 4px;
+    transform:translate3d(0,22px,0); opacity:0;
+    transition:transform .7s cubic-bezier(.16,.9,.24,1), opacity .5s ease;
+  }
+  .bb-lu-act.on .bb-lu-banc-t{ transform:none; opacity:1 }
+  .bb-lu-banc-s{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:11px; letter-spacing:.2em;
+    text-transform:uppercase; color:var(--bb-or); margin:0 0 20px;
+  }
+  .bb-lu-banc-l{ list-style:none; margin:0; padding:0;
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(178px,1fr)); gap:10px 22px; max-width:760px }
+  .bb-lu-banc-l li{
+    display:flex; align-items:baseline; gap:11px; min-width:0;
+    padding-bottom:7px; border-bottom:1px solid rgba(243,239,230,.09);
+    transform:translate3d(0,14px,0); opacity:0;
+    transition:transform .5s cubic-bezier(.16,.9,.24,1), opacity .42s ease;
+  }
+  .bb-lu-act.on .bb-lu-banc-l li{ transform:none; opacity:1 }
+  .bb-lu-banc-l b{
+    font-family:'Anton',Impact,sans-serif; font-size:21px; color:var(--bb-or-clair);
+    min-width:30px; line-height:1;
+  }
+  .bb-lu-banc-l span{
+    font-family:'Inter',sans-serif; font-weight:600; font-size:13.5px; color:#DDE6DE;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  /* LA BANDE DU BAS : ou on en est, et ou aller */
+  .bb-lu-strip{
+    position:absolute; left:0; right:0; bottom:0; z-index:3;
+    display:flex; gap:8px; align-items:flex-end; overflow-x:auto; scrollbar-width:none;
+    padding:12px clamp(16px,3vw,26px) 14px;
+    background:linear-gradient(transparent, rgba(4,10,7,.82) 42%);
+  }
+  .bb-lu-strip::-webkit-scrollbar{ display:none }
+  .bb-lu-vg{
+    position:relative; flex:none; display:flex; align-items:center; gap:8px;
+    padding:0; border:none; background:transparent; cursor:pointer; text-align:left;
+    opacity:.44; transition:opacity .3s ease;
+  }
+  .bb-lu-vg:hover,.bb-lu-vg.on{ opacity:1 }
+  .bb-lu-vg figure{
+    margin:0; width:42px; height:42px; border-radius:50%; overflow:hidden; flex:none;
+    background:#0F4030; border:1.5px solid transparent; transition:border-color .3s ease;
+  }
+  .bb-lu-vg.on figure{ border-color:var(--bb-or) }
+  .bb-lu-vg figure img{ width:100%; height:100%; object-fit:cover; display:block }
+  .bb-lu-vg .bb-lu-vn{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:10.5px; letter-spacing:.11em;
+    text-transform:uppercase; color:#DDE6DE; white-space:nowrap; display:none;
+  }
+  @media (min-width:700px){ .bb-lu-vg .bb-lu-vn{ display:block } .bb-lu-vg{ padding-right:10px } }
+  .bb-lu-vg .bb-lu-vno{
+    position:absolute; left:0; top:0; width:42px; height:42px; border-radius:50%;
+    display:grid; place-items:center; font-family:'Anton',Impact,sans-serif; font-size:15px;
+    color:#0A1B0D; background:var(--bb-or); opacity:0; transition:opacity .3s ease;
+  }
+  .bb-lu-vg.bb-lu-vg-banc figure{ display:grid; place-items:center; border-radius:6px;
+    background:rgba(243,239,230,.07); font-family:'Anton',Impact,sans-serif; font-size:12px; color:#DDE6DE }
+  /* la barre : elle dit combien de temps il reste sur cette joueuse */
+  .bb-lu-jauge{
+    position:absolute; left:0; right:0; bottom:-7px; height:2px; border-radius:2px;
+    background:rgba(243,239,230,.14); overflow:hidden;
+  }
+  .bb-lu-jauge i{ display:block; height:100%; width:0; background:var(--bb-or) }
+  .bb-lu-vg.on .bb-lu-jauge i{ animation:bb-lu-jauge var(--bb-lu-duree,4400ms) linear forwards }
+  @keyframes bb-lu-jauge{ from{width:0} to{width:100%} }
+
+  @media (prefers-reduced-motion:reduce){
+    .bb-lu-num,.bb-lu-fig,.bb-lu-l,.bb-lu-pos,.bb-lu-banc-t,.bb-lu-banc-l li,.bb-lu-filet{
+      transition:none !important; transform:none !important; opacity:1 !important;
+      clip-path:none !important; width:auto }
+    .bb-lu-filet{ width:min(220px,62%) !important }
+    .bb-lu-act.on .bb-lu-ray,.bb-lu-act.on .bb-lu-liq,.bb-lu-act.on .bb-lu-ph,
+    .bb-lu-act.on .bb-lu-num{ animation:none !important }
+    .bb-lu-vg.on .bb-lu-jauge i{ animation:none; width:100% }
   }
 
   /* ---- le pied : banc, encadrement, match ---- */
@@ -1505,25 +1719,6 @@ window.bbLienSur = function (u) {
   }
   /* Un bloc sans contenu ne doit pas reserver sa colonne. */
   .bb-lu-under > div:empty{ display:none }
-  .bb-lu-sub{
-    font-family:'Anton',Impact,sans-serif; font-size:30px; line-height:.9;
-    text-transform:uppercase; color:#F3EFE6; margin:0 0 12px;
-  }
-  .bb-lu-bench{
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:8px 18px; margin:0; padding:0; list-style:none;
-  }
-  .bb-lu-bench li{ display:flex; align-items:baseline; gap:9px; min-width:0 }
-  .bb-lu-bno{
-    flex:none; min-width:22px; text-align:right;
-    font-family:'Anton',Impact,sans-serif; font-size:19px; color:var(--bb-or);
-    font-variant-numeric:tabular-nums;
-  }
-  .bb-lu-bnm{
-    font-family:'Inter',sans-serif; font-weight:800; font-size:14px;
-    letter-spacing:.01em; text-transform:uppercase; color:#F3EFE6;
-    min-width:0; overflow:hidden; text-overflow:ellipsis;
-  }
   .bb-lu-lab{
     font-family:'Inter',sans-serif; font-weight:800; font-size:9.5px;
     letter-spacing:.2em; text-transform:uppercase;
@@ -1552,9 +1747,6 @@ window.bbLienSur = function (u) {
        375 px : on la laisse passer a la ligne plutot que deborder. */
     .bb-lu-topr{ text-align:left; width:100% }
     .bb-lu-when{ white-space:normal }
-  }
-  @media (prefers-reduced-motion:reduce){
-    .bb-lu-ring{ transition:none }
   }
 
 
@@ -3114,6 +3306,19 @@ window.bbLienSur = function (u) {
            banc — gardent leurs identifiants et restent dans le HTML :
            c'est par eux que le moteur d'animation les observe. -->
       <section id="bb-lineup" class="bb-hide">
+        <!-- LE BORD QUI ONDULE. Le bruit est calcule une seule fois par
+             le navigateur (aucune animation sur feTurbulence) ; seul le
+             rideau qui le traverse bouge, et seulement pendant 1,1 s. -->
+        <svg width="0" height="0" aria-hidden="true" focusable="false"
+             style="position:absolute;width:0;height:0;overflow:hidden">
+          <filter id="bb-fluide" x="-25%" y="-25%" width="150%" height="150%"
+                  color-interpolation-filters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.006 0.019"
+                          numOctaves="3" seed="7" result="bruit"/>
+            <feDisplacementMap in="SourceGraphic" in2="bruit" scale="58"
+                               xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
+        </svg>
         <div class="bb-lu">
           <div class="bb-lu-in">
             <header class="bb-lu-top">
@@ -3124,13 +3329,9 @@ window.bbLienSur = function (u) {
               </div>
             </header>
 
-            <div class="bb-lu-grid" id="bb-lu-five"></div>
+            <div class="bb-lu-scene" id="bb-lu-five"></div>
 
             <div class="bb-lu-under">
-              <div id="bb-lu-banc-wrap">
-                <h3 class="bb-lu-sub">Banc</h3>
-                <ul class="bb-lu-bench" id="bb-lu-bench"></ul>
-              </div>
               <div id="bb-lu-coach-wrap"></div>
               <div class="bb-lu-mt" id="bb-lu-mt"></div>
             </div>
@@ -7478,48 +7679,174 @@ window.bbCloud = function(url, w){
     return 'object-position:' + x + '% ' + y + '%;transform-origin:' + x + '% ' + y + '%;--z:' + (z / 100);
   }
 
-  // UNE VIGNETTE DE LA PLANCHE.
-  //
-  // Quatre voiles empiles sur la photo, et aucun ne touche au visage :
-  // un vignetage vert qui ferme les bords, un voile d'or en haut, un
-  // pied assombri sous le bandeau, un grain de trame. C'est ce qui fait
-  // tenir ensemble cinq portraits pris a cinq endroits — sans les
-  // teinter, donc sans leur retirer leur carnation.
-  function bbLuCarte(p){
-    var no = (p.no == null || p.no === '') ? '' : String(p.no);
-    var poste = bbLuPosteLu(p.pos);
-    var alt = [p.name || 'Joueuse', no ? 'numéro ' + no : '', p.cap ? 'capitaine' : '']
-                .filter(Boolean).join(', ');
-    var ph = p.src
-      ? '<img class="bb-lu-ph" src="' + window.bbSafeUrl(p.src) + '" alt="' + esc(alt) +
-        '" loading="lazy" decoding="async" style="' + bbLuCadre(p) + '">'
-      : '';
-    var sous = [poste, p.cap ? 'Capitaine' : ''].filter(Boolean).join(' · ');
-    return '<article class="bb-lu-p">' +
-        ph +
-        '<span class="bb-lu-vig" aria-hidden="true"></span>' +
-        '<span class="bb-lu-au" aria-hidden="true"></span>' +
-        '<span class="bb-lu-sh" aria-hidden="true"></span>' +
-        '<span class="bb-lu-gr" aria-hidden="true"></span>' +
-        '<span class="bb-lu-ring" aria-hidden="true"></span>' +
-        (no ? '<span class="bb-lu-no">' + esc(no) + '</span>' : '') +
-        '<div class="bb-lu-band">' +
-          '<p class="bb-lu-nm">' + esc(p.name || '') + '</p>' +
-          (sous
-            ? '<p class="bb-lu-meta">' +
-                (p.cap ? '<span class="bb-lu-cap" aria-hidden="true">C</span>' : '') +
-                esc(sous) + '</p>'
-            : '') +
-        '</div>' +
-      '</article>';
+  /* ===================================================================
+     LA SCENE DU CINQ MAJEUR
+     -------------------------------------------------------------------
+     Une joueuse a la fois, annoncee, puis la suivante ; le banc en
+     dernier acte ; et ca recommence. Tout le dessin est dans la feuille
+     de style : ici on ne fait que poser la classe « on » au bon moment,
+     et l'arreter quand il le faut.
+
+     ELLE S'ARRETE DE TOURNER quand la section sort de l'ecran, quand on
+     la survole, quand un bouton a le focus, quand l'onglet passe en
+     arriere-plan, et quand le visiteur a demande moins d'animation. Une
+     boucle qui tourne pour personne coute de la batterie a tout le
+     monde -- sur un telephone, c'est le genre de detail qui fait fermer
+     la page.
+     =================================================================== */
+  var BB_LU_DUREE = 4400, BB_LU_BANC = 5600;
+  var bbLuScene = { i:0, n:0, t:null, obs:null, vu:false, survol:false, hote:null };
+
+  function bbLuPeu(){
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch(e){ return false; }
+  }
+  /* Prenom d'un cote, nom de l'autre : c'est ce qui donne la respiration
+     d'une annonce. Un nom d'un seul mot reste entier, en grand. */
+  function bbLuNom(nom){
+    var t = String(nom || '').trim().split(/\s+/);
+    if (t.length < 2) return { pre:'', fam:t[0] || '' };
+    return { pre:t[0], fam:t.slice(1).join(' ') };
+  }
+  /* UNE LETTRE, UN DECALAGE. Le nom n'arrive pas d'un bloc : chaque
+     lettre bascule depuis sous la ligne, 34 ms apres la precedente.
+     `base` continue le compte d'une ligne a l'autre, pour que le nom de
+     famille prenne la suite du prenom au lieu de repartir de zero.
+     Les espaces ne sont pas des lettres : ils ne portent pas de delai,
+     sinon le mot se disloque. */
+  function bbLuLettres(txt, base){
+    var t = String(txt || ''), out = '', k = base || 0;
+    for (var i = 0; i < t.length; i++){
+      var c = t.charAt(i);
+      if (c === ' '){ out += '<span class="bb-lu-sp"></span>'; continue; }
+      out += '<span class="bb-lu-l" style="--i:' + (k++) + '">' + esc(c) + '</span>';
+    }
+    return out;
   }
 
-  function bbLuBanc(p){
-    return '<li>' +
-        '<span class="bb-lu-bno">' + esc(String(p.no == null ? '—' : p.no)) + '</span>' +
-        '<span class="bb-lu-bnm">' + esc(p.name || '') + '</span>' +
-      '</li>';
+  function bbLuActe(p, i){
+    var n = bbLuNom(p.name);
+    var no = (p.no == null || p.no === '') ? '' : String(p.no);
+    var poste = bbLuPosteLu(p.pos);
+    var alt = [p.name || 'Joueuse', no ? 'num\u00e9ro ' + no : ''].filter(Boolean).join(', ');
+    return '<article class="bb-lu-act" data-i="' + i + '">' +
+      (no ? '<span class="bb-lu-num" aria-hidden="true">' + esc(no) + '</span>' : '') +
+      '<figure class="bb-lu-fig">' +
+        '<span class="bb-lu-halo" aria-hidden="true"></span>' +
+        (p.src ? '<img class="bb-lu-ph" src="' + window.bbSafeUrl(p.src) + '" alt="' + esc(alt) +
+                 '" loading="lazy" decoding="async" style="' + bbLuCadre(p) + '">' : '') +
+      '</figure>' +
+      '<div class="bb-lu-id">' +
+        // Le nom entier reste lisible par un lecteur d'ecran : les
+        // lettres decoupees sont cachees, le nom complet est dans un
+        // texte a part. Sans cela, on entendrait « S, E, Y... ».
+        '<span class="bb-lu-litt">' + esc(p.name || '') + '</span>' +
+        (n.pre ? '<span class="bb-lu-pre" aria-hidden="true">' + bbLuLettres(n.pre, 0) + '</span>' : '') +
+        '<span class="bb-lu-fam" aria-hidden="true">' + bbLuLettres(n.fam, n.pre ? n.pre.length : 0) + '</span>' +
+        '<span class="bb-lu-filet" aria-hidden="true"></span>' +
+        '<p class="bb-lu-pos">' +
+          (p.cap ? '<span class="bb-lu-c" title="Capitaine">C</span>' : '') +
+          esc([poste, no ? '\u2116 ' + no : ''].filter(Boolean).join(' \u00b7 ')) +
+        '</p>' +
+      '</div>' +
+      '<span class="bb-lu-liq" aria-hidden="true"></span>' +
+      '<span class="bb-lu-ray" aria-hidden="true"></span>' +
+    '</article>';
   }
+  function bbLuActeBanc(banc, i){
+    return '<article class="bb-lu-act bb-lu-act-banc" data-i="' + i + '">' +
+      '<p class="bb-lu-banc-s">Elles entrent aussi</p>' +
+      '<h3 class="bb-lu-banc-t"><span class="bb-lu-litt">Le banc</span>' +
+        '<span aria-hidden="true">' + bbLuLettres('Le banc', 0) + '</span></h3>' +
+      '<ul class="bb-lu-banc-l">' + banc.map(function(p, k){
+        return '<li style="transition-delay:' + (90 + k * 70) + 'ms">' +
+          '<b>' + esc(p.no == null || p.no === '' ? '\u00b7' : String(p.no)) + '</b>' +
+          '<span>' + esc(p.name || '') + '</span></li>';
+      }).join('') + '</ul>' +
+      '<span class="bb-lu-liq" aria-hidden="true"></span>' +
+    '</article>';
+  }
+  function bbLuVignette(p, i, banc){
+    if (banc) return '<button type="button" class="bb-lu-vg bb-lu-vg-banc" data-go="' + i +
+      '" aria-label="Le banc"><figure>BANC</figure>' +
+      '<span class="bb-lu-vn">Le banc</span><span class="bb-lu-jauge"><i></i></span></button>';
+    var n = bbLuNom(p.name);
+    return '<button type="button" class="bb-lu-vg" data-go="' + i + '" aria-label="' + esc(p.name || '') + '">' +
+      '<figure>' + (p.src
+        ? '<img src="' + window.bbSafeUrl(p.src) + '" alt="" loading="lazy" decoding="async" style="' + bbLuCadre(p) + '">'
+        : '') + '</figure>' +
+      '<span class="bb-lu-vn">' + esc(n.fam || p.name || '') + '</span>' +
+      '<span class="bb-lu-jauge"><i></i></span></button>';
+  }
+
+  function bbLuAller(i){
+    var h = bbLuScene.hote; if (!h || !bbLuScene.n) return;
+    bbLuScene.i = ((i % bbLuScene.n) + bbLuScene.n) % bbLuScene.n;
+    var actes = h.querySelectorAll('.bb-lu-act'), vgs = h.querySelectorAll('.bb-lu-vg');
+    for (var k = 0; k < actes.length; k++){
+      var on = k === bbLuScene.i;
+      actes[k].classList.toggle('on', on);
+      actes[k].setAttribute('aria-hidden', on ? 'false' : 'true');
+      if (vgs[k]){
+        // On retire puis on remet la classe pour relancer la barre :
+        // une animation CSS ne se rejoue pas si la classe ne bouge pas.
+        vgs[k].classList.remove('on');
+        if (on){ void vgs[k].offsetWidth; vgs[k].classList.add('on'); }
+        vgs[k].setAttribute('aria-current', on ? 'true' : 'false');
+      }
+    }
+    var duree = h.querySelector('.bb-lu-act.on.bb-lu-act-banc') ? BB_LU_BANC : BB_LU_DUREE;
+    h.style.setProperty('--bb-lu-duree', duree + 'ms');
+    bbLuRelancer(duree);
+  }
+  function bbLuRelancer(duree){
+    clearTimeout(bbLuScene.t);
+    if (bbLuPeu() || bbLuScene.survol || !bbLuScene.vu || document.hidden) return;
+    bbLuScene.t = setTimeout(function(){ bbLuAller(bbLuScene.i + 1); }, duree || BB_LU_DUREE);
+  }
+  function bbLuPause(oui){
+    bbLuScene.survol = !!oui;
+    if (oui) clearTimeout(bbLuScene.t); else bbLuRelancer();
+  }
+  function bbLuScener(cinq, banc){
+    var h = document.getElementById('bb-lu-five'); if (!h) return;
+    clearTimeout(bbLuScene.t);
+    var actes = cinq.map(bbLuActe);
+    var vgs   = cinq.map(function(p, i){ return bbLuVignette(p, i, false); });
+    if (banc && banc.length){
+      actes.push(bbLuActeBanc(banc, cinq.length));
+      vgs.push(bbLuVignette(null, cinq.length, true));
+    }
+    h.className = 'bb-lu-scene';
+    h.innerHTML = '<span class="bb-lu-court" aria-hidden="true"></span>' +
+      '<div class="bb-lu-acts">' + actes.join('') + '</div>' +
+      '<div class="bb-lu-strip" role="tablist" aria-label="Les joueuses annonc\u00e9es">' + vgs.join('') + '</div>';
+    bbLuScene.hote = h; bbLuScene.n = actes.length; bbLuScene.i = 0;
+
+    h.querySelectorAll('[data-go]').forEach(function(b){
+      b.addEventListener('click', function(){ bbLuAller(parseInt(b.getAttribute('data-go'), 10)); });
+      b.addEventListener('focus', function(){ bbLuPause(true); });
+      b.addEventListener('blur',  function(){ bbLuPause(false); });
+    });
+    h.addEventListener('mouseenter', function(){ bbLuPause(true); });
+    h.addEventListener('mouseleave', function(){ bbLuPause(false); });
+
+    // Hors de l'ecran, la scene ne tourne pas. Sans cela, elle s'anime
+    // en bas de page pendant qu'on lit le hero.
+    if (bbLuScene.obs) bbLuScene.obs.disconnect();
+    if (window.IntersectionObserver){
+      bbLuScene.obs = new IntersectionObserver(function(e){
+        bbLuScene.vu = e[0].isIntersecting;
+        if (bbLuScene.vu) bbLuRelancer(); else clearTimeout(bbLuScene.t);
+      }, { threshold:.2 });
+      bbLuScene.obs.observe(h);
+    } else bbLuScene.vu = true;
+
+    bbLuAller(0);
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) clearTimeout(bbLuScene.t); else bbLuRelancer();
+  });
 
   function bbLuRendre(m, cinq, banc, coach){
     var sec = document.getElementById('bb-lineup'); if (!sec) return;
@@ -7535,13 +7862,14 @@ window.bbCloud = function(url, w){
     document.getElementById('bb-lu-when').textContent =
       [d.jour, m.venue].filter(Boolean).join(' · ');
 
-    // ---- les cinq ----
-    document.getElementById('bb-lu-five').innerHTML = cinq.map(bbLuCarte).join('');
-
-    // ---- le banc ----
+    // ---- la scene : les cinq, puis le banc, en boucle ----
+    // Le banc etait une liste dans le bandeau du bas, sous les cartes.
+    // Il est maintenant le dernier acte de la scene : c'est une entree,
+    // pas une note de bas de page. Le bandeau garde l'encadrement et le
+    // match, qui ne sont pas des joueuses.
+    bbLuScener(cinq, banc);
     var wrap = document.getElementById('bb-lu-banc-wrap');
-    document.getElementById('bb-lu-bench').innerHTML = banc.map(bbLuBanc).join('');
-    wrap.classList.toggle('bb-hide', !banc.length);
+    if (wrap) wrap.classList.add('bb-hide');
 
     // ---- l'encadrement ----
     // Sans coach renseigne, le bloc disparait. « Nom non communique »
@@ -7939,6 +8267,12 @@ window.bbCloud = function(url, w){
   }
   if (bbTemoin){
     document.documentElement.classList.add('bb-temoin');
+    // UNE PRISE POUR LE BANC D'ESSAI, ET SEULEMENT LA.
+    // La composition vient du reseau : sans cette prise, on ne peut
+    // regarder la scene qu'en creant un vrai match avec une vraie
+    // compo. Elle n'existe qu'avec ?temoin=1, donc jamais pour un
+    // visiteur.
+    window.bbLuDemo = function (m, cinq, banc, coach) { bbLuRendre(m, cinq, banc, coach || null); };
     window.addEventListener('message', function(e){
       if (e.origin !== location.origin) return;
       var m = e.data || {}; if (!m || typeof m !== 'object') return;
@@ -11247,7 +11581,6 @@ document.addEventListener('keydown', function(e){
   var GROUPS = ['#bb-hero-left > *','#bb-hero-overlays > *','#bb-hs-figures > *',
                 '#bb-actus-grid > *','#bb-home-products > *','#bb-media-grid > *',
                 '#bb-effectif > *','#bb-effectif-equipes > *','.bb-poster-card',
-                '#bb-lu-five > .bb-lu-p','#bb-lu-bench > *',
                 '#bb-app-stage','.bb-app-copy > *'];
 
   // Liste des blocs armés en attente : elle permet de rattraper ceux qu'un
@@ -11453,7 +11786,7 @@ document.addEventListener('keydown', function(e){
   function boot(){
     scan(); scanNumbers(); scanText(); onScroll(); sweep(); safetyNet();
     window.addEventListener('resize', onScroll, { passive: true });
-    ['bb-actus-grid','bb-home-products','bb-effectif','bb-effectif-equipes','bb-media-grid','bb-lu-five','bb-lu-bench'].forEach(function(id){
+    ['bb-actus-grid','bb-home-products','bb-effectif','bb-effectif-equipes','bb-media-grid','bb-lu-five'].forEach(function(id){
       var el = document.getElementById(id);
       if (!el) return;
       new MutationObserver(function(){ window.bbRescanMotion(); }).observe(el, { childList: true });
