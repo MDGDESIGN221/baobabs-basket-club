@@ -11385,7 +11385,9 @@
      qu'une liste de formes conjuguees. */
   var GS_VIDES = ['un','une','le','la','les','des','de','du','au','aux','a','l','d',
                   'mon','ma','mes','ce','cet','cette','ces','je','veux','peux','pour',
-                  'sur','dans','et','ou','est','qui','que','quoi','comment','faire'];
+                  'sur','dans','et','ou','est','qui','que','quoi','comment','faire',
+                  'par','avec','sans','plus','tout','toute','toutes','tous','en','y',
+                  'me','se','ne','pas','son','sa','ses','leur','notre','nos','vos'];
   var GS_FAMILLES = [
     { test:/(supprim|efface|enlev|retir|vire|jete|jeter|annul|corbeille|delete|degag)/,
       mots:'supprimer effacer enlever retirer virer jeter annuler suppression corbeille degager' },
@@ -11453,7 +11455,14 @@
       var h = '';
       for (var i = 0; i < arguments.length; i++) h += ' ' + (arguments[i] == null ? '' : arguments[i]);
       h = gsEtendre(h);
-      for (var j = 0; j < mots.length; j++) if (h.indexOf(mots[j]) < 0) return false;
+      for (var j = 0; j < mots.length; j++){
+        if (h.indexOf(mots[j]) >= 0) continue;
+        // « matchs » ne se trouve pas dans « match » : on retente au
+        // singulier. Une regle, pas un dictionnaire -- et jamais sur
+        // un mot de deux lettres, qui ramenerait n'importe quoi.
+        var sing = mots[j].replace(/(es|s|x)$/, '');
+        if (sing.length < 4 || h.indexOf(sing) < 0) return false;
+      }
       return true;
     };
 
