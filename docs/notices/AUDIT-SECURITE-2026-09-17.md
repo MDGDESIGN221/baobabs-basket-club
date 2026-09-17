@@ -142,15 +142,17 @@ grant execute on function verify_audit_password(text) to anon, authenticated;
 ```
 
 Elle s'appelle donc avec la seule clé publiable du site, sans compte. Elle
-ne repose que sur le secret du mot de passe. Or ce mot de passe est écrit
-en clair dans `sql/diagnostics/AUDIT-HISTORIQUE.sql` :
-
-```sql
-values (1, crypt('thefirstandtheonlyone', gen_salt('bf')))
-```
+ne repose que sur le secret du mot de passe. Or ce mot de passe était
+écrit en clair dans `sql/diagnostics/AUDIT-HISTORIQUE.sql`, sur la ligne
+qui remplit `admin_audit_secret`.
 
 Et le dépôt `github.com/MDGDESIGN221/baobabs-basket-club` est **public**.
 Je l'ai vérifié : `"visibility": "PUBLIC"`.
+
+La valeur a été retirée du fichier le 17 septembre, mais **l'historique
+git la garde** : elle reste lisible dans les commits antérieurs. Un
+secret publié est perdu pour de bon. C'est pourquoi le retrait ne
+remplace pas la rotation, qui est l'étape 3 plus bas.
 
 Donc : n'importe qui lit le fichier sur GitHub, prend la clé publiable
 dans `index.html`, et lit l'historique entier du club. Chaque champ
@@ -411,17 +413,52 @@ l'e-mail de confirmation ne part pas.
 
 ## 3. Les corrections, et lesquelles sont déjà écrites
 
-### Déjà fait dans ce commit
+### Déjà écrit
 
-| Faille | Correction |
-|---|---|
-| URGENT 1 et 2 | `sql/correctifs/CORRECTIF-2026-09-17-journal-et-roles.sql`, bloc 1 |
-| URGENT 4 | même fichier, bloc 2 |
-| URGENT 3 | `send-order-confirmation` : refus si le secret manque, et la commande est relue en base au lieu d'être crue |
-| IMPORTANT 5 (fonction serveur) | `depot-piece` : les octets doivent dire le même format que l'annonce |
-| IMPORTANT 6 (plafond) | `depot-piece` : douze pièces par dossier au maximum |
-| IMPORTANT 7 | `aide-redaction` : `is_admin()` exigé, pas seulement une session |
-| AMÉLIORATION 16 | `confirmation-reservation` ne rend plus l'adresse ; l'entrée web3forms est retirée de la politique de contenu |
+Les seize failles sont traitées. Ce qui suit dit par quoi.
+
+| Faille | Correction | État |
+|---|---|---|
+| URGENT 1 et 2 | `CORRECTIF-2026-09-17-journal-et-roles.sql`, bloc 1. Et le mot de passe est retiré de `AUDIT-HISTORIQUE.sql`, dont les deux `grant ... to anon` sont corrigés pour qu'une réexécution ne défasse pas le correctif | SQL à coller |
+| URGENT 3 | `send-order-confirmation` : refus si le secret manque, et la commande est relue en base au lieu d'être crue | poussé, à redéployer |
+| URGENT 4 | même fichier SQL, bloc 2 | SQL à coller |
+| IMPORTANT 5 | `depot-piece` et la nouvelle `depot-photo` : les octets doivent dire le même format que l'annonce, sur les trois chemins d'envoi | poussé, à déployer |
+| IMPORTANT 6 | `depot-photo` remplace la policy `anon` du bucket ; douze envois par heure et par adresse, comptés en base | SQL + déploiement |
+| IMPORTANT 7 | `aide-redaction` : `is_admin()` exigé, pas seulement une session | poussé, à redéployer |
+| IMPORTANT 8 | second facteur écrit : champ de code à la connexion, et écran d'activation dans Comptes & rôles. **Inerte tant que personne n'a activé de facteur** | poussé |
+| IMPORTANT 9 | `alerte-inscription` : une inscription, une alerte, marquée en base | SQL + déploiement |
+| IMPORTANT 10 | déclencheur `bbc_orders_prix` : le total est recalculé depuis `products` et `promo_codes`, jamais cru. Ne refuse pas, recalcule et lève un drapeau | SQL à coller |
+| IMPORTANT 11 | les quatre bibliothèques CDN sont figées et signées (`integrity`), y compris Leaflet chargé par JavaScript. Vérifié dans un navigateur : les quatre chargent et s'exécutent | poussé |
+| IMPORTANT 12 | `outils/sauvegarde.py` : les données de 50 tables et les trois buckets, hors du dépôt, clé de service par variable d'environnement | poussé |
+| IMPORTANT 13 | un seul plafond, 25 Mo, des deux côtés : le bucket est monté pour suivre `joueuse.html` | SQL à coller |
+| AMÉLIORATION 14 | `bbc_valider_promo` : un seul message de refus. Le minimum d'achat reste dit, il ne révèle rien | SQL à coller |
+| AMÉLIORATION 15 | captcha : **non fait**, voir ci-dessous |
+| AMÉLIORATION 16 | `confirmation-reservation` ne rend plus l'adresse, `alerte-inscription` ne rend plus la référence, `bbc_proprietaire_email` n'est plus accordée à `anon`, l'entrée web3forms quitte la politique de contenu, et `refonte-admin.html` quitte le site et le dépôt (il est dans `archives/maquettes/`, sur votre disque) | poussé + SQL |
+
+**Le seul point non fait est le captcha**, et pour une raison matérielle :
+Turnstile demande une clé de site que seul votre compte Cloudflare peut
+créer. Le code sans la clé ne sert à rien. C'est aussi le point qui
+touche le plus de monde pour le risque le plus faible, donc le dernier
+de la liste.
+
+### L'ORDRE, ET IL N'EST PAS DÉCORATIF
+
+Trois changements cassent quelque chose s'ils arrivent dans le mauvais
+sens. Les voici, une fois pour toutes :
+
+1. **`depot-photo` doit être déployée AVANT que `index.html` et
+   `joueuse.html` ne soient en ligne.** Ces deux pages l'appellent
+   désormais pour envoyer une photo. Si elle n'existe pas encore, la
+   photo échoue, et le reste du formulaire continue de partir. C'est
+   pourquoi ces deux fichiers **ne sont pas poussés** : ils attendent
+   dans un commit local.
+2. **Le SQL du bloc 5 doit passer AVANT le redéploiement de
+   `alerte-inscription`.** La fonction lit la colonne
+   `alerte_envoyee_le` : sans elle, sa requête échoue et l'alerte ne
+   part plus. Ce fichier n'est pas poussé non plus.
+3. **`WEBHOOK_SECRET` doit exister AVANT le redéploiement de
+   `send-order-confirmation`.** Elle refuse maintenant tout appel quand
+   le secret manque. Sans lui, les e-mails de commande s'arrêtent net.
 
 ### À faire, dans cet ordre
 
