@@ -62,10 +62,28 @@ Deno.serve(async (req) => {
     );
     const { data: r, error } = await db
       .from("academy_registrations")
-      .select("reference, child_first_name, child_last_name, birth_date, gender, category, district, school, guardian_name, guardian_relation, guardian_phone, guardian_phone2, guardian_email, health_notes, message, created_at")
+      .select("reference, child_first_name, child_last_name, birth_date, gender, category, district, school, guardian_name, guardian_relation, guardian_phone, guardian_phone2, guardian_email, health_notes, message, created_at, alerte_envoyee_le")
       .eq("id", id)
       .single();
     if (error || !r) return reply(404, { error: "inscription introuvable" });
+
+    // UNE INSCRIPTION, UNE ALERTE, ET C'EST TOUT.
+    //
+    // Cette fonction est appelable sans compte et sans secret : elle
+    // accepte un appel direct { registration_id } pour pouvoir etre
+    // testee depuis le tableau de bord. Elle relit bien la base, donc on
+    // ne peut pas lui faire dire n'importe quoi -- mais qui connait un
+    // identifiant d'inscription pouvait la declencher en boucle. La
+    // boite du club se remplissait, et le quota Resend s'epuisait : ce
+    // quota est partage avec les e-mails de commande et la newsletter,
+    // qui s'arretaient aussi.
+    //
+    // La marque en base ferme ca sans toucher au webhook. C'est aussi
+    // une amelioration en soi : une alerte en double a deja fait
+    // rappeler deux fois la meme famille.
+    if (r.alerte_envoyee_le) {
+      return reply(200, { skipped: "alerte deja partie pour cette inscription" });
+    }
 
     const senderEmail = Deno.env.get("BBC_SENDER_EMAIL");
     if (!senderEmail) return reply(500, { error: "BBC_SENDER_EMAIL manquant" });
@@ -125,7 +143,17 @@ Deno.serve(async (req) => {
     });
 
     if (!env.ok) return reply(502, { error: "envoi refusé", detail: env.detail });
-    return reply(200, { sent: true, reference: r.reference, to: destinataires.length });
+
+    // La marque est posée APRÈS l'envoi : si Resend refuse, l'alerte
+    // n'est pas partie, et un nouvel appel doit pouvoir réessayer.
+    await db.from("academy_registrations")
+      .update({ alerte_envoyee_le: new Date().toISOString() })
+      .eq("id", id);
+
+    // La référence ne repart pas dans la réponse : la fonction s'appelle
+    // sans compte, et la rendre faisait de tout identifiant d'inscription
+    // devine un moyen de lire la référence du dossier.
+    return reply(200, { sent: true, to: destinataires.length });
   } catch (e) {
     if (e instanceof CourrielNonConfigure) return reply(500, { error: String(e.message) });
     return reply(500, { error: String(e) });

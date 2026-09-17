@@ -4840,7 +4840,9 @@ window.bbLienSur = function (u) {
       </div>
     </div>
   </section>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H"
+        crossorigin="anonymous">
   <style>
     /* Les tuiles OpenStreetMap sont claires ; le site est sombre. On les
        retourne, puis on remet les teintes a l'endroit (sans le
@@ -4912,6 +4914,13 @@ window.bbLienSur = function (u) {
     function load(){
       if(window.L){ initMap(); return; }
       var s=document.createElement('script'); s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      // Meme empreinte que sur les balises ecrites en dur : un script
+      // ajoute par JavaScript se signe pareil, en posant les deux
+      // proprietes AVANT de l'attacher au document. Si l'octet recu ne
+      // correspond pas, le script ne charge pas et la carte reste vide ;
+      // le reste de la page ne s'en apercoit pas.
+      s.integrity='sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH';
+      s.crossOrigin='anonymous';
       s.onload=initMap; document.body.appendChild(s);
     }
     if(document.readyState!=='loading') load(); else document.addEventListener('DOMContentLoaded',load);
@@ -5358,7 +5367,13 @@ window.bbCloud = function(url, w){
   return url.replace(/\/upload\/v(\d+)\//, '/upload/f_auto,q_auto,w_' + w + ',c_limit/v$1/');
 };
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Version figee et empreinte, comme dans admin-matchs.html : voir le
+     commentaire la-bas pour le pourquoi et pour la commande qui
+     recalcule l'empreinte le jour ou on monte de version. 2.116.0 est ce
+     que « @2 » servait le 17 septembre 2026, au meme octet pres. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0"
+        integrity="sha384-JBR+x8blGwjDRO63aHCGiZMD4VNiTR4ZUGA+N6ZKLf3zNt1fK8IBpcgPaMrxqWBp"
+        crossorigin="anonymous"></script>
 <script>
 (function(){
   function block(e){ e.preventDefault(); return false; }
@@ -5434,21 +5449,40 @@ window.bbCloud = function(url, w){
       img.src = url;
     });
   }
+  // ELLE NE PART PLUS DIRECTEMENT DANS LE STOCKAGE.
+  //
+  // Le navigateur ecrivait dans le bucket avec la cle publique, parce
+  // qu'une policy y ouvrait l'insertion au role anon. MIGRATION-SUPABASE-v6
+  // le disait en note de bas de page : « cette policy autorise
+  // techniquement n'importe qui a envoyer un fichier vers ce bucket », et
+  // proposait la suite -- « passer par une Edge Function qui valide et
+  // relaie l'upload ». C'est fait, le 17 septembre 2026.
+  //
+  // Ce que la policy ne verifiait pas : le CONTENU. La liste de types du
+  // bucket regarde l'en-tete Content-Type annonce, pas les octets. Un
+  // fichier quelconque etiquete image/png entrait, et en nombre illimite.
+  // depot-photo reconnait les formats a leurs premiers octets, fabrique
+  // elle-meme le nom, et plafonne le debit par adresse.
+  //
+  // La reduction a 1600 px reste ici, et pour la meme raison qu'avant :
+  // une photo de telephone pese 4 a 10 Mo, et la reduire dans le
+  // navigateur economise la connexion de la candidate, pas seulement le
+  // stockage du club.
   function uploadRecruitPhoto(fichier){
     return reduirePhoto(fichier).then(function(file){
-    var path = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    return fetch(SUPABASE_URL + '/storage/v1/object/recruitment-photos/' + path, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Content-Type': file.type || 'application/octet-stream'
-      },
-      body: file
-    }).then(function(res){
-      if (!res.ok) throw new Error('photo upload failed');
-      return SUPABASE_URL + '/storage/v1/object/public/recruitment-photos/' + path;
-    });
+      var corps = new FormData();
+      corps.append('usage', 'candidature');
+      corps.append('fichier', file, file.name || 'photo');
+      return fetch(SUPABASE_URL + '/functions/v1/depot-photo', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+        body: corps
+      }).then(function(res){
+        return res.json().catch(function(){ return {}; }).then(function(j){
+          if (!res.ok || !j.url) throw new Error(j.error || 'photo upload failed');
+          return j.url;
+        });
+      });
     });
   }
 

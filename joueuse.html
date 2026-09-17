@@ -338,7 +338,10 @@
 
   var URL_BASE = 'https://lmwbwasupqkvswukieav.supabase.co';
   var CLE = 'sb_publishable_68RKprorqTmVkzjHrKgdZw_h-AcMXRh';
-  var BUCKET = 'recruitment-photos';
+  // Plus de nom de bucket ici : depuis le 17 septembre 2026, cette page
+  // n'ecrit plus dans le stockage. Elle envoie la photo a la fonction
+  // serveur depot-photo, qui decide seule du bucket et du chemin. Voir
+  // envoyerPhoto() plus bas.
 
   var POSTES = ['Meneuse','Arrière','Ailière','Ailière forte','Pivot'];
 
@@ -830,15 +833,41 @@
   // connexion mobile. Le bouton le dit pendant qu'il travaille, et le
   // plafond monte à 25 Mo pour laisser passer les photos des téléphones
   // récents (48 Mpx) qui dépassaient 12 Mo.
+  // ELLE NE PART PLUS DIRECTEMENT DANS LE STOCKAGE.
+  //
+  // Le navigateur ecrivait dans le bucket avec la cle publique, parce
+  // qu'une policy y ouvrait l'insertion au role anon. Ce que cette
+  // policy ne verifiait pas : le CONTENU. La liste de types du bucket
+  // regarde l'en-tete Content-Type annonce, pas les octets -- donc
+  // n'importe quel fichier etiquete image/png entrait, et en nombre
+  // illimite, chaque envoi portant un chemin neuf.
+  //
+  // La photo passe maintenant par la fonction serveur depot-photo, qui
+  // reconnait les formats a leurs premiers octets, fabrique elle-meme le
+  // nom du fichier, plafonne le debit, et surtout VERIFIE LE JETON : la
+  // collecte en a un, de campagne ou de reprise, et sans lui rien ne
+  // passe. Le navigateur n'a plus aucun acces au stockage.
+  //
+  // La photo part toujours telle quelle, octet pour octet : c'est la
+  // decision du club, qui veut l'original pour cadrer lui-meme. Le
+  // plafond de 25 Mo est desormais le meme des deux cotes -- le bucket
+  // refusait au-dela de 5 Mo, en silence, et une photo de telephone
+  // recent echouait a l'arrivee apres etre partie pour rien.
   function envoyerPhoto(f){
-    var chemin = 'profils/' + Date.now() + '-' + f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    return fetch(URL_BASE + '/storage/v1/object/' + BUCKET + '/' + chemin, {
+    var corps = new FormData();
+    corps.append('usage', 'collecte');
+    corps.append('jeton', JETON || '');
+    corps.append('reprise', REPRISE || '');
+    corps.append('fichier', f, f.name || 'photo');
+    return fetch(URL_BASE + '/functions/v1/depot-photo', {
       method:'POST',
-      headers:{ apikey:CLE, Authorization:'Bearer ' + CLE, 'Content-Type': f.type || 'application/octet-stream' },
-      body: f
+      headers:{ apikey:CLE, Authorization:'Bearer ' + CLE },
+      body: corps
     }).then(function(r){
-      if (!r.ok) throw new Error('photo');
-      return URL_BASE + '/storage/v1/object/public/' + BUCKET + '/' + chemin;
+      return r.json().catch(function(){ return {}; }).then(function(j){
+        if (!r.ok || !j.url) throw new Error(j.error || 'photo');
+        return j.url;
+      });
     });
   }
 
