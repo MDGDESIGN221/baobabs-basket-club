@@ -74,12 +74,35 @@ create table if not exists admin_audit_secret (
 alter table admin_audit_secret enable row level security;
 drop policy if exists "no direct access" on admin_audit_secret;
 
+-- LE MOT DE PASSE N'EST PLUS ECRIT ICI.
+--
+-- Il l'a ete du 24 juillet au 17 septembre 2026, en clair, dans ce
+-- fichier. Ce depot est public : le secret etait donc servi a qui
+-- passait, et verify_audit_password() etait accordee a `anon`. La
+-- combinaison des deux ouvrait le journal du club a tout internet.
+-- Voir CORRECTIF-2026-09-17-journal-et-roles.sql, bloc 1.
+--
+-- DEUX CHOSES A SAVOIR.
+--
+-- D'abord, retirer la ligne de ce fichier ne retire pas le secret de
+-- l'historique git : il reste lisible dans les commits d'avant le 17
+-- septembre. Un secret publie est un secret perdu, definitivement. La
+-- seule vraie reparation est de le REMPLACER en base, et c'est le bloc
+-- 1.4 du correctif qui porte la ligne pour le faire.
+--
+-- Ensuite, le `on conflict do update` de la version precedente
+-- REECRIVAIT le mot de passe a chaque execution du fichier. Relancer ce
+-- script pour une autre raison remettait donc l'ancien en place, en
+-- silence. C'est maintenant un `do nothing` : il pose un mot de passe
+-- si la table est vide, il ne touche jamais a celui qui existe.
 insert into admin_audit_secret (id, pwd_hash)
-values (1, crypt('thefirstandtheonlyone', gen_salt('bf')))
-on conflict (id) do update set pwd_hash = excluded.pwd_hash;
+values (1, crypt('a-remplacer-avant-d-executer', gen_salt('bf')))
+on conflict (id) do nothing;
 
--- Pour changer le mot de passe plus tard, relancez juste :
---   update admin_audit_secret set pwd_hash = crypt('nouveau_mot_de_passe', gen_salt('bf')) where id = 1;
+-- Pour poser ou changer le mot de passe, hors de ce fichier et hors du
+-- depot : une requete a la main dans l'editeur SQL.
+--   update admin_audit_secret
+--      set pwd_hash = crypt('le-votre', gen_salt('bf')) where id = 1;
 
 -- ---------------------------------------------------------------------
 -- 4. Fonction de vérification + lecture de l'historique
@@ -106,7 +129,13 @@ $$;
 
 -- Autoriser l'appel RPC depuis le site (authentifié ou anonyme,
 -- puisque c'est le mot de passe qui protège, pas la session) :
-grant execute on function verify_audit_password(text) to anon, authenticated;
+-- PLUS JAMAIS `anon` ICI. La ligne disait avant « to anon,
+-- authenticated », avec pour raison « puisque c'est le mot de passe qui
+-- protège, pas la session ». C'etait le raisonnement de trop : le mot
+-- de passe etait ecrit dans ce fichier, et ce depot est public.
+-- Relancer ce script avec l'ancienne ligne rouvrirait la porte que
+-- CORRECTIF-2026-09-17-journal-et-roles.sql vient de fermer.
+grant execute on function verify_audit_password(text) to authenticated;
 
 -- ---------------------------------------------------------------------
 -- 5. Fonction d'écriture d'une entrée d'historique
@@ -138,7 +167,11 @@ exception when others then
 end;
 $$;
 
-grant execute on function log_audit_entry(text, text, text, text, text, text, text) to anon, authenticated;
+-- NI ICI. Un journal qu'un inconnu peut ecrire n'est pas une preuve :
+-- l'auteur de la ligne etait le premier parametre de la fonction, donc
+-- n'importe qui pouvait signer n'importe quel nom. Le correctif du 17
+-- septembre fait dire a la base QUI ecrit, en lisant auth.uid().
+grant execute on function log_audit_entry(text, text, text, text, text, text, text) to authenticated;
 
 -- =====================================================================
 --  Après exécution : rien ne change visuellement dans l'admin tant que
@@ -150,6 +183,13 @@ grant execute on function log_audit_entry(text, text, text, text, text, text, te
 --  Statut confirmé le 24 juillet 2026 : script exécuté, search_path
 --  corrigé, journalisation en écriture et en lecture toutes deux
 --  vérifiées fonctionnelles en conditions réelles (sauvegarde faite
---  depuis l'admin, puis lue depuis la section Historique avec le mot
---  de passe ci-dessus).
+--  depuis l'admin, puis lue depuis la section Historique).
+--
+--  REVU LE 17 SEPTEMBRE 2026, et ce n'est pas cosmetique : ce fichier
+--  portait le mot de passe en clair et accordait ses deux fonctions a
+--  `anon`. Le journal du club se lisait donc depuis n'importe quel
+--  navigateur, et s'ecrivait de meme. Le durcissement vit dans
+--  sql/correctifs/CORRECTIF-2026-09-17-journal-et-roles.sql ; ce
+--  fichier-ci a ete corrige pour qu'une reexecution ne defasse pas le
+--  correctif. Si vous repartez d'une ancienne copie, vous rouvrez tout.
 -- =====================================================================

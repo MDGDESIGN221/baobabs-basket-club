@@ -32,8 +32,28 @@
 <link rel="stylesheet" href="/greffe/greffe.css">
 <link rel="stylesheet" href="/cadrage/cadrage.css">
 <link rel="stylesheet" href="/tutoriel/tutoriel.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- LES DEUX BIBLIOTHEQUES SONT FIGEES ET SIGNEES.
+     « @2 » prenait la derniere version 2.x publiee, et aucune des deux
+     balises ne portait d'empreinte. Autrement dit : le jour ou jsdelivr
+     est compromis, ou le jour ou une version 2.x contient du code
+     hostile, ce code s'execute ICI -- dans la page ou vit la session qui
+     ouvre toute l'administration. C'etait le seul risque de chaine
+     d'approvisionnement du site.
+     integrity fait verifier au navigateur que l'octet recu est celui
+     qu'on attend ; s'il ne l'est pas, le script ne charge PAS DU TOUT.
+     C'est pour ca qu'on ne touche a ces deux lignes qu'un jour sans
+     match : une empreinte fausse, et l'administration ne s'ouvre plus.
+     2.116.0 est la version que « @2 » servait le 17 septembre 2026,
+     au meme octet pres : figer ne change donc aucun comportement.
+     Pour monter de version : changer le numero ET recalculer, sinon
+     rien ne charge.
+       curl -sS <url> | openssl dgst -sha384 -binary | openssl base64 -A -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0"
+        integrity="sha384-JBR+x8blGwjDRO63aHCGiZMD4VNiTR4ZUGA+N6ZKLf3zNt1fK8IBpcgPaMrxqWBp"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+        integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk"
+        crossorigin="anonymous"></script>
 <script>
   // --- Polices custom du club pour le PDF (Space Grotesk + Inter) ---
   // Sous-ensemble latin+FR uniquement (accents, guillemets, tirets) pour
@@ -4698,6 +4718,23 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex:none"><path d="M12 3 4 11h4v5h8v-5h4L12 3Z"/><path d="M8 20h8"/></svg>
         <span><b>Majuscules bloquées.</b> Le mot de passe en tient compte.</span>
       </div>
+      <!-- LE CODE A SIX CHIFFRES, QUAND IL Y EN A UN.
+           Ce bloc reste cache, et il l'est encore aujourd'hui : il ne
+           s'ouvre que si Supabase repond que ce compte-la a un second
+           facteur verifie. Tant que personne n'en a active un, cette
+           partie de l'ecran n'existe pas -- c'est voulu, un ecran de
+           connexion ne se modifie pas a l'aveugle.
+           Pour l'activer : Comptes & roles, « Second facteur », sur son
+           propre compte. Voir mfaEcran() plus bas.
+           IDENTIFIANTS NOUVEAUX, jamais recycles : le tutoriel designe
+           gate-email, pw, unlock-btn et gate-msg un par un, et deux
+           elements du meme nom dans ce fichier s'ignorent en silence. -->
+      <div class="field hide" id="bbmfa-champ">
+        <div class="gt-lab"><label for="bbmfa-code">Code de votre application</label></div>
+        <input type="text" id="bbmfa-code" placeholder="123 456" autocomplete="one-time-code"
+               inputmode="numeric" maxlength="6" spellcheck="false">
+        <p class="gt-sub" style="margin:8px 0 0;font-size:12.5px">Les six chiffres affichés en ce moment par votre application d'authentification. Ils changent toutes les trente secondes.</p>
+      </div>
       <button class="btn btn-primary" id="unlock-btn">Se connecter</button>
       <div class="msg" id="gate-msg">Identifiants incorrects.</div>
 
@@ -6652,6 +6689,54 @@
         <p class="card-sub" style="margin-top:14px">Le compte lui-même se crée dans Supabase&nbsp;(Authentication&nbsp;› Add user)&nbsp;: cela demande la clé de service du projet, qui ne peut pas vivre dans une page web. Tout le reste — la casquette, les écrans, le retrait — se fait ici, dans l'espace du propriétaire plus bas.</p>
       </div>
 
+      <!-- ===== SECOND FACTEUR =====
+           Il vit ICI et pas dans Supabase, et ce n'est pas un choix de
+           confort : l'enrolement demande la session de la personne
+           elle-meme. Le tableau de bord de Supabase ne sait pas activer
+           un second facteur pour quelqu'un d'autre, personne ne peut le
+           faire a votre place, et sans cet ecran il n'y aurait aucun
+           moyen de l'activer du tout.
+           Chacun regle le sien : les identifiants sont en bb2f-* et ne
+           croisent aucun nom existant de ce fichier. -->
+      <div class="card" style="margin-top:16px">
+        <h2 class="card-title">Second facteur (code à six chiffres)</h2>
+        <p class="card-sub">Une fois activé, votre mot de passe ne suffit plus à entrer&nbsp;: il faut aussi le code affiché par une application sur votre téléphone. C'est ce qui protège les dossiers de l'école de basket si votre mot de passe fuite un jour. <b>Ce réglage ne concerne que votre compte</b>&nbsp;: personne ne peut l'activer ni le retirer pour quelqu'un d'autre.</p>
+
+        <div class="msg" id="bb2f-etat">Vérification…</div>
+
+        <!-- L'activation, en trois temps : le code QR, puis un premier
+             code pour prouver que l'application est bien reglee, puis
+             c'est fini. On ne valide jamais un facteur sans ce
+             premier code : un facteur enrole mais non verifie bloque la
+             connexion sans donner le moyen de la debloquer. -->
+        <div class="hide" id="bb2f-enrolement" style="margin-top:14px">
+          <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+            <div style="background:#fff;padding:12px;border-radius:12px;line-height:0">
+              <img id="bb2f-qr" alt="Code QR à scanner" style="width:190px;height:190px;display:block">
+            </div>
+            <div style="flex:1;min-width:230px">
+              <p class="card-sub" style="margin:0 0 10px"><b>1.</b> Ouvrez une application d'authentification sur votre téléphone (Google Authenticator, Microsoft Authenticator, Authy&nbsp;: toutes marchent) et scannez ce code.</p>
+              <p class="card-sub" style="margin:0 0 6px"><b>Si vous ne pouvez pas scanner</b>, tapez cette clé à la main&nbsp;:</p>
+              <code id="bb2f-secret" style="display:block;word-break:break-all;background:rgba(0,0,0,.18);padding:8px 10px;border-radius:8px;font-size:13px;margin-bottom:12px"></code>
+              <p class="card-sub" style="margin:0 0 8px"><b>2.</b> Entrez les six chiffres que l'application affiche.</p>
+              <div class="cp-lock-row">
+                <input type="text" id="bb2f-code" class="qg-in" placeholder="123 456" inputmode="numeric" maxlength="6" autocomplete="one-time-code" spellcheck="false">
+                <button type="button" class="btn btn-primary" id="bb2f-valider">Activer</button>
+                <button type="button" class="btn btn-ghost" id="bb2f-annuler">Annuler</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cp-lock-row hide" id="bb2f-actions" style="margin-top:14px">
+          <button type="button" class="btn btn-primary hide" id="bb2f-activer">Activer le second facteur</button>
+          <button type="button" class="btn btn-ghost hide" id="bb2f-retirer">Retirer le second facteur</button>
+        </div>
+        <div class="msg" id="bb2f-msg"></div>
+
+        <p class="card-sub" style="margin-top:14px"><b>Avant d'activer, lisez ceci.</b> Si vous perdez votre téléphone, vous ne pourrez plus entrer&nbsp;: personne dans le club ne peut retirer votre second facteur, et le déblocage passe par le support de Supabase. Gardez la clé écrite ci-dessus quelque part hors du téléphone, sur papier par exemple. Ce n'est pas une précaution excessive, c'est la seule sortie de secours.</p>
+      </div>
+
       <div class="card" style="margin-top:16px">
         <h2 class="card-title">Ce que fait chaque casquette</h2>
         <p class="card-sub">En une phrase, le métier de chaque rôle.</p>
@@ -7028,7 +7113,163 @@
     m.className = 'msg info';
   }
 
+  // ===================== SECOND FACTEUR =====================
+  //
+  // POURQUOI, ET POURQUOI C'EST ECRIT COMME CA.
+  //
+  // Deux comptes protegent l'acces aux dossiers de l'ecole de basket :
+  // dates de naissance, notes de sante, telephones de parents, pieces
+  // d'identite de mineurs. Un mot de passe seul est le point faible qui
+  // reste quand tout le reste est ferme.
+  //
+  // CE CODE EST INERTE TANT QUE PERSONNE N'A ACTIVE DE FACTEUR. Il ne
+  // demande rien de lui-meme : il demande a Supabase si CE compte-la a
+  // un facteur verifie, et ne montre le champ que si la reponse est oui.
+  // Le jour ou ce fichier est pose, aucun compte n'en a : l'ecran de
+  // connexion se comporte exactement comme avant. C'est delibere, on ne
+  // modifie pas a l'aveugle la seule porte d'entree du club.
+  //
+  // ET TOUTE ERREUR VAUT « PAS DE FACTEUR ». Si l'appel echoue, si le
+  // SDK ne porte pas mfa, si la reponse est illisible : on n'exige rien
+  // et la connexion se poursuit comme avant. Un ecran de connexion ne
+  // doit pas se bloquer sur une question accessoire. Ce choix ne cree
+  // pas de porte derobee : sans facteur verifie en base il n'y a rien a
+  // contourner, et avec un facteur c'est SUPABASE qui refuse la montee
+  // en aal2, pas cet ecran.
+  //
+  // NOMS EN bbmfa*, JAMAIS RECYCLES. Ce fichier est une seule IIFE de
+  // plusieurs milliers de lignes : deux fonctions du meme nom ne se
+  // voient pas, et la seconde eteint la premiere en silence.
+  var bbmfaAttente = null;   // { factorId, challengeId } quand un code est attendu
+
+  function bbmfaRaz(){
+    bbmfaAttente = null;
+    var c = document.getElementById('bbmfa-champ');
+    var i = document.getElementById('bbmfa-code');
+    if (c) c.classList.add('hide');
+    if (i) i.value = '';
+  }
+
+  // Rend l'identifiant du facteur si un code est exige, null sinon.
+  function bbmfaExige(){
+    try {
+      if (!sb.auth.mfa) return Promise.resolve(null);
+      return sb.auth.mfa.getAuthenticatorAssuranceLevel().then(function(r){
+        var d = r && r.data;
+        if (!d || r.error) return null;
+        // nextLevel dit ou ce compte DOIT arriver, currentLevel ou il est.
+        if (d.nextLevel !== 'aal2' || d.currentLevel === 'aal2') return null;
+        return sb.auth.mfa.listFactors().then(function(f){
+          var t = f && f.data && f.data.totp && f.data.totp[0];
+          return t ? t.id : null;
+        }).catch(function(){ return null; });
+      }).catch(function(){ return null; });
+    } catch(e){ return Promise.resolve(null); }
+  }
+
+  function bbmfaDemander(factorId){
+    sb.auth.mfa.challenge({ factorId: factorId }).then(function(c){
+      unlockBtn.disabled = false;
+      if (c.error || !c.data) {
+        unlockBtn.textContent = 'Se connecter';
+        gateMsg.textContent = 'Impossible de demander le code. Reessayez.';
+        gateMsg.className = 'msg err';
+        sb.auth.signOut();
+        bbmfaRaz();
+        return;
+      }
+      bbmfaAttente = { factorId: factorId, challengeId: c.data.id };
+      var champ = document.getElementById('bbmfa-champ');
+      var code  = document.getElementById('bbmfa-code');
+      if (champ) champ.classList.remove('hide');
+      if (code) code.focus();
+      unlockBtn.textContent = 'Valider le code';
+      gateMsg.textContent = 'Entrez les six chiffres affiches par votre application.';
+      gateMsg.className = 'msg info';
+    }).catch(function(){
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = 'Se connecter';
+      gateMsg.textContent = 'Erreur de connexion. Reessayez.';
+      gateMsg.className = 'msg err';
+    });
+  }
+
+  function bbmfaValider(){
+    var champ = document.getElementById('bbmfa-code');
+    var code = ((champ && champ.value) || '').replace(/\D/g, '');
+    if (code.length !== 6){
+      gateMsg.textContent = 'Le code compte six chiffres.';
+      gateMsg.className = 'msg err';
+      if (champ) champ.focus();
+      return;
+    }
+    var att = bbmfaAttente;
+    unlockBtn.disabled = true;
+    unlockBtn.textContent = 'Verification...';
+    sb.auth.mfa.verify({ factorId: att.factorId, challengeId: att.challengeId, code: code })
+      .then(function(v){
+        if (v.error || !v.data){
+          // UN CODE REFUSE BRULE LE DEFI. Sans en redemander un neuf, le
+          // deuxieme essai echouerait quel que soit le code tape, et la
+          // personne conclurait que son application est cassee.
+          if (champ) { champ.value = ''; champ.focus(); }
+          gateMsg.textContent = 'Code refuse. Attendez les six chiffres suivants et reessayez.';
+          gateMsg.className = 'msg err';
+          sb.auth.mfa.challenge({ factorId: att.factorId }).then(function(c){
+            unlockBtn.disabled = false;
+            unlockBtn.textContent = 'Valider le code';
+            if (!c.error && c.data) bbmfaAttente = { factorId: att.factorId, challengeId: c.data.id };
+          }).catch(function(){
+            unlockBtn.disabled = false;
+            unlockBtn.textContent = 'Valider le code';
+          });
+          return;
+        }
+        // La session est montee en aal2 dans le SDK : on la relit plutot
+        // que de recomposer a la main ce qu'il vient de rendre.
+        sb.auth.getSession().then(function(s){
+          bbmfaRaz();
+          bbmfaFini((s.data && s.data.session) || null);
+        });
+      }).catch(function(){
+        unlockBtn.disabled = false;
+        unlockBtn.textContent = 'Valider le code';
+        gateMsg.textContent = 'Erreur de connexion. Reessayez.';
+        gateMsg.className = 'msg err';
+      });
+  }
+
+  // LE DERNIER CONTROLE, ET IL VIENT EN DERNIER POUR UNE RAISON.
+  // is_admin() repond vrai des le premier facteur : le poser AVANT la
+  // montee en aal2 rendrait le second facteur decoratif. On entre donc
+  // dans cet ordre : mot de passe, code, puis « ce compte a-t-il le
+  // droit d'etre ici ».
+  function bbmfaFini(session){
+    sb.rpc('is_admin').then(function(check){
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = 'Se connecter';
+      if (check.error || check.data !== true) {
+        sb.auth.signOut();
+        bbmfaRaz();
+        gateMsg.textContent = 'Ce compte n’a pas accès à l’administration.';
+        gateMsg.className = 'msg err';
+        return;
+      }
+      currentSession = session;
+      veilleDemarrer();
+      onAuthenticated();
+    }).catch(function(){
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = 'Se connecter';
+      gateMsg.textContent = 'Erreur de connexion. Réessayez.';
+      gateMsg.className = 'msg err';
+    });
+  }
+
   function tryUnlock(){
+    // Un code est attendu : on est au second temps, pas au premier.
+    if (bbmfaAttente) { bbmfaValider(); return; }
+
     var email = (emailInput.value || '').trim();
     var password = pwInput.value || '';
     if (!email || !password){ gateMsg.textContent = 'Entrez votre e-mail et votre mot de passe.'; gateMsg.className = 'msg err'; return; }
@@ -7042,22 +7283,14 @@
         gateMsg.className = 'msg err';
         return;
       }
-      // Email + mot de passe corrects ne suffit plus : il faut aussi
+      // Email + mot de passe corrects ne suffit pas : il faut aussi
       // figurer dans admin_users (voir MIGRATION-comptes-clients.sql).
-      // Sans cette vérification, n'importe quel compte client créé
-      // depuis index.html pourrait entrer ici.
-      sb.rpc('is_admin').then(function(check){
-        unlockBtn.disabled = false;
-        unlockBtn.textContent = 'Se connecter';
-        if (check.error || check.data !== true) {
-          sb.auth.signOut();
-          gateMsg.textContent = 'Ce compte n\u2019a pas accès à l\u2019administration.';
-          gateMsg.className = 'msg err';
-          return;
-        }
-        currentSession = res.data.session;
-        veilleDemarrer();
-        onAuthenticated();
+      // Sans cette verification, n'importe quel compte client cree
+      // depuis index.html pourrait entrer ici. C'est bbmfaFini qui le
+      // demande, une fois le second facteur passe s'il y en a un.
+      bbmfaExige().then(function(factorId){
+        if (factorId) { bbmfaDemander(factorId); return; }
+        bbmfaFini(res.data.session);
       });
     }).catch(function(){
       unlockBtn.disabled = false;
@@ -7563,6 +7796,33 @@
                         .catch(function(){ location.reload(); });
         return;
       }
+      // ET LE SECOND FACTEUR, S'IL Y EN A UN.
+      //
+      // Une session peut etre valide et n'etre montee qu'au premier
+      // facteur -- c'est exactement l'etat ou l'on est juste apres le
+      // mot de passe. La laisser ouvrir l'administration ici rendrait le
+      // code a six chiffres decoratif : il suffirait de recharger la
+      // page pour le sauter.
+      //
+      // ON NE DEMANDE PAS LE CODE ICI, ON RENVOIE A LA PORTE. Rejouer
+      // un defi dans le chemin de reprise voudrait dire dupliquer tout
+      // l'ecran de saisie et son etat ; se deconnecter renvoie a
+      // tryUnlock(), qui sait deja le faire. Le cout est une
+      // reconnexion, pas un enfermement.
+      //
+      // bbmfaExige() rend null en cas d'erreur comme en l'absence de
+      // facteur : tant que personne n'en a active un, cette branche ne
+      // s'execute jamais.
+      bbmfaExige().then(function(factorRequis){
+      if (factorRequis){
+        // On ne pose PAS le temoin de la veille : son message parle de
+        // deux heures d'inactivite, ce qui serait faux et deroutant ici.
+        // La porte reapparait simplement, et la connexion normale
+        // demandera le code.
+        sb.auth.signOut().then(function(){ location.reload(); })
+                        .catch(function(){ location.reload(); });
+        return;
+      }
       sb.rpc('is_admin').then(function(check){
         if (check.error || check.data !== true) { repriseFinie(); sb.auth.signOut(); return; }
         currentSession = res.data.session;
@@ -7588,6 +7848,7 @@
           avPeindre();
         });
       }).catch(function(){ repriseFinie(); });
+      });   // fin de bbmfaExige().then du chemin de reprise
     } else {
       // Jeton perime, ou efface ailleurs : la porte, tout simplement.
       repriseFinie();
@@ -29556,9 +29817,155 @@
   function cpEstProprio(email){ return cpNorm(email) === CP_PROPRIETAIRE; }
   function cpJeSuisProprio(){ return cpEstProprio(cpMoi()); }
 
+  // ===================== SECOND FACTEUR : L'ACTIVATION =====================
+  //
+  // L'enrolement demande la session de la personne elle-meme : le
+  // tableau de bord de Supabase ne sait pas activer un second facteur
+  // pour quelqu'un d'autre. Sans cet ecran, il n'y aurait aucun moyen de
+  // l'activer du tout -- c'est pour ca qu'il vit ici.
+  //
+  // TROIS TEMPS, ET LE TROISIEME EST OBLIGATOIRE : enroll() cree un
+  // facteur NON VERIFIE, challenge() et verify() le confirment. Un
+  // facteur enrole mais non verifie compte pour Supabase : il ferait
+  // exiger un code a la connexion suivante sans qu'aucune application ne
+  // sache le produire. On nettoie donc systematiquement derriere un
+  // abandon ou un echec -- c'est ce que fait bb2fAbandon().
+  var bb2fEnCours = null;   // { factorId } pendant l'enrolement
+
+  function bb2fDire(txt, ok){
+    var m = document.getElementById('bb2f-msg');
+    if (!m) return;
+    m.textContent = txt || '';
+    m.className = 'msg' + (txt ? (ok ? ' ok' : ' err') : '');
+  }
+
+  // Le facteur VERIFIE de ce compte, s'il en a un.
+  function bb2fFacteur(){
+    try {
+      if (!sb.auth.mfa) return Promise.resolve(null);
+      return sb.auth.mfa.listFactors().then(function(f){
+        if (f.error) return null;
+        var l = (f.data && f.data.totp) || [];
+        for (var i = 0; i < l.length; i++) if (l[i].status === 'verified') return l[i];
+        return null;
+      }).catch(function(){ return null; });
+    } catch(e){ return Promise.resolve(null); }
+  }
+
+  function bb2fEtat(){
+    var etat = document.getElementById('bb2f-etat');
+    var acts = document.getElementById('bb2f-actions');
+    var bAct = document.getElementById('bb2f-activer');
+    var bRet = document.getElementById('bb2f-retirer');
+    if (!etat) return;
+    if (!sb.auth.mfa){
+      etat.textContent = 'Cette version de la bibliothèque Supabase ne gère pas le second facteur.';
+      etat.className = 'msg err';
+      return;
+    }
+    bb2fFacteur().then(function(f){
+      if (acts) acts.classList.remove('hide');
+      if (f){
+        etat.textContent = 'Le second facteur est ACTIF sur votre compte. Un code vous sera demandé à chaque connexion.';
+        etat.className = 'msg ok';
+        if (bAct) bAct.classList.add('hide');
+        if (bRet) bRet.classList.remove('hide');
+      } else {
+        etat.textContent = 'Le second facteur n’est pas activé sur votre compte. Votre mot de passe suffit à entrer.';
+        // .info et pas .msg nu : « .msg » seul est display:none, et le
+        // message d'etat serait reste invisible -- exactement le genre de
+        // detail qu'on ne voit qu'en ouvrant l'ecran.
+        etat.className = 'msg info';
+        if (bAct) bAct.classList.remove('hide');
+        if (bRet) bRet.classList.add('hide');
+      }
+    });
+  }
+
+  function bb2fAbandon(){
+    // On retire le facteur non verifie qu'on vient de creer. Le laisser
+    // en place ferait demander un code a la connexion suivante sans
+    // qu'aucune application ne sache le produire.
+    var id = bb2fEnCours && bb2fEnCours.factorId;
+    bb2fEnCours = null;
+    document.getElementById('bb2f-enrolement').classList.add('hide');
+    var c = document.getElementById('bb2f-code'); if (c) c.value = '';
+    if (id) { try { sb.auth.mfa.unenroll({ factorId: id }); } catch(e){} }
+    bb2fEtat();
+  }
+
+  function bb2fCommencer(){
+    bb2fDire('');
+    sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'BBC ' + Date.now() }).then(function(r){
+      if (r.error || !r.data){
+        bb2fDire('Impossible de commencer : ' + ((r.error && r.error.message) || 'réessayez'), false);
+        return;
+      }
+      bb2fEnCours = { factorId: r.data.id };
+      var t = r.data.totp || {};
+      var qr = document.getElementById('bb2f-qr');
+      var se = document.getElementById('bb2f-secret');
+      if (qr) qr.src = t.qr_code || '';
+      if (se) se.textContent = t.secret || '';
+      document.getElementById('bb2f-enrolement').classList.remove('hide');
+      document.getElementById('bb2f-actions').classList.add('hide');
+      var c = document.getElementById('bb2f-code'); if (c) c.focus();
+    }).catch(function(){ bb2fDire('Erreur de connexion. Réessayez.', false); });
+  }
+
+  function bb2fConfirmer(){
+    if (!bb2fEnCours) return;
+    var champ = document.getElementById('bb2f-code');
+    var code = ((champ && champ.value) || '').replace(/\D/g, '');
+    if (code.length !== 6){ bb2fDire('Le code compte six chiffres.', false); if (champ) champ.focus(); return; }
+    var id = bb2fEnCours.factorId;
+    bb2fDire('Vérification…', true);
+    sb.auth.mfa.challenge({ factorId: id }).then(function(c){
+      if (c.error || !c.data) { bb2fDire('Impossible de vérifier. Réessayez.', false); return; }
+      return sb.auth.mfa.verify({ factorId: id, challengeId: c.data.id, code: code }).then(function(v){
+        if (v.error){
+          if (champ) { champ.value = ''; champ.focus(); }
+          bb2fDire('Code refusé. Attendez les six chiffres suivants et réessayez.', false);
+          return;
+        }
+        // C'est fait, et le facteur est VERIFIE : on ne nettoie plus
+        // derriere, on le garde. bb2fEnCours se vide sans unenroll.
+        bb2fEnCours = null;
+        document.getElementById('bb2f-enrolement').classList.add('hide');
+        if (champ) champ.value = '';
+        bb2fDire('Second facteur activé. Notez la clé si ce n’est pas déjà fait.', true);
+        bb2fEtat();
+      });
+    }).catch(function(){ bb2fDire('Erreur de connexion. Réessayez.', false); });
+  }
+
+  function bb2fRetirer(){
+    if (!confirm('Retirer le second facteur de VOTRE compte ?\n\nVotre mot de passe suffira de nouveau à entrer dans l\'administration.')) return;
+    bb2fFacteur().then(function(f){
+      if (!f){ bb2fEtat(); return; }
+      sb.auth.mfa.unenroll({ factorId: f.id }).then(function(r){
+        if (r.error){ bb2fDire('Retrait refusé : ' + r.error.message, false); return; }
+        bb2fDire('Second facteur retiré.', true);
+        bb2fEtat();
+      }).catch(function(){ bb2fDire('Erreur de connexion. Réessayez.', false); });
+    });
+  }
+
+  function bb2fInit(){
+    var b;
+    b = document.getElementById('bb2f-activer');  if (b) b.addEventListener('click', bb2fCommencer);
+    b = document.getElementById('bb2f-valider');  if (b) b.addEventListener('click', bb2fConfirmer);
+    b = document.getElementById('bb2f-annuler');  if (b) b.addEventListener('click', bb2fAbandon);
+    b = document.getElementById('bb2f-retirer');  if (b) b.addEventListener('click', bb2fRetirer);
+    b = document.getElementById('bb2f-code');
+    if (b) b.addEventListener('keydown', function(e){ if (e.key === 'Enter') bb2fConfirmer(); });
+    bb2fEtat();
+  }
+
   function cpInit(){
     if (cpStarted) return; cpStarted = true;
 
+    bb2fInit();
     document.getElementById('cp-unlock').addEventListener('click', cpUnlock);
     document.getElementById('cp-pwd').addEventListener('keydown', function(e){ if (e.key === 'Enter') cpUnlock(); });
     document.getElementById('cp-annuler').addEventListener('click', cpRefermer);
