@@ -1489,7 +1489,11 @@ window.bbLienSur = function (u) {
      =================================================================== */
   .bb-lu-scene{
     position:relative; overflow:hidden; border-radius:2px; isolation:isolate;
-    min-height:clamp(392px,52vw,608px);
+    /* La scene etait plafonnee a 608 px sur un ecran de 1536 : la
+       joueuse tenait dans 340 px de large et le reste etait du vide.
+       C'est la hauteur de la scene qui commande la taille de la
+       silhouette -- on lui en donne, et la joueuse la prend. */
+    min-height:clamp(392px,54vw,690px);
     background:linear-gradient(160deg,#0C2418 0%,#081711 55%,#050F0A 100%);
   }
   /* LE FOND N'EST JAMAIS FIGE.
@@ -1544,7 +1548,9 @@ window.bbLienSur = function (u) {
   .bb-lu-act{
     position:absolute; inset:0; display:grid; align-content:center;
     grid-template-columns:1fr; gap:0;
-    padding:clamp(18px,2.4vw,30px) clamp(16px,3vw,40px) clamp(88px,8vw,98px);
+    /* De l'air : la scene est grande, les marges doivent l'etre aussi.
+       Une planche serree donne l'impression qu'on a manque de place. */
+    padding:clamp(22px,3vw,46px) clamp(20px,4.5vw,66px) clamp(96px,9vw,118px);
     opacity:0; visibility:hidden; pointer-events:none;
   }
   .bb-lu-act.on{ opacity:1; visibility:visible; pointer-events:auto }
@@ -1567,6 +1573,8 @@ window.bbLienSur = function (u) {
   }
   @media (min-width:760px){
     .bb-lu-act{
+      /* LA JOUEUSE A GAUCHE, LES INFORMATIONS A DROITE, comme au
+         depart : l'essai a l'envers ne convainc pas le club. */
       grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
       /* UNE RANGEE DE HAUTEUR DEFINIE, sinon « height:100% » ne veut
          rien dire et le rapport 3/4 repart de la largeur -- la photo
@@ -1574,11 +1582,8 @@ window.bbLienSur = function (u) {
       grid-template-rows:minmax(0,1fr);
       align-content:stretch; align-items:end; gap:clamp(18px,3vw,44px);
     }
-    /* max-height plutot que height : avec aspect-ratio, c'est la
-       LARGEUR qui se reduit quand le plafond mord. « height:100% » sur
-       un element etire avec width:auto donnait une photo de 0 pixel. */
-    .bb-lu-fig{ width:min(100%,330px); max-height:100% }
-    .bb-lu-id{ align-self:center; min-width:0 }
+    .bb-lu-id{ align-self:center; min-width:0; grid-column:2; grid-row:1 }
+    .bb-lu-fig{ grid-column:1; grid-row:1 }
   }
 
   /* le numero, enorme, derriere tout */
@@ -1623,6 +1628,17 @@ window.bbLienSur = function (u) {
                opacity .45s ease,
                filter .8s ease,
                clip-path .95s cubic-bezier(.5,.02,.24,1);
+  }
+  /* APRES la regle de base, et pas avant.
+     Ce bloc etait ecrit plus haut dans le fichier, donc la largeur de
+     base (240 px) le recouvrait : sur un ecran de 1536 px, la joueuse
+     s'affichait a 240 px au lieu de 330. A specificite egale, c'est
+     l'ordre qui tranche -- et l'ordre etait contre moi.
+     max-height plutot que height : avec aspect-ratio, c'est la LARGEUR
+     qui se reduit quand le plafond mord. */
+  @media (min-width:760px){
+    .bb-lu-fig{ width:min(100%,clamp(320px,31vw,470px)); max-height:100%;
+      grid-column:1; grid-row:1; justify-self:center }
   }
   /* le balayage en biais decouvre la joueuse, du flou vers le net */
   .bb-lu-act.on .bb-lu-fig{
@@ -1681,7 +1697,56 @@ window.bbLienSur = function (u) {
   .bb-lu-act.on .bb-lu-halo{ opacity:1 }
 
   /* l'identite : prenom d'un cote, nom de l'autre, decales */
-  .bb-lu-id{ position:relative; min-width:0; z-index:2 }
+  /* LA COLONNE NE FLOTTE PLUS AU MILIEU DU VIDE.
+     « tant d'espace laisse pour rien, et finalement on revient sur les
+       positions initiales »
+
+     La scene a grandi, le nom est reste de la meme taille au milieu : on
+     avait donc un grand vide en haut, un grand vide en bas, et un nom
+     qui flottait entre les deux. Trois etages qui se repartissent la
+     hauteur -- ce que c'est, qui c'est, ce qu'il faut savoir -- et la
+     colonne se tient toute seule quelle que soit la hauteur. */
+  .bb-lu-id{
+    position:relative; min-width:0; z-index:2; height:100%;
+    display:grid; grid-template-rows:auto 1fr auto; align-content:stretch;
+    padding:clamp(4px,1vw,14px) 0;
+  }
+  .bb-lu-id > .bb-lu-nom-bloc{ align-self:center }
+
+  /* L'ETAGE DU HAUT : de quoi il s'agit. */
+  .bb-lu-role{
+    display:flex; align-items:center; gap:10px; margin:0;
+    font-family:'Inter',sans-serif; font-weight:800; font-size:10px;
+    letter-spacing:.3em; text-transform:uppercase; color:var(--bb-or);
+    transform:translate3d(0,-10px,0); opacity:0;
+    transition:transform .6s ease .1s, opacity .45s ease .1s;
+  }
+  .bb-lu-act.on .bb-lu-role{ transform:none; opacity:1 }
+  .bb-lu-role i{ display:block; width:26px; height:2px; background:var(--bb-or); flex:none }
+
+  /* L'ETAGE DU BAS : ce qu'on veut savoir d'une joueuse. */
+  .bb-lu-stats{
+    display:flex; flex-wrap:wrap; gap:0 clamp(22px,3vw,44px); margin:0; padding:0; list-style:none;
+  }
+  .bb-lu-stats li{
+    display:grid; gap:5px; min-width:0;
+    transform:translate3d(0,16px,0); opacity:0;
+    transition:transform .6s cubic-bezier(.17,.86,.24,1), opacity .45s ease;
+    transition-delay:calc(var(--i,0) * 90ms + .86s);
+  }
+  .bb-lu-act.on .bb-lu-stats li{ transform:none; opacity:1 }
+  .bb-lu-stats b{
+    font-family:var(--lu-nom); font-size:calc(26px * var(--lu-k)); line-height:1;
+    color:#F3EFE6; letter-spacing:var(--lu-sp);
+  }
+  .bb-lu-stats span{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:9.5px; letter-spacing:.22em;
+    text-transform:uppercase; color:#7E8A82;
+  }
+  @media (max-width:759px){
+    .bb-lu-id{ height:auto; grid-template-rows:auto auto auto; gap:16px; padding:0 }
+    .bb-lu-stats{ gap:0 26px }
+  }
   /* LE NOM ARRIVE LETTRE PAR LETTRE.
      Le nom glissait d'un bloc : correct, et sans vie. Chaque lettre
      bascule maintenant depuis sous la ligne, decalee de 34 ms sur la
@@ -1755,8 +1820,9 @@ window.bbLienSur = function (u) {
      onglet plein, comme la bande cousue au dos d'un maillot. C'est ce
      qui empeche la ligne de poste de flotter sous le nom. */
   .bb-lu-pos{
-    display:inline-flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:14px;
-    padding:7px 13px 7px 11px; border-radius:2px;
+    display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap;
+    margin-top:clamp(18px,2.4vw,26px);
+    padding:9px 16px 9px 13px; border-radius:2px;
     background:linear-gradient(100deg, rgba(168,217,59,.16), rgba(168,217,59,.05));
     border-left:3px solid var(--bb-or);
     font-family:'Inter',sans-serif; font-weight:800; font-size:11.5px;
@@ -1768,7 +1834,7 @@ window.bbLienSur = function (u) {
   .bb-lu-act.on .bb-lu-pos{ clip-path:inset(0 0 0 0); opacity:1 }
   /* un filet d'or qui se tire sous le nom, pendant que le poste sort */
   .bb-lu-filet{
-    display:block; height:2px; width:0; margin:16px 0 0; background:var(--bb-or);
+    display:block; height:2px; width:0; margin:clamp(20px,2.6vw,30px) 0 0; background:var(--bb-or);
     transition:width .8s cubic-bezier(.17,.86,.24,1) .42s;
   }
   .bb-lu-act.on .bb-lu-filet{ width:min(220px,62%) }
@@ -1828,7 +1894,7 @@ window.bbLienSur = function (u) {
      dessinait donc a cote du blason, pas autour. Une boite commune, et
      la question ne se pose plus. */
   .bb-lu-ecusson{
-    position:relative; display:grid; place-items:center; margin:0 0 20px;
+    position:relative; display:grid; place-items:center; margin:0 0 clamp(22px,3vw,34px);
     width:clamp(62px,9vw,96px); aspect-ratio:1;
   }
   .bb-lu-blason{
@@ -1868,12 +1934,12 @@ window.bbLienSur = function (u) {
     padding-bottom:.06em; perspective:600px; margin:0;
   }
   .bb-lu-trait{
-    display:block; height:2px; width:0; background:var(--bb-or); margin:18px auto 0;
+    display:block; height:2px; width:0; background:var(--bb-or); margin:clamp(22px,3vw,34px) auto 0;
     transition:width .9s cubic-bezier(.17,.86,.24,1) .62s;
   }
   .bb-lu-act.on .bb-lu-trait{ width:min(300px,64%) }
   .bb-lu-contre{
-    margin:18px 0 0; font-family:'Inter',sans-serif; font-weight:700; font-size:13px;
+    margin:clamp(22px,3vw,34px) 0 0; font-family:'Inter',sans-serif; font-weight:700; font-size:13px;
     line-height:1.7; letter-spacing:.06em; color:#B9C2BB;
     transform:translate3d(0,14px,0); opacity:0;
     transition:transform .7s cubic-bezier(.17,.86,.24,1) .78s, opacity .5s ease .78s;
@@ -1885,6 +1951,78 @@ window.bbLienSur = function (u) {
     display:grid; place-items:center; background:rgba(243,239,230,.07); border-radius:50%;
   }
   .bb-lu-vg-intro figure img{ width:72%; height:72% !important; object-fit:contain }
+
+  /* L'AFFICHE : les deux ecussons entrent par les cotes. */
+  /* align-content:center seul ne suffit pas : le mode large impose
+     « stretch » sur .bb-lu-act, qui gagne. On recentre le contenu
+     lui-meme, ce qui marche dans les deux cas. */
+  .bb-lu-act-duel,.bb-lu-act-intro{
+    align-content:center; align-items:center;
+    grid-template-columns:1fr !important; grid-template-rows:auto !important;
+    text-align:center;
+  }
+  .bb-lu-duel,.bb-lu-intro{ align-self:center }
+  .bb-lu-duel{ display:grid; justify-items:center; max-width:900px; margin:0 auto; width:100% }
+  /* Une grille : rangee 1 les ecussons et le mot du milieu, rangee 2
+     les noms. Chacun est donc centre sur l'autre par construction, sans
+     un seul reglage a la main. */
+  .bb-lu-duel-r{
+    display:grid; grid-template-columns:1fr auto 1fr;
+    align-items:center; justify-items:center;
+    column-gap:clamp(24px,5.5vw,82px); row-gap:clamp(14px,2vw,22px);
+    margin:clamp(28px,4vw,48px) 0 0; width:100%;
+  }
+  /* Chacun sa case, explicitement : sinon la grille remplit dans
+     l'ordre du document et le mot du milieu se retrouve en premiere
+     colonne, devant les deux ecussons. Vu a l'ecran. */
+  .bb-lu-e-g{ grid-column:1; grid-row:1 }
+  .bb-lu-duel-x{ grid-column:2; grid-row:1 }
+  .bb-lu-e-d{ grid-column:3; grid-row:1 }
+  .bb-lu-n-g{ grid-column:1; grid-row:2 }
+  .bb-lu-n-d{ grid-column:3; grid-row:2 }
+  .bb-lu-e{ display:block; line-height:0 }
+  .bb-lu-e img,.bb-lu-e-vide{
+    width:clamp(72px,11vw,124px); height:clamp(72px,11vw,124px);
+    object-fit:contain; display:block;
+    filter:drop-shadow(0 10px 22px rgba(0,0,0,.5));
+  }
+  .bb-lu-e-vide{
+    border-radius:50%; display:grid; place-items:center; background:rgba(243,239,230,.07);
+    font-family:'Anton',Impact,sans-serif; font-size:34px; color:#7E8A82; filter:none;
+  }
+  .bb-lu-n{
+    font-family:var(--lu-nom); text-transform:uppercase; letter-spacing:var(--lu-sp);
+    font-size:calc(clamp(20px,3.4vw,38px) * var(--lu-k)); line-height:.95; color:#F3EFE6;
+    max-width:min(38vw,320px); overflow-wrap:anywhere; text-align:center;
+  }
+  .bb-lu-n-d{ color:var(--bb-or-clair) }
+  /* ils entrent par leur cote, avec un peu de rotation : c'est ce qui
+     fait « dynamique » plutot que « ca apparait » */
+  .bb-lu-e-g,.bb-lu-n-g{ transform:translate3d(-90px,0,0) rotate(-10deg) scale(.82); opacity:0;
+    transition:transform .82s cubic-bezier(.14,1.1,.28,1) .12s, opacity .4s ease .12s }
+  .bb-lu-e-d,.bb-lu-n-d{ transform:translate3d(90px,0,0) rotate(10deg) scale(.82); opacity:0;
+    transition:transform .82s cubic-bezier(.14,1.1,.28,1) .26s, opacity .4s ease .26s }
+  .bb-lu-n-g,.bb-lu-n-d{ transition-delay:.3s, .3s }
+  .bb-lu-act.on .bb-lu-e-g,.bb-lu-act.on .bb-lu-e-d,
+  .bb-lu-act.on .bb-lu-n-g,.bb-lu-act.on .bb-lu-n-d{ transform:none; opacity:1 }
+  .bb-lu-duel-x{
+    font-family:'Anton',Impact,sans-serif; letter-spacing:.02em;
+    font-size:clamp(22px,3.6vw,46px); color:var(--bb-or);
+    transform:scale(2.4); opacity:0;
+    transition:transform .5s cubic-bezier(.16,1.3,.3,1) .5s, opacity .3s ease .5s;
+  }
+  .bb-lu-act.on .bb-lu-duel-x{ transform:none; opacity:1 }
+  .bb-lu-duel-q{
+    margin:clamp(30px,4vw,52px) 0 0; font-family:'Inter',sans-serif; font-weight:700; font-size:13px;
+    letter-spacing:.08em; color:#B9C2BB;
+    transform:translate3d(0,12px,0); opacity:0;
+    transition:transform .6s ease .74s, opacity .45s ease .74s;
+  }
+  .bb-lu-act.on .bb-lu-duel-q{ transform:none; opacity:1 }
+  .bb-lu-vg-duel figure{ display:grid; place-items:center; background:rgba(243,239,230,.07) }
+  .bb-lu-vg-duel figure span{
+    font-family:'Anton',Impact,sans-serif; font-size:11px; color:#DDE6DE;
+  }
 
   /* LE BANC : dernier acte, les noms tombent un par un */
   .bb-lu-act-banc{ align-content:center; grid-template-columns:1fr !important }
@@ -7992,7 +8130,7 @@ window.bbCloud = function(url, w){
      monde -- sur un telephone, c'est le genre de detail qui fait fermer
      la page.
      =================================================================== */
-  var BB_LU_DUREE = 4400, BB_LU_BANC = 5600, BB_LU_INTRO = 4200;
+  var BB_LU_DUREE = 4400, BB_LU_BANC = 5600, BB_LU_INTRO = 2700, BB_LU_DUEL = 3200;
   var bbLuScene = { i:0, n:0, t:null, tSort:null, forme:null, tForme:null, dernier:-1, obs:null, vu:false, survol:false, hote:null };
 
   function bbLuPeu(){
@@ -8057,6 +8195,22 @@ window.bbCloud = function(url, w){
     }, 52);
   }
 
+  /* CE QU'ON VEUT SAVOIR D'UNE JOUEUSE. On n'ecrit que ce qui existe :
+     une case « taille : non communiquee » occupe la place d'une vraie
+     information sans en etre une. */
+  function bbLuStats(p){
+    var l = [];
+    if (p.no != null && p.no !== '') l.push(['\u2116 ' + p.no, 'Maillot']);
+    var poste = bbLuPosteLu(p.pos);
+    if (poste) l.push([poste, 'Poste']);
+    if (p.height) l.push([String(p.height).replace(/\s*m\s*$/, ' m'), 'Taille']);
+    if (p.age)    l.push([p.age + ' ans', '\u00c2ge']);
+    if (!l.length) return '<span></span>';        /* l'etage reste, vide */
+    return '<ul class="bb-lu-stats">' + l.map(function(x, i){
+      return '<li style="--i:' + i + '"><b>' + esc(x[0]) + '</b><span>' + esc(x[1]) + '</span></li>';
+    }).join('') + '</ul>';
+  }
+
   function bbLuActe(p, i){
     var n = bbLuNom(p.name);
     var no = (p.no == null || p.no === '') ? '' : String(p.no);
@@ -8077,17 +8231,21 @@ window.bbCloud = function(url, w){
                  '" loading="lazy" decoding="async">' : '') +
       '</figure>' +
       '<div class="bb-lu-id">' +
-        // Le nom entier reste lisible par un lecteur d'ecran : les
-        // lettres decoupees sont cachees, le nom complet est dans un
-        // texte a part. Sans cela, on entendrait « S, E, Y... ».
-        '<span class="bb-lu-litt">' + esc(p.name || '') + '</span>' +
-        (n.pre ? '<span class="bb-lu-pre" aria-hidden="true">' + bbLuLettres(n.pre, 0) + '</span>' : '') +
-        '<span class="bb-lu-fam" aria-hidden="true">' + bbLuLettres(n.fam, n.pre ? n.pre.length : 0) + '</span>' +
-        '<span class="bb-lu-filet" aria-hidden="true"></span>' +
-        '<p class="bb-lu-pos">' +
-          (p.cap ? '<span class="bb-lu-c" title="Capitaine">C</span>' : '') +
-          esc([poste, no ? '\u2116 ' + no : ''].filter(Boolean).join(' \u00b7 ')) +
-        '</p>' +
+        '<p class="bb-lu-role"><i></i>' + (p.cap ? 'Capitaine' : 'Titulaire') + '</p>' +
+        '<div class="bb-lu-nom-bloc">' +
+          // Le nom entier reste lisible par un lecteur d'ecran : les
+          // lettres decoupees sont cachees, le nom complet est dans un
+          // texte a part. Sans cela, on entendrait « S, E, Y... ».
+          '<span class="bb-lu-litt">' + esc(p.name || '') + '</span>' +
+          (n.pre ? '<span class="bb-lu-pre" aria-hidden="true">' + bbLuLettres(n.pre, 0) + '</span>' : '') +
+          '<span class="bb-lu-fam" aria-hidden="true">' + bbLuLettres(n.fam, n.pre ? n.pre.length : 0) + '</span>' +
+          '<span class="bb-lu-filet" aria-hidden="true"></span>' +
+          '<p class="bb-lu-pos">' +
+            (p.cap ? '<span class="bb-lu-c" title="Capitaine">C</span>' : '') +
+            esc([poste, no ? '\u2116 ' + no : ''].filter(Boolean).join(' \u00b7 ')) +
+          '</p>' +
+        '</div>' +
+        bbLuStats(p) +
       '</div>' +
       '<span class="bb-lu-liq" aria-hidden="true"></span>' +
       '<span class="bb-lu-ray" aria-hidden="true"></span>' +
@@ -8113,11 +8271,51 @@ window.bbCloud = function(url, w){
         '<h3 class="bb-lu-titre"><span class="bb-lu-litt">Le cinq majeur</span>' +
           '<span aria-hidden="true">' + bbLuLettres('Le cinq majeur', 0) + '</span></h3>' +
         '<span class="bb-lu-trait" aria-hidden="true"></span>' +
-        '<p class="bb-lu-contre">' +
-          '<b>Baobabs</b> ' + (dom ? 'contre' : 'chez') + ' <b>' + esc(m.opponent_name || 'l\u2019adversaire') + '</b>' +
-          (ou ? '<br>' + esc(ou) : '') +
-          '<br><em>' + esc(combien) + '</em>' +
-        '</p>' +
+        // Le match n'est plus ici : il a son propre acte, juste apres.
+        // Le generique annonce l'emission, pas encore l'affiche.
+        '<p class="bb-lu-contre"><em>' + esc(combien) + '</em></p>' +
+      '</div>' +
+      '<span class="bb-lu-liq" aria-hidden="true"></span>' +
+      '<span class="bb-lu-ray" aria-hidden="true"></span>' +
+    '</article>';
+  }
+
+  /* L'AFFICHE : LES DEUX BLASONS.
+     Le generique durait quatre secondes parce qu'il disait tout d'un
+     coup. Il est coupe en deux : le titre, puis l'affiche -- les deux
+     ecussons qui entrent par les cotes et se croisent au centre. C'est
+     le geste d'un avant-match, et ca laisse a chaque moment le temps
+     d'exister. */
+  function bbLuActeDuel(m, i){
+    var d = bbLuDate(m.match_date, m.match_time);
+    var dom = m.is_home !== false;
+    /* DEUX RANGEES, PAS TROIS BOITES.
+       Les ecussons et leur nom etaient dans la meme boite, et le mot du
+       milieu s'alignait donc sur le centre de [ecusson + nom] : mesure,
+       il tombait 24 px plus bas que les ecussons. Une grille de deux
+       rangees -- les ecussons sur la premiere, les noms sur la seconde
+       -- et l'alignement n'est plus une question de reglage. */
+    var ecusson = function(u, nom, cote){
+      return '<span class="bb-lu-e bb-lu-e-' + cote + '">' +
+        (u ? '<img src="' + window.bbSafeUrl(u) + '" alt="" loading="lazy" decoding="async">'
+           : '<span class="bb-lu-e-vide" aria-hidden="true">' +
+             esc((nom || '?').trim().charAt(0).toUpperCase()) + '</span>') + '</span>';
+    };
+    var nomCamp = function(nom, cote){
+      return '<b class="bb-lu-n bb-lu-n-' + cote + '">' + esc(nom || 'Adversaire') + '</b>';
+    };
+    return '<article class="bb-lu-act bb-lu-act-duel" data-i="' + i + '">' +
+      '<div class="bb-lu-duel">' +
+        '<p class="bb-lu-sur">' + esc(m.competition || m.round_label || 'Prochain match') + '</p>' +
+        '<div class="bb-lu-duel-r">' +
+          ecusson(BB_LU_LOGO, 'Baobabs', 'g') +
+          '<span class="bb-lu-duel-x">' + (dom ? 'VS' : 'CHEZ') + '</span>' +
+          ecusson(m.opponent_logo_url, m.opponent_name, 'd') +
+          nomCamp('Baobabs', 'g') +
+          nomCamp(m.opponent_name, 'd') +
+        '</div>' +
+        '<p class="bb-lu-duel-q">' +
+          esc([d.jour, d.heure, m.venue].filter(Boolean).join(' \u00b7 ')) + '</p>' +
       '</div>' +
       '<span class="bb-lu-liq" aria-hidden="true"></span>' +
       '<span class="bb-lu-ray" aria-hidden="true"></span>' +
@@ -8138,6 +8336,9 @@ window.bbCloud = function(url, w){
     '</article>';
   }
   function bbLuVignette(p, i, banc){
+    if (banc === 'duel') return '<button type="button" class="bb-lu-vg bb-lu-vg-duel" data-go="' + i +
+      '" aria-label="L\u2019affiche du match"><figure><span>VS</span></figure>' +
+      '<span class="bb-lu-vn">L\u2019affiche</span><span class="bb-lu-jauge"><i></i></span></button>';
     if (banc === 'intro') return '<button type="button" class="bb-lu-vg bb-lu-vg-intro" data-go="' + i +
       '" aria-label="Le generique"><figure><img src="' + window.bbSafeUrl(BB_LU_LOGO) + '" alt=""></figure>' +
       '<span class="bb-lu-vn">Le cinq</span><span class="bb-lu-jauge"><i></i></span></button>';
@@ -8260,12 +8461,14 @@ window.bbCloud = function(url, w){
     if (rang){
       var estBanc  = !!h.querySelector('.bb-lu-act.on.bb-lu-act-banc');
       var estIntro = !!h.querySelector('.bb-lu-act.on.bb-lu-act-intro');
-      // le generique et le banc ne sont pas des titulaires : ils ne
-      // comptent ni au numerateur ni au denominateur.
-      var combien = bbLuScene.n - 1 - (h.querySelector('.bb-lu-act-banc') ? 1 : 0);
+      var estDuel  = !!h.querySelector('.bb-lu-act.on.bb-lu-act-duel');
+      // le generique, l'affiche et le banc ne sont pas des titulaires :
+      // ils ne comptent ni au numerateur ni au denominateur.
+      var combien = bbLuScene.n - 2 - (h.querySelector('.bb-lu-act-banc') ? 1 : 0);
       rang.innerHTML = estIntro ? 'Le cinq majeur'
+        : estDuel  ? 'L\u2019affiche'
         : estBanc  ? 'Le banc'
-        : '<b>' + bbLuScene.i + '</b> / ' + combien + ' titulaires';
+        : '<b>' + (bbLuScene.i - 1) + '</b> / ' + combien + ' titulaires';
     }
     bbLuScene.dernier = bbLuScene.i;
     // la classe « sort » ne sert qu'au temps de la sortie : on la retire
@@ -8275,7 +8478,8 @@ window.bbCloud = function(url, w){
       h.querySelectorAll('.bb-lu-act.sort').forEach(function(a){ a.classList.remove('sort'); });
     }, 700);
     var duree = h.querySelector('.bb-lu-act.on.bb-lu-act-intro') ? BB_LU_INTRO
-              : h.querySelector('.bb-lu-act.on.bb-lu-act-banc')  ? BB_LU_BANC
+              : h.querySelector('.bb-lu-act.on.bb-lu-act-duel')   ? BB_LU_DUEL
+              : h.querySelector('.bb-lu-act.on.bb-lu-act-banc')   ? BB_LU_BANC
               : BB_LU_DUREE;
     h.style.setProperty('--bb-lu-duree', duree + 'ms');
     bbLuRelancer(duree);
@@ -8303,11 +8507,11 @@ window.bbCloud = function(url, w){
     // LE GENERIQUE D'ABORD. Chaque tour s'ouvre par l'annonce : on ne
     // jette pas cinq visages au visage de quelqu'un qui ne sait pas
     // encore de quel match on parle.
-    var actes = [bbLuActeIntro(m, cinq, banc, 0)];
-    var vgs   = [bbLuVignette(null, 0, 'intro')];
+    var actes = [bbLuActeIntro(m, cinq, banc, 0), bbLuActeDuel(m, 1)];
+    var vgs   = [bbLuVignette(null, 0, 'intro'), bbLuVignette(null, 1, 'duel')];
     cinq.forEach(function(p, k){
-      actes.push(bbLuActe(p, k + 1));
-      vgs.push(bbLuVignette(p, k + 1, false));
+      actes.push(bbLuActe(p, k + 2));
+      vgs.push(bbLuVignette(p, k + 2, false));
     });
     if (banc && banc.length){
       actes.push(bbLuActeBanc(banc, actes.length));
