@@ -1557,7 +1557,8 @@ window.bbLienSur = function (u) {
     transition:opacity .5s ease, transform .62s cubic-bezier(.4,0,.2,1);
     transform:scale(.94) translate3d(-3.5%,0,0);
   }
-  .bb-lu-act.sort .bb-lu-ph{ animation:none; transform:scale(calc(var(--z,1) * 1.14)) !important;
+  .bb-lu-act.sort .bb-lu-ph{ animation:none;
+    transform:translate3d(0,var(--dy,0%),0) scale(calc(var(--z,1) * 1.14)) !important;
     transition:transform .62s cubic-bezier(.4,0,.2,1) }
   /* et elles repartent en s'etirant vers le haut */
   .bb-lu-act.sort .bb-lu-l{
@@ -1638,8 +1639,12 @@ window.bbLienSur = function (u) {
      lieu de la laisser flotter. */
   .bb-lu-ph{
     width:100%; height:100%; object-fit:contain; display:block;
+    transform-origin:50% 50%;
     filter:contrast(1.06) saturate(1.06) drop-shadow(0 20px 28px rgba(0,0,0,.62));
-    transform:scale(var(--z,1));
+    /* --z : l'echelle qui met toutes les silhouettes a la meme hauteur.
+       --dy : ce qu'il faut remonter ou descendre pour que les pieds
+       tombent sur la meme ligne. Les deux sont mesures, pas devines. */
+    transform:translate3d(0,var(--dy,0%),0) scale(var(--z,1));
   }
   /* KEN BURNS : la photo respire pendant les quatre secondes. Une image
      parfaitement immobile sous un nom anime a l'air d'un bug. */
@@ -1648,12 +1653,12 @@ window.bbLienSur = function (u) {
      mouvement devient previsible des le deuxieme tour */
   .bb-lu-act:nth-child(even).on .bb-lu-ph{ animation-name:bb-lu-kb2 }
   @keyframes bb-lu-kb{
-    from{ transform:scale(var(--z,1)) translate3d(0,1.2%,0) }
-    to  { transform:scale(calc(var(--z,1) * 1.11)) translate3d(0,-2%,0) }
+    from{ transform:translate3d(0,var(--dy,0%),0) scale(var(--z,1)) }
+    to  { transform:translate3d(0,calc(var(--dy,0%) - 2.4%),0) scale(calc(var(--z,1) * 1.1)) }
   }
   @keyframes bb-lu-kb2{
-    from{ transform:scale(calc(var(--z,1) * 1.11)) translate3d(1.5%,-1.5%,0) }
-    to  { transform:scale(var(--z,1)) translate3d(-1%,.8%,0) }
+    from{ transform:translate3d(.8%,calc(var(--dy,0%) - 1.8%),0) scale(calc(var(--z,1) * 1.1)) }
+    to  { transform:translate3d(-.6%,var(--dy,0%),0) scale(var(--z,1)) }
   }
   .bb-lu-halo{
     position:absolute; left:50%; bottom:1%; width:128%; aspect-ratio:1.1;
@@ -1715,7 +1720,9 @@ window.bbLienSur = function (u) {
      Ici la couleur ne peut pas effacer le nom : elle ne fait que
      passer du blanc lumineux au creme. */
   .bb-lu-l{ color:#FFFFFF; text-shadow:0 0 22px rgba(255,255,255,.6), 0 0 4px rgba(168,217,59,.5) }
-  .bb-lu-act.on .bb-lu-fam .bb-lu-l{
+  .bb-lu-act.on .bb-lu-fam .bb-lu-l,
+  .bb-lu-act.on .bb-lu-titre .bb-lu-l,
+  .bb-lu-act.on .bb-lu-banc-t .bb-lu-l{
     color:#F3EFE6; text-shadow:none;
     transition:transform .78s cubic-bezier(.13,1.14,.28,1),
                opacity .3s ease,
@@ -1792,6 +1799,82 @@ window.bbLienSur = function (u) {
   }
   .bb-lu-act.on .bb-lu-ray{ animation:bb-lu-ray 1.05s cubic-bezier(.3,.7,.3,1) .26s 1 }
   @keyframes bb-lu-ray{ 0%{opacity:0;transform:translateX(-45%)} 24%{opacity:1} 100%{opacity:0;transform:translateX(48%)} }
+
+  /* ===================================================================
+     LE GENERIQUE
+     -------------------------------------------------------------------
+     « ca doit toujours avoir une intro, la tu jettes juste les cinq
+       comme ca a la figure »
+
+     Juste. Une annonce commence par annoncer. Le premier acte de chaque
+     tour n'est donc plus une joueuse : c'est le blason qui se pose, le
+     titre qui s'ecrit, et le match dont il s'agit. Trois secondes et
+     demie, et on sait ce qu'on regarde avant qu'on nous le montre.
+     =================================================================== */
+  .bb-lu-act-intro{ align-content:center; grid-template-columns:1fr !important; text-align:center }
+  .bb-lu-intro{ display:grid; justify-items:center; gap:0; max-width:760px; margin:0 auto }
+  /* L'ECUSSON : le blason et son anneau dans la MEME boite.
+     L'anneau etait pose sur l'acte et calcule depuis le haut : il se
+     dessinait donc a cote du blason, pas autour. Une boite commune, et
+     la question ne se pose plus. */
+  .bb-lu-ecusson{
+    position:relative; display:grid; place-items:center; margin:0 0 20px;
+    width:clamp(62px,9vw,96px); aspect-ratio:1;
+  }
+  .bb-lu-blason{
+    width:100%; height:auto; display:block; margin:0;
+    transform:scale(.6) rotate(-14deg); opacity:0;
+    transition:transform .9s cubic-bezier(.14,1.2,.3,1), opacity .5s ease;
+  }
+  .bb-lu-act.on .bb-lu-blason{ transform:none; opacity:1 }
+  /* l'anneau qui se referme autour du blason */
+  .bb-lu-anneau{
+    /* un SVG est un element REMPLACE : « inset » seul ne l'etire pas,
+       il garde sa taille intrinseque et se colle en haut a gauche.
+       Mesure : 21 px de decalage dans les deux sens. */
+    position:absolute; inset:0; width:100%; height:100%;
+    /* on l'agrandit par un transform, pas par des pourcentages de
+       position : un transform tourne autour du CENTRE, donc l'anneau
+       est concentrique par construction, quelle que soit la taille du
+       blason. Les pourcentages, eux, laissaient 21 px d'ecart. */
+    transform:rotate(-90deg) scale(1.44); pointer-events:none;
+  }
+  .bb-lu-anneau circle{
+    fill:none; stroke:var(--bb-or); stroke-width:1.4; opacity:.75;
+    stroke-dasharray:302; stroke-dashoffset:302;
+    transition:stroke-dashoffset 1.3s cubic-bezier(.3,.05,.2,1) .22s;
+  }
+  .bb-lu-act.on .bb-lu-anneau circle{ stroke-dashoffset:0 }
+  .bb-lu-sur{
+    font-family:'Inter',sans-serif; font-weight:800; font-size:10.5px; letter-spacing:.34em;
+    text-transform:uppercase; color:var(--bb-or); margin:0 0 10px;
+    clip-path:inset(0 100% 0 0); transition:clip-path .8s cubic-bezier(.17,.86,.24,1) .3s;
+  }
+  .bb-lu-act.on .bb-lu-sur{ clip-path:inset(0) }
+  .bb-lu-titre{
+    display:block; font-family:var(--lu-nom); text-transform:uppercase;
+    font-size:calc(clamp(40px,9vw,104px) * var(--lu-k)); line-height:.9;
+    letter-spacing:var(--lu-sp); color:#F3EFE6; overflow:hidden;
+    padding-bottom:.06em; perspective:600px; margin:0;
+  }
+  .bb-lu-trait{
+    display:block; height:2px; width:0; background:var(--bb-or); margin:18px auto 0;
+    transition:width .9s cubic-bezier(.17,.86,.24,1) .62s;
+  }
+  .bb-lu-act.on .bb-lu-trait{ width:min(300px,64%) }
+  .bb-lu-contre{
+    margin:18px 0 0; font-family:'Inter',sans-serif; font-weight:700; font-size:13px;
+    line-height:1.7; letter-spacing:.06em; color:#B9C2BB;
+    transform:translate3d(0,14px,0); opacity:0;
+    transition:transform .7s cubic-bezier(.17,.86,.24,1) .78s, opacity .5s ease .78s;
+  }
+  .bb-lu-act.on .bb-lu-contre{ transform:none; opacity:1 }
+  .bb-lu-contre b{ color:#F3EFE6; font-weight:800 }
+  .bb-lu-contre em{ font-style:normal; color:var(--bb-or) }
+  .bb-lu-vg-intro figure{
+    display:grid; place-items:center; background:rgba(243,239,230,.07); border-radius:50%;
+  }
+  .bb-lu-vg-intro figure img{ width:72%; height:72% !important; object-fit:contain }
 
   /* LE BANC : dernier acte, les noms tombent un par un */
   .bb-lu-act-banc{ align-content:center; grid-template-columns:1fr !important }
@@ -7899,7 +7982,7 @@ window.bbCloud = function(url, w){
      monde -- sur un telephone, c'est le genre de detail qui fait fermer
      la page.
      =================================================================== */
-  var BB_LU_DUREE = 4400, BB_LU_BANC = 5600;
+  var BB_LU_DUREE = 4400, BB_LU_BANC = 5600, BB_LU_INTRO = 4200;
   var bbLuScene = { i:0, n:0, t:null, tSort:null, forme:null, tForme:null, dernier:-1, obs:null, vu:false, survol:false, hote:null };
 
   function bbLuPeu(){
@@ -7977,8 +8060,11 @@ window.bbCloud = function(url, w){
       (no ? '<span class="bb-lu-num" aria-hidden="true">' + esc(no) + '</span>' : '') +
       '<figure class="bb-lu-fig">' +
         '<span class="bb-lu-halo" aria-hidden="true"></span>' +
+        // pas de bbLuCadre ici : sur une silhouette detouree, le zoom
+        // du club grossit la personne au lieu de la recadrer. C'est
+        // bbLuNormaliser qui decide, apres mesure.
         (p.src ? '<img class="bb-lu-ph" src="' + window.bbSafeUrl(p.src) + '" alt="' + esc(alt) +
-                 '" loading="lazy" decoding="async" style="' + bbLuCadre(p) + '">' : '') +
+                 '" loading="lazy" decoding="async">' : '') +
       '</figure>' +
       '<div class="bb-lu-id">' +
         // Le nom entier reste lisible par un lecteur d'ecran : les
@@ -7997,6 +8083,37 @@ window.bbCloud = function(url, w){
       '<span class="bb-lu-ray" aria-hidden="true"></span>' +
     '</article>';
   }
+  /* LE GENERIQUE : le blason, le titre, et de quel match il s'agit.
+     Il porte les memes gestes que les autres actes (les lettres qui
+     s'etirent, le rideau liquide), pour qu'on sente que c'est la meme
+     emission -- pas un ecran d'attente colle devant. */
+  function bbLuActeIntro(m, cinq, banc, i){
+    var d = bbLuDate(m.match_date, m.match_time);
+    var dom = m.is_home !== false;
+    var ou = [d.jour, d.heure ? d.heure : '', m.venue].filter(Boolean).join(' \u00b7 ');
+    var combien = cinq.length + (banc && banc.length
+      ? ' titulaires, ' + banc.length + ' sur le banc' : ' titulaires');
+    return '<article class="bb-lu-act bb-lu-act-intro" data-i="' + i + '">' +
+      '<div class="bb-lu-intro">' +
+        '<span class="bb-lu-ecusson">' +
+          '<svg class="bb-lu-anneau" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48"/></svg>' +
+          '<img class="bb-lu-blason" src="' + window.bbSafeUrl(BB_LU_LOGO) + '" alt="" loading="lazy" decoding="async">' +
+        '</span>' +
+        '<p class="bb-lu-sur">Baobabs Basket Club</p>' +
+        '<h3 class="bb-lu-titre"><span class="bb-lu-litt">Le cinq majeur</span>' +
+          '<span aria-hidden="true">' + bbLuLettres('Le cinq majeur', 0) + '</span></h3>' +
+        '<span class="bb-lu-trait" aria-hidden="true"></span>' +
+        '<p class="bb-lu-contre">' +
+          '<b>Baobabs</b> ' + (dom ? 'contre' : 'chez') + ' <b>' + esc(m.opponent_name || 'l\u2019adversaire') + '</b>' +
+          (ou ? '<br>' + esc(ou) : '') +
+          '<br><em>' + esc(combien) + '</em>' +
+        '</p>' +
+      '</div>' +
+      '<span class="bb-lu-liq" aria-hidden="true"></span>' +
+      '<span class="bb-lu-ray" aria-hidden="true"></span>' +
+    '</article>';
+  }
+
   function bbLuActeBanc(banc, i){
     return '<article class="bb-lu-act bb-lu-act-banc" data-i="' + i + '">' +
       '<p class="bb-lu-banc-s">Elles entrent aussi</p>' +
@@ -8011,6 +8128,9 @@ window.bbCloud = function(url, w){
     '</article>';
   }
   function bbLuVignette(p, i, banc){
+    if (banc === 'intro') return '<button type="button" class="bb-lu-vg bb-lu-vg-intro" data-go="' + i +
+      '" aria-label="Le generique"><figure><img src="' + window.bbSafeUrl(BB_LU_LOGO) + '" alt=""></figure>' +
+      '<span class="bb-lu-vn">Le cinq</span><span class="bb-lu-jauge"><i></i></span></button>';
     if (banc) return '<button type="button" class="bb-lu-vg bb-lu-vg-banc" data-go="' + i +
       '" aria-label="Le banc"><figure>BANC</figure>' +
       '<span class="bb-lu-vn">Le banc</span><span class="bb-lu-jauge"><i></i></span></button>';
@@ -8029,6 +8149,75 @@ window.bbCloud = function(url, w){
     var d = new Date(), a = d.getFullYear();
     if (d.getMonth() < 7) a -= 1;          // avant aout : la saison a commence l'an dernier
     return a + '–' + (a + 1);
+  }
+
+  /* ===================================================================
+     TOUTES A LA MEME TAILLE, SUR LA MEME LIGNE
+     -------------------------------------------------------------------
+     « tu dois visuellement visualiser le rendu et la taille des
+       joueuses »
+
+     Mesure : sur la scene, Kine Gueye s'affichait 20 % plus grande que
+     Ndeye Siga Sarr. Ce n'est pas un hasard -- c'est le cadrage du
+     club (photo_x / photo_y / photo_zoom) qui s'appliquait ici alors
+     qu'il a ete regle pour les cartes de l'Effectif, ou l'image REMPLIT
+     un cadre 3/4 en se faisant rogner. Sur une silhouette detouree, ce
+     zoom ne recadre plus rien : il grossit la personne.
+
+     On ne suit donc plus ce reglage sur la scene. On mesure la
+     silhouette elle-meme -- le rectangle des pixels non transparents --
+     et on pose toutes les joueuses a la MEME hauteur, les pieds sur la
+     MEME ligne. C'est ce que fait une planche de composition.
+
+     La mesure se fait sur une vignette de 110 px : 17 000 pixels lus
+     une seule fois par photo, gardes en memoire. Si le navigateur
+     refuse la lecture (image d'une autre origine sans en-tete), on ne
+     force rien : tout le monde garde sa taille naturelle, ce qui reste
+     coherent puisque les fichiers sont deja cadres pareil.
+     =================================================================== */
+  var BB_LU_SILHO = {};                 /* url -> promesse de mesure */
+  var BB_LU_HAUT  = 0.94;               /* la silhouette occupe 94 % du cadre */
+  var BB_LU_SOL   = 0.985;              /* et ses pieds sont a 98,5 % */
+
+  function bbLuSilhouette(src){
+    if (BB_LU_SILHO[src]) return BB_LU_SILHO[src];
+    BB_LU_SILHO[src] = new Promise(function(fini){
+      var im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.onerror = function(){ fini(null); };
+      im.onload = function(){
+        try {
+          var L = 110, H = Math.max(1, Math.round(L * im.naturalHeight / im.naturalWidth));
+          var c = document.createElement('canvas'); c.width = L; c.height = H;
+          var x = c.getContext('2d', { willReadFrequently:true });
+          x.drawImage(im, 0, 0, L, H);
+          var d = x.getImageData(0, 0, L, H).data, t = H, b = -1;
+          for (var y = 0; y < H; y++){
+            for (var k = 0; k < L; k++){
+              if (d[(y * L + k) * 4 + 3] > 18){ if (y < t) t = y; if (y > b) b = y; break; }
+            }
+          }
+          if (b < 0 || b <= t){ fini(null); return; }      // image vide ou opaque
+          fini({ haut:t / H, bas:(b + 1) / H, hauteur:(b + 1 - t) / H });
+        } catch(e){ fini(null); }                          // lecture refusee
+      };
+      im.src = src;
+    });
+    return BB_LU_SILHO[src];
+  }
+
+  /* On pose l'echelle et la ligne de sol sur chaque photo de la scene. */
+  function bbLuNormaliser(hote){
+    hote.querySelectorAll('.bb-lu-ph').forEach(function(img){
+      var src = img.currentSrc || img.src; if (!src) return;
+      bbLuSilhouette(src).then(function(m){
+        if (!m || !m.hauteur) return;
+        var k = BB_LU_HAUT / m.hauteur;
+        var basApres = 0.5 + (m.bas - 0.5) * k;            /* mise a l'echelle depuis le centre */
+        img.style.setProperty('--z', k.toFixed(4));
+        img.style.setProperty('--dy', ((BB_LU_SOL - basApres) * 100).toFixed(2) + '%');
+      });
+    });
   }
 
   function bbLuAller(i){
@@ -8059,10 +8248,14 @@ window.bbCloud = function(url, w){
     // « 3 / 5 » : on sait ou l'on en est, et combien il en reste.
     var rang = h.querySelector('#bb-lu-rang');
     if (rang){
-      var estBanc = !!h.querySelector('.bb-lu-act.on.bb-lu-act-banc');
-      var cinq = bbLuScene.n - (h.querySelector('.bb-lu-act-banc') ? 1 : 0);
-      rang.innerHTML = estBanc ? 'Le banc'
-        : '<b>' + (bbLuScene.i + 1) + '</b> / ' + cinq + ' titulaires';
+      var estBanc  = !!h.querySelector('.bb-lu-act.on.bb-lu-act-banc');
+      var estIntro = !!h.querySelector('.bb-lu-act.on.bb-lu-act-intro');
+      // le generique et le banc ne sont pas des titulaires : ils ne
+      // comptent ni au numerateur ni au denominateur.
+      var combien = bbLuScene.n - 1 - (h.querySelector('.bb-lu-act-banc') ? 1 : 0);
+      rang.innerHTML = estIntro ? 'Le cinq majeur'
+        : estBanc  ? 'Le banc'
+        : '<b>' + bbLuScene.i + '</b> / ' + combien + ' titulaires';
     }
     bbLuScene.dernier = bbLuScene.i;
     // la classe « sort » ne sert qu'au temps de la sortie : on la retire
@@ -8071,7 +8264,9 @@ window.bbCloud = function(url, w){
     bbLuScene.tSort = setTimeout(function(){
       h.querySelectorAll('.bb-lu-act.sort').forEach(function(a){ a.classList.remove('sort'); });
     }, 700);
-    var duree = h.querySelector('.bb-lu-act.on.bb-lu-act-banc') ? BB_LU_BANC : BB_LU_DUREE;
+    var duree = h.querySelector('.bb-lu-act.on.bb-lu-act-intro') ? BB_LU_INTRO
+              : h.querySelector('.bb-lu-act.on.bb-lu-act-banc')  ? BB_LU_BANC
+              : BB_LU_DUREE;
     h.style.setProperty('--bb-lu-duree', duree + 'ms');
     bbLuRelancer(duree);
   }
@@ -8092,14 +8287,21 @@ window.bbCloud = function(url, w){
     bbLuScene.survol = !!oui;
     if (oui) clearTimeout(bbLuScene.t); else bbLuRelancer();
   }
-  function bbLuScener(cinq, banc){
+  function bbLuScener(m, cinq, banc){
     var h = document.getElementById('bb-lu-five'); if (!h) return;
     clearTimeout(bbLuScene.t);
-    var actes = cinq.map(bbLuActe);
-    var vgs   = cinq.map(function(p, i){ return bbLuVignette(p, i, false); });
+    // LE GENERIQUE D'ABORD. Chaque tour s'ouvre par l'annonce : on ne
+    // jette pas cinq visages au visage de quelqu'un qui ne sait pas
+    // encore de quel match on parle.
+    var actes = [bbLuActeIntro(m, cinq, banc, 0)];
+    var vgs   = [bbLuVignette(null, 0, 'intro')];
+    cinq.forEach(function(p, k){
+      actes.push(bbLuActe(p, k + 1));
+      vgs.push(bbLuVignette(p, k + 1, false));
+    });
     if (banc && banc.length){
-      actes.push(bbLuActeBanc(banc, cinq.length));
-      vgs.push(bbLuVignette(null, cinq.length, true));
+      actes.push(bbLuActeBanc(banc, actes.length));
+      vgs.push(bbLuVignette(null, vgs.length, true));
     }
     h.className = 'bb-lu-scene';
     // La police des noms : un gout, donc un reglage. Sans reglage, celle
@@ -8135,6 +8337,7 @@ window.bbCloud = function(url, w){
     } else bbLuScene.vu = true;
 
     bbLuAller(0);
+    bbLuNormaliser(h);
   }
   document.addEventListener('visibilitychange', function(){
     if (document.hidden) clearTimeout(bbLuScene.t); else bbLuRelancer();
@@ -8159,7 +8362,7 @@ window.bbCloud = function(url, w){
     // Il est maintenant le dernier acte de la scene : c'est une entree,
     // pas une note de bas de page. Le bandeau garde l'encadrement et le
     // match, qui ne sont pas des joueuses.
-    bbLuScener(cinq, banc);
+    bbLuScener(m, cinq, banc);
     var wrap = document.getElementById('bb-lu-banc-wrap');
     if (wrap) wrap.classList.add('bb-hide');
 
