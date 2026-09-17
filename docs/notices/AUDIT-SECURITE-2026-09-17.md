@@ -441,24 +441,49 @@ créer. Le code sans la clé ne sert à rien. C'est aussi le point qui
 touche le plus de monde pour le risque le plus faible, donc le dernier
 de la liste.
 
+### Fait le 17 septembre au soir
+
+Les deux `revoke` qui ferment le journal d'activité sont passés en
+production :
+
+```sql
+revoke execute on function verify_audit_password(text) from anon;
+revoke execute on function log_audit_entry(text,text,text,text,text,text,text) from anon;
+```
+
+**Les failles URGENT 1 et 2 sont donc fermées.** Ce qui reste du bloc 1
+du correctif n'est plus une urgence mais une amélioration réelle : faire
+dire à la base qui écrit au lieu de croire le navigateur, et remplacer
+le mot de passe publié.
+
 ### L'ORDRE, ET IL N'EST PAS DÉCORATIF
 
-Trois changements cassent quelque chose s'ils arrivent dans le mauvais
-sens. Les voici, une fois pour toutes :
+Le SQL est en trois fichiers, et le découpage suit une seule règle :
+**tout ce qui n'a aucune précondition est dans les deux premiers**.
 
-1. **`depot-photo` doit être déployée AVANT que `index.html` et
-   `joueuse.html` ne soient en ligne.** Ces deux pages l'appellent
-   désormais pour envoyer une photo. Si elle n'existe pas encore, la
-   photo échoue, et le reste du formulaire continue de partir. C'est
-   pourquoi ces deux fichiers **ne sont pas poussés** : ils attendent
-   dans un commit local.
-2. **Le SQL du bloc 5 doit passer AVANT le redéploiement de
-   `alerte-inscription`.** La fonction lit la colonne
-   `alerte_envoyee_le` : sans elle, sa requête échoue et l'alerte ne
-   part plus. Ce fichier n'est pas poussé non plus.
-3. **`WEBHOOK_SECRET` doit exister AVANT le redéploiement de
+| Fichier | Précondition | Ce qu'il casse si l'ordre est inversé |
+|---|---|---|
+| `CORRECTIF-...-journal-et-roles.sql` | aucune | rien |
+| `CORRECTIF-...-b-uploads-commandes-promo.sql` | aucune | rien |
+| `CORRECTIF-...-c-fermer-le-bucket-des-photos.sql` | `depot-photo` déployée | l'envoi de photos, sur les deux formulaires publics |
+
+Les deux premiers se collent en entier, maintenant, dans n'importe quel
+ordre. Le troisième attend le déploiement, et son en-tête le dit dans un
+cadre.
+
+Deux autres ordres à respecter, du côté des fonctions :
+
+1. **`WEBHOOK_SECRET` doit exister AVANT le redéploiement de
    `send-order-confirmation`.** Elle refuse maintenant tout appel quand
    le secret manque. Sans lui, les e-mails de commande s'arrêtent net.
+2. **Le bloc 4 du fichier b doit passer AVANT le redéploiement de
+   `alerte-inscription`.** La fonction lit la colonne
+   `alerte_envoyee_le` : sans elle, sa requête échoue et l'alerte ne
+   part plus, sans que rien ne le signale.
+
+Et deux fichiers **ne sont pas poussés** pour cette raison : `index.html`
+et `joueuse.html` appellent `depot-photo`, `alerte-inscription` lit la
+colonne. Ils attendent dans un commit local.
 
 ### À faire, dans cet ordre
 
@@ -563,14 +588,43 @@ plus faible.
 
 ### Urgent, aujourd'hui
 
-1. Lancer le diagnostic SQL.
-2. Passer le correctif SQL (journal fermé, casquettes devenues serrures).
-3. Changer le mot de passe de l'historique.
-4. Vérifier `WEBHOOK_SECRET`, puis redéployer les trois fonctions.
+1. ~~Les deux `revoke` qui ferment le journal.~~ **Fait.**
+2. Coller les fichiers SQL **journal-et-roles** puis **b**, en entier.
+   Aucune précondition, rien ne casse.
+3. Changer le mot de passe de l'historique (bloc 1.4, commenté).
+4. Vérifier `WEBHOOK_SECRET`, puis déployer les fonctions :
 
-Ces quatre gestes ferment les quatre failles urgentes. Le premier et le
-quatrième prennent dix minutes chacun ; le deuxième demande de passer les
-six vérifications du fichier, donc une demi-heure sérieuse.
+```bash
+npx supabase functions deploy depot-photo --project-ref lmwbwasupqkvswukieav
+```
+
+```bash
+npx supabase functions deploy alerte-inscription --project-ref lmwbwasupqkvswukieav
+```
+
+```bash
+npx supabase functions deploy send-order-confirmation --project-ref lmwbwasupqkvswukieav
+```
+
+```bash
+npx supabase functions deploy aide-redaction --project-ref lmwbwasupqkvswukieav
+```
+
+```bash
+npx supabase functions deploy depot-piece --project-ref lmwbwasupqkvswukieav
+```
+
+Jamais par « Deploy a new function » du tableau de bord : le slug y est
+tiré au sort, et l'administration ne retrouverait pas la fonction.
+
+5. Coller le fichier SQL **c**, une fois `depot-photo` en place et
+   vérifiée par une vraie candidature de test.
+6. `git push`, pour que `index.html` et `joueuse.html` passent en ligne.
+
+La seule vérification qui prouve quelque chose reste la sixième du
+premier fichier : un compte d'essai passé en Coach, connecté, qui essaie
+de modifier un produit. Tant qu'elle n'est pas faite, on sait que le SQL
+est passé, pas que la serrure tient.
 
 ### Important, dans les semaines qui viennent
 
