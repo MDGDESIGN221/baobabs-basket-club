@@ -350,6 +350,16 @@ update academy_registrations
 --  en security definer, donc son appel interne a
 --  bbc_proprietaire_email() continue de fonctionner sans le grant.
 -- ---------------------------------------------------------------------
+-- « from public » EN PREMIER, ET C'EST TOUT L'INTERET DE LA LIGNE.
+-- Postgres accorde EXECUTE a PUBLIC sur toute fonction nouvellement
+-- creee, et `anon` herite de PUBLIC : revoquer a `anon` seulement
+-- retire un droit propre qu'il n'avait peut-etre pas, et laisse celui
+-- qu'il tient de PUBLIC. Mesure sur la vraie base le 17 septembre au
+-- soir : apres un « revoke ... from anon » seul,
+-- has_function_privilege('anon', ...) rendait toujours true.
+-- Voir CORRECTIF-2026-09-17-d-portes-de-fonctions.sql, qui a trouve
+-- cinq autres portes ouvertes par le meme defaut.
+revoke execute on function bbc_proprietaire_email() from public;
 revoke execute on function bbc_proprietaire_email() from anon;
 grant  execute on function bbc_proprietaire_email() to authenticated;
 

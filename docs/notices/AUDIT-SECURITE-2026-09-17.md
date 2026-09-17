@@ -441,6 +441,56 @@ créer. Le code sans la clé ne sert à rien. C'est aussi le point qui
 touche le plus de monde pour le risque le plus faible, donc le dernier
 de la liste.
 
+### PASSÉ EN PRODUCTION LE 17 SEPTEMBRE AU SOIR, ET VÉRIFIÉ
+
+Les trois correctifs SQL sont appliqués sur la base de production, et
+chaque point a été mesuré après coup, pas supposé.
+
+| Vérification | Résultat |
+|---|---|
+| Les 11 tables du site : politiques d'écriture par rôle | **33 sur 33 en `bbc_can`**, aucune en `is_admin` seul |
+| `players` / `staff` lisibles sans compte | non, et les vues du site fonctionnent |
+| Les fonctions du journal, appelables sans compte | plus aucune, refus `42501` |
+| 14 lectures publiques du site (matchs, actualités, boutique, effectif…) | les 14 répondent |
+| L'administration écrit toujours | oui, écriture réelle passée sur `products` |
+| Le journal dit qui écrit | **oui** : j'ai passé une fausse adresse en paramètre, la base a écrit celle de la session |
+| `auteur_uid` rempli sur les nouvelles lignes | oui, `null` sur les anciennes, comme prévu |
+
+### Trois choses trouvées dans la base, que la lecture du dépôt ne pouvait pas montrer
+
+**1. Une troisième porte sur le journal.** Les deux `revoke` du soir
+fermaient `verify_audit_password` et `log_audit_entry`. Il existait
+`test_audit_debug(pwd text)`, un reste de mise au point de juillet :
+`security definer`, elle prend le mot de passe du journal et rend
+`TABLE(step text, result boolean)`. Autrement dit un oracle qui dit oui
+ou non sur le mot de passe, un appel à la fois, sans compte et sans
+frein. Elle a survécu aux deux révocations parce qu'elle ne porte pas le
+même nom. Fermée.
+
+**2. Cinq autres portes ouvertes par un défaut de Postgres.** Postgres
+accorde `EXECUTE` à **PUBLIC** sur toute fonction nouvellement créée, et
+`anon` hérite de PUBLIC. Donc toute fonction créée sans `revoke`
+explicite est appelable par n'importe qui, et rien dans le fichier qui
+la crée ne le laisse voir. La plus grave était `bbc_piece_deposer` :
+sa propre migration écrit « personne ne l'appelle depuis le navigateur,
+seule la fonction serveur le fait », et la base disait l'inverse. Elle
+permettait, avec une référence et un téléphone, d'inscrire n'importe
+quelle chaîne comme pièce d'un dossier, en sautant tous les contrôles de
+`depot-piece`.
+
+**Et le piège dans le piège** : `revoke ... from anon` ne suffit pas, il
+faut `revoke ... from public`. Le bloc 5 du fichier `b` faisait cette
+erreur ; après son passage, le droit était toujours là. Corrigé dans le
+fichier et rattrapé dans le fichier `d`.
+
+**3. Une vue absente du dépôt.** `orders_daily_totals` rend `day,
+orders_count, total_amount`, sans `security_invoker`, et `anon` pouvait
+la lire : le chiffre d'affaires du club jour par jour, avec la clé
+publique du site. Aucun fichier du dépôt ne la lit. Fermée, pas
+supprimée.
+
+### Ce qui reste, et l'ordre
+
 ### Fait le 17 septembre au soir
 
 Les deux `revoke` qui ferment le journal d'activité sont passés en
