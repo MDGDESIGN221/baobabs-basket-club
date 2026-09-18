@@ -686,10 +686,26 @@
                      'c’est quand le prochain match']));
   }
 
-  /* ELLE NE DEVINE PAS. Une tournure jamais prevue n'est pas une panne,
-     c'est une limite -- et l'annoncer vaut mieux que de partir sur une
-     intention voisine avec aplomb. */
+  /* ELLE NE DEVINE PAS, MAIS ELLE SE SOUVIENT DE QUOI ON PARLAIT.
+     Quand une phrase courte n'est comprise ni par l'intention ni par le
+     sujet, et qu'on parlait de quelque chose il y a un instant, il y a
+     de bonnes chances qu'on en parle encore. On ne REPOND pas dessus
+     pour autant : on DEMANDE. Repondre sur l'ancien sujet ferait dire
+     n'importe quoi a « raconte-moi une blague » glisse apres une
+     question sur l'effectif.
+
+     C'est la nuance entre se souvenir et supposer. */
   function rIncomprise(r) {
+    if (dernier && dernier.sujet && (r.mots || []).length <= 4) {
+      var s = dernier.sujet;
+      return elle('<p>Je ne suis pas sûre de comprendre.</p>' +
+        '<p class="doux">On parlait de <b>' + esc(s.nom) + '</b> : c’est toujours ça ?</p>' +
+        pistes(['combien', 'la liste', 'fais-moi le point']));
+    }
+    return rIncomprisePure(r);
+  }
+
+  function rIncomprisePure(r) {
     elle('<p>Je ne comprends pas cette demande.</p>' +
       '<p class="doux">Je ne sais pas tout faire, et je préfère le dire. ' +
       'Voici ce que vous pouvez me demander :</p>' +
