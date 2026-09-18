@@ -712,6 +712,14 @@
        ================================================================== */
     if (!res.intention && suj) res.intention = 'sujet';
 
+    /* COMBIEN DE MOTS LUI SONT ETRANGERS. Une phrase dont tous les mots
+       appartiennent au club peut etre une suite de conversation ; une
+       phrase pleine de mots qu'elle n'a jamais vus est autre chose.
+       « raconte-moi une blague » ne doit pas devenir « on parlait des
+       convocations, c'est toujours ca ? » -- ce qu'elle faisait. */
+    var lex = {}; lexique(ctx).forEach(function (m) { lex[m] = 1; });
+    res.inconnus = res.mots.filter(function (m) { return !lex[m]; }).length;
+
     if (!res.intention) {
       res.exemples = INTENTIONS.filter(function (I) { return I.cle !== 'aide' && I.cle !== 'politesse'; })
                                .map(function (I) { return I.exemple; });

@@ -315,7 +315,13 @@
        finit par repondre a propos de quelqu'un d'autre sans qu'on
        comprenne pourquoi.
        ================================================================== */
-    var BESOIN = { manque: 'personne', qui: 'personne', convoquer: 'date', quand: 'date' };
+    /* « qui » N'HERITE PAS, et le banc l'a montre : « trouve-moi Fatou »
+       quand Fatou n'existe pas reprenait la personne d'avant et
+       repondait sur elle, avec assurance. Chercher quelqu'un suppose
+       qu'on le nomme ; si le nom ne donne rien, c'est le nom qui est en
+       cause, pas le contexte. « manque » peut au contraire ne nommer
+       personne (« qu'est-ce qui manque a son dossier »). */
+    var BESOIN = { manque: 'personne', convoquer: 'date', quand: 'date' };
     var besoin = BESOIN[r.intention];
     if (besoin && !r.entites[besoin] && dernier && dernier.entites && dernier.entites[besoin]) {
       r.entites[besoin] = dernier.entites[besoin];
@@ -420,9 +426,12 @@
   function demanderLaquelle(r) {
     var opts = r.entites.personnes;
     attente = { type: 'choix', options: opts, choisi: function (p) { montrerPersonne(p); } };
-    elle('<p>J’ai trouvé ' + opts.length + ' personnes qui correspondent. Laquelle ?</p>' +
+    /* On reprend l'element que elle() vient de rendre, et non le dernier
+       enfant du fil : c'est le meme dans un navigateur, mais l'un est
+       garanti et l'autre suppose. Le banc des reponses a trouve la
+       difference des sa premiere execution. */
+    var d = elle('<p>J’ai trouvé ' + opts.length + ' personnes qui correspondent. Laquelle ?</p>' +
       '<div class="maya-faits">' + opts.map(cartePersonne).join('') + '</div>');
-    var d = fil.lastElementChild;
     d.querySelectorAll('[data-fiche]').forEach(function (b) {
       b.addEventListener('click', function () { attente = null; });
     });
@@ -695,11 +704,24 @@
      question sur l'effectif.
 
      C'est la nuance entre se souvenir et supposer. */
+  /* « de » + « les matchs » ne donne pas « de les matchs ». Trois cas,
+     et c'est tout ce dont on a besoin ici. */
+  function deLe(nom) {
+    var n = String(nom || '');
+    if (n.indexOf('les ') === 0) return 'des ' + n.slice(4);
+    if (n.indexOf('le ') === 0)  return 'du ' + n.slice(3);
+    return 'de ' + n;
+  }
+
   function rIncomprise(r) {
-    if (dernier && dernier.sujet && (r.mots || []).length <= 4) {
+    /* On ne suppose une suite de conversation que si TOUS les mots de la
+       phrase appartiennent au club. « raconte-moi une blague » en compte
+       deux qu'elle n'a jamais vus : c'est une vraie demande inconnue, et
+       repondre « on parlait des convocations » serait absurde. */
+    if (dernier && dernier.sujet && !r.inconnus && (r.mots || []).length <= 4) {
       var s = dernier.sujet;
       return elle('<p>Je ne suis pas sûre de comprendre.</p>' +
-        '<p class="doux">On parlait de <b>' + esc(s.nom) + '</b> : c’est toujours ça ?</p>' +
+        '<p class="doux">On parlait ' + esc(deLe(s.nom)) + ' : c’est toujours ça ?</p>' +
         pistes(['combien', 'la liste', 'fais-moi le point']));
     }
     return rIncomprisePure(r);
@@ -866,6 +888,20 @@
     return f(s.cle).then(function (d) {
       var hors = sujetHors(d, s.nom);
       if (hors) return elle(hors);
+
+      /* UN ZERO NE DIT PAS S'IL EST VRAI. « 0 membre du staff » peut
+         vouloir dire qu'il n'y en a pas, ou qu'elle n'a rien obtenu :
+         une vue absente, une table vide parce qu'une migration n'est pas
+         passee, un droit refuse sans erreur. Les trois donnent le meme
+         chiffre et n'appellent pas la meme reaction. On le dit donc
+         autrement, et on renvoie a l'ecran, qui saura. */
+      if (!d.n) {
+        return elle('<p>Je ne vois <b>aucune ligne</b> pour ' + esc(s.nom) + '.</p>' +
+          '<p class="doux">Soit il n’y en a pas, soit je n’ai rien obtenu à la lecture : ' +
+          'de mon côté les deux se ressemblent. L’écran vous le dira mieux que moi.</p>' +
+          (d.ecran ? pistesEcran(d.ecran) : ''));
+      }
+
       var h = '<p><b>' + d.n + '</b> ' + esc(d.n > 1 ? d.pluriel : d.nom) + '.</p>';
       if (d.note) h += '<p class="doux">' + esc(d.note) + '</p>';
       var utiles = (d.detail || []).filter(function (x) { return x.n > 0; });
