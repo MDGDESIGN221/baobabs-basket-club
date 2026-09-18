@@ -125,6 +125,7 @@
     bas();
   }
   function elle(html) {
+    finPenser();
     var d = document.createElement('div');
     d.className = 'maya-elle';
     d.innerHTML = html;
@@ -155,6 +156,33 @@
         fermer();
       });
     });
+  }
+
+  /* ==================================================================
+     ELLE MONTRE QU'ELLE CHERCHE
+     ------------------------------------------------------------------
+     Une lecture reelle prend une a trois secondes. Pendant ce temps, le
+     fil ne bougeait pas : on croyait qu'elle n'avait rien compris, ou
+     qu'elle etait cassee. C'est exactement ce qui fait dire d'une
+     assistante qu'elle est bete -- pas ce qu'elle repond, mais le
+     silence avant.
+
+     La bulle se pose des qu'une reponse part chercher quelque chose, et
+     disparait a la premiere phrase rendue. Si la reponse est immediate,
+     personne ne la voit passer.
+     ================================================================== */
+  function penser() {
+    if (document.getElementById('maya-pense')) return;
+    var d = document.createElement('div');
+    d.className = 'maya-elle maya-pense';
+    d.id = 'maya-pense';
+    d.innerHTML = '<span class="maya-pts"><i></i><i></i><i></i></span>';
+    fil.appendChild(d);
+    bas();
+  }
+  function finPenser() {
+    var d = document.getElementById('maya-pense');
+    if (d) d.remove();
   }
 
   function pistes(liste) {
@@ -233,9 +261,13 @@
   }
 
   function analyser(texte) {
+    penser();
     var ctx = {
       personnes: CTX && CTX.personnes ? CTX.personnes() : [],
-      ecrans: CTX && CTX.ecrans ? CTX.ecrans() : []
+      ecrans: CTX && CTX.ecrans ? CTX.ecrans() : [],
+      // Les ecrans de l administration deviennent autant de sujets : ce
+      // qui est ajoute demain est compris demain.
+      sujets: CTX && CTX.sujets ? CTX.sujets() : []
     };
     var r = M.comprendre.analyser(texte, ctx);
 
@@ -261,6 +293,17 @@
       default:          return rIncomprise(r);
     }
   }
+
+  /* UN FILET : si une reponse asynchrone tombe sans rien rendre, la
+     bulle tournerait pour toujours. Huit secondes, puis on le dit. */
+  setInterval(function () {
+    var d = document.getElementById('maya-pense');
+    if (!d) return;
+    if (!d.dataset.ne) { d.dataset.ne = Date.now(); return; }
+    if (Date.now() - Number(d.dataset.ne) < 8000) return;
+    finPenser();
+    elle('<p>Je n’ai pas obtenu de réponse. Essayez encore, ou dites-le-moi autrement.</p>');
+  }, 1000);
 
 
   /* ------------------------------------------------------------------
@@ -388,9 +431,24 @@
       if (!p.compte_uid) h += '<p>Elle n’a <b>pas encore de compte</b>.</p>';
       if (siens.length) h += '<p>Et ' + siens.length + ' point' + (siens.length > 1 ? 's' : '') +
         ' la concerne' + (siens.length > 1 ? 'nt' : '') + ' :</p>' + listeFaits(siens);
-      else if (p.fiche_etat === 'publiee' && p.compte_uid)
-        h += '<p>Je ne vois rien qui manque à son dossier.</p>';
-      elle(h);
+      /* LES PIECES SE LISENT LIGNE PAR LIGNE, pas dans les faits.
+         Le centre d attention dit « 34 pieces jamais enregistrees » et
+         cite quatre noms sur dix-sept : chercher la reponse dans un fait
+         agrege ne pouvait pas marcher pour les treize autres. */
+      var pieces = outil('piecesDe');
+      var suite = pieces && p.genre === 'joueuse' ? pieces(p.id) : Promise.resolve(null);
+      return suite.then(function (pc) {
+        if (pc) {
+          if (pc.manquantes.length) h += '<p>Il manque <b>' + pc.manquantes.join('</b> et <b>') + '</b>.</p>';
+          if (pc.expirees.length) h += '<p><b>' + pc.expirees.join('</b> et <b>') + '</b> : expiré' +
+            (pc.expirees.length > 1 ? 's' : '') + '.</p>';
+          if (pc.bientot.length) h += '<p class="doux">Expire bientôt : ' + esc(pc.bientot.join(', ')) + '.</p>';
+        }
+        var rienAdire = !siens.length && p.fiche_etat === 'publiee' && p.compte_uid &&
+                        pc && !pc.manquantes.length && !pc.expirees.length;
+        if (rienAdire) h += '<p>Je ne vois rien qui manque à son dossier.</p>';
+        elle(h);
+      });
     });
   }
 

@@ -110,10 +110,31 @@
       motif: /\b(candidatures?|candidates?|recrutement|essais?)\b/ }
   ];
 
-  function sujet(texte) {
+  /* ELLE APPREND LES SUJETS QU ELLE NE CONNAIT PAS.
+     La liste ci-dessus est ecrite a la main parce que ces dix sujets ont
+     un vocabulaire riche : on dit « les filles » pour l effectif, « les
+     billets » pour la billetterie. Mais l administration compte une
+     CINQUANTAINE d ecrans, et il s en ajoute. Les declarer un par un
+     ici, c est se condamner a oublier le prochain.
+
+     L hote passe donc ses ecrans dans ctx.sujets : chaque titre devient
+     un sujet, avec son ecran et sa table. Un ecran cree demain est donc
+     compris des le jour de sa creation, sans une ligne de plus ici.
+
+     LES SUJETS ECRITS A LA MAIN PASSENT EN PREMIER : leur vocabulaire
+     est plus large que leur titre, et « les joueuses » doit tomber sur
+     l effectif plutot que sur un ecran qui porterait ce mot. */
+  function sujet(texte, extra) {
     var t = plat(texte);
     for (var i = 0; i < SUJETS.length; i++) if (SUJETS[i].motif.test(t)) return SUJETS[i];
-    return null;
+    var meilleur = null;
+    (extra || []).forEach(function (S) {
+      var n = plat(S.nom);
+      if (n.length < 4) return;   // « Club », « Home » : trop court pour trancher
+      if (t.indexOf(n) < 0) return;
+      if (!meilleur || n.length > plat(meilleur.nom).length) meilleur = S;
+    });
+    return meilleur;
   }
 
   var INTENTIONS = [
@@ -311,7 +332,7 @@
     /* DE QUOI ON PARLE, AVANT DE SAVOIR CE QU'ON VEUT. Le sujet sert
        deux fois : il autorise les questions qui l'exigent, et il rend
        utile le refus quand rien ne repond. */
-    var suj = sujet(texte);
+    var suj = sujet(texte, ctx.sujets);
     if (suj) res.sujet = suj;
 
     for (var i = 0; i < INTENTIONS.length; i++) {

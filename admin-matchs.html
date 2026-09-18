@@ -8993,6 +8993,9 @@
      voir, rend null : dialogue.js le dit tel quel. Refuser par le
      silence serait pire que refuser par une phrase. */
   function mayaSavoir(cle){
+    // « ecran:xxx » : un sujet derive de SECTION_META, pas un des dix
+    // sujets riches. Il se compte generiquement.
+    if (String(cle).indexOf('ecran:') === 0) return mayaSavoirEcran(cle);
     var S = MAYA_SAVOIR[cle];
     if (!S) return Promise.resolve(null);
     if (S.module && !can(S.module, 'voir')) return Promise.resolve({ interdit: true });
@@ -9000,6 +9003,133 @@
       d.nom = S.nom; d.pluriel = S.pluriel; d.ecran = S.ecran;
       return d;
     }).catch(function(){ return { illisible: true }; });
+  }
+
+  /* CE QUI MANQUE VRAIMENT A UNE JOUEUSE.
+     Le centre d'attention dit « 34 pieces de joueuse jamais
+     enregistrees » et cite quatre noms sur dix-sept : demander « qu'est-ce
+     qui manque a Mamy Boukinda » ne trouvait donc rien, alors que la
+     reponse existe, ligne par ligne, dans players_documents. Un fait
+     agrege ne se rattache a personne ; il faut relire la source. */
+  function mayaPiecesDe(id){
+    if (!can('effectif', 'voir')) return Promise.resolve(null);
+    return sbGet('players_documents?select=kind,expires_on,received_on&player_id=eq.' + encodeURIComponent(id))
+      .then(function(rows){
+        rows = rows || [];
+        var ATTENDUES = [['licence', 'la licence'], ['medical', 'le certificat médical']];
+        var auj = todayISO();
+        var manquantes = [], expirees = [], bientot = [];
+        ATTENDUES.forEach(function(a){
+          var d = rows.filter(function(r){ return r.kind === a[0]; })
+                      .sort(function(x, y){ return (y.expires_on || '') > (x.expires_on || '') ? 1 : -1; })[0];
+          if (!d) { manquantes.push(a[1]); return; }
+          if (d.expires_on && d.expires_on < auj) { expirees.push(a[1]); return; }
+          if (d.expires_on){
+            var j = daysUntil(d.expires_on);
+            if (j !== null && j <= 30) bientot.push(a[1] + ' (dans ' + j + ' j)');
+          }
+        });
+        return { manquantes: manquantes, expirees: expirees, bientot: bientot, total: rows.length };
+      })
+      .catch(function(){ return null; });
+  }
+
+  /* ==================================================================
+     ELLE APPREND LES ECRANS QU'ELLE NE CONNAIT PAS
+     ------------------------------------------------------------------
+     Les dix sujets ecrits a la main plus haut ont un vocabulaire riche :
+     on dit « les filles » pour l'effectif, « les billets » pour la
+     billetterie. Mais l'administration compte une cinquantaine d'ecrans,
+     et il s'en ajoute. Les declarer un par un condamne a oublier le
+     prochain -- c'est exactement ce qui est arrive aux evenements, aux
+     bannieres et a la billetterie avec la carte de suite logique.
+
+     On derive donc les sujets de SECTION_META, qui EST deja la liste de
+     tout ce que l'administration sait faire. Un ecran cree demain devient
+     un sujet le jour de sa creation.
+
+     LA TABLE VIENT DE COLLECTIONS quand l'ecran en est une, et de la
+     carte ci-dessous sinon. Un ecran sans table n'est pas ignore : elle
+     dit ce qu'il fait et propose de l'ouvrir. Mieux vaut « voici a quoi
+     sert cet ecran » que « je ne comprends pas ».
+     ================================================================== */
+  var MAYA_TABLES = {
+    matches2:'matches', calendar:'matches', results:'matches', gameday:'matches',
+    squad:'players', staff:'staff', bureau:'staff', entrainements:'team_sessions',
+    tickets:'ticket_offers', products:'products', stock:'products', orders2:'orders',
+    clients:'customers', promos:'promo_codes', articles:'news', categories:'news_categories',
+    galerie:'gallery', banners:'banners', announce:'announcements', evenements:'evenements',
+    partners:'partners', timeline:'timeline_events', standings:'standings', teams:'teams',
+    inscriptions:'academy_registrations', ecole:'academy_sessions',
+    applications:'recruitment_requests', forms:'contact_messages',
+    newsl:'newsletter_abonnes', comptes:'admin_users', saison:'saisons',
+    caisse:'caisse_mouvements', parcours:'matches', media:null, audit:null
+  };
+
+  /* CE QU'ELLE NE REPETE JAMAIS, MEME QUAND ELLE A LE DROIT DE LE LIRE.
+     Le RLS decide de ce qu'elle PEUT lire ; cette liste decide de ce
+     qu'elle DOIT taire. Un telephone de joueuse, une piece d'identite de
+     mineure, le texte d'un message prive : le droit d'y acceder n'est
+     pas le droit de les faire defiler dans une fenetre de conversation
+     qu'on laisse ouverte a cote de soi.
+
+     Elle peut les COMPTER -- un nombre ne designe personne. Elle ne les
+     LISTE pas, et renvoie a l'ecran, qui a ses propres protections. */
+  var MAYA_JAMAIS_LISTER = {
+    players_contacts:1, academy_documents:1, players_documents:1,
+    recruitment_documents:1, contact_messages:1, admin_users:1,
+    customers:1, newsletter_abonnes:1, caisse_mouvements:1
+  };
+
+  function mayaSujets(){
+    var out = [];
+    Object.keys(SECTION_META).forEach(function(cle){
+      if (!canSection(cle)) return;
+      var m = SECTION_META[cle];
+      if (!m || !m.t) return;
+      var t = null;
+      if (typeof COLLECTIONS === 'object' && COLLECTIONS[cle] && COLLECTIONS[cle].table) t = COLLECTIONS[cle].table;
+      else if (MAYA_TABLES[cle] !== undefined) t = MAYA_TABLES[cle];
+      out.push({ cle: 'ecran:' + cle, nom: m.t, ecran: cle, table: t, quoi: m.d || '' });
+    });
+    return out;
+  }
+
+  /* COMPTER SANS RAPATRIER. PostgREST rend le total dans l'en-tete
+     Content-Range quand on lui demande « count=exact » : une requete
+     HEAD suffit donc, sans lire une seule ligne. C'est ce qui permet de
+     compter une table sensible sans en sortir le contenu, et c'est le
+     RLS qui decide du chiffre -- un coach et le president n'obtiennent
+     pas forcement le meme, et c'est normal. */
+  function mayaCompter(table){
+    if (!table) return Promise.resolve(null);
+    return fetch(SUPABASE_URL + '/rest/v1/' + table + '?select=*&limit=1',
+                 { method:'HEAD', headers: sbHeaders({ 'Prefer':'count=exact' }) })
+      .then(function(r){
+        if (!r.ok) return null;
+        var cr = r.headers.get('content-range') || '';
+        var n = parseInt(String(cr).split('/')[1], 10);
+        return isNaN(n) ? null : n;
+      })
+      .catch(function(){ return null; });
+  }
+
+  /* Un ecran derive : on compte si l'on peut, on decrit toujours. */
+  function mayaSavoirEcran(cle){
+    var S = mayaSujets().filter(function(x){ return x.cle === cle; })[0];
+    if (!S) return Promise.resolve(null);
+    var mod = SECTION_MODULE[S.ecran];
+    if (mod && !can(mod, 'voir')) return Promise.resolve({ interdit: true });
+    if (!S.table) return Promise.resolve({ sansChiffre: true, quoi: S.quoi, ecran: S.ecran, titre: S.nom });
+    return mayaCompter(S.table).then(function(n){
+      if (n === null) return { illisible: true, quoi: S.quoi, ecran: S.ecran, titre: S.nom };
+      return {
+        n: n, nom: 'ligne', pluriel: 'lignes', ecran: S.ecran, titre: S.nom,
+        quoi: S.quoi, detail: [],
+        sansListe: !!MAYA_JAMAIS_LISTER[S.table],
+        items: []
+      };
+    });
   }
 
   function mayaOutils(){
@@ -9013,6 +9143,7 @@
       preparerConvocation: mayaPreparerConvocation,
       convoquer: mayaConvoquer,
       savoir: mayaSavoir,
+      piecesDe: mayaPiecesDe,
       prochainMatch: mayaProchainMatch,
       dernierResultat: mayaDernierResultat
     };
@@ -9040,6 +9171,7 @@
               outils: mayaOutils(),
               personnes: function(){ return mayaPersonnes; },
               ecrans: mayaEcrans,
+              sujets: mayaSujets,
               ecranCourant: function(){
                 var s = document.querySelector('section[id^="section-"]:not(.hide)');
                 return s ? s.id.replace(/^section-/, '') : null;
