@@ -252,6 +252,12 @@
       case 'aller':     return rAller(r);
       case 'convoquer': return rConvoquer(r);
       case 'aide':      return rAide();
+      case 'politesse': return rPolitesse(r);
+      case 'combien':   return rCombien(r);
+      case 'liste':     return rListe(r);
+      case 'quand':     return rQuand();
+      case 'resultat':  return rResultat();
+      case 'sujet':     return rSujet(r);
       default:          return rIncomprise(r);
     }
   }
@@ -484,6 +490,151 @@
       'Voici ce que vous pouvez me demander :</p>' +
       pistes(r.exemples && r.exemples.length ? r.exemples.slice(0, 5)
         : ['fais-moi le point', 'que sais-tu faire']));
+  }
+
+  /* ------------------------------------------------------------------
+     DIRE BONJOUR. Ce n'est pas de la decoration : la premiere phrase
+     decide si l'on en tape une deuxieme.
+     ------------------------------------------------------------------ */
+  function rPolitesse(r) {
+    var t = r.plat;
+    if (/^(merci|nickel|parfait|super)/.test(t))
+      return elle('<p>Avec plaisir.</p>' + pistes(['fais-moi le point']));
+    if (/^(au revoir|a bientot|bonne journee|bonne soiree|bye)/.test(t))
+      return elle('<p>À tout à l’heure.</p>');
+    if (/^(ca va|comment)/.test(t))
+      return elle('<p>Tout va bien de mon côté. Et le club ?</p>' +
+        pistes(['fais-moi le point']));
+    var nom = CTX && CTX.prenom ? CTX.prenom() : '';
+    elle('<p>Bonjour' + (nom ? ' ' + esc(nom) : '') + '.</p>' +
+      pistes(['fais-moi le point', 'combien de joueuses', 'c’est quand le prochain match']));
+  }
+
+  /* ------------------------------------------------------------------
+     COMPTER. Un chiffre, puis ce qu'il cache : « 17 joueuses, dont 15
+     actives et 17 sans compte » vaut dix fois « 17 joueuses ».
+     ------------------------------------------------------------------ */
+  function sujetHors(d, nomSujet) {
+    if (!d) return '<p>Je ne sais pas encore compter ' + esc(nomSujet) + '.</p>' +
+      '<p class="doux">Je préfère le dire plutôt que d’avancer un chiffre.</p>';
+    if (d.interdit) return '<p>Votre casquette ne donne pas accès à ' + esc(nomSujet) + '.</p>';
+    if (d.illisible) return '<p>Je n’ai pas pu lire ' + esc(nomSujet) + '.</p>' +
+      '<p class="doux">Ce n’est pas zéro : c’est que je n’ai rien obtenu.</p>';
+    return null;
+  }
+
+  function rCombien(r) {
+    var s = r.sujet;
+    if (!s) return rIncomprise(r);
+    var f = outil('savoir');
+    if (!f) return elle('<p>Je ne sais pas encore compter cela.</p>');
+    return f(s.cle).then(function (d) {
+      var hors = sujetHors(d, s.nom);
+      if (hors) return elle(hors);
+      var h = '<p><b>' + d.n + '</b> ' + esc(d.n > 1 ? d.pluriel : d.nom) + '.</p>';
+      if (d.note) h += '<p class="doux">' + esc(d.note) + '</p>';
+      var utiles = (d.detail || []).filter(function (x) { return x.n > 0; });
+      if (utiles.length) {
+        h += '<p>' + utiles.map(function (x) {
+          return '<b>' + x.n + '</b> ' + esc(x.quoi);
+        }).join(', ') + '.</p>';
+      }
+      // « qui sont l'ecole de basket » ne se dit pas. « la liste des
+      // inscriptions » se dit toujours, quel que soit le sujet, et le
+      // mot « liste » est justement ce que l'analyse reconnait.
+      elle(h + pistes(['la liste des ' + d.pluriel, 'fais-moi le point']));
+    });
+  }
+
+  /* ------------------------------------------------------------------
+     LISTER. Vingt lignes au plus : au-dela on ne lit plus, et l'ecran
+     fait ce travail mieux qu'un fil de conversation.
+     ------------------------------------------------------------------ */
+  function rListe(r) {
+    var s = r.sujet;
+    if (!s) return rIncomprise(r);
+    var f = outil('savoir');
+    if (!f) return elle('<p>Je ne sais pas encore lister cela.</p>');
+    return f(s.cle).then(function (d) {
+      var hors = sujetHors(d, s.nom);
+      if (hors) return elle(hors);
+      if (!d.items || !d.items.length) return elle('<p>Rien à lister dans ' + esc(s.nom) + '.</p>');
+      var max = 20, montres = d.items.slice(0, max);
+      var h = '<p><b>' + d.n + '</b> ' + esc(d.n > 1 ? d.pluriel : d.nom) +
+              (d.items.length > max ? ', voici les ' + max + ' premières' : '') + ' :</p>' +
+        '<div class="maya-faits">' + montres.map(function (it) {
+          return it.id
+            ? '<button type="button" class="maya-pers" data-fiche="' + esc(it.id) + '" data-genre="' + esc(it.genre || '') + '">' +
+              '<span class="rond">' + esc(String(it.nom || '?').slice(0, 2).toUpperCase()) + '</span>' +
+              '<span><b>' + esc(it.nom) + '</b>' + (it.sous ? '<s>' + esc(it.sous) + '</s>' : '') + '</span></button>'
+            : '<div class="maya-fait"><b>' + esc(it.nom) + '</b>' +
+              (it.sous ? '<s>' + esc(it.sous) + '</s>' : '') + '</div>';
+        }).join('') + '</div>';
+      if (d.ecran) h += pistesEcran(d.ecran);
+      elle(h);
+    });
+  }
+
+  function pistesEcran(cle) {
+    var titre = CTX && CTX.titreEcran ? CTX.titreEcran(cle) : cle;
+    return '<div class="maya-pistes"><button type="button" class="maya-piste" data-aller="' +
+           esc(cle) + '">ouvrir ' + esc(titre) + '</button></div>';
+  }
+
+  /* ------------------------------------------------------------------ */
+  function rQuand() {
+    var f = outil('prochainMatch');
+    if (!f) return elle('<p>Je ne sais pas lire le calendrier d’ici.</p>');
+    return f().then(function (m) {
+      if (!m) return elle('<p>Aucun match à venir n’est enregistré.</p>' + pistesEcran('matches2'));
+      var quand = m.jours === 0 ? 'C’est aujourd’hui'
+                : m.jours === 1 ? 'C’est demain'
+                : (m.jours > 0 ? 'Dans ' + m.jours + ' jours' : '');
+      elle('<p><b>' + esc(m.nom) + '</b></p>' +
+        '<p>' + esc(m.quand) + (m.ou ? ' · ' + esc(m.ou) : '') + '</p>' +
+        (quand ? '<p class="doux">' + quand + '.</p>' : '') +
+        pistes(['prépare la convocation', 'ouvre le match']));
+    });
+  }
+
+  function rResultat() {
+    var f = outil('dernierResultat');
+    if (!f) return elle('<p>Je ne sais pas lire les résultats d’ici.</p>');
+    return f().then(function (m) {
+      if (!m) return elle('<p>Aucun match terminé n’est enregistré.</p>');
+      elle('<p><b>' + esc(m.nom) + '</b></p>' +
+        (m.score ? '<p>' + esc(m.score) + (m.issue ? ' · ' + esc(m.issue) : '') + '</p>'
+                 : '<p class="doux">Le score n’a pas encore été saisi.</p>') +
+        '<p class="doux">' + esc(m.quand) + '</p>' + pistesEcran('results'));
+    });
+  }
+
+  /* ------------------------------------------------------------------
+     LE SUJET SANS L'INTENTION. Elle n'a pas compris la tournure, mais
+     elle sait de quoi on parle. Plutot que de renvoyer la personne les
+     mains vides, elle dit ce qu'elle en sait -- EN PRECISANT qu'elle
+     n'est pas sure. C'est la difference entre repondre a cote et
+     repondre a cote avec aplomb.
+     ------------------------------------------------------------------ */
+  function rSujet(r) {
+    var s = r.sujet;
+    var f = outil('savoir');
+    if (!f) return rIncomprise(r);
+    return f(s.cle).then(function (d) {
+      var hors = sujetHors(d, s.nom);
+      var tete = '<p>Je ne suis pas sûre d’avoir bien compris. ' +
+                 'Si vous me parlez de <b>' + esc(s.nom) + '</b> :</p>';
+      if (hors) return elle(tete + hors);
+      var h = tete + '<p><b>' + d.n + '</b> ' + esc(d.n > 1 ? d.pluriel : d.nom) + '.</p>';
+      if (d.note) h += '<p class="doux">' + esc(d.note) + '</p>';
+      var utiles = (d.detail || []).filter(function (x) { return x.n > 0; });
+      if (utiles.length) h += '<p>' + utiles.map(function (x) {
+        return '<b>' + x.n + '</b> ' + esc(x.quoi);
+      }).join(', ') + '.</p>';
+      var suite = ['la liste des ' + d.pluriel];
+      if (s.cle === 'matchs') suite = ['c’est quand le prochain match', 'quel est le dernier résultat'];
+      elle(h + pistes(suite) + (d.ecran ? pistesEcran(d.ecran) : ''));
+    });
   }
 
   /* ------------------------------------------------------------------

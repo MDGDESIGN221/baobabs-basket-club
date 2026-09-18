@@ -8780,6 +8780,228 @@
     });
   }
 
+  /* ==================================================================
+     CE QUE MAYA SAIT DIRE DU CLUB
+     ------------------------------------------------------------------
+     « Quel est le nombre de l'effectif du club ? » est une question
+     simple, et elle n'y repondait pas. Pas faute de donnees : la vue
+     personnes est la, les matchs aussi, les inscriptions aussi. Il
+     manquait seulement de les lui donner.
+
+     UN SUJET QU'ELLE NE SAIT PAS ENCORE COMPTER LE DIT. Il n'y a pas de
+     repli silencieux, pas d'approximation : « je ne sais pas encore
+     compter cela » est une reponse, et elle vaut mieux qu'un chiffre
+     fabrique. C'est la meme regle que partout ici.
+
+     Chaque entree passe par sbGet, donc par la session et par le RLS :
+     un coach qui demande « combien de commandes » n'obtient rien de
+     plus que ce que son role lui permet de voir.
+     ================================================================== */
+  var MAYA_SAVOIR = {
+    effectif: {
+      nom: 'joueuse', pluriel: 'joueuses', ecran: 'squad', module: 'effectif',
+      lire: function(){
+        return sbGet('personnes?select=id,nom,genre,statut,fiche_etat,compte_uid,fonction,numero&genre=eq.joueuse')
+          .then(function(rows){
+            rows = rows || [];
+            var act = rows.filter(function(p){ return (p.statut || 'active') === 'active'; });
+            return {
+              n: rows.length,
+              items: rows.map(function(p){
+                return { id: p.id, genre: 'joueuse', nom: p.nom,
+                         sous: [p.fonction, p.numero ? 'n° ' + p.numero : '',
+                                (p.statut && p.statut !== 'active') ? p.statut : ''].filter(Boolean).join(' · ') };
+              }),
+              detail: [
+                { quoi: 'active' + (act.length > 1 ? 's' : ''), n: act.length },
+                { quoi: 'sans compte', n: rows.filter(function(p){ return !p.compte_uid; }).length },
+                { quoi: 'dossier en attente',
+                  n: rows.filter(function(p){ return ['recue','a_verifier','a_completer'].indexOf(p.fiche_etat) >= 0; }).length }
+              ]
+            };
+          });
+      }
+    },
+    staff: {
+      nom: 'membre du staff', pluriel: 'membres du staff', ecran: 'staff', module: 'effectif',
+      lire: function(){
+        return sbGet('personnes?select=id,nom,genre,fonction,famille,compte_uid&genre=eq.staff')
+          .then(function(rows){
+            rows = rows || [];
+            return {
+              n: rows.length,
+              items: rows.map(function(p){
+                return { id: p.id, genre: 'staff', nom: p.nom,
+                         sous: [p.fonction, p.famille].filter(Boolean).join(' · ') };
+              }),
+              detail: [{ quoi: 'sans compte', n: rows.filter(function(p){ return !p.compte_uid; }).length }]
+            };
+          });
+      }
+    },
+    matchs: {
+      nom: 'match', pluriel: 'matchs', ecran: 'matches2', module: 'matchs',
+      lire: function(){
+        return sbGet('match_center?select=id,opponent_name,match_date,statut,issue&order=match_date.asc')
+          .then(function(rows){
+            rows = rows || [];
+            var av = rows.filter(function(m){ return m.statut === 'a_venir' || m.statut === 'aujourdhui'; });
+            return {
+              n: rows.length,
+              items: rows.slice(-12).reverse().map(function(m){
+                return { nom: m.opponent_name || 'adversaire',
+                         sous: formatDateShort(m.match_date) + (m.issue ? ' · ' + m.issue : '') };
+              }),
+              detail: [
+                { quoi: 'à venir', n: av.length },
+                { quoi: 'joué' + (rows.length - av.length > 1 ? 's' : ''), n: rows.length - av.length },
+                { quoi: 'sans score', n: rows.filter(function(m){ return m.statut === 'a_saisir'; }).length }
+              ]
+            };
+          });
+      }
+    },
+    ecole: {
+      nom: 'inscription', pluriel: 'inscriptions', ecran: 'inscriptions', module: 'inscriptions',
+      lire: function(){
+        return sbGet('inscriptions_admin?select=id,full_name,category,status,medical_recu')
+          .then(function(rows){
+            rows = rows || [];
+            return {
+              n: rows.length,
+              items: rows.slice(0, 40).map(function(r){
+                return { nom: r.full_name || 'sans nom', sous: [r.category, r.status].filter(Boolean).join(' · ') };
+              }),
+              detail: [
+                { quoi: 'inscrit' + (rows.filter(function(r){ return r.status === 'inscrite'; }).length > 1 ? 'es' : 'e'),
+                  n: rows.filter(function(r){ return r.status === 'inscrite'; }).length },
+                { quoi: 'nouvelle' + (rows.filter(function(r){ return (r.status||'nouvelle') === 'nouvelle'; }).length > 1 ? 's' : ''),
+                  n: rows.filter(function(r){ return (r.status||'nouvelle') === 'nouvelle'; }).length },
+                { quoi: 'sans certificat médical',
+                  n: rows.filter(function(r){ return r.status === 'inscrite' && r.medical_recu === false; }).length }
+              ]
+            };
+          });
+      }
+    },
+    candidatures: {
+      nom: 'candidature', pluriel: 'candidatures', ecran: 'applications', module: 'recrutement',
+      lire: function(){
+        return sbGet('recruitment_requests?select=id,full_name,status,category&order=created_at.desc')
+          .then(function(rows){
+            rows = rows || [];
+            return {
+              n: rows.length,
+              items: rows.slice(0, 40).map(function(r){
+                return { nom: r.full_name || 'sans nom', sous: [r.category, r.status].filter(Boolean).join(' · ') };
+              }),
+              detail: [{ quoi: 'nouvelle' + (rows.filter(function(r){ return (r.status||'nouvelle')==='nouvelle'; }).length > 1 ? 's' : ''),
+                         n: rows.filter(function(r){ return (r.status||'nouvelle')==='nouvelle'; }).length }]
+            };
+          });
+      }
+    },
+    boutique: {
+      nom: 'commande', pluriel: 'commandes', ecran: 'orders2', module: 'boutique',
+      lire: function(){
+        return sbGet('orders?select=id,order_number,customer_name,status&order=created_at.desc')
+          .then(function(rows){
+            rows = rows || [];
+            var enCours = rows.filter(function(o){
+              var s = normalizeOrderStatus(o.status);
+              return s !== 'récupérée' && s !== 'annulée';
+            });
+            return {
+              n: rows.length,
+              items: rows.slice(0, 30).map(function(o){
+                return { nom: o.customer_name || o.order_number || 'commande', sous: o.status || '' };
+              }),
+              detail: [{ quoi: 'en cours', n: enCours.length }]
+            };
+          });
+      }
+    },
+    convocations: {
+      nom: 'convocation', pluriel: 'convocations', ecran: 'parcours', module: 'matchs',
+      lire: function(){
+        return sbGet('match_center?select=id,opponent_name&statut=in.(aujourdhui,a_venir)&order=match_date.asc&limit=1')
+          .then(function(ms){
+            var m = (ms || [])[0];
+            if (!m) return { n: 0, items: [], detail: [], note: 'Aucun match à venir.' };
+            return Promise.all([
+              sbGet('match_convocations?select=player_id,statut&match_id=eq.' + encodeURIComponent(m.id)),
+              sbGet('personnes?select=id,nom&genre=eq.joueuse')
+            ]).then(function(r){
+              var noms = {}; (r[1] || []).forEach(function(p){ noms[String(p.id)] = p.nom; });
+              var cv = r[0] || [];
+              var par = function(st){ return cv.filter(function(c){ return c.statut === st; }).length; };
+              return {
+                n: cv.length,
+                note: 'Pour Baobabs contre ' + (m.opponent_name || 'l’adversaire') + '.',
+                items: cv.map(function(c){
+                  return { id: c.player_id, genre: 'joueuse', nom: noms[String(c.player_id)] || 'joueuse', sous: c.statut };
+                }),
+                detail: [
+                  { quoi: 'en attente de réponse', n: par('convoquee') },
+                  { quoi: 'confirmée' + (par('confirmee') > 1 ? 's' : ''), n: par('confirmee') },
+                  { quoi: 'absente' + (par('absente') > 1 ? 's' : ''), n: par('absente') },
+                  { quoi: 'blessée' + (par('blessee') > 1 ? 's' : ''), n: par('blessee') }
+                ]
+              };
+            });
+          });
+      }
+    }
+  };
+
+  /* LE PROCHAIN MATCH, ET LE DERNIER RESULTAT. Deux questions si
+     frequentes qu'elles meritent leur propre reponse, plus courte qu'un
+     denombrement. */
+  function mayaProchainMatch(){
+    return sbGet('match_center?select=id,opponent_name,match_date,match_time,venue,is_home,statut' +
+                 '&statut=in.(aujourdhui,a_venir)&order=match_date.asc&limit=1')
+      .then(function(rows){
+        var m = (rows || [])[0];
+        if (!m) return null;
+        var j = daysUntil(m.match_date);
+        return {
+          id: m.id,
+          nom: 'Baobabs ' + (m.is_home ? 'contre ' : 'chez ') + (m.opponent_name || 'l’adversaire'),
+          quand: formatDateShort(m.match_date) + (m.match_time ? ' à ' + String(m.match_time).slice(0,5) : ''),
+          ou: m.venue || '',
+          jours: j
+        };
+      });
+  }
+  function mayaDernierResultat(){
+    return sbGet('match_center?select=opponent_name,match_date,score_baobabs,score_opponent,issue,is_home' +
+                 '&statut=eq.termine&order=match_date.desc&limit=1')
+      .then(function(rows){
+        var m = (rows || [])[0];
+        if (!m) return null;
+        return {
+          nom: 'Baobabs ' + (m.is_home ? 'contre ' : 'chez ') + (m.opponent_name || 'l’adversaire'),
+          score: (m.score_baobabs != null && m.score_opponent != null)
+                 ? m.score_baobabs + ' à ' + m.score_opponent : null,
+          issue: m.issue === 'V' ? 'victoire' : (m.issue === 'D' ? 'défaite' : (m.issue === 'N' ? 'match nul' : null)),
+          quand: formatDateShort(m.match_date)
+        };
+      });
+  }
+
+  /* Un sujet dont elle ne sait rien, ou qu'elle n'a pas le droit de
+     voir, rend null : dialogue.js le dit tel quel. Refuser par le
+     silence serait pire que refuser par une phrase. */
+  function mayaSavoir(cle){
+    var S = MAYA_SAVOIR[cle];
+    if (!S) return Promise.resolve(null);
+    if (S.module && !can(S.module, 'voir')) return Promise.resolve({ interdit: true });
+    return S.lire().then(function(d){
+      d.nom = S.nom; d.pluriel = S.pluriel; d.ecran = S.ecran;
+      return d;
+    }).catch(function(){ return { illisible: true }; });
+  }
+
   function mayaOutils(){
     return {
       aller: function(cle){ try { showSection(cle); } catch(e){} },
@@ -8789,7 +9011,10 @@
         if (typeof efOuvrir === 'function') setTimeout(function(){ try { efOuvrir(id); } catch(e){} }, 180);
       },
       preparerConvocation: mayaPreparerConvocation,
-      convoquer: mayaConvoquer
+      convoquer: mayaConvoquer,
+      savoir: mayaSavoir,
+      prochainMatch: mayaProchainMatch,
+      dernierResultat: mayaDernierResultat
     };
   }
 

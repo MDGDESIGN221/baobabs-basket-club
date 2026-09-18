@@ -72,7 +72,63 @@
      « ecrit » dit si l'intention modifie quelque chose. Celles qui
      ecrivent demandent confirmation, toujours, sans exception possible.
      ================================================================== */
+  /* ==================================================================
+     LES SUJETS : DE QUOI ON PARLE
+     ------------------------------------------------------------------
+     Repere independamment de l'intention, et c'est ce qui change tout.
+     « combien » tout seul ne veut rien dire ; « combien de joueuses »
+     est une question a laquelle elle peut repondre, parce que la donnee
+     est la. Et « combien font douze fois sept » ne parle d'aucun sujet
+     du club : elle doit le dire, pas inventer.
+
+     C'est aussi ce qui rend le refus utile. Quand elle ne comprend pas
+     l'intention mais reconnait le sujet, elle ne propose plus des
+     exemples au hasard : elle propose ce qu'elle sait dire SUR CE
+     SUJET-LA. Une question mal formulee sur l'effectif ramene donc
+     quand meme a l'effectif.
+     ================================================================== */
+  var SUJETS = [
+    { cle: 'effectif',    nom: 'l’effectif',
+      motif: /\b(effectif|joueuses?|licenciees?|equipe|groupe|filles)\b/ },
+    { cle: 'staff',       nom: 'le staff',
+      motif: /\b(staffs?|coachs?|entraineurs?|encadrement|dirigeants?|bureau|president)\b/ },
+    { cle: 'matchs',      nom: 'les matchs',
+      motif: /\b(matchs?|rencontres?|calendrier|adversaires?|championnat)\b/ },
+    { cle: 'convocations',nom: 'les convocations',
+      motif: /\b(convoc\w*|reponses?|presente|absente)\b/ },
+    { cle: 'ecole',       nom: 'l’école de basket',
+      motif: /\b(ecole|academie|inscriptions?|inscrits?|enfants?|eleves?)\b/ },
+    { cle: 'boutique',    nom: 'la boutique',
+      motif: /\b(boutique|commandes?|produits?|stocks?|articles a vendre)\b/ },
+    { cle: 'billetterie', nom: 'la billetterie',
+      motif: /\b(billets?|billetterie|places?|reservations?|guichet)\b/ },
+    { cle: 'caisse',      nom: 'la caisse',
+      motif: /\b(caisse|argent|budget|recettes?|depenses?|tresorerie|cotisations?)\b/ },
+    { cle: 'comptes',     nom: 'les comptes',
+      motif: /\b(comptes?|acces|casquettes?|roles?|utilisateurs?)\b/ },
+    { cle: 'candidatures',nom: 'les candidatures',
+      motif: /\b(candidatures?|candidates?|recrutement|essais?)\b/ }
+  ];
+
+  function sujet(texte) {
+    var t = plat(texte);
+    for (var i = 0; i < SUJETS.length; i++) if (SUJETS[i].motif.test(t)) return SUJETS[i];
+    return null;
+  }
+
   var INTENTIONS = [
+    /* ON DIT BONJOUR. Repondre « je ne comprends pas cette demande » a
+       quelqu'un qui vous salue est froid et bete, et c'est la premiere
+       chose que fait n'importe qui en ouvrant une fenetre de dialogue.
+       Ce n'est pas de la decoration : la premiere phrase decide si l'on
+       en tape une deuxieme. */
+    { cle: 'politesse', ecrit: false,
+      motifs: [/^(bonjour|bonsoir|salut|coucou|hello|hey|yo|bjr|slt)\b/,
+               /^(ca va|comment vas tu|comment ca va)\b/,
+               /^(merci|merci beaucoup|nickel|parfait|super|ok merci)\b/,
+               /^(au revoir|a bientot|bonne journee|bonne soiree|bye)\b/],
+      exemple: 'bonjour' },
+
     { cle: 'aide', ecrit: false,
       motifs: [/\b(aide|help)\b/, /que (sais|peux) tu (faire)?/, /comment (ca|tu) march/,
                /qu est ce que tu sais/, /tes? (commandes|possibilites)/],
@@ -107,6 +163,32 @@
     { cle: 'convoquer', ecrit: true,
       motifs: [/\bconvoq/, /\bconvocation/, /\bappeler? les joueuses\b/],
       exemple: 'prepare la convocation du prochain match' },
+
+    /* LES QUATRE QUESTIONS QU'ON POSE A QUELQU'UN QUI CONNAIT LA MAISON.
+       Elles exigent toutes un sujet : sans lui, « combien » ou « qui
+       sont » ne parlent pas du club, et repondre serait inventer. C'est
+       ce garde qui fait que « combien font douze fois sept » reste sans
+       reponse, sans qu'on ait eu a prevoir le calcul mental. */
+    { cle: 'resultat', ecrit: false, exigeSujet: false,
+      motifs: [/\bresultat/, /\bscore\b/, /\bon a (gagne|perdu)\b/,
+               /\bdernier match\b/, /\bderniere rencontre\b/],
+      exemple: 'quel est le dernier résultat' },
+
+    { cle: 'quand', ecrit: false, exigeSujet: false,
+      motifs: [/\bquand\b/, /\bprochain\w* (match|rencontre)\b/, /\bmatch \w* ?a venir\b/,
+               /\bon joue\b/, /\bcontre qui\b/, /\ba quelle heure\b/,
+               /\bquel match\b/, /\bmatchs? a venir\b/, /\bprochainement\b/],
+      exemple: 'c’est quand le prochain match' },
+
+    { cle: 'combien', ecrit: false, exigeSujet: true,
+      motifs: [/\bcombien\b/, /\bnombre\b/, /\bcombien de\b/, /\beffectif du club\b/,
+               /\bon est combien\b/, /\bquel est l effectif\b/],
+      exemple: 'combien de joueuses' },
+
+    { cle: 'liste', ecrit: false, exigeSujet: true,
+      motifs: [/\bliste\b/, /\bqui sont\b/, /\bquelles sont\b/, /\bdonne moi les\b/,
+               /\benumere\b/, /\blesquelles\b/],
+      exemple: 'qui sont les joueuses' },
 
     { cle: 'qui', ecrit: false,
       motifs: [/\bqui est\b/, /\btrouve /, /\bcherche /, /\bfiche de\b/, /\bprofil de\b/,
@@ -226,8 +308,18 @@
     };
     if (!t) return res;
 
+    /* DE QUOI ON PARLE, AVANT DE SAVOIR CE QU'ON VEUT. Le sujet sert
+       deux fois : il autorise les questions qui l'exigent, et il rend
+       utile le refus quand rien ne repond. */
+    var suj = sujet(texte);
+    if (suj) res.sujet = suj;
+
     for (var i = 0; i < INTENTIONS.length; i++) {
       var I = INTENTIONS[i];
+      // « combien » sans sujet du club ne parle pas du club : « combien
+      // font douze fois sept » doit rester sans reponse, et ce garde
+      // suffit -- on n'a pas eu besoin de prevoir le calcul mental.
+      if (I.exigeSujet && !suj) continue;
       for (var j = 0; j < I.motifs.length; j++) {
         if (I.motifs[j].test(t)) { res.intention = I.cle; res.ecrit = I.ecrit; break; }
       }
@@ -254,8 +346,33 @@
     /* UN NOM D'ECRAN SEUL EST UNE NAVIGATION, meme regle. */
     if (!res.intention && res.entites.ecran && res.mots.length <= 3) res.intention = 'aller';
 
+    /* UN SUJET SEUL EST UNE QUESTION SUR CE SUJET. « les joueuses », « la
+       caisse » : pas de verbe, mais aucune ambiguite sur ce qu'on veut
+       savoir. On repond par le denombrement, qui est la reponse la plus
+       courte et la plus souvent juste. */
+    if (!res.intention && suj && res.mots.length <= 2) res.intention = 'combien';
+
+    /* ==================================================================
+       LA REGLE QUI CHANGE TOUT : UN SUJET RECONNU VAUT UNE REPONSE.
+       ------------------------------------------------------------------
+       Le premier jet exigeait qu'une tournure soit prevue, et repondait
+       « je ne comprends pas cette demande » a « quel match est a venir ».
+       Ajouter un motif par question etait sans fin, et perdu d'avance :
+       on ne devine pas comment les gens parlent.
+
+       Donc : si l'on sait DE QUOI on parle, on repond sur ce sujet, meme
+       sans avoir compris la tournure. « quel match est a venir », « les
+       matchs ca donne quoi », « alors ces matchs » ramenent tous ce
+       qu'elle sait des matchs. C'est ce que ferait quelqu'un qui connait
+       la maison et qui n'a pas bien entendu la question.
+
+       « Je ne comprends pas » ne sort plus que lorsque RIEN n'est
+       reconnu, ni intention ni sujet. Et la, c'est vrai.
+       ================================================================== */
+    if (!res.intention && suj) res.intention = 'sujet';
+
     if (!res.intention) {
-      res.exemples = INTENTIONS.filter(function (I) { return I.cle !== 'aide'; })
+      res.exemples = INTENTIONS.filter(function (I) { return I.cle !== 'aide' && I.cle !== 'politesse'; })
                                .map(function (I) { return I.exemple; });
     }
     return res;
