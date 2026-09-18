@@ -4884,6 +4884,14 @@
                dont chaque clic serait refuse serait pire que pas de
                bouton du tout. Ce hidden ne PROTEGE rien -- il decide
                seulement de ce qu'on voit. -->
+          <!-- MAYA. Le bouton porte SON VISAGE, pas une icone de robot ni
+               une bulle de dialogue : c'est la seule chose qui la rend
+               reconnaissable avant qu'elle ait dit un mot, et c'est le
+               meme visage que sur ses cartes. -->
+          <button type="button" class="link-btn" id="maya-appel" title="Demander a MAYA">
+            <span id="maya-appel-face"></span>
+            <span class="hide-sm">MAYA</span>
+          </button>
           <button type="button" class="link-btn" id="greffe-open" title="Le Greffe : actes officiels du club" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/><path d="M8.5 13h7"/><path d="M8.5 16.5h4.5"/></svg>
             <span class="hide-sm">Greffe</span>
@@ -8617,15 +8625,31 @@
     };
   }
 
-  function mayaCharger(){
-    if (window.BaobabsMaya) return Promise.resolve();
+  function mayaScript(src){
     return new Promise(function(res, rej){
       var sc = document.createElement('script');
-      sc.src = '/maya/maya.js';
-      sc.onload = function(){ window.BaobabsMaya ? res() : rej(new Error('global absent')); };
-      sc.onerror = function(){ rej(new Error('script')); };
+      sc.src = src;
+      sc.onload = res;
+      sc.onerror = function(){ rej(new Error(src)); };
       document.head.appendChild(sc);
     });
+  }
+  /* TROIS FICHIERS, DANS CET ORDRE, ET IL COMPTE : comprendre.js et
+     dialogue.js se posent sur le noyau et le verifient a leur premiere
+     ligne. La feuille de style part en meme temps, sans qu'on l'attende :
+     le panneau n'est pas ouvert a cette seconde. */
+  function mayaCharger(){
+    if (window.BaobabsMaya && window.BaobabsMaya.dialogue) return Promise.resolve();
+    if (!document.getElementById('maya-css')){
+      var l = document.createElement('link');
+      l.id = 'maya-css'; l.rel = 'stylesheet'; l.href = '/maya/maya.css';
+      document.head.appendChild(l);
+    }
+    var debut = window.BaobabsMaya ? Promise.resolve() : mayaScript('/maya/maya.js');
+    return debut.then(function(){
+      if (!window.BaobabsMaya) throw new Error('global absent');
+      return mayaScript('/maya/comprendre.js');
+    }).then(function(){ return mayaScript('/maya/dialogue.js'); });
   }
 
   /* Ne rejette JAMAIS : l'appelant enchaine sur attCollecte dans tous
@@ -8673,6 +8697,143 @@
      encore etre inconnu a cette seconde. */
   mayaMonter();
 
+  /* ==================================================================
+     CE QUE MAYA SAIT FAIRE, ET PAR OU ELLE PASSE
+     ------------------------------------------------------------------
+     Elle n'atteint pas la base directement : tout ce qu'elle sait faire
+     est une fonction de cette page, qui passe par les memes controles
+     que les ecrans. C'est le point 8 du cahier des charges, et c'est ce
+     qui rend vrai « MAYA respecte exactement les permissions » : elle ne
+     peut pas contourner ce qu'elle n'atteint pas.
+
+     Ajouter une capacite, c'est ajouter une entree ici. Rien dans
+     /maya/ ne connait un nom de table.
+     ================================================================== */
+  var mayaPersonnes = [];
+
+  /* La liste des ecrans que CETTE personne peut ouvrir. Filtree par
+     canSection : MAYA ne doit pas proposer une porte qui se refermera. */
+  function mayaEcrans(){
+    var out = [];
+    Object.keys(SECTION_META).forEach(function(cle){
+      if (!canSection(cle)) return;
+      var m = SECTION_META[cle];
+      if (m && m.t) out.push({ cle: cle, titre: m.t });
+    });
+    return out;
+  }
+
+  /* LE PROCHAIN MATCH, LES ACTIVES, ET CE QUI RESTE A CONVOQUER.
+     Elle ne convoque pas « tout le monde » : une joueuse blessee, partie
+     ou en pret n'a rien a faire dans une convocation, et une joueuse
+     deja convoquee ne doit pas l'etre deux fois (la base l'interdit, mais
+     une erreur annoncee vaut mieux qu'une erreur evitee en silence).
+     Les ecartees sont NOMMEES dans la confirmation : on doit pouvoir
+     dire « non, Awa est remise, prends-la ». */
+  function mayaPreparerConvocation(dateISO){
+    var q = 'match_center?select=id,opponent_name,match_date,match_time,venue,is_home,statut' +
+            '&statut=in.(aujourdhui,a_venir)&order=match_date.asc&limit=10';
+    return sbGet(q).then(function(rows){
+      rows = rows || [];
+      var m = dateISO ? rows.filter(function(x){ return x.match_date === dateISO; })[0] : rows[0];
+      if (!m) return { match: null };
+      return Promise.all([
+        sbGet('players?select=id,name,status,fiche_etat&order=sort.asc&limit=200'),
+        sbGet('match_convocations?select=player_id&match_id=eq.' + encodeURIComponent(m.id))
+      ]).then(function(r){
+        var deja = {};
+        (r[1] || []).forEach(function(c){ deja[String(c.player_id)] = 1; });
+        var aConvoquer = [], ecartees = [];
+        (r[0] || []).forEach(function(p){
+          if (deja[String(p.id)]) return;
+          var dispo = (p.status || 'active') === 'active';
+          var dossier = ['publiee','validee'].indexOf(p.fiche_etat || 'publiee') >= 0;
+          if (dispo && dossier) aConvoquer.push({ id: p.id, nom: p.name });
+          else ecartees.push(p.name);
+        });
+        return {
+          match: {
+            id: m.id,
+            nom: 'Baobabs ' + (m.is_home ? 'contre ' : 'chez ') + (m.opponent_name || 'l’adversaire'),
+            quand: formatDateShort(m.match_date) + (m.match_time ? ' à ' + String(m.match_time).slice(0,5) : '') +
+                   (m.venue ? ' · ' + m.venue : '')
+          },
+          aConvoquer: aConvoquer,
+          dejaConvoquees: Object.keys(deja).length,
+          ecartees: ecartees
+        };
+      });
+    });
+  }
+
+  /* L'ECRITURE. Elle passe par sbInsert, donc par le journal d'audit et
+     par l'annulation : une convocation lancee par MAYA se defait comme
+     une convocation posee a la main, au meme endroit. */
+  function mayaConvoquer(matchId, ids){
+    if (!matchId || !ids || !ids.length) return Promise.resolve(0);
+    var corps = ids.map(function(pid){
+      return { match_id: matchId, player_id: pid, statut: 'convoquee' };
+    });
+    return sbInsert('match_convocations', corps, 'Le match').then(function(){
+      if (typeof pcCharger === 'function' && pcSel === matchId) { try { pcCharger(); } catch(e){} }
+      return ids.length;
+    });
+  }
+
+  function mayaOutils(){
+    return {
+      aller: function(cle){ try { showSection(cle); } catch(e){} },
+      ouvrirPersonne: function(genre, id){
+        if (genre === 'staff'){ showSection('staff'); return; }
+        showSection('squad');
+        if (typeof efOuvrir === 'function') setTimeout(function(){ try { efOuvrir(id); } catch(e){} }, 180);
+      },
+      preparerConvocation: mayaPreparerConvocation,
+      convoquer: mayaConvoquer
+    };
+  }
+
+  /* L'OUVERTURE DU PANNEAU. Les personnes sont chargees AVANT, parce que
+     l'analyse est synchrone : reconnaitre « Marieme » dans une phrase,
+     c'est chercher dans une liste, et la liste doit etre la. Deux cents
+     millisecondes a l'ouverture valent mieux qu'un « je ne trouve
+     personne de ce nom » qui serait faux. */
+  var mayaDialoguePret = false;
+  function mayaParler(question){
+    return mayaMonter().then(function(ok){
+      if (!ok || !window.BaobabsMaya || !window.BaobabsMaya.dialogue){
+        qgToast('MAYA n’a pas pu se charger', true);
+        return;
+      }
+      var M = window.BaobabsMaya;
+      return M.personnes().then(function(rows){ mayaPersonnes = rows || []; })
+        .catch(function(){ mayaPersonnes = []; })
+        .then(function(){
+          if (!mayaDialoguePret){
+            M.dialogue.monter({
+              visage: suiteVisage,
+              outils: mayaOutils(),
+              personnes: function(){ return mayaPersonnes; },
+              ecrans: mayaEcrans,
+              ecranCourant: function(){
+                var s = document.querySelector('section[id^="section-"]:not(.hide)');
+                return s ? s.id.replace(/^section-/, '') : null;
+              },
+              titreEcran: function(cle){
+                return (SECTION_META[cle] && SECTION_META[cle].t) || cle || '';
+              },
+              prenom: function(){
+                var n = (typeof cpNom === 'function' && cpMoi) ? cpNom(cpMoi()) : '';
+                return n && n.indexOf('@') < 0 ? String(n).split(' ')[0] : '';
+              }
+            });
+            mayaDialoguePret = true;
+          }
+          M.dialogue.ouvrir(question || null);
+        });
+    });
+  }
+
   function greffeBoutonHtml(attrs, libelle){
     return greffeAutorise() ? '<button type="button" ' + attrs + ' title="Un acte du Greffe, deja rempli avec ces donnees">' + libelle + '</button>' : '';
   }
@@ -8698,6 +8859,17 @@
   }
 
   document.getElementById('greffe-open').addEventListener('click', greffeOuvrir);
+
+  /* LE BOUTON D'APPEL. Son visage est dessine ici et non dans le HTML :
+     suiteVisage est la source unique du trait, et deux dessins du meme
+     visage finiraient par diverger a la premiere retouche. */
+  (function(){
+    var b = document.getElementById('maya-appel');
+    if (!b) return;
+    var f = document.getElementById('maya-appel-face');
+    if (f) f.innerHTML = suiteVisage(false);
+    b.addEventListener('click', function(){ mayaParler(); });
+  })();
 
   imgpDemarrer();
 

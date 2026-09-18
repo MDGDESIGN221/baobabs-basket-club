@@ -1,0 +1,143 @@
+/* =====================================================================
+   MAYA : le panneau de dialogue
+   ---------------------------------------------------------------------
+   Il se colle au bord droit plutot que de s'ouvrir au milieu : on lui
+   parle EN TRAVAILLANT, l'ecran doit rester lisible derriere. Une boite
+   modale au centre aurait dit « arrete tout et occupe-toi de moi »,
+   c'est-a-dire exactement le contraire de ce qu'on cherche.
+
+   Les couleurs viennent de :root de l'administration. Aucune valeur en
+   dur ici, sauf les deux ombres : elles n'ont pas de jeton.
+   ===================================================================== */
+
+#maya-panneau{
+  position:fixed; top:0; right:0; bottom:0; z-index:640;
+  width:min(420px, 100vw);
+  display:flex; flex-direction:column;
+  background:var(--surface, #0F1E15);
+  border-left:1px solid var(--line-strong, rgba(243,239,230,.18));
+  box-shadow:-24px 0 60px -20px rgba(0,0,0,.7);
+  transform:translateX(100%);
+  transition:transform .34s cubic-bezier(.2,.9,.28,1);
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+#maya-panneau.ouvert{ transform:none }
+@media (prefers-reduced-motion: reduce){
+  #maya-panneau{ transition:none }
+}
+@media (max-width:520px){
+  #maya-panneau{ width:100vw; border-left:none }
+}
+
+/* --- l'en-tete : son visage, son nom, la fermeture --- */
+.maya-tete{
+  display:flex; align-items:center; gap:11px;
+  padding:14px 14px 12px; border-bottom:1px solid var(--line, rgba(243,239,230,.1));
+  flex:none;
+}
+.maya-tete .su-face{ width:40px; height:40px; flex:none }
+.maya-tete b{
+  display:block; font-family:var(--font-ui, sans-serif); font-weight:700;
+  font-size:14px; color:var(--text, #F3EFE6); line-height:1.2; letter-spacing:.01em;
+}
+.maya-tete s{
+  display:block; text-decoration:none; font-size:11px; color:var(--faint, #7E8A82);
+  margin-top:1px;
+}
+.maya-tete .maya-x{
+  margin-left:auto; flex:none; width:30px; height:30px; border-radius:50%;
+  border:none; background:transparent; color:var(--faint, #7E8A82);
+  cursor:pointer; font-size:19px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+}
+.maya-tete .maya-x:hover{ background:rgba(243,239,230,.08); color:var(--text, #F3EFE6) }
+
+/* --- le fil : ce qu'on s'est dit --- */
+.maya-fil{
+  flex:1; min-height:0; overflow-y:auto; padding:16px 14px 8px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.maya-moi{
+  align-self:flex-end; max-width:86%;
+  background:var(--gold, #A8D93B); color:#0A1B0D;
+  font-size:13.5px; line-height:1.45; padding:8px 13px;
+  border-radius:14px 14px 4px 14px; font-weight:500;
+}
+.maya-elle{ align-self:flex-start; max-width:94%; font-size:13.5px; line-height:1.55; color:var(--text, #F3EFE6) }
+.maya-elle p{ margin:0 0 7px }
+.maya-elle p:last-child{ margin-bottom:0 }
+.maya-elle b{ font-weight:600 }
+.maya-elle .doux{ color:var(--faint, #7E8A82); font-size:12.5px }
+
+/* Une liste de faits, dans le fil. Pas des cartes : une barre de niveau
+   a gauche suffit a hierarchiser, et six cartes empilees dans 400 px de
+   large ne se lisent plus. */
+.maya-faits{ display:flex; flex-direction:column; gap:1px; margin:8px 0 2px }
+.maya-fait{
+  display:block; width:100%; text-align:left; font:inherit; cursor:pointer;
+  background:var(--surface-2, #12241A); border:none;
+  border-left:3px solid var(--line-strong, rgba(243,239,230,.18));
+  padding:9px 12px; transition:background .15s;
+}
+.maya-fait:hover{ background:rgba(243,239,230,.06) }
+.maya-fait.urgent{ border-left-color:var(--danger, #E5564A) }
+.maya-fait.important{ border-left-color:var(--gold, #A8D93B) }
+.maya-fait b{ display:block; font-size:12.8px; font-weight:600; line-height:1.35 }
+.maya-fait s{ display:block; text-decoration:none; font-size:11.5px; color:var(--faint, #7E8A82); margin-top:2px; line-height:1.4 }
+
+/* Une personne trouvee : sa photo, son etat. */
+.maya-pers{ display:flex; align-items:center; gap:11px; background:var(--surface-2, #12241A);
+  padding:10px 12px; width:100%; text-align:left; font:inherit; cursor:pointer; border:none }
+.maya-pers:hover{ background:rgba(243,239,230,.06) }
+.maya-pers img,.maya-pers .rond{ width:38px; height:38px; border-radius:50%; object-fit:cover; flex:none;
+  background:var(--surface, #0F1E15); display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-ui, sans-serif); font-weight:700; font-size:13px; color:var(--faint, #7E8A82) }
+.maya-pers b{ display:block; font-size:13px; font-weight:600 }
+.maya-pers s{ display:block; text-decoration:none; font-size:11.5px; color:var(--faint, #7E8A82); margin-top:1px }
+
+/* Ce qu'elle propose ensuite : des phrases a taper, mais cliquables. */
+.maya-pistes{ display:flex; flex-wrap:wrap; gap:6px; margin-top:9px }
+.maya-piste{
+  font:inherit; font-size:11.5px; padding:5px 11px; border-radius:var(--r-full, 999px);
+  cursor:pointer; background:transparent; color:var(--muted, #B9C2BB);
+  border:1px solid var(--line-strong, rgba(243,239,230,.18)); transition:.15s;
+}
+.maya-piste:hover{ border-color:var(--gold, #A8D93B); color:var(--text, #F3EFE6) }
+
+/* La confirmation d'une action qui ECRIT. Encadree, et jamais pre-cochee. */
+.maya-conf{
+  border:1px solid var(--gold, #A8D93B); border-radius:var(--r-md, 14px);
+  background:rgba(168,217,59,.07); padding:12px 13px; margin-top:8px;
+}
+.maya-conf b{ display:block; font-size:13px; font-weight:600; margin-bottom:5px }
+.maya-conf ul{ margin:6px 0 10px; padding-left:17px; font-size:12.5px; color:var(--muted, #B9C2BB) }
+.maya-conf li{ margin-bottom:2px }
+.maya-conf-b{ display:flex; gap:7px }
+.maya-conf-b button{ font:inherit; font-size:12.5px; padding:7px 14px; border-radius:var(--r-sm, 8px); cursor:pointer }
+.maya-oui{ background:var(--gold, #A8D93B); border:none; color:#0A1B0D; font-weight:600 }
+.maya-non{ background:transparent; border:1px solid var(--line-strong, rgba(243,239,230,.18)); color:var(--muted, #B9C2BB) }
+
+/* --- la barre de saisie --- */
+.maya-bas{
+  flex:none; border-top:1px solid var(--line, rgba(243,239,230,.1));
+  padding:11px 12px 12px; display:flex; gap:8px; align-items:flex-end;
+}
+.maya-bas textarea{
+  flex:1; font:inherit; font-size:13.5px; line-height:1.45; resize:none;
+  min-height:38px; max-height:120px; padding:9px 12px;
+  border-radius:var(--r-md, 14px); border:1px solid var(--line-strong, rgba(243,239,230,.18));
+  background:var(--bg, #0A120D); color:var(--text, #F3EFE6);
+}
+.maya-bas textarea:focus{ outline:none; border-color:var(--gold, #A8D93B) }
+.maya-bas textarea::placeholder{ color:var(--faint, #7E8A82) }
+.maya-envoi{
+  flex:none; width:38px; height:38px; border-radius:50%; border:none; cursor:pointer;
+  background:var(--gold, #A8D93B); color:#0A1B0D;
+  display:flex; align-items:center; justify-content:center;
+}
+.maya-envoi:disabled{ opacity:.35; cursor:default }
+.maya-envoi svg{ width:17px; height:17px }
+
+/* Le bouton d'appel, dans la barre du haut. Il porte son visage : c'est
+   la seule chose qui la rend reconnaissable avant qu'elle ait parle. */
+#maya-appel .su-face{ width:22px; height:22px; margin:-3px 0 }
