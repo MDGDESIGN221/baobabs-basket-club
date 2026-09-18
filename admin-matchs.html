@@ -9237,6 +9237,86 @@
     };
   }
 
+  /* ==================================================================
+     LA CONVOCATION NE S'ARRETE PAS A UN CONSTAT
+     ------------------------------------------------------------------
+     « Tout le monde est deja convoque : 17 joueuses. » suivi de rien.
+     C'etait vrai, c'etait inutile, et c'est le reproche le plus juste
+     qu'on m'ait fait : une assistante qui constate et s'arrete ne sert
+     a rien. Ce qu'on veut savoir a ce moment-la, c'est QUI A REPONDU,
+     qui manque, et ce qu'on peut faire ensuite.
+
+     Cet outil rend donc tout l'etat de la convocation, quelle que soit
+     l'etape ou l'on est : celles a convoquer s'il en reste, et sinon
+     les reponses, nom par nom. Le dialogue n'a plus a deviner ce qui
+     est pertinent, il l'a sous la main.
+     ================================================================== */
+  function mayaEtatConvocation(dateISO){
+    var q = 'match_center?select=id,opponent_name,match_date,match_time,venue,is_home,statut,competition,round_label,rdv_heure,rdv_lieu,consignes' +
+            '&statut=in.(aujourdhui,a_venir)&order=match_date.asc&limit=10';
+    return sbGet(q).then(function(rows){
+      rows = rows || [];
+      var m = dateISO ? rows.filter(function(x){ return x.match_date === dateISO; })[0] : rows[0];
+      if (!m) return { match: null };
+      return Promise.all([
+        sbGet('players?select=id,name,status,fiche_etat,jersey_number,position&order=sort.asc&limit=200'),
+        sbGet('match_convocations?select=player_id,statut&match_id=eq.' + encodeURIComponent(m.id))
+      ]).then(function(r){
+        var joueuses = r[0] || [], conv = r[1] || [];
+        var parId = {}; joueuses.forEach(function(p){ parId[String(p.id)] = p; });
+        var deja = {}; conv.forEach(function(c){ deja[String(c.player_id)] = c.statut; });
+
+        var aConvoquer = [], ecartees = [];
+        joueuses.forEach(function(p){
+          if (deja[String(p.id)]) return;
+          var dispo = (p.status || 'active') === 'active';
+          var dossier = ['publiee','validee'].indexOf(p.fiche_etat || 'publiee') >= 0;
+          if (dispo && dossier) aConvoquer.push({ id: p.id, nom: p.name });
+          else ecartees.push(p.name);
+        });
+
+        // Les reponses, par statut, avec les noms : c'est ce qui manquait.
+        var par = { convoquee: [], confirmee: [], absente: [], blessee: [] };
+        conv.forEach(function(c){
+          var p = parId[String(c.player_id)];
+          (par[c.statut] || (par[c.statut] = [])).push(p ? p.name : 'joueuse');
+        });
+
+        return {
+          match: {
+            id: m.id,
+            nom: 'Baobabs ' + (m.is_home ? 'contre ' : 'chez ') + (m.opponent_name || 'l’adversaire'),
+            quand: formatDateShort(m.match_date) + (m.match_time ? ' à ' + String(m.match_time).slice(0,5) : '') +
+                   (m.venue ? ' · ' + m.venue : ''),
+            jours: daysUntil(m.match_date)
+          },
+          aConvoquer: aConvoquer,
+          ecartees: ecartees,
+          convoquees: conv.length,
+          // Le detail nomme : sans lui, « 3 sans reponse » oblige a ouvrir
+          // un ecran pour savoir lesquelles, et c'est ce qu'on voulait eviter.
+          sansReponse: par.convoquee,
+          confirmees: par.confirmee,
+          absentes: par.absente,
+          blessees: par.blessee,
+          // Ce qu'il faut a pcGreffeConvocation, pour ne pas relire.
+          _pour_greffe: { m: m, joueuses: joueuses, conv: conv }
+        };
+      });
+    });
+  }
+
+  /* LE DOCUMENT OFFICIEL. Il existe deja, il est ecrit, il est rempli
+     avec le match, le rendez-vous, les consignes et la liste : MAYA ne
+     le refait pas, elle l'appelle. Un second generateur aurait diverge
+     du premier des la premiere retouche. */
+  function mayaDocumentConvocation(d){
+    if (!d || !d._pour_greffe) return false;
+    if (typeof greffeAutorise === 'function' && !greffeAutorise()) return 'casquette';
+    try { pcGreffeConvocation(d._pour_greffe); return true; }
+    catch(e){ return false; }
+  }
+
   function mayaOutils(){
     return {
       aller: function(cle){ try { showSection(cle); } catch(e){} },
@@ -9245,7 +9325,8 @@
         showSection('squad');
         if (typeof efOuvrir === 'function') setTimeout(function(){ try { efOuvrir(id); } catch(e){} }, 180);
       },
-      preparerConvocation: mayaPreparerConvocation,
+      preparerConvocation: mayaEtatConvocation,
+      documentConvocation: mayaDocumentConvocation,
       convoquer: mayaConvoquer,
       savoir: mayaSavoir,
       piecesDe: mayaPiecesDe,

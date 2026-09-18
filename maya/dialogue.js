@@ -493,68 +493,129 @@
   }
 
   /* ------------------------------------------------------------------
-     La seule action qui ECRIT pour l'instant. Elle prepare, elle montre
-     exactement ce qui va etre fait, et elle attend. Le bouton n'est
-     jamais pre-selectionne, et « oui » tape a la main marche aussi.
+     LA CONVOCATION, A N'IMPORTE QUELLE ETAPE
+     ------------------------------------------------------------------
+     Elle repondait « tout le monde est deja convoque : 17 joueuses »
+     et s'arretait la. Vrai, et inutile : a ce moment-la, ce qu'on veut
+     savoir c'est qui a repondu, qui manque, et ce qu'on peut faire.
+
+     AUCUNE REPONSE NE DOIT ETRE UN CUL-DE-SAC. C'est la regle que ce
+     bloc applique, et qu'il faudra tenir partout : apres un constat,
+     toujours ce qu'on peut faire ensuite, et de preference en un clic.
      ------------------------------------------------------------------ */
+  function nomsCourts(liste, max) {
+    var m = max || 6;
+    var vus = liste.slice(0, m).map(esc).join(', ');
+    return liste.length > m ? vus + ' et ' + (liste.length - m) + ' autres' : vus;
+  }
+
   function rConvoquer(r) {
     var prep = outil('preparerConvocation');
     if (!prep) return elle('<p>Je ne sais pas encore préparer une convocation depuis ici.</p>');
-    elle('<p>Je regarde…</p>');
+    penser();
     return prep(r.entites.date || null).then(function (d) {
       if (!d || !d.match) {
         return elle('<p>Je ne trouve pas de match à venir' +
-          (r.entites.date ? ' à cette date' : '') + '.</p>');
+          (r.entites.date ? ' à cette date' : '') + '.</p>' + pistesEcran('matches2'));
       }
-      if (!d.aConvoquer || !d.aConvoquer.length) {
-        return elle('<p>Pour <b>' + esc(d.match.nom) + '</b>, tout le monde est déjà convoqué : ' +
-          d.dejaConvoquees + ' joueuse' + (d.dejaConvoquees > 1 ? 's' : '') + '.</p>' +
-          pistes(['ouvre le match']));
+
+      /* ETAPE 1 : il reste des joueuses a convoquer. On prepare, on
+         montre, on attend -- inchange, c'est la partie qui marchait. */
+      if (d.aConvoquer && d.aConvoquer.length) return confirmerConvocation(d);
+
+      /* ETAPE 2 : tout le monde est convoque. C'est ICI que la reponse
+         etait un cul-de-sac. */
+      var h = '<p>Pour <b>' + esc(d.match.nom) + '</b>, ' + d.convoquees +
+              ' joueuse' + (d.convoquees > 1 ? 's' : '') + ' convoquée' +
+              (d.convoquees > 1 ? 's' : '') + '.</p>';
+      h += '<p class="doux">' + esc(d.match.quand) +
+           (d.match.jours === 0 ? ' · c’est aujourd’hui'
+            : d.match.jours === 1 ? ' · c’est demain'
+            : d.match.jours > 0 ? ' · dans ' + d.match.jours + ' jours' : '') + '</p>';
+
+      var lignes = [];
+      if (d.confirmees.length)
+        lignes.push({ n: d.confirmees.length, quoi: 'ont confirmé', qui: d.confirmees, cls: '' });
+      if (d.sansReponse.length)
+        lignes.push({ n: d.sansReponse.length, quoi: 'n’ont pas encore répondu', qui: d.sansReponse, cls: 'important' });
+      if (d.absentes.length)
+        lignes.push({ n: d.absentes.length, quoi: 'seront absentes', qui: d.absentes, cls: 'urgent' });
+      if (d.blessees.length)
+        lignes.push({ n: d.blessees.length, quoi: 'sont blessées', qui: d.blessees, cls: 'urgent' });
+
+      if (lignes.length) {
+        h += '<div class="maya-faits">' + lignes.map(function (l) {
+          return '<div class="maya-fait ' + l.cls + '"><b>' + l.n + ' ' + l.quoi + '</b>' +
+                 '<s>' + nomsCourts(l.qui) + '</s></div>';
+        }).join('') + '</div>';
       }
-      var h = '<div class="maya-conf"><b>' + esc(d.match.nom) + '</b>' +
-        '<p class="doux">' + esc(d.match.quand) + '</p>' +
-        '<p>Je convoque ' + d.aConvoquer.length + ' joueuse' + (d.aConvoquer.length > 1 ? 's' : '') +
-        (d.dejaConvoquees ? ' (en plus des ' + d.dejaConvoquees + ' déjà convoquées)' : '') + ' :</p>' +
-        '<ul>' + d.aConvoquer.slice(0, 20).map(function (j) { return '<li>' + esc(j.nom) + '</li>'; }).join('') +
-        (d.aConvoquer.length > 20 ? '<li>et ' + (d.aConvoquer.length - 20) + ' autres</li>' : '') + '</ul>' +
-        (d.ecartees && d.ecartees.length
-          ? '<p class="doux">J’écarte ' + d.ecartees.map(function (x) { return esc(x); }).join(', ') +
-            ' : elles ne sont pas actives.</p>' : '') +
-        '<div class="maya-conf-b">' +
-          '<button type="button" class="maya-oui" id="maya-oui">Convoquer</button>' +
-          '<button type="button" class="maya-non" id="maya-non">Non, laisse</button>' +
-        '</div></div>';
-      var d2 = elle(h);
-      function faire() {
-        attente = null;
-        var ex = outil('convoquer');
-        if (!ex) return elle('<p>Je ne peux pas écrire cette convocation d’ici.</p>');
-        elle('<p>J’enregistre…</p>');
-        ex(d.match.id, d.aConvoquer.map(function (j) { return j.id; })).then(function (n) {
-          M.perimer();
-          elle('<p>C’est fait : ' + n + ' joueuse' + (n > 1 ? 's' : '') + ' convoquée' +
-            (n > 1 ? 's' : '') + ' pour <b>' + esc(d.match.nom) + '</b>.</p>' +
-            '<p class="doux">Les réponses arriveront dans l’écran Le match.</p>' +
-            pistes(['ouvre le match']));
-        }).catch(function (e) {
-          elle('<p>L’enregistrement a échoué : ' + esc((e && e.message) || 'raison inconnue') +
-               '. Rien n’a été convoqué.</p>');
-        });
+
+      /* ET CE QU'ON PEUT FAIRE. Le document officiel existe deja dans le
+         Greffe, rempli avec le match et la liste : on le propose la ou
+         la question se pose, pas dans un autre ecran. */
+      var doc = outil('documentConvocation');
+      var boutons = '';
+      if (doc) {
+        boutons = '<div class="maya-pistes">' +
+          '<button type="button" class="maya-piste" id="maya-doc-conv">' +
+          'écrire la convocation officielle</button></div>';
       }
-      d2.querySelector('#maya-oui').addEventListener('click', faire);
-      d2.querySelector('#maya-non').addEventListener('click', function () {
-        attente = null;
-        elle('<p>Très bien, je n’ai rien fait.</p>');
+      var d2 = elle(h + boutons + pistes(['ouvre le match']));
+      var b = d2.querySelector('#maya-doc-conv');
+      if (b) b.addEventListener('click', function () {
+        var res = doc(d);
+        if (res === 'casquette') return elle('<p>Le Greffe n’est pas ouvert à votre casquette.</p>');
+        if (!res) return elle('<p>Je n’ai pas pu ouvrir l’acte.</p>');
+        fermer();
       });
-      // « oui » tape a la main vaut le bouton : on ne force personne a
-      // lacher le clavier au milieu d'une conversation.
-      attente = { type: 'oui-non', oui: faire };
     }).catch(function () {
       elle('<p>Je n’ai pas pu lire les convocations. Rien n’a été fait.</p>');
     });
   }
 
-  /* ------------------------------------------------------------------ */
+  /* La confirmation avant d'ecrire, inchangee : elle prepare, elle
+     montre exactement qui, elle attend, et « oui » tape a la main vaut
+     le bouton. */
+  function confirmerConvocation(d) {
+    var h = '<div class="maya-conf"><b>' + esc(d.match.nom) + '</b>' +
+      '<p class="doux">' + esc(d.match.quand) + '</p>' +
+      '<p>Je convoque ' + d.aConvoquer.length + ' joueuse' + (d.aConvoquer.length > 1 ? 's' : '') +
+      (d.convoquees ? ' (en plus des ' + d.convoquees + ' déjà convoquées)' : '') + ' :</p>' +
+      '<ul>' + d.aConvoquer.slice(0, 20).map(function (j) { return '<li>' + esc(j.nom) + '</li>'; }).join('') +
+      (d.aConvoquer.length > 20 ? '<li>et ' + (d.aConvoquer.length - 20) + ' autres</li>' : '') + '</ul>' +
+      (d.ecartees && d.ecartees.length
+        ? '<p class="doux">J’écarte ' + nomsCourts(d.ecartees) + ' : elles ne sont pas actives.</p>' : '') +
+      '<div class="maya-conf-b">' +
+        '<button type="button" class="maya-oui" id="maya-oui">Convoquer</button>' +
+        '<button type="button" class="maya-non" id="maya-non">Non, laisse</button>' +
+      '</div></div>';
+    var d2 = elle(h);
+
+    function faire() {
+      attente = null;
+      var ex = outil('convoquer');
+      if (!ex) return elle('<p>Je ne peux pas écrire cette convocation d’ici.</p>');
+      penser();
+      ex(d.match.id, d.aConvoquer.map(function (j) { return j.id; })).then(function (n) {
+        M.perimer();
+        elle('<p>C’est fait : ' + n + ' joueuse' + (n > 1 ? 's' : '') + ' convoquée' +
+          (n > 1 ? 's' : '') + ' pour <b>' + esc(d.match.nom) + '</b>.</p>' +
+          '<p class="doux">Elles vont répondre une à une. Redemandez-moi où en est la ' +
+          'convocation quand vous voulez.</p>' +
+          pistes(['prépare la convocation', 'ouvre le match']));
+      }).catch(function (e) {
+        elle('<p>L’enregistrement a échoué : ' + esc((e && e.message) || 'raison inconnue') +
+             '. Rien n’a été convoqué.</p>');
+      });
+    }
+    d2.querySelector('#maya-oui').addEventListener('click', faire);
+    d2.querySelector('#maya-non').addEventListener('click', function () {
+      attente = null;
+      elle('<p>Très bien, je n’ai rien fait.</p>');
+    });
+    attente = { type: 'oui-non', oui: faire };
+  }
+
   /* ------------------------------------------------------------------
      CE QU'ELLE SAIT D'ELLE-MEME.
      Pas une liste ecrite a la main : elle regarde ce qui est reellement
