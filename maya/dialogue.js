@@ -359,7 +359,17 @@
      ------------------------------------------------------------------ */
   function rManque(r) {
     var p = r.entites.personne;
-    if (!p) return rIci();
+    if (!p) {
+      /* SANS PERSONNE, DEUX CAS TRES DIFFERENTS.
+         « qu'est-ce qui manque ici » parle de l'ecran : on y repond.
+         « qu'est-ce qui manque a Marieme » parle de quelqu'un, et
+         repondre sur l'ecran courant serait une reponse a cote qui a
+         l'air d'en etre une. On retombe donc sur rQui, qui sait dire la
+         difference entre « ce nom n'existe pas » et « je n'ai pas pu
+         lire la liste ». */
+      var parleDEcran = /\b(ici|cet ecran|cette page|ce dossier)\b/.test(r.plat || '');
+      return parleDEcran ? rIci() : rQui(r);
+    }
     return M.collecte().then(function (faits) {
       var cible = p.genre === 'staff' ? 'staff:' + p.id : 'players:' + p.id;
       var siens = faits.filter(function (f) {

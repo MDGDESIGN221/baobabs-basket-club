@@ -12943,8 +12943,29 @@
     gsHits = gsBuild(term);
     gsIdx = 0;
     var box = document.getElementById('gs-results');
+    /* QUAND LA PALETTE NE TROUVE RIEN, ELLE PASSE LA MAIN.
+       Elle cherche des NOMS ; une phrase entiere n'en est pas un, et
+       « qu'est-ce qui manque a Marieme » ne correspondra jamais a rien
+       ici. Plutot qu'un cul-de-sac, on propose la seule chose qui sache
+       repondre a une phrase. C'est aussi ainsi qu'on apprend que MAYA
+       existe : au moment ou l'on en a besoin, pas dans un tutoriel. */
     if (!gsHits.length){
-      box.innerHTML = '<div class="gs-empty">' + (gsData ? 'Rien ne correspond à «\u00a0' + esc(term) + '\u00a0».' : 'Chargement du contenu…') + '</div>';
+      var phrase = (term || '').trim();
+      var vautLaPeine = phrase.length > 3 && gsData;
+      box.innerHTML = '<div class="gs-empty">' +
+        (gsData ? 'Rien ne correspond à «\u00a0' + esc(term) + '\u00a0».' : 'Chargement du contenu…') + '</div>' +
+        (vautLaPeine
+          ? '<button type="button" class="gs-hit" id="gs-maya" style="margin-top:4px">' +
+            '<span class="gs-ic" id="gs-maya-face"></span>' +
+            '<span style="flex:1;min-width:0"><b>Demander à MAYA</b>' +
+            '<span>«\u00a0' + esc(phrase) + '\u00a0»</span></span></button>'
+          : '');
+      var bm = document.getElementById('gs-maya');
+      if (bm){
+        var fc = document.getElementById('gs-maya-face');
+        if (fc) fc.innerHTML = suiteVisage(false);
+        bm.addEventListener('click', function(){ gsHide(); mayaParler(phrase); });
+      }
       return;
     }
     var html = '', last = '';
