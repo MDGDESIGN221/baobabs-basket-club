@@ -267,7 +267,11 @@
       ecrans: CTX && CTX.ecrans ? CTX.ecrans() : [],
       // Les ecrans de l administration deviennent autant de sujets : ce
       // qui est ajoute demain est compris demain.
-      sujets: CTX && CTX.sujets ? CTX.sujets() : []
+      sujets: CTX && CTX.sujets ? CTX.sujets() : [],
+      // Tout le vocabulaire du club : adversaires, salles, postes,
+      // categories. C'est lui qui permet de rattraper une faute sur
+      // « Saltigue » ou « ailiere », pas seulement sur « joueuse ».
+      vocabulaire: CTX && CTX.vocabulaire ? CTX.vocabulaire() : []
     };
     var r = M.comprendre.analyser(texte, ctx);
 
@@ -544,16 +548,44 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------
+     CE QU'ELLE SAIT D'ELLE-MEME.
+     Pas une liste ecrite a la main : elle regarde ce qui est reellement
+     branche, et filtre par ce que CETTE personne a le droit de voir. Une
+     liste figee se perimerait au premier outil ajoute, et mentirait des
+     la premiere casquette restreinte.
+     ------------------------------------------------------------------ */
   function rAide() {
-    elle('<p>Voilà ce que je sais faire aujourd’hui :</p>' +
-      pistes(['fais-moi le point',
-              'qu’est-ce qui me concerne ici',
-              'trouve-moi une joueuse',
-              'qu’est-ce qui manque à son dossier',
-              'ouvre la billetterie',
-              'prépare la convocation']) +
-      '<p class="doux">J’apprends au fur et à mesure. Si je ne comprends pas, ' +
-      'je le dis plutôt que de répondre à côté.</p>');
+    var f = outil('capacites');
+    if (!f) {
+      return elle('<p>Voilà ce que je sais faire :</p>' +
+        pistes(['fais-moi le point', 'trouve-moi une joueuse', 'prépare la convocation']));
+    }
+    var c = f();
+    var h = '<p>Je suis <b>MAYA</b>, l’assistante de cette administration. ' +
+            'Je lis les données du club et je vous dis ce que j’y vois.</p>';
+
+    if (c.sujets.length) {
+      h += '<p>Je peux compter et lister <b>' + c.sujets.length + ' choses</b> : ' +
+           c.sujets.map(function (s) { return esc(s.nom); }).join(', ') + '.</p>';
+    }
+    if (c.ecrans) {
+      h += '<p class="doux">Et je connais les ' + c.ecrans +
+           ' écrans de l’administration : dites-moi un nom, même mal ' +
+           'écrit, je vous y emmène.</p>';
+    }
+    if (c.actions.length) {
+      h += '<p>Ce que je peux faire :</p><div class="maya-faits">' +
+        c.actions.map(function (a) {
+          return '<div class="maya-fait"><b>' + esc(a.quoi) + '</b><s>' + esc(a.comment) + '</s></div>';
+        }).join('') + '</div>';
+    }
+    if (c.limites.length) {
+      h += '<p class="doux">Ce que je ne sais pas faire, et autant le dire tout de suite : ' +
+           c.limites.map(esc).join(' ; ') + '.</p>';
+    }
+    elle(h + pistes(['fais-moi le point', 'combien de joueuses',
+                     'c’est quand le prochain match']));
   }
 
   /* ELLE NE DEVINE PAS. Une tournure jamais prevue n'est pas une panne,

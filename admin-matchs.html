@@ -9132,6 +9132,111 @@
     });
   }
 
+  /* ==================================================================
+     LE VOCABULAIRE DU CLUB, EN ENTIER
+     ------------------------------------------------------------------
+     Le lexique de correction se construisait a partir des mots que MAYA
+     porte dans son code. C'etait deja mieux qu'une liste tapee a la
+     main, mais cela restait MON vocabulaire, pas celui du club : « Rak
+     Tak », « Bopp », « Saltigue », « ailiere forte », « U18 » n'y
+     etaient pas, et une faute sur l'un d'eux ne se rattrapait pas.
+
+     Or ces mots sont tous en base, dans les neuf listes du club et dans
+     les donnees elles-memes. On les verse donc au lexique. Le jour ou
+     l'on ajoute un adversaire ou une salle, MAYA sait l'orthographier
+     sans qu'une ligne change ici.
+
+     ON NE VERSE QUE DES NOMS PUBLICS : des clubs, des salles, des
+     postes, des categories. Aucun telephone, aucune adresse, rien qui
+     vienne d'un dossier. Le lexique sert a corriger une frappe, pas a
+     retenir des gens.
+     ================================================================== */
+  var mayaVocab = { mots: null, quand: 0 };
+
+  function mayaVocabulaire(){
+    // Une minute de fraicheur : le lexique se reconstruit vite, et les
+    // listes ne changent pas dans la seconde.
+    if (mayaVocab.mots && (Date.now() - mayaVocab.quand) < 60000) return mayaVocab.mots;
+    var vus = {};
+    function pousse(x){
+      if (x == null) return;
+      String(x).split(/[^A-Za-zÀ-ÿ0-9]+/).forEach(function(m){
+        if (m && m.length >= 4) vus[m.toLowerCase()] = 1;
+      });
+    }
+
+    // Les neuf listes du club : clubs adverses, salles, tarifs, pieces,
+    // moyens de paiement, postes du bureau, tailles, postes, couleurs.
+    (listesRows || []).forEach(function(r){ pousse(r.libelle); });
+
+    // Et ce que le code tient deja en memoire, meme sans les listes.
+    try { (KNOWN_CLUBS || []).forEach(function(c){ pousse(c && c.name); }); } catch(e){}
+    try { (SALLES_CONNUES || []).forEach(pousse); } catch(e){}
+    try { (QG_POS || []).forEach(pousse); } catch(e){}
+    try { (PR_SIZES || []).forEach(pousse); } catch(e){}
+    try { (ORG_ROLES || []).forEach(function(o){ pousse(o && o.label); }); } catch(e){}
+    try { Object.keys(ROLE_NOMS || {}).forEach(function(k){ pousse(ROLE_NOMS[k]); }); } catch(e){}
+
+    // Les adversaires reellement rencontres, si la palette les a lus.
+    try {
+      if (gsData && gsData.matches) gsData.matches.forEach(function(m){ pousse(m.opponent_name); });
+      if (gsData && gsData.teams)   gsData.teams.forEach(function(t){ pousse(t.name); });
+    } catch(e){}
+
+    // Les categories d'age : elles ne vivent dans aucune liste, et ce
+    // sont pourtant les mots les plus tapes apres les noms.
+    ['U8','U10','U12','U14','U16','U18','U20','Senior','Seniors',
+     'Poussines','Benjamines','Minimes','Cadettes','Juniors'].forEach(pousse);
+
+    mayaVocab.mots = Object.keys(vus);
+    mayaVocab.quand = Date.now();
+    return mayaVocab.mots;
+  }
+
+  /* ==================================================================
+     CE QU'ELLE SAIT D'ELLE-MEME
+     ------------------------------------------------------------------
+     « Que sais-tu faire » ne doit pas repondre par une liste ecrite a la
+     main : elle se perimerait au premier outil ajoute, et elle mentirait
+     des la premiere casquette restreinte. Elle se construit donc en
+     regardant ce qui est REELLEMENT branche, et filtre par ce que cette
+     personne-la a le droit de voir.
+
+     ET ELLE DIT CE QU'ELLE NE SAIT PAS. Une assistante qui n'annonce que
+     ses reussites oblige a decouvrir ses limites une par une, en se
+     cognant. Les dire d'avance fait gagner du temps a tout le monde.
+     ================================================================== */
+  function mayaCapacites(){
+    var sujets = [];
+    Object.keys(MAYA_SAVOIR).forEach(function(cle){
+      var S = MAYA_SAVOIR[cle];
+      if (S.module && !can(S.module, 'voir')) return;
+      sujets.push({ cle: cle, nom: S.pluriel, ecran: S.ecran });
+    });
+    var ecrans = mayaSujets().length;
+
+    var actions = [];
+    if (can('matchs', 'creer')) actions.push({
+      quoi: 'préparer une convocation',
+      comment: 'je trouve le prochain match, j’écarte celles qui ne sont pas actives, et j’attends votre accord'
+    });
+    actions.push({ quoi: 'ouvrir n’importe quel écran', comment: 'par son nom, même mal orthographié' });
+    actions.push({ quoi: 'retrouver une personne', comment: 'par nom ou prénom, chez les joueuses comme au staff' });
+    actions.push({ quoi: 'dire ce qui manque à un dossier', comment: 'pièces, compte, état de la fiche' });
+
+    return {
+      sujets: sujets,
+      ecrans: ecrans,
+      actions: actions,
+      // Ce qu'elle ne sait pas, et qu'il vaut mieux annoncer.
+      limites: [
+        'je ne comprends pas une phrase qui ne parle d’aucun sujet du club',
+        'je ne supprime rien, et je ne modifie rien sans vous le montrer d’abord',
+        'je ne vois que ce que votre casquette permet de voir'
+      ]
+    };
+  }
+
   function mayaOutils(){
     return {
       aller: function(cle){ try { showSection(cle); } catch(e){} },
@@ -9172,6 +9277,8 @@
               personnes: function(){ return mayaPersonnes; },
               ecrans: mayaEcrans,
               sujets: mayaSujets,
+              vocabulaire: mayaVocabulaire,
+              capacites: mayaCapacites,
               ecranCourant: function(){
                 var s = document.querySelector('section[id^="section-"]:not(.hide)');
                 return s ? s.id.replace(/^section-/, '') : null;

@@ -152,7 +152,13 @@
 
     { cle: 'aide', ecrit: false,
       motifs: [/\b(aide|help)\b/, /que (sais|peux) tu (faire)?/, /comment (ca|tu) march/,
-               /qu est ce que tu sais/, /tes? (commandes|possibilites)/],
+               /qu est ce que tu sais/, /tes? (commandes|possibilites)/,
+               // Elle doit pouvoir dire ce qu'elle connait ET ce qu'elle
+               // ne sait pas. Une assistante qui n'annonce que ses
+               // reussites oblige a decouvrir ses limites en se cognant.
+               /que connais tu/, /qu est ce que tu (connais|comprends)/,
+               /tu (sais|peux) quoi/, /tes limites/, /ce que tu ne (sais|peux)/,
+               /qui es tu/, /tu sers a quoi/],
       exemple: 'que sais-tu faire' },
 
     /* « ici » AVANT « manque » : un marqueur d'ecran l'emporte toujours.
@@ -338,7 +344,8 @@
     // garder un lexique perime quand l'effectif change.
     var emp = (ctx.personnes ? ctx.personnes.length : 0) + ':' +
               (ctx.ecrans ? ctx.ecrans.length : 0) + ':' +
-              (ctx.sujets ? ctx.sujets.length : 0);
+              (ctx.sujets ? ctx.sujets.length : 0) + ':' +
+              (ctx.vocabulaire ? ctx.vocabulaire.length : 0);
     if (LEX.mots && LEX.empreinte === emp) return LEX.mots;
 
     var vus = {};
@@ -352,6 +359,11 @@
     (ctx.personnes || []).forEach(function (p) { pousse(p.nom); });
     (ctx.ecrans || []).forEach(function (e) { pousse(e.titre); });
     (ctx.sujets || []).forEach(function (s) { pousse(s.nom); });
+    /* ET TOUT LE VOCABULAIRE DU CLUB : les adversaires, les salles, les
+       postes, les categories, les tailles. Sans lui, le lexique restait
+       le mien ; avec lui, c'est celui du club, et il grandit tout seul
+       quand une salle ou un adversaire s'ajoute. */
+    (ctx.vocabulaire || []).forEach(pousse);
 
     LEX.mots = Object.keys(vus);
     LEX.empreinte = emp;
