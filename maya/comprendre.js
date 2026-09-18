@@ -100,8 +100,12 @@
       motif: /\b(ecole|academie|inscriptions?|inscrits?|enfants?|eleves?)\b/ },
     { cle: 'boutique',    nom: 'la boutique',
       motif: /\b(boutique|commandes?|produits?|stocks?|articles a vendre)\b/ },
+    /* La billetterie, et tout ce qui touche a l'entree d'un match :
+       « c'est payant ? », « il reste des places ? », « c'est combien
+       l'entree ? » sont la meme question posee trois fois, et aucune
+       n'etait comprise. */
     { cle: 'billetterie', nom: 'la billetterie',
-      motif: /\b(billets?|billetterie|places?|reservations?|guichet)\b/ },
+      motif: /\b(billets?|billetterie|places?|reservations?|guichet|entrees?|payante?s?|payer l entree|gratuite?s?|tarifs?|prix)\b/ },
     { cle: 'caisse',      nom: 'la caisse',
       motif: /\b(caisse|argent|budget|recettes?|depenses?|tresorerie|cotisations?)\b/ },
     { cle: 'comptes',     nom: 'les comptes',

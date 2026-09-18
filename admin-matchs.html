@@ -9317,6 +9317,74 @@
     catch(e){ return false; }
   }
 
+  /* ==================================================================
+     LA FICHE D'UN MATCH : TOUT CE QU'ELLE EN SAIT, D'UN COUP
+     ------------------------------------------------------------------
+     « L'entree de ce match est-elle payante ? » recevait « 3 matchs,
+     1 a venir, 2 joues ». Le sujet etait bien reconnu ; la question,
+     non -- et la reponse par defaut d'un sujet est un denombrement.
+
+     C'est le defaut de fond, et il ne se corrige pas en ajoutant un
+     motif « payant » : la question d'apres sera « il reste des places ? »,
+     puis « c'est quelle competition ? », puis « qui arbitre ? ».
+
+     DONC : des qu'on parle d'UN match identifie, on rend TOUT ce qu'on
+     sait de lui. L'heure, le lieu, l'entree, la billetterie, les
+     convocations, le cinq, le score. La personne trouve sa reponse
+     dedans, quelle que soit la question -- c'est ce que ferait quelqu'un
+     qui connait la maison et qui n'a pas bien entendu.
+
+     Une fiche vaut cinquante motifs, et elle ne se perime pas.
+     ================================================================== */
+  function mayaFicheMatch(quand){
+    var base = 'match_center?select=id,opponent_name,opponent_logo_url,match_date,match_time,venue,' +
+               'is_home,competition,round_label,statut,issue,score_baobabs,score_opponent,free_entry,' +
+               'vente_ouverte,nb_categories,places_restantes,places_totales,rdv_heure,rdv_lieu,consignes';
+    var q = quand === 'dernier'
+      ? base + '&statut=eq.termine&order=match_date.desc&limit=1'
+      : base + '&statut=in.(aujourdhui,a_venir)&order=match_date.asc&limit=1';
+
+    return sbGet(q).then(function(rows){
+      var m = (rows || [])[0];
+      if (!m) return null;
+      return Promise.all([
+        sbGet('match_convocations?select=statut&match_id=eq.' + encodeURIComponent(m.id)).catch(function(){ return null; }),
+        sbGet('match_stats?select=is_starter&match_id=eq.' + encodeURIComponent(m.id) + '&is_starter=is.true').catch(function(){ return null; })
+      ]).then(function(r){
+        var cv = r[0], cinq = r[1];
+        var j = daysUntil(m.match_date);
+        return {
+          id: m.id,
+          nom: 'Baobabs ' + (m.is_home ? 'contre ' : 'chez ') + (m.opponent_name || 'l’adversaire'),
+          domicile: !!m.is_home,
+          date: formatDateShort(m.match_date),
+          heure: m.match_time ? String(m.match_time).slice(0,5).replace(':', ' h ') : null,
+          lieu: m.venue || null,
+          jours: j,
+          statut: m.statut,
+          competition: [m.competition, m.round_label].filter(Boolean).join(' · ') || null,
+          // L'ENTREE : trois etats, et le troisieme est « on ne sait pas ».
+          // Un match sans entree libre declaree ET sans categorie de
+          // billets n'est pas gratuit : il est non renseigne, et le dire
+          // vaut mieux que de laisser croire que c'est libre.
+          entree: m.free_entry === true ? 'libre'
+                : (m.nb_categories > 0 ? 'payante' : 'inconnue'),
+          venteOuverte: !!m.vente_ouverte,
+          places: m.places_restantes == null ? null : Number(m.places_restantes),
+          placesTotales: m.places_totales == null ? null : Number(m.places_totales),
+          rdv: [m.rdv_heure, m.rdv_lieu].filter(Boolean).join(' · ') || null,
+          consignes: m.consignes || null,
+          convoquees: cv === null ? null : cv.length,
+          confirmees: cv === null ? null : cv.filter(function(c){ return c.statut === 'confirmee'; }).length,
+          cinq: cinq === null ? null : cinq.length,
+          score: (m.score_baobabs != null && m.score_opponent != null)
+                 ? m.score_baobabs + ' à ' + m.score_opponent : null,
+          issue: m.issue === 'V' ? 'victoire' : (m.issue === 'D' ? 'défaite' : (m.issue === 'N' ? 'match nul' : null))
+        };
+      });
+    });
+  }
+
   function mayaOutils(){
     return {
       aller: function(cle){ try { showSection(cle); } catch(e){} },
@@ -9331,6 +9399,7 @@
       savoir: mayaSavoir,
       piecesDe: mayaPiecesDe,
       prochainMatch: mayaProchainMatch,
+      ficheMatch: mayaFicheMatch,
       dernierResultat: mayaDernierResultat
     };
   }

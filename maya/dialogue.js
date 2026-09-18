@@ -883,6 +883,8 @@
   function rCombien(r) {
     var s = r.sujet;
     if (!s) return rIncomprise(r);
+    // Meme raison : compter des places n'a de sens que pour un match.
+    if (s.cle === 'billetterie') return rFicheMatch('prochain');
     var f = outil('savoir');
     if (!f) return elle('<p>Je ne sais pas encore compter cela.</p>');
     return f(s.cle).then(function (d) {
@@ -952,33 +954,109 @@
            esc(cle) + '">ouvrir ' + esc(titre) + '</button></div>';
   }
 
-  /* ------------------------------------------------------------------ */
-  function rQuand() {
+  /* ------------------------------------------------------------------
+     LA FICHE D'UN MATCH
+     ------------------------------------------------------------------
+     Une seule reponse pour toutes les questions qu'on peut poser sur un
+     match : l'heure, le lieu, l'entree, les places, la convocation, le
+     cinq, le score. On ne cherche plus a deviner LAQUELLE est posee, on
+     rend tout ce qu'on sait, et la personne y trouve la sienne.
+
+     C'est ce que fait quelqu'un qui connait la maison et qui n'a pas
+     bien entendu la question. Et c'est ce qui evite d'ajouter un motif
+     par question jusqu'a la fin des temps.
+
+     CE QU'ELLE NE SAIT PAS, ELLE LE DIT AUSSI. Une entree « inconnue »
+     n'est pas une entree libre : un match sans tarif declare et sans
+     billetterie ouverte n'est pas gratuit, il est non renseigne. Laisser
+     croire le contraire ferait annoncer la gratuite sur le site.
+     ------------------------------------------------------------------ */
+  function ligneFiche(titre, valeur, cls) {
+    return '<div class="maya-fait ' + (cls || '') + '"><b>' + esc(titre) + '</b>' +
+           (valeur ? '<s>' + esc(valeur) + '</s>' : '') + '</div>';
+  }
+
+  function rFicheMatch(quand) {
+    var f = outil('ficheMatch');
+    if (!f) return rQuandSimple();
+    penser();
+    return f(quand).then(function (m) {
+      if (!m) {
+        return elle('<p>' + (quand === 'dernier'
+          ? 'Aucun match terminé n’est enregistré.'
+          : 'Aucun match à venir n’est enregistré.') + '</p>' + pistesEcran('matches2'));
+      }
+
+      var h = '<p><b>' + esc(m.nom) + '</b></p>';
+      var quandTxt = m.date + (m.heure ? ' à ' + m.heure : '') + (m.lieu ? ' · ' + m.lieu : '');
+      h += '<p>' + esc(quandTxt) + '</p>';
+      if (m.jours === 0) h += '<p class="doux">C’est aujourd’hui.</p>';
+      else if (m.jours === 1) h += '<p class="doux">C’est demain.</p>';
+      else if (m.jours > 0) h += '<p class="doux">Dans ' + m.jours + ' jours.</p>';
+
+      var lignes = [];
+
+      if (m.score) lignes.push(ligneFiche(m.score + (m.issue ? ' · ' + m.issue : ''), 'Score final'));
+
+      if (m.competition) lignes.push(ligneFiche(m.competition, 'Compétition'));
+
+      /* L'ENTREE, et c'est la question qui a declenche tout ceci. */
+      if (m.entree === 'libre') {
+        lignes.push(ligneFiche('Entrée libre', 'Personne ne paie'));
+      } else if (m.entree === 'payante') {
+        var d = m.venteOuverte
+          ? (m.places != null ? m.places + ' place' + (m.places > 1 ? 's' : '') + ' encore disponible' + (m.places > 1 ? 's' : '') : 'vente ouverte')
+          : 'mais la vente n’est pas ouverte';
+        lignes.push(ligneFiche('Entrée payante', d, m.venteOuverte ? '' : 'important'));
+      } else {
+        lignes.push(ligneFiche('Entrée non renseignée',
+          'Ni entrée libre, ni catégorie de billets : le site ne peut rien annoncer',
+          'important'));
+      }
+
+      if (m.rdv) lignes.push(ligneFiche(m.rdv, 'Rendez-vous de l’équipe'));
+
+      if (m.convoquees != null) {
+        lignes.push(ligneFiche(
+          m.convoquees ? m.convoquees + ' convoquée' + (m.convoquees > 1 ? 's' : '') +
+                         (m.confirmees ? ', ' + m.confirmees + ' ont confirmé' : ', aucune réponse encore')
+                       : 'Personne n’est convoqué',
+          'Convocation', m.convoquees ? '' : 'important'));
+      }
+
+      if (m.cinq != null && m.statut !== 'termine') {
+        lignes.push(ligneFiche(
+          m.cinq >= 5 ? 'Le cinq est posé' : (m.cinq ? m.cinq + ' titulaire' + (m.cinq > 1 ? 's' : '') + ' sur 5' : 'Le cinq n’est pas posé'),
+          'Composition', m.cinq >= 5 ? '' : 'important'));
+      }
+
+      if (m.consignes) lignes.push(ligneFiche(m.consignes, 'Consignes'));
+
+      h += '<div class="maya-faits">' + lignes.join('') + '</div>';
+
+      var suite = [];
+      if (m.statut !== 'termine') suite.push('prépare la convocation');
+      suite.push('ouvre le match');
+      elle(h + pistes(suite));
+    }).catch(function () {
+      elle('<p>Je n’ai pas pu lire ce match.</p>' + pistesEcran('matches2'));
+    });
+  }
+
+  /* Le repli quand la fiche n'est pas branchee : l'ancienne reponse,
+     courte, qui ne dit que la date. */
+  function rQuandSimple() {
     var f = outil('prochainMatch');
     if (!f) return elle('<p>Je ne sais pas lire le calendrier d’ici.</p>');
     return f().then(function (m) {
       if (!m) return elle('<p>Aucun match à venir n’est enregistré.</p>' + pistesEcran('matches2'));
-      var quand = m.jours === 0 ? 'C’est aujourd’hui'
-                : m.jours === 1 ? 'C’est demain'
-                : (m.jours > 0 ? 'Dans ' + m.jours + ' jours' : '');
-      elle('<p><b>' + esc(m.nom) + '</b></p>' +
-        '<p>' + esc(m.quand) + (m.ou ? ' · ' + esc(m.ou) : '') + '</p>' +
-        (quand ? '<p class="doux">' + quand + '.</p>' : '') +
-        pistes(['prépare la convocation', 'ouvre le match']));
+      elle('<p><b>' + esc(m.nom) + '</b></p><p>' + esc(m.quand) +
+        (m.ou ? ' · ' + esc(m.ou) : '') + '</p>' + pistes(['ouvre le match']));
     });
   }
 
-  function rResultat() {
-    var f = outil('dernierResultat');
-    if (!f) return elle('<p>Je ne sais pas lire les résultats d’ici.</p>');
-    return f().then(function (m) {
-      if (!m) return elle('<p>Aucun match terminé n’est enregistré.</p>');
-      elle('<p><b>' + esc(m.nom) + '</b></p>' +
-        (m.score ? '<p>' + esc(m.score) + (m.issue ? ' · ' + esc(m.issue) : '') + '</p>'
-                 : '<p class="doux">Le score n’a pas encore été saisi.</p>') +
-        '<p class="doux">' + esc(m.quand) + '</p>' + pistesEcran('results'));
-    });
-  }
+  function rQuand()   { return rFicheMatch('prochain'); }
+  function rResultat(){ return rFicheMatch('dernier'); }
 
   /* ------------------------------------------------------------------
      LE SUJET SANS L'INTENTION. Elle n'a pas compris la tournure, mais
@@ -989,6 +1067,16 @@
      ------------------------------------------------------------------ */
   function rSujet(r) {
     var s = r.sujet;
+    /* UN SUJET QUI DESIGNE UN OBJET PRECIS MERITE SA FICHE, PAS UN
+       COMPTAGE. « L'entree de ce match est-elle payante ? » recevait
+       « 3 matchs, 1 a venir » : le sujet etait juste, la reponse
+       inutile. Quand on parle des matchs sans autre precision, c'est du
+       prochain qu'on parle neuf fois sur dix. */
+    if (s && s.cle === 'matchs') return rFicheMatch('prochain');
+    /* LA BILLETTERIE N'EXISTE QUE PAR MATCH. « Il reste des places ? »,
+       « c'est payant ? » ne se repondent pas par un comptage de
+       categories de billets : c'est la fiche du match qui les porte. */
+    if (s && s.cle === 'billetterie') return rFicheMatch('prochain');
     var f = outil('savoir');
     if (!f) return rIncomprise(r);
     return f(s.cle).then(function (d) {
