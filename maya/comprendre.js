@@ -124,17 +124,54 @@
      LES SUJETS ECRITS A LA MAIN PASSENT EN PREMIER : leur vocabulaire
      est plus large que leur titre, et « les joueuses » doit tomber sur
      l effectif plutot que sur un ecran qui porterait ce mot. */
+  /* ON COMPTE LES POINTS, ON NE PREND PLUS LE PREMIER QUI REPOND.
+     La premiere version rendait le premier sujet dont un motif matchait,
+     dans l'ordre de la liste. « les convocations du match de samedi »
+     tombait donc sur les convocations parce qu'elles sont ecrites plus
+     haut, et non parce qu'elles pesaient plus lourd dans la phrase.
+
+     Chaque sujet marque un point par mot reconnu. Le plus lourd gagne,
+     et l'ordre de la liste ne sert plus qu'a departager les ex aequo --
+     ce qui est exactement le role qu'on veut lui laisser.
+
+     Le mot COMPLET vaut deux points, le prefixe un seul : « convocation »
+     pese plus pour les convocations que « convoc » glisse dans un autre
+     mot. Sans cela, un prefixe court l'emportait sur un mot entier. */
+  var SUJET_MOTS = null;
+  function motsDesSujets() {
+    if (SUJET_MOTS) return SUJET_MOTS;
+    SUJET_MOTS = SUJETS.map(function (S) { return motsDuMotif(S.motif); });
+    return SUJET_MOTS;
+  }
+
   function sujet(texte, extra) {
     var t = plat(texte);
-    for (var i = 0; i < SUJETS.length; i++) if (SUJETS[i].motif.test(t)) return SUJETS[i];
-    var meilleur = null;
+    var jetons = t.split(' ');
+    var listes = motsDesSujets();
+    var meilleur = null, points = 0;
+
+    for (var i = 0; i < SUJETS.length; i++) {
+      var n = 0;
+      listes[i].forEach(function (mot) {
+        jetons.forEach(function (j) {
+          if (j === mot) n += 2;
+          else if (j.length > 3 && (j.indexOf(mot) === 0 || mot.indexOf(j) === 0)) n += 1;
+        });
+      });
+      if (n > points) { points = n; meilleur = SUJETS[i]; }
+    }
+    if (meilleur) return meilleur;
+
+    // Aucun sujet riche : on retombe sur les ecrans, et la c'est le titre
+    // le plus long qui gagne (« Le match » bat « Matchs » sur « le match »).
+    var ecran = null;
     (extra || []).forEach(function (S) {
-      var n = plat(S.nom);
-      if (n.length < 4) return;   // « Club », « Home » : trop court pour trancher
-      if (t.indexOf(n) < 0) return;
-      if (!meilleur || n.length > plat(meilleur.nom).length) meilleur = S;
+      var nom = plat(S.nom);
+      if (nom.length < 4) return;   // « Club », « Home » : trop court pour trancher
+      if (t.indexOf(nom) < 0) return;
+      if (!ecran || nom.length > plat(ecran.nom).length) ecran = S;
     });
-    return meilleur;
+    return ecran;
   }
 
   /* ==================================================================

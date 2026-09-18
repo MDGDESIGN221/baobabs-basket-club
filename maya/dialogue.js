@@ -301,8 +301,38 @@
       return demanderLaquelle(r);
     }
 
+    /* ==================================================================
+       CE DONT ON PARLAIT COMBLE CE QUI MANQUE
+       ------------------------------------------------------------------
+       « Qu'est-ce qui manque a Marieme ? » puis « et son numero ? » : la
+       seconde phrase ne nomme personne, et pourtant il n'y a aucun doute.
+       On reprend donc l'entite de la demande precedente quand l'intention
+       en a besoin et que la phrase n'en fournit pas.
+
+       DEUX GARDE-FOUS. On n'herite QUE ce dont l'intention a besoin : une
+       personne n'a rien a faire dans « fais-moi le point ». Et ON LE DIT,
+       parce qu'une assistante qui complete toute seule sans prevenir
+       finit par repondre a propos de quelqu'un d'autre sans qu'on
+       comprenne pourquoi.
+       ================================================================== */
+    var BESOIN = { manque: 'personne', qui: 'personne', convoquer: 'date', quand: 'date' };
+    var besoin = BESOIN[r.intention];
+    if (besoin && !r.entites[besoin] && dernier && dernier.entites && dernier.entites[besoin]) {
+      r.entites[besoin] = dernier.entites[besoin];
+      r.herite = besoin;
+    }
+
     // Le fil : on retient la derniere demande comprise, hors politesse.
     if (r.intention && r.intention !== 'politesse') dernier = r;
+
+    if (r.herite === 'personne' && r.entites.personne) {
+      finPenser();
+      var dh = document.createElement('div');
+      dh.className = 'maya-elle maya-lu';
+      dh.innerHTML = '<p class="doux">Toujours à propos de <b>' +
+                     esc(r.entites.personne.nom) + '</b>.</p>';
+      fil.appendChild(dh); bas(); penser();
+    }
 
     switch (r.intention) {
       case 'point':     return rPoint();
