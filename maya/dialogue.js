@@ -36,6 +36,10 @@
   var fil = null;
   var champ = null;
   var attente = null;  // ce qu'elle attend de vous : un choix, un oui
+  /* LA DERNIERE DEMANDE COMPLETE, pas seulement la question ouverte.
+     C'est ce qui permet a « continue » de reprendre la ou on en etait,
+     et ce sur quoi s'appuiera la correction (« non, les U20 »). */
+  var dernier = null;
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -297,6 +301,9 @@
       return demanderLaquelle(r);
     }
 
+    // Le fil : on retient la derniere demande comprise, hors politesse.
+    if (r.intention && r.intention !== 'politesse') dernier = r;
+
     switch (r.intention) {
       case 'point':     return rPoint();
       case 'ici':       return rIci();
@@ -305,7 +312,7 @@
       case 'aller':     return rAller(r);
       case 'convoquer': return rConvoquer(r);
       case 'aide':      return rAide();
-      case 'politesse': return rPolitesse(r);
+      case 'politesse': return rSocial(r);
       case 'combien':   return rCombien(r);
       case 'liste':     return rListe(r);
       case 'quand':     return rQuand();
@@ -599,22 +606,136 @@
         : ['fais-moi le point', 'que sais-tu faire']));
   }
 
-  /* ------------------------------------------------------------------
-     DIRE BONJOUR. Ce n'est pas de la decoration : la premiere phrase
-     decide si l'on en tape une deuxieme.
-     ------------------------------------------------------------------ */
-  function rPolitesse(r) {
-    var t = r.plat;
-    if (/^(merci|nickel|parfait|super)/.test(t))
-      return elle('<p>Avec plaisir.</p>' + pistes(['fais-moi le point']));
-    if (/^(au revoir|a bientot|bonne journee|bonne soiree|bye)/.test(t))
-      return elle('<p>À tout à l’heure.</p>');
-    if (/^(ca va|comment)/.test(t))
-      return elle('<p>Tout va bien de mon côté. Et le club ?</p>' +
-        pistes(['fais-moi le point']));
+  /* ==================================================================
+     LES REPONSES QUI NE SE REPETENT PAS
+     ------------------------------------------------------------------
+     Deux bonjours de suite recevaient deux fois la meme phrase, au mot
+     pres. Rien ne trahit plus surement une machine, et rien ne coupe
+     plus vite l'envie de continuer a lui parler.
+
+     On tire donc au sort, mais JAMAIS la meme deux fois d'affilee :
+     l'aleatoire pur redonne la meme phrase une fois sur trois, ce qui
+     est pire que pas d'aleatoire du tout -- on croit alors qu'elle s'est
+     bloquee.
+     ================================================================== */
+  var DERNIERS = {};
+  function varie(cle, choix) {
+    if (choix.length === 1) return choix[0];
+    var dispo = choix.filter(function (c) { return c !== DERNIERS[cle]; });
+    var pris = dispo[Math.floor(Math.random() * dispo.length)];
+    DERNIERS[cle] = pris;
+    return pris;
+  }
+
+  /* L'HEURE DU JOUR. « Bonjour » a neuf heures du soir est la premiere
+     chose qui sonne faux, et c'est gratuit a corriger. */
+  function moment() {
+    var h = new Date().getHours();
+    if (h < 5) return 'nuit';
+    if (h < 18) return 'jour';
+    return 'soir';
+  }
+  function salutation() {
+    var m = moment();
+    return m === 'nuit' ? 'Bonsoir' : (m === 'soir' ? 'Bonsoir' : 'Bonjour');
+  }
+
+  /* Elle se souvient qu'on s'est deja parle dans ce fil : redire
+     « Bonjour » au troisieme message serait le signe qu'elle n'a rien
+     retenu de la conversation en cours. */
+  var dejaSalue = false;
+
+  function rSocial(r) {
     var nom = CTX && CTX.prenom ? CTX.prenom() : '';
-    elle('<p>Bonjour' + (nom ? ' ' + esc(nom) : '') + '.</p>' +
-      pistes(['fais-moi le point', 'combien de joueuses', 'c’est quand le prochain match']));
+    var quoi = r.social;
+
+    if (quoi === 'salut') {
+      if (dejaSalue) {
+        return elle('<p>' + varie('resalut', [
+          'Oui ?', 'Je vous écoute.', 'Toujours là.'
+        ]) + '</p>');
+      }
+      dejaSalue = true;
+      var s = salutation() + (nom ? ' ' + esc(nom) : '');
+      return elle('<p>' + varie('salut', [
+        s + '.',
+        s + '. Que puis-je regarder pour vous ?',
+        s + '. Je vous écoute.'
+      ]) + '</p>' + pistes(['fais-moi le point', 'combien de joueuses',
+                            'c’est quand le prochain match']));
+    }
+
+    if (quoi === 'forme') {
+      dejaSalue = true;
+      /* Elle ne pretend pas ressentir quelque chose, et elle ne fait pas
+         non plus la lecon : elle renvoie vers ce qu'elle sait, qui est
+         l'etat du club. C'est la reponse d'une collegue, pas d'un
+         chatbot qui joue a etre humain. */
+      return elle('<p>' + varie('forme', [
+        'Très bien, merci. Et le club ?',
+        'Je tourne. C’est du club que je peux vous parler.',
+        'Tout va bien de mon côté. Et ici ?'
+      ]) + '</p>' + pistes(['fais-moi le point']));
+    }
+
+    if (quoi === 'merci') {
+      return elle('<p>' + varie('merci', [
+        'Avec plaisir.', 'De rien.', 'Quand vous voulez.', 'À votre service.'
+      ]) + '</p>');
+    }
+
+    if (quoi === 'adieu') {
+      dejaSalue = false;
+      var fin = moment() === 'jour' ? 'Bonne journée' : 'Bonne soirée';
+      return elle('<p>' + varie('adieu', [
+        fin + '.', 'À bientôt.', fin + ', ' + (nom ? esc(nom) : 'et à bientôt') + '.'
+      ]) + '</p>');
+    }
+
+    if (quoi === 'accord') {
+      return elle('<p>' + varie('accord', [
+        'Parfait.', 'Très bien.', 'Entendu.'
+      ]) + '</p>' + (attente ? '' : pistes(['fais-moi le point'])));
+    }
+
+    if (quoi === 'refus') {
+      /* « Non », « laisse tomber », « attends » : si elle attendait
+         quelque chose, c'est cela qu'on annule. Sinon c'est un simple
+         non, et insister serait penible. */
+      if (attente) { attente = null; return elle('<p>Très bien, j’annule. Rien n’a été fait.</p>'); }
+      return elle('<p>' + varie('refus', [
+        'D’accord.', 'Comme vous voulez.', 'Très bien.'
+      ]) + '</p>');
+    }
+
+    if (quoi === 'relance') {
+      /* « Continue » n'a de sens que s'il y a quelque chose a
+         continuer. Le dire franchement vaut mieux que d'improviser une
+         suite qui n'existe pas. */
+      if (dernier && dernier.intention) return analyser(dernier.texte);
+      return elle('<p>Continuer quoi ? Dites-moi ce que vous cherchez.</p>' +
+        pistes(['fais-moi le point', 'que sais-tu faire']));
+    }
+
+    if (quoi === 'reproche') {
+      /* ON NE SE JUSTIFIE PAS, ON EST UTILE. Quand quelqu'un dit qu'elle
+         ne comprend rien, il a souvent raison : la bonne reponse est de
+         montrer ce qu'elle sait faire, pas de s'excuser en trois lignes.
+         Et de dire que c'est noté : une plainte qui tombe dans le vide
+         ne se répète pas, elle fait arrêter d'essayer. */
+      return elle('<p>Vous avez peut-être raison, et c’est utile à savoir. ' +
+        'Dites-moi ce que vous vouliez faire, avec vos mots : ce que je ne comprends pas ' +
+        'aujourd’hui, je peux apprendre à le comprendre.</p>' +
+        pistes(['que sais-tu faire', 'fais-moi le point']));
+    }
+
+    if (quoi === 'excuse') {
+      return elle('<p>' + varie('excuse', [
+        'Il n’y a pas de quoi.', 'Aucun souci.', 'Ce n’est rien.'
+      ]) + '</p>');
+    }
+
+    return rIncomprise(r);
   }
 
   /* ------------------------------------------------------------------

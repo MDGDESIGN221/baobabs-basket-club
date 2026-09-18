@@ -137,18 +137,106 @@
     return meilleur;
   }
 
+  /* ==================================================================
+     PARLER, ET PAS SEULEMENT REPONDRE
+     ------------------------------------------------------------------
+     « Bonsoir Maya » recevait « Bonjour MDG. » a neuf heures du soir.
+     « Tu vas bien ? » recevait « Je ne comprends pas cette demande. »
+     Et deux bonjours de suite recevaient exactement la meme phrase.
+
+     TROIS DEFAUTS, ET LE MEME FOND : je listais des FORMULES au lieu de
+     reconnaitre des INTENTIONS SOCIALES. Il y a cinquante facons de
+     demander a quelqu'un comment il va ; il n'y en a qu'une de le
+     vouloir.
+
+     Ce bloc traite donc neuf familles, chacune large, et il les traite
+     AVANT tout le reste : une phrase sociale n'est pas une requete de
+     base de donnees, et la traiter comme telle est precisement ce qui
+     fait qu'une assistante ne semble pas ecouter.
+     ================================================================== */
+  var SOCIAL = [
+    { cle: 'salut',
+      motif: /\b(bonjour|bonsoir|bonne nuit|salut|coucou|hello|hey|yo|bjr|slt|cc|wesh|bien ou bien|nanga def)\b/ },
+
+    { cle: 'forme',
+      motif: /\b(ca va|ca roule|tu vas bien|vous allez bien|comment vas tu|comment allez vous|comment tu vas|comment ca va|la forme|la peche|tout va bien|quoi de beau)\b/ },
+
+    { cle: 'merci',
+      motif: /\b(merci|merci beaucoup|thanks|nickel|parfait|super|genial|excellent|bravo|top|impeccable|c est bien|bien joue)\b/ },
+
+    { cle: 'adieu',
+      motif: /\b(au revoir|a bientot|a plus|a demain|a tout a l heure|bonne journee|bonne soiree|bonne nuit|bye|ciao|salut a toi)\b/ },
+
+    { cle: 'accord',
+      motif: /^(ok|okay|d accord|daccord|entendu|compris|tres bien|ca marche|ca me va|parfait)\b/ },
+
+    { cle: 'refus',
+      motif: /^(non|nan|annule|laisse tomber|laisse|stop|attends|attend|arrete|oublie|rien|pas maintenant|plus tard)\b/ },
+
+    { cle: 'relance',
+      motif: /^(continue|ensuite|et apres|apres|vas y|allez|la suite|encore|et puis|poursuis)\b/ },
+
+    { cle: 'reproche',
+      motif: /\b(tu comprends rien|tu ne comprends rien|tu es bete|t es bete|tu sers a rien|nul|nulle|ca marche pas|ca ne marche pas|inutile|decevant)\b/ },
+
+    { cle: 'excuse',
+      motif: /\b(pardon|desole|desolee|excuse moi|excusez moi|au temps pour moi)\b/ }
+  ];
+
+  /* UNE PHRASE SOCIALE EST COURTE, ET C'EST CE QUI LA DISTINGUE.
+     « bonjour » est une salutation ; « bonjour, combien de joueuses
+     actives avons-nous » est une question qui commence poliment. On ne
+     prend donc la voie sociale que si la phrase ne contient rien
+     d'autre, ou presque : au-dela de cinq mots pleins, on laisse la
+     main aux intentions, qui sauront quoi en faire.
+
+     Deux exceptions, parce qu'elles n'ont jamais de suite utile :
+     le reproche et l'excuse, qu'on reconnait a n'importe quelle
+     longueur. */
+  function social(texte) {
+    var t = plat(texte);
+    if (!t) return null;
+    for (var i = 0; i < SOCIAL.length; i++) {
+      var m = t.match(SOCIAL[i].motif);
+      if (!m) continue;
+      /* Cinq familles se reconnaissent a n'importe quelle longueur.
+         Le reproche et l'excuse parce qu'ils n'ont jamais de suite
+         utile ; le refus, l'accord et la relance parce que leurs motifs
+         sont ancres en debut de phrase et que ce qui suit les precise
+         au lieu de les contredire : « non laisse tomber » reste un
+         refus, meme avec deux mots derriere. */
+      var large = ['reproche', 'excuse', 'refus', 'accord', 'relance']
+                    .indexOf(SOCIAL[i].cle) >= 0;
+      if (large) return SOCIAL[i].cle;
+      /* LA POLITESSE EST UN PREFIXE, PAS LE MESSAGE.
+         « bonjour » est une salutation ; « bonjour, combien de joueuses
+         actives » est une question qui commence poliment, et y repondre
+         « Bonjour. » serait exactement le genre de reponse qui donne
+         l'impression de ne pas ecouter.
+         On retire donc le marqueur trouve et on regarde ce qui reste :
+         s'il reste de la matiere, c'est elle qu'il faut traiter. */
+      var reste = mots(t.replace(m[0], ' '));
+      if (reste.length <= 1) return SOCIAL[i].cle;
+    }
+    return null;
+  }
+
   var INTENTIONS = [
     /* ON DIT BONJOUR. Repondre « je ne comprends pas cette demande » a
        quelqu'un qui vous salue est froid et bete, et c'est la premiere
        chose que fait n'importe qui en ouvrant une fenetre de dialogue.
        Ce n'est pas de la decoration : la premiere phrase decide si l'on
        en tape une deuxieme. */
-    { cle: 'politesse', ecrit: false,
-      motifs: [/^(bonjour|bonsoir|salut|coucou|hello|hey|yo|bjr|slt)\b/,
-               /^(ca va|comment vas tu|comment ca va)\b/,
-               /^(merci|merci beaucoup|nickel|parfait|super|ok merci)\b/,
-               /^(au revoir|a bientot|bonne journee|bonne soiree|bye)\b/],
-      exemple: 'bonjour' },
+    /* Gardee pour l'exemple affiche dans l'aide : la reconnaissance,
+       elle, passe desormais par social() plus haut, qui couvre neuf
+       familles au lieu de quatre formules. */
+    /* SANS MOTIF, ET C'EST VOLONTAIRE. La reconnaissance passe desormais
+       par social(), plus haut, qui couvre neuf familles au lieu de
+       quatre formules. Laisser les anciens motifs ici les faisait
+       gagner sur la vraie demande : « bonjour, combien de joueuses »
+       repondait « Bonjour. » et s'arretait la. L'entree reste pour son
+       exemple, que l'aide affiche. */
+    { cle: 'politesse', ecrit: false, motifs: [], exemple: 'bonjour' },
 
     { cle: 'aide', ecrit: false,
       motifs: [/\b(aide|help)\b/, /que (sais|peux) tu (faire)?/, /comment (ca|tu) march/,
@@ -355,6 +443,11 @@
     }
     SUJETS.forEach(function (S) { motsDuMotif(S.motif).forEach(pousse); pousse(S.nom); });
     INTENTIONS.forEach(function (I) { I.motifs.forEach(function (re) { motsDuMotif(re).forEach(pousse); }); });
+    /* ET LES MOTS DE LA CONVERSATION. Sans eux, « bonne journee »
+       devenait « donne journee » et l'adieu n'etait plus reconnu : le
+       meme piege que « urgent » corrige en « argent », a un autre
+       endroit. Tout ce qui sert a reconnaitre doit etre au lexique. */
+    SOCIAL.forEach(function (S) { motsDuMotif(S.motif).forEach(pousse); });
     MOTS_TEMPS.forEach(pousse);
     (ctx.personnes || []).forEach(function (p) { pousse(p.nom); });
     (ctx.ecrans || []).forEach(function (e) { pousse(e.titre); });
@@ -515,6 +608,13 @@
     /* DE QUOI ON PARLE, AVANT DE SAVOIR CE QU'ON VEUT. Le sujet sert
        deux fois : il autorise les questions qui l'exigent, et il rend
        utile le refus quand rien ne repond. */
+    /* LE SOCIAL EN PREMIER. Une phrase qui salue, remercie, refuse ou
+       relance n'est pas une requete : la faire passer par les intentions
+       puis par les sujets, c'est ce qui donnait « je ne comprends pas »
+       a « tu vas bien ? ». */
+    var soc = social(t);
+    if (soc) { res.intention = 'politesse'; res.social = soc; return res; }
+
     var suj = sujet(t, ctx.sujets);
     if (suj) res.sujet = suj;
 
@@ -592,6 +692,7 @@
     date: date,
     heure: heure,
     corriger: corriger,
+    social: social,
     distance: distance,
     lexique: lexique,
     INTENTIONS: INTENTIONS
