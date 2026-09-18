@@ -223,6 +223,172 @@
 
 
   /* ==================================================================
+     LES FAUTES DE FRAPPE
+     ------------------------------------------------------------------
+     « qui est le resident du club » : une lettre de trop, et elle
+     cherchait un nom propre introuvable. Personne ne devrait avoir a
+     relire ce qu'il tape pour parler a une assistante.
+
+     ON CORRIGE LA PHRASE AVANT DE L'ANALYSER, pas apres. Un seul
+     passage, et tout en profite : les intentions, les sujets, les noms,
+     les ecrans. Corriger a quatre endroits aurait donne quatre regles a
+     tenir, et trois oubliees au premier ajout.
+
+     TROIS GARDE-FOUS, parce qu'une correction fausse est pire qu'une
+     faute laissee telle quelle :
+
+       1. ON NE TOUCHE QU'AUX MOTS INCONNUS. Un mot deja dans le lexique
+          est juste, meme s'il ressemble a un autre. « match » ne devient
+          jamais « marche ».
+
+       2. UNE SEULE CORRESPONDANCE, SINON RIEN. Si deux mots du lexique
+          sont a la meme distance, on ne choisit pas : on laisse le mot
+          tel quel et l'analyse fera ce qu'elle peut. Deviner entre deux
+          candidats, c'est repondre a cote avec assurance.
+
+       3. ELLE LE DIT. Les corrections remontent dans le resultat, et la
+          reponse les annonce. Corriger en douce, c'est laisser quelqu'un
+          croire qu'elle a compris autre chose que ce qu'il a ecrit.
+
+     LE LEXIQUE SE CONSTRUIT TOUT SEUL, a partir de ce que MAYA connait
+     deja : les mots de ses sujets, les titres des ecrans, les noms des
+     personnes, les verbes de ses intentions. Un ecran ajoute demain
+     apporte son vocabulaire le jour meme, sans une ligne de plus ici.
+     ================================================================== */
+
+  /* Distance d'edition, avec abandon des que le seuil est depasse : sur
+     un lexique de quelques centaines de mots, comparer jusqu'au bout
+     coute cent fois plus cher que de s'arreter a la deuxieme faute. */
+  function distance(a, b, max) {
+    if (a === b) return 0;
+    var la = a.length, lb = b.length;
+    if (Math.abs(la - lb) > max) return max + 1;
+    var precedente = new Array(lb + 1), courante = new Array(lb + 1), i, j;
+    for (j = 0; j <= lb; j++) precedente[j] = j;
+    for (i = 1; i <= la; i++) {
+      courante[0] = i;
+      var mini = courante[0];
+      for (j = 1; j <= lb; j++) {
+        var cout = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+        courante[j] = Math.min(courante[j - 1] + 1, precedente[j] + 1, precedente[j - 1] + cout);
+        if (courante[j] < mini) mini = courante[j];
+      }
+      if (mini > max) return max + 1;
+      var t = precedente; precedente = courante; courante = t;
+    }
+    return precedente[lb];
+  }
+
+  /* Le seuil suit la longueur du mot TAPE. Une faute sur cinq lettres,
+     deux au-dela de six : « samdi » doit trouver « samedi », et
+     « jouese » doit trouver « joueuses », qui est a deux. En dessous de
+     quatre lettres on ne corrige pas du tout -- « le », « du », « cinq »
+     sont a une lettre de trop de choses. */
+  function seuilDe(mot) {
+    // CINQ LETTRES AU MINIMUM, et la mesure l'a impose : a quatre, « suis »
+    // devenait « sais » et la phrase changeait de sens sans que rien ne le
+    // signale. Les mots courts du francais sont trop proches les uns des
+    // autres pour qu'on y touche.
+    if (mot.length < 5) return 0;
+    if (mot.length < 6) return 1;
+    return 2;
+  }
+
+  /* LES MOTS D'UN MOTIF. Les sujets et les intentions portent leur
+     vocabulaire dans des expressions regulieres ; on l'en extrait plutot
+     que de le recopier a cote, ou les deux listes divergeraient des la
+     premiere retouche. On coupe a la premiere echappee : « convoc\w* »
+     donne « convoc », ce qui est exactement le prefixe utile. */
+  function motsDuMotif(re) {
+    var out = [];
+    // ON RETIRE D'ABORD LES ECHAPPEES. La premiere version ne lisait que
+    // les groupes a alternatives, et coupait au premier antislash : un
+    // motif simple comme « \burgent » n'entrait donc pas au lexique, et
+    // « urgent » s'est fait corriger en « argent ». En neutralisant \b,
+    // \w, \d et \s d'abord, toute suite de lettres devient un mot, qu'elle
+    // vienne d'un groupe ou non.
+    String(re.source)
+      .replace(/\\[a-zA-Z]/g, ' ')
+      .replace(/[a-z][a-z0-9]{3,}/g, function (m) { out.push(m); return ''; });
+    return out;
+  }
+
+  /* Les jours et les reperes de temps : ils ne sont dans aucun motif a
+     alternatives, et « samdi » est la faute la plus courante de toutes. */
+  var MOTS_TEMPS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche',
+                    'demain','hier','aujourd','prochain','prochaine','semaine','matin','soir'];
+
+  /* DES MOTS FRANCAIS COURANTS QU'ON NE CORRIGE JAMAIS.
+     Ils ne sont dans aucun motif et ne designent rien du club, donc rien
+     ne les protegeait : « quelque » se faisait corriger en « quelle », ce
+     qui ne changeait rien au sens mais salissait la correction affichee.
+     Une liste courte suffit -- ce sont les mots qu'on emploie autour
+     d'une question, pas la langue entiere. */
+  var MOTS_SUR = ['quelque','quelques','chose','choses','encore','comme','aussi',
+                  'autre','autres','toujours','jamais','peut','veut','doit','sait',
+                  'etre','avoir','savoir','voici','voila','depuis','pendant','parce',
+                  'pourquoi','comment','maintenant','vite','bientot','deja','trop',
+                  'meme','ainsi','sinon','juste','seulement','surtout','plutot'];
+
+  var LEX = { mots: null, empreinte: '' };
+
+  function lexique(ctx) {
+    ctx = ctx || {};
+    // L'empreinte evite de tout reconstruire a chaque phrase, et de
+    // garder un lexique perime quand l'effectif change.
+    var emp = (ctx.personnes ? ctx.personnes.length : 0) + ':' +
+              (ctx.ecrans ? ctx.ecrans.length : 0) + ':' +
+              (ctx.sujets ? ctx.sujets.length : 0);
+    if (LEX.mots && LEX.empreinte === emp) return LEX.mots;
+
+    var vus = {};
+    function pousse(m) {
+      m = plat(m);
+      m.split(' ').forEach(function (x) { if (x.length >= 4) vus[x] = 1; });
+    }
+    SUJETS.forEach(function (S) { motsDuMotif(S.motif).forEach(pousse); pousse(S.nom); });
+    INTENTIONS.forEach(function (I) { I.motifs.forEach(function (re) { motsDuMotif(re).forEach(pousse); }); });
+    MOTS_TEMPS.forEach(pousse);
+    (ctx.personnes || []).forEach(function (p) { pousse(p.nom); });
+    (ctx.ecrans || []).forEach(function (e) { pousse(e.titre); });
+    (ctx.sujets || []).forEach(function (s) { pousse(s.nom); });
+
+    LEX.mots = Object.keys(vus);
+    LEX.empreinte = emp;
+    return LEX.mots;
+  }
+
+  function corriger(texte, ctx) {
+    var mots_ = plat(texte).split(' ');
+    var lex = lexique(ctx);
+    var connus = {}; lex.forEach(function (m) { connus[m] = 1; });
+    var corrections = [], sortie = [];
+
+    mots_.forEach(function (mot) {
+      // Mot connu, mot vide, mot courant, nombre : on n'y touche pas.
+      if (!mot || connus[mot] || VIDES.indexOf(mot) >= 0 || MOTS_SUR.indexOf(mot) >= 0 ||
+          /^\d+$/.test(mot) || mot.length < 5) {
+        sortie.push(mot); return;
+      }
+      var seuil = seuilDe(mot);
+      if (!seuil) { sortie.push(mot); return; }
+
+      var meilleur = null, meilleure = seuil + 1, exaequo = false;
+      for (var i = 0; i < lex.length; i++) {
+        var d = distance(mot, lex[i], seuil);
+        if (d > seuil) continue;
+        if (d < meilleure) { meilleure = d; meilleur = lex[i]; exaequo = false; }
+        else if (d === meilleure && lex[i] !== meilleur) exaequo = true;
+      }
+      // Deux candidats a egalite : on ne tranche pas.
+      if (meilleur && !exaequo) { sortie.push(meilleur); corrections.push([mot, meilleur]); }
+      else sortie.push(mot);
+    });
+
+    return { texte: sortie.join(' '), corrections: corrections };
+  }
+
+  /* ==================================================================
      LES ENTITES : ON CHERCHE, ON NE DEVINE PAS
      ------------------------------------------------------------------
      Le contexte porte les listes reelles : les personnes lues dans la
@@ -317,11 +483,16 @@
      ================================================================== */
   function analyser(texte, ctx) {
     ctx = ctx || {};
-    var t = plat(texte);
+    // LA CORRECTION PASSE AVANT TOUT. Ce qui suit travaille sur la phrase
+    // corrigee ; « texte » garde ce qui a ete tape, pour pouvoir le
+    // reafficher tel quel.
+    var cor = corriger(texte, ctx);
+    var t = cor.texte;
     var res = {
       texte: String(texte == null ? '' : texte),
       plat: t,
-      mots: mots(texte),
+      corrections: cor.corrections,
+      mots: mots(t),
       intention: null,
       ecrit: false,
       entites: {},
@@ -332,7 +503,7 @@
     /* DE QUOI ON PARLE, AVANT DE SAVOIR CE QU'ON VEUT. Le sujet sert
        deux fois : il autorise les questions qui l'exigent, et il rend
        utile le refus quand rien ne repond. */
-    var suj = sujet(texte, ctx.sujets);
+    var suj = sujet(t, ctx.sujets);
     if (suj) res.sujet = suj;
 
     for (var i = 0; i < INTENTIONS.length; i++) {
@@ -347,15 +518,15 @@
       if (res.intention) break;
     }
 
-    var pers = personnes(texte, ctx.personnes);
+    var pers = personnes(t, ctx.personnes);
     if (pers.length === 1) res.entites.personne = pers[0];
     else if (pers.length > 1) res.entites.personnes = pers;
 
-    var ecr = ecrans(texte, ctx.ecrans);
+    var ecr = ecrans(t, ctx.ecrans);
     if (ecr.length) res.entites.ecran = ecr[0];
 
-    var d = date(texte, ctx.maintenant); if (d) res.entites.date = d;
-    var h = heure(texte); if (h) res.entites.heure = h;
+    var d = date(t, ctx.maintenant); if (d) res.entites.date = d;
+    var h = heure(t); if (h) res.entites.heure = h;
 
     /* UNE PHRASE QUI NE CONTIENT QU'UN NOM EST UNE RECHERCHE.
        « Marieme » tout seul n'a pas de verbe, aucun motif ne repond, et
@@ -408,6 +579,9 @@
     ecrans: ecrans,
     date: date,
     heure: heure,
+    corriger: corriger,
+    distance: distance,
+    lexique: lexique,
     INTENTIONS: INTENTIONS
   };
 })();

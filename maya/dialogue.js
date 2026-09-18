@@ -271,6 +271,23 @@
     };
     var r = M.comprendre.analyser(texte, ctx);
 
+    /* ELLE DIT CE QU'ELLE A LU AUTREMENT.
+       Corriger une faute en silence, c'est laisser quelqu'un croire
+       qu'elle a compris ce qu'il a ecrit, alors qu'elle a repondu a
+       autre chose. Une ligne discrete suffit, et elle permet de dire
+       « non, je voulais bien ecrire ca ». */
+    if (r.corrections && r.corrections.length) {
+      finPenser();
+      var d = document.createElement('div');
+      d.className = 'maya-elle maya-lu';
+      d.innerHTML = '<p class="doux">J’ai lu ' + r.corrections.map(function (c) {
+        return '<b>' + esc(c[1]) + '</b>';
+      }).join(', ') + '.</p>';
+      fil.appendChild(d);
+      bas();
+      penser();
+    }
+
     if (r.entites.personnes && r.entites.personnes.length > 1 &&
         (r.intention === 'qui' || r.intention === 'manque')) {
       return demanderLaquelle(r);
