@@ -238,6 +238,102 @@
 
 
   /* ==================================================================
+     QUAND ELLE PARLE, ET QUAND ELLE SE TAIT
+     ------------------------------------------------------------------
+     Ce qui tue une assistante, ce n'est pas d'en savoir trop peu : c'est
+     de parler trop. Une carte de trop et l'on ferme la suivante sans la
+     lire ; trois de trop et l'on n'ouvre plus l'ecran.
+
+     TROIS NIVEAUX, ET LE MILIEU PAR DEFAUT.
+       discrete    elle ne vient jamais d'elle-meme. La cloche suffit.
+       mesuree     l'urgent et l'important, au plus une fois par quart
+                   d'heure.
+       attentive   tout sauf l'information, une fois par cinq minutes.
+
+     « info » NE DECLENCHE RIEN, A AUCUN NIVEAU. « Aucune actualite
+     depuis trois semaines » est vrai, utile dans une liste, et ne
+     justifie pas d'interrompre quelqu'un.
+
+     RIEN PENDANT QU'ON ECRIT. L'hote sait si un formulaire est en cours
+     (l'administration a son propre indicateur) et le dit par occupe().
+     Une carte qui s'ouvre pendant une saisie fait perdre le fil, et
+     parfois le travail.
+
+     LE NIVEAU VIT SUR L'APPAREIL, pas en base : ce qui convient un jour
+     de match ne convient pas un mardi soir, et c'est un reglage
+     personnel, pas une decision du club.
+     ================================================================== */
+  var NIVEAUX_PAROLE = {
+    discrete:  { montre: [],                        minutes: 0 },
+    mesuree:   { montre: ['urgent','important'],    minutes: 15 },
+    attentive: { montre: ['urgent','important','attention'], minutes: 5 }
+  };
+  var CLE_NIVEAU = 'bbc_maya_niveau';
+  var PAROLE = { dernier: 0 };
+
+  function niveau(v) {
+    if (v !== undefined) {
+      if (!NIVEAUX_PAROLE[v]) return niveau();
+      try { localStorage.setItem(CLE_NIVEAU, v); } catch (e) {}
+      return v;
+    }
+    var lu = null;
+    try { lu = localStorage.getItem(CLE_NIVEAU); } catch (e) {}
+    return NIVEAUX_PAROLE[lu] ? lu : 'mesuree';
+  }
+
+  function peutParler(f) {
+    var r = NIVEAUX_PAROLE[niveau()];
+    if (!r.minutes) return false;
+    if (f && r.montre.indexOf(f.niveau) < 0) return false;
+    if (Date.now() - PAROLE.dernier < r.minutes * 60000) return false;
+    if (CTX && typeof CTX.occupe === 'function') {
+      try { if (CTX.occupe()) return false; } catch (e) {}
+    }
+    return true;
+  }
+
+
+  /* ==================================================================
+     CE QUI VIENT D'ARRIVER
+     ------------------------------------------------------------------
+     La collecte tournait deja toutes les cinq minutes, et ne servait
+     qu'a changer un chiffre en silence. Comparer deux collectes suffit a
+     savoir ce qui est APPARU -- et c'est precisement pour cela que les
+     cles sont stables : sans elles, « 4 inscriptions » serait un fait
+     neuf tous les matins.
+
+     LA PREMIERE COLLECTE N'ANNONCE RIEN. Elle est la reference. Sans
+     cette regle, ouvrir l'administration ferait defiler huit cartes
+     d'affilee -- soit exactement ce qu'on cherche a eviter.
+
+     RIEN NE SE PERD, RIEN NE S'ENTASSE. Un fait neuf arrive pendant une
+     periode de silence attend son tour dans FILE ; il sort des que le
+     budget le permet, un seul a la fois. Et s'il cesse d'etre vrai
+     entre-temps, il sort de la file sans avoir ete dit : c'est le
+     comportement voulu, on ne previent pas d'un probleme deja regle.
+     ================================================================== */
+  var FILE = [];
+  var ABONNES = [];
+
+  function surNouveaux(fn) {
+    if (typeof fn === 'function') ABONNES.push(fn);
+  }
+
+  function annoncer() {
+    if (!FILE.length) return;
+    if (!peutParler(FILE[0])) return;
+    var f = FILE.shift();
+    PAROLE.dernier = Date.now();
+    ABONNES.forEach(function (fn) { try { fn(f, FILE.length); } catch (e) {} });
+  }
+
+  /* Appelable de l'exterieur : apres avoir ferme une carte, l'hote peut
+     redemander la parole sans attendre la collecte suivante. */
+  function relancer() { annoncer(); }
+
+
+  /* ==================================================================
      LA COLLECTE
      ------------------------------------------------------------------
      Toutes les sources, en parallele, puis le filtre des permissions,
@@ -282,8 +378,39 @@
           });
         });
         faits.sort(function (a, b) { return NIVEAUX[a.niveau] - NIVEAUX[b.niveau]; });
+
+        // CE QUI EST APPARU DEPUIS LA DERNIERE FOIS.
+        // « premiere » est vrai au tout premier passage : elle sert de
+        // reference et n'annonce rien. Rouvrir l'administration ne doit
+        // pas derouler huit cartes.
+        var premiere = DERNIERE.faits == null;
+        var avant = {};
+        (DERNIERE.faits || []).forEach(function (x) { avant[x.quoi + ' ' + x.cible] = 1; });
+        faits.forEach(function (f) {
+          f.neuf = !premiere && !avant[f.quoi + ' ' + f.cible];
+          // Jamais vu : absent de la memoire. Survit au rechargement, la
+          // ou « neuf » ne vit que le temps de la session. C'est ce qui
+          // permettra de dire, a l'arrivee, ce qui est arrive en votre
+          // absence.
+          f.jamaisVu = !memSort(mem, f);
+        });
+
+        // La file ne garde que ce qui est encore vrai : un fait regle
+        // entre-temps en sort sans avoir ete annonce, et c'est voulu.
+        var vivants = {};
+        faits.forEach(function (f) { vivants[f.quoi + ' ' + f.cible] = f; });
+        FILE = FILE.filter(function (f) { return !!vivants[f.quoi + ' ' + f.cible]; })
+                   .map(function (f) { return vivants[f.quoi + ' ' + f.cible]; });
+        var enFile = {};
+        FILE.forEach(function (f) { enFile[f.quoi + ' ' + f.cible] = 1; });
+        faits.forEach(function (f) {
+          if (f.neuf && !enFile[f.quoi + ' ' + f.cible]) FILE.push(f);
+        });
+        FILE.sort(function (a, b) { return NIVEAUX[a.niveau] - NIVEAUX[b.niveau]; });
+
         DERNIERE = { faits: faits, quand: Date.now(), echecs: echecs, sources: noms.length };
         enCours = null;
+        annoncer();
         return faits;
       });
     }).catch(function () {
@@ -360,6 +487,8 @@
     MEM = { lignes: null, quand: 0 };
     PERS = { rows: null, quand: 0 };
     DERNIERE = { faits: null, quand: 0, echecs: [], sources: 0 };
+    FILE = [];
+    PAROLE.dernier = 0;
     return api;
   }
 
@@ -372,6 +501,11 @@
     perimer: perimer,
     marquer: marquer,
     personnes: personnes,
+    surNouveaux: surNouveaux,
+    relancer: relancer,
+    peutParler: peutParler,
+    niveau: niveau,
+    enAttente: function () { return FILE.slice(); },
     // Exposes pour le banc d'essai, et pour les regles qui veulent poser
     // un « quoi » coherent avec celui que MAYA deriverait.
     cleDe: cleDe,

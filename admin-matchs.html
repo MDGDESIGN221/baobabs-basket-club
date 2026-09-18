@@ -3278,6 +3278,17 @@
   .notif-row.attention .att-niv{color:var(--attente)}
   .notif-row.info .att-niv{color:var(--faint)}
   .notif-vide{padding:22px 16px;text-align:center;font-size:13.5px;color:var(--faint)}
+  /* Le reglage de MAYA, au bas de la cloche. Discret : on le trouve
+     quand on le cherche, il ne prend pas la place des alertes. */
+  .maya-niveau{border-top:1px solid var(--line);padding:11px 14px 12px}
+  .maya-niv-t{font-family:var(--font-ui);font-weight:600;font-size:10.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .maya-niv-b{display:flex;gap:5px}
+  .maya-niv{flex:1;font:inherit;font-size:12px;padding:6px 4px;border-radius:var(--r-sm);cursor:pointer;
+    background:transparent;border:1px solid var(--line-strong);color:var(--muted);transition:.15s}
+  .maya-niv:hover{border-color:var(--gold);color:var(--text)}
+  .maya-niv.on{background:var(--gold);border-color:var(--gold);color:#0A1B0D;font-weight:600}
+  .maya-niv-d{margin:8px 0 0;font-size:11.5px;line-height:1.45;color:var(--faint)}
   @media(max-width:600px){#notif-pop{position:fixed;top:var(--h-bandeau);right:8px;left:8px;width:auto}}
 
   /* --- Joueuse du match : une proposition, pas un palmarès --- */
@@ -4894,6 +4905,7 @@
             <div id="notif-pop" class="hide">
               <div class="notif-head">Ce qui demande une décision</div>
               <div id="notif-list"><div class="notif-vide">Analyse en cours…</div></div>
+              <div id="maya-niveau" class="maya-niveau"></div>
             </div>
           </div>
           <button class="link-btn" id="refresh-btn" title="Recharger les données de cet écran">
@@ -8626,11 +8638,20 @@
       M.mount({
         sb: mayaBase(),
         can: can,
-        moi: function(){ return (currentSession && currentSession.user && currentSession.user.id) || null; }
+        moi: function(){ return (currentSession && currentSession.user && currentSession.user.id) || null; },
+        // « Modifications non enregistrees » : le meme indicateur que
+        // celui du bandeau. Une carte qui s'ouvre pendant une saisie
+        // fait perdre le fil, et parfois le travail.
+        occupe: function(){ return dirty === true; }
       });
       // LA PREMIERE SOURCE : les vingt-cinq regles du club, telles
       // quelles. attRegles n'a pas ete touchee et ne sait rien de MAYA.
       M.source('club', function(){ return attRegles(); });
+      // ET C'EST ICI QU'ELLE PREND LA PAROLE. Le noyau tient le budget
+      // (un quart d'heure entre deux venues, rien pendant une saisie,
+      // jamais pour une simple information) ; l'ecran ne fait que
+      // dessiner ce qu'il recoit.
+      M.surNouveaux(function(f, reste){ mayaCarteFait(f, reste); });
       mayaPret = true;
       mayaEnCours = null;
       return true;
@@ -10713,6 +10734,91 @@
     clearTimeout(suiteFermer.t);
     if (!tout) suiteFermer.t = setTimeout(suiteFermer, reste ? 16000 : 7000);
   }
+
+  /* ==================================================================
+     QUAND MAYA VIENT D'ELLE-MEME
+     ------------------------------------------------------------------
+     La carte du dessus parle d'UNE FICHE qu'on vient d'enregistrer :
+     elle a des etapes, et chacune se coche. Celle-ci parle de tout
+     autre chose, quelque chose qui vient d'ARRIVER pendant qu'on
+     faisait autre chose, et sur quoi il n'y a rien a cocher. Une
+     convocation qui n'est pas faite a deux jours du match, une piece
+     medicale qui manque, un direct reste ouvert.
+
+     MEME ENVELOPPE, AUTRE CONTENU. On reprend le dessin de la carte,
+     son visage et ses boutons : deux fenetres differentes pour la meme
+     voix apprendraient a la personne qu'il y a deux systemes, ce qui est
+     precisement ce qu'on est en train de defaire.
+
+     TROIS SORTIES, ET AUCUNE NE MENT :
+       le bouton      mene a l'ecran ou ca se regle, et note « vu ».
+       « Plus tard »  met en sommeil pour un jour. Pas pour toujours :
+                      rien ne s'eteint definitivement ici.
+       « Compris »    note « vu », et c'est tout. Le fait reste dans la
+                      cloche tant que la donnee ne change pas, parce que
+                      lire n'est pas faire.
+     ================================================================== */
+  function mayaCarteFait(f, reste){
+    if (!f) return;
+    var M = window.BaobabsMaya;
+    var ancien = document.getElementById('su-carte'); if (ancien) ancien.remove();
+
+    var ou = (typeof SECTION_META === 'object' && SECTION_META[f.section] && SECTION_META[f.section].t) || f.section || '';
+    var urgent = f.niveau === 'urgent';
+    var h = '<div class="su-haut">' + suiteVisage(false) +
+        '<span class="su-mot"><b>' + esc(f.titre) + '</b>' +
+        '<p>' + esc(f.detail) + '</p></span>' +
+        '<button type="button" class="su-x" id="su-x" aria-label="Fermer">×</button>' +
+      '</div>';
+    if (f.section) {
+      h += '<button type="button" class="su-suite' + (urgent ? ' urgent' : '') + '" id="su-aller">' +
+           '<i></i><span><em>' + (urgent ? 'A faire maintenant' : 'Ou cela se regle') +
+           '</em><b>' + esc(ou) + '</b></span></button>';
+    }
+    if (reste) {
+      h += '<button type="button" class="su-encore" id="su-encore">et ' + reste +
+           ' autre' + (reste > 1 ? 's' : '') + ' a voir…</button>';
+    }
+    h += '<div class="su-bas">' +
+         '<button type="button" id="su-tard">Plus tard</button>' +
+         '<button type="button" class="su-ok" id="su-ok">Compris</button>' +
+         '</div>';
+
+    var c = document.createElement('div');
+    c.className = 'su-carte'; c.id = 'su-carte';
+    c.setAttribute('role', 'status');
+    c.innerHTML = h;
+    document.body.appendChild(c);
+    requestAnimationFrame(function(){ c.classList.add('su-la'); });
+
+    function noter(etat, jours){ try { if (M) M.marquer(f, etat, jours); } catch(e){} }
+
+    c.querySelector('#su-x').addEventListener('click', function(){ noter('vu'); suiteFermer(); });
+    c.querySelector('#su-ok').addEventListener('click', function(){ noter('vu'); suiteFermer(); });
+    c.querySelector('#su-tard').addEventListener('click', function(){ noter('ecarte', 1); suiteFermer(); });
+
+    var all = c.querySelector('#su-aller');
+    if (all) all.addEventListener('click', function(){
+      noter('vu'); suiteFermer();
+      try { showSection(f.section); } catch(e){}
+    });
+
+    // « et 2 autres » n'en montre pas un deuxieme : le budget vient de
+    // servir. Il ouvre la cloche, ou tout est deja ecrit.
+    var enc = c.querySelector('#su-encore');
+    if (enc) enc.addEventListener('click', function(){
+      suiteFermer();
+      var pop = document.getElementById('notif-pop');
+      if (pop) pop.classList.remove('hide');
+    });
+
+    // Plus longtemps que la carte d'une fiche : celle-ci arrive sans
+    // qu'on ait rien demande, donc on peut etre en train de lire
+    // ailleurs quand elle se pose.
+    clearTimeout(suiteFermer.t);
+    suiteFermer.t = setTimeout(suiteFermer, 22000);
+  }
+
 
   /* ==================================================================
      RETROUVER UNE IMAGE REMPLACEE PAR ERREUR
@@ -17052,13 +17158,51 @@
     });
   }
 
+  /* LE REGLAGE, LA OU L'ON SE PLAINT.
+     Trois boutons au bas de la cloche, et pas une ligne de plus dans
+     l'ecran des reglages : c'est ici qu'on est quand on trouve qu'elle
+     parle trop, ou pas assez. Aller chercher un reglage a l'autre bout
+     de l'administration pour dire « moins souvent », personne ne le
+     fait -- on ferme la carte et on finit par ne plus la lire.
+
+     Le choix vit sur l'appareil, pas en base : ce qui convient un jour
+     de match ne convient pas un mardi soir, et ce n'est pas une
+     decision du club. */
+  var MAYA_NIVEAUX = [
+    ['discrete',  'Discrete',  'Elle ne vient jamais d’elle-meme. Vous regardez la cloche.'],
+    ['mesuree',   'Mesuree',   'Elle vient pour l’urgent et l’important, au plus une fois par quart d’heure.'],
+    ['attentive', 'Attentive', 'Elle vient des qu’un fait nouveau apparaît.']
+  ];
+
+  function mayaReglagePeindre(){
+    var boite = document.getElementById('maya-niveau');
+    if (!boite) return;
+    var M = window.BaobabsMaya;
+    var courant = M ? M.niveau() : 'mesuree';
+    var ligne = MAYA_NIVEAUX.filter(function(n){ return n[0] === courant; })[0] || MAYA_NIVEAUX[1];
+    boite.innerHTML =
+      '<div class="maya-niv-t">Quand MAYA vient vous voir</div>' +
+      '<div class="maya-niv-b">' + MAYA_NIVEAUX.map(function(n){
+        return '<button type="button" class="maya-niv' + (n[0] === courant ? ' on' : '') +
+               '" data-niv="' + n[0] + '">' + n[1] + '</button>';
+      }).join('') + '</div>' +
+      '<p class="maya-niv-d">' + esc(ligne[2]) + '</p>';
+    boite.querySelectorAll('[data-niv]').forEach(function(b){
+      b.addEventListener('click', function(e){
+        e.stopPropagation();
+        if (M) M.niveau(b.getAttribute('data-niv'));
+        mayaReglagePeindre();
+      });
+    });
+  }
+
   function notifInit(){
     var bell = document.getElementById('notif-bell'), pop = document.getElementById('notif-pop');
     if (!bell || !pop) return;
     bell.addEventListener('click', function(e){
       e.stopPropagation();
       pop.classList.toggle('hide');
-      if (!pop.classList.contains('hide')) attCollecte();
+      if (!pop.classList.contains('hide')){ attCollecte(); mayaReglagePeindre(); }
     });
     document.addEventListener('click', function(e){
       if (!pop.classList.contains('hide') && !pop.contains(e.target) && e.target !== bell) pop.classList.add('hide');
