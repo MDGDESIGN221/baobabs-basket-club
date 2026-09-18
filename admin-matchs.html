@@ -8566,6 +8566,92 @@
       .catch(function(e){ console.error('[Greffe]', e); qgToast('Le Greffe n\'a pas pu se charger', true); })
       .then(function(){ greffeEnCours = false; });
   }
+  /* ==================================================================
+     MAYA
+     ------------------------------------------------------------------
+     Le noyau vit dans /maya/maya.js, dehors, pour la meme raison que le
+     Studio et le Greffe : ce fichier-ci fait 35 000 lignes dans une
+     seule fonction anonyme, ou deux fonctions de meme nom s'ecrasent
+     sans une ligne d'erreur. MAYA va grandir ; elle grandira dehors.
+
+     CE QUI CHANGE AUJOURD'HUI : RIEN, A L'ECRAN.
+     Le noyau ne porte aucune regle. Les vingt-cinq regles du centre
+     d'attention restent ou elles sont, et s'enregistrent chez lui comme
+     une source. Il rend exactement ce qu'elles rendaient, dans le meme
+     ordre. Ce qu'il ajoute est invisible pour l'instant : une cle stable
+     par fait, et la memoire de ce qui a ete vu, traite ou ecarte.
+
+     ET S'IL NE CHARGE PAS, L'ADMINISTRATION NE S'EN APERCOIT PAS.
+     attCollecte retombe sur attRegles, c'est-a-dire sur le chemin
+     d'hier, inchange. Un module externe qui tombe ne doit jamais
+     emporter la cloche avec lui.
+     ================================================================== */
+  var mayaPret = false, mayaEnCours = null;
+
+  /* Sa porte vers la base. Pas sbUpsert : celui-la ecrit dans le journal
+     d'audit, et chaque « vu » y laisserait une ligne. Le journal raconte
+     ce que le club a change, pas ce que MAYA a montre. */
+  function mayaBase(){
+    return {
+      get: function(chemin){ return sbGet(chemin); },
+      upsert: function(table, ligne){
+        return fetch(SUPABASE_URL + '/rest/v1/' + table, {
+          method: 'POST',
+          headers: sbHeaders({ 'Content-Type':'application/json',
+                               'Prefer':'resolution=merge-duplicates,return=minimal' }),
+          body: JSON.stringify(ligne)
+        }).then(function(r){ if (!r.ok) throw new Error('maya_suivi ' + r.status); });
+      }
+    };
+  }
+
+  function mayaCharger(){
+    if (window.BaobabsMaya) return Promise.resolve();
+    return new Promise(function(res, rej){
+      var sc = document.createElement('script');
+      sc.src = '/maya/maya.js';
+      sc.onload = function(){ window.BaobabsMaya ? res() : rej(new Error('global absent')); };
+      sc.onerror = function(){ rej(new Error('script')); };
+      document.head.appendChild(sc);
+    });
+  }
+
+  /* Ne rejette JAMAIS : l'appelant enchaine sur attCollecte dans tous
+     les cas. Un echec laisse simplement mayaPret a faux. */
+  function mayaMonter(){
+    if (mayaPret) return Promise.resolve(true);
+    if (mayaEnCours) return mayaEnCours;
+    mayaEnCours = mayaCharger().then(function(){
+      var M = window.BaobabsMaya;
+      M.mount({
+        sb: mayaBase(),
+        can: can,
+        moi: function(){ return (currentSession && currentSession.user && currentSession.user.id) || null; }
+      });
+      // LA PREMIERE SOURCE : les vingt-cinq regles du club, telles
+      // quelles. attRegles n'a pas ete touchee et ne sait rien de MAYA.
+      M.source('club', function(){ return attRegles(); });
+      mayaPret = true;
+      mayaEnCours = null;
+      return true;
+    }).catch(function(e){
+      console.warn('[MAYA] noyau non charge, on garde le chemin direct :', e && e.message);
+      mayaPret = false; mayaEnCours = null;
+      return false;
+    });
+    return mayaEnCours;
+  }
+
+  /* ON LANCE MAINTENANT, PAS A LA PREMIERE COLLECTE.
+     Le tableau de bord appelle attCollecte des son ouverture, bien avant
+     que la cloche s'initialise. Le noyau demande un aller-retour reseau
+     pour arriver : demarre trop tard, il manque toujours la seule liste
+     qu'on regarde vraiment, celle du premier ecran. Rien n'est lu ici,
+     rien n'est demande a la base : on met seulement le script en route.
+     can et attRegles sont passees par reference, donc le role peut
+     encore etre inconnu a cette seconde. */
+  mayaMonter();
+
   function greffeBoutonHtml(attrs, libelle){
     return greffeAutorise() ? '<button type="button" ' + attrs + ' title="Un acte du Greffe, deja rempli avec ces donnees">' + libelle + '</button>' : '';
   }
@@ -16629,12 +16715,34 @@
   // l'autre ignore.
   var attFaits = null, attQuand = 0, attEnCours = null;
 
+  /* D'OU VIENNENT LES FAITS.
+     Par MAYA quand elle est la : meme liste, meme ordre, plus la cle
+     stable et la memoire. Par attRegles sinon -- le chemin d'hier, mot
+     pour mot. Les deux rendent la meme forme, c'est tout l'interet
+     d'avoir laisse les regles ou elles etaient. */
+  function attSource(force){
+    var M = window.BaobabsMaya;
+    if (mayaPret && M) return M.collecte({ force: !!force });
+    // LE MONTAGE EST PEUT-ETRE EN COURS, ET C'EST LE CAS ORDINAIRE :
+    // la premiere collecte part avec la page. Partir sans attendre
+    // remplissait le cache d'attCollecte par le chemin direct, et les
+    // deux minutes de fraicheur faisaient ensuite passer MAYA a cote de
+    // son propre premier affichage -- elle etait chargee, montee, et ne
+    // servait a rien.
+    if (mayaEnCours) return mayaEnCours.then(function(ok){
+      return (ok && window.BaobabsMaya)
+        ? window.BaobabsMaya.collecte({ force: !!force })
+        : attRegles();
+    });
+    return attRegles();
+  }
+
   function attCollecte(force){
     // Deux minutes de fraîcheur : passer d'un écran à l'autre ne doit
     // pas relancer neuf requêtes.
     if (!force && attFaits && (Date.now() - attQuand) < 120000) return Promise.resolve(attFaits);
     if (attEnCours) return attEnCours;
-    attEnCours = attRegles().then(function(f){
+    attEnCours = attSource(force).then(function(f){
       attFaits = f; attQuand = Date.now(); attEnCours = null;
       notifPeindre();
       return f;
@@ -16662,7 +16770,13 @@
 
     function ajout(niveau, titre, detail, section, module){
       if (module && !can(module,'voir')) return;
-      faits.push({ niveau:niveau, titre:titre, detail:detail, section:section });
+      // LE MODULE EST PORTE PAR LE FAIT, ET PLUS SEULEMENT TESTE ICI.
+      // Il servait au filtre juste au-dessus, puis etait jete. MAYA en a
+      // besoin pour deux choses : refiltrer de son cote (une source
+      // future pourrait oublier de le faire), et fabriquer une cle
+      // stable qui distingue deux faits de modules differents. Rien de
+      // ce qui lit ces faits aujourd'hui ne regarde ce champ.
+      faits.push({ niveau:niveau, titre:titre, detail:detail, section:section, module:module || null });
     }
     function jours(d){
       if(!d) return null;
@@ -16952,7 +17066,11 @@
     document.addEventListener('keydown', function(e){
       if (e.key === 'Escape') pop.classList.add('hide');
     });
-    attCollecte();
+    // MAYA d'abord, la collecte ensuite : montee apres coup, la premiere
+    // liste serait passee par le chemin direct et la memoire n'aurait
+    // pas joue. mayaMonter ne rejette jamais, donc attCollecte part
+    // dans tous les cas.
+    mayaMonter().then(function(){ attCollecte(); });
     // Un rappel toutes les cinq minutes : assez pour qu'un match qui
     // approche remonte, assez rare pour ne pas peser.
     setInterval(function(){ attCollecte(true); }, 300000);
