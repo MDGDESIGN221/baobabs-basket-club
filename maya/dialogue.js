@@ -1455,8 +1455,10 @@
     if (!f) return rIncomprise(r);
     return f(s.cle).then(function (d) {
       var hors = sujetHors(d, s.nom);
+      // « de le staff » : deLe() existait depuis le banc des reponses,
+      // elle n'etait simplement pas appelee ici.
       var tete = '<p>Je ne suis pas sûre d’avoir bien compris. ' +
-                 'Si vous me parlez de <b>' + esc(s.nom) + '</b> :</p>';
+                 'Si vous me parlez ' + deLe(s.nom) + ' :</p>';
       if (hors) return elle(tete + hors);
       var h = tete + '<p><b>' + d.n + '</b> ' + esc(d.n > 1 ? d.pluriel : d.nom) + '.</p>';
       if (d.note) h += '<p class="doux">' + esc(d.note) + '</p>';

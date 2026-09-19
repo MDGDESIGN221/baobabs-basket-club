@@ -269,42 +269,75 @@
     return null;
   }
 
-  /* ==================================================================
-     LES CRITERES : « QUI N'A PAS ENCORE DE LICENCE »
-     ------------------------------------------------------------------
-     Teste en production : « qui est blessee » cherchait un NOM et
-     repondait « je ne trouve personne de ce nom ». « les joueuses sans
-     photo » ouvrait l'ecran. « qui n'a pas de licence » n'etait pas
-     comprise du tout.
+  /* LE MARQUEUR SOCIAL, SANS REGARDER CE QUI SUIT.
+     Ne sert qu'en DERNIER RECOURS, quand rien d'autre n'a ete reconnu :
+     « merci beaucoup c'est parfait » recevait « je ne comprends pas ».
+     La suite ne disait rien qu'elle sache traiter, donc le remerciement
+     EST le message. Utilise plus tot, ce meme test ferait repondre
+     « Bonjour. » a « bonjour, combien de joueuses » -- c'est pourquoi il
+     reste separe de social(). */
+  function socialQuandMeme(texte) {
+    var t = plat(texte);
+    if (!t) return null;
+    for (var i = 0; i < SOCIAL.length; i++) {
+      if (SOCIAL[i].motif.test(t)) return SOCIAL[i].cle;
+    }
+    return null;
+  }
 
-     Trois questions sur quatre que pose un vrai utilisateur sont des
-     FILTRES, et c'est ce qui manquait. Les ecrire un par un comme des
-     intentions aurait redonne la course sans fin : « sans photo », puis
-     « sans numero », puis « sans bio »... On declare donc des CRITERES
-     combinables, et la question devient une requete.
+  /* ==================================================================
+     LES CRITERES : UNE CHOSE, ET SON ABSENCE
+     ------------------------------------------------------------------
+     Premiere version : une liste de tournures exactes -- « sans
+     licence », « pas de licence », « pas encore de licence ». Teste en
+     production : « je voudrais savoir qui n'a pas encore RENDU SA
+     licence » n'etait comprise d'aucune facon. Il y a trente manieres de
+     dire qu'il manque quelque chose, et les ecrire toutes est la course
+     sans fin qu'on essaie d'eviter depuis le debut.
+
+     ON SEPARE DONC LA CHOSE DE SA NEGATION. Un critere dit QUELLE chose
+     (la licence, la photo, le compte) ; une seule liste de mots dit
+     qu'elle MANQUE (sans, pas, aucune, manque, oublie, rien, jamais).
+     « Pas encore rendu sa licence », « il manque sa licence », « aucune
+     licence » : trois phrases, aucune ecrite nulle part, toutes
+     comprises.
+
+     LES ETATS N'ONT PAS DE NEGATION : « blessee », « active »,
+     « partie » sont des etats, pas des absences. Ils se reconnaissent
+     seuls.
 
      UN CRITERE NE DIT PAS COMMENT CHERCHER, il dit QUOI chercher. La
      traduction en requete vit dans l'administration, avec les tables ;
      ici on ne fait que reconnaitre le francais.
      ================================================================== */
+  /* CE QUI DIT QU'UNE CHOSE MANQUE. « Encore » en fait partie : « pas
+     encore » est la facon la plus courante de le dire, et « encore »
+     seul apparait dans « il reste encore a rendre ». */
+  var NEGATION = /\b(sans|pas|aucun|aucune|aucuns|aucunes|manque|manquent|manquant|manquante|manquants|manquantes|absent|absente|absents|absentes|oublie|oublies|oubliee|rien|jamais|encore|depourvu|depourvue|non)\b/;
+
   var CRITERES = [
-    { cle: 'sans_photo',   motif: /\b(sans photo|pas de photo|photo manquante|aucune photo|pas encore de photo)\b/ },
-    { cle: 'sans_compte',  motif: /\b(sans compte|pas de compte|pas d acces|sans acces|pas encore de compte)\b/ },
-    { cle: 'sans_licence', motif: /\b(sans licence|pas de licence|pas licenciee|licence manquante|pas encore de licence)\b/ },
-    { cle: 'sans_medical', motif: /\b(sans certificat|pas de certificat|certificat manquant|sans medical|pas de medical|sans visite)\b/ },
-    { cle: 'sans_numero',  motif: /\b(sans numero|pas de numero|numero manquant)\b/ },
-    { cle: 'blessee',      motif: /\bblessee?s?\b/ },
-    { cle: 'active',       motif: /\bactives?\b/ },
-    { cle: 'partie',       motif: /\b(partie?s? du club|qui ont quitte|anciennes)\b/ },
-    { cle: 'en_pret',      motif: /\ben pret\b/ },
-    { cle: 'dossier_attente', motif: /\b(a verifier|a completer|dossier incomplet|dossiers? en attente|pas encore validee?s?)\b/ },
-    { cle: 'sans_reponse', motif: /\b(n a pas repondu|sans reponse|pas repondu|n ont pas repondu|qui manquent a l appel)\b/ },
-    { cle: 'sans_bio',     motif: /\b(sans bio|pas de bio|sans presentation)\b/ }
+    { cle: 'sans_photo',   quoi: /\b(photos?|portraits?)\b/,                        nie: true },
+    { cle: 'sans_compte',  quoi: /\b(comptes?|acces|identifiants?|connexions?)\b/,  nie: true },
+    { cle: 'sans_licence', quoi: /\b(licences?|licenciees?)\b/,                     nie: true },
+    { cle: 'sans_medical', quoi: /\b(certificats?|medical|medicale|visite|visites)\b/, nie: true },
+    { cle: 'sans_numero',  quoi: /\b(numeros?|maillots?)\b/,                        nie: true },
+    { cle: 'sans_bio',     quoi: /\b(bio|bios|presentation|presentations|biographie|biographies)\b/, nie: true },
+    { cle: 'sans_reponse', quoi: /\b(repondu|repondent|reponses?|repond|appel)\b/,  nie: true },
+    /* LES ETATS, qui se reconnaissent sans negation. */
+    { cle: 'blessee',      quoi: /\bblessees?\b/ },
+    { cle: 'active',       quoi: /\bactives?\b/ },
+    { cle: 'partie',       quoi: /\b(parties? du club|qui ont quitte|anciennes)\b/ },
+    { cle: 'en_pret',      quoi: /\ben pret\b/ },
+    { cle: 'dossier_attente', quoi: /\b(a verifier|a completer|dossier incomplet|dossiers? en attente|pas encore validees?|non validees?)\b/ }
   ];
 
   function criteres(texte) {
-    var t = plat(texte), out = [];
-    CRITERES.forEach(function (C) { if (C.motif.test(t)) out.push(C.cle); });
+    var t = plat(texte), nie = NEGATION.test(t), out = [];
+    CRITERES.forEach(function (C) {
+      if (!C.quoi.test(t)) return;
+      if (C.nie && !nie) return;     // « elle a une licence » n'est pas un filtre
+      out.push(C.cle);
+    });
     return out;
   }
 
@@ -559,7 +592,8 @@
        venait de nulle part. Troisieme fois que le meme oubli produit la
        meme panne : tout ce qui sert a reconnaitre doit etre au lexique,
        sans exception. */
-    CRITERES.forEach(function (C) { motsDuMotif(C.motif).forEach(pousse); });
+    CRITERES.forEach(function (C) { motsDuMotif(C.quoi).forEach(pousse); });
+    motsDuMotif(NEGATION).forEach(pousse);
     /* ET TOUT LE RESTE DE CE QUI SERT A RECONNAITRE. Sixieme fois que le
        meme oubli produit la meme panne, a un sixieme endroit : « ou je
        CHANGE le titre » devenait « ou je ORANGE le titre », parce que
@@ -999,6 +1033,15 @@
     var lex = {}; lexique(ctx).forEach(function (m) { lex[m] = 1; });
     res.inconnus = res.mots.filter(function (m) { return !lex[m]; }).length;
 
+    /* DERNIER RECOURS : UN REMERCIEMENT RESTE UN REMERCIEMENT.
+       « Merci beaucoup c'est parfait » recevait « je ne comprends pas
+       cette demande » -- la suite du merci ne disait rien qu'elle
+       sache traiter, donc le merci etait tout le message. On ne
+       l'essaie qu'ici, quand plus rien d'autre n'a repondu. */
+    if (!res.intention && !suj) {
+      var soc2 = socialQuandMeme(t);
+      if (soc2) { res.intention = 'politesse'; res.social = soc2; return res; }
+    }
     if (!res.intention) {
       res.exemples = INTENTIONS.filter(function (I) { return I.cle !== 'aide' && I.cle !== 'politesse'; })
                                .map(function (I) { return I.exemple; });
