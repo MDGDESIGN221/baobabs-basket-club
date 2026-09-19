@@ -513,15 +513,17 @@
       case 'qui':       return rQui(r);
       case 'manque':    return rManque(r);
       case 'aller':     return rAller(r);
+      case 'confidentiel': return rConfidentiel(r);
       case 'bloc':      return rBloc(r);
       case 'convoquer': return rConvoquer(r);
       case 'aide':      return rAide();
       case 'politesse': return rSocial(r);
       case 'combien':   return rCombien(r);
       case 'liste':     return rListe(r);
-      case 'quand':     return rQuand();
-      case 'resultat':  return rResultat();
+      case 'quand':     return rQuand(r);
+      case 'resultat':  return rResultat(r);
       case 'filtrer':   return rFiltrer(r);
+      case 'calculer':  return rCalcul(r);
       case 'sujet':     return rSujet(r);
       default:          return rIncomprise(r);
     }
@@ -768,6 +770,104 @@
       ou + (b.champs ? '<p class="doux">' + b.champs + ' champ' + (b.champs > 1 ? 's' : '') +
                        ' à y remplir.</p>' : '') +
       pistesEcran(b.ecran));
+  }
+
+  /* ------------------------------------------------------------------
+     LA REPONSE EST NON, ET C'EST UNE REPONSE
+     ------------------------------------------------------------------
+     « Quel est le telephone de Marieme ? » recevait une phrase sur un
+     bloc de l'appli mobile : le mot avait accroche autre chose, et la
+     reponse etait absurde. La bonne reponse existait pourtant, et
+     c'est non.
+
+     ELLE DIT OU CA SE TROUVE QUAND MEME. Refuser sans indiquer la
+     porte, c'est bloquer quelqu'un qui a le droit d'y aller ; l'ecran
+     a ses propres protections, et c'est lui qui doit trancher.
+     ------------------------------------------------------------------ */
+  function rConfidentiel(r) {
+    var p = r.entites.personne;
+    var h = '<p>Je ne donne pas les coordonnées' +
+            (p ? ' de <b>' + esc(p.nom) + '</b>' : ' des personnes') + '.</p>' +
+            '<p class="doux">Téléphone, adresse, e-mail, responsable : je ne les lis ' +
+            'même pas. Une fenêtre de conversation reste ouverte à côté de soi, ' +
+            'et ces lignes-là n’ont rien à y faire.</p>';
+    if (p) {
+      h += '<p class="doux">Sa fiche, elle, est à un clic — et l’écran décide ' +
+           'de ce qu’il vous montre.</p>' +
+           '<div class="maya-faits">' + cartePersonne(p) + '</div>';
+    } else {
+      h += pistesEcran('squad');
+    }
+    elle(h);
+  }
+  /* ------------------------------------------------------------------
+     UNE MOYENNE, UN BILAN
+     ------------------------------------------------------------------
+     Elle dit toujours SUR COMBIEN elle a calcule. « 21 ans de moyenne »
+     sur onze fiches renseignees et dix-sept joueuses n'est pas la meme
+     chose que sur dix-sept, et taire le denominateur donne un chiffre
+     qu'on ne peut pas verifier.
+     ------------------------------------------------------------------ */
+  function rCalcul(r) {
+    var f = outil('chiffre');
+    if (!f) return rIncomprisePure(r);
+    penser();
+    return f(r.calcul).then(function (d) {
+      if (!d) return elle('<p>Je ne sais pas encore calculer cela.</p>');
+      if (d.interdit) return elle('<p>Votre casquette ne donne pas accès à ces chiffres.</p>');
+      if (d.illisible) return elle('<p>Je n’ai pas pu lire ' + esc(d.illisible) + '.</p>' +
+        '<p class="doux">Ce n’est pas zéro : c’est que je n’ai rien obtenu.</p>');
+
+      if (d.quoi === 'bilan') {
+        if (!d.joues) {
+          return elle('<p>Aucun match terminé pour l’instant.</p>' + pistesEcran(d.ecran));
+        }
+        var parts = [];
+        if (d.v) parts.push('<b>' + d.v + '</b> victoire' + (d.v > 1 ? 's' : ''));
+        if (d.d) parts.push('<b>' + d.d + '</b> défaite' + (d.d > 1 ? 's' : ''));
+        if (d.n) parts.push('<b>' + d.n + '</b> nul' + (d.n > 1 ? 's' : ''));
+        var h = '<p>' + (parts.length ? parts.join(', ') : 'Aucune issue enregistrée') +
+                ' sur <b>' + d.joues + '</b> match' + (d.joues > 1 ? 's' : '') + ' joué' +
+                (d.joues > 1 ? 's' : '') + '.</p>';
+        /* UN MATCH SANS ISSUE N'EST PAS UN MATCH NUL : c'est un score
+           qu'on n'a pas saisi, et le taire fausserait le bilan. */
+        if (d.sans) {
+          h += '<p class="doux">' + d.sans + ' match' + (d.sans > 1 ? 's' : '') +
+               ' sans résultat saisi — le bilan ne les compte pas.</p>';
+        }
+        return elle(h + pistesEcran(d.ecran));
+      }
+
+      if (d.vide) {
+        return elle('<p>Aucune fiche ne porte ' +
+          (d.quoi === 'age' ? 'de date de naissance' : 'de taille') + '.</p>' +
+          '<p class="doux">Sur les ' + d.total + ' de l’effectif. Je ne peux pas faire ' +
+          'de moyenne sans une seule valeur.</p>' + pistesEcran(d.ecran));
+      }
+
+      var mot = d.quoi === 'age' ? 'ans' : 'm';
+      var val = d.quoi === 'age'
+        ? String(Math.round(d.moyenne * 10) / 10).replace('.', ',')   // « 20,6 », pas « 20.6 »
+        : (Math.round(d.moyenne * 100) / 100).toFixed(2).replace('.', ',');
+      var bornes = d.quoi === 'age'
+        ? d.mini + ' à ' + d.maxi + ' ans'
+        : String(d.mini.toFixed(2)).replace('.', ',') + ' m à ' +
+          String(d.maxi.toFixed(2)).replace('.', ',') + ' m';
+
+      var t2 = '<p><b>' + val + ' ' + mot + '</b> de moyenne.</p>' +
+               '<p class="doux">De ' + esc(bornes) + '.</p>';
+      /* SUR COMBIEN. Une moyenne calculee sur onze fiches quand
+         l'effectif en compte dix-sept doit le dire, sinon le chiffre
+         passe pour celui de tout le monde. */
+      t2 += d.n === d.total
+        ? '<p class="doux">Calculé sur les ' + d.total + ' joueuses.</p>'
+        : '<p class="doux">Calculé sur ' + d.n + ' fiches renseignées, sur ' + d.total +
+          '. Les ' + (d.total - d.n) + ' autres ne portent pas ' +
+          (d.quoi === 'age' ? 'de date de naissance' : 'de taille') + '.</p>';
+      elle(t2 + pistesEcran(d.ecran));
+    }).catch(function () {
+      elle('<p>Je n’ai pas pu calculer cela.</p>');
+    });
   }
 
   function rAller(r) {
@@ -1429,8 +1529,19 @@
     });
   }
 
-  function rQuand()   { return rFicheMatch('prochain'); }
-  function rResultat(){ return rFicheMatch('dernier'); }
+  /* « QUAND » NE PARLE PAS TOUJOURS D'UN MATCH. « A quelle heure est
+     l'entrainement demain » recevait la fiche du dernier match : les
+     deux reponses ignoraient le sujet et repondaient match, toujours.
+     Vu en production.
+
+     Un sujet reconnu qui n'est pas le match garde la main ; sans sujet,
+     « quand » veut bien dire le match, neuf fois sur dix. */
+  function surLeMatch(r) {
+    return !r || !r.sujet ||
+           ['matchs', 'billetterie', 'convocations'].indexOf(r.sujet.cle) >= 0;
+  }
+  function rQuand(r)   { return surLeMatch(r) ? rFicheMatch('prochain') : rSujet(r); }
+  function rResultat(r){ return surLeMatch(r) ? rFicheMatch('dernier')  : rSujet(r); }
 
   /* ------------------------------------------------------------------
      LE SUJET SANS L'INTENTION. Elle n'a pas compris la tournure, mais

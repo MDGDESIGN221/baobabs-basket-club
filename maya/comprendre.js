@@ -286,6 +286,33 @@
   }
 
   /* ==================================================================
+     LES CALCULS : COMPTER N'EST PAS LA SEULE OPERATION
+     ------------------------------------------------------------------
+     « Quelle est la moyenne d'age de l'effectif ? » rendait « 17
+     joueuses ». « Combien on a gagne de matchs cette saison ? » rendait
+     la fiche du dernier match. La donnee etait la, a une lecture pres.
+
+     Trois calculs, parce que ce sont les trois qu'on pose vraiment quand
+     on prepare une reunion ou un dossier de club.
+     ================================================================== */
+  var CALCULS = [
+    { cle: 'age',    motif: /\b(moyenne d age|age moyen|moyenne des ages|age moyen|quel age|quels ages|ages? de l effectif|moyenne d age des joueuses)\b/ },
+    { cle: 'taille', motif: /\b(moyenne de taille|taille moyenne|moyenne des tailles|grande de l equipe|plus grande)\b/ },
+    /* « BILAN » N'Y EST PAS : dans cette maison, « donne-moi le bilan »
+       veut dire « fais-moi le point » depuis le premier jour. Le bilan
+       sportif se demande avec ses mots a lui. Trouve par le banc. */
+    { cle: 'bilan',  motif: /\b(victoires?|defaites?|combien de matchs (on a |nous avons )?(gagnes?|perdus?|remportes?)|combien on a gagne|combien on a perdu|bilan sportif|bilan de la saison|bilan des matchs|palmares)\b/ }
+  ];
+
+  function calcul(texte) {
+    var t = plat(texte);
+    for (var i = 0; i < CALCULS.length; i++) {
+      if (CALCULS[i].motif.test(t)) return CALCULS[i].cle;
+    }
+    return null;
+  }
+
+  /* ==================================================================
      LES CRITERES : UNE CHOSE, ET SON ABSENCE
      ------------------------------------------------------------------
      Premiere version : une liste de tournures exactes -- « sans
@@ -539,6 +566,25 @@
 
      « Leur » y est : on dit « leur dossier » d'un groupe qu'on vient de
      lister. */
+  /* ==================================================================
+     CE QU'ELLE NE DIRA JAMAIS, ET QU'ELLE DOIT REFUSER TOUT NET
+     ------------------------------------------------------------------
+     « Quel est le telephone de Marieme ? » repondait : « Appli -- ecrans
+     affiches dans les telephones se regle sur Appli mobile. » Le mot
+     « telephone » avait accroche un bloc de contenu, et la reponse etait
+     absurde. Vu en production.
+
+     Or ce n'est pas une question mal comprise : c'est une question a
+     laquelle la reponse est NON. Les coordonnees d'une joueuse, d'une
+     famille, d'une candidate ne defilent pas dans une fenetre de
+     conversation qu'on laisse ouverte a cote de soi -- c'est la meme
+     regle que MAYA_JAMAIS_LISTER, appliquee cette fois aux questions.
+
+     Un refus clair vaut mieux qu'une reponse a cote : l'un apprend la
+     regle, l'autre fait douter de tout le reste.
+     ================================================================== */
+  var MOTS_PRIVES = /\b(telephone|telephones|portable|portables|whatsapp|adresse|adresses|domicile|mail|mails|email|emails|courriel|coordonnees|tuteur|tutrice)\b/;
+
   /* Les tournures qui demandent OU L'ON REGLE quelque chose. Elles font
      gagner le bloc contre l'ecran : « ouvre la page d'accueil » est une
      navigation, « ou je change le titre de l'accueil » ne l'est pas.
@@ -593,6 +639,7 @@
        meme panne : tout ce qui sert a reconnaitre doit etre au lexique,
        sans exception. */
     CRITERES.forEach(function (C) { motsDuMotif(C.quoi).forEach(pousse); });
+    CALCULS.forEach(function (C) { motsDuMotif(C.motif).forEach(pousse); });
     motsDuMotif(NEGATION).forEach(pousse);
     /* ET TOUT LE RESTE DE CE QUI SERT A RECONNAITRE. Sixieme fois que le
        meme oubli produit la meme panne, a un sixieme endroit : « ou je
@@ -602,7 +649,7 @@
        La regle est donc appliquee en bloc, et non motif par motif : tout
        ce qui sert a reconnaitre passe par motsDuMotif, sans exception.
        Le jour ou l'on ajoute une famille de mots, elle y sera. */
-    [MOTS_REGLER, PRONOM_PERS].forEach(function (re) { motsDuMotif(re).forEach(pousse); });
+    [MOTS_REGLER, PRONOM_PERS, MOTS_PRIVES].forEach(function (re) { motsDuMotif(re).forEach(pousse); });
     MOTS_TEMPS.forEach(pousse);
     (ctx.personnes || []).forEach(function (p) { pousse(p.nom); });
     (ctx.ecrans || []).forEach(function (e) { pousse(e.titre); });
@@ -889,6 +936,34 @@
     var soc = social(t);
     if (soc) { res.intention = 'politesse'; res.social = soc; return res; }
 
+    /* LE REFUS PASSE AVANT TOUT LE RESTE, sinon un mot comme
+       « telephone » va accrocher un bloc ou un ecran et rendre une
+       reponse absurde a une question dont la reponse est NON.
+
+       ON NE REFUSE QUE SI L'ON PARLE DE QUELQU'UN : « l'adresse du
+       terrain » et « l'email du club » sont des questions legitimes,
+       et ce ne sont pas des coordonnees de personne. */
+    if (MOTS_PRIVES.test(t)) {
+      var qui0 = personnes(t, ctx.personnes);
+      var suj0 = sujet(t, ctx.sujets);
+      var surQuelquun = qui0.length > 0 ||
+        (suj0 && ['effectif', 'staff', 'ecole', 'candidatures'].indexOf(suj0.cle) >= 0);
+      if (surQuelquun) {
+        res.intention = 'confidentiel';
+        if (qui0.length === 1) res.entites.personne = qui0[0];
+        return res;
+      }
+    }
+    /* UN CALCUL PASSE AVANT UN COMPTAGE. « Combien on a gagne de
+       matchs » contient « combien » et « matchs » : sans ce garde, il
+       tombait sur la fiche du dernier match. */
+    var cal = calcul(t);
+    if (cal) {
+      res.intention = 'calculer';
+      res.calcul = cal;
+      res.sujet = sujet(t, ctx.sujets) || SUJETS[0];
+      return res;
+    }
     /* LES CRITERES AVANT TOUT LE RESTE. « qui est blessee » cherchait un
        nom ; « les joueuses sans photo » ouvrait un ecran. Un critere
        reconnu change la nature de la demande : ce n'est plus une

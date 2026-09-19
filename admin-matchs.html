@@ -9708,6 +9708,73 @@
     sans_reponse:    ['qui n’a pas répondu', 'qui n’ont pas répondu']
   };
 
+  /* ==================================================================
+     CE QU'ELLE PEUT CALCULER, ET QU'ELLE NE CALCULAIT PAS
+     ------------------------------------------------------------------
+     « Quelle est la moyenne d'age de l'effectif ? » rendait « 17
+     joueuses ». « Combien on a gagne de matchs cette saison ? » rendait
+     la fiche du dernier match. Deux questions banales, deux reponses a
+     cote -- alors que la donnee etait la, a une lecture pres.
+
+     COMPTER N'EST PAS LA SEULE OPERATION. Une moyenne, un bilan, un
+     total sont des reponses aussi simples qu'un denombrement, et ce sont
+     celles qu'on pose quand on prepare une reunion ou un dossier.
+
+     ELLE DIT TOUJOURS SUR COMBIEN ELLE A CALCULE. « 21 ans de moyenne »
+     sur onze fiches renseignees et dix-sept joueuses n'est pas la meme
+     chose que sur dix-sept : taire le denominateur, c'est donner un
+     chiffre qu'on ne peut pas verifier.
+     ================================================================== */
+  function mayaChiffre(quoi){
+    if (quoi === 'bilan'){
+      if (!can('matchs', 'voir')) return Promise.resolve({ interdit: true });
+      return sbGet('match_center?select=issue,score_baobabs,score_opponent&statut=eq.termine&limit=300')
+        .then(function(rows){
+          var l = rows || [], v = 0, d = 0, n = 0, sans = 0;
+          l.forEach(function(m){
+            if (m.issue === 'V') v++;
+            else if (m.issue === 'D') d++;
+            else if (m.issue === 'N') n++;
+            else sans++;
+          });
+          return { quoi: 'bilan', joues: l.length, v: v, d: d, n: n, sans: sans, ecran: 'results' };
+        })
+        .catch(function(){ return { illisible: 'les matchs' }; });
+    }
+
+    if (quoi === 'age' || quoi === 'taille'){
+      if (!can('effectif', 'voir')) return Promise.resolve({ interdit: true });
+      return sbGet('players?select=id,name,birth_year,birth_date,height,status&limit=300')
+        .then(function(rows){
+          var l = (rows || []).filter(function(p){ return (p.status || 'active') !== 'partie'; });
+          var vals = [], an = new Date().getFullYear();
+          l.forEach(function(p){
+            if (quoi === 'age'){
+              var a = p.birth_date ? new Date(p.birth_date).getFullYear() : p.birth_year;
+              if (a && a > 1900 && a <= an) vals.push(an - a);
+            } else {
+              // « 1,67 » comme « 167 » : on ramene tout au metre.
+              var h = parseFloat(String(p.height == null ? '' : p.height).replace(',', '.'));
+              if (isFinite(h) && h > 3) h = h / 100;
+              if (isFinite(h) && h > 1.2 && h < 2.4) vals.push(h);
+            }
+          });
+          if (!vals.length) return { quoi: quoi, vide: true, total: l.length, ecran: 'squad' };
+          var somme = vals.reduce(function(a, b){ return a + b; }, 0);
+          vals.sort(function(a, b){ return a - b; });
+          return {
+            quoi: quoi, n: vals.length, total: l.length,
+            moyenne: somme / vals.length,
+            mini: vals[0], maxi: vals[vals.length - 1],
+            ecran: 'squad'
+          };
+        })
+        .catch(function(){ return { illisible: 'l’effectif' }; });
+    }
+
+    return Promise.resolve(null);
+  }
+
   function mayaFiltrer(criteres){
     criteres = criteres || [];
     if (!can('effectif', 'voir')) return Promise.resolve({ interdit: true });
@@ -9822,6 +9889,7 @@
       ficheMatch: mayaFicheMatch,
       fichePersonne: mayaFichePersonne,
       filtrer: mayaFiltrer,
+      chiffre: mayaChiffre,
       dernierResultat: mayaDernierResultat,
       // ELLE SE PRESENTAIT EN TROIS PUCES. « Que sais-tu faire »
       // passait par le repli de dialogue.js, parce que capacites
