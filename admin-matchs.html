@@ -3359,6 +3359,29 @@
      le rail de droite (308 px) s'ouvre ou non selon l'ecran. Requetes de
      conteneur, donc. Large : texte, panneau, puis la photo a droite.
      Moyen : le panneau passe sous les boutons. Etroit : la photo s'efface. */
+  /* --- L'AFFICHE QUAND LE MATCH EST DEJA JOUE ---
+     Elle ne disparait plus : elle change de propos. Le liseré d'or
+     devient discret, parce qu'il annonce ce qui vient ; ce qui est passé
+     n'a pas à crier. */
+  .db-hero.passe{border-top-color:var(--line-strong)}
+  .db-hero.passe .db-hero-photo{opacity:.3}
+
+  /* LE SCORE PREND LA PLACE DU COMPTE A REBOURS. Même poids, même
+     hauteur : l'affiche ne se tasse pas selon qu'on est avant ou après. */
+  .db-score{display:flex;align-items:baseline;gap:14px;margin-top:18px}
+  .db-score b{font-family:var(--font-ui);font-weight:700;font-size:clamp(30px,4.4cqw,44px);
+    line-height:1;letter-spacing:-.02em;color:var(--text)}
+  .db-score span{font-family:var(--font-ui);font-weight:600;font-size:12px;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+
+  /* ET CE QUI MANQUE SE DIT EN ROUGE, AVEC LE BOUTON QUI Y MENE.
+     Un score non saisi n'est pas un detail d'archive : le site annonce
+     encore le match comme a venir, et le classement ne bouge pas. */
+  .db-manque{margin-top:18px;max-width:520px;border-left:3px solid var(--danger);
+    padding:2px 0 2px 14px}
+  .db-manque b{display:block;font-family:var(--font-ui);font-weight:700;font-size:15px;
+    color:var(--text);margin-bottom:3px}
+  .db-manque span{display:block;font-size:12.5px;line-height:1.5;color:var(--muted)}
   .db-hero{container-type:inline-size}
   @container (min-width:1180px){.db-hero-in{padding-right:clamp(300px,26cqw,400px)}}
   @container (min-width:700px) and (max-width:1179px){.db-hero-in{grid-template-columns:1fr;padding-right:clamp(220px,30cqw,340px)} .db-hero-in .db-tick{margin-top:20px;max-width:460px}}
@@ -21782,15 +21805,34 @@
       dashNum('upcoming', aVenir.length); dashNum('played', joues.length);
 
       var hero=document.getElementById('db-hero');
-      var m=aVenir[0];
+      /* AUCUN MATCH A VENIR N'EST PAS UNE RAISON DE TOUT EFFACER.
+         Entre deux matchs, et toute la morte-saison, l'affiche entiere
+         disparaissait : la photo, les ecussons, le compte a rebours, la
+         billetterie, les trois boutons. Le tableau de bord commencait
+         alors par un vide, et c'est exactement le moment ou le club a le
+         plus de choses a ranger.
+
+         Meme correctif que pour MAYA, le 19 septembre : on retombe sur
+         le match le plus recent, en disant que c'est un match PASSE. Et
+         s'il attend son score, c'est CELA qu'il faut faire -- le site
+         l'annonce encore comme a venir et le classement ne bouge pas. */
+      var m=aVenir[0], passe=false;
+      if(!m){
+        m = joues.length ? joues[joues.length-1] : null;
+        passe = true;
+      }
       if(!m){
         hero.classList.add('hide');
         return;
       }
       hero.classList.remove('hide');
+      hero.classList.toggle('passe', passe);
       var j=m.match_date?daysUntil(m.match_date):null;
-      document.getElementById('db-kick-t').textContent =
-        j===null?'Prochain match':(j<=0?'Match aujourd’hui':(j===1?'Prochain match · demain':'Prochain match · dans '+j+' jours'));
+      var sansScore = passe && (m.score_baobabs==null || m.score_opponent==null);
+      document.getElementById('db-kick-t').textContent = passe
+        ? (sansScore ? 'Score à saisir'
+                     : (j===null?'Dernier match':(j===-1?'Dernier match · hier':'Dernier match · il y a '+Math.abs(j)+' jours')))
+        : (j===null?'Prochain match':(j<=0?'Match aujourd’hui':(j===1?'Prochain match · demain':'Prochain match · dans '+j+' jours')));
 
       function ecusson(url,nom){ return bbCrest(url, nom, 'xl'); }
       document.getElementById('db-vs').innerHTML =
@@ -21808,15 +21850,29 @@
 
       // Le compte a rebours ne s'affiche que s'il reste du temps a
       // compter : un zero fige ne dit rien.
+      /* UN MATCH PASSE N'A PAS DE COMPTE A REBOURS : il a un score, ou
+         il attend le sien. Et c'est la chose a faire, donc elle se dit
+         en rouge avec le bouton qui y mene. */
       var cd=document.getElementById('db-cd');
-      if(m.match_date && j!==null && j>=0){
+      if(passe){
+        if(sansScore){
+          cd.innerHTML='<div class="db-manque">' +
+            '<b>Le score n’est pas saisi.</b>' +
+            '<span>Le site affiche encore ce match comme à venir, et le classement ne bouge pas.</span>' +
+            '</div>';
+        } else {
+          var issue = m.issue==='V'?'victoire':(m.issue==='D'?'défaite':(m.issue==='N'?'match nul':''));
+          cd.innerHTML='<div class="db-score"><b>'+esc(m.score_baobabs+' – '+m.score_opponent)+'</b>'+
+            (issue?'<span>'+esc(issue)+'</span>':'')+'</div>';
+        }
+      } else if(m.match_date && j!==null && j>=0){
         var cible=new Date(m.match_date+'T'+(m.match_time?String(m.match_time).slice(0,5):'18:00'));
         var ms=cible.getTime()-Date.now();
         if(ms>0){
           cd.innerHTML=[[Math.floor(ms/86400000),'jours'],[Math.floor(ms/3600000)%24,'heures'],[Math.floor(ms/60000)%60,'minutes']]
             .map(function(x){return '<div><b>'+('0'+x[0]).slice(-2)+'</b><span>'+x[1]+'</span></div>';}).join('');
         } else cd.innerHTML='';
-      } else cd.innerHTML='';
+      } else cd.innerHTML='';
 
       // Sans billetterie ouverte, le panneau n'a rien a dire : il
       // disparait au lieu d'afficher un tiret et une jauge a zero.
@@ -21826,10 +21882,14 @@
       // pour un match ou personne ne vend rien.
       // La preparation : lue une fois le match connu, et depuis le
       // calcul de l'ecran « Le match », pas un second.
-      tbRenderPrep(m);
+      // Un match joue n'a plus de preparation a suivre ni de billets a
+      // vendre : les deux panneaux se taisent au lieu d'afficher une
+      // barre figee et une jauge a zero.
+      if(passe){ var pr=document.getElementById('db-prep'); if(pr) pr.classList.add('hide'); }
+      else tbRenderPrep(m);
 
       var t=Number(m.places_totales)||0, v=Number(m.places_reservees)||0, libre=m.free_entry===true;
-      document.getElementById('db-tick').classList.toggle('hide', t===0 && !libre);
+      document.getElementById('db-tick').classList.toggle('hide', passe || (t===0 && !libre));
       document.getElementById('db-tick-n').innerHTML = libre ? '<em>Entrée gratuite</em>' : (t? v+' <em>/ '+t+'</em>' : '—');
       document.getElementById('db-gauge').style.width = (t && !libre? Math.min(Math.round(v/t*100),100):0)+'%';
       document.getElementById('db-tick-s').textContent = libre
@@ -21848,6 +21908,26 @@
       });
       // « Fiche du match » est sous le nom de l'adversaire : il promet la
       // fiche de CE match. Il ouvrait la liste de tous les matchs.
+      /* LES BOUTONS SUIVENT. « Preparer le match » et « Soir de match »
+         ne veulent plus rien dire une fois le match joue ; ce qui reste
+         a faire, c'est saisir le score. */
+      var cta = hero.querySelector('.db-cta');
+      if (cta) {
+        cta.querySelectorAll('[data-go]').forEach(function(b){
+          var go = b.getAttribute('data-go');
+          if (go === 'parcours' || go === 'gameday') b.classList.toggle('hide', passe);
+        });
+        var sc = cta.querySelector('[data-db-score]');
+        if (!sc) {
+          sc = document.createElement('button');
+          sc.className = 'btn btn-primary';
+          sc.setAttribute('data-db-score', '1');
+          sc.textContent = 'Saisir le score';
+          sc.addEventListener('click', function(){ showSection('results'); });
+          cta.insertBefore(sc, cta.firstChild);
+        }
+        sc.classList.toggle('hide', !sansScore);
+      }
       var fm = document.getElementById('db-open-match');
       if (fm && !fm.dataset.cable){
         fm.dataset.cable = '1';
