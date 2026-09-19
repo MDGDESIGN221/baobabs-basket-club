@@ -805,7 +805,7 @@
        caisse » : pas de verbe, mais aucune ambiguite sur ce qu'on veut
        savoir. On repond par le denombrement, qui est la reponse la plus
        courte et la plus souvent juste. */
-    if (!res.intention && suj && res.mots.length <= 2) res.intention = 'combien';
+    if (!res.intention && suj && res.mots.length <= 2) { res.intention = 'combien'; res.parDefaut = true; }
 
     /* ==================================================================
        LA REGLE QUI CHANGE TOUT : UN SUJET RECONNU VAUT UNE REPONSE.
@@ -832,7 +832,14 @@
        pieces, le compte : la reponse y est, quelle que soit la question. */
     if ((!res.intention || res.intention === 'sujet') && res.entites.personne) res.intention = 'qui';
 
-    if (!res.intention && suj) res.intention = 'sujet';
+    if (!res.intention && suj) { res.intention = 'sujet'; res.parDefaut = true; }
+
+    /* ET ON DIT QUAND L'INTENTION N'A PAS ETE VRAIMENT COMPRISE. Les
+       deux regles ci-dessus repondent SUR LE SUJET faute de mieux ;
+       c'est utile, mais ce n'est pas la meme chose qu'avoir reconnu la
+       tournure. « Elle est licenciee » tombait ainsi sur « 17 joueuses »
+       alors qu'on parlait d'une seule -- un pronom doit pouvoir passer
+       devant un sujet qui n'a rien reconnu de plus. */
 
     /* COMBIEN DE MOTS LUI SONT ETRANGERS. Une phrase dont tous les mots
        appartiennent au club peut etre une suite de conversation ; une

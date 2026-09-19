@@ -355,15 +355,24 @@
        montree. Deviner au-dela ferait repondre sur quelqu'un d'autre,
        ce qui est pire que de ne pas repondre.
        ------------------------------------------------------------------ */
-    /* ET SEULEMENT SI LA PHRASE NE PARLE DE RIEN D'AUTRE. Des qu'un
-       sujet du club ou un ecran est reconnu, c'est de LUI qu'on parle :
-       un pronom ne doit pas prendre le pas sur un sujet nomme. */
-    if (r.pronomPersonne && dernierePersonne && !r.sujet && !r.entites.ecran) {
+    /* ET SEULEMENT SI LA PHRASE NE PARLE PAS D'AUTRE CHOSE. Un ecran
+       nomme, ou un sujet dont la TOURNURE a ete reconnue, gardent la
+       main : « combien de joueuses » parle du groupe, pas d'elle.
+
+       MAIS UN SUJET ATTRAPE FAUTE DE MIEUX NE SUFFIT PAS. « Elle est
+       licenciee » rendait « 17 joueuses » : le mot licence avait
+       ramene l'effectif, et la question portait sur une seule personne.
+       Quand l'intention n'est qu'un repli, le pronom passe devant. */
+    if (r.pronomPersonne && dernierePersonne && !r.entites.ecran &&
+        (!r.sujet || r.parDefaut)) {
       r.entites.personne = dernierePersonne;
       // « ouvre sa fiche » reste une ouverture, et c'est sa fiche a elle
       // qu'on ouvre ; tout le reste devient une question sur elle, et la
       // fiche y repond deja.
-      if (!r.intention || r.intention === 'sujet') r.intention = 'qui';
+      // Et l'intention de repli suit : « elle est licenciee » avait garde
+      // « combien » et rendait le compte de l'effectif apres avoir
+      // annonce qu'on parlait d'elle. Deux moities de reponse.
+      if (!r.intention || r.intention === 'sujet' || r.parDefaut) r.intention = 'qui';
       r.herite = 'personne';
     }
 
