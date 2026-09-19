@@ -508,8 +508,10 @@
      lister. */
   /* Les tournures qui demandent OU L'ON REGLE quelque chose. Elles font
      gagner le bloc contre l'ecran : « ouvre la page d'accueil » est une
-     navigation, « ou je change le titre de l'accueil » ne l'est pas. */
-  var MOTS_REGLER = /\b(ou est|ou se|ou sont|ou puis|ou je|ou on|comment changer|comment modifier|comment mettre|changer|modifier|editer|corriger|remplacer|regler|mettre a jour)\b/;
+     navigation, « ou je change le titre de l'accueil » ne l'est pas.
+     « Bloc » y figure parce que c'est le mot de la maison : « le bloc
+     hero » designe le bloc, pas l'ecran « Image du hero ». */
+  var MOTS_REGLER = /\b(ou est|ou se|ou sont|ou puis|ou je|ou on|comment changer|comment modifier|comment mettre|changer|modifier|editer|corriger|remplacer|regler|mettre a jour|bloc|blocs)\b/;
 
   var PRONOM_PERS = /\b(elle|lui|son|sa|ses|leur|leurs)\b/;
   var MOTS_TEMPS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche',
@@ -557,6 +559,15 @@
        meme panne : tout ce qui sert a reconnaitre doit etre au lexique,
        sans exception. */
     CRITERES.forEach(function (C) { motsDuMotif(C.motif).forEach(pousse); });
+    /* ET TOUT LE RESTE DE CE QUI SERT A RECONNAITRE. Sixieme fois que le
+       meme oubli produit la meme panne, a un sixieme endroit : « ou je
+       CHANGE le titre » devenait « ou je ORANGE le titre », parce que
+       orange est une couleur du club et que changer n'etait nulle part.
+
+       La regle est donc appliquee en bloc, et non motif par motif : tout
+       ce qui sert a reconnaitre passe par motsDuMotif, sans exception.
+       Le jour ou l'on ajoute une famille de mots, elle y sera. */
+    [MOTS_REGLER, PRONOM_PERS].forEach(function (re) { motsDuMotif(re).forEach(pousse); });
     MOTS_TEMPS.forEach(pousse);
     (ctx.personnes || []).forEach(function (p) { pousse(p.nom); });
     (ctx.ecrans || []).forEach(function (e) { pousse(e.titre); });
@@ -594,14 +605,21 @@
         if (d < meilleure) { meilleure = d; meilleur = lex[i]; exaequo = false; }
         else if (d === meilleure && lex[i] !== meilleur) exaequo = true;
       }
-      /* UN MOT N'EST PAS LA FAUTE DE SON PROPRE DEBUT. Le lexique se
-         construit a partir des motifs, et un motif comme « convoqu »
-         y depose un MORCEAU de mot. « Convoque tout le monde » devenait
-         alors « convoq tout le monde », et elle annoncait fierement
-         « J'ai lu convoq » -- vu en production. Si le candidat est le
-         debut exact de ce qui a ete tape, ce n'est pas une faute de
-         frappe : c'est le mot entier, et le lexique qui est incomplet. */
-      if (meilleur && mot.indexOf(meilleur) === 0) { sortie.push(mot); return; }
+      /* UN MOT N'EST PAS UNE AUTRE FORME DE LUI-MEME. Le lexique se
+         construit a partir des motifs, et un motif y depose ce qu'il
+         contient : un MORCEAU (« convoqu ») ou un INFINITIF
+         (« changer »). « Convoque tout le monde » devenait « convoq »,
+         et « ou je change le titre » devenait « ou je changer le
+         titre » -- annonce a chaque fois par un « J'ai lu... » qui ne
+         voulait rien dire.
+
+         Si l'un est le debut exact de l'autre, dans un sens ou dans
+         l'autre, ce n'est pas une faute de frappe : c'est le meme mot
+         sous une autre forme, et c'est le lexique qui est incomplet.
+         La reconnaissance, elle, travaille deja par amorces. */
+      if (meilleur && (mot.indexOf(meilleur) === 0 || meilleur.indexOf(mot) === 0)) {
+        sortie.push(mot); return;
+      }
       // Deux candidats a egalite : on ne tranche pas.
       if (meilleur && !exaequo) { sortie.push(meilleur); corrections.push([mot, meilleur]); }
       else sortie.push(mot);
@@ -852,7 +870,11 @@
     if (bl.length) {
       res.entites.bloc = bl[0];
       var regler = MOTS_REGLER.test(t);
-      if (regler || !res.intention) res.intention = 'bloc';
+      /* MAIS UN ECRAN TROUVE GARDE LA MAIN. « A quoi sert la page
+         d'accueil » partait sur le bloc « TRYOUTS -- detection », dont
+         la page est « Accueil + page Tryouts ». On ne prend le bloc que
+         si l'on demande OU L'ON REGLE, ou si aucun ecran n'a repondu. */
+      if (regler || (!res.intention && !res.entites.ecran)) res.intention = 'bloc';
     }
 
     var d = date(t, ctx.maintenant); if (d) res.entites.date = d;
