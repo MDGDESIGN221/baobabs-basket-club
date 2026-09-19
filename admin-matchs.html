@@ -9385,6 +9385,128 @@
     });
   }
 
+  /* ==================================================================
+     LA FICHE D'UNE PERSONNE : MEME PRINCIPE QUE CELLE DU MATCH
+     ------------------------------------------------------------------
+     « Et son numero ? », « elle joue a quel poste ? », « elle est
+     licenciee ? », « elle a un compte ? », « elle est convoquee
+     samedi ? » : cinq questions, une seule reponse possible -- tout ce
+     qu'on sait d'elle.
+
+     CE QUI N'Y SERA JAMAIS : le telephone, l'adresse, les coordonnees
+     du responsable, le contenu d'une piece. Le droit de les lire n'est
+     pas le droit de les faire defiler dans une fenetre qu'on laisse
+     ouverte a cote de soi. Ces colonnes ne sont meme pas demandees a la
+     base : ce qui n'est pas lu ne peut pas fuir.
+     ================================================================== */
+  function mayaFichePersonne(id, genre){
+    if (!id) return Promise.resolve(null);
+    if (!can('effectif', 'voir')) return Promise.resolve({ interdit: true });
+
+    if (genre === 'staff'){
+      return sbGet('staff?select=id,name,role,categorie,qualification,joined_at,fiche_etat,photo_url,compte_uid,org_role_key' +
+                   '&id=eq.' + encodeURIComponent(id) + '&limit=1')
+        .then(function(rows){
+          var s = (rows || [])[0];
+          if (!s) return null;
+          return {
+            genre: 'staff', id: s.id, nom: s.name, photo: s.photo_url || null,
+            lignes: [
+              s.role        ? { quoi: s.role, lab: 'Fonction' } : null,
+              s.categorie   ? { quoi: s.categorie, lab: 'Famille' } : null,
+              s.qualification ? { quoi: s.qualification, lab: 'Diplome' } : null,
+              s.joined_at   ? { quoi: 'Au club depuis ' + formatDateShort(s.joined_at), lab: '' } : null,
+              { quoi: s.compte_uid ? 'A un compte' : 'Pas encore de compte',
+                lab: 'Acces', cls: s.compte_uid ? '' : 'important' }
+            ].filter(Boolean),
+            ecran: 'staff'
+          };
+        }).catch(function(){ return { illisible: true }; });
+    }
+
+    return Promise.all([
+      sbGet('players?select=id,name,jersey_number,position,positions,height,birth_year,birth_date,' +
+            'city,status,injury_note,fiche_etat,photo_url,compte_uid,licence_num,joined_at,previous_club' +
+            '&id=eq.' + encodeURIComponent(id) + '&limit=1'),
+      sbGet('players_documents?select=kind,expires_on,received_on&player_id=eq.' + encodeURIComponent(id))
+        .catch(function(){ return null; }),
+      sbGet('match_convocations?select=match_id,statut&player_id=eq.' + encodeURIComponent(id))
+        .catch(function(){ return null; })
+    ]).then(function(r){
+      var p = (r[0] || [])[0];
+      if (!p) return null;
+      var docs = r[1], conv = r[2];
+      var auj = todayISO();
+      var lignes = [];
+
+      var ident = [p.position, p.jersey_number != null ? 'n° ' + p.jersey_number : null].filter(Boolean).join(' · ');
+      if (ident) lignes.push({ quoi: ident, lab: 'Poste' });
+
+      var phys = [];
+      if (p.height) phys.push(p.height);
+      var an = p.birth_date ? new Date(p.birth_date).getFullYear() : p.birth_year;
+      if (an) phys.push(an + ' (' + (new Date().getFullYear() - an) + ' ans)');
+      if (p.city) phys.push(p.city);
+      if (phys.length) lignes.push({ quoi: phys.join(' · '), lab: '' });
+
+      /* LE STATUT SPORTIF, et la blessure quand il y en a une. */
+      var ST = { active:'Active', blessee:'Blessée', pret:'En prêt', partie:'Partie du club' };
+      var st = p.status || 'active';
+      if (st !== 'active') lignes.push({ quoi: ST[st] || st, lab: 'Statut', cls: 'important',
+                                         sous: p.injury_note || '' });
+
+      /* L'ETAT DU DOSSIER. */
+      var ED = { recue:'Dossier reçu, pas encore ouvert', a_verifier:'Dossier à vérifier',
+                 a_completer:'Dossier à compléter', validee:'Validée, pas encore sur le site',
+                 publiee:'Sur le site', refusee:'Archivée' };
+      var fe = p.fiche_etat || 'publiee';
+      lignes.push({ quoi: ED[fe] || fe, lab: 'Fiche', cls: fe === 'publiee' ? '' : 'important' });
+
+      lignes.push({ quoi: p.compte_uid ? 'A un compte' : 'Pas encore de compte',
+                    lab: 'Acces', cls: p.compte_uid ? '' : 'important' });
+
+      /* LES PIECES. On ne lit ni l'URL ni la reference : le type, la date
+         de reception et l'expiration suffisent a dire ce qui manque. */
+      if (docs === null) {
+        lignes.push({ quoi: 'Je n’ai pas pu lire ses pièces', lab: 'Dossier' });
+      } else {
+        [['licence', 'la licence'], ['medical', 'le certificat médical']].forEach(function(a){
+          var d = (docs || []).filter(function(x){ return x.kind === a[0]; })
+                    .sort(function(x, y){ return (y.expires_on || '') > (x.expires_on || '') ? 1 : -1; })[0];
+          if (!d) { lignes.push({ quoi: 'Il manque ' + a[1], lab: 'Pièce', cls: 'important' }); return; }
+          if (d.expires_on && d.expires_on < auj) {
+            lignes.push({ quoi: a[1].charAt(0).toUpperCase() + a[1].slice(1) + ' a expiré le ' + formatDateShort(d.expires_on),
+                          lab: 'Pièce', cls: 'urgent' });
+            return;
+          }
+          var j = d.expires_on ? daysUntil(d.expires_on) : null;
+          lignes.push({ quoi: a[1].charAt(0).toUpperCase() + a[1].slice(1) + ' est au dossier' +
+                              (j !== null && j <= 30 ? ' (expire dans ' + j + ' jours)' : ''),
+                        lab: 'Pièce', cls: (j !== null && j <= 30) ? 'important' : '' });
+        });
+      }
+
+      /* SES CONVOCATIONS. Combien, et ou elle en est de ses reponses. */
+      if (conv && conv.length) {
+        var par = {};
+        conv.forEach(function(c){ par[c.statut] = (par[c.statut] || 0) + 1; });
+        var mots = [];
+        if (par.confirmee) mots.push(par.confirmee + ' confirmée' + (par.confirmee > 1 ? 's' : ''));
+        if (par.convoquee) mots.push(par.convoquee + ' sans réponse');
+        if (par.absente)   mots.push(par.absente + ' absence' + (par.absente > 1 ? 's' : ''));
+        if (par.blessee)   mots.push(par.blessee + ' pour blessure');
+        lignes.push({ quoi: conv.length + ' convocation' + (conv.length > 1 ? 's' : ''),
+                      lab: 'Convocations', sous: mots.join(', ') });
+      }
+
+      if (p.licence_num) lignes.push({ quoi: p.licence_num, lab: 'Numéro de licence' });
+      if (p.previous_club) lignes.push({ quoi: p.previous_club, lab: 'Club précédent' });
+
+      return { genre: 'joueuse', id: p.id, nom: p.name, photo: p.photo_url || null,
+               lignes: lignes, ecran: 'squad' };
+    }).catch(function(){ return { illisible: true }; });
+  }
+
   function mayaOutils(){
     return {
       aller: function(cle){ try { showSection(cle); } catch(e){} },
@@ -9400,6 +9522,7 @@
       piecesDe: mayaPiecesDe,
       prochainMatch: mayaProchainMatch,
       ficheMatch: mayaFicheMatch,
+      fichePersonne: mayaFichePersonne,
       dernierResultat: mayaDernierResultat
     };
   }

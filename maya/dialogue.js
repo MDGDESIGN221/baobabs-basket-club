@@ -460,12 +460,41 @@
     montrerPersonne(p);
   }
 
+  /* LA FICHE D'UNE PERSONNE, comme celle d'un match : tout ce qu'on sait
+     d'elle, d'un coup. « Et son numero ? », « elle joue a quel poste ? »,
+     « elle est licenciee ? », « elle a un compte ? », « elle est
+     convoquee ? » sont cinq questions pour une seule reponse.
+
+     CE QUI N'Y EST JAMAIS : telephone, adresse, coordonnees du
+     responsable, contenu d'une piece. Ces colonnes ne sont meme pas
+     demandees a la base -- ce qui n'est pas lu ne peut pas fuir. */
   function montrerPersonne(p) {
-    var suite = [];
-    if (!p.compte_uid) suite.push('cette personne a-t-elle un compte');
-    suite.push('qu’est-ce qui manque à ' + String(p.nom).split(' ')[0]);
-    elle(cartePersonne(p) +
-      '<p class="doux">Cliquez pour ouvrir sa fiche.</p>' + pistes(suite));
+    var f = outil('fichePersonne');
+    if (!f) {
+      var suite = [];
+      if (!p.compte_uid) suite.push('cette personne a-t-elle un compte');
+      suite.push('qu’est-ce qui manque à ' + String(p.nom).split(' ')[0]);
+      return elle(cartePersonne(p) +
+        '<p class="doux">Cliquez pour ouvrir sa fiche.</p>' + pistes(suite));
+    }
+    penser();
+    return f(p.id, p.genre).then(function (fi) {
+      if (!fi) return elle(cartePersonne(p) + '<p class="doux">Cliquez pour ouvrir sa fiche.</p>');
+      if (fi.interdit) return elle('<p>Votre casquette ne donne pas accès aux fiches.</p>');
+      if (fi.illisible) return elle(cartePersonne(p) +
+        '<p class="doux">Je n’ai pas pu lire le détail de sa fiche.</p>');
+
+      var h = cartePersonne(p);
+      if (fi.lignes && fi.lignes.length) {
+        h += '<div class="maya-faits">' + fi.lignes.map(function (l) {
+          return '<div class="maya-fait ' + (l.cls || '') + '"><b>' + esc(l.quoi) + '</b>' +
+                 (l.sous || l.lab ? '<s>' + esc(l.sous || l.lab) + '</s>' : '') + '</div>';
+        }).join('') + '</div>';
+      }
+      elle(h + (fi.ecran ? pistesEcran(fi.ecran) : ''));
+    }).catch(function () {
+      elle(cartePersonne(p) + '<p class="doux">Cliquez pour ouvrir sa fiche.</p>');
+    });
   }
 
   /* ------------------------------------------------------------------
@@ -486,6 +515,12 @@
       var parleDEcran = /\b(ici|cet ecran|cette page|ce dossier)\b/.test(r.plat || '');
       return parleDEcran ? rIci() : rQui(r);
     }
+    /* « Qu'est-ce qui manque a X » et « qui est X » rendent la MEME
+       fiche : elle porte deja ce qui manque, ligne par ligne, avec sa
+       barre d'alerte. Deux reponses differentes pour la meme personne
+       obligeraient a poser les deux questions pour tout savoir. */
+    if (outil('fichePersonne')) return montrerPersonne(p);
+
     return M.collecte().then(function (faits) {
       var cible = p.genre === 'staff' ? 'staff:' + p.id : 'players:' + p.id;
       var siens = faits.filter(function (f) {

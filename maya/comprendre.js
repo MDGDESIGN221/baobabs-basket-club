@@ -714,6 +714,14 @@
        « Je ne comprends pas » ne sort plus que lorsque RIEN n'est
        reconnu, ni intention ni sujet. Et la, c'est vrai.
        ================================================================== */
+    /* NOMMER QUELQU'UN, C'EST PARLER DE LUI. « elle joue a quel poste
+       Kine ? » n'a pas de verbe reconnu et tombait sur le sujet
+       « effectif », donc sur un comptage. Des lors qu'une personne est
+       identifiee et qu'aucune intention plus precise n'a gagne, c'est sa
+       fiche qu'on veut -- et la fiche porte le poste, le numero, les
+       pieces, le compte : la reponse y est, quelle que soit la question. */
+    if ((!res.intention || res.intention === 'sujet') && res.entites.personne) res.intention = 'qui';
+
     if (!res.intention && suj) res.intention = 'sujet';
 
     /* COMBIEN DE MOTS LUI SONT ETRANGERS. Une phrase dont tous les mots
