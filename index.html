@@ -1778,7 +1778,48 @@ window.bbLienSur = function (u) {
   /* KEN BURNS : la photo respire pendant l'acte ; un acte sur deux
      dezoome, sinon le mouvement devient previsible au deuxieme tour. */
   .bb-lu-act.on .bb-lu-ph{ animation:bb-lu-kb 9.5s cubic-bezier(.24,.6,.3,1) forwards }
-  .bb-lu-scene.bb-lu-figee .bb-lu-act.on .bb-lu-ph{ animation:none }
+  /* LE MODE REGLAGE : LA SCENE S'ARRETE NET.
+     « on regle une joueuse pendant que ca joue, ce n'est pas pro. »
+     Figee, la scene ne joue plus rien : ce n'est pas une animation
+     ralentie, c'est une image fixe. Le fond ne derive plus, la trame
+     ne glisse plus, la photo ne respire plus, les lettres ne montent
+     plus, les tuiles ne se relevent plus -- tout est pose dans son
+     etat d'arrivee, celui qu'on vient regler. Les memes coupes que le
+     mode calme du site, mais sur une seule scene et a la demande.
+     (Les animations menees en JavaScript -- les lettres qui se forment,
+     les chiffres qui se comptent -- s'arretent dans bbLuPoser.) */
+  .bb-lu-scene.bb-lu-figee .bb-lu-num,
+  .bb-lu-scene.bb-lu-figee .bb-lu-fig,
+  .bb-lu-scene.bb-lu-figee .bb-lu-l,
+  .bb-lu-scene.bb-lu-figee .bb-lu-plaque,
+  .bb-lu-scene.bb-lu-figee .bb-lu-id, .bb-lu-scene.bb-lu-figee .bb-lu-tuile,
+  .bb-lu-scene.bb-lu-figee .bb-lu-id .bb-lu-role, .bb-lu-scene.bb-lu-figee .bb-lu-id .bb-lu-role i,
+  .bb-lu-scene.bb-lu-figee .bb-lu-blason,
+  .bb-lu-scene.bb-lu-figee .bb-lu-sur,
+  .bb-lu-scene.bb-lu-figee .bb-lu-contre,
+  .bb-lu-scene.bb-lu-figee .bb-lu-duel-x, .bb-lu-scene.bb-lu-figee .bb-lu-duel-q,
+  .bb-lu-scene.bb-lu-figee .bb-lu-e-g, .bb-lu-scene.bb-lu-figee .bb-lu-e-d, .bb-lu-scene.bb-lu-figee .bb-lu-n-g, .bb-lu-scene.bb-lu-figee .bb-lu-n-d,
+  .bb-lu-scene.bb-lu-figee .bb-lu-banc-t,
+  .bb-lu-scene.bb-lu-figee .bb-lu-ev-aff, .bb-lu-scene.bb-lu-figee .bb-lu-ev-q, .bb-lu-scene.bb-lu-figee .bb-lu-nat li, .bb-lu-scene.bb-lu-figee .bb-lu-grp li,
+  .bb-lu-scene.bb-lu-figee .bb-lu-banc-l li{
+    transition:none !important; transform:none !important; opacity:1 !important;
+    clip-path:none !important }
+  .bb-lu-scene.bb-lu-figee .bb-lu-num{ transform:skewX(-9deg) !important }
+  .bb-lu-scene.bb-lu-figee .bb-lu-trait{ width:min(300px,64%) !important; transition:none }
+  .bb-lu-scene.bb-lu-figee .bb-lu-anneau circle{ stroke-dashoffset:0; transition:none }
+  .bb-lu-scene.bb-lu-figee .bb-lu-halo{ transition:none }
+  .bb-lu-scene.bb-lu-figee .bb-lu-act.on .bb-lu-ray,
+  .bb-lu-scene.bb-lu-figee .bb-lu-act.on .bb-lu-liq,
+  .bb-lu-scene.bb-lu-figee .bb-lu-act.on .bb-lu-ph,
+  .bb-lu-scene.bb-lu-figee .bb-lu-act.on .bb-lu-num,
+  .bb-lu-scene.bb-lu-figee .bb-lu-act.on .bb-lu-segs i.on::after,
+  .bb-lu-scene.bb-lu-figee .bb-lu-cadre::before,
+  .bb-lu-scene.bb-lu-figee .bb-lu-cadre::after,
+  .bb-lu-scene.bb-lu-figee .bb-lu-trame{ animation:none !important }
+  .bb-lu-scene.bb-lu-figee .bb-lu-act.on .bb-lu-fig{ clip-path:none; filter:none }
+  /* L'acte qui sortait ne traine pas : il disparait sur place. */
+  .bb-lu-scene.bb-lu-figee .bb-lu-act.sort{ transition:none; transform:none; opacity:0 !important; visibility:hidden }
+  .bb-lu-scene.bb-lu-figee .bb-lu-vg.on .bb-lu-jauge i{ animation:none; width:100% }
   .bb-lu-act:nth-child(even).on .bb-lu-ph{ animation-name:bb-lu-kb2 }
   @keyframes bb-lu-kb{
     from{ transform:translate3d(var(--sx,0%),calc(var(--dy,0%) + var(--sy,0%)),0) scale(calc(var(--z,1) * var(--sz,1))) }
@@ -9405,12 +9446,22 @@ window.bbCloud = function(url, w){
     sc.duree = duree;
     bbLuRelancer(sc, duree);
     // le visualiseur de l'admin suit : quel acte, quelle joueuse
-    if (bbTemoin && window.parent !== window && actif){
-      try {
-        parent.postMessage({ type:'bbc-scene-etat', i: sc.i, n: sc.n, pid: actif.getAttribute('data-pid') || null,
-          libelle: rang ? rang.textContent.replace(/\s+/g, ' ').trim() : '', fige: !!sc.fige }, location.origin);
-      } catch(e){}
-    }
+    bbLuEtatDire(sc);
+  }
+  /* CE QUE LE VISUALISEUR DOIT SAVOIR : ou en est la scene, sur qui,
+     et si elle joue ou si elle est arretee. Dit d'un seul endroit --
+     il partait de bbLuAller seulement, donc un reglage pose sur la
+     joueuse deja a l'ecran figeait la scene sans que l'admin l'apprenne
+     (son bouton restait sur « Lire »). */
+  function bbLuEtatDire(sc){
+    var h = sc && sc.hote; if (!h) return;
+    if (!bbTemoin || window.parent === window) return;
+    var actif = h.querySelector('.bb-lu-act.on'); if (!actif) return;
+    var rang = h.querySelector('.bb-lu-rang');
+    try {
+      parent.postMessage({ type:'bbc-scene-etat', i: sc.i, n: sc.n, pid: actif.getAttribute('data-pid') || null,
+        libelle: rang ? rang.textContent.replace(/\s+/g, ' ').trim() : '', fige: !!sc.fige }, location.origin);
+    } catch(e){}
   }
   function bbLuRelancer(sc, duree){
     if (!sc) return;
@@ -9719,6 +9770,7 @@ window.bbCloud = function(url, w){
       // sous le temoin, un seul bloc : celui qu'on regle
       bbLuBlocsGarder(1);
       bbLuRendre(bbLuBloc(0), t.match || {}, cinq.slice(0, 5), banc, coach || null);
+      bbLuTemoinReprendre();
       if (cible) bbTemoinAller(cible);
     };
     if (t.coach !== undefined) rendre(t.coach);
@@ -9731,13 +9783,68 @@ window.bbCloud = function(url, w){
     var rendre = function(coach){
       bbLuBlocsGarder(1);
       bbLuRendrePresentation(bbLuBloc(0), t.presentation, joueuses, t.evenement || null, coach || null);
+      bbLuTemoinReprendre();
       if (cible) bbTemoinAller(cible);
     };
     if (t.coach !== undefined) rendre(t.coach);
     else bbLuCoach().then(rendre).catch(function(){ rendre(null); });
   }
+  /* FIGER, C'EST TOUT ARRETER.
+     La classe .bb-lu-figee coupe les animations de la feuille de style ;
+     elle ne peut rien contre celles qui sont menees en JavaScript. Les
+     lettres du nom se brouillaient encore (bbLuFormer) et les chiffres
+     des tuiles se comptaient encore (bbLuCompter) pendant qu'on reglait.
+     On les arrete, et on les pose sur leur valeur d'arrivee : une image
+     fixe, pas une animation en cours. */
+  /* LA POSE SURVIT A UN RENVOI DU BLOC.
+     Chaque clic dans la composition de l'admin renvoie le bloc entier
+     (bbc-temoin-cinq) : la scene se rebatit, la classe tombe, et la
+     boucle repartait -- alors que le bouton de l'admin disait encore
+     « Regler ». On retient qu'on etait en reglage, et sur qui. */
+  var bbLuTemoinFige = false, bbLuTemoinPid = null;
+  function bbLuTemoinReprendre(){
+    if (!bbLuTemoinFige) return;
+    var h = document.querySelector('#bb-lineup .bb-lu-scene'), sc = h && h.__sc;
+    if (!sc || !sc.n) return;
+    var i = sc.i;
+    if (bbLuTemoinPid){
+      var a = h.querySelector('.bb-lu-act[data-pid="' + String(bbLuTemoinPid) + '"]');
+      if (a) i = parseInt(a.getAttribute('data-i'), 10);
+    }
+    sc.fige = true; h.classList.add('bb-lu-figee');
+    bbLuAller(sc, i);
+    bbLuPoser(sc);
+  }
+  function bbLuPoser(sc){
+    var h = sc && sc.hote; if (!h) return;
+    sc.fige = true; h.classList.add('bb-lu-figee');
+    bbLuTemoinFige = true;
+    clearTimeout(sc.t); clearTimeout(sc.tForme); clearTimeout(sc.tSort);
+    clearInterval(sc.forme);
+    (sc.compteurs || []).forEach(cancelAnimationFrame); sc.compteurs = [];
+    var actif = h.querySelector('.bb-lu-act.on');
+    if (actif){
+      actif.querySelectorAll('.bb-lu-l[data-v]').forEach(function(s){
+        var v = s.getAttribute('data-v') || ''; if (s.textContent !== v) s.textContent = v;
+      });
+      actif.querySelectorAll('.bb-lu-tuile b[data-n]').forEach(function(b){
+        var fin = parseFloat(b.getAttribute('data-n')); if (isNaN(fin)) return;
+        var dec = parseInt(b.getAttribute('data-dec'), 10) || 0;
+        b.textContent = fin.toFixed(dec).replace('.', ',') + (b.getAttribute('data-suf') || '');
+      });
+    }
+    if (actif) bbLuTemoinPid = actif.getAttribute('data-pid') || bbLuTemoinPid;
+    // l'acte qui s'en allait ne traine pas sur l'image fixe
+    h.querySelectorAll('.bb-lu-act.sort').forEach(function(a){ a.classList.remove('sort'); });
+    bbLuEtatDire(sc);
+  }
+  function bbLuDefiger(sc){
+    bbLuTemoinFige = false;
+    var h = sc && sc.hote; if (!h) return;
+    sc.fige = false; h.classList.remove('bb-lu-figee');
+  }
   // Un reglage de scene qui bouge : on le pose sur l'acte de la joueuse,
-  // on va sur elle, et la boucle se fige le temps du reglage.
+  // on va sur elle, et la scene s'arrete net le temps du reglage.
   function bbLuTemoinScene(t){
     var a = document.querySelector('#bb-lineup .bb-lu-act[data-pid="' + String(t.pid) + '"]'); if (!a) return;
     var h = a.closest('.bb-lu-scene'), sc = h && h.__sc; if (!sc) return;
@@ -9755,12 +9862,12 @@ window.bbCloud = function(url, w){
     });
     var i = parseInt(a.getAttribute('data-i'), 10);
     sc.fige = true; h.classList.add('bb-lu-figee');
-    clearTimeout(sc.t);
     if (!a.classList.contains('on')) bbLuAller(sc, i);
+    bbLuPoser(sc);
   }
   function bbLuTemoinRejouer(){
     bbLuScenes.forEach(function(sc){
-      sc.fige = false; if (sc.hote) sc.hote.classList.remove('bb-lu-figee');
+      bbLuDefiger(sc);
       bbLuRedemarrer(sc);
     });
   }
@@ -9773,9 +9880,12 @@ window.bbCloud = function(url, w){
     if (t.pid){ var a = h.querySelector('.bb-lu-act[data-pid="' + String(t.pid) + '"]'); if (a) i = parseInt(a.getAttribute('data-i'), 10); }
     else if (typeof t.i === 'number') i = t.i;
     else if (typeof t.pas === 'number') i = sc.i + t.pas;
-    if (t.figer){ sc.fige = true; h.classList.add('bb-lu-figee'); clearTimeout(sc.t); }
-    else { sc.fige = false; h.classList.remove('bb-lu-figee'); }
+    // on marque l'etat AVANT de bouger : l'etat poste par bbLuAller doit
+    // deja dire « arretee », sinon le bouton de l'admin repasse sur « Lire ».
+    if (t.figer){ sc.fige = true; h.classList.add('bb-lu-figee'); }
+    else bbLuDefiger(sc);
     bbLuAller(sc, i);
+    if (t.figer) bbLuPoser(sc);
   }
 
   // LE CLUB CHOISIT CE QUE L'ACCUEIL MONTRE.
@@ -9801,6 +9911,15 @@ window.bbCloud = function(url, w){
     // foi, pas celle de la base : on la rejoue a chaque relecture des
     // joueuses, au lieu de la remplacer.
     if (bbLuTemoinData){ bbLuTemoin(bbLuTemoinData); return; }
+    // LE VISUALISEUR N'INVENTE RIEN. En « scene seule »
+    // (?temoin=1&scene=1), cette page est le cadre de l'admin : elle ne
+    // doit montrer QUE le bloc qu'on lui envoie. Elle affichait en
+    // attendant ce que le site publie -- et le chapitre du cinq, quand
+    // aucun match n'est a venir, montrait « La selection ». On attend.
+    if (document.documentElement.classList.contains('bb-scene-seule')){
+      hote.style.visibility = 'hidden';
+      return;
+    }
     var reg = bbLineupReglage();
 
     // DEUX SOURCES, UN BLOC CHACUNE. Le cinq du match (selon le reglage
@@ -10194,6 +10313,7 @@ window.bbCloud = function(url, w){
       // d'une joueuse a la fois, et « rejouer ».
       if (m.type === 'bbc-temoin-cinq'){
         bbLuTemoinData = m;
+        var secLu = document.getElementById('bb-lineup'); if (secLu) secLu.style.visibility = '';
         try { bbLuTemoin(m); } catch(err){ console.warn('[temoin]', err); }
         m.cible = null;                                  // un seul defilement, pas un a chaque relecture
         return;
