@@ -9346,7 +9346,25 @@
 
     return sbGet(q).then(function(rows){
       var m = (rows || [])[0];
+      /* AUCUN MATCH A VENIR N'EST PAS UNE FIN DE NON-RECEVOIR.
+         Entre deux matchs, et toute la morte-saison, MAYA devenait
+         muette sur les matchs -- alors que le dernier attend peut-etre
+         son score, ce qui est justement la chose a faire. On retombe
+         donc sur le plus recent, en disant que c'est un match passe. */
+      if (!m && quand !== 'dernier') {
+        return sbGet(base + '&statut=not.in.(aujourdhui,a_venir)&order=match_date.desc&limit=1')
+          .then(function(r2){
+            var p = (r2 || [])[0];
+            if (!p) return null;
+            return mayaFicheMatchDetail(p, true);
+          });
+      }
       if (!m) return null;
+      return mayaFicheMatchDetail(m, false);
+    });
+  }
+
+  function mayaFicheMatchDetail(m, passe){
       return Promise.all([
         sbGet('match_convocations?select=statut&match_id=eq.' + encodeURIComponent(m.id)).catch(function(){ return null; }),
         sbGet('match_stats?select=is_starter&match_id=eq.' + encodeURIComponent(m.id) + '&is_starter=is.true').catch(function(){ return null; })
@@ -9379,10 +9397,14 @@
           cinq: cinq === null ? null : cinq.length,
           score: (m.score_baobabs != null && m.score_opponent != null)
                  ? m.score_baobabs + ' à ' + m.score_opponent : null,
-          issue: m.issue === 'V' ? 'victoire' : (m.issue === 'D' ? 'défaite' : (m.issue === 'N' ? 'match nul' : null))
+          issue: m.issue === 'V' ? 'victoire' : (m.issue === 'D' ? 'défaite' : (m.issue === 'N' ? 'match nul' : null)),
+          // Vrai quand on a du remonter au dernier match faute de suivant.
+          passe: !!passe,
+          // Joue mais sans score : c'est la chose a faire, et elle bloque
+          // le classement du site.
+          aSaisir: m.statut === 'a_saisir'
         };
       });
-    });
   }
 
   /* ==================================================================

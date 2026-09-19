@@ -1022,7 +1022,11 @@
           : 'Aucun match à venir n’est enregistré.') + '</p>' + pistesEcran('matches2'));
       }
 
-      var h = '<p><b>' + esc(m.nom) + '</b></p>';
+      var h = '';
+      /* On a du remonter au dernier match : on le DIT avant de le
+         montrer, sinon on croit parler du prochain. */
+      if (m.passe) h += '<p>Aucun match à venir n’est enregistré. Le dernier :</p>';
+      h += '<p><b>' + esc(m.nom) + '</b></p>';
       var quandTxt = m.date + (m.heure ? ' à ' + m.heure : '') + (m.lieu ? ' · ' + m.lieu : '');
       h += '<p>' + esc(quandTxt) + '</p>';
       if (m.jours === 0) h += '<p class="doux">C’est aujourd’hui.</p>';
@@ -1032,6 +1036,11 @@
       var lignes = [];
 
       if (m.score) lignes.push(ligneFiche(m.score + (m.issue ? ' · ' + m.issue : ''), 'Score final'));
+      /* LE SCORE MANQUANT EST LA CHOSE A FAIRE. Tant qu'il n'est pas
+         saisi, le site annonce ce match comme a venir et le classement
+         ne bouge pas. */
+      else if (m.aSaisir) lignes.push(ligneFiche('Le score n’est pas saisi',
+        'Le site affiche encore ce match comme à venir', 'urgent'));
 
       if (m.competition) lignes.push(ligneFiche(m.competition, 'Compétition'));
 
@@ -1070,7 +1079,8 @@
       h += '<div class="maya-faits">' + lignes.join('') + '</div>';
 
       var suite = [];
-      if (m.statut !== 'termine') suite.push('prépare la convocation');
+      if (m.aSaisir) suite.push('ouvre les résultats');
+      else if (m.statut !== 'termine') suite.push('prépare la convocation');
       suite.push('ouvre le match');
       elle(h + pistes(suite));
     }).catch(function () {
