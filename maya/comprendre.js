@@ -571,6 +571,14 @@
         if (d < meilleure) { meilleure = d; meilleur = lex[i]; exaequo = false; }
         else if (d === meilleure && lex[i] !== meilleur) exaequo = true;
       }
+      /* UN MOT N'EST PAS LA FAUTE DE SON PROPRE DEBUT. Le lexique se
+         construit a partir des motifs, et un motif comme « convoqu »
+         y depose un MORCEAU de mot. « Convoque tout le monde » devenait
+         alors « convoq tout le monde », et elle annoncait fierement
+         « J'ai lu convoq » -- vu en production. Si le candidat est le
+         debut exact de ce qui a ete tape, ce n'est pas une faute de
+         frappe : c'est le mot entier, et le lexique qui est incomplet. */
+      if (meilleur && mot.indexOf(meilleur) === 0) { sortie.push(mot); return; }
       // Deux candidats a egalite : on ne tranche pas.
       if (meilleur && !exaequo) { sortie.push(meilleur); corrections.push([mot, meilleur]); }
       else sortie.push(mot);

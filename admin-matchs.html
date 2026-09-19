@@ -8720,6 +8720,13 @@
       var m = SECTION_META[cle];
       if (m && m.t) out.push({ cle: cle, titre: m.t });
     });
+    /* LE STUDIO ET LE GREFFE NE SONT PAS DES SECTIONS : ils vivent en
+       fichiers separes et se montent au premier clic, donc ils
+       n'etaient dans aucun registre d'ecrans. « Emmene-moi au studio »
+       recevait « quel ecran voulez-vous ouvrir ? » -- vu en production.
+       Ce sont pourtant les deux plus gros morceaux de la maison. */
+    if (typeof studioOuvrir === 'function') out.push({ cle: '@studio', titre: 'Studio' });
+    if (typeof greffeAutorise === 'function' && greffeAutorise()) out.push({ cle: '@greffe', titre: 'Greffe' });
     return out;
   }
 
@@ -9078,7 +9085,12 @@
   var MAYA_JAMAIS_LISTER = {
     players_contacts:1, academy_documents:1, players_documents:1,
     recruitment_documents:1, contact_messages:1, admin_users:1,
-    customers:1, newsletter_abonnes:1, caisse_mouvements:1
+    customers:1, newsletter_abonnes:1, caisse_mouvements:1,
+    // Le jour ou elle a su lister, ces quatre-la sont devenues
+    // listables sans qu'on l'ait voulu : un dossier d'enfant, une
+    // candidature, une commande et une reservation portent des noms
+    // de gens. Elle les compte, elle ne les fait pas defiler.
+    academy_registrations:1, recruitment_requests:1, orders:1, reservations:1
   };
 
   function mayaSujets(){
@@ -9114,22 +9126,74 @@
       .catch(function(){ return null; });
   }
 
-  /* Un ecran derive : on compte si l'on peut, on decrit toujours. */
+  /* ==================================================================
+     LE NOM DE CE QU'ELLE COMPTE
+     ------------------------------------------------------------------
+     « Combien de partenaires ? » rendait « 2 lignes ». Le chiffre etait
+     juste et la phrase ne voulait rien dire : personne ne parle de
+     lignes, on parle de partenaires.
+
+     LE NOM EXISTE DEJA, dans UNDO_TABLES, ou il sert a dire « la joueuse
+     Aida Diop » dans la barre d'annulation. On le reprend plutot que
+     d'en tenir un second, qui aurait diverge des le premier ecran
+     ajoute.
+
+     LE PLURIEL SE MET SUR LE PREMIER MOT : « le membre du staff » donne
+     « membres du staff » et non « membre du staffs », « le code promo »
+     donne « codes promo ». Et les mots en -eau prennent un x.
+     ================================================================== */
+  function mayaNomTable(table){
+    var brut = UNDO_TABLES[table];
+    if (!brut) return { nom: 'ligne', pluriel: 'lignes' };
+    var nom = String(brut).replace(/^(le |la |l’|les )/, '');
+    var bouts = nom.split(' ');
+    var t = bouts[0];
+    if (!/[sxz]$/.test(t)) t += /(eau|au|eu)$/.test(t) ? 'x' : 's';
+    bouts[0] = t;
+    return { nom: nom, pluriel: bouts.join(' ') };
+  }
+
+  /* Un ecran derive : on compte si l'on peut, on nomme, on liste quand
+     c'est permis, on decrit toujours. */
   function mayaSavoirEcran(cle){
     var S = mayaSujets().filter(function(x){ return x.cle === cle; })[0];
     if (!S) return Promise.resolve(null);
     var mod = SECTION_MODULE[S.ecran];
     if (mod && !can(mod, 'voir')) return Promise.resolve({ interdit: true });
     if (!S.table) return Promise.resolve({ sansChiffre: true, quoi: S.quoi, ecran: S.ecran, titre: S.nom });
+    var mots = mayaNomTable(S.table);
+    var tait = !!MAYA_JAMAIS_LISTER[S.table];
     return mayaCompter(S.table).then(function(n){
       if (n === null) return { illisible: true, quoi: S.quoi, ecran: S.ecran, titre: S.nom };
-      return {
-        n: n, nom: 'ligne', pluriel: 'lignes', ecran: S.ecran, titre: S.nom,
-        quoi: S.quoi, detail: [],
-        sansListe: !!MAYA_JAMAIS_LISTER[S.table],
-        items: []
+      var base = {
+        n: n, nom: mots.nom, pluriel: mots.pluriel, ecran: S.ecran, titre: S.nom,
+        quoi: S.quoi, detail: [], sansListe: tait, items: []
       };
+      /* ELLE COMPTAIT 2 ET LISTAIT 0. « Combien de partenaires » rendait
+         « 2 », « la liste des partenaires » rendait « rien a lister » :
+         les items n'etaient jamais remplis. On va donc les chercher,
+         avec le meme choix de colonne que la barre d'annulation. */
+      if (tait || !n) return base;
+      return sbGet(S.table + '?select=*&limit=30')
+        .then(function(rows){
+          base.items = (rows || []).map(function(r){
+            return { id: null, nom: mayaNomLigne(S.table, r), sous: '' };
+          }).filter(function(x){ return x.nom; });
+          return base;
+        })
+        .catch(function(){ return base; });   // compte juste, liste muette
     });
+  }
+
+  /* Le meme choix de colonne que undoNom, sorti de lui pour servir aux
+     deux : ce qui nomme une ligne dans la barre d'annulation nomme la
+     meme ligne dans une reponse de MAYA. */
+  function mayaNomLigne(table, ligne){
+    if (!ligne) return '';
+    var n = ligne.name || ligne.title || ligne.full_name || ligne.team_name ||
+            ligne.opponent_name || ligne.label || ligne.libelle || ligne.category ||
+            ligne.code || ligne.reference || ligne.key;
+    return n ? String(n).slice(0, 60) : '';
   }
 
   /* ==================================================================
@@ -9187,6 +9251,22 @@
     // sont pourtant les mots les plus tapes apres les noms.
     ['U8','U10','U12','U14','U16','U18','U20','Senior','Seniors',
      'Poussines','Benjamines','Minimes','Cadettes','Juniors'].forEach(pousse);
+
+    /* ET LES MOTS DES CHOSES QU'ELLE COMPTE. « Combien d'abonnes »
+       devenait « combien de bonne » : abonne ne venait d'aucune des
+       neuf listes, parce que ce n'est pas une donnee du club, c'est le
+       nom de ce qu'on compte. Cinquieme fois que le meme oubli produit
+       la meme panne, a un cinquieme endroit.
+
+       Les titres des ecrans suivent, pour la meme raison : « ouvre la
+       billeterie » ne doit pas se perdre sur une lettre. */
+    try { Object.keys(UNDO_TABLES).forEach(function(t){
+      // LES DEUX NOMBRES. Le lexique ne sait pas conjuguer : sans le
+      // pluriel, « abonnes » se faisait ramener a « abonne » et elle
+      // annoncait une correction pour rien.
+      var m = mayaNomTable(t); pousse(m.nom); pousse(m.pluriel);
+    }); } catch(e){}
+    try { Object.keys(SECTION_META).forEach(function(k){ pousse(SECTION_META[k] && SECTION_META[k].t); }); } catch(e){}
 
     mayaVocab.mots = Object.keys(vus);
     mayaVocab.quand = Date.now();
@@ -9546,19 +9626,23 @@
      multiplie les requetes et les cas particuliers, pour un gain nul a
      cette echelle.
      ================================================================== */
+  /* UN CRITERE SE DIT AU SINGULIER ET AU PLURIEL. « Aucune joueuse
+     blessées » : vu en production a la premiere question. Quatre criteres
+     sur douze portent un accord, et un seul libelle ne peut pas servir
+     les deux nombres. */
   var MAYA_CRITERES_MOTS = {
-    sans_photo:      'sans photo',
-    sans_compte:     'sans compte',
-    sans_licence:    'sans licence',
-    sans_medical:    'sans certificat médical',
-    sans_numero:     'sans numéro',
-    sans_bio:        'sans présentation',
-    blessee:         'blessées',
-    active:          'actives',
-    partie:          'parties du club',
-    en_pret:         'en prêt',
-    dossier_attente: 'dont le dossier attend',
-    sans_reponse:    'qui n’ont pas répondu'
+    sans_photo:      ['sans photo', 'sans photo'],
+    sans_compte:     ['sans compte', 'sans compte'],
+    sans_licence:    ['sans licence', 'sans licence'],
+    sans_medical:    ['sans certificat médical', 'sans certificat médical'],
+    sans_numero:     ['sans numéro', 'sans numéro'],
+    sans_bio:        ['sans présentation', 'sans présentation'],
+    blessee:         ['blessée', 'blessées'],
+    active:          ['active', 'actives'],
+    partie:          ['partie du club', 'parties du club'],
+    en_pret:         ['en prêt', 'en prêt'],
+    dossier_attente: ['dont le dossier attend', 'dont le dossier attend'],
+    sans_reponse:    ['qui n’a pas répondu', 'qui n’ont pas répondu']
   };
 
   function mayaFiltrer(criteres){
@@ -9575,7 +9659,11 @@
       besoinConv ? sbGet('match_center?select=id&statut=in.(aujourdhui,a_venir)&order=match_date.asc&limit=1')
                      .then(function(ms){
                        var m = (ms || [])[0];
-                       if (!m) return [];
+                       // Vu en production : sans match a venir, elle repondait
+                       // « aucune joueuse qui n'a pas repondu » -- vrai, et faux
+                       // de sens. Personne n'est convoque, donc personne ne
+                       // doit de reponse, et c'est CELA qu'il faut dire.
+                       if (!m) return 'AUCUN_MATCH';
                        return sbGet('match_convocations?select=player_id,statut&match_id=eq.' + encodeURIComponent(m.id));
                      }).catch(function(){ return null; })
                  : Promise.resolve([])
@@ -9583,6 +9671,7 @@
       var joueuses = r[0] || [], docs = r[1], conv = r[2];
       if (besoinPieces && docs === null) return { illisible: 'les pièces' };
       if (besoinConv && conv === null)   return { illisible: 'les convocations' };
+      if (conv === 'AUCUN_MATCH') return { sansMatch: true };
 
       var auj = todayISO();
       var piece = {};
@@ -9616,6 +9705,14 @@
 
       var inconnus = criteres.filter(function(c){ return !TESTS[c]; });
       var utiles   = criteres.filter(function(c){ return !!TESTS[c]; });
+      /* L'ETAT SE DIT AVANT L'ABSENCE. « Les joueuses actives sans
+         licence » ressortait en « sans licence et actives » : juste,
+         et personne ne parle comme ca. L'ordre de la phrase ne suit
+         plus celui de la frappe, mais celui du francais. */
+      var RANG = { active:0, blessee:0, partie:0, en_pret:0, dossier_attente:1 };
+      utiles.sort(function(x, y){
+        return (RANG[x] === undefined ? 2 : RANG[x]) - (RANG[y] === undefined ? 2 : RANG[y]);
+      });
       if (!utiles.length) return { sansCritere: true };
 
       var gardees = joueuses.filter(function(p){
@@ -9625,7 +9722,10 @@
       return {
         n: gardees.length,
         total: joueuses.length,
-        criteres: utiles.map(function(c){ return MAYA_CRITERES_MOTS[c] || c; }),
+        criteres: utiles.map(function(c){
+          var m = MAYA_CRITERES_MOTS[c]; if (!m) return c;
+          return gardees.length <= 1 ? m[0] : m[1];   // « aucune joueuse blessée »
+        }),
         inconnus: inconnus,
         items: gardees.map(function(p){
           return { id: p.id, genre: 'joueuse', nom: p.name,
@@ -9638,7 +9738,13 @@
 
   function mayaOutils(){
     return {
-      aller: function(cle){ try { showSection(cle); } catch(e){} },
+      aller: function(cle){
+        try {
+          if (cle === '@studio') { studioOuvrir(); return; }
+          if (cle === '@greffe') { greffeOuvrir(); return; }
+          showSection(cle);
+        } catch(e){}
+      },
       ouvrirPersonne: function(genre, id){
         if (genre === 'staff'){ showSection('staff'); return; }
         showSection('squad');
@@ -9653,7 +9759,13 @@
       ficheMatch: mayaFicheMatch,
       fichePersonne: mayaFichePersonne,
       filtrer: mayaFiltrer,
-      dernierResultat: mayaDernierResultat
+      dernierResultat: mayaDernierResultat,
+      // ELLE SE PRESENTAIT EN TROIS PUCES. « Que sais-tu faire »
+      // passait par le repli de dialogue.js, parce que capacites
+      // etait a cote des outils et non dedans : le banc, lui, le
+      // mettait au bon endroit et certifiait une reponse que la
+      // production n'a jamais rendue.
+      capacites: mayaCapacites
     };
   }
 
@@ -9681,7 +9793,6 @@
               ecrans: mayaEcrans,
               sujets: mayaSujets,
               vocabulaire: mayaVocabulaire,
-              capacites: mayaCapacites,
               ecranCourant: function(){
                 var s = document.querySelector('section[id^="section-"]:not(.hide)');
                 return s ? s.id.replace(/^section-/, '') : null;
@@ -9689,6 +9800,10 @@
               titreEcran: function(cle){
                 return (SECTION_META[cle] && SECTION_META[cle].t) || cle || '';
               },
+              // A quel domaine appartient cet ecran. « Score non saisi »
+              // vit sur Resultats ; depuis Matchs, elle repondait « rien
+              // ne concerne Matchs » alors que le point, lui, l'annoncait.
+              moduleEcran: function(cle){ return SECTION_MODULE[cle] || null; },
               prenom: function(){
                 var n = (typeof cpNom === 'function' && cpMoi) ? cpNom(cpMoi()) : '';
                 return n && n.indexOf('@') < 0 ? String(n).split(' ')[0] : '';
@@ -10834,13 +10949,23 @@
     ticket_offers:'la catégorie de billet', matches:'le match',
     promo_codes:'le code promo', academy_registrations:'le dossier', academy_documents:'la pièce du dossier',
     recruitment_requests:'la candidature', orders:'la commande',
-    reservations:'la réservation', site_settings:'le réglage'
+    reservations:'la réservation', site_settings:'le réglage',
+    // DIX TABLES QUI DISAIENT « l'élément ». La barre d'annulation s'en
+    // contentait ; MAYA, elle, annoncait « 2 lignes » au lieu de « 2
+    // partenaires ». Le meme registre sert desormais les deux, et c'est
+    // pour cela qu'il est complete plutot que double.
+    team_sessions:'la séance', customers:'le client', gallery:'la photo',
+    evenements:'l’événement', academy_sessions:'le créneau',
+    contact_messages:'le message', newsletter_abonnes:'l’abonné',
+    admin_users:'le compte', saisons:'la saison',
+    caisse_mouvements:'le mouvement de caisse'
   };
   function undoNom(table, ligne){
+    // Le choix de la colonne vit dans mayaNomLigne : deux chaines qui
+    // nomment la meme ligne auraient fini par diverger.
     var quoi = UNDO_TABLES[table] || 'l’élément';
-    var nom = ligne && (ligne.name || ligne.title || ligne.full_name || ligne.team_name ||
-                        ligne.opponent_name || ligne.category || ligne.code || ligne.reference || ligne.key);
-    return nom ? quoi + ' « ' + String(nom).slice(0,40) + ' »' : quoi;
+    var nom = mayaNomLigne(table, ligne);
+    return nom ? quoi + ' « ' + nom.slice(0,40) + ' »' : quoi;
   }
 
   function undoPousser(entree){

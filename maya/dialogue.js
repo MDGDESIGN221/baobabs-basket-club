@@ -206,9 +206,17 @@
     }).join('') + '</div>';
   }
 
+  /* LES INITIALES SE PRENNENT SUR LES MOTS, pas sur les deux premieres
+     lettres. « Mame Diarra Ndong », « Maimouna Djanko » et « Mariama
+     Diallo » donnaient trois pastilles « MA » identiques, cote a cote,
+     dans la meme liste : vu en production. */
+  function initiales(nom) {
+    return String(nom || '?').trim().split(/\s+/).map(function (m) { return m[0]; })
+             .join('').slice(0, 2).toUpperCase();
+  }
+
   function cartePersonne(p) {
-    var ini = String(p.nom || '?').trim().split(/\s+/).map(function (m) { return m[0]; })
-                .join('').slice(0, 2).toUpperCase();
+    var ini = initiales(p.nom);
     return '<button type="button" class="maya-pers" data-fiche="' + esc(p.id) + '" data-genre="' + esc(p.genre) + '">' +
       (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '<span class="rond">' + esc(ini) + '</span>') +
       '<span><b>' + esc(p.nom) + '</b><s>' + esc(etatPersonne(p)) + '</s></span></button>';
@@ -409,14 +417,25 @@
     var cle = CTX && CTX.ecranCourant ? CTX.ecranCourant() : null;
     var titre = CTX && CTX.titreEcran ? CTX.titreEcran(cle) : cle;
     if (!cle) return elle('<p>Je ne sais pas sur quel écran vous êtes.</p>');
+    var mod = CTX && CTX.moduleEcran ? CTX.moduleEcran(cle) : null;
     return M.collecte().then(function (faits) {
       var ici = faits.filter(function (f) { return f.section === cle; });
-      if (!ici.length) {
-        return elle('<p>Rien ne concerne <b>' + esc(titre) + '</b> en ce moment.</p>' +
-          pistes(['fais-moi le point']));
+      if (ici.length) {
+        return elle('<p>Sur <b>' + esc(titre) + '</b>, ' + ici.length + ' chose' +
+          (ici.length > 1 ? 's' : '') + ' à regarder.</p>' + listeFaits(ici));
       }
-      elle('<p>Sur <b>' + esc(titre) + '</b>, ' + ici.length + ' chose' +
-        (ici.length > 1 ? 's' : '') + ' à regarder.</p>' + listeFaits(ici));
+      /* PAS SUR CET ECRAN, MAIS DANS CE DOMAINE. Vu en production : sur
+         Matchs, avec un score de match non saisi, elle repondait « rien
+         ne concerne Matchs » -- le fait vivait sur l'ecran Resultats.
+         Techniquement exact, et c'est exactement ce qui la fait passer
+         pour bete : le score d'un match est une affaire de matchs. */
+      var pres = mod ? faits.filter(function (f) { return f.module === mod; }) : [];
+      if (pres.length) {
+        return elle('<p>Rien sur <b>' + esc(titre) + '</b> même, mais ' + pres.length +
+          ' chose' + (pres.length > 1 ? 's' : '') + ' juste à côté.</p>' + listeFaits(pres));
+      }
+      elle('<p>Rien ne concerne <b>' + esc(titre) + '</b> en ce moment.</p>' +
+        pistes(['fais-moi le point']));
     });
   }
 
@@ -967,14 +986,35 @@
     return f(s.cle).then(function (d) {
       var hors = sujetHors(d, s.nom);
       if (hors) return elle(hors);
-      if (!d.items || !d.items.length) return elle('<p>Rien à lister dans ' + esc(s.nom) + '.</p>');
+      /* TROIS VIDES QUI NE SE DISENT PAS PAREIL, et qui se disaient tous
+         « Rien a lister ». Vu en production : « combien de partenaires »
+         rendait 2, « la liste des partenaires » rendait « rien a lister
+         dans Partenaires ». Deux reponses qui se contredisent dans la
+         meme minute valent moins que pas de reponse du tout. */
+      if (d.sansListe) {
+        return elle('<p><b>' + d.n + '</b> ' + esc(d.n > 1 ? d.pluriel : d.nom) + '.</p>' +
+          '<p class="doux">Je ne les fais pas défiler ici : ce sont des gens. ' +
+          'L’écran les montre, avec ses propres protections.</p>' +
+          (d.ecran ? pistesEcran(d.ecran) : ''));
+      }
+      if (!d.items || !d.items.length) {
+        if (d.n) {
+          return elle('<p>J’en compte <b>' + d.n + '</b>, mais je ne sais pas les nommer d’ici.</p>' +
+            '<p class="doux">Le chiffre est bon ; c’est la liste qui m’échappe.</p>' +
+            (d.ecran ? pistesEcran(d.ecran) : ''));
+        }
+        return elle('<p><b>Pas encore</b> de ' + esc(d.nom) + '.</p>' +
+          '<p class="doux">Soit il n’y en a pas, soit je n’ai rien obtenu à la lecture : ' +
+          'de mon côté les deux se ressemblent.</p>' +
+          (d.ecran ? pistesEcran(d.ecran) : ''));
+      }
       var max = 20, montres = d.items.slice(0, max);
       var h = '<p><b>' + d.n + '</b> ' + esc(d.n > 1 ? d.pluriel : d.nom) +
               (d.items.length > max ? ', voici les ' + max + ' premières' : '') + ' :</p>' +
         '<div class="maya-faits">' + montres.map(function (it) {
           return it.id
             ? '<button type="button" class="maya-pers" data-fiche="' + esc(it.id) + '" data-genre="' + esc(it.genre || '') + '">' +
-              '<span class="rond">' + esc(String(it.nom || '?').slice(0, 2).toUpperCase()) + '</span>' +
+              '<span class="rond">' + esc(initiales(it.nom)) + '</span>' +
               '<span><b>' + esc(it.nom) + '</b>' + (it.sous ? '<s>' + esc(it.sous) + '</s>' : '') + '</span></button>'
             : '<div class="maya-fait"><b>' + esc(it.nom) + '</b>' +
               (it.sous ? '<s>' + esc(it.sous) + '</s>' : '') + '</div>';
@@ -1011,6 +1051,15 @@
       if (d.illisible) return elle('<p>Je n’ai pas pu lire ' + esc(d.illisible) + '.</p>' +
         '<p class="doux">Sans cela je ne peux pas répondre, et je préfère le dire.</p>');
       if (d.sansCritere) return rIncomprisePure(r);
+      /* « Qui n'a pas repondu » sans match a venir rendait « aucune
+         joueuse » : exact, et trompeur. Personne n'est convoque, donc
+         personne ne doit de reponse. Repondre zero laisse croire que
+         tout le monde a repondu. */
+      if (d.sansMatch) {
+        return elle('<p>Aucun match à venir n’est enregistré.</p>' +
+          '<p class="doux">Personne n’est convoqué, donc personne ne doit de réponse. ' +
+          'Ce n’est pas « tout le monde a répondu ».</p>' + pistesEcran('matches2'));
+      }
 
       var quoi = d.criteres.join(' et ');
 
@@ -1024,7 +1073,7 @@
       h += '<div class="maya-faits">' + d.items.slice(0, 20).map(function (it) {
         return '<button type="button" class="maya-pers" data-fiche="' + esc(it.id) +
           '" data-genre="joueuse"><span class="rond">' +
-          esc(String(it.nom || '?').slice(0, 2).toUpperCase()) + '</span>' +
+          esc(initiales(it.nom)) + '</span>' +
           '<span><b>' + esc(it.nom) + '</b>' + (it.sous ? '<s>' + esc(it.sous) + '</s>' : '') +
           '</span></button>';
       }).join('') + '</div>';
