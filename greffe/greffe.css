@@ -159,9 +159,38 @@
 
 /* ------------------------- colonne formulaire ------------------------- */
 .gf-form{
-  flex:0 0 408px; min-width:0; display:flex; flex-direction:column;
+  flex:0 0 var(--gf-form-l, 408px); min-width:0; display:flex; flex-direction:column;
   background:var(--gf-surf); border-right:1px solid var(--gf-line);
 }
+/* ---------------- les poignees : les fenetres se reglent a la main ----------------
+   « le redimensionnement des fenetres est absent ». Une bande de 7 px
+   entre deux panneaux ; on la tire, la largeur suit, et elle reste. */
+.gf-poignee{ flex:0 0 7px; margin:0 -3px; cursor:col-resize; position:relative; z-index:5; background:transparent; }
+.gf-poignee::after{ content:''; position:absolute; left:3px; top:0; bottom:0; width:1px; background:transparent; transition:background .15s; }
+.gf-poignee:hover::after, .gf-redim .gf-poignee::after{ background:var(--gf-accent); }
+.gf-redim{ cursor:col-resize; user-select:none; }
+.gf-redim iframe{ pointer-events:none; }
+.gf-sans-panneau .gf-poignee[data-poignee="form"], .gf-sans-props .gf-poignee[data-poignee="props"]{ display:none; }
+/* ---------------- l'apercu replie : une languette, le panneau prend la place ---------------- */
+.gf-apercu-languette{ display:none; }
+.gf-sans-apercu .gf-apercu{ flex:0 0 40px; }
+.gf-sans-apercu .gf-apercu > *{ display:none; }
+.gf-sans-apercu .gf-apercu-languette{
+  display:block; margin:14px auto 0; padding:10px 6px; border:1px solid var(--gf-line); border-radius:8px;
+  background:var(--gf-surf); color:var(--gf-doux); font:inherit; font-size:10.5px; font-weight:600; letter-spacing:.16em;
+  text-transform:uppercase; writing-mode:vertical-rl; cursor:pointer;
+}
+.gf-apercu-languette:hover{ color:var(--gf-texte); border-color:var(--gf-line-fort); }
+.gf-sans-apercu .gf-form{ flex:1 1 auto; }
+.gf-sans-apercu .gf-poignee[data-poignee="form"], .gf-sans-apercu .gf-props, .gf-sans-apercu .gf-poignee[data-poignee="props"]{ display:none; }
+.gf-apercu-x{ margin-left:4px; }
+.gf-vig-titre{ display:flex; align-items:center; justify-content:space-between; }
+.gf-vig-x{ width:18px; height:18px; border-radius:5px; border:0; background:transparent; color:var(--gf-pale); font:inherit; font-size:14px; line-height:1; cursor:pointer; }
+.gf-vig-x:hover{ background:var(--gf-surf3); color:var(--gf-texte); }
+/* ---------------- l'outil main : la feuille se fait glisser ---------------- */
+.gf-scene.gf-main{ cursor:grab; }
+.gf-scene.gf-main.gf-main-tire{ cursor:grabbing; }
+.gf-scene.gf-main iframe{ pointer-events:none; }
 .gf-form-defile{ flex:1 1 auto; min-height:0; overflow-y:auto; padding:4px 0 30px 0; }
 
 .gf-sect{ border-bottom:1px solid var(--gf-line); }
@@ -306,16 +335,23 @@
   font-variant-numeric:tabular-nums;
 }
 
+/* LA FEUILLE DEFILE JUSQU'A SES DEUX BORDS. Centree par
+   justify-content:center, une feuille plus large que la scene (zoom
+   171 %) debordait des deux cotes, et ce qui deborde a GAUCHE d'un
+   centrage n'est jamais atteignable au defilement : « pour aller a
+   droite c'est impossible », le bord gauche restait coupe. Des marges
+   automatiques centrent quand il y a de la place, et valent zero
+   quand il n'y en a plus : la feuille part du bord et defile entiere. */
 .gf-scene{
   flex:1 1 auto; min-height:0; overflow:auto;
-  padding:22px; display:flex; justify-content:center; align-items:flex-start;
+  padding:22px; display:flex; justify-content:flex-start; align-items:flex-start;
   background:
     radial-gradient(circle at 50% 0%, rgba(70,191,29,.05), transparent 60%),
     var(--gf-bg);
 }
 /* Les feuilles vivent dans le cadre, chacune avec son ombre : l'enveloppe
    ne porte plus rien, elle réserve seulement la place du cadre réduit. */
-.gf-feuille{ flex:0 0 auto; overflow:hidden; }
+.gf-feuille{ flex:0 0 auto; overflow:hidden; margin:0 auto; }
 #gf-cadre{ display:block; width:220mm; border:0; background:transparent; transform-origin:top left; }
 
 .gf-barre-bas{
@@ -620,7 +656,7 @@
 
 /* ------------------------- le panneau de propriétés ------------------------- */
 .gf-props{
-  flex:0 0 280px; min-width:0; display:flex; flex-direction:column;
+  flex:0 0 var(--gf-props-l, 280px); min-width:0; display:flex; flex-direction:column;
   background:var(--gf-surf); border-left:1px solid var(--gf-line);
 }
 .gf-sans-props .gf-props{ display:none; }
@@ -664,8 +700,9 @@
 @media (max-width:1500px){
   .gf-atelier{ position:relative; }
   .gf-props{ display:none; }
-  .gf-avec-props .gf-props{ display:flex; position:absolute; right:0; top:0; bottom:0; width:300px; z-index:15; box-shadow:-10px 0 30px rgba(0,0,0,.4); }
-  .gf-form{ flex-basis:360px; }
+  .gf-avec-props .gf-props{ display:flex; position:absolute; right:0; top:0; bottom:0; width:var(--gf-props-l, 300px); z-index:15; box-shadow:-10px 0 30px rgba(0,0,0,.4); }
+  .gf-poignee[data-poignee="props"]{ display:none; }
+  .gf-form{ flex-basis:var(--gf-form-l, 360px); }
   .gf-apercu-barre{ gap:6px; padding:0 8px; }
   .gf-apercu-barre .gf-pages{ display:none; }
   .gf-sel-zoom{ max-width:86px; }
@@ -743,7 +780,9 @@
 .gf-mini-danger:hover{ color:var(--gf-rouge); border-color:var(--gf-rouge); }
 
 /* les boites : onglets, historique, informations, raccourcis, guide */
-.gf-modale-large{ max-width:860px; width:min(92vw, 860px); }
+/* « il y a tellement d'espace que tu n'as pas pris » : la boite prend
+   l'ecran, et les cartes se rangent en autant de colonnes qu'il en tient */
+.gf-modale-large{ max-width:1480px; width:min(94vw, 1480px); max-height:min(100%, 92vh); }
 /* la comparaison de deux versions */
 .gf-diff-liste{ display:flex; flex-direction:column; gap:8px; max-height:52vh; overflow:auto; }
 .gf-diff{ display:grid; grid-template-columns:minmax(120px, 200px) 1fr; gap:12px; padding:8px 10px; border:1px solid var(--gf-line); border-radius:8px; background:var(--gf-surf2); font-size:12.5px; }
@@ -880,6 +919,7 @@
 /* ============================== ÉCRANS ÉTROITS ============================== */
 @media (max-width: 980px){
   .gf-atelier{ flex-direction:column; }
+  .gf-poignee{ display:none; }
   .gf-form{ flex:0 0 auto; max-height:48%; border-right:0; border-bottom:1px solid var(--gf-line); }
   .gf-brand-sub{ display:none; }
 }

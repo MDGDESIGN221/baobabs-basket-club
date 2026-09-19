@@ -121,6 +121,9 @@
       <div class="gf-form-tete" id="gf-form-tete" hidden></div>
       <div class="gf-form-defile" id="gf-form-defile"></div>
     </div>
+    <!-- la poignee : on tire, le panneau change de largeur ; deux clics, il
+         reprend la sienne -->
+    <div class="gf-poignee" data-poignee="form" title="Tirer pour changer la largeur du panneau · deux clics : largeur d'origine"></div>
 
     <!-- ---------------------- la barre d'outils ----------------------
          Ce qu'on pose sur la feuille, d'un clic : un texte, une case, une
@@ -128,6 +131,7 @@
          un bloc ; et la grille et l'aimant de la scène. -->
     <div class="gf-rail" id="gf-rail" role="toolbar" aria-label="Outils">
       <button type="button" class="gf-outil is-actif" data-outil="selection" title="Sélection (Échap)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3l7 17 2.5-7 7-2.5z"/></svg></button>
+      <button type="button" class="gf-outil" data-outil="main" title="Main : faire glisser la feuille (H, ou la barre d'espace tenue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></button>
       <span class="gf-rail-sep"></span>
       <button type="button" class="gf-outil" data-outil="annotation" title="Texte posé (annotation)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 6h14M12 6v13M9 19h6"/></svg></button>
       <button type="button" class="gf-outil" data-outil="case" title="Case à cocher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg></button>
@@ -143,10 +147,13 @@
       <button type="button" class="gf-outil" data-outil="grille" title="Grille de 5 mm (à l'écran seulement)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button>
       <button type="button" class="gf-outil is-actif" data-outil="aimant" title="Aimant : marges, milieu, autres objets (Alt pour passer outre)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 3h4v8H6zM14 3h4v8h-4z"/></svg></button>
       <button type="button" class="gf-outil" data-outil="proprietes" title="Montrer ou masquer le panneau de propriétés"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+      <button type="button" class="gf-outil is-actif" data-outil="apercu" title="Montrer ou replier l'aperçu de la feuille"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
     </div>
 
     <!-- ------------------------ la feuille ------------------------ -->
     <div class="gf-apercu">
+      <!-- l'aperçu replié : une languette, un clic le rouvre -->
+      <button type="button" class="gf-apercu-languette" data-outil="apercu" title="Rouvrir l'aperçu">Aperçu</button>
       <div class="gf-apercu-barre">
         <span class="gf-apercu-tag">Aperçu</span>
         <span class="gf-pages" id="gf-pages"></span>
@@ -185,13 +192,16 @@
             <option value="1.5">150 %</option>
           </select>
         </div>
+        <button type="button" class="gf-ico gf-ico-sm gf-apercu-x" data-outil="apercu" title="Replier l'aperçu : le panneau prend la place" aria-label="Replier l'aperçu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
       </div>
 
       <div class="gf-scene-ligne">
         <!-- les vignettes des pages : la feuille entière en petit, une page
              par vignette, un clic y va. Un second cadre, copie du premier. -->
         <div class="gf-vignettes" id="gf-vignettes" hidden>
-          <div class="gf-vig-titre">Pages</div>
+          <div class="gf-vig-titre">Pages <button type="button" class="gf-vig-x" data-vignettes="fermer" title="Masquer les vignettes (menu Affichage pour les remontrer)" aria-label="Masquer les vignettes">×</button></div>
           <iframe id="gf-vig-cadre" title="Vignettes des pages" tabindex="-1"></iframe>
         </div>
         <div class="gf-scene" id="gf-scene">
@@ -217,6 +227,7 @@
          À droite de la feuille, ce que demande la sélection : l'objet posé,
          le bloc, la typographie du texte ; et les onglets Calques,
          Variables, Historique. -->
+    <div class="gf-poignee" data-poignee="props" title="Tirer pour changer la largeur des propriétés · deux clics : largeur d'origine"></div>
     <aside class="gf-props" id="gf-props">
       <div class="gf-props-onglets" role="tablist">
         <button type="button" class="gf-props-onglet is-actif" data-props="proprietes" role="tab">Propriétés</button>

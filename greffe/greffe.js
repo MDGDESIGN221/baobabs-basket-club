@@ -2117,6 +2117,8 @@
         { lab: 'Page entière', off: !enAtelier, act: function () { zoomer('page'); } },
         { sep: true },
         { lab: (racine.classList.contains('gf-sans-panneau') ? 'Montrer' : 'Masquer') + ' le panneau', rac: 'Ctrl+Maj+P', off: !enAtelier, act: basculerPanneau },
+        { lab: (apercuReplie ? 'Rouvrir' : 'Replier') + ' l\'aperçu', off: !enAtelier, act: basculerApercu },
+        { lab: (outilMain ? 'Quitter l\'outil' : 'Outil') + ' main (glisser la feuille)', rac: 'H · Espace tenue', off: !enAtelier, act: function () { mainActiver(!outilMain); } },
         { lab: (vignettesVoulues() ? 'Masquer' : 'Montrer') + ' les vignettes des pages', off: !enAtelier, act: basculerVignettes },
         { lab: (modeLecture ? 'Quitter le' : 'Passer en') + ' mode lecture', rac: 'Ctrl+Maj+R', off: !enAtelier, act: basculerLecture }
       ]},
@@ -5227,13 +5229,93 @@
      ================================================================= */
   var propsOnglet = 'proprietes', grilleVisible = false, aimantActif = true;
 
+  /* ================================================================
+     LES FENETRES SE REGLENT A LA MAIN
+     « le redimensionnement des fenetres est absent, l'apercu ne peut
+       pas se fermer, pas d'outil main »
+     Deux poignees qu'on tire (le panneau, les proprietes), memorisees
+     d'une fois sur l'autre ; l'apercu se replie sur une languette et
+     se rouvre ; l'outil main fait glisser la feuille, ou la barre
+     d'espace tenue le temps de la tenir.
+     ================================================================ */
+  var CLE_LARGEURS = 'greffe-largeurs';
+  var outilMain = false, mainTemp = false, apercuReplie = false;
+  function largeursLues() { try { return JSON.parse(localStorage.getItem(CLE_LARGEURS) || '{}') || {}; } catch (e) { return {}; } }
+  function largeurPoser(quoi, px) {
+    if (px == null) racine.style.removeProperty('--gf-' + quoi + '-l'); else racine.style.setProperty('--gf-' + quoi + '-l', px + 'px');
+    var l = largeursLues(); if (px == null) delete l[quoi]; else l[quoi] = px;
+    try { localStorage.setItem(CLE_LARGEURS, JSON.stringify(l)); } catch (e) {}
+  }
+  function remesurer() { setTimeout(function () { if (cadre && cadrePret) mesurer(cadre.contentDocument); }, 50); }
+  function brancherPoignees() {
+    var l = largeursLues();
+    ['form', 'props'].forEach(function (q) { if (l[q]) racine.style.setProperty('--gf-' + q + '-l', l[q] + 'px'); });
+    racine.querySelectorAll('[data-poignee]').forEach(function (p) {
+      var quoi = p.getAttribute('data-poignee');
+      var min = quoi === 'form' ? 280 : 220, max = quoi === 'form' ? 760 : 560, sens = quoi === 'form' ? 1 : -1;
+      p.addEventListener('mousedown', function (e) {
+        var cible = quoi === 'form' ? $('gf-form') : $('gf-props');
+        if (e.button !== 0 || !cible) return;
+        e.preventDefault();
+        var x0 = e.clientX, l0 = cible.getBoundingClientRect().width;
+        racine.classList.add('gf-redim');
+        var bouge = function (ev) {
+          var px = Math.round(Math.min(max, Math.max(min, l0 + (ev.clientX - x0) * sens)));
+          racine.style.setProperty('--gf-' + quoi + '-l', px + 'px');
+        };
+        var fin = function () {
+          document.removeEventListener('mousemove', bouge); document.removeEventListener('mouseup', fin);
+          racine.classList.remove('gf-redim');
+          largeurPoser(quoi, Math.round(cible.getBoundingClientRect().width)); remesurer();
+        };
+        document.addEventListener('mousemove', bouge); document.addEventListener('mouseup', fin);
+      });
+      p.addEventListener('dblclick', function () { largeurPoser(quoi, null); remesurer(); });
+    });
+  }
+  function basculerApercu() {
+    apercuReplie = !apercuReplie;
+    racine.classList.toggle('gf-sans-apercu', apercuReplie);
+    if (apercuReplie && outilMain) mainActiver(false);
+    majOutils(); remesurer();
+  }
+  function mainActiver(on) {
+    outilMain = !!on;
+    var sc = $('gf-scene'); if (sc) sc.classList.toggle('gf-main', outilMain);
+    majOutils();
+  }
+  function brancherMain() {
+    var sc = $('gf-scene'); if (!sc) return;
+    sc.addEventListener('mousedown', function (e) {
+      if (!outilMain || e.button !== 0) return;
+      e.preventDefault();
+      var x0 = e.clientX, y0 = e.clientY, sx = sc.scrollLeft, sy = sc.scrollTop;
+      sc.classList.add('gf-main-tire');
+      var bouge = function (ev) { sc.scrollLeft = sx - (ev.clientX - x0); sc.scrollTop = sy - (ev.clientY - y0); };
+      var fin = function () { document.removeEventListener('mousemove', bouge); document.removeEventListener('mouseup', fin); sc.classList.remove('gf-main-tire'); };
+      document.addEventListener('mousemove', bouge); document.addEventListener('mouseup', fin);
+    });
+    /* la barre d'espace tenue : la main le temps de la tenir, comme
+       dans un logiciel de dessin ; H la prend pour de bon */
+    document.addEventListener('keydown', function (e) {
+      if (!ouvert || espace !== 'atelier' || !modeleActif) return;
+      var t = e.target; if (t && t.closest && t.closest('input, textarea, select, button, [contenteditable="true"]')) return;
+      if (e.code === 'Space' && !e.repeat && !mainTemp && !outilMain) { e.preventDefault(); mainTemp = true; mainActiver(true); return; }
+      if (e.key.toLowerCase() === 'h' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); mainActiver(!outilMain); }
+    });
+    document.addEventListener('keyup', function (e) { if (e.code === 'Space' && mainTemp) { mainTemp = false; mainActiver(false); } });
+  }
+
   function brancherOutils() {
     var rail = $('gf-rail');
     if (!rail) return;
-    rail.querySelectorAll('[data-outil]').forEach(function (b) {
+    racine.querySelectorAll('[data-outil]').forEach(function (b) {
       b.addEventListener('mousedown', function (e) { e.preventDefault(); });   /* la sélection de la feuille reste */
       b.addEventListener('click', function () { outil(b.getAttribute('data-outil')); });
     });
+    var vx = racine.querySelector('[data-vignettes="fermer"]');
+    if (vx) vx.addEventListener('click', basculerVignettes);
+    brancherPoignees(); brancherMain();
     var props = $('gf-props');
     if (props) {
       props.querySelectorAll('[data-props]').forEach(function (o) {
@@ -5246,8 +5328,10 @@
     }
   }
   function outil(nom) {
+    if (nom === 'apercu') { basculerApercu(); return; }
     if (!modeleActif) { dire('Ouvrez d\'abord un acte.', 'erreur'); return; }
-    if (nom === 'selection') { selectionnerObjet(null); majOutils(); return; }
+    if (nom === 'main') { mainActiver(!outilMain); return; }
+    if (nom === 'selection') { mainActiver(false); selectionnerObjet(null); majOutils(); return; }
     if (nom === 'grille') { grilleVisible = !grilleVisible; appliquerGrille(); majOutils(); return; }
     if (nom === 'aimant') { aimantActif = !aimantActif; majOutils(); dire(aimantActif ? 'Aimant activé' : 'Aimant désactivé', 'ok'); return; }
     if (nom === 'proprietes') {
@@ -5269,7 +5353,9 @@
     if (!rail) return;
     rail.querySelectorAll('[data-outil]').forEach(function (b) {
       var n = b.getAttribute('data-outil');
-      if (n === 'selection') b.classList.toggle('is-actif', !objetSel);
+      if (n === 'selection') b.classList.toggle('is-actif', !objetSel && !outilMain);
+      else if (n === 'main') b.classList.toggle('is-actif', outilMain);
+      else if (n === 'apercu') b.classList.toggle('is-actif', !apercuReplie);
       else if (n === 'grille') b.classList.toggle('is-actif', grilleVisible);
       else if (n === 'aimant') b.classList.toggle('is-actif', aimantActif);
       else if (n === 'proprietes') b.classList.toggle('is-actif', !!($('gf-props') && $('gf-props').offsetParent !== null));
@@ -5699,8 +5785,8 @@
       if (elt.voile && !elt.voile.hidden) { fermerColler(); return; }
       if (racine.querySelector('.gf-voile:not([hidden])')) return;   /* la boite ouverte s'en charge */
       if (espace === 'atelier' && document.activeElement && document.activeElement !== document.body) { document.activeElement.blur(); return; }
-      /* un acte ouvert : Échap lâche la sélection, il ne ferme pas le Greffe */
-      if (modeleActif) { if (objetSel) selectionnerObjet(null); return; }
+      /* un acte ouvert : Échap lâche la main et la sélection, il ne ferme pas le Greffe */
+      if (modeleActif) { if (outilMain) mainActiver(false); if (objetSel) selectionnerObjet(null); return; }
       fermer(); return;
     }
     if (ctrl && k === 'k') { e.preventDefault(); palette(); return; }

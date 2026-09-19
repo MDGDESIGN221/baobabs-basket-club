@@ -1967,6 +1967,15 @@
     border-left:1px solid var(--line-loud);z-index:60;display:flex;flex-direction:column;box-shadow:-14px 0 44px rgba(0,0,0,.4)}
   .tm[hidden]{display:none}
   body.tm-ouvert .app-main{margin-right:var(--tm-w)}
+  /* LE VOLET SE REGLE A LA MAIN. « le redimensionnement des fenetres est
+     absent » : une bande sur le bord gauche, on la tire, la largeur suit
+     et reste (tm-largeur). Pendant qu'on tire, le cadre du site ne prend
+     pas la souris. */
+  .tm-poignee{position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:col-resize;z-index:2}
+  .tm-poignee::after{content:'';position:absolute;left:3px;top:0;bottom:0;width:2px;background:transparent;transition:background .15s}
+  .tm-poignee:hover::after,body.tm-redim .tm-poignee::after{background:var(--gold)}
+  body.tm-redim{cursor:col-resize;user-select:none}
+  body.tm-redim iframe{pointer-events:none}
   .tm-barre{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--surface-2)}
   .tm-titre{font-family:var(--font-ui);font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text);
     flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -5081,6 +5090,8 @@
        Studio : #app passe en display:none sur l'ecran de connexion, et un
        ancetre masque annule le position:fixed. -->
   <aside id="temoin" class="tm" hidden aria-label="Le site, tel qu'il s'affiche">
+    <!-- la poignee : on tire le bord gauche, le volet change de largeur -->
+    <div class="tm-poignee" data-tm="poignee" title="Tirer pour changer la largeur du volet · deux clics : largeur d'origine"></div>
     <div class="tm-barre">
       <span class="tm-titre" id="tm-titre">Le site</span>
       <div class="ds-seg tm-seg"><button type="button" data-tm="ordi" class="on">Ordi</button><button type="button" data-tm="tel">Téléphone</button></div>
@@ -15710,6 +15721,34 @@
   // (joueuses, produits, actualites...). Apres chaque ecriture en base
   // (auditDiffFields), le temoin se remet a jour tout seul.
   var tmEtat = { ouvert:false, mode:'ordi', pret:false, id:null, titre:'', cible:null, reglages:null, table:null, lignes:null, envoyer:null, timer:null };
+  /* la largeur du volet, tiree a la main et gardee */
+  function tmLargeurPoser(px){
+    if (px == null){ document.documentElement.style.removeProperty('--tm-w'); try { localStorage.removeItem('tm-largeur'); } catch(e){} }
+    else { document.documentElement.style.setProperty('--tm-w', px + 'px'); try { localStorage.setItem('tm-largeur', String(px)); } catch(e){} }
+    tmDimensionner();
+  }
+  function tmPoignee(){
+    var p = document.querySelector('#temoin .tm-poignee'); if (!p) return;
+    try { var v = parseInt(localStorage.getItem('tm-largeur'), 10); if (v > 0) document.documentElement.style.setProperty('--tm-w', v + 'px'); } catch(e){}
+    p.addEventListener('mousedown', function(e){
+      if (e.button !== 0) return;
+      e.preventDefault();
+      var el = document.getElementById('temoin'), x0 = e.clientX, l0 = el.getBoundingClientRect().width;
+      document.body.classList.add('tm-redim');
+      var bouge = function(ev){
+        var px = Math.round(Math.min(window.innerWidth - 360, Math.max(320, l0 - (ev.clientX - x0))));
+        document.documentElement.style.setProperty('--tm-w', px + 'px'); tmDimensionner();
+      };
+      var fin = function(){
+        document.removeEventListener('mousemove', bouge); document.removeEventListener('mouseup', fin);
+        document.body.classList.remove('tm-redim');
+        tmLargeurPoser(Math.round(el.getBoundingClientRect().width));
+      };
+      document.addEventListener('mousemove', bouge); document.addEventListener('mouseup', fin);
+    });
+    p.addEventListener('dblclick', function(){ tmLargeurPoser(null); });
+  }
+  tmPoignee();
   var TM_LARGEURS = { ordi:1280, tel:390 };
 
   // Ou chaque bloc du registre s'affiche sur le site : la page, puis la section.
@@ -15854,7 +15893,7 @@
   (function(){
     var el = document.getElementById('temoin'); if (!el) return;
     el.addEventListener('click', function(e){
-      var b = e.target.closest('[data-tm]'); if (!b) return;
+      var b = e.target.closest('[data-tm]'); if (!b || b.classList.contains('tm-poignee')) return;
       var a = b.getAttribute('data-tm');
       if (a === 'fermer'){ tmFermer(); return; }
       tmEtat.mode = a;
