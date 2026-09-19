@@ -441,6 +441,11 @@
       "td.f-fort{ font-weight:500; color:var(--encre); font-size:8.2pt; }",
       "td.f-code{ letter-spacing:.035em; white-space:nowrap; font-size:8pt; }",
       "td.f-nombre{ font-family:'Gilroy',sans-serif; font-weight:700; color:var(--encre); }",
+      "td.f-photo{ padding-top:3pt; padding-bottom:3pt; }",
+      ".f-photo{ display:inline-block; width:22pt; height:22pt; border-radius:50%; overflow:hidden; vertical-align:middle;",
+      "  background:#EDF1EE; border:1.2pt solid #fff; box-shadow:0 0 0 .8pt var(--filet); }",
+      ".f-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 12%; display:block; }",
+      ".f-photo-vide{ background:repeating-linear-gradient(45deg,#EDF1EE 0 2pt,#F7F9F7 2pt 4pt); }",
       ".q{ display:inline-block; font-size:6.2pt; font-weight:600; letter-spacing:.07em;",
       "  text-transform:uppercase; padding:2.4pt 6pt; border-radius:99pt; white-space:nowrap; }",
       ".q.ton-plein{ background:var(--vert); color:#fff; }",
@@ -650,7 +655,8 @@
     { cle: 'fort',     nom: 'Texte accentué' },
     { cle: 'code',     nom: 'Numéro ou référence' },
     { cle: 'nombre',   nom: 'Nombre' },
-    { cle: 'pastille', nom: 'Pastille' }
+    { cle: 'pastille', nom: 'Pastille' },
+    { cle: 'photo',    nom: 'Photo (adresse de l\'image)' }
   ];
 
   function classeCellule(col) {
@@ -748,6 +754,12 @@
     if (col.forme === 'pastille' && v) {
       var ton = (cfg.tonPastille && cfg.tonPastille(v, ligne)) || 'ton-doux';
       return '<span class="q ' + ton + '">' + U.enLigne(v) + '</span>';
+    }
+    /* une photo : le portrait, rond, depuis son adresse ; sans adresse,
+       un rond vide (la liste reste alignee) */
+    if (col.forme === 'photo') {
+      var ok = /^(https?:\/\/|\/)/.test(v.trim());
+      return ok ? '<span class="f-photo"><img src="' + U.ech(v.trim()) + '" alt=""></span>' : '<span class="f-photo f-photo-vide"></span>';
     }
     return U.enLigne(v);
   }

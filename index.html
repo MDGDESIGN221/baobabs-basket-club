@@ -87,6 +87,14 @@ window.bbLienSur = function (u) {
        toujours (defaut) les animations jouent, quoi qu'en dise le systeme
        systeme              on suit le systeme, comme avant
      =================================================================== */
+  /* LA SCENE SEULE. ?temoin=1&scene=1 : le visualiseur de l'admin
+     n'ouvre que le bloc des joueuses, sans le reste du site ni l'ecran
+     d'ouverture. Pose ici, avant la feuille de style, pour que rien
+     d'autre ne se dessine meme un instant. */
+  if (/[?&]scene=1/.test(location.search)){
+    document.documentElement.classList.add('bb-scene-seule');
+    document.documentElement.classList.remove('bb-splash-lock');
+  }
   window.bbCalme = function(){
     return document.documentElement.classList.contains('bb-calme');
   };
@@ -289,6 +297,18 @@ window.bbLienSur = function (u) {
   @keyframes bbSplashText{from{opacity:0;transform:translateY(12px);letter-spacing:.16em}to{opacity:1;transform:translateY(0);letter-spacing:.32em}}
   @keyframes bbSplashBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
   html.bb-splash-lock,html.bb-splash-lock body{overflow:hidden;height:100%}
+  /* LA SCENE SEULE (visualiseur de l'admin) : rien que le bloc des
+     joueuses, sur fond transparent, sans defilement. */
+  html.bb-scene-seule, html.bb-scene-seule body{ background:transparent; overflow:hidden }
+  html.bb-scene-seule body > :not(#bb-shell){ display:none !important }
+  html.bb-scene-seule #bb-shell > :not(#bb-page-accueil){ display:none !important }
+  html.bb-scene-seule #bb-page-accueil > div > :not(#bb-lineup){ display:none !important }
+  html.bb-scene-seule #bb-page-accueil{ animation:none }
+  html.bb-scene-seule #bb-page-accueil > div{ padding:0 !important; max-width:none !important }
+  html.bb-scene-seule #bb-lineup{ padding:0 !important }
+  html.bb-scene-seule #bb-splash{ display:none !important }
+  html.bb-scene-seule .bb-motion [data-rv]{ opacity:1; animation:none }
+  html.bb-scene-seule .bb-temoin-vise{ outline:none }
   #bb-splash{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:#061109;transition:opacity .7s ease,visibility .7s ease}
   #bb-splash.bb-splash-done{opacity:0;visibility:hidden;pointer-events:none}
   #bb-splash .bb-splash-logo-wrap{position:relative;display:flex;align-items:center;justify-content:center}
@@ -1741,6 +1761,19 @@ window.bbLienSur = function (u) {
     transform-origin:50% 50%;
     filter:contrast(1.06) saturate(1.06) drop-shadow(0 20px 28px rgba(0,0,0,.62));
     transform:translate3d(var(--sx,0%),calc(var(--dy,0%) + var(--sy,0%)),0) scale(calc(var(--z,1) * var(--sz,1)));
+  }
+  /* LE TELEPHONE A SON PROPRE REGLAGE. « Ce qui s'affiche bien sur
+     ordinateur peut ne pas etre ca sur mobile » : le cadre n'a pas le
+     meme rapport, la meme place ne vaut pas. L'acte porte les six
+     nombres (--sx/--sy/--sz et --msx/--msy/--msz) ; sous 640 px, les
+     trois du telephone prennent le relais, avec ceux de l'ordinateur en
+     repli quand ils ne sont pas regles. Meme principe que .bb-cadre. */
+  /* --sx n'est jamais pose en ligne : la feuille le derive de --dsx
+     (ordinateur) ou de --msx (telephone). Un --sx en ligne battrait la
+     regle @media, mesure : le telephone gardait l'ordinateur. */
+  .bb-lu-act{ --sx:var(--dsx,0%); --sy:var(--dsy,0%); --sz:var(--dsz,1) }
+  @media (max-width:640px){
+    .bb-lu-act{ --sx:var(--msx,var(--dsx,0%)); --sy:var(--msy,var(--dsy,0%)); --sz:var(--msz,var(--dsz,1)) }
   }
   /* KEN BURNS : la photo respire pendant l'acte ; un acte sur deux
      dezoome, sinon le mouvement devient previsible au deuxieme tour. */
@@ -9007,7 +9040,14 @@ window.bbCloud = function(url, w){
      sx et sy en % de la boite, sz en facteur. Voir .bb-lu-ph. */
   function bbLuSceneVars(p){
     var n = function(v, d){ var x = parseFloat(v); return (v == null || v === '' || isNaN(x)) ? d : x; };
-    return '--sx:' + n(p.sx, 0) + '%;--sy:' + n(p.sy, 0) + '%;--sz:' + (n(p.sz, 100) / 100);
+    var m = function(v){ var x = parseFloat(v); return (v == null || v === '' || isNaN(x)) ? null : x; };
+    // --dsx : la valeur ordinateur, gardee a part pour servir de repli
+    // au telephone (la regle @media reecrit --sx).
+    var out = '--dsx:' + n(p.sx, 0) + '%;--dsy:' + n(p.sy, 0) + '%;--dsz:' + (n(p.sz, 100) / 100);
+    if (m(p.smx) !== null) out += ';--msx:' + m(p.smx) + '%';
+    if (m(p.smy) !== null) out += ';--msy:' + m(p.smy) + '%';
+    if (m(p.smz) !== null) out += ';--msz:' + (m(p.smz) / 100);
+    return out;
   }
   function bbLuActe(p, i, total){
     var n = bbLuNom(p.name);
@@ -9364,6 +9404,13 @@ window.bbCloud = function(url, w){
     sc.depuis = Date.now();
     sc.duree = duree;
     bbLuRelancer(sc, duree);
+    // le visualiseur de l'admin suit : quel acte, quelle joueuse
+    if (bbTemoin && window.parent !== window && actif){
+      try {
+        parent.postMessage({ type:'bbc-scene-etat', i: sc.i, n: sc.n, pid: actif.getAttribute('data-pid') || null,
+          libelle: rang ? rang.textContent.replace(/\s+/g, ' ').trim() : '', fige: !!sc.fige }, location.origin);
+      } catch(e){}
+    }
   }
   function bbLuRelancer(sc, duree){
     if (!sc) return;
@@ -9694,12 +9741,17 @@ window.bbCloud = function(url, w){
   function bbLuTemoinScene(t){
     var a = document.querySelector('#bb-lineup .bb-lu-act[data-pid="' + String(t.pid) + '"]'); if (!a) return;
     var h = a.closest('.bb-lu-scene'), sc = h && h.__sc; if (!sc) return;
-    var vars = bbLuSceneVars({ sx:t.sx, sy:t.sy, sz:t.sz }).split(';');
-    vars.forEach(function(kv){ var i = kv.indexOf(':'); a.style.setProperty(kv.slice(0, i), kv.slice(i + 1)); });
+    if (t.mobile){
+      a.style.setProperty('--msx', t.sx + '%'); a.style.setProperty('--msy', t.sy + '%'); a.style.setProperty('--msz', String(t.sz / 100));
+    } else {
+      a.style.setProperty('--dsx', t.sx + '%'); a.style.setProperty('--dsy', t.sy + '%'); a.style.setProperty('--dsz', String(t.sz / 100));
+    }
     // et dans la composition envoyee, pour qu'une relecture la garde
     var td = bbLuTemoinData;
     (td ? [].concat(td.cinq || [], td.banc || [], td.joueuses || []) : []).forEach(function(r){
-      if (String(r.id) === String(t.pid)){ r.scene_x = t.sx; r.scene_y = t.sy; r.scene_zoom = t.sz; }
+      if (String(r.id) !== String(t.pid)) return;
+      if (t.mobile){ r.scene_mx = t.sx; r.scene_my = t.sy; r.scene_mzoom = t.sz; }
+      else { r.scene_x = t.sx; r.scene_y = t.sy; r.scene_zoom = t.sz; }
     });
     var i = parseInt(a.getAttribute('data-i'), 10);
     sc.fige = true; h.classList.add('bb-lu-figee');
@@ -9711,6 +9763,19 @@ window.bbCloud = function(url, w){
       sc.fige = false; if (sc.hote) sc.hote.classList.remove('bb-lu-figee');
       bbLuRedemarrer(sc);
     });
+  }
+  /* Aller a un acte (par sa joueuse, ou par son rang, ou d'un pas) : le
+     visualiseur passe d'une joueuse a l'autre. `figer` arrete la boucle
+     dessus ; sinon elle reprend de la. */
+  function bbLuTemoinAllerA(t){
+    var h = document.querySelector('#bb-lineup .bb-lu-scene'), sc = h && h.__sc; if (!sc) return;
+    var i = sc.i;
+    if (t.pid){ var a = h.querySelector('.bb-lu-act[data-pid="' + String(t.pid) + '"]'); if (a) i = parseInt(a.getAttribute('data-i'), 10); }
+    else if (typeof t.i === 'number') i = t.i;
+    else if (typeof t.pas === 'number') i = sc.i + t.pas;
+    if (t.figer){ sc.fige = true; h.classList.add('bb-lu-figee'); clearTimeout(sc.t); }
+    else { sc.fige = false; h.classList.remove('bb-lu-figee'); }
+    bbLuAller(sc, i);
   }
 
   // LE CLUB CHOISIT CE QUE L'ACCUEIL MONTRE.
@@ -9878,7 +9943,7 @@ window.bbCloud = function(url, w){
         srcFull:(window.bbCloud?window.bbCloud(r.photo_url||'',1400):(r.photo_url||'')),
         nameColor:r.name_color||'', bio:r.bio||'', gender:(r.gender==='M'?'M':'F'),
         px:(r.photo_x==null||r.photo_x==='')?50:r.photo_x, py:(r.photo_y==null||r.photo_y==='')?0:r.photo_y, pz:(r.photo_zoom==null||r.photo_zoom==='')?100:r.photo_zoom,
-        sx:r.scene_x, sy:r.scene_y, sz:r.scene_zoom,
+        sx:r.scene_x, sy:r.scene_y, sz:r.scene_zoom, smx:r.scene_mx, smy:r.scene_my, smz:r.scene_mzoom,
         id:r.id, weight:r.weight||'', stats:(function(s){ if(typeof s==='string'){ try{ s=JSON.parse(s); }catch(e){ s=null; } } return (s&&typeof s==='object')?s:{}; })(r.stats) };
     }
     window.bbNormaliserJoueuse = bbNormaliserJoueuse;
@@ -10134,11 +10199,20 @@ window.bbCloud = function(url, w){
         return;
       }
       if (m.type === 'bbc-temoin-cinq-scene'){ try { bbLuTemoinScene(m); } catch(err){ console.warn('[temoin]', err); } return; }
+      if (m.type === 'bbc-temoin-scene-aller'){ try { bbLuTemoinAllerA(m); } catch(err){ console.warn('[temoin]', err); } return; }
       if (m.type === 'bbc-temoin-cinq-rejouer'){ try { bbLuTemoinRejouer(); } catch(err){ console.warn('[temoin]', err); } return; }
       if (m.cible) bbTemoinAller(m.cible);
     });
     window.addEventListener('load', function(){
       setTimeout(function(){ if (window.parent !== window) parent.postMessage({ type:'bbc-temoin-pret' }, location.origin); }, 400);
+      // en scene seule, la hauteur du bloc est celle de la page : le
+      // visualiseur la suit
+      var sec = document.getElementById('bb-lineup');
+      if (sec && window.ResizeObserver && document.documentElement.classList.contains('bb-scene-seule')){
+        new ResizeObserver(function(){
+          try { parent.postMessage({ type:'bbc-scene-taille', h: Math.ceil(sec.getBoundingClientRect().height) }, location.origin); } catch(e){}
+        }).observe(sec);
+      }
     });
   }
 

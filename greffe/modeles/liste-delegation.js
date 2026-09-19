@@ -63,7 +63,8 @@
           joueuses: {
             titre: "Les joueuses sélectionnées", singulier: "joueuse", vide: 0,
             colonnes: [
-              { cle: 'nom',       titre: "Nom et prénom(s)", poids: 38, forme: 'fort' },
+              { cle: 'photo',     titre: "", poids: 9, forme: 'photo', align: 'centre' },
+              { cle: 'nom',       titre: "Nom et prénom(s)", poids: 34, forme: 'fort' },
               { cle: 'poste',     titre: "Poste", poids: 16 },
               { cle: 'maillot',   titre: "Maillot", poids: 11, forme: 'nombre', align: 'centre' },
               { cle: 'taille',    titre: "Taille", poids: 11, align: 'centre' },
@@ -75,7 +76,8 @@
           staff: {
             titre: "Le staff qui accompagne", singulier: "membre du staff", vide: 0,
             colonnes: [
-              { cle: 'nom',      titre: "Nom et prénom(s)", poids: 44, forme: 'fort' },
+              { cle: 'photo',    titre: "", poids: 9, forme: 'photo', align: 'centre' },
+              { cle: 'nom',      titre: "Nom et prénom(s)", poids: 38, forme: 'fort' },
               { cle: 'fonction', titre: "Fonction sur place", poids: 33 },
               { cle: 'tel',      titre: "Téléphone", poids: 20, forme: 'code', align: 'centre' }
             ],

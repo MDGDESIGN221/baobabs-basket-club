@@ -48,3 +48,23 @@ create or replace view public.effectif_site as
    from players p
   where coalesce(fiche_etat, 'publiee'::text) = 'publiee'::text
     and coalesce(status, 'active'::text) <> 'partie'::text;
+
+-- ----------------------------------------------------------------------------
+-- LE TELEPHONE A SON PROPRE REGLAGE (le soir du 19 septembre 2026).
+-- « Ce qui s'affiche bien sur ordinateur peut ne pas etre ca sur mobile » :
+-- le cadre est 16/9 sur un ecran large et 4/3 sur un telephone, la meme
+-- place ne vaut pas dans les deux. Trois nombres de plus, memes unites ;
+-- sans reglage telephone, le site prend celui de l'ordinateur.
+-- ----------------------------------------------------------------------------
+alter table public.players
+  add column if not exists scene_mx    numeric,
+  add column if not exists scene_my    numeric,
+  add column if not exists scene_mzoom numeric;
+
+create or replace view public.effectif_site as
+ select id, name, jersey_number, "position", positions, height, weight, birth_year, gender, status,
+    photo_url, photo_x, photo_y, photo_zoom, name_color, bio, city, stats, sort,
+    scene_x, scene_y, scene_zoom, scene_mx, scene_my, scene_mzoom
+   from players p
+  where coalesce(fiche_etat, 'publiee'::text) = 'publiee'::text
+    and coalesce(status, 'active'::text) <> 'partie'::text;
