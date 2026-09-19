@@ -2425,20 +2425,45 @@ window.bbLienSur = function (u) {
     --hh-accent-doux:#C8E88A;
     --hh-accent-cerne:rgba(168,217,59,.3);
   }
+  /* LE HERO PLEIN CADRE.
+     La photo occupait la moitie droite, le discours la moitie gauche
+     sur un degrade vert : deux panneaux cote a cote. La photo prend
+     desormais tout le cadre, et ce qui se lit se pose dessus, dans
+     trois zones qui ne se disputent pas la place : la barre du haut
+     (marque, direct, defile), le discours en bas a gauche, la carte du
+     match en bas a droite, et le bandeau « A la une » sur toute la
+     largeur du pied. Le voile fait le reste : dense a gauche, ou le
+     mur blanc du studio rendrait le titre illisible, dense en bas, ou
+     se posent les cartes.
+
+     La grille vit ici et non plus dans applyResponsive() : un style en
+     ligne l'emportait sur la feuille, et la feuille ne pouvait rien
+     dire de la largeur. */
   #bb-hero{
-    position:relative; display:grid; gap:0; overflow:hidden;
+    position:relative; display:grid; overflow:hidden;
+    grid-template-columns:minmax(0,1fr) clamp(320px,29vw,400px);
+    grid-template-rows:minmax(0,1fr) auto;
+    grid-template-areas:"discours carte" "actu actu";
+    gap:clamp(16px,2vw,26px) clamp(20px,2.6vw,36px);
+    min-height:clamp(600px,84vh,800px);
+    padding:clamp(88px,10vw,116px) clamp(20px,3vw,44px) clamp(20px,2.6vw,36px);
     border-radius:20px; border:1px solid var(--hh-accent-cerne); background:#081C13;
   }
 
-  /* ---- la colonne du discours ---- */
-  #bb-hero-left{
-    position:relative; display:flex; flex-direction:column; justify-content:center;
-    padding:clamp(28px,3.6vw,54px) clamp(20px,3.2vw,46px);
-    background:
-      radial-gradient(120% 90% at 8% 0%, rgba(168,217,59,.09), transparent 56%),
-      linear-gradient(160deg,#12402F 0%,#0B2318 58%,#081C13 100%);
+  /* ---- la barre du haut ---- */
+  #bb-hero-haut{
+    position:absolute; left:0; right:0; top:0; z-index:4;
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:clamp(18px,2.2vw,30px) clamp(20px,3vw,44px);
   }
-  .bb-hh-marque{ display:flex; align-items:center; gap:12px; margin-bottom:clamp(16px,2.2vw,24px) }
+  .bb-hh-haut-d{ display:flex; align-items:center; gap:12px; flex:none }
+
+  /* ---- le discours ---- */
+  #bb-hero-left{
+    grid-area:discours; position:relative; z-index:3;
+    display:flex; flex-direction:column; justify-content:flex-end; min-width:0;
+  }
+  .bb-hh-marque{ display:flex; align-items:center; gap:12px; min-width:0 }
   #bb-hero-logo{ width:42px; height:42px; object-fit:contain; flex:none }
   #bb-hs-kicker{
     display:flex; align-items:center; gap:10px; min-width:0;
@@ -2465,14 +2490,19 @@ window.bbLienSur = function (u) {
      une grotesque de chasse normale, elle se lit comme un faux
      italique — et c'en serait un : Space Grotesk n'a pas de style
      incline. */
+  /* Plein cadre, le titre a toute la largeur moins la carte : il monte a
+     70 px. La colonne de la grille le borne, il ne court jamais sous la
+     carte. */
   .bb-hh-h1{
     font-family:'Space Grotesk',sans-serif; font-weight:700;
-    font-size:clamp(28px,3.7vw,50px); line-height:1.02; letter-spacing:-.022em;
-    text-transform:uppercase; color:#F3EFE6; margin:0 0 clamp(14px,1.8vw,20px);
+    font-size:clamp(30px,5vw,70px); line-height:.98; letter-spacing:-.025em;
+    text-transform:uppercase; color:#F3EFE6; margin:0 0 clamp(14px,1.8vw,22px);
   }
-  /* Le sur-titre coule a la suite au lieu de prendre une ligne pour lui
-     seul : deux etages au lieu de trois, et trois cents pixels rendus. */
-  .bb-hh-h1 #bb-hs-title, .bb-hh-h1 #bb-hs-accent{ display:inline }
+  /* Le sur-titre prend sa ligne : trois etages, comme une affiche. Une
+     banniere qui apporte son titre le masque (style en ligne), et il
+     revient a la ligne des qu'on repasse sur une banniere sans titre. */
+  .bb-hh-h1 #bb-hs-title{ display:inline }
+  .bb-hh-h1 #bb-hs-accent{ display:block }
   #bb-hs-accent{ color:#A8D93B }
   .bb-hh-seo{
     position:absolute; width:1px; height:1px; padding:0; margin:-1px;
@@ -2521,10 +2551,9 @@ window.bbLienSur = function (u) {
   }
   #bb-hs-figures > div:hover [id$="l"]{ border-color:#A8D93B; color:#A8D93B }
 
-  /* ---- la colonne de la photo ---- */
+  /* ---- la photo, en fond ---- */
   #bb-hero-img-wrap{
-    position:relative; display:flex; flex-direction:column; justify-content:flex-end;
-    overflow:hidden; background:#0F1E15;
+    position:absolute; inset:0; z-index:0; overflow:hidden; background:#0F1E15;
   }
   #bb-hero-img, #bb-hero-img-b{
     position:absolute; inset:0; width:100%; height:100%;
@@ -2536,14 +2565,15 @@ window.bbLienSur = function (u) {
   #bb-hero-img{ animation:bbHhSouffle 20s ease-in-out infinite alternate; transform-origin:50% 26% }
   @keyframes bbHhSouffle{ from{ transform:scale(1) } to{ transform:scale(1.06) } }
   #bb-hero-img-b{ opacity:0; transition:opacity .9s ease }
-  /* Le voile : plus sombre en bas, ou se posent les cartes, et un peu
-     sur le bord gauche pour que la couture avec le discours ne soit
-     pas une arete. */
+  /* Le voile : dense sur la moitie gauche, ou le titre se pose sur le
+     mur blanc du studio ; dense en bas, ou se posent les cartes ; un
+     peu en haut pour la barre. Le centre reste clair : c'est la que
+     sont les joueuses. */
   .bb-hh-voile{
     position:absolute; inset:0; z-index:1; pointer-events:none;
     background:
-      linear-gradient(90deg, rgba(8,28,19,.72) 0%, rgba(8,28,19,0) 26%),
-      linear-gradient(180deg, rgba(5,16,11,.2) 0%, rgba(5,16,11,.5) 52%, rgba(4,12,8,.94) 100%);
+      linear-gradient(90deg, rgba(6,20,13,.9) 0%, rgba(6,20,13,.78) 24%, rgba(6,20,13,.42) 46%, rgba(6,20,13,.06) 64%, rgba(6,20,13,0) 76%),
+      linear-gradient(180deg, rgba(5,16,11,.46) 0%, rgba(5,16,11,0) 24%, rgba(5,16,11,.08) 50%, rgba(5,16,11,.72) 80%, rgba(4,12,8,.96) 100%);
   }
   /* Le grain et le lisere d'or : la photo se lit comme une planche
      imprimee, pas comme une image de banque. */
@@ -2553,12 +2583,11 @@ window.bbLienSur = function (u) {
     box-shadow:inset 0 0 0 1px rgba(168,217,59,.24);
   }
 
-  #bb-hero-dots{
-    display:none; position:absolute; right:clamp(16px,2vw,28px); top:clamp(16px,2vw,28px);
-    z-index:4; gap:7px;
-  }
+  /* Les points du defile et la pastille du direct vivent dans la barre
+     du haut, a droite de la marque : plus rien n'est pose en absolu sur
+     la photo, donc plus rien ne se chevauche quand l'ecran se resserre. */
+  #bb-hero-dots{ display:none; gap:7px; align-items:center }
   #bb-hs-livepill{
-    position:absolute; left:clamp(16px,2vw,28px); top:clamp(16px,2vw,28px); z-index:4;
     display:flex; align-items:center; gap:9px; padding:8px 13px; border-radius:100px;
     background:rgba(5,16,11,.7); backdrop-filter:blur(8px); border:1px solid rgba(243,239,230,.16);
   }
@@ -2571,26 +2600,20 @@ window.bbLienSur = function (u) {
     letter-spacing:.16em; text-transform:uppercase; color:#F3EFE6;
   }
 
-  #bb-hero-overlays{
-    position:relative; z-index:3;
-    padding:clamp(16px,2vw,28px); display:flex; flex-direction:column; gap:12px;
-  }
-  /* La pastille du direct est posee en absolu sur la photo. Sur un
-     telephone la zone se comprime et son bas passait par-dessus le
-     « Prochain match » de la carte. On lui reserve sa hauteur, et
-     seulement quand elle est la : un reglage vide la retire, et une
-     place gardee pour rien laisserait un blanc. */
-  @media(max-width:900px){
-    #bb-hero-overlays.bb-avec-pastille{ padding-top:58px }
-  }
+  /* Le conteneur s'efface : ses deux enfants sont des cases de la
+     grille du hero, la carte a droite du discours, le bandeau en pied
+     sur toute la largeur. Le JS continue de les trouver par leurs
+     identifiants, et le devoilement par « #bb-hero-overlays > * ». */
+  #bb-hero-overlays{ display:contents }
 
   /* ---- la carte du prochain match ----
-     Elle etait une boite epaisse posee sur la photo. Elle devient une
-     plaque : un filet d'or en haut, un fond a peine tenu, et de la
-     typographie. */
+     Une plaque : un filet en haut, un fond a peine tenu, de la
+     typographie. Plein cadre, elle se pose en bas a droite, sur la
+     partie sombre du studio. */
   #bb-next-match{
+    grid-area:carte; align-self:end; position:relative; z-index:3; min-width:0;
     border-radius:14px; padding:clamp(15px,1.9vw,20px);
-    background:rgba(6,20,13,.78); backdrop-filter:blur(14px);
+    background:rgba(6,20,13,.74); backdrop-filter:blur(14px);
     border:1px solid rgba(243,239,230,.1); border-top:2px solid var(--hh-accent);
   }
   .bb-hh-mt-h{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px }
@@ -2615,6 +2638,20 @@ window.bbLienSur = function (u) {
     text-align:center; font-family:'Inter',sans-serif; font-size:12.5px; color:#B9C2BB;
     line-height:1.65; border-top:1px solid rgba(243,239,230,.09); padding-top:13px;
   }
+  /* Les details du match, en pastilles cernees comme les chiffres du
+     discours : competition, journee, domicile ou exterieur, entree
+     gratuite. Vide quand la base ne dit rien, et alors sans hauteur. */
+  #bb-next-match-detail{
+    display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin-top:12px;
+  }
+  #bb-next-match-detail:empty{ display:none }
+  #bb-next-match-detail > span{
+    border:1px solid rgba(243,239,230,.2); border-radius:100px; padding:4px 10px;
+    font-family:'Inter',sans-serif; font-weight:700; font-size:9.5px;
+    letter-spacing:.12em; text-transform:uppercase; color:rgba(243,239,230,.72);
+    white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;
+  }
+  #bb-next-match-detail > span.libre{ border-color:rgba(168,217,59,.5); color:#A8D93B }
   #bb-hs-ticket{
     display:flex; align-items:center; justify-content:center; gap:8px;
     font-family:'Inter',sans-serif; font-weight:800; font-size:12px;
@@ -2624,8 +2661,9 @@ window.bbLienSur = function (u) {
   }
   #bb-hs-ticket:hover{ transform:translateY(-2px); background:var(--hh-accent); color:#08160D }
 
-  /* ---- le bandeau « a la une » ---- */
+  /* ---- le bandeau « a la une », sur toute la largeur du pied ---- */
   #bb-hero-actu{
+    grid-area:actu; position:relative; z-index:3; min-width:0;
     display:flex; gap:13px; align-items:center; padding:13px 16px; border-radius:14px;
     background:rgba(5,16,11,.7); backdrop-filter:blur(10px);
     border:1px solid rgba(243,239,230,.12); text-decoration:none;
@@ -2648,6 +2686,37 @@ window.bbLienSur = function (u) {
     font-size:11.5px; color:#7E8A82; margin-top:4px;
   }
   .bb-hh-fleche{ margin-left:auto; flex:none; color:#A8D93B }
+
+  /* SUR UN TELEPHONE, LA PHOTO REDEVIENT UN BLOC.
+     Etiree derriere douze cents pixels de colonne, elle ne montrerait
+     plus qu'un morceau de maillot. Elle prend donc le haut, le discours
+     mord sur son pied -- le voile s'y fond dans la couleur de la
+     section, pour qu'il n'y ait pas de couture -- et la carte puis le
+     bandeau suivent, sur le fond sombre. */
+  @media(max-width:1024px){
+    #bb-hero{ display:flex; flex-direction:column; min-height:0; padding:0; gap:0 }
+    #bb-hero-img-wrap{ position:relative; inset:auto; height:clamp(400px,68vh,600px) }
+    /* Le grain et son lisere s'arretaient net au bas de la photo : un
+       trait en travers du paragraphe. Le lisere part, le grain s'eteint
+       avant le bord. */
+    .bb-hh-grain{
+      box-shadow:none;
+      -webkit-mask-image:linear-gradient(180deg,#000 55%,transparent 100%);
+      mask-image:linear-gradient(180deg,#000 55%,transparent 100%);
+    }
+    #bb-hero-haut{ flex-wrap:wrap; padding:clamp(14px,4vw,22px) clamp(16px,4vw,24px) }
+    #bb-hero-logo{ width:36px; height:36px }
+    #bb-hs-kicker{ font-size:9.5px; letter-spacing:.16em }
+    .bb-hh-voile{
+      background:
+        linear-gradient(180deg, rgba(5,16,11,.5) 0%, rgba(5,16,11,0) 22%, rgba(5,16,11,.16) 46%, rgba(5,16,11,.86) 72%, #081C13 100%);
+    }
+    #bb-hero-left{ margin-top:calc(-1 * clamp(150px,34vw,240px)); padding:0 clamp(16px,4vw,24px) 24px }
+    .bb-hh-h1{ max-width:none }
+    #bb-hs-figures{ grid-template-columns:repeat(3,1fr) }
+    #bb-hero-overlays{ display:flex; flex-direction:column; gap:12px; padding:0 clamp(16px,4vw,24px) clamp(16px,4vw,24px) }
+    #bb-next-match, #bb-hero-actu{ align-self:stretch }
+  }
 
   @media (prefers-reduced-motion:reduce){
     .bb-calme #bb-hero-img{ animation:none }
@@ -3378,15 +3447,37 @@ window.bbLienSur = function (u) {
            aucun ne doit disparaître d'ici. -->
       <section id="bb-hero">
 
-        <!-- Colonne gauche : le discours du club. Tous les textes viennent de
-             l'admin (Contenu éditorial · Hero d'accueil), voir applyHeroSplit().
-             Les identifiants sont le contrat : aucun ne doit disparaître d'ici. -->
-        <div id="bb-hero-left">
+        <!-- La photo, en fond de tout le hero (Réglages · Accueil). Deux
+             calques : le fondu enchaîné des bannières a besoin de deux
+             images, sinon on voit un clignotement blanc pendant le
+             chargement de la suivante. -->
+        <div id="bb-hero-img-wrap">
+          <img id="bb-hero-img" src="/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp" alt="Les joueuses des Baobabs" fetchpriority="high">
+          <img id="bb-hero-img-b" alt="" aria-hidden="true" fetchpriority="low">
+          <span class="bb-hh-voile" aria-hidden="true"></span>
+          <span class="bb-hh-grain" aria-hidden="true"></span>
+        </div>
+
+        <!-- La barre du haut : la marque à gauche ; à droite la pastille du
+             direct et, s'il y a plusieurs bannières, les points du défilé. -->
+        <div id="bb-hero-haut">
           <div class="bb-hh-marque">
             <img id="bb-hero-logo" src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club">
             <span id="bb-hs-kicker">Baobabs Basket Club · Dakar</span>
           </div>
+          <div class="bb-hh-haut-d">
+            <div id="bb-hero-dots"></div>
+            <div id="bb-hs-livepill">
+              <span></span>
+              <span id="bb-hs-livenote">Prochain direct sam. 19:00</span>
+            </div>
+          </div>
+        </div>
 
+        <!-- Le discours du club. Tous les textes viennent de l'admin (Contenu
+             éditorial · Hero d'accueil), voir applyHeroSplit(). Les
+             identifiants sont le contrat : aucun ne doit disparaître d'ici. -->
+        <div id="bb-hero-left">
           <h1 class="bb-hh-h1"><span id="bb-hs-title" data-bb-reveal data-reveal-step="86">Le basket<br>sénégalais</span> <span id="bb-hs-accent" data-bb-reveal data-reveal-step="86">qui monte</span><span class="bb-hh-seo"> · Baobabs Basket Club, club de basketball officiel de Dakar, Championnat D2</span></h1>
 
           <p id="bb-hs-text" data-bb-reveal data-reveal-step="24">Formation, compétition, communauté. Depuis 2026, les Baobabs construisent à Dakar un club où les joueuses progressent et où le public a sa place.</p>
@@ -3412,59 +3503,29 @@ window.bbLienSur = function (u) {
           </div>
         </div>
 
-        <!-- Colonne droite : la photo (Réglages · Accueil) + la carte match posée dessus. -->
-        <div id="bb-hero-img-wrap">
-          <img id="bb-hero-img" src="/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp" alt="Les joueuses des Baobabs" fetchpriority="high">
-          <!-- Deuxième calque : le fondu enchaîné a besoin de deux images, sinon on
-               voit un clignotement blanc pendant le chargement de la suivante. -->
-          <img id="bb-hero-img-b" alt="" aria-hidden="true" fetchpriority="low">
-          <span class="bb-hh-voile" aria-hidden="true"></span>
-          <span class="bb-hh-grain" aria-hidden="true"></span>
-
-          <!-- Pastilles de navigation du défilé, ajoutées seulement s'il y a
-               plusieurs bannières. -->
-          <div id="bb-hero-dots"></div>
-
-          <div id="bb-hs-livepill">
-            <span></span>
-            <span id="bb-hs-livenote">Prochain direct sam. 19:00</span>
-          </div>
-
-          <div id="bb-hero-overlays">
-            <div id="bb-next-match">
-              <div class="bb-hh-mt-h">
-                <span id="bb-hs-matchlabel">Prochain match</span>
-                <span id="bb-next-match-badge">J-3</span>
-              </div>
-              <!-- Le contenu de cette rangée est réécrit par le JS du prochain
-                   match : ce qui suit n'est qu'un gabarit d'attente. -->
-              <div id="bb-next-match-teams">
-                <div style="text-align:center;flex:1">
-                  <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs" style="width:56px;height:56px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)" loading="lazy" decoding="async">
-                  <div style="font-family:'Inter',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">BAOBABS</div>
-                </div>
-                <div class="bb-nm-vs" style="font-family:'Anton',sans-serif;font-size:20px;color:#A8D93B">VS</div>
-                <div style="text-align:center;flex:1">
-                  <img src="/media/img/DUC_Dakar_logo_zyqx86.webp" alt="DUC Dakar" style="width:56px;height:56px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)" loading="lazy" decoding="async">
-                  <div style="font-family:'Inter',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">DUC DAKAR</div>
-                </div>
-              </div>
-              <div id="bb-next-match-info">
-                <div style="font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.05em;color:#F3EFE6;font-size:14.5px">SAM 12 JUIL · 19:00</div>
-                <div>Stadium Marius Ndiaye, Dakar</div>
-              </div>
-              <a id="bb-hs-ticket" href="#" data-nav="billetterie">Billetterie <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+        <!-- La carte du match et le bandeau « À la une ». -->
+        <div id="bb-hero-overlays">
+          <!-- Cachée tant que le calendrier n'a pas répondu : elle ne montre
+               que de vrais matchs (renderNextMatch), jamais un gabarit. -->
+          <div id="bb-next-match" class="bb-hide">
+            <div class="bb-hh-mt-h">
+              <span id="bb-hs-matchlabel">Prochain match</span>
+              <span id="bb-next-match-badge"></span>
             </div>
-
-            <a id="bb-hero-actu" href="#" data-nav="accueil">
-              <span id="bb-hs-alaune">À la une</span>
-              <span style="min-width:0">
-                <span id="bb-hero-title">Les Baobabs renversent le DUC dans le money time</span>
-                <span id="bb-hero-sub"><span>Match report</span><span style="opacity:.4">•</span><span>Il y a 2 h</span></span>
-              </span>
-              <svg class="bb-hh-fleche" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
-            </a>
+            <div id="bb-next-match-teams"></div>
+            <div id="bb-next-match-info"></div>
+            <div id="bb-next-match-detail"></div>
+            <a id="bb-hs-ticket" href="#" data-nav="billetterie">Billetterie <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
           </div>
+
+          <a id="bb-hero-actu" href="#" data-nav="accueil">
+            <span id="bb-hs-alaune">À la une</span>
+            <span style="min-width:0">
+              <span id="bb-hero-title">Les Baobabs renversent le DUC dans le money time</span>
+              <span id="bb-hero-sub"><span>Match report</span><span style="opacity:.4">•</span><span>Il y a 2 h</span></span>
+            </span>
+            <svg class="bb-hh-fleche" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+          </a>
         </div>
       </section>
 
@@ -5847,22 +5908,15 @@ window.bbCloud = function(url, w){
     document.getElementById('bb-footer-desktop').classList.toggle('bb-hide', mq);
     document.getElementById('bb-footer-mobile').classList.toggle('bb-hide', !mq);
 
-    // Le hero empile desormais quatre blocs : barre, discours,
-    // panneaux, bandeau. C'est la rangee de panneaux qui porte la
-    // grille, plus la section.
-    var hero = document.getElementById('bb-hero');
-    hero.style.gridTemplateColumns = mq ? '1fr' : '1.02fr .98fr';
+    // Le hero ne se regle plus ici : sa grille, la hauteur de la photo
+    // et l'ordre des blocs vivent dans la feuille de style, sous
+    // @media(max-width:1024px). Un style en ligne pose ici l'emportait
+    // sur tout ce que la feuille pouvait dire.
     // La grille Médias passe à deux colonnes seulement s'il y a des médias secondaires.
     var mediaGrid = document.getElementById('bb-media-grid');
     var mediaSide = document.getElementById('bb-media-side');
     var hasSide = mediaSide && mediaSide.style.display !== 'none';
     mediaGrid.style.gridTemplateColumns = (mq || !hasSide) ? '1fr' : '1.62fr 1fr';
-    var heroImgWrap = document.getElementById('bb-hero-img-wrap');
-    heroImgWrap.style.minHeight = mq ? 'clamp(380px,96vw,560px)' : 'clamp(540px,46vw,640px)';
-    // Sur mobile la photo passe au-dessus du discours (l'émotion d'abord).
-    document.getElementById('bb-hero-left').style.order = mq ? '2' : '';
-    heroImgWrap.style.order = mq ? '1' : '';
-    document.getElementById('bb-hs-figures').style.gridTemplateColumns = mq ? 'repeat(3,1fr)' : 'repeat(3,auto)';
     document.getElementById('bb-live-header').style.padding = mq ? '14px 14px 0' : '16px 16px 0';
     // Page Inscriptions : le formulaire passe sous les informations plutôt
     // qu'à côté dès que la colonne devient trop étroite pour deux champs.
@@ -12704,6 +12758,20 @@ document.addEventListener('keydown', function(e){
         verdict +
         (m.venue ? '<div>' + escHtml(m.venue) + '</div>' : '');
     }
+
+    // Les details, en pastilles : competition, journee, domicile ou
+    // exterieur, entree gratuite. Ce que la base porte, rien d'autre.
+    var det = document.getElementById('bb-next-match-detail');
+    if (det){
+      var puces = [];
+      if (m.competition) puces.push(['', m.competition]);
+      if (m.round_label) puces.push(['', m.round_label]);
+      puces.push(['', m.is_home ? 'À domicile' : 'À l\'extérieur']);
+      if (!dernier && m.free_entry) puces.push(['libre', 'Entrée gratuite']);
+      det.innerHTML = puces.map(function(p){
+        return '<span' + (p[0] ? ' class="' + p[0] + '"' : '') + '>' + escHtml(p[1]) + '</span>';
+      }).join('');
+    }
   }
 
   // ===== Calendrier (matchs à venir) =====
@@ -12975,7 +13043,7 @@ document.addEventListener('keydown', function(e){
   var FULL = ['#bb-hero-left','#bb-hero-img-wrap','#bb-live-wrap','#bb-evenement','#bb-lineup',
               '#bb-actus','#bb-media-shop','#bb-shop-home','#bb-app','#bb-org',
               '#bb-fo','#bb-nl','#bb-camp','#bb-tribu','footer'];
-  var GROUPS = ['#bb-hero-left > *','#bb-hero-overlays > *','#bb-hs-figures > *',
+  var GROUPS = ['#bb-hero-haut > *','#bb-hero-left > *','#bb-hero-overlays > *','#bb-hs-figures > *',
                 '#bb-actus-grid > *','#bb-home-products > *','#bb-media-grid > *',
                 '#bb-effectif > *','#bb-effectif-equipes > *','.bb-poster-card',
                 '#bb-app-stage','.bb-app-copy > *'];
