@@ -538,7 +538,8 @@
     var emp = (ctx.personnes ? ctx.personnes.length : 0) + ':' +
               (ctx.ecrans ? ctx.ecrans.length : 0) + ':' +
               (ctx.sujets ? ctx.sujets.length : 0) + ':' +
-              (ctx.vocabulaire ? ctx.vocabulaire.length : 0);
+              (ctx.vocabulaire ? ctx.vocabulaire.length : 0) + ':' +
+              (ctx.blocs ? ctx.blocs.length : 0);
     if (LEX.mots && LEX.empreinte === emp) return LEX.mots;
 
     var vus = {};
@@ -572,6 +573,13 @@
     (ctx.personnes || []).forEach(function (p) { pousse(p.nom); });
     (ctx.ecrans || []).forEach(function (e) { pousse(e.titre); });
     (ctx.sujets || []).forEach(function (s) { pousse(s.nom); });
+    /* ET LES NOMS DES BLOCS. « Ou sont les RESEAUX sociaux » devenait
+       « les CRENEAUX sociaux » : creneau vient du nom d'une table,
+       reseaux ne venait de nulle part -- alors qu'un bloc s'appelle
+       « Reseaux sociaux ». Septieme fois. Tout ce qui sert a
+       reconnaitre doit etre au lexique, y compris ce qui arrive par le
+       contexte. */
+    (ctx.blocs || []).forEach(function (b) { pousse(b.nom); pousse(b.page); });
     /* ET TOUT LE VOCABULAIRE DU CLUB : les adversaires, les salles, les
        postes, les categories, les tailles. Sans lui, le lexique restait
        le mien ; avec lui, c'est celui du club, et il grandit tout seul
