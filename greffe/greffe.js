@@ -83,7 +83,8 @@
                  'convention', 'contrat', 'fiche-fonction', 'budget',
                  'pv-reunion', 'ordre-du-jour', 'rapport-saison', 'recu', 'note-frais', 'demande-subvention', 'demande-appui',
                  'convocation', 'feuille-presence', 'planning', 'fiche-joueuse', 'cartes-membre',
-                 'autorisation-parentale', 'decharge', 'certificat', 'communique', 'invitation'];
+                 'autorisation-parentale', 'decharge', 'certificat', 'communique', 'invitation',
+                 'liste-delegation'];
 
   /* =================================================================
      1. LES PETITS OUTILS, PARTAGÉS AVEC LES BLOCS ET LES MODÈLES

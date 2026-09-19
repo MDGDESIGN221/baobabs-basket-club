@@ -1537,11 +1537,6 @@ window.bbLienSur = function (u) {
     .bb-lu{ grid-template-columns:minmax(0,1fr) }
     .bb-lu-spine{ display:none }
     .bb-lu-in{ padding:16px 10px 16px }
-    /* « en plus des joueuses petites sur mobile » : en 16/9 sur 340 px
-       de large, une joueuse ne peut pas depasser 180 px. Le cadre passe
-       en 4/3 sur un telephone -- meme composition, la joueuse a gauche
-       et la plaque a droite, mais 255 px de haut au lieu de 190. */
-    .bb-lu-cadre{ aspect-ratio:4/3; max-height:none }
     .bb-lu-fig{ max-width:60% }
   }
 
@@ -1596,6 +1591,14 @@ window.bbLienSur = function (u) {
     background:linear-gradient(160deg,#0C2418 0%,#081711 55%,#050F0A 100%);
     border:1px solid rgba(243,239,230,.08);
   }
+  /* « en plus des joueuses petites sur mobile » : en 16/9 sur 340 px de
+     large, une joueuse ne peut pas depasser 180 px. Le cadre passe en
+     4/3 sur un telephone -- meme composition, la joueuse a gauche et la
+     plaque a droite, mais 242 px de haut au lieu de 182.
+     APRES la regle de base, et pas avant : ecrite plus haut dans le
+     fichier, a specificite egale, elle perdait -- mesure, le cadre
+     restait en 16/9 sur 375 px. */
+  @media (max-width:640px){ .bb-lu-cadre{ aspect-ratio:4/3; max-height:none } }
   /* Le fond parle la langue du hero : la photo du club, floutee jusqu'a
      n'etre qu'une lumiere, sous le vert. */
   .bb-lu-fond{ position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden }
@@ -1912,6 +1915,15 @@ window.bbLienSur = function (u) {
     .bb-lu-tuile b{ font-size:12px }
     .bb-lu-tuile.vert b{ font-size:10px }
     .bb-lu-segs{ margin-top:7px }
+    /* le groupe : douze portraits dans un cadre de telephone, six par
+       rangee, sans les noms (les numeros les disent) */
+    .bb-lu-grp{ grid-template-columns:repeat(6,minmax(0,1fr)); gap:5px 3px; margin-top:6px }
+    .bb-lu-grp figure{ width:34px; height:34px }
+    .bb-lu-grp figure b{ font-size:8px }
+    .bb-lu-grp span{ display:none }
+    .bb-lu-banc-t{ font-size:calc(20px * var(--lu-k)) }
+    .bb-lu-banc-s{ margin-bottom:2px }
+    .bb-lu-ev-aff{ width:46px }
   }
   /* la barre en segments : un par acte, celui en cours se remplit */
   .bb-lu-segs{
@@ -2082,6 +2094,73 @@ window.bbLienSur = function (u) {
     font-family:'Anton',Impact,sans-serif; font-size:11px; color:#DDE6DE;
   }
 
+  /* L'AFFICHE D'UN EVENEMENT (une presentation rattachee a un tournoi,
+     un stage...) : l'affiche a gauche, dans un cadre, le titre et les
+     faits a droite ; les nations en pastilles. */
+  .bb-lu-ev{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:clamp(10px,2.4cqw,32px); align-items:center; text-align:left; width:100% }
+  .bb-lu-ev-aff{
+    width:clamp(54px,12cqw,150px); border-radius:clamp(5px,.8cqw,10px); overflow:hidden; line-height:0;
+    border:1px solid rgba(243,239,230,.16); box-shadow:0 10px 28px rgba(0,0,0,.5); background:#07130D;
+    transform:translate3d(-40px,0,0) rotate(-6deg) scale(.86); opacity:0;
+    transition:transform .82s cubic-bezier(.14,1.1,.28,1) .3s, opacity .4s ease .3s;
+  }
+  .bb-lu-act.on .bb-lu-ev-aff{ transform:none; opacity:1 }
+  .bb-lu-ev-aff img{ width:100%; height:auto; display:block; max-height:clamp(74px,16cqw,200px); object-fit:cover }
+  .bb-lu-ev-t{
+    font-family:var(--lu-nom); text-transform:uppercase; letter-spacing:var(--lu-sp);
+    font-size:calc(clamp(16px,4.2cqw,54px) * var(--lu-k)); line-height:.92; color:#F3EFE6; margin:clamp(3px,.6cqw,8px) 0 0;
+    overflow:hidden; padding-bottom:.06em; perspective:600px; text-wrap:balance;
+  }
+  .bb-lu-ev-q{
+    margin:clamp(5px,1cqw,14px) 0 0; font-family:'Inter',sans-serif; font-weight:700; font-size:clamp(8px,1cqw,13.5px);
+    letter-spacing:.06em; color:#D6DDD7; transform:translate3d(0,12px,0); opacity:0;
+    transition:transform .6s ease .8s, opacity .45s ease .8s;
+  }
+  .bb-lu-act.on .bb-lu-ev-q{ transform:none; opacity:1 }
+  .bb-lu-ev-q i{ font-style:normal; color:rgba(243,239,230,.3); margin:0 .5em }
+  .bb-lu-nat{ display:flex; flex-wrap:wrap; gap:clamp(3px,.5cqw,7px); margin:clamp(6px,1.2cqw,16px) 0 0; padding:0; list-style:none }
+  .bb-lu-nat li{
+    border:1px solid rgba(243,239,230,.2); border-radius:100px; padding:clamp(2px,.4cqw,5px) clamp(6px,.9cqw,11px);
+    font-family:'Inter',sans-serif; font-weight:800; font-size:clamp(6.5px,.78cqw,10px); letter-spacing:.12em;
+    text-transform:uppercase; color:rgba(243,239,230,.75); white-space:nowrap;
+    transform:translate3d(0,8px,0); opacity:0; transition:transform .5s cubic-bezier(.17,.86,.24,1), opacity .4s ease;
+    transition-delay:calc(var(--i,0) * 70ms + .95s);
+  }
+  .bb-lu-act.on .bb-lu-nat li{ transform:none; opacity:1 }
+  .bb-lu-nat li.nous{ background:var(--bb-or); border-color:var(--bb-or); color:#0A1B0D }
+
+  /* LE GROUPE : dernier acte d'une presentation, toutes les joueuses
+     d'un coup, en portraits ronds avec leur numero. Elles arrivent une
+     a une, comme les noms du banc. */
+  .bb-lu-grp{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(clamp(46px,9cqw,112px),1fr));
+    gap:clamp(6px,1.2cqw,16px) clamp(4px,.8cqw,10px); width:100%; margin:clamp(6px,1.4cqw,18px) 0 0; padding:0; list-style:none;
+  }
+  .bb-lu-grp li{
+    display:grid; justify-items:center; gap:clamp(3px,.5cqw,6px); min-width:0;
+    transform:translate3d(0,16px,0) scale(.9); opacity:0;
+    transition:transform .55s cubic-bezier(.16,1.05,.3,1), opacity .4s ease;
+  }
+  .bb-lu-act.on .bb-lu-grp li{ transform:none; opacity:1 }
+  .bb-lu-grp figure{
+    position:relative; margin:0; width:clamp(38px,7cqw,88px); height:clamp(38px,7cqw,88px); border-radius:50%; overflow:hidden;
+    background:#0F4030; border:2px solid rgba(243,239,230,.14); box-shadow:0 8px 20px rgba(0,0,0,.45);
+  }
+  .bb-lu-grp figure img{ width:100%; height:100%; object-fit:cover; object-position:50% 12%; display:block }
+  .bb-lu-grp figure b{
+    position:absolute; right:-2px; bottom:-2px; min-width:1.9em; padding:0 .3em; height:1.9em; border-radius:100px;
+    display:grid; place-items:center; font-family:'Anton',Impact,sans-serif; font-size:clamp(8px,1.1cqw,14px);
+    color:#0A1B0D; background:var(--bb-or); line-height:1;
+  }
+  .bb-lu-grp span{
+    font-family:'Inter',sans-serif; font-weight:700; font-size:clamp(6.5px,.8cqw,10.5px); letter-spacing:.06em;
+    text-transform:uppercase; color:#DDE6DE; text-align:center; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .bb-lu-vg-ev figure{ display:grid; place-items:center; background:rgba(243,239,230,.07); border-radius:6px }
+  .bb-lu-vg-ev figure img{ object-fit:cover }
+  .bb-lu-vg-grp figure{ display:grid; place-items:center; border-radius:6px; background:rgba(243,239,230,.07);
+    font-family:'Anton',Impact,sans-serif; font-size:13px; color:#DDE6DE }
+
   /* LE BANC : dernier acte, les noms tombent un par un */
   .bb-lu-banc-t{
     text-transform:uppercase;
@@ -2197,6 +2276,7 @@ window.bbLienSur = function (u) {
     .bb-calme .bb-lu-duel-x,.bb-calme .bb-lu-duel-q,
     .bb-calme .bb-lu-e-g,.bb-calme .bb-lu-e-d,.bb-calme .bb-lu-n-g,.bb-calme .bb-lu-n-d,
     .bb-calme .bb-lu-banc-t,
+    .bb-calme .bb-lu-ev-aff,.bb-calme .bb-lu-ev-q,.bb-calme .bb-lu-nat li,.bb-calme .bb-lu-grp li,
     .bb-calme .bb-lu-banc-l li{
       transition:none !important; transform:none !important; opacity:1 !important;
       clip-path:none !important }
@@ -8898,7 +8978,7 @@ window.bbCloud = function(url, w){
       // LA COLONNE : le role et le nom libres sur le fond, puis une tuile
       // par fait. Voir LA COLONNE DE LA JOUEUSE dans la feuille de style.
       '<div class="bb-lu-id">' +
-        '<p class="bb-lu-role"><i></i>' + (p.cap ? 'Capitaine' : 'Titulaire') + '</p>' +
+        '<p class="bb-lu-role"><i></i>' + esc(p.cap ? 'Capitaine' : (p.role || 'Titulaire')) + '</p>' +
         '<div class="bb-lu-nom-bloc">' +
           // Le nom entier reste lisible par un lecteur d'ecran : les
           // lettres decoupees sont cachees, le nom complet est dans un
@@ -8985,6 +9065,69 @@ window.bbCloud = function(url, w){
     '</article>';
   }
 
+  /* LE GENERIQUE D'UNE PRESENTATION : le titre qu'on lui a donne
+     (« La selection »), et une ligne dessous. */
+  function bbLuActeIntroPres(pres, joueuses, i){
+    var contre = pres.sous_titre || (joueuses.length + ' joueuses' + (pres.kicker ? ' \u00b7 ' + pres.kicker : ''));
+    return '<article class="bb-lu-act bb-lu-act-intro" data-i="' + i + '" data-libelle="' + esc(pres.titre || 'La s\u00e9lection') + '">' +
+      '<div class="bb-lu-plaque bb-lu-plaque-c">' +
+        '<span class="bb-lu-ecusson">' +
+          '<svg class="bb-lu-anneau" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48"/></svg>' +
+          '<img class="bb-lu-blason" src="' + window.bbSafeUrl(BB_LU_LOGO) + '" alt="" loading="lazy" decoding="async">' +
+        '</span>' +
+        '<p class="bb-lu-sur">Baobabs Basket Club</p>' +
+        '<h3 class="bb-lu-titre"><span class="bb-lu-litt">' + esc(pres.titre || '') + '</span>' +
+          '<span aria-hidden="true">' + bbLuLettres(pres.titre || 'La s\u00e9lection', 0) + '</span></h3>' +
+        '<span class="bb-lu-trait" aria-hidden="true"></span>' +
+        '<p class="bb-lu-contre"><em>' + esc(contre) + '</em></p>' +
+      '</div>' +
+      '<span class="bb-lu-liq" aria-hidden="true"></span>' +
+      '<span class="bb-lu-ray" aria-hidden="true"></span>' +
+    '</article>';
+  }
+  /* L'AFFICHE D'UN EVENEMENT : ce pour quoi on part. L'affiche entre par
+     la gauche, le titre se plante, les faits et les nations suivent. */
+  function bbLuActeEvenement(ev, i){
+    var nations = String(ev.nations || '').split(',').map(function(n){ return n.trim(); }).filter(Boolean);
+    var aff = (typeof bbSafeMedia === 'function' ? bbSafeMedia(ev.affiche_url) : ev.affiche_url);
+    return '<article class="bb-lu-act bb-lu-act-duel" data-i="' + i + '" data-libelle="L\u2019\u00e9v\u00e9nement">' +
+      '<div class="bb-lu-plaque bb-lu-plaque-c">' +
+        '<div class="bb-lu-ev">' +
+          (aff ? '<span class="bb-lu-ev-aff"><img src="' + window.bbSafeUrl(aff) + '" alt="" loading="lazy" decoding="async"></span>' : '<span></span>') +
+          '<div>' +
+            '<p class="bb-lu-sur">' + esc(String(ev.kicker || '').replace(/^\s*\u00c0 la une\s*\u00b7\s*/i, '') || 'Tournoi') + '</p>' +
+            '<h3 class="bb-lu-ev-t"><span class="bb-lu-litt">' + esc(ev.titre || '') + '</span>' +
+              '<span aria-hidden="true">' + bbLuLettres(ev.titre || '', 0) + '</span></h3>' +
+            '<p class="bb-lu-ev-q">' + [ev.dates, ev.lieu].filter(Boolean).map(esc).join('<i>\u00b7</i>') + '</p>' +
+            (nations.length ? '<ul class="bb-lu-nat">' + nations.map(function(n, k){
+              var nous = n.charAt(0) === '*';
+              return '<li' + (nous ? ' class="nous"' : '') + ' style="--i:' + k + '">' + esc(n.replace(/^\*/, '')) + '</li>';
+            }).join('') + '</ul>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<span class="bb-lu-liq" aria-hidden="true"></span>' +
+      '<span class="bb-lu-ray" aria-hidden="true"></span>' +
+    '</article>';
+  }
+  /* LE GROUPE : toutes les joueuses d'un coup, en fin de tour. */
+  function bbLuActeGroupe(joueuses, pres, i){
+    return '<article class="bb-lu-act bb-lu-act-banc" data-i="' + i + '" data-libelle="Le groupe">' +
+      '<div class="bb-lu-plaque bb-lu-plaque-c">' +
+        '<p class="bb-lu-banc-s">' + esc(pres.kicker || pres.titre || '') + '</p>' +
+        '<h3 class="bb-lu-banc-t"><span class="bb-lu-litt">Le groupe</span>' +
+          '<span aria-hidden="true">' + bbLuLettres('Le groupe', 0) + '</span></h3>' +
+        '<ul class="bb-lu-grp">' + joueuses.map(function(p, k){
+          var n = bbLuNom(p.name);
+          return '<li style="transition-delay:' + (360 + k * 60) + 'ms">' +
+            '<figure>' + (p.src ? '<img src="' + window.bbSafeUrl(p.src) + '" alt="" loading="lazy" decoding="async" style="' + bbLuCadre(p) + '">' : '') +
+              (p.no === '' || p.no == null ? '' : '<b>' + esc(String(p.no)) + '</b>') + '</figure>' +
+            '<span>' + esc(n.fam || p.name || '') + '</span></li>';
+        }).join('') + '</ul>' +
+      '</div>' +
+      '<span class="bb-lu-liq" aria-hidden="true"></span>' +
+    '</article>';
+  }
   function bbLuActeBanc(banc, i){
     return '<article class="bb-lu-act bb-lu-act-banc" data-i="' + i + '">' +
       '<div class="bb-lu-plaque bb-lu-plaque-c">' +
@@ -9004,9 +9147,15 @@ window.bbCloud = function(url, w){
     if (banc === 'duel') return '<button type="button" class="bb-lu-vg bb-lu-vg-duel" data-go="' + i +
       '" aria-label="L\u2019affiche du match"><figure><span>VS</span></figure>' +
       '<span class="bb-lu-vn">L\u2019affiche</span><span class="bb-lu-jauge"><i></i></span></button>';
-    if (banc === 'intro') return '<button type="button" class="bb-lu-vg bb-lu-vg-intro" data-go="' + i +
+    if (banc === 'intro' || (banc && banc.kind === 'intro')) return '<button type="button" class="bb-lu-vg bb-lu-vg-intro" data-go="' + i +
       '" aria-label="Le generique"><figure><img src="' + window.bbSafeUrl(BB_LU_LOGO) + '" alt=""></figure>' +
-      '<span class="bb-lu-vn">Le cinq</span><span class="bb-lu-jauge"><i></i></span></button>';
+      '<span class="bb-lu-vn">' + esc((banc && banc.libelle) || 'Le cinq') + '</span><span class="bb-lu-jauge"><i></i></span></button>';
+    if (banc && banc.kind === 'evenement') return '<button type="button" class="bb-lu-vg bb-lu-vg-ev" data-go="' + i +
+      '" aria-label="L\u2019\u00e9v\u00e9nement"><figure>' + (banc.img ? '<img src="' + window.bbSafeUrl(banc.img) + '" alt="">' : '<span>AFF</span>') + '</figure>' +
+      '<span class="bb-lu-vn">L\u2019\u00e9v\u00e9nement</span><span class="bb-lu-jauge"><i></i></span></button>';
+    if (banc && banc.kind === 'groupe') return '<button type="button" class="bb-lu-vg bb-lu-vg-grp" data-go="' + i +
+      '" aria-label="Le groupe"><figure>' + esc(String(banc.n || '')) + '</figure>' +
+      '<span class="bb-lu-vn">Le groupe</span><span class="bb-lu-jauge"><i></i></span></button>';
     if (banc) return '<button type="button" class="bb-lu-vg bb-lu-vg-banc" data-go="' + i +
       '" aria-label="Le banc"><figure>BANC</figure>' +
       '<span class="bb-lu-vn">Le banc</span><span class="bb-lu-jauge"><i></i></span></button>';
@@ -9131,17 +9280,21 @@ window.bbCloud = function(url, w){
     if (cadre) cadre.setAttribute('data-pair', String(bbLuScene.i % 2));
     // « 3 / 5 » : on sait ou l'on en est, et combien il en reste.
     var rang = h.querySelector('#bb-lu-rang');
-    if (rang){
-      var estBanc  = !!h.querySelector('.bb-lu-act.on.bb-lu-act-banc');
-      var estIntro = !!h.querySelector('.bb-lu-act.on.bb-lu-act-intro');
-      var estDuel  = !!h.querySelector('.bb-lu-act.on.bb-lu-act-duel');
-      // le generique, l'affiche et le banc ne sont pas des titulaires :
-      // ils ne comptent ni au numerateur ni au denominateur.
-      var combien = bbLuScene.n - 2 - (h.querySelector('.bb-lu-act-banc') ? 1 : 0);
-      rang.innerHTML = estIntro ? 'Le cinq majeur'
+    if (rang && actif){
+      // Un acte qui n'est pas une joueuse porte son libelle ; une joueuse
+      // porte son rang, et l'hote le total et le mot (titulaires,
+      // joueuses). Plus rien a deduire des classes.
+      var lib = actif.getAttribute('data-libelle');
+      var estBanc  = actif.classList.contains('bb-lu-act-banc');
+      var estIntro = actif.classList.contains('bb-lu-act-intro');
+      var estDuel  = actif.classList.contains('bb-lu-act-duel');
+      var joueuses = h.querySelectorAll('.bb-lu-act[data-pid]');
+      var k = Array.prototype.indexOf.call(joueuses, actif);
+      rang.innerHTML = lib ? esc(lib)
+        : estIntro ? 'Le cinq majeur'
         : estDuel  ? 'L\u2019affiche'
         : estBanc  ? 'Le banc'
-        : '<b>' + (bbLuScene.i - 1) + '</b> / ' + combien + ' titulaires';
+        : '<b>' + (k + 1) + '</b> / ' + joueuses.length + ' ' + esc(h.getAttribute('data-mot') || 'titulaires');
     }
     bbLuScene.dernier = bbLuScene.i;
     // la classe « sort » ne sert qu'au temps de la sortie : on la retire
@@ -9225,7 +9378,36 @@ window.bbCloud = function(url, w){
       actes.push(bbLuActeBanc(banc, actes.length));
       vgs.push(bbLuVignette(null, vgs.length, true));
     }
+    bbLuMonter(h, actes, vgs, 'titulaires');
+  }
+  /* UNE PRESENTATION : une liste titree de joueuses, rattachee ou non a
+     un evenement. Le generique porte son titre ; s'il y a un evenement,
+     son affiche vient ensuite ; puis chaque joueuse ; et le groupe
+     entier pour finir. La meme scene, les memes gestes. */
+  function bbLuScenerPresentation(pres, joueuses, ev){
+    var h = document.getElementById('bb-lu-five'); if (!h) return;
+    clearTimeout(bbLuScene.t);
+    var actes = [bbLuActeIntroPres(pres, joueuses, 0)];
+    var vgs   = [bbLuVignette(null, 0, { kind:'intro', libelle: pres.titre || 'La s\u00e9lection' })];
+    if (ev){
+      actes.push(bbLuActeEvenement(ev, actes.length));
+      vgs.push(bbLuVignette(null, vgs.length, { kind:'evenement', img: ((typeof bbSafeMedia === 'function' ? bbSafeMedia(ev.affiche_url) : ev.affiche_url)) }));
+    }
+    var total = actes.length + joueuses.length + (joueuses.length > 1 ? 1 : 0);
+    joueuses.forEach(function(p){
+      p.role = pres.type === 'libre' ? (pres.titre || 'Joueuse') : 'S\u00e9lectionn\u00e9e';
+      actes.push(bbLuActe(p, actes.length, total));
+      vgs.push(bbLuVignette(p, vgs.length, false));
+    });
+    if (joueuses.length > 1){
+      actes.push(bbLuActeGroupe(joueuses, pres, actes.length));
+      vgs.push(bbLuVignette(null, vgs.length, { kind:'groupe', n: joueuses.length }));
+    }
+    bbLuMonter(h, actes, vgs, 'joueuses');
+  }
+  function bbLuMonter(h, actes, vgs, mot){
     h.className = 'bb-lu-scene';
+    h.setAttribute('data-mot', mot || 'titulaires');
     // La police des noms : un gout, donc un reglage. Sans reglage, celle
     // d'avant -- personne ne voit son site changer tout seul.
     var pol = String((bbReglagesCourants || {}).lineup_font || '').trim().toLowerCase();
@@ -9332,6 +9514,59 @@ window.bbCloud = function(url, w){
     if (window.bbRescanMotion) window.bbRescanMotion();
   }
 
+  /* L'EN-TETE ET LE PIED D'UNE PRESENTATION. Le titre de la section
+     devient celui de la presentation ; le pied porte l'encadrement et
+     l'evenement (dates, lieu) a la place du match. */
+  function bbLuRendrePresentation(pres, joueuses, ev, coach){
+    var sec = document.getElementById('bb-lineup'); if (!sec) return;
+    if (!pres || !joueuses.length) return;
+    var ttl = sec.querySelector('.bb-lu-ttl'); if (ttl) ttl.textContent = pres.titre || 'La s\u00e9lection';
+    document.getElementById('bb-lu-comp').textContent = (ev && ev.titre) || pres.kicker || '';
+    document.getElementById('bb-lu-when').textContent = ev
+      ? [ev.dates, ev.lieu].filter(Boolean).join(' \u00b7 ')
+      : (pres.sous_titre || '');
+    bbLuScenerPresentation(pres, joueuses, ev);
+    var wrap = document.getElementById('bb-lu-banc-wrap');
+    if (wrap) wrap.classList.add('bb-hide');
+    document.getElementById('bb-lu-coach-wrap').innerHTML = coach
+      ? '<p class="bb-lu-lab">Encadrement</p>' +
+        '<p class="bb-lu-staff">' + esc(coach.name || '') + '</p>' +
+        '<p class="bb-lu-role">' + esc(coach.role || 'Entra\u00eeneur') + '</p>'
+      : '';
+    document.getElementById('bb-lu-mt').innerHTML = ev
+      ? '<p class="bb-lu-lab">' + esc(String(ev.kicker || '').replace(/^\s*\u00c0 la une\s*\u00b7\s*/i, '') || 'L\u2019\u00e9v\u00e9nement') + '</p>' +
+        '<div class="bb-lu-vs">' +
+          '<span class="bb-lu-club">' + esc(ev.titre || '') + '</span>' +
+          (ev.dates ? '<span class="bb-lu-time">' + esc(ev.dates) + '</span>' : '') +
+        '</div>' +
+        (ev.lieu ? '<p class="bb-lu-role">' + esc(ev.lieu) + '</p>' : '') +
+        '<div class="bb-lu-rule"></div>'
+      : (pres.kicker ? '<p class="bb-lu-lab">' + esc(pres.kicker) + '</p><div class="bb-lu-rule"></div>' : '');
+    sec.classList.remove('bb-hide');
+    if (window.bbRescanMotion) window.bbRescanMotion();
+  }
+  /* La lecture d'une presentation : la liste, les joueuses (deja
+     normalisees dans `players`), l'evenement s'il y en a un. */
+  function bbLuLirePresentation(id){
+    return Promise.all([
+      sbFetch('presentations?select=*&id=eq.' + encodeURIComponent(id) + '&limit=1'),
+      sbFetch('presentation_joueuses?select=player_id,sort,is_captain&presentation_id=eq.' + encodeURIComponent(id) + '&order=sort.asc')
+    ]).then(function(r){
+      var pres = (r[0] || [])[0]; if (!pres) return null;
+      var parId = {};
+      (typeof players !== 'undefined' ? players : []).forEach(function(p){ parId[String(p.id)] = p; });
+      var joueuses = (r[1] || []).map(function(l){
+        var p = parId[String(l.player_id)]; if (!p) return null;
+        var c = {}; for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) c[k] = p[k];
+        c.cap = !!l.is_captain; return c;
+      }).filter(Boolean);
+      var ev = pres.evenement_id
+        ? sbFetch('evenements?select=*&id=eq.' + encodeURIComponent(pres.evenement_id) + '&limit=1').then(function(e){ return (e || [])[0] || null; }).catch(function(){ return null; })
+        : Promise.resolve(null);
+      return ev.then(function(e){ return { pres: pres, joueuses: joueuses, ev: e }; });
+    });
+  }
+
   // LA LECTURE.
   //
   // On lit d'abord la VUE, qui n'expose que ce qui concerne la
@@ -9368,6 +9603,7 @@ window.bbCloud = function(url, w){
   // table players : on les normalise comme au chargement, avec la meme
   // fonction, pour que ce soit exactement le rendu public.
   function bbLuTemoin(t){
+    if (t.presentation) return bbLuTemoinPresentation(t);
     var norm = function(r){ var p = window.bbNormaliserJoueuse(r); p.cap = !!r.is_captain; p.rang = null; return p; };
     var cinq = (t.cinq || []).map(norm), banc = (t.banc || []).map(norm);
     // la cible se lit maintenant : l'appelant l'efface juste apres, et
@@ -9375,6 +9611,17 @@ window.bbCloud = function(url, w){
     var cible = t.cible;
     var rendre = function(coach){
       bbLuRendre(t.match || {}, cinq.slice(0, 5), banc, coach || null);
+      if (cible) bbTemoinAller(cible);
+    };
+    if (t.coach !== undefined) rendre(t.coach);
+    else bbLuCoach().then(rendre).catch(function(){ rendre(null); });
+  }
+  function bbLuTemoinPresentation(t){
+    var norm = function(r){ var p = window.bbNormaliserJoueuse(r); p.cap = !!r.is_captain; return p; };
+    var joueuses = (t.joueuses || []).map(norm);
+    var cible = t.cible;
+    var rendre = function(coach){
+      bbLuRendrePresentation(t.presentation, joueuses, t.evenement || null, coach || null);
       if (cible) bbTemoinAller(cible);
     };
     if (t.coach !== undefined) rendre(t.coach);
@@ -9414,8 +9661,9 @@ window.bbCloud = function(url, w){
   function bbLineupReglage(){
     var s = bbReglagesCourants || {};
     var mode = String(s.lineup_mode || 'auto').trim().toLowerCase();
-    if (mode !== 'match' && mode !== 'off') mode = 'auto';
-    return { mode: mode, id: String(s.lineup_match_id || '').trim() };
+    if (mode !== 'match' && mode !== 'off' && mode !== 'presentation') mode = 'auto';
+    return { mode: mode, id: String(s.lineup_match_id || '').trim(),
+             presentation: String(s.lineup_presentation_id || '').trim() };
   }
 
   function bbLineup(){
@@ -9429,6 +9677,16 @@ window.bbCloud = function(url, w){
     // Masqué à la demande : on le cache VRAIMENT, même si une
     // composition complète existe. C'est un choix du club.
     if (reg.mode === 'off'){ hote.style.display = 'none'; return; }
+    // UNE PRESENTATION plutot que le cinq d'un match : la selection d'un
+    // tournoi, ou n'importe quelle liste titree (voir presentations).
+    if (reg.mode === 'presentation' && reg.presentation){
+      bbLuLirePresentation(reg.presentation).then(function(d){
+        if (!d || !d.joueuses.length || bbLuScene.temoin) return;
+        return bbLuCoach().then(function(coach){ bbLuRendrePresentation(d.pres, d.joueuses, d.ev, coach); })
+          .catch(function(){ bbLuRendrePresentation(d.pres, d.joueuses, d.ev, null); });
+      }).catch(function(){});
+      return;
+    }
     var champs = 'id,opponent_name,opponent_logo_url,match_date,match_time,venue,is_home,competition,round_label';
     var auj = new Date().toISOString().slice(0, 10);
     var req = (reg.mode === 'match' && reg.id)

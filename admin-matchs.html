@@ -5284,6 +5284,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"/><path d="M4 4h13l-3 4 3 4H4"/></svg>
           Le match
         </button>
+        <button class="sb-link" data-section="presentations">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Présentations
+        </button>
         <button class="sb-link" data-section="gameday">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
           Soir de match
@@ -5961,6 +5965,24 @@
       <div class="callout">Le bandeau en haut du site, pour un report de match ou une ouverture de vente. <b>Une seule annonce peut être retenue à la fois</b>&nbsp;: en retenir une libère l'autre automatiquement — un bandeau qui annonce deux choses n'annonce rien. Le visiteur peut la fermer&nbsp;; la suivante réapparaîtra.</div>
       <div id="an-rows" style="display:flex;flex-direction:column;gap:11px;max-width:860px"></div>
       <div class="msg" id="an-msg"></div>
+    </section>
+
+    <!-- ===== SECTION PRESENTATIONS =====
+         Le Cinq majeur de l'accueil ne savait annoncer que les cinq d'un
+         match. Le president a envoye les douze de Nouakchott : ni un
+         match, ni un cinq. Une PRESENTATION est une liste titree de
+         joueuses (et du staff qui les accompagne), rattachee ou non a un
+         evenement : la selection d'un tournoi, un stage, une liste libre.
+         L'accueil montre le cinq du match ou l'une d'elles, au choix du
+         club ; la liste officielle part au Greffe. -->
+    <section id="section-presentations" class="hide">
+      <div class="mod-head">
+        <h2 class="mod-head-title">Présentations</h2>
+        <span class="mod-count" id="pz-count">&mdash;</span>
+        <button type="button" class="btn btn-primary" id="pz-new" style="padding:10px 16px;font-size:13px">Nouvelle présentation</button>
+      </div>
+      <div class="callout">Une présentation est une <b>liste de joueuses avec un titre</b> : les sélectionnées pour un tournoi, un stage, un déplacement, ou n'importe quelle liste. Le site l'annonce à l'accueil, à la place du cinq du match, quand vous le décidez ici (« Montrer sur l'accueil »). Le staff qui accompagne ne s'affiche pas sur le site : il sert à la liste officielle, dans le Greffe. Les numéros de maillot sont ceux des fiches.</div>
+      <div id="pz-liste"><div class="empty">Lecture…</div></div>
     </section>
 
     <!-- ===== SECTION COLLECTE DES MEMBRES =====
@@ -7496,7 +7518,7 @@
   var SECTION_MODULE = {
     dashboard:null,                                  // toujours accessible
     saison:null, caisse:'caisse', entrainements:'effectif',
-    parcours:'matchs',
+    parcours:'matchs', presentations:'matchs',
     gameday:'matchs', teams:'matchs', live:'matchs', standings:'matchs',
     calendar:'matchs', matches2:'matchs', results:'matchs',
     squad:'effectif', staff:'effectif', bureau:'effectif', founder:'effectif',
@@ -9322,7 +9344,7 @@
     inscriptions:'academy_registrations', ecole:'academy_sessions',
     applications:'recruitment_requests', forms:'contact_messages', collecte:'collecte_campagnes',
     newsl:'newsletter_abonnes', comptes:'admin_users', saison:'saisons',
-    caisse:'caisse_mouvements', parcours:'matches', media:null, audit:null
+    caisse:'caisse_mouvements', parcours:'matches', presentations:'presentations', media:null, audit:null
   };
 
   /* CE QU'ELLE NE REPETE JAMAIS, MEME QUAND ELLE A LE DROIT DE LE LIRE.
@@ -11612,7 +11634,7 @@
   // qui le contient. Un ecran neuf non liste tombe dans « divers »,
   // ce qui est faux mais visible, plutot que dans le tas.
   var DOSSIER_ECRAN = {
-    parcours:'matchs', gameday:'matchs', matches2:'matchs', calendar:'matchs', results:'matchs',
+    parcours:'matchs', presentations:'matchs', gameday:'matchs', matches2:'matchs', calendar:'matchs', results:'matchs',
     standings:'matchs', teams:'matchs', live:'matchs', tickets:'matchs',
     squad:'joueuses', staff:'joueuses',
     products:'boutique', stock:'boutique', promos:'boutique',
@@ -12757,6 +12779,7 @@
     entrainements:{t:'Entraînements',d:'Les séances de l\'équipe : planning de la semaine, séances du mois, appel au bord du terrain.'},
     caisse:{t:'La caisse',d:'Recettes, dépenses, budget de la saison : ce qui entre, ce qui sort, ce qu\'il reste, et ce que le club doit au président.'},
     parcours:{t:'Le match',d:'De J-7 à J+1 : ce qui est fait, ce qui attend, et le bouton qui mène là où ça se fait.'},
+    presentations:{t:'Présentations',d:'Les listes de joueuses que l’accueil annonce à la place du cinq : la sélection d’un tournoi, un stage, une liste libre. Et la liste officielle pour le Greffe.'},
     gameday:{t:'Soir de match',d:'L\'écran du jour J : le score d\'un côté, le guichet de retrait des billets de l\'autre.'},
     teams:{t:'Adversaires',d:'Les clubs que vous affrontez : ajout en un clic, logos, historique des confrontations.'},
     live:{t:'Diffusion en direct',d:'Le direct suit le tableau de marque. Ici, vous choisissez seulement s\'il y a une vidéo, et où.'},
@@ -12825,6 +12848,7 @@
     saison: ["<b>Une ligne par saison</b>, de juillet à juin comme la caisse et l'école : en préparation, en cours, puis clôturée. Le site sait laquelle il raconte (stats « saison en cours », page Compétitions).","<b>La rentrée, en neuf points</b> : dates, catégories d'âge, réinscriptions de l'école, licences et certificats, planning, calendrier, budget, textes du site, annonce. Chaque état se lit dans les données.","<b>Les catégories d'âge se calculent</b> : « U13 » veut dire moins de 13 ans au 31 décembre de l'année de fin de saison. Un clic met le texte du site à jour et propose le bon groupe à chaque enfant.","<b>Réinscrire</b> crée un dossier neuf au tarif en vigueur, l'ancien passe en archive, l'extrait de naissance, la photo et un certificat de moins d'un an suivent l'enfant.","<b>Clôturer</b> fige le bilan (matchs, marqueuses, présence, école, caisse) dans la saison. Rien n'est supprimé. Le Greffe en tire le rapport de saison pour l'assemblée générale."],
     entrainements: ["<b>Les entraînements de l'équipe</b>, construits comme les séances de l'école : un planning de la semaine, les séances du mois créées d'un clic, et l'appel à chaque séance.","<b>L'appel se fait au bord du terrain</b>, sur le téléphone : Présente, Retard, Excusée, Absente. Chaque clic s'enregistre tout de suite.","<b>La présence de chaque joueuse</b> se lit ensuite sur sa fiche (Joueuses) : taux, douze dernières séances, absences de suite.","<b>Sous 50 % de présence</b> compte les joueuses actives qui manquent plus d'une séance sur deux ce mois-ci, dès trois séances pointées.","Une séance annulée reste dans la liste, barrée : elle ne compte ni dans les séances faites ni dans la présence."],
     caisse: ["<b>Une seule vérité.</b> Les mensualités de l'école, les commandes encaissées et les billets retirés sont lus là où ils sont déjà enregistrés : la caisse ne les recopie pas, elle les additionne.","<b>Ce qui n'a pas d'écran se note ici</b> : un sponsor, une subvention, un don, la buvette, une avance du président. Et toutes les dépenses, avec leur justificatif.","<b>L'avance du président</b> est une dette du club : chaque avance l'augmente, chaque remboursement la réduit. Le chiffre en haut d'écran est ce qui reste à rembourser, et il part dans le budget du Greffe.","<b>Le budget</b> se pose poste par poste pour la saison (juillet à juin). La barre dit où en est le réalisé ; elle passe au rouge quand un poste dépasse.","<b>Exporter</b> donne le mois ou la saison en CSV, pour le bureau ou l'expert-comptable : chaque ligne avec sa source."],
+    presentations: ["<b>Une présentation est une liste de joueuses avec un titre</b> : la sélection d’un tournoi, un stage, une liste libre. Rattachée à un événement, le site montre son affiche, ses dates et les nations avant les joueuses.","<b>Cliquez une photo de l’effectif</b> pour la sélectionner ; en haut, les flèches classent, l’étoile pose le brassard, la croix retire. L’ordre est celui de l’annonce.","<b>Montrer sur l’accueil</b> remplace le cinq du match par cette présentation, jusqu’à ce que vous reveniez au calendrier depuis « Le match » ou d’ici.","<b>La liste officielle</b> part au Greffe : joueuses et staff qui accompagnent, avec poste, maillot, taille, naissance, en PDF signé."],
     parcours: ["<b>Un match, neuf étapes, dans l'ordre où elles arrivent</b> : la fiche, la convocation, le cinq, l'affiche, la billetterie, le direct, le résultat, l'article, le classement. Chaque étape lit son état dans les données : rien ne se coche à la main.","<b>Le rail du haut</b> donne les neuf états d'un coup d'œil. Vert : fait. Orange : à faire ces jours-ci. Rouge : en retard sur l'échéance (convocation à J-5, cinq à J-1, résultat le soir même, article à J+2). Un clic sur un nœud descend à la carte.","<b>La convocation se fait ici</b>, et nulle part ailleurs : fixez le rendez-vous, cochez les joueuses, le message s'écrit tout seul. « Convoquée » puis « Confirmée » quand elle répond ; WhatsApp par joueuse si son numéro est dans sa fiche.","<b>Le cinq de départ</b> se compose dans la fiche du match, avec les visages ; ici on voit seulement s'il est complet. Le site ne publie la composition qu'à cinq titulaires.","<b>L'article naît lié au match</b> : « Écrire le récap » crée un brouillon déjà titré, et les photos ajoutées depuis « Ajouter des photos » se rangent avec ce match."],
     gameday: ["<b>L'écran du jour de match</b>, pensé pour la personne au guichet et à la table de marque.","<b>Les touches +1 / +2 / +3 ne sont que du côté de l’adversaire, et c’est voulu.</b> Ses points n’ont personne à qui être attribués : trois touches suffisent. <b>Les nôtres vont dans la feuille de match d’une joueuse</b> — on les saisit dans la table de marque, en dessous : la joueuse, puis le geste. C’est de là que sortent les statistiques de la saison.","<b>Le score vous suit.</b> Dès que le grand tableau sort de l’écran, une barre se colle sous le bandeau du haut : score, période, points de l’adversaire et annulation. Plus besoin de remonter entre deux paniers.","<b>Coup de sifflet final</b> publie le score sur le site, qui l’affiche alors comme définitif. Avant ça, le direct suit déjà chaque panier.","Le guichet retrouve une réservation par référence, nom ou téléphone ; <b>Retirer</b> pointe le billet à l'entrée.","Les jauges de droite montrent les places restantes par catégorie, mises à jour à chaque retrait."],
     live: ["<b>Collez ici l'adresse de la page du direct</b> — celle de la barre d'adresse, ou du bouton <b>Partager</b>. Elle peut appartenir à <b>n'importe quel compte</b> : c'est ainsi qu'on rediffuse le direct d'une fédération ou du club adverse. La ligne sous le champ dit tout de suite si l'adresse donnera un lecteur ou un bouton.","<b>Laissez « Automatique ».</b> Le direct s'allume quand vous ouvrez le tableau de marque dans <b>Soir de match</b>, et s'éteint au coup de sifflet final — le geste que vous faites déjà. « Forcé allumé » ne sert qu'à diffuser hors match.","Le message hors-direct remplace le titre du bloc les jours sans match. <b>Un soir de match sans caméra, le site n'écrit jamais « pas de direct » : il montre le score</b>, au panier près, sans aucune plateforme.","<b>Sous la scène</b> : le prochain match et son lien (propre au match ou canal de la saison), ce que le tableau de marque envoie, un diagnostic lu dans les réglages, et l\'historique des diffusions : les matchs passés qui ont gardé leur lien de replay."],
@@ -12942,6 +12966,8 @@
                  ['#cs-budget', '#cs-tete'], ['#cs-recettes .ds-quick', '#cs-recettes']],
     parcours:   [['#pc-rail', '#pc-vide'], ['#pc-rail', '#pc-vide'], ['#pc-etape-convocation', '#pc-vide'],
                  ['#pc-etape-cinq', '#pc-vide'], ['#pc-etape-article', '#pc-vide']],
+    presentations: [['#pz-liste .pz-c', '#pz-new'], ['#pz-liste .pz-sel', '#pz-liste .pz-c', '#pz-new'],
+                    ['#pz-liste [data-pz="site"]', '#pz-liste .pz-c', '#pz-new'], ['#pz-liste [data-pz="pdf"]', '#pz-liste .pz-c', '#pz-new']],
     gameday:    [['#gd-main', '#gd-empty'], ['#gd-vers-console', '#gd-empty'],
                  ['#gd-suit', '#gd-empty'], ['#gd-publish', '#gd-empty'],
                  ['#gd-resa-search', '#gd-empty'], ['#gd-offers', '#gd-empty']],
@@ -13308,7 +13334,7 @@
   // retirés de la navigation. Leur balisage reste masqué dans la page le
   // temps du démêlage du code (loadTeams alimente encore l'ancien
   // formulaire), mais aucun chemin de l'admin n'y mène plus.
-  var ALL_SECTIONS = ['dashboard','saison','caisse','entrainements','parcours','ecole','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','collecte','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
+  var ALL_SECTIONS = ['dashboard','saison','caisse','entrainements','parcours','presentations','ecole','gameday','teams','promos','newsl','live','standings','coherence','banners','announce','evenements','collecte','squad','products','stock','articles','categories','galerie','media','calendar','matches2','results','tickets','orders2','clients','applications','inscriptions','founder','bureau','staff','timeline','c_home','c_club','c_tryouts','c_inscriptions','c_app','c_promo','c_legal','reglages','news','partners','forms','home','audit','comptes','analytics'];
   var loadedSections = {};
   function closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('open'); }
 
@@ -13803,7 +13829,8 @@
     caisse:    [['L\'école','ecole'],['Commandes','orders2'],['Billetterie','tickets']],
     entrainements: [['Joueuses','squad'],['Le match','parcours'],['Calendrier','calendar']],
     saison:    [['L\'école','ecole'],['Joueuses','squad'],['La caisse','caisse'],['Calendrier','calendar']],
-    parcours:  [['Fiche du match','matches2'],['Soir de match','gameday'],['Classement','standings']],
+    parcours:  [['Fiche du match','matches2'],['Présentations','presentations'],['Soir de match','gameday']],
+    presentations: [['Le match','parcours'],['Événements','evenements'],['Joueuses','squad']],
     gameday:   [['Le match','parcours'],['Billetterie','tickets'],['Matchs','matches2']],
     teams:     [['Matchs','matches2'],['Calendrier','calendar'],['Classement','standings']],
     matches2:  [['Calendrier','calendar'],['Résultats à saisir','results'],['Direct','live']],
@@ -14240,6 +14267,9 @@
     pushAct('Choisir comment les partenaires s\u2019affichent', 'Cartes, grille, bande ou d\u00e9fil\u00e9',
       function(){ showSection('partners'); },
       'partenaire sponsor affichage presentation prereglage cartes grille bande defile', ICO.site);
+    pushAct('Annoncer une s\u00e9lection ou une liste de joueuses', 'Tournoi, stage, liste libre : ce que l\u2019accueil montre \u00e0 la place du cinq',
+      function(){ showSection('presentations'); },
+      'presentation selection tournoi stage liste joueuses annoncer accueil delegation pdf', ICO.joueuse);
     pushAct('Ouvrir un lien de collecte', 'Joueuses, coachs, staff technique, dirigeants : un lien par section',
       function(){ showSection('collecte'); },
       'collecte lien formulaire profil jeton joueuse coach staff dirigeant telephone', ICO.joueuse);
@@ -14505,7 +14535,7 @@
      ================================================================== */
   function pcLineupMode(){
     var m = String((settings && settings.lineup_mode) || 'auto').trim().toLowerCase();
-    return (m === 'match' || m === 'off') ? m : 'auto';
+    return (m === 'match' || m === 'off' || m === 'presentation') ? m : 'auto';
   }
   function pcLineupId(){ return String((settings && settings.lineup_match_id) || '').trim(); }
 
@@ -14528,6 +14558,7 @@
         bt('off',   'Ne rien montrer', mode === 'off', 'Masquer la section « Cinq majeur » du site.') +
       '</div>' +
       '<p class="pc-vis-m">' + (
+        mode === 'presentation' ? 'L’accueil montre une <b>présentation</b> (sélection, liste) à la place du cinq : voir l’écran Présentations. « Le prochain match » ou « Ce match-ci » y remet le cinq.' :
         mode === 'off'    ? 'La section est masquée : l’accueil ne montre aucun cinq.' :
         mode === 'match'  ? (estFige ? 'L’accueil est figé sur ce match.'
                                      : 'L’accueil est figé sur un autre match. « Ce match-ci » le déplace ici.')
@@ -26686,6 +26717,322 @@
   }
 
   // =================================================================
+  // LES PRESENTATIONS : une liste titree de joueuses, pour l'accueil
+  // =================================================================
+  // « pour un tournoi on n'avait pas pense a ca ; il faut des presets :
+  //   le cinq majeur pour les matchs, autre chose pour les selectionnees
+  //   d'un tournoi ; et penser aux autres eventualites, pilotable d'ici »
+  //
+  // Le cinq reste dans la fiche du match (match_stats). Ici, des LISTES
+  // TITREES : presentations (titre, sur-titre, type, evenement),
+  // presentation_joueuses (l'ordre, le brassard), presentation_staff
+  // (qui accompagne, pour la liste officielle). L'accueil montre l'une
+  // d'elles quand site_settings.lineup_mode vaut « presentation ».
+  var pzRows = [], pzJ = {}, pzS = {}, pzRoster = [], pzStaffRows = [], pzEvs = [], pzEtat = {}, pzStarted = false, pzTable = true;
+
+  function pzInit(){
+    if (!pzStarted){
+      pzStarted = true;
+      document.getElementById('pz-new').addEventListener('click', pzNouveau);
+    }
+    pzLoad();
+  }
+  function pzLoad(){
+    var box = document.getElementById('pz-liste'); if (!box) return;
+    var lire = function(path){
+      return fetch(SUPABASE_URL + '/rest/v1/' + path, { headers: sbHeaders() }).then(function(r){
+        if (r.status === 404 || r.status === 400){ pzTable = false; return []; }
+        if (!r.ok) throw new Error('lecture'); return r.json();
+      });
+    };
+    pzTable = true;
+    Promise.all([
+      lire('presentations?select=*&order=created_at.desc'),
+      lire('presentation_joueuses?select=*&order=sort.asc'),
+      lire('presentation_staff?select=*&order=sort.asc'),
+      sbGet('players?select=id,name,jersey_number,position,status,photo_url,photo_x,photo_y,photo_zoom,height,birth_date,birth_year,gender,city,scene_x,scene_y,scene_zoom,licence_num&order=jersey_number.asc' + SANS_ATTENTE),
+      sbGet('staff?select=id,name,role,categorie,phone,photo_url,sort&order=sort.asc' + SANS_ATTENTE).catch(function(){ return []; }),
+      sbGet('evenements?select=id,titre,kicker,dates,lieu,nations,affiche_url,affiche_pleine_url,organisateur,debut,fin,actif&order=ordre.asc,debut.asc').catch(function(){ return []; })
+    ]).then(function(r){
+      pzRows = r[0] || []; pzJ = {}; pzS = {};
+      (r[1] || []).forEach(function(l){ (pzJ[String(l.presentation_id)] = pzJ[String(l.presentation_id)] || []).push(l); });
+      (r[2] || []).forEach(function(l){ (pzS[String(l.presentation_id)] = pzS[String(l.presentation_id)] || []).push(l); });
+      pzRoster = (r[3] || []).filter(function(p){ return (p.status || 'active') !== 'partie'; });
+      pzStaffRows = r[4] || []; pzEvs = r[5] || [];
+      // l'etat d'edition repart de la base a chaque lecture
+      pzEtat = {};
+      pzRows.forEach(function(pr){
+        var id = String(pr.id), js = pzJ[id] || [];
+        pzEtat[id] = { joueuses: js.map(function(l){ return String(l.player_id); }),
+                       cap: (js.filter(function(l){ return l.is_captain; })[0] || {}).player_id || null,
+                       staff: (pzS[id] || []).map(function(l){ return { staff_id:String(l.staff_id), fonction:l.fonction || '' }; }) };
+        pzEtat[id].cap = pzEtat[id].cap ? String(pzEtat[id].cap) : null;
+      });
+      pzRender();
+    }).catch(function(){ box.innerHTML = '<div class="empty">Les présentations n’ont pas pu être lues.</div>'; });
+  }
+  function pzJoueuse(pid){ return pzRoster.filter(function(p){ return String(p.id) === String(pid); })[0] || null; }
+  function pzNom(p){ return p ? (p.name || '—') : '—'; }
+  function pzAgeDe(p){
+    var d = p.birth_date ? new Date(String(p.birth_date).slice(0, 10) + 'T00:00:00') : null;
+    if (d && !isNaN(d)){ var n = new Date(), a = n.getFullYear() - d.getFullYear(); var m = n.getMonth() - d.getMonth(); if (m < 0 || (m === 0 && n.getDate() < d.getDate())) a--; return a; }
+    var y = parseInt(p.birth_year, 10); return y > 1900 ? new Date().getFullYear() - y : '';
+  }
+  function pzSurSite(id){
+    return String((settings || {}).lineup_mode || '').trim().toLowerCase() === 'presentation' &&
+           String((settings || {}).lineup_presentation_id || '') === String(id);
+  }
+
+  function pzRender(){
+    var box = document.getElementById('pz-liste'); if (!box) return;
+    var cpt = document.getElementById('pz-count');
+    if (cpt) cpt.textContent = pzRows.length ? pzRows.length + (pzRows.length > 1 ? ' présentations' : ' présentation') : '—';
+    if (!pzTable){
+      box.innerHTML = '<div class="mc-compo-note">La table n’existe pas encore : passez <code>CORRECTIF-2026-09-19-presentations-de-joueuses.sql</code> dans Supabase.</div>';
+      return;
+    }
+    if (!pzRows.length){ box.innerHTML = '<div class="empty">Aucune présentation. <b>Nouvelle présentation</b> en crée une.</div>'; return; }
+    box.innerHTML = pzRows.map(pzCarte).join('');
+    box.querySelectorAll('.pz-c').forEach(pzArmer);
+  }
+
+  function pzCarte(pr){
+    var id = String(pr.id), e = pzEtat[id] || { joueuses:[], cap:null, staff:[] };
+    var surSite = pzSurSite(id);
+    var champ = function(cle, lab, type, ph){
+      return '<div class="pz-f"><label>' + esc(lab) + '</label><input data-c="' + cle + '" type="' + (type || 'text') + '" value="' + esc(pr[cle] == null ? '' : pr[cle]) + '" placeholder="' + esc(ph || '') + '"></div>';
+    };
+    var chips = e.joueuses.map(function(pid, i){
+      var p = pzJoueuse(pid); if (!p) return '';
+      return '<span class="pz-j' + (String(e.cap) === pid ? ' cap' : '') + '" data-pid="' + esc(pid) + '">' +
+        (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '<i>' + esc(initials(p.name).slice(0, 2)) + '</i>') +
+        '<em>' + (p.jersey_number == null ? '·' : esc(String(p.jersey_number))) + '</em><b>' + esc(pzNom(p)) + '</b>' +
+        '<button type="button" class="mc-cp-bt" data-pz="haut" title="Avancer"' + (i === 0 ? ' disabled' : '') + '>‹</button>' +
+        '<button type="button" class="mc-cp-bt' + (String(e.cap) === pid ? ' on' : '') + '" data-pz="cap" title="Brassard de capitaine">★</button>' +
+        '<button type="button" class="mc-cp-bt" data-pz="bas" title="Reculer"' + (i === e.joueuses.length - 1 ? ' disabled' : '') + '>›</button>' +
+        '<button type="button" class="mc-cp-bt" data-pz="oter" title="Retirer">×</button>' +
+      '</span>';
+    }).join('');
+    var grille = pzRoster.map(function(p){
+      var pid = String(p.id), dedans = e.joueuses.indexOf(pid) >= 0;
+      return '<button type="button" class="pz-p' + (dedans ? ' in' : '') + '" data-pid="' + esc(pid) + '" title="' + esc(pzNom(p)) + '">' +
+        (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="" loading="lazy">' : '') +
+        (p.jersey_number == null ? '' : '<em>' + esc(String(p.jersey_number)) + '</em>') +
+        '<span>' + esc(pzNom(p)) + (p.position ? '<br><small style="font-weight:500;color:var(--muted)">' + esc(p.position) + '</small>' : '') + '</span>' +
+      '</button>';
+    }).join('');
+    var staff = pzStaffRows.map(function(st){
+      var sid = String(st.id), l = e.staff.filter(function(x){ return x.staff_id === sid; })[0];
+      return '<label class="pz-s" data-sid="' + esc(sid) + '"><input type="checkbox"' + (l ? ' checked' : '') + '>' +
+        '<b>' + esc(st.name || '') + '</b><small>' + esc(st.role || '') + '</small>' +
+        '<input type="text" placeholder="Fonction sur place" value="' + esc(l ? l.fonction : '') + '"' + (l ? '' : ' disabled') + '></label>';
+    }).join('');
+    var evOpts = '<option value="">Aucun : une liste libre</option>' + pzEvs.map(function(ev){
+      return '<option value="' + esc(String(ev.id)) + '"' + (String(pr.evenement_id || '') === String(ev.id) ? ' selected' : '') + '>' +
+        esc((ev.titre || 'Sans titre') + (ev.dates ? ' · ' + ev.dates : '')) + '</option>';
+    }).join('');
+    return '<div class="pz-c' + (surSite ? ' on-site' : '') + '" data-id="' + esc(id) + '">' +
+      '<div class="pz-h"><b>' + esc(pr.titre || 'Sans titre') + '</b>' +
+        '<span class="mc-compo-n' + (e.joueuses.length ? ' ok' : '') + '">' + e.joueuses.length + ' joueuse' + (e.joueuses.length > 1 ? 's' : '') +
+          (e.staff.length ? ' · ' + e.staff.length + ' staff' : '') + '</span>' +
+        (surSite ? '<span class="ds-st act"><i></i>Affichée sur l’accueil</span>' : (pr.actif === false ? '<span class="ds-tag">En sommeil</span>' : '')) +
+      '</div>' +
+      '<div class="pz-g">' +
+        champ('titre', 'Titre (le grand mot de l’annonce)', 'text', 'La sélection') +
+        champ('kicker', 'Sur-titre', 'text', 'Women’s Sport International · Nouakchott') +
+        champ('sous_titre', 'Sous le titre', 'text', '12 joueuses pour représenter le club') +
+        '<div class="pz-f"><label>Type</label><select data-c="type">' +
+          '<option value="selection"' + (pr.type !== 'libre' ? ' selected' : '') + '>Sélection pour un événement</option>' +
+          '<option value="libre"' + (pr.type === 'libre' ? ' selected' : '') + '>Liste libre</option></select></div>' +
+        '<div class="pz-f"><label>Événement (affiche, dates, nations)</label><select data-c="evenement_id">' + evOpts + '</select></div>' +
+      '</div>' +
+      '<div class="mc-cp-h2"><b>Les joueuses annoncées</b><span>dans l’ordre de l’annonce · ‹ › classent, ★ le brassard, × retire</span><i></i></div>' +
+      '<div class="pz-sel">' + (chips || '<span class="empty">Aucune joueuse : cliquez des photos ci-dessous.</span>') + '</div>' +
+      '<div class="mc-cp-h2"><b>L’effectif</b><span>cliquez pour ajouter ou retirer</span><i></i></div>' +
+      '<div class="pz-grid">' + grille + '</div>' +
+      '<div class="mc-cp-h2"><b>Le staff qui accompagne</b><span>pour la liste officielle, pas pour le site</span><i></i></div>' +
+      '<div class="pz-staff">' + (staff || '<span class="empty">Aucun membre du staff sur le site.</span>') + '</div>' +
+      '<div class="pz-act">' +
+        '<button type="button" class="btn btn-primary" data-pz="save">Enregistrer</button>' +
+        '<button type="button" class="btn btn-ghost" data-pz="site">' + (surSite ? 'Revenir au cinq du match' : 'Montrer sur l’accueil') + '</button>' +
+        '<button type="button" class="btn btn-ghost" data-pz="voir">Voir sur le site</button>' +
+        '<button type="button" class="btn btn-ghost" data-pz="pdf" title="La liste des joueuses et du staff, avec leurs caractéristiques, dans le Greffe">Liste officielle (PDF)</button>' +
+        '<span class="grow"></span>' +
+        '<button type="button" class="ds-act" data-pz="del">Supprimer</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function pzArmer(carte){
+    var id = carte.getAttribute('data-id'), e = pzEtat[id];
+    carte.querySelectorAll('.pz-p').forEach(function(b){
+      b.addEventListener('click', function(){
+        var pid = b.getAttribute('data-pid'), i = e.joueuses.indexOf(pid);
+        if (i >= 0){ e.joueuses.splice(i, 1); if (String(e.cap) === pid) e.cap = null; }
+        else e.joueuses.push(pid);
+        pzRafraichir(id);
+      });
+    });
+    carte.querySelectorAll('.pz-j [data-pz]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var pid = b.closest('.pz-j').getAttribute('data-pid'), i = e.joueuses.indexOf(pid), a = b.getAttribute('data-pz');
+        if (i < 0) return;
+        if (a === 'oter'){ e.joueuses.splice(i, 1); if (String(e.cap) === pid) e.cap = null; }
+        if (a === 'cap') e.cap = String(e.cap) === pid ? null : pid;
+        if (a === 'haut' && i > 0){ e.joueuses.splice(i, 1); e.joueuses.splice(i - 1, 0, pid); }
+        if (a === 'bas' && i < e.joueuses.length - 1){ e.joueuses.splice(i, 1); e.joueuses.splice(i + 1, 0, pid); }
+        pzRafraichir(id);
+      });
+    });
+    carte.querySelectorAll('.pz-s').forEach(function(l){
+      var sid = l.getAttribute('data-sid'), cb = l.querySelector('input[type=checkbox]'), fn = l.querySelector('input[type=text]');
+      cb.addEventListener('change', function(){
+        e.staff = e.staff.filter(function(x){ return x.staff_id !== sid; });
+        if (cb.checked) e.staff.push({ staff_id: sid, fonction: fn.value.trim() });
+        fn.disabled = !cb.checked;
+      });
+      fn.addEventListener('input', function(){
+        var x = e.staff.filter(function(y){ return y.staff_id === sid; })[0]; if (x) x.fonction = fn.value.trim();
+      });
+    });
+    carte.querySelector('[data-pz="save"]').addEventListener('click', function(){ pzEnregistrer(id, carte, this); });
+    carte.querySelector('[data-pz="site"]').addEventListener('click', function(){ pzSurAccueil(id); });
+    carte.querySelector('[data-pz="voir"]').addEventListener('click', function(){ pzTemoin(id, carte); });
+    carte.querySelector('[data-pz="pdf"]').addEventListener('click', function(){ pzListeOfficielle(id, carte); });
+    carte.querySelector('[data-pz="del"]').addEventListener('click', function(){ pzSupprimer(id); });
+  }
+  // Redessiner la carte sans perdre ce qui est tape dans ses champs.
+  function pzRafraichir(id){
+    var box = document.getElementById('pz-liste'), vieille = box.querySelector('.pz-c[data-id="' + id + '"]'); if (!vieille) return;
+    var pr = pzRows.filter(function(x){ return String(x.id) === id; })[0]; if (!pr) return;
+    var v = pzValeurs(vieille); for (var k in v) if (Object.prototype.hasOwnProperty.call(v, k)) pr[k] = v[k];
+    var tmp = document.createElement('div'); tmp.innerHTML = pzCarte(pr);
+    var neuve = tmp.firstChild; vieille.replaceWith(neuve); pzArmer(neuve);
+    pzTemoinMaj(id);
+  }
+  function pzValeurs(carte){
+    var v = {};
+    carte.querySelectorAll('.pz-g [data-c]').forEach(function(el){ v[el.getAttribute('data-c')] = el.value; });
+    return { titre: (v.titre || '').trim() || 'La sélection', kicker: (v.kicker || '').trim() || null, sous_titre: (v.sous_titre || '').trim() || null,
+             type: v.type === 'libre' ? 'libre' : 'selection', evenement_id: (v.evenement_id || '').trim() || null };
+  }
+
+  function pzNouveau(){
+    if (!pzTable) return;
+    sbInsert('presentations', { titre: 'La sélection', type: 'selection' }, 'Présentations')
+      .then(function(){ qgToast('Présentation créée ✓'); return pzLoad(); })
+      .catch(function(){ qgToast('La présentation n’a pas pu être créée.', true); });
+  }
+  // TOUT S'ENREGISTRE D'UN COUP : la fiche, puis les joueuses et le
+  // staff reecrits en entier (les lignes de la base sont remplacees par
+  // celles de l'ecran, l'ordre compris).
+  function pzEnregistrer(id, carte, btn){
+    var e = pzEtat[id], v = pzValeurs(carte); if (btn) btn.disabled = true;
+    var effacer = function(table){
+      return fetch(SUPABASE_URL + '/rest/v1/' + table + '?presentation_id=eq.' + encodeURIComponent(id), { method:'DELETE', headers: sbHeaders() })
+        .then(function(r){ if (!r.ok) return sbThrow(r, 'delete', table); });
+    };
+    sbUpdate('presentations', id, v, 'Présentations')
+      .then(function(){ return effacer('presentation_joueuses'); })
+      .then(function(){
+        if (!e.joueuses.length) return;
+        return sbInsert('presentation_joueuses', e.joueuses.map(function(pid, i){
+          return { presentation_id: id, player_id: pid, sort: i + 1, is_captain: String(e.cap) === pid };
+        }), 'Présentations');
+      })
+      .then(function(){ return effacer('presentation_staff'); })
+      .then(function(){
+        if (!e.staff.length) return;
+        return sbInsert('presentation_staff', e.staff.map(function(x, i){
+          return { presentation_id: id, staff_id: x.staff_id, sort: i + 1, fonction: x.fonction || null };
+        }), 'Présentations');
+      })
+      .then(function(){ qgToast('Présentation enregistrée ✓'); sbMemoVider(); return pzLoad(); })
+      .catch(function(){ qgToast('L’enregistrement a échoué.', true); if (btn) btn.disabled = false; });
+  }
+  function pzSupprimer(id){
+    var pr = pzRows.filter(function(x){ return String(x.id) === id; })[0];
+    if (!confirm('Supprimer « ' + ((pr && pr.titre) || 'cette présentation') + ' » ?\n\nLes fiches des joueuses ne bougent pas : seule la liste disparaît.')) return;
+    var suite = pzSurSite(id) ? pzPoserMode('auto') : Promise.resolve();
+    suite.then(function(){ return sbDelete('presentations', id, 'Présentations'); })
+      .then(function(){ qgToast('Présentation supprimée ✓'); return pzLoad(); })
+      .catch(function(){ qgToast('La suppression a échoué.', true); });
+  }
+  // L'ACCUEIL : cette presentation, ou le cinq du match. Le meme reglage
+  // que le parcours du match (lineup_mode), qui sait le lire.
+  function pzPoserMode(mode, id){
+    var paires = mode === 'presentation'
+      ? [{ key:'lineup_mode', value:'presentation' }, { key:'lineup_presentation_id', value:String(id) }]
+      : [{ key:'lineup_mode', value:mode }];
+    return sbUpsert('site_settings', paires, 'Présentations').then(function(){
+      settings.lineup_mode = mode;
+      if (mode === 'presentation') settings.lineup_presentation_id = String(id);
+    });
+  }
+  function pzSurAccueil(id){
+    var deja = pzSurSite(id);
+    pzPoserMode(deja ? 'auto' : 'presentation', id).then(function(){
+      qgToast(deja ? 'L’accueil revient au cinq du prochain match ✓' : 'L’accueil annonce cette présentation ✓');
+      pzRender();
+    }).catch(function(){ qgToast('Le réglage n’a pas pu être enregistré.', true); });
+  }
+
+  // LE TEMOIN : le site joue cette presentation, telle qu'elle est ici.
+  function pzTemoinId(id){ return 'presentation:' + id; }
+  function pzTemoinPoster(id, w, avecCible){
+    var pr = pzRows.filter(function(x){ return String(x.id) === id; })[0], e = pzEtat[id]; if (!pr || !e) return;
+    var carte = document.querySelector('#pz-liste .pz-c[data-id="' + id + '"]');
+    var v = carte ? pzValeurs(carte) : pr;
+    var pres = { id:id, titre:v.titre, kicker:v.kicker, sous_titre:v.sous_titre, type:v.type, evenement_id:v.evenement_id };
+    var ev = pzEvs.filter(function(x){ return String(x.id) === String(v.evenement_id); })[0] || null;
+    var joueuses = e.joueuses.map(function(pid){
+      var p = pzJoueuse(pid); if (!p) return null;
+      var c = {}; for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) c[k] = p[k];
+      c.is_captain = String(e.cap) === pid; return c;
+    }).filter(Boolean);
+    try {
+      w.postMessage({ type:'bbc-temoin-cinq', presentation: pres, evenement: ev, joueuses: joueuses,
+        cible: avecCible ? { page:'accueil', sel:'#bb-lineup' } : null }, location.origin);
+    } catch(err){}
+  }
+  function pzTemoin(id){
+    tmOuvrir({ id: pzTemoinId(id), titre: 'La présentation, sur le site', cible: { page:'accueil', sel:'#bb-lineup' },
+      envoyer: function(w, avecCible){ pzTemoinPoster(id, w, avecCible); } });
+  }
+  function pzTemoinMaj(id){
+    if (!tmEtat.ouvert || !tmEtat.pret || tmEtat.id !== pzTemoinId(id)) return;
+    var f = tmIframe(), w = f && f.contentWindow; if (w) pzTemoinPoster(id, w, false);
+  }
+
+  // LA LISTE OFFICIELLE : les joueuses et le staff qui partent, avec
+  // leurs caracteristiques, dans un acte du Greffe.
+  function pzListeOfficielle(id, carte){
+    var e = pzEtat[id]; if (!e || !e.joueuses.length){ qgToast('Sélectionnez d’abord des joueuses.', true); return; }
+    var v = pzValeurs(carte);
+    var ev = pzEvs.filter(function(x){ return String(x.id) === String(v.evenement_id); })[0] || null;
+    var joueuses = e.joueuses.map(function(pid, i){
+      var p = pzJoueuse(pid); if (!p) return null;
+      var age = pzAgeDe(p);
+      return { nom: pzNom(p) + (String(e.cap) === pid ? ' (cap.)' : ''), poste: p.position || '',
+               maillot: p.jersey_number == null ? '' : String(p.jersey_number),
+               taille: p.height ? String(p.height).replace(/\s*m\s*$/i, '') + ' m' : '',
+               naissance: p.birth_date ? formatDateShort(String(p.birth_date).slice(0, 10)) : (p.birth_year ? String(p.birth_year) : ''),
+               licence: p.licence_num || '' };
+    }).filter(Boolean);
+    var staff = e.staff.map(function(x, i){
+      var st = pzStaffRows.filter(function(y){ return String(y.id) === x.staff_id; })[0]; if (!st) return null;
+      return { nom: st.name || '', fonction: x.fonction || st.role || '', tel: st.phone || '' };
+    }).filter(Boolean);
+    greffeNouvelActe('liste-delegation', {
+      intitule: (ev && ev.titre) || v.titre, nature: v.type === 'libre' ? 'Liste' : 'Tournoi',
+      organisateur: (ev && ev.organisateur) || '', dates: (ev && ev.dates) || '', lieuEv: (ev && ev.lieu) || '',
+      jour: ev && ev.debut ? String(ev.debut).slice(0, 10) : '', fin: ev && ev.fin ? String(ev.fin).slice(0, 10) : '',
+      mention: 'Les ' + joueuses.length + ' joueuses sélectionnées pour représenter Baobabs Basket Club' + (ev && ev.lieu ? ' à ' + ev.lieu.replace(/^terrain de basket de /i, '') : '') + '.',
+      tables: { joueuses: joueuses, staff: staff }
+    }, { origine: 'Présentations' });
+  }
+
+  // =================================================================
   // LA COMPOSITION, DANS LA FICHE DU MATCH
   // =================================================================
   // On compose avec les visages, et dans l'ordre. Une liste de noms a
@@ -33416,6 +33763,7 @@
     clients:function(){ clInit(); },
     applications:function(){ cdInit(); },
     collecte:function(){ coCharger(); },
+    presentations:function(){ pzInit(); },
     forms:function(){ msInit(); },
     audit:function(){ /* rien à charger tant que le mot de passe n'est pas entré */ }
   };
@@ -37470,6 +37818,62 @@
     background:linear-gradient(180deg, rgba(5,16,11,0) 0%, rgba(5,16,11,0) 45%, rgba(5,16,11,.7) 100%);
   }
   .db-hero.passe .db-hero-photo{ opacity:.3 }
+  /* --- LES PRESENTATIONS : une plaque par liste, la selection dessus
+     en vignettes ordonnees, l'effectif dessous a cliquer, le staff en
+     lignes a cocher. Meme grammaire que la composition du match. --- */
+  .pz-c{ position:relative; padding:18px 20px 20px; margin-bottom:16px; border-radius:var(--r-lg);
+    background:var(--verre); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid var(--verre-bord); border-top:2px solid var(--gold) }
+  .pz-c.on-site{ border-top-color:var(--lime) }
+  .pz-h{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:12px }
+  .pz-h b{ font-family:var(--font-ui); font-weight:800; font-size:17px; letter-spacing:-.01em; color:var(--text) }
+  .pz-h .ds-st{ margin-left:auto }
+  .pz-g{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 16px }
+  .pz-f{ margin-bottom:12px; min-width:0 }
+  .pz-f label{ display:block; font-family:var(--font-ui); font-weight:700; font-size:10px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--faint); margin-bottom:5px }
+  .pz-f input, .pz-f select{ width:100%; background:var(--surface-2); color:var(--text); border:1px solid var(--line-strong);
+    border-radius:var(--r-sm); padding:9px 11px; font:inherit; font-size:13px }
+  .pz-f input:focus, .pz-f select:focus{ outline:none; border-color:var(--gold) }
+  .pz-sel{ display:flex; flex-wrap:wrap; gap:8px; min-height:46px; padding:8px; border-radius:var(--r-md);
+    background:rgba(4,12,8,.4); border:1px dashed var(--line-strong) }
+  .pz-sel .empty{ font-size:12.5px; color:var(--faint); padding:6px 4px }
+  .pz-j{ display:flex; align-items:center; gap:7px; padding:4px 6px 4px 4px; border-radius:var(--r-full);
+    background:var(--surface-2); border:1px solid var(--line-strong); font-size:12px; color:var(--text) }
+  .pz-j.cap{ border-color:var(--gold) }
+  .pz-j img, .pz-j i{ width:28px; height:28px; border-radius:50%; object-fit:cover; object-position:50% 15%; flex:none;
+    background:var(--surface); display:grid; place-items:center; font-style:normal; font-size:10px; color:var(--faint) }
+  .pz-j em{ font-style:normal; font-family:var(--font-ui); font-weight:800; font-size:11px; color:var(--gold); min-width:1.6em; text-align:center }
+  .pz-j b{ font-weight:700; white-space:nowrap }
+  .pz-j .mc-cp-bt{ width:24px; height:24px; font-size:12px }
+  .pz-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:8px; margin-top:8px }
+  .pz-p{ position:relative; cursor:pointer; border-radius:var(--r-md); overflow:hidden; background:var(--surface-2);
+    border:1px solid var(--line); aspect-ratio:3/4; text-align:left; padding:0; font:inherit; color:var(--text);
+    transition:border-color .15s, transform .15s }
+  .pz-p:hover{ border-color:var(--gold) }
+  .pz-p img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 10%; opacity:.9 }
+  .pz-p span{ position:absolute; left:0; right:0; bottom:0; padding:22px 8px 8px; font-family:var(--font-ui); font-weight:700;
+    font-size:11px; line-height:1.25; background:linear-gradient(transparent, rgba(4,12,8,.92) 55%) }
+  .pz-p em{ position:absolute; top:6px; right:6px; font-style:normal; font-family:var(--font-ui); font-weight:800; font-size:11px;
+    color:#0A1B0D; background:var(--gold); border-radius:100px; padding:2px 7px }
+  .pz-p.in{ border-color:var(--gold); box-shadow:0 0 0 2px var(--gold-soft) }
+  .pz-p.in::after{ content:'✓'; position:absolute; top:6px; left:6px; width:20px; height:20px; border-radius:50%;
+    background:var(--gold); color:#0A1B0D; display:grid; place-items:center; font-size:12px; font-weight:800 }
+  .pz-staff{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:6px 14px; margin-top:8px }
+  .pz-s{ display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:var(--r-sm); background:rgba(4,12,8,.35);
+    border:1px solid var(--line); font-size:12.5px }
+  .pz-s input[type=checkbox]{ accent-color:var(--gold) }
+  .pz-s b{ font-weight:700; white-space:nowrap }
+  .pz-s small{ color:var(--faint) }
+  .pz-s input[type=text]{ flex:1; min-width:90px; background:var(--surface-2); color:var(--text); border:1px solid var(--line-strong);
+    border-radius:var(--r-sm); padding:5px 8px; font:inherit; font-size:12px }
+  .pz-act{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line) }
+  .pz-act .btn{ min-height:38px; padding:8px 14px; font-size:12.5px; width:auto }
+  .pz-act .btn-primary{ box-shadow:none }
+  .pz-act .grow{ flex:1 }
+  /* le bouton de l'en-tete n'est pas un bouton de formulaire : il ne prend pas toute la largeur */
+  .mod-head .btn-primary{ width:auto; box-shadow:none }
+
   /* --- LA COLLECTE : une plaque par section, chacune de sa couleur.
      « tu devras separer chaque categorie » : quatre lignes dans un
      meme panneau se lisaient comme une seule liste. Quatre plaques de
