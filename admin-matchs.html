@@ -16979,11 +16979,16 @@
       q('evenements?select=id,titre,debut,fin,lieu,actif&actif=eq.true&order=debut.asc'),
       peutVoir('caisse') ? q('caisse_mouvements?select=sens,montant_fcfa,date&date=gte.' + debutMois) : Promise.resolve(null),
       peutVoir('caisse') ? q('academy_payments?select=amount_fcfa,paid_on&paid_on=gte.' + debutMois) : Promise.resolve([]),
-      sbGet('saisons?select=label,debut,fin,etat&etat=eq.en_cours&limit=1').catch(function(){ return []; })
+      sbGet('saisons?select=label,debut,fin,etat&etat=eq.en_cours&limit=1').catch(function(){ return []; }),
+      // LE BILAN DE LA SAISON, qui n'est PAS l'agenda. D.matchs ci-dessus
+      // s'arrete a quatorze jours : aucun match passe, donc aucune issue a
+      // compter. On lit match_center, la meme vue que l'affiche et que MAYA,
+      // pour que les trois disent le meme chiffre.
+      q('match_center?select=id,statut,issue,score_baobabs,score_opponent&order=match_date.asc&limit=400')
     ]).then(function(r){
       if (jeton !== tbChargement) return;
       tbD = { joueuses: r[0], pieces: r[1], dossiers: r[2], candidatures: r[3], commandes: r[4], billets: r[5], messages: r[6], abonnes: r[7], articles: r[8],
-              matchs: r[9], seances: r[10], ecoleSeances: r[11], evenements: r[12], mouvements: r[13], paiements: r[14], saison: (r[15] || [])[0] || null,
+              matchs: r[9], resultats: r[16], seances: r[10], ecoleSeances: r[11], evenements: r[12], mouvements: r[13], paiements: r[14], saison: (r[15] || [])[0] || null,
               mois: mois, depuisIso: depuisIso, auj: auj, peut: peutVoir };
       tbRender();
     });
@@ -17213,15 +17218,15 @@
     /* LE BILAN : deux nombres, pas une courbe. Un match sans score n'est
        pas un match nul -- il est simplement hors du compte, et la carte
        le dit plutot que de le noyer. */
-    if (D.peut('matchs') && D.matchs){
-      var joues = D.matchs.filter(function(m){ return m.score_baobabs != null && m.score_opponent != null; });
+    if (D.peut('matchs') && D.resultats){
+      var joues = D.resultats.filter(function(m){ return m.score_baobabs != null && m.score_opponent != null; });
       var v = joues.filter(function(m){ return m.issue === 'V'; }).length;
       var df = joues.filter(function(m){ return m.issue === 'D'; }).length;
-      var attente = D.matchs.filter(function(m){
+      var attente = D.resultats.filter(function(m){
         return m.statut !== 'a_venir' && m.statut !== 'aujourdhui' &&
                (m.score_baobabs == null || m.score_opponent == null);
       }).length;
-      if (D.matchs.length){
+      if (D.resultats.length){
         series.push({ nom: 'Bilan', duo: [v, df], go: 'results',
                       pied: joues.length + ' match' + (joues.length > 1 ? 's' : '') + ' compté' + (joues.length > 1 ? 's' : ''),
                       note: attente ? attente + ' score' + (attente > 1 ? 's' : '') + ' à saisir' : '' });
