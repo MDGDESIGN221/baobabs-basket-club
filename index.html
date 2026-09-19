@@ -569,6 +569,8 @@ window.bbLienSur = function (u) {
   .bb-sm-cd{text-align:right;font-family:'Anton',sans-serif;font-weight:400;letter-spacing:.01em;line-height:.9;font-size:clamp(22px,3.4vw,36px);color:#F3EFE6;white-space:nowrap}
   .bb-sm-cd small{display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:#7E8A82;margin-top:5px}
   .bb-sm-cd.soon{color:#A8D93B}
+  /* Joue, score pas encore saisi : en retrait, ni vert ni dore. */
+  .bb-sm-cd.bb-sm-attente{color:#7E8A82}
 
   /* La ligne du jour : le seul repère absolu de la colonne. */
   .bb-today{position:relative;display:flex;align-items:center;gap:12px;padding:clamp(15px,2vw,20px) 0}
@@ -7108,8 +7110,12 @@ window.bbCloud = function(url, w){
   function openMatch(id){
     var m = bbMatchById(id); if (!m) return;
     var joue = m.score_baobabs != null && m.score_opponent != null;
+    // Date passee, score absent : le match a eu lieu, la fiche ne doit
+    // pas dire « À venir · C'est aujourd'hui » le lendemain.
+    var j = m.match_date ? daysUntil(m.match_date) : null;
+    var attente = !joue && j != null && j < 0;
     var nous = m.is_home ? 'Baobabs' : (m.opponent_name || 'Adversaire');
-    document.getElementById('bb-match-kicker').textContent = joue ? 'Résultat' : 'À venir';
+    document.getElementById('bb-match-kicker').textContent = joue ? 'Résultat' : (attente ? 'Joué' : 'À venir');
     document.getElementById('bb-match-title').textContent = (m.is_home ? 'Baobabs reçoit ' : 'Baobabs chez ') + (m.opponent_name || 'Adversaire');
     document.getElementById('bb-match-meta').textContent = [formatDateShort(m.match_date), m.match_time ? String(m.match_time).slice(0,5) : null, m.venue, m.competition].filter(Boolean).join(' · ');
 
@@ -7129,8 +7135,9 @@ window.bbCloud = function(url, w){
       }
       if (m.recap) html += '<div class="bb-mx-h">Le match</div><div style="font-size:14px;line-height:1.7;color:#C7CFC8">' + bbRich(m.recap) + '</div>';
       if (m.attendance) html += '<p style="font-size:12.5px;color:#7E8A82;margin:14px 0 0">' + m.attendance + ' spectateurs</p>';
+    } else if (attente){
+      html += '<div class="bb-mx-score"><b style="color:#7E8A82;font-size:.72em">Score à venir</b></div>';
     } else {
-      var j = m.match_date ? daysUntil(m.match_date) : null;
       html += '<div class="bb-mx-score"><b style="color:var(--bb-or);font-size:.72em">' + (j == null ? '' : (j <= 0 ? "C'est aujourd'hui" : (j === 1 ? 'Demain' : 'J-' + j))) + '</b></div>';
       // Comment entrer : c'est la première question qu'on se pose en
       // ouvrant la fiche d'un match à venir.
@@ -11537,7 +11544,10 @@ window.bbCloud = function(url, w){
     bbSet('bb-hs-f1v', s.hs_f1_value); bbSet('bb-hs-f1l', s.hs_f1_label);
     bbSet('bb-hs-f2v', s.hs_f2_value); bbSet('bb-hs-f2l', s.hs_f2_label);
     bbSet('bb-hs-f3v', s.hs_f3_value); bbSet('bb-hs-f3l', s.hs_f3_label);
-    bbSet('bb-hs-matchlabel', s.hs_match_label);
+    // Sans match a venir, la carte montre le dernier joue et s'intitule
+    // « Dernier match » (renderNextMatch) : le reglage ne doit pas lui
+    // remettre « Prochain match » par-dessus.
+    if (!window.bbHeroDernier) bbSet('bb-hs-matchlabel', s.hs_match_label);
     bbSet('bb-hs-alaune', s.hs_alaune_label);
     // Boutons : libellé + destination (page du site, modale ou URL complète).
     [['bb-hs-btn1', s.hs_btn1_label, s.hs_btn1_url],
@@ -12524,6 +12534,13 @@ document.addEventListener('keydown', function(e){
     return m.score_baobabs !== null && m.score_baobabs !== undefined &&
            m.score_opponent !== null && m.score_opponent !== undefined;
   }
+  // UN MATCH D'HIER SANS SCORE N'EST PLUS « A VENIR ».
+  // Le site ne triait que sur le score : tant que la table de marque
+  // n'avait pas saisi le resultat, le match restait le « prochain », et
+  // son compte a rebours, negatif, s'affichait « AUJOURD'HUI » -- le
+  // lendemain, et les jours suivants. La date tranche : passe, le match
+  // a eu lieu, c'est le score qui attend.
+  function isPast(m){ return !!m.match_date && daysUntil(m.match_date) < 0; }
 
   /* CES TROIS UTILITAIRES SONT AUSSI APPELES PLUS HAUT.
      La fiche d'un match (openMatch) vit dans un AUTRE bloc <script>, qui
@@ -12595,7 +12612,11 @@ document.addEventListener('keydown', function(e){
   }
 
   // ===== Carte "Prochain match" (accueil) =====
-  function renderNextMatch(upcoming){
+  // La carte montre le match le plus proche d'aujourd'hui : le prochain
+  // s'il y en a un, sinon le dernier joue, score saisi ou pas. Sans match
+  // a venir, elle gardait son gabarit d'attente -- une affiche inventee,
+  // « DUC Dakar · SAM 12 JUIL · J-3 », en haut du site.
+  function renderNextMatch(upcoming, played, attente){
     // Depose AVANT le garde-fou : sans match a venir, la pastille du
     // direct doit repasser au texte de l'admin, pas garder une date
     // depassee.
@@ -12611,10 +12632,40 @@ document.addEventListener('keydown', function(e){
       if (window.bbDirectPeindre) window.bbDirectPeindre();
     }
     var card = document.getElementById('bb-next-match');
-    if (!card || !upcoming || !upcoming.length) return; // garde le contenu statique de secours
+    if (!card) return;
+    var dernier = !(upcoming && upcoming.length);
     var m = upcoming[0];
-    var d = daysUntil(m.match_date);
-    var badge = d <= 0 ? 'AUJOURD\u2019HUI' : ('J-' + d);
+    if (dernier){
+      // Le dernier match : le plus recent des deux listes du passe, celle
+      // des scores saisis et celle des scores qui attendent.
+      [(attente || [])[0], (played || [])[0]].forEach(function(x){
+        if (x && (!m || String(x.match_date || '') > String(m.match_date || ''))) m = x;
+      });
+    }
+    // Aucun match en base : la carte s'efface, elle n'a rien a dire.
+    card.classList.toggle('bb-hide', !m);
+    if (!m) return;
+    var badge;
+    if (!dernier){
+      var d = daysUntil(m.match_date);
+      badge = d <= 0 ? 'AUJOURD\u2019HUI' : ('J-' + d);
+    } else {
+      badge = isPlayed(m) ? (m.score_baobabs + ' \u2013 ' + m.score_opponent) : 'SCORE \u00c0 VENIR';
+    }
+    // Le libelle est administrable (\u00ab Prochain match \u00bb) et l'hydratation
+    // des reglages peut arriver apres nous : le drapeau lui dit de ne pas
+    // remettre \u00ab Prochain match \u00bb sur un match deja joue.
+    window.bbHeroDernier = dernier;
+    var lab = document.getElementById('bb-hs-matchlabel');
+    if (lab && dernier){
+      if (lab.dataset.bbAvant == null) lab.dataset.bbAvant = lab.textContent;
+      lab.textContent = 'Dernier match';
+    } else if (lab && lab.dataset.bbAvant != null){
+      lab.textContent = lab.dataset.bbAvant;
+    }
+    // Pas de billet pour un match passe.
+    var tk = document.getElementById('bb-hs-ticket');
+    if (tk) tk.classList.toggle('bb-hide', dernier);
 
     var homeName = m.is_home ? 'BAOBABS' : m.opponent_name.toUpperCase();
     var awayName = m.is_home ? m.opponent_name.toUpperCase() : 'BAOBABS';
@@ -12642,8 +12693,15 @@ document.addEventListener('keydown', function(e){
     var infoBlock = document.getElementById('bb-next-match-info');
     if (infoBlock) {
       var timeStr = m.match_time ? ' · ' + m.match_time : '';
+      var verdict = '';
+      if (dernier && isPlayed(m)){
+        var gagne = m.score_baobabs > m.score_opponent, nul = m.score_baobabs === m.score_opponent;
+        verdict = '<div style="font-weight:700;color:' + (gagne ? '#A8D93B' : (nul ? 'var(--bb-or)' : '#B9C2BB')) + '">' +
+          (gagne ? 'Victoire' : (nul ? 'Match nul' : 'Défaite')) + '</div>';
+      }
       infoBlock.innerHTML =
         '<div style="font-family:\'Inter\',sans-serif;font-weight:500;letter-spacing:.05em;color:#F3EFE6;font-size:15px">' + escHtml(formatDateLong(m.match_date) + timeStr) + '</div>' +
+        verdict +
         (m.venue ? '<div>' + escHtml(m.venue) + '</div>' : '');
     }
   }
@@ -12674,15 +12732,19 @@ document.addEventListener('keydown', function(e){
     if (!bbSaison || !m || !m.match_date) return true;
     return m.match_date >= bbSaison.debut && m.match_date <= bbSaison.fin;
   }
-  function renderSeason(played, upcoming){
+  function renderSeason(played, upcoming, attente){
     var el = document.getElementById('bb-season');
     if (!el) return;
     // La saison se lit une fois ; si elle arrive apres le premier rendu,
     // on redessine avec elle.
-    if (!bbSaisonLue) bbLireSaison().then(function(s){ if (s) renderSeason(played, upcoming); });
+    if (!bbSaisonLue) bbLireSaison().then(function(s){ if (s) renderSeason(played, upcoming, attente); });
 
-    var past = (played || []).filter(bbDansSaison).sort(function(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); });
-    var next = (upcoming || []).filter(bbDansSaison).sort(function(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); });
+    function parDate(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); }
+    var joues = (played || []).filter(bbDansSaison).sort(parDate);
+    // Un match joue dont le score attend se range au-dessus de la ligne
+    // du jour, avec les autres : il a eu lieu.
+    var past = joues.concat((attente || []).filter(bbDansSaison)).sort(parDate);
+    var next = (upcoming || []).filter(bbDansSaison).sort(parDate);
 
     if (!past.length && !next.length){
       el.innerHTML = '<p style="font-family:\'Inter\',sans-serif;font-size:14px;line-height:1.6;color:#7E8A82;margin:0;padding-left:0">La saison n\'a pas encore commencé. Le premier match apparaîtra ici dès qu\'il sera programmé.</p>';
@@ -12699,7 +12761,10 @@ document.addEventListener('keydown', function(e){
     var cnt = document.getElementById('bb-season-count');
     if (cnt) cnt.textContent = (bbSaison ? 'Saison ' + bbSaison.label + ' · ' : '') + past.length + ' joué' + (past.length > 1 ? 's' : '') + ' · ' + next.length + ' à venir';
 
-    function row(m, isPlayed, isNext){
+    function row(m, passe, isNext){
+      // `passe` dit le cote de la ligne du jour ; le score, lui, peut
+      // encore manquer sur un match d'hier.
+      var joue = passe && isPlayed(m);
       var d = m.match_date ? new Date(m.match_date + 'T12:00:00') : null;
       var jour = d ? d.getDate() : '—';
       var mois = d ? BB_MOIS[d.getMonth()] : '';
@@ -12709,7 +12774,7 @@ document.addEventListener('keydown', function(e){
         : '<div class="bb-sm-crest" style="display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:14px;color:#fff;background:' + fallbackColor(m.opponent_name || '?') + '">' + escHtml(initials(m.opponent_name || '?')) + '</div>';
 
       var right;
-      if (isPlayed){
+      if (joue){
         var sb = m.score_baobabs, so = m.score_opponent;
         var cb = sb > so ? 'win' : (sb < so ? 'lose' : 'draw');
         var co = so > sb ? 'win' : (so < sb ? 'lose' : 'draw');
@@ -12717,6 +12782,10 @@ document.addEventListener('keydown', function(e){
         var l = m.is_home ? [sb, cb] : [so, co];
         var r = m.is_home ? [so, co] : [sb, cb];
         right = '<div class="bb-sm-score"><span class="' + l[1] + '">' + l[0] + '</span><i>–</i><span class="' + r[1] + '">' + r[0] + '</span></div>';
+      } else if (passe){
+        // Joue, score pas encore saisi : ni un compte a rebours, ni un
+        // resultat invente.
+        right = '<div class="bb-sm-cd bb-sm-attente">Joué<small>Score à venir</small></div>';
       } else {
         var j = m.match_date ? daysUntil(m.match_date) : null;
         var lab = j == null ? '' : (j <= 0 ? "Aujourd'hui" : (j === 1 ? 'Demain' : 'J-' + j));
@@ -12725,15 +12794,15 @@ document.addEventListener('keydown', function(e){
           (heure ? '<small>' + escHtml(heure) + '</small>' : '') + '</div>';
       }
 
-      var fav = isPlayed ? '' : bbFavBtn('match', m.id, 'flex:none;align-self:center');
-      return '<div class="bb-sm' + (isPlayed ? ' played' : '') + (isNext ? ' next' : '') + '" data-match="' + m.id + '" style="cursor:pointer" tabindex="0" role="button" aria-label="Voir la fiche du match">' +
+      var fav = passe ? '' : bbFavBtn('match', m.id, 'flex:none;align-self:center');
+      return '<div class="bb-sm' + (passe ? ' played' : '') + (isNext ? ' next' : '') + '" data-match="' + m.id + '" style="cursor:pointer" tabindex="0" role="button" aria-label="Voir la fiche du match">' +
         '<span class="bb-sm-node"></span>' +
         '<span class="bb-sm-date"><b class="bb-sm-d">' + jour + '</b><b class="bb-sm-m">' + mois + '</b></span>' +
         '<div class="bb-sm-team">' + crest +
           '<div style="min-width:0">' +
             '<div class="bb-sm-name"><span class="bb-sm-vs">' + (m.is_home ? 'Reçoit' : 'Se déplace chez') + '</span><br>' + escHtml(m.opponent_name || 'Adversaire') + '</div>' +
             '<div class="bb-sm-sub">' + escHtml([m.venue, m.competition].filter(Boolean).join(' · ') || '') +
-              (!isPlayed && m.free_entry ? '<b class="bb-sm-libre">Entrée gratuite</b>' : '') + '</div>' +
+              (!passe && m.free_entry ? '<b class="bb-sm-libre">Entrée gratuite</b>' : '') + '</div>' +
           '</div>' +
         '</div>' + right + fav +
       '</div>';
@@ -12745,7 +12814,10 @@ document.addEventListener('keydown', function(e){
     html += next.map(function(m, i){ return row(m, false, i === 0); }).join('');
     el.innerHTML = html;
     if (window.bbFavPaint) bbFavPaint(el);
-    if (window.bbAppFeed) bbAppFeed.matches(past, next);
+    // L'ecran de l'appli affiche un score : il ne lit que les matchs qui
+    // en ont un, sinon il collerait l'adversaire d'hier sur le score de
+    // la maquette.
+    if (window.bbAppFeed) bbAppFeed.matches(joues, next);
 
     bbSeasonReveal(el);
   }
@@ -12800,7 +12872,7 @@ document.addEventListener('keydown', function(e){
       '<div style="font-family:\'Inter\',sans-serif;font-weight:800;font-size:19px;color:#F3EFE6;line-height:1.25">' + value + '</div>' +
       (sub ? '<div style="font-size:13px;color:' + (accent || '#7E8A82') + ';margin-top:5px">' + sub + '</div>' : '');
   }
-  function renderCompSummary(played, upcoming){
+  function renderCompSummary(played, upcoming, attente){
     var nextEl = document.getElementById('bb-comp-next');
     if (nextEl) {
       if (upcoming && upcoming.length) {
@@ -12811,7 +12883,12 @@ document.addEventListener('keydown', function(e){
     }
     var lastEl = document.getElementById('bb-comp-last');
     if (lastEl) {
-      if (played && played.length) {
+      // Le match d'hier passe avant l'avant-dernier resultat, meme sans
+      // score : la carte dit qu'il a eu lieu et que le score arrive.
+      var a = (attente || [])[0];
+      if (a && (!played || !played.length || String(a.match_date || '') > String(played[0].match_date || ''))) {
+        lastEl.innerHTML = compCardHtml('Dernier résultat', 'Baobabs ' + (a.is_home ? 'vs ' : '@ ') + escHtml(a.opponent_name), 'Score à venir · ' + formatDateShort(a.match_date), '#B9C2BB');
+      } else if (played && played.length) {
         var p = played[0]; var won = p.score_baobabs > p.score_opponent, nul = p.score_baobabs === p.score_opponent;
         lastEl.innerHTML = compCardHtml('Dernier résultat', 'Baobabs ' + p.score_baobabs + '–' + p.score_opponent + ' ' + escHtml(p.opponent_name), (won ? 'Victoire' : (nul ? 'Match nul' : 'Défaite')) + ' · ' + formatDateShort(p.match_date), won ? '#A8D93B' : '#B9C2BB');
       } else lastEl.innerHTML = compCardHtml('Dernier résultat', 'Saison à venir', '');
@@ -12832,17 +12909,21 @@ document.addEventListener('keydown', function(e){
     // clair, au lieu de compter sur la globale implicite -- c'est cette
     // ambiguite qui avait fait croire a deux listes.
     window.bbMatches = matches;
-    var played = matches.filter(isPlayed).sort(function(a, b){ return b.match_date.localeCompare(a.match_date); });
-    var upcoming = matches.filter(function(m){ return !isPlayed(m); });
+    function recentEnTete(a, b){ return String(b.match_date || '').localeCompare(String(a.match_date || '')); }
+    var played = matches.filter(isPlayed).sort(recentEnTete);
+    // Trois listes, pas deux : le score saisi, la date passee sans score
+    // (joue, en attente), et l'avenir. Un match sans date reste a venir.
+    var attente = matches.filter(function(m){ return !isPlayed(m) && isPast(m); }).sort(recentEnTete);
+    var upcoming = matches.filter(function(m){ return !isPlayed(m) && !isPast(m); });
     renderResults(played);
-    renderNextMatch(upcoming);
+    renderNextMatch(upcoming, played, attente);
     if (window.renderAppCalendar) window.renderAppCalendar(upcoming);
     if (window.renderAppTicket) window.renderAppTicket(upcoming);
     if (window.renderAppLive) window.renderAppLive(played);
     renderFixtures(upcoming);
-    renderSeason(played, upcoming);
+    renderSeason(played, upcoming, attente);
     renderFixturesGuard(upcoming);
-    renderCompSummary(played, upcoming);
+    renderCompSummary(played, upcoming, attente);
   })
   .catch(function(err){
     console.warn('Données matchs Supabase indisponibles, contenu de secours conservé.', err);
