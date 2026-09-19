@@ -1524,6 +1524,8 @@ window.bbLienSur = function (u) {
     display:grid; grid-template-columns:minmax(0,1fr) 34px;
   }
   .bb-lu-in{ min-width:0; padding:clamp(20px,2.6vw,30px) clamp(16px,2.4vw,26px) clamp(18px,2.2vw,24px) }
+  /* deux annonces l'une sous l'autre : le cinq du match, puis la selection */
+  .bb-lu + .bb-lu{ margin-top:clamp(24px,3.4vw,44px) }
 
   /* La tranche : une affiche a un dos. Sur un telephone elle rend ses
      34 px au cadre, qui en a plus besoin qu'elle. */
@@ -4069,6 +4071,11 @@ window.bbLienSur = function (u) {
                                xChannelSelector="R" yChannelSelector="G"/>
           </filter>
         </svg>
+        <!-- UN BLOC PAR ANNONCE. Le cinq d'un match, puis chaque
+             presentation active (la selection d'un tournoi, une liste),
+             chacun avec sa scene, son en-tete et son pied : « on ne
+             melange pas le match et la selection, chacun son bloc ».
+             Ce premier bloc sert de gabarit : bbLuBloc() le clone. -->
         <div class="bb-lu">
           <div class="bb-lu-in">
             <header class="bb-lu-top">
@@ -4082,7 +4089,7 @@ window.bbLienSur = function (u) {
             <div class="bb-lu-scene" id="bb-lu-five"></div>
 
             <div class="bb-lu-under">
-              <div id="bb-lu-coach-wrap"></div>
+              <div class="bb-lu-coach-wrap" id="bb-lu-coach-wrap"></div>
               <div class="bb-lu-mt" id="bb-lu-mt"></div>
             </div>
           </div>
@@ -8829,9 +8836,55 @@ window.bbCloud = function(url, w){
      la page.
      =================================================================== */
   var BB_LU_DUREE = 4400, BB_LU_BANC = 5600, BB_LU_INTRO = 2700, BB_LU_DUEL = 3200;
-  var bbLuScene = { i:0, n:0, t:null, tSort:null, forme:null, tForme:null, dernier:-1,
-                    obs:null, vu:false, fige:false,
-                    depuis:0, duree:0, hote:null, compteurs:[] };
+  /* UNE INSTANCE PAR SCENE. Il n'y avait qu'une scene, donc un seul
+     etat ; il y a maintenant un bloc par annonce (le cinq, puis chaque
+     presentation), chacun avec ses minuteurs, son observateur et sa
+     place dans la boucle. bbLuScenes les garde toutes pour le chien de
+     garde et la visibilite ; l'hote porte la sienne (h.__sc). */
+  var bbLuScenes = [];
+  var bbLuTemoinData = null;        /* ce que l'admin a envoye au temoin, s'il a parle */
+  function bbLuSceneDe(h){
+    if (h.__sc) return h.__sc;
+    var sc = { i:0, n:0, t:null, tSort:null, forme:null, tForme:null, dernier:-1,
+               obs:null, vu:false, fige:false, depuis:0, duree:0, hote:h, compteurs:[] };
+    h.__sc = sc; bbLuScenes.push(sc);
+    return sc;
+  }
+  function bbLuSceneEteindre(sc){
+    if (!sc) return;
+    clearTimeout(sc.t); clearTimeout(sc.tSort); clearTimeout(sc.tForme); clearInterval(sc.forme);
+    (sc.compteurs || []).forEach(cancelAnimationFrame);
+    if (sc.obs) sc.obs.disconnect();
+    var k = bbLuScenes.indexOf(sc); if (k >= 0) bbLuScenes.splice(k, 1);
+    if (sc.hote) sc.hote.__sc = null;
+  }
+  /* LES BLOCS. Le premier est dans la page ; les suivants en sont des
+     clones, sans identifiants (un identifiant ne vit qu'une fois). On
+     en demande k, on obtient le k-ieme ; on en garde n, le reste part. */
+  var bbLuGabarit = null;
+  function bbLuBloc(k){
+    var sec = document.getElementById('bb-lineup'); if (!sec) return null;
+    var blocs = sec.querySelectorAll('.bb-lu');
+    if (!bbLuGabarit && blocs[0]){
+      bbLuGabarit = blocs[0].cloneNode(true);
+      bbLuGabarit.querySelectorAll('[id]').forEach(function(el){ el.removeAttribute('id'); });
+    }
+    while (blocs.length <= k){
+      var neuf = bbLuGabarit.cloneNode(true);
+      sec.appendChild(neuf);
+      blocs = sec.querySelectorAll('.bb-lu');
+    }
+    return blocs[k];
+  }
+  function bbLuBlocsGarder(n){
+    var sec = document.getElementById('bb-lineup'); if (!sec) return;
+    var blocs = sec.querySelectorAll('.bb-lu');
+    for (var k = blocs.length - 1; k >= Math.max(1, n); k--){
+      var h = blocs[k].querySelector('.bb-lu-scene');
+      if (h && h.__sc) bbLuSceneEteindre(h.__sc);
+      blocs[k].parentNode.removeChild(blocs[k]);
+    }
+  }
 
   function bbLuPeu(){
     return window.bbCalme();
@@ -8874,13 +8927,13 @@ window.bbCloud = function(url, w){
      data-v (sinon un deuxieme passage brouillerait du brouillage), et
      on s'arrete net si quelqu'un a demande moins d'animation. */
   var BB_LU_ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  function bbLuFormer(acte){
-    clearInterval(bbLuScene.forme);
+  function bbLuFormer(sc, acte){
+    clearInterval(sc.forme);
     if (!acte || bbLuPeu()) return;
     var l = acte.querySelectorAll('.bb-lu-fam .bb-lu-l');
     if (!l.length) return;
     var debut = Date.now(), duree = 560 + l.length * 34;
-    bbLuScene.forme = setInterval(function(){
+    sc.forme = setInterval(function(){
       var avance = (Date.now() - debut) / duree;
       var figees = avance * l.length * 1.35;
       for (var k = 0; k < l.length; k++){
@@ -8890,7 +8943,7 @@ window.bbCloud = function(url, w){
       }
       if (avance >= 1){
         for (var j = 0; j < l.length; j++) l[j].textContent = l[j].getAttribute('data-v') || '';
-        clearInterval(bbLuScene.forme);
+        clearInterval(sc.forme);
       }
     }, 52);
   }
@@ -8919,9 +8972,9 @@ window.bbCloud = function(url, w){
      zero a leur valeur pendant que la tuile se releve : c'est le geste
      des habillages de retransmission. Qui a demande moins d'animation
      voit la valeur tout de suite. */
-  function bbLuCompter(acte){
-    (bbLuScene.compteurs || []).forEach(cancelAnimationFrame);
-    bbLuScene.compteurs = [];
+  function bbLuCompter(sc, acte){
+    (sc.compteurs || []).forEach(cancelAnimationFrame);
+    sc.compteurs = [];
     if (!acte) return;
     acte.querySelectorAll('.bb-lu-tuile b[data-n]').forEach(function(b, k){
       var fin = parseFloat(b.getAttribute('data-n')), dec = parseInt(b.getAttribute('data-dec'), 10) || 0;
@@ -8936,9 +8989,9 @@ window.bbCloud = function(url, w){
         var x = Math.min(1, Math.max(0, (t - t0 - depart) / duree));
         var e = 1 - Math.pow(1 - x, 3);            /* freine en arrivant */
         ecrire(fin * e);
-        if (x < 1){ id = requestAnimationFrame(pas); bbLuScene.compteurs.push(id); }
+        if (x < 1){ id = requestAnimationFrame(pas); sc.compteurs.push(id); }
       };
-      id = requestAnimationFrame(pas); bbLuScene.compteurs.push(id);
+      id = requestAnimationFrame(pas); sc.compteurs.push(id);
     });
   }
   /* LA BARRE EN SEGMENTS : un segment par acte, ceux qui sont passes
@@ -9249,16 +9302,16 @@ window.bbCloud = function(url, w){
     });
   }
 
-  function bbLuAller(i){
-    var h = bbLuScene.hote; if (!h || !bbLuScene.n) return;
-    bbLuScene.i = ((i % bbLuScene.n) + bbLuScene.n) % bbLuScene.n;
+  function bbLuAller(sc, i){
+    var h = sc && sc.hote; if (!h || !sc.n) return;
+    sc.i = ((i % sc.n) + sc.n) % sc.n;
     var actes = h.querySelectorAll('.bb-lu-act'), vgs = h.querySelectorAll('.bb-lu-vg');
     // QUI SORT, SORT VRAIMENT. On marque l'acte qui s'en va : il reste
     // visible le temps de reculer et de se reduire. Sans lui, il n'y a
     // pas de transition -- seulement deux etats qui se succedent.
-    var avant = bbLuScene.dernier;
+    var avant = sc.dernier;
     for (var k = 0; k < actes.length; k++){
-      var on = k === bbLuScene.i;
+      var on = k === sc.i;
       actes[k].classList.toggle('on', on);
       actes[k].classList.toggle('sort', !on && k === avant);
       actes[k].setAttribute('aria-hidden', on ? 'false' : 'true');
@@ -9272,14 +9325,14 @@ window.bbCloud = function(url, w){
     }
     // le nom se forme au moment ou les lettres finissent de monter
     var actif = h.querySelector('.bb-lu-act.on');
-    clearTimeout(bbLuScene.tForme);
-    bbLuScene.tForme = setTimeout(function(){ bbLuFormer(actif); }, 150);
-    bbLuCompter(actif);
+    clearTimeout(sc.tForme);
+    sc.tForme = setTimeout(function(){ bbLuFormer(sc, actif); }, 150);
+    bbLuCompter(sc, actif);
     // le fond bascule d'un cote a l'autre a chaque acte
     var cadre = h.querySelector('.bb-lu-cadre');
-    if (cadre) cadre.setAttribute('data-pair', String(bbLuScene.i % 2));
+    if (cadre) cadre.setAttribute('data-pair', String(sc.i % 2));
     // « 3 / 5 » : on sait ou l'on en est, et combien il en reste.
-    var rang = h.querySelector('#bb-lu-rang');
+    var rang = h.querySelector('.bb-lu-rang');
     if (rang && actif){
       // Un acte qui n'est pas une joueuse porte son libelle ; une joueuse
       // porte son rang, et l'hote le total et le mot (titulaires,
@@ -9296,11 +9349,11 @@ window.bbCloud = function(url, w){
         : estBanc  ? 'Le banc'
         : '<b>' + (k + 1) + '</b> / ' + joueuses.length + ' ' + esc(h.getAttribute('data-mot') || 'titulaires');
     }
-    bbLuScene.dernier = bbLuScene.i;
+    sc.dernier = sc.i;
     // la classe « sort » ne sert qu'au temps de la sortie : on la retire
     // pour qu'un acte revenu plus tard reparte propre.
-    clearTimeout(bbLuScene.tSort);
-    bbLuScene.tSort = setTimeout(function(){
+    clearTimeout(sc.tSort);
+    sc.tSort = setTimeout(function(){
       h.querySelectorAll('.bb-lu-act.sort').forEach(function(a){ a.classList.remove('sort'); });
     }, 700);
     var duree = h.querySelector('.bb-lu-act.on.bb-lu-act-intro') ? BB_LU_INTRO
@@ -9308,13 +9361,14 @@ window.bbCloud = function(url, w){
               : h.querySelector('.bb-lu-act.on.bb-lu-act-banc')   ? BB_LU_BANC
               : BB_LU_DUREE;
     h.style.setProperty('--bb-lu-duree', duree + 'ms');
-    bbLuScene.depuis = Date.now();
-    bbLuScene.duree = duree;
-    bbLuRelancer(duree);
+    sc.depuis = Date.now();
+    sc.duree = duree;
+    bbLuRelancer(sc, duree);
   }
-  function bbLuRelancer(duree){
-    clearTimeout(bbLuScene.t);
-    if (bbLuScene.fige || !bbLuScene.vu || document.hidden) return;
+  function bbLuRelancer(sc, duree){
+    if (!sc) return;
+    clearTimeout(sc.t);
+    if (sc.fige || !sc.vu || document.hidden) return;
     // MOINS D'ANIMATION NE VEUT PAS DIRE PLUS RIEN.
     // On coupait la boucle entiere quand le systeme demande moins
     // d'animation : les quatre autres joueuses devenaient invisibles, et
@@ -9322,7 +9376,7 @@ window.bbCloud = function(url, w){
     // feuille de style, elle, supprime les mouvements. C'est une
     // succession d'images fixes, pas un mouvement, et on laisse plus de
     // temps pour lire chacune.
-    bbLuScene.t = setTimeout(function(){ bbLuAller(bbLuScene.i + 1); },
+    sc.t = setTimeout(function(){ bbLuAller(sc, sc.i + 1); },
       (duree || BB_LU_DUREE) * (bbLuPeu() ? 1.5 : 1));
   }
   /* LA BOUCLE NE S'ARRETE PAS.
@@ -9342,26 +9396,28 @@ window.bbCloud = function(url, w){
      regarde toutes les deux secondes si elle devrait avoir avance et ne
      l'a pas fait -- minuteur perdu par une mise en veille, onglet revenu
      au premier plan -- et la fait repartir. */
-  function bbLuRedemarrer(){
-    var h = bbLuScene.hote; if (!h || !bbLuScene.n) return;
+  function bbLuRedemarrer(sc){
+    var h = sc && sc.hote; if (!h || !sc.n) return;
     // on retire l'etat « on » avant de le remettre : une transition ne
     // rejoue pas si la classe ne bouge pas.
     h.querySelectorAll('.bb-lu-act.on, .bb-lu-act.sort').forEach(function(a){ a.classList.remove('on'); a.classList.remove('sort'); });
     void h.offsetWidth;
-    bbLuScene.dernier = undefined;
-    bbLuAller(0);
+    sc.dernier = undefined;
+    bbLuAller(sc, 0);
   }
 
   setInterval(function(){
-    var h = bbLuScene.hote;
-    if (!h || !bbLuScene.n || !bbLuScene.vu || document.hidden) return;
-    if (!document.body.contains(h) || bbLuScene.fige) return;
-    var duree = bbLuScene.duree || BB_LU_DUREE;
-    if (Date.now() - (bbLuScene.depuis || 0) > duree + 1500) bbLuAller(bbLuScene.i + 1);
+    if (document.hidden) return;
+    bbLuScenes.slice().forEach(function(sc){
+      var h = sc.hote;
+      if (!h || !sc.n || !sc.vu || sc.fige) return;
+      if (!document.body.contains(h)){ bbLuSceneEteindre(sc); return; }
+      var duree = sc.duree || BB_LU_DUREE;
+      if (Date.now() - (sc.depuis || 0) > duree + 1500) bbLuAller(sc, sc.i + 1);
+    });
   }, 2000);
-  function bbLuScener(m, cinq, banc){
-    var h = document.getElementById('bb-lu-five'); if (!h) return;
-    clearTimeout(bbLuScene.t);
+  function bbLuScener(bloc, m, cinq, banc){
+    var h = bloc && bloc.querySelector('.bb-lu-scene'); if (!h) return;
     // LE GENERIQUE D'ABORD. Chaque tour s'ouvre par l'annonce : on ne
     // jette pas cinq visages au visage de quelqu'un qui ne sait pas
     // encore de quel match on parle.
@@ -9384,9 +9440,8 @@ window.bbCloud = function(url, w){
      un evenement. Le generique porte son titre ; s'il y a un evenement,
      son affiche vient ensuite ; puis chaque joueuse ; et le groupe
      entier pour finir. La meme scene, les memes gestes. */
-  function bbLuScenerPresentation(pres, joueuses, ev){
-    var h = document.getElementById('bb-lu-five'); if (!h) return;
-    clearTimeout(bbLuScene.t);
+  function bbLuScenerPresentation(bloc, pres, joueuses, ev){
+    var h = bloc && bloc.querySelector('.bb-lu-scene'); if (!h) return;
     var actes = [bbLuActeIntroPres(pres, joueuses, 0)];
     var vgs   = [bbLuVignette(null, 0, { kind:'intro', libelle: pres.titre || 'La s\u00e9lection' })];
     if (ev){
@@ -9406,6 +9461,10 @@ window.bbCloud = function(url, w){
     bbLuMonter(h, actes, vgs, 'joueuses');
   }
   function bbLuMonter(h, actes, vgs, mot){
+    var sc = bbLuSceneDe(h);
+    clearTimeout(sc.t); clearTimeout(sc.tSort); clearTimeout(sc.tForme); clearInterval(sc.forme);
+    (sc.compteurs || []).forEach(cancelAnimationFrame); sc.compteurs = [];
+    sc.fige = false;
     h.className = 'bb-lu-scene';
     h.setAttribute('data-mot', mot || 'titulaires');
     // La police des noms : un gout, donc un reglage. Sans reglage, celle
@@ -9427,52 +9486,55 @@ window.bbCloud = function(url, w){
       '<span class="bb-lu-court" aria-hidden="true"></span>' +
       '<span class="bb-lu-trame" aria-hidden="true"></span>' +
       '<span class="bb-lu-coin bb-lu-coin-hg" aria-hidden="true">Saison ' + bbLuSaison() + '</span>' +
-      '<span class="bb-lu-coin bb-lu-coin-hd" id="bb-lu-rang" aria-hidden="true"></span>' +
+      '<span class="bb-lu-coin bb-lu-coin-hd bb-lu-rang" aria-hidden="true"></span>' +
       '<div class="bb-lu-acts">' + actes.join('') + '</div>' +
       '</div>' +
       '<div class="bb-lu-strip" role="tablist" aria-label="Les joueuses annonc\u00e9es">' + vgs.join('') + '</div>';
-    bbLuScene.hote = h; bbLuScene.n = actes.length; bbLuScene.i = 0;
+    sc.n = actes.length; sc.i = 0; sc.dernier = -1;
 
     h.querySelectorAll('[data-go]').forEach(function(b){
-      b.addEventListener('click', function(){ bbLuAller(parseInt(b.getAttribute('data-go'), 10)); });
+      b.addEventListener('click', function(){ bbLuAller(sc, parseInt(b.getAttribute('data-go'), 10)); });
     });
 
     // Hors de l'ecran, la scene ne tourne pas : elle s'animerait en bas
     // de page pendant qu'on lit le hero. Quand elle entre dans l'ecran,
     // elle repart du generique -- on arrive sur une entree, pas sur une
     // image finie.
-    if (bbLuScene.obs) bbLuScene.obs.disconnect();
+    if (sc.obs) sc.obs.disconnect();
     if (window.IntersectionObserver){
-      bbLuScene.obs = new IntersectionObserver(function(e){
+      sc.obs = new IntersectionObserver(function(e){
         var vu = e[0].isIntersecting;
-        if (vu && !bbLuScene.vu){ bbLuScene.vu = true; bbLuRedemarrer(); }
-        else if (!vu){ bbLuScene.vu = false; clearTimeout(bbLuScene.t); }
+        if (vu && !sc.vu){ sc.vu = true; bbLuRedemarrer(sc); }
+        else if (!vu){ sc.vu = false; clearTimeout(sc.t); }
       }, { threshold:.2 });
-      bbLuScene.vu = false;
-      bbLuScene.obs.observe(h);
-    } else { bbLuScene.vu = true; bbLuAller(0); }
+      sc.vu = false;
+      sc.obs.observe(h);
+    } else { sc.vu = true; bbLuAller(sc, 0); }
 
     // le premier acte est dessine tout de suite, meme hors ecran : la
     // scene n'est jamais vide. L'observateur le rejouera a l'arrivee.
-    if (window.IntersectionObserver) bbLuAller(0);
+    if (window.IntersectionObserver) bbLuAller(sc, 0);
     bbLuNormaliser(h);
+    return sc;
   }
   document.addEventListener('visibilitychange', function(){
-    if (document.hidden) clearTimeout(bbLuScene.t); else bbLuRelancer();
+    bbLuScenes.forEach(function(sc){ if (document.hidden) clearTimeout(sc.t); else bbLuRelancer(sc); });
   });
 
-  function bbLuRendre(m, cinq, banc, coach){
-    var sec = document.getElementById('bb-lineup'); if (!sec) return;
+  function bbLuRendre(bloc, m, cinq, banc, coach){
+    var sec = document.getElementById('bb-lineup'); if (!sec || !bloc) return;
     // Rien a montrer : on ne montre rien. Le cadre vide serait pire.
     if (!m || !cinq.length) return;
+    var q = function(c){ return bloc.querySelector('.' + c); };
 
     var dom = m.is_home !== false;
     var d = bbLuDate(m.match_date, m.match_time);
 
     // ---- l'en-tete ----
-    document.getElementById('bb-lu-comp').textContent =
+    q('bb-lu-ttl').textContent = 'Cinq majeur';
+    q('bb-lu-comp').textContent =
       m.competition || m.round_label || 'Prochain match';
-    document.getElementById('bb-lu-when').textContent =
+    q('bb-lu-when').textContent =
       [d.jour, m.venue].filter(Boolean).join(' · ');
 
     // ---- la scene : les cinq, puis le banc, en boucle ----
@@ -9480,14 +9542,12 @@ window.bbCloud = function(url, w){
     // Il est maintenant le dernier acte de la scene : c'est une entree,
     // pas une note de bas de page. Le bandeau garde l'encadrement et le
     // match, qui ne sont pas des joueuses.
-    bbLuScener(m, cinq, banc);
-    var wrap = document.getElementById('bb-lu-banc-wrap');
-    if (wrap) wrap.classList.add('bb-hide');
+    bbLuScener(bloc, m, cinq, banc);
 
     // ---- l'encadrement ----
     // Sans coach renseigne, le bloc disparait. « Nom non communique »
     // occuperait une colonne pour ne rien dire.
-    document.getElementById('bb-lu-coach-wrap').innerHTML = coach
+    q('bb-lu-coach-wrap').innerHTML = coach
       ? '<p class="bb-lu-lab">Encadrement</p>' +
         '<p class="bb-lu-staff">' + esc(coach.name || '') + '</p>' +
         '<p class="bb-lu-role">' + esc(coach.role || 'Entraîneur') + '</p>'
@@ -9498,7 +9558,7 @@ window.bbCloud = function(url, w){
       return u ? '<img src="' + window.bbSafeUrl(u) + '" alt="' + esc(alt) +
                  '" loading="lazy" decoding="async">' : '';
     };
-    document.getElementById('bb-lu-mt').innerHTML =
+    q('bb-lu-mt').innerHTML =
       '<p class="bb-lu-lab">Prochain match · ' + (dom ? 'à domicile' : 'à l\'extérieur') + '</p>' +
       '<div class="bb-lu-vs">' +
         crest(BB_LU_LOGO, 'Baobabs Basket Club') +
@@ -9517,23 +9577,22 @@ window.bbCloud = function(url, w){
   /* L'EN-TETE ET LE PIED D'UNE PRESENTATION. Le titre de la section
      devient celui de la presentation ; le pied porte l'encadrement et
      l'evenement (dates, lieu) a la place du match. */
-  function bbLuRendrePresentation(pres, joueuses, ev, coach){
-    var sec = document.getElementById('bb-lineup'); if (!sec) return;
+  function bbLuRendrePresentation(bloc, pres, joueuses, ev, coach){
+    var sec = document.getElementById('bb-lineup'); if (!sec || !bloc) return;
     if (!pres || !joueuses.length) return;
-    var ttl = sec.querySelector('.bb-lu-ttl'); if (ttl) ttl.textContent = pres.titre || 'La s\u00e9lection';
-    document.getElementById('bb-lu-comp').textContent = (ev && ev.titre) || pres.kicker || '';
-    document.getElementById('bb-lu-when').textContent = ev
+    var q = function(c){ return bloc.querySelector('.' + c); };
+    q('bb-lu-ttl').textContent = pres.titre || 'La s\u00e9lection';
+    q('bb-lu-comp').textContent = (ev && ev.titre) || pres.kicker || '';
+    q('bb-lu-when').textContent = ev
       ? [ev.dates, ev.lieu].filter(Boolean).join(' \u00b7 ')
       : (pres.sous_titre || '');
-    bbLuScenerPresentation(pres, joueuses, ev);
-    var wrap = document.getElementById('bb-lu-banc-wrap');
-    if (wrap) wrap.classList.add('bb-hide');
-    document.getElementById('bb-lu-coach-wrap').innerHTML = coach
+    bbLuScenerPresentation(bloc, pres, joueuses, ev);
+    q('bb-lu-coach-wrap').innerHTML = coach
       ? '<p class="bb-lu-lab">Encadrement</p>' +
         '<p class="bb-lu-staff">' + esc(coach.name || '') + '</p>' +
         '<p class="bb-lu-role">' + esc(coach.role || 'Entra\u00eeneur') + '</p>'
       : '';
-    document.getElementById('bb-lu-mt').innerHTML = ev
+    q('bb-lu-mt').innerHTML = ev
       ? '<p class="bb-lu-lab">' + esc(String(ev.kicker || '').replace(/^\s*\u00c0 la une\s*\u00b7\s*/i, '') || 'L\u2019\u00e9v\u00e9nement') + '</p>' +
         '<div class="bb-lu-vs">' +
           '<span class="bb-lu-club">' + esc(ev.titre || '') + '</span>' +
@@ -9610,7 +9669,9 @@ window.bbCloud = function(url, w){
     // le rendu peut attendre la lecture du coach
     var cible = t.cible;
     var rendre = function(coach){
-      bbLuRendre(t.match || {}, cinq.slice(0, 5), banc, coach || null);
+      // sous le temoin, un seul bloc : celui qu'on regle
+      bbLuBlocsGarder(1);
+      bbLuRendre(bbLuBloc(0), t.match || {}, cinq.slice(0, 5), banc, coach || null);
       if (cible) bbTemoinAller(cible);
     };
     if (t.coach !== undefined) rendre(t.coach);
@@ -9621,7 +9682,8 @@ window.bbCloud = function(url, w){
     var joueuses = (t.joueuses || []).map(norm);
     var cible = t.cible;
     var rendre = function(coach){
-      bbLuRendrePresentation(t.presentation, joueuses, t.evenement || null, coach || null);
+      bbLuBlocsGarder(1);
+      bbLuRendrePresentation(bbLuBloc(0), t.presentation, joueuses, t.evenement || null, coach || null);
       if (cible) bbTemoinAller(cible);
     };
     if (t.coach !== undefined) rendre(t.coach);
@@ -9630,23 +9692,25 @@ window.bbCloud = function(url, w){
   // Un reglage de scene qui bouge : on le pose sur l'acte de la joueuse,
   // on va sur elle, et la boucle se fige le temps du reglage.
   function bbLuTemoinScene(t){
-    var h = bbLuScene.hote; if (!h) return;
-    var a = h.querySelector('.bb-lu-act[data-pid="' + String(t.pid) + '"]'); if (!a) return;
+    var a = document.querySelector('#bb-lineup .bb-lu-act[data-pid="' + String(t.pid) + '"]'); if (!a) return;
+    var h = a.closest('.bb-lu-scene'), sc = h && h.__sc; if (!sc) return;
     var vars = bbLuSceneVars({ sx:t.sx, sy:t.sy, sz:t.sz }).split(';');
     vars.forEach(function(kv){ var i = kv.indexOf(':'); a.style.setProperty(kv.slice(0, i), kv.slice(i + 1)); });
     // et dans la composition envoyee, pour qu'une relecture la garde
-    (bbLuScene.temoin ? [].concat(bbLuScene.temoin.cinq || [], bbLuScene.temoin.banc || []) : []).forEach(function(r){
+    var td = bbLuTemoinData;
+    (td ? [].concat(td.cinq || [], td.banc || [], td.joueuses || []) : []).forEach(function(r){
       if (String(r.id) === String(t.pid)){ r.scene_x = t.sx; r.scene_y = t.sy; r.scene_zoom = t.sz; }
     });
     var i = parseInt(a.getAttribute('data-i'), 10);
-    bbLuScene.fige = true; h.classList.add('bb-lu-figee');
-    clearTimeout(bbLuScene.t);
-    if (!a.classList.contains('on')) bbLuAller(i);
+    sc.fige = true; h.classList.add('bb-lu-figee');
+    clearTimeout(sc.t);
+    if (!a.classList.contains('on')) bbLuAller(sc, i);
   }
   function bbLuTemoinRejouer(){
-    var h = bbLuScene.hote; if (!h) return;
-    bbLuScene.fige = false; h.classList.remove('bb-lu-figee');
-    bbLuRedemarrer();
+    bbLuScenes.forEach(function(sc){
+      sc.fige = false; if (sc.hote) sc.hote.classList.remove('bb-lu-figee');
+      bbLuRedemarrer(sc);
+    });
   }
 
   // LE CLUB CHOISIT CE QUE L'ACCUEIL MONTRE.
@@ -9661,9 +9725,8 @@ window.bbCloud = function(url, w){
   function bbLineupReglage(){
     var s = bbReglagesCourants || {};
     var mode = String(s.lineup_mode || 'auto').trim().toLowerCase();
-    if (mode !== 'match' && mode !== 'off' && mode !== 'presentation') mode = 'auto';
-    return { mode: mode, id: String(s.lineup_match_id || '').trim(),
-             presentation: String(s.lineup_presentation_id || '').trim() };
+    if (mode !== 'match' && mode !== 'off') mode = 'auto';
+    return { mode: mode, id: String(s.lineup_match_id || '').trim() };
   }
 
   function bbLineup(){
@@ -9672,103 +9735,97 @@ window.bbCloud = function(url, w){
     // Sous le temoin de l'admin, c'est la composition envoyee qui fait
     // foi, pas celle de la base : on la rejoue a chaque relecture des
     // joueuses, au lieu de la remplacer.
-    if (bbLuScene.temoin){ bbLuTemoin(bbLuScene.temoin); return; }
+    if (bbLuTemoinData){ bbLuTemoin(bbLuTemoinData); return; }
     var reg = bbLineupReglage();
-    // Masqué à la demande : on le cache VRAIMENT, même si une
-    // composition complète existe. C'est un choix du club.
-    if (reg.mode === 'off'){ hote.style.display = 'none'; return; }
-    // UNE PRESENTATION plutot que le cinq d'un match : la selection d'un
-    // tournoi, ou n'importe quelle liste titree (voir presentations).
-    if (reg.mode === 'presentation' && reg.presentation){
-      bbLuLirePresentation(reg.presentation).then(function(d){
-        if (!d || !d.joueuses.length || bbLuScene.temoin) return;
-        return bbLuCoach().then(function(coach){ bbLuRendrePresentation(d.pres, d.joueuses, d.ev, coach); })
-          .catch(function(){ bbLuRendrePresentation(d.pres, d.joueuses, d.ev, null); });
-      }).catch(function(){});
-      return;
-    }
-    var champs = 'id,opponent_name,opponent_logo_url,match_date,match_time,venue,is_home,competition,round_label';
-    var auj = new Date().toISOString().slice(0, 10);
-    var req = (reg.mode === 'match' && reg.id)
-      ? 'matches?select=' + champs + '&id=eq.' + encodeURIComponent(reg.id) + '&limit=1'
-      : 'matches?select=' + champs + '&match_date=gte.' + auj + '&order=match_date.asc&limit=1';
-    sbFetch(req)
-      .then(function(ms){
+
+    // DEUX SOURCES, UN BLOC CHACUNE. Le cinq du match (selon le reglage
+    // auto / match / off), puis chaque presentation active -- la
+    // selection d'un tournoi, une liste -- dans l'ordre de l'admin.
+    // « On ne melange pas le match et la selection : chacun son bloc. »
+    // Les deux lectures partent ensemble ; on pose les blocs quand les
+    // deux ont repondu, pour que l'ordre ne depende pas du reseau.
+    var lireCinq = Promise.resolve(null);
+    if (reg.mode !== 'off'){
+      var champs = 'id,opponent_name,opponent_logo_url,match_date,match_time,venue,is_home,competition,round_label';
+      var auj = new Date().toISOString().slice(0, 10);
+      var req = (reg.mode === 'match' && reg.id)
+        ? 'matches?select=' + champs + '&id=eq.' + encodeURIComponent(reg.id) + '&limit=1'
+        : 'matches?select=' + champs + '&match_date=gte.' + auj + '&order=match_date.asc&limit=1';
+      lireCinq = sbFetch(req).then(function(ms){
         var m = (ms || [])[0];
-        if (!m) return;
+        if (!m) return null;
         return bbLuLignes(m.id).then(function(st){
-            var lignes = st || [];
-            if (!lignes.length) return;
-            var parId = {};
-            (typeof players !== 'undefined' ? players : []).forEach(function(p){ parId[String(p.id)] = p; });
-            // On travaille sur des copies : la composition ajoute un rang
-            // et un brassard qui n'ont pas a rester colles a la joueuse
-            // dans le reste du site.
-            var copie = function(p, l){
-              var c = {}; for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) c[k] = p[k];
-              c.rang = (l.lineup_sort == null ? null : Number(l.lineup_sort));
-              c.cap  = !!l.is_captain;
-              return c;
-            };
-            var cinq = [], banc = [];
-            lignes.forEach(function(l){
-              var p = parId[String(l.player_id)];
-              if (!p) return;                       // joueuse partie du club : deja filtree
-              (l.is_starter ? cinq : banc).push(copie(p, l));
-            });
-
-            // LE BANC AVANT LE MATCH.
-            //
-            // Une composition peut n'annoncer que les cinq. Avant la
-            // rencontre, le banc serait alors vide — pour une planche
-            // d'avant-match, c'est le contraire du but.
-            //
-            // On le deduit : les joueuses ACTIVES qui ne commencent pas.
-            // Ce n'est pas une invention, c'est une soustraction — et les
-            // blessees, les prets et les departs sont deja ecartes par le
-            // statut que l'admin tient a jour. Un banc explicitement saisi
-            // l'emporte toujours.
-            if (!banc.length){
-              var titulaire = {};
-              cinq.forEach(function(p){ titulaire[String(p.id)] = 1; });
-              banc = (typeof players !== 'undefined' ? players : []).filter(function(p){
-                return !titulaire[String(p.id)] && (p.status || 'active') === 'active';
-              }).map(function(p){ return copie(p, {}); });
-            }
-
-            // L'ORDRE DE LA PLANCHE.
-            //
-            // Celui pose dans l'admin passe avant tout : c'est un choix,
-            // pas un detail d'affichage. A defaut, le cinq se lit dans
-            // l'ordre des postes — meneuse, arriere, ailiere, ailiere
-            // forte, pivot — et le banc par numero de maillot.
-            var ordre = { PG:1, SG:2, SF:3, PF:4, C:5 };
-            var parRang = function(secours){
-              return function(a, b){
-                var ra = (a.rang == null ? 9999 : a.rang), rb = (b.rang == null ? 9999 : b.rang);
-                if (ra !== rb) return ra - rb;
-                return secours(a, b);
-              };
-            };
-            cinq.sort(parRang(function(a, b){
-              return (ordre[bbLuPos(a.pos)] || 9) - (ordre[bbLuPos(b.pos)] || 9);
-            }));
-            banc.sort(parRang(function(a, b){
-              return (parseInt(a.no, 10) || 99) - (parseInt(b.no, 10) || 99);
-            }));
-
-            // Le coach affiche sur la feuille de match : meme regle,
-            // sinon un profil en attente s'afficherait en direct.
-            // Meme raison que pour l'effectif : la table staff porte un
-            // telephone et un jeton de reprise. La vue n'en porte pas.
-            // La chaine est longue (match, lignes, coach) : si le temoin
-            // a parle entre-temps, c'est lui qui a le dernier mot, pas la
-            // base. Mesure : la vraie compo recouvrait celle envoyee.
-            var poser = function(coach){ if (!bbLuScene.temoin) bbLuRendre(m, cinq.slice(0, 5), banc, coach); };
-            return bbLuCoach().then(poser).catch(function(){ poser(null); });
+          var lignes = st || [];
+          if (!lignes.length) return null;
+          var parId = {};
+          (typeof players !== 'undefined' ? players : []).forEach(function(p){ parId[String(p.id)] = p; });
+          // On travaille sur des copies : la composition ajoute un rang
+          // et un brassard qui n'ont pas a rester colles a la joueuse
+          // dans le reste du site.
+          var copie = function(p, l){
+            var c = {}; for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) c[k] = p[k];
+            c.rang = (l.lineup_sort == null ? null : Number(l.lineup_sort));
+            c.cap  = !!l.is_captain;
+            return c;
+          };
+          var cinq = [], banc = [];
+          lignes.forEach(function(l){
+            var p = parId[String(l.player_id)];
+            if (!p) return;                       // joueuse partie du club : deja filtree
+            (l.is_starter ? cinq : banc).push(copie(p, l));
           });
+          // LE BANC AVANT LE MATCH. Une composition peut n'annoncer que
+          // les cinq ; le banc se deduit : les joueuses ACTIVES qui ne
+          // commencent pas. Un banc explicitement saisi l'emporte.
+          if (!banc.length){
+            var titulaire = {};
+            cinq.forEach(function(p){ titulaire[String(p.id)] = 1; });
+            banc = (typeof players !== 'undefined' ? players : []).filter(function(p){
+              return !titulaire[String(p.id)] && (p.status || 'active') === 'active';
+            }).map(function(p){ return copie(p, {}); });
+          }
+          // L'ORDRE DE LA PLANCHE. Celui de l'admin d'abord ; a defaut,
+          // les postes (meneuse, arriere, ailiere, ailiere forte, pivot)
+          // et le banc par numero de maillot.
+          var ordre = { PG:1, SG:2, SF:3, PF:4, C:5 };
+          var parRang = function(secours){
+            return function(a, b){
+              var ra = (a.rang == null ? 9999 : a.rang), rb = (b.rang == null ? 9999 : b.rang);
+              if (ra !== rb) return ra - rb;
+              return secours(a, b);
+            };
+          };
+          cinq.sort(parRang(function(a, b){
+            return (ordre[bbLuPos(a.pos)] || 9) - (ordre[bbLuPos(b.pos)] || 9);
+          }));
+          banc.sort(parRang(function(a, b){
+            return (parseInt(a.no, 10) || 99) - (parseInt(b.no, 10) || 99);
+          }));
+          if (!cinq.length) return null;
+          return { m: m, cinq: cinq.slice(0, 5), banc: banc };
+        });
+      }).catch(function(){ return null; });          // pas de compo lisible : pas de bloc
+    }
+
+    var lirePres = sbFetch('presentations?select=*&actif=eq.true&order=created_at.desc')
+      .then(function(rows){
+        return Promise.all((rows || []).map(function(pr){
+          return bbLuLirePresentation(pr.id).catch(function(){ return null; });
+        }));
       })
-      .catch(function(){});                          // pas de compo lisible : la section se tait
+      .then(function(ds){ return ds.filter(function(d){ return d && d.joueuses.length; }); })
+      .catch(function(){ return []; });
+
+    Promise.all([lireCinq, lirePres, bbLuCoach().catch(function(){ return null; })]).then(function(r){
+      if (bbLuTemoinData) return;                    // le temoin a parle entre-temps : il a le dernier mot
+      var cinq = r[0], pres = r[1], coach = r[2], k = 0;
+      if (cinq){ bbLuRendre(bbLuBloc(k), cinq.m, cinq.cinq, cinq.banc, coach); k++; }
+      pres.forEach(function(d){ bbLuRendrePresentation(bbLuBloc(k), d.pres, d.joueuses, d.ev, coach); k++; });
+      bbLuBlocsGarder(k);
+      if (!k){ hote.style.display = 'none'; return; }
+      hote.style.display = '';
+      hote.classList.remove('bb-hide');
+    });
   }
 
   function bbHydrate(){
@@ -10071,7 +10128,7 @@ window.bbCloud = function(url, w){
       // qu'elle est a l'ecran de l'admin, puis les reglages de scene
       // d'une joueuse a la fois, et « rejouer ».
       if (m.type === 'bbc-temoin-cinq'){
-        bbLuScene.temoin = m;
+        bbLuTemoinData = m;
         try { bbLuTemoin(m); } catch(err){ console.warn('[temoin]', err); }
         m.cible = null;                                  // un seul defilement, pas un a chaque relecture
         return;
@@ -13723,10 +13780,10 @@ document.addEventListener('keydown', function(e){
   function boot(){
     scan(); scanNumbers(); scanText(); lueurArmer(); onScroll(); sweep(); safetyNet();
     window.addEventListener('resize', onScroll, { passive: true });
-    ['bb-actus-grid','bb-home-products','bb-effectif','bb-effectif-equipes','bb-media-grid','bb-lu-five'].forEach(function(id){
+    ['bb-actus-grid','bb-home-products','bb-effectif','bb-effectif-equipes','bb-media-grid','bb-lineup'].forEach(function(id){
       var el = document.getElementById(id);
       if (!el) return;
-      new MutationObserver(function(){ window.bbRescanMotion(); }).observe(el, { childList: true });
+      new MutationObserver(function(){ window.bbRescanMotion(); }).observe(el, { childList: true, subtree: id === 'bb-lineup' });
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
