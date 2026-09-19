@@ -591,6 +591,42 @@
     return LEX.mots;
   }
 
+  /* ==================================================================
+     LE DICTIONNAIRE : UN MOT FRANCAIS N'EST PAS UNE FAUTE
+     ------------------------------------------------------------------
+     Sept fois la meme panne, et sept rustines. « Urgent » corrige en
+     « argent », « bonne journee » en « donne journee », « numero » en
+     « enumere », « convoque » en « convoq », « abonnes » en « bonne »,
+     « change » en « orange », « reseaux » en « creneaux ». A chaque
+     fois : le mot tape n'etait dans aucune des listes du club, donc le
+     correcteur le prenait pour une faute de frappe et le remplacait par
+     le mot du club le plus proche -- puis repondait a cote, avec
+     aplomb, en annoncant fierement « J'ai lu... ».
+
+     Ajouter la huitieme liste n'aurait fait que deplacer la neuvieme
+     panne. Le vrai remede est un DICTIONNAIRE : un mot qui existe en
+     francais n'est pas une faute, point.
+
+     IL NE SERT QUE DE VETO. On ne corrige JAMAIS vers lui : remplacer
+     une faute par un mot francais tire au hasard serait pire que de ne
+     rien faire. Les corrections continuent de viser le vocabulaire du
+     club, ou elles ont un sens.
+
+     ET IL PEUT MANQUER. mots.js se charge avec les autres, mais si le
+     fichier n'arrive pas, MAYA corrige comme avant : moins bien, pas
+     moins vite.
+     ================================================================== */
+  var DICO = null;
+  function connuEnFrancais(mot) {
+    if (DICO === null) {
+      DICO = {};
+      var L = (window.BaobabsMaya && window.BaobabsMaya.mots) || null;
+      if (L) for (var i = 0; i < L.length; i++) DICO[L[i]] = 1;
+      DICO.__vide = !L;
+    }
+    return !!DICO[mot];
+  }
+
   function corriger(texte, ctx) {
     var mots_ = plat(texte).split(' ');
     var lex = lexique(ctx);
@@ -599,7 +635,8 @@
 
     mots_.forEach(function (mot) {
       // Mot connu, mot vide, mot courant, nombre : on n'y touche pas.
-      if (!mot || connus[mot] || VIDES.indexOf(mot) >= 0 || MOTS_SUR.indexOf(mot) >= 0 ||
+      if (!mot || connus[mot] || connuEnFrancais(mot) ||
+          VIDES.indexOf(mot) >= 0 || MOTS_SUR.indexOf(mot) >= 0 ||
           /^\d+$/.test(mot) || mot.length < 5) {
         sortie.push(mot); return;
       }

@@ -8653,7 +8653,11 @@
     var debut = window.BaobabsMaya ? Promise.resolve() : mayaScript('/maya/maya.js');
     return debut.then(function(){
       if (!window.BaobabsMaya) throw new Error('global absent');
-      return mayaScript('/maya/comprendre.js');
+      // LE DICTIONNAIRE EN PREMIER : comprendre.js s'en sert des la
+      // premiere phrase corrigee. Six mille mots, soixante kilo-octets,
+      // charges une fois et mis en cache comme le reste.
+      return mayaScript('/maya/mots.js')
+        .then(function(){ return mayaScript('/maya/comprendre.js'); });
     }).then(function(){ return mayaScript('/maya/deviner.js'); })
       .then(function(){ return mayaScript('/maya/dialogue.js'); });
   }
