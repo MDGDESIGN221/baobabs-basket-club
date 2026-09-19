@@ -181,11 +181,33 @@
       });
     });
 
+    /* ------------------------------------------------------------------
+       CHAQUE FAMILLE A SA PART
+       ------------------------------------------------------------------
+       « M » remplissait les sept lignes avec sept joueuses : le club en
+       compte cinq dont le nom commence par M, et elles passaient devant
+       « ouvre Matchs » et « fais-moi le point » qui commencent aussi par
+       M. Une liste qui ne montre qu'une famille cache les deux autres, et
+       c'est justement au debut d'un mot qu'on hesite encore.
+
+       On plafonne donc chaque famille, puis on reclasse l'ensemble : le
+       meilleur reste en tete, mais il ne mange plus toute la place.
+       ------------------------------------------------------------------ */
+    var PART = { personne: 4, question: 4, ecran: 3 };
+    var pris = {};
     var vus = {};
-    out.sort(function (a, b) { return b.poids - a.poids; });
+    /* A POIDS EGAL, L'ALPHABET. Trois joueuses commencent par « mar » :
+       sans ce second critere, l'ordre est celui de la base, donc celui
+       du hasard pour qui regarde la liste. Un ordre stable se retient. */
+    out.sort(function (a, b) {
+      return (b.poids - a.poids) || String(a.texte).localeCompare(String(b.texte), 'fr');
+    });
     return out.filter(function (x) {
       var c = plat(x.texte);
       if (vus[c]) return false;
+      var n = pris[x.genre] || 0;
+      if (n >= (PART[x.genre] || 3)) return false;
+      pris[x.genre] = n + 1;
       vus[c] = 1;
       return true;
     }).slice(0, max);
