@@ -8625,6 +8625,88 @@
     };
   }
 
+  /* ==================================================================
+     LE CARNET : CE QU'ON LUI A DEMANDE
+     ------------------------------------------------------------------
+     « A-t-elle une memoire ? » Dans la conversation, oui : le dernier
+     sujet, la derniere personne, ce qu'elle attend. Entre deux
+     ouvertures de l'administration, presque rien -- maya_suivi ne
+     retient que le SORT des faits qu'elle a montres. Elle ne se
+     souvenait donc jamais de VOUS : chaque matin, la meme inconnue
+     polie.
+
+     UNE LIGNE PAR QUESTION. Ce qui a ete tape, ce qu'elle en a compris,
+     et si elle a compris. Deux usages, visibles des le premier jour :
+     ce que vous demandez souvent remonte en tete des propositions, et
+     ce qu'elle n'a pas compris cesse d'etre un mur qu'on decouvre en
+     s'y cognant.
+
+     ELLE N'ECRIT RIEN D'UNE QUESTION CONFIDENTIELLE. « Le telephone de
+     Marieme est le 77... » tape par megarde serait garde pour toujours.
+     Elle refuse deja d'y repondre ; elle refuse aussi de s'en souvenir.
+
+     ET LA TABLE PEUT NE PAS EXISTER. Tant que la migration n'est pas
+     passee, tout ceci echoue en silence et MAYA marche exactement comme
+     avant. Une memoire absente n'est pas une panne.
+     ================================================================== */
+  var mayaCarnet = { liste: null, quand: 0, mort: false };
+
+  function mayaNoter(r){
+    if (mayaCarnet.mort || !r) return;
+    // CE QU'ELLE NE GARDE PAS : les coordonnees, et les phrases vides.
+    if (r.intention === 'confidentiel') return;
+    var texte = String(r.texte || '').trim().slice(0, 200);
+    if (texte.length < 3) return;
+    var uid = null;
+    try { uid = cpMoi() && cpMoi().id; } catch(e){}
+    if (!uid) return;
+
+    fetch(SUPABASE_URL + '/rest/v1/maya_questions', {
+      method: 'POST',
+      headers: sbHeaders({ 'Content-Type':'application/json', 'Prefer':'return=minimal' }),
+      body: JSON.stringify({
+        qui: uid, texte: texte,
+        intention: r.intention || null,
+        sujet: (r.sujet && r.sujet.cle) || null,
+        comprise: !!r.intention
+      })
+    }).then(function(x){
+      // 404 : la migration n'est pas passee. On arrete d'essayer plutot
+      // que de tirer une requete perdue a chaque question.
+      if (x.status === 404 || x.status === 401) mayaCarnet.mort = true;
+      else mayaCarnet.liste = null;          // le carnet a change
+    }).catch(function(){ mayaCarnet.mort = true; });
+  }
+
+  /* CE QUE CETTE PERSONNE DEMANDE LE PLUS. On rend les questions
+     COMPRISES seulement : proposer une question a laquelle elle repond
+     « je ne comprends pas » serait la pire des memoires. */
+  function mayaSouvenirs(){
+    if (mayaCarnet.mort) return Promise.resolve([]);
+    if (mayaCarnet.liste && (Date.now() - mayaCarnet.quand) < 120000) {
+      return Promise.resolve(mayaCarnet.liste);
+    }
+    return sbGet('maya_questions?select=texte,intention&comprise=is.true&order=quand.desc&limit=120')
+      .then(function(rows){
+        var vus = {}, out = [];
+        (rows || []).forEach(function(l){
+          var t = String(l.texte || '').trim();
+          var c = t.toLowerCase();
+          if (!c || c.length < 4) return;
+          if (!vus[c]) { vus[c] = { texte: t, n: 0 }; out.push(vus[c]); }
+          vus[c].n++;
+        });
+        // LE PLUS POSE D'ABORD, et le plus recent departage : une
+        // question posee trois fois hier compte plus qu'une posee trois
+        // fois il y a deux mois, et l'ordre de lecture le dit deja.
+        out.sort(function(a, b){ return b.n - a.n; });
+        mayaCarnet.liste = out.slice(0, 12);
+        mayaCarnet.quand = Date.now();
+        return mayaCarnet.liste;
+      })
+      .catch(function(){ mayaCarnet.mort = true; return []; });
+  }
+
   function mayaScript(src){
     return new Promise(function(res, rej){
       var sc = document.createElement('script');
@@ -9890,6 +9972,8 @@
       fichePersonne: mayaFichePersonne,
       filtrer: mayaFiltrer,
       chiffre: mayaChiffre,
+      noter: mayaNoter,
+      souvenirs: mayaSouvenirs,
       dernierResultat: mayaDernierResultat,
       // ELLE SE PRESENTAIT EN TROIS PUCES. « Que sais-tu faire »
       // passait par le repli de dialogue.js, parce que capacites

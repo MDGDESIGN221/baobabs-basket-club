@@ -126,7 +126,7 @@
      le titre commence par la frappe remonte quand meme -- « bill »
      n'est le debut d'aucun nom du club.
      ------------------------------------------------------------------ */
-  function propositions(texte, ctx, max) {
+  function propositions(texte, ctx, max, souvenirs) {
     ctx = ctx || {};
     max = max || 8;
     var brut = plat(texte);
@@ -136,9 +136,19 @@
        que voit quelqu'un qui n'a jamais ouvert ce panneau, et ce sont
        les quatre questions qui servent tous les jours. */
     if (!brut) {
-      return MODELES.slice(0, 4).map(function (m) {
-        return { texte: m.t, genre: 'question', sous: m.q };
+      /* LE CHAMP VIDE MONTRE D'ABORD CE QUE VOUS DEMANDEZ, VOUS. Les
+         quatre questions que j'ai choisies sont un bon depart le
+         premier jour ; au dixieme, ce sont les votres qui valent. */
+      var debut = (souvenirs || []).slice(0, 3).map(function (m) {
+        return { texte: m.texte, genre: 'question', sous: 'Vous l’avez déjà demandé' };
       });
+      var vus0 = {};
+      debut.forEach(function (x) { vus0[plat(x.texte)] = 1; });
+      MODELES.forEach(function (m) {
+        if (debut.length >= 4 || vus0[plat(m.t)]) return;
+        debut.push({ texte: m.t, genre: 'question', sous: m.q });
+      });
+      return debut.slice(0, 4);
     }
 
     var tapes = brut.split(' ').filter(function (x) { return x.length >= 2; });
@@ -148,6 +158,17 @@
       var w = poidsPhrase(tapes, p.nom);
       if (w) out.push({ texte: p.nom, genre: 'personne', id: p.id, sousGenre: p.genre,
                         sous: p.genre === 'staff' ? 'Staff' : 'Joueuse', poids: w + 30 });
+    });
+
+    /* CE QU'ELLE VOUS A DEJA ENTENDU DEMANDER passe devant ce que j'ai
+       prevu : c'est la difference entre un outil et un outil qui vous
+       connait. Le nombre de fois compte, plafonne pour qu'une question
+       posee vingt fois n'ecrase pas tout le reste. */
+    (souvenirs || []).forEach(function (m) {
+      var w = poidsPhrase(tapes, m.texte);
+      if (w) out.push({ texte: m.texte, genre: 'question',
+                        sous: 'Vous l’avez déjà demandé',
+                        poids: w + 14 + Math.min(m.n || 1, 6) });
     });
 
     MODELES.forEach(function (m, idx) {

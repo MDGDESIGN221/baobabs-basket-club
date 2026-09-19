@@ -68,6 +68,20 @@
      mesurer les propositions sans navigateur.
      ------------------------------------------------------------------ */
   var devine = null, devineListe = [], devineChoix = -1;
+  /* CE QUE CETTE PERSONNE DEMANDE LE PLUS. Lu une fois a l'ouverture,
+     puis garde : la liste doit s'afficher a la frappe, sans attendre
+     une lecture reseau. Vide tant que la migration n'est pas passee,
+     et tout marche pareil. */
+  var devineSouvenirs = [];
+  function devineCharger() {
+    var f = outil('souvenirs');
+    if (!f) return;
+    try {
+      var pr = f();
+      if (pr && pr.then) pr.then(function (l) { devineSouvenirs = l || []; })
+                           .catch(function () {});
+    } catch (e) {}
+  }
 
   function devineFermer() {
     if (!devine) return;
@@ -99,7 +113,7 @@
       sujets: CTX && CTX.sujets ? CTX.sujets() : [],
       blocs: CTX && CTX.blocs ? CTX.blocs() : []
     };
-    devineListe = G.propositions(champ.value, ctx, 7);
+    devineListe = G.propositions(champ.value, ctx, 7, devineSouvenirs);
     devineChoix = -1;
     if (!devineListe.length) return devineFermer();
 
@@ -215,6 +229,7 @@
 
   function ouvrir(question) {
     batir();
+    devineCharger();
     requestAnimationFrame(function () { panneau.classList.add('ouvert'); });
     if (!fil.childElementCount) accueil();
     if (question) { champ.value = question; envoyer(); }
@@ -497,6 +512,22 @@
 
     // Le fil : on retient la derniere demande comprise, hors politesse.
     if (r.intention && r.intention !== 'politesse') dernier = r;
+
+    /* ET LE CARNET, QUI SURVIT A LA FERMETURE. On note TOUT, y compris
+       ce qu'elle n'a pas compris : c'est justement ce qui manque qui
+       vaut d'etre garde.
+
+       SAUF UNE QUESTION SUR DES COORDONNEES, qui ne laisse aucune
+       trace. Le meme garde existe cote administration ; on le tient
+       AUSSI ici, la ou l'appel se fait. Le banc l'a demande : il
+       mesurait dialogue.js avec un carnet bouchonne, et le garde
+       n'etait que dans l'autre fichier. Une regle de confidentialite
+       qui ne vit qu'a un seul endroit disparait au premier
+       rebranchement. */
+    if (r.intention !== 'confidentiel') {
+      var fn = outil('noter');
+      if (fn) { try { fn(r); } catch (e) {} }
+    }
 
     if (r.herite === 'personne' && r.entites.personne) {
       finPenser();
@@ -1070,6 +1101,11 @@
     var n = String(nom || '');
     if (n.indexOf('les ') === 0) return 'des ' + n.slice(4);
     if (n.indexOf('le ') === 0)  return 'du ' + n.slice(3);
+    if (n.indexOf('la ') === 0)  return 'de la ' + n.slice(3);
+    /* UN TITRE D'ECRAN N'A PAS D'ARTICLE : « de Entraînements » se lit
+       a l'ecran, et ne se dit pas. Les ecrans sont des noms propres de
+       la maison, donc « des Entraînements », « de Matchs ». */
+    if (/^[AEIOUYÀÂÉÈÊËÎÏÔÖÛÜaeiouyàâéèêëîïôöûü]/.test(n)) return 'des ' + n;
     return 'de ' + n;
   }
 
