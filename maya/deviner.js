@@ -117,7 +117,7 @@
   /* ------------------------------------------------------------------
      LES PROPOSITIONS
      ------------------------------------------------------------------
-     ctx : { personnes, ecrans, sujets }
+     ctx : { personnes, ecrans, sujets, blocs }
      rend : [{ texte, genre, sous, id, cle }]  au plus « max »
 
      TROIS FAMILLES, ET UNE PREFERENCE. Une personne nommee passe devant
@@ -168,6 +168,19 @@
                         sous: 'Écran', poids: w });
     });
 
+    /* ET LES TRENTE BLOCS DE CONTENU. C'est la que vit chaque texte du
+       site, et personne ne sait ou. Taper « hero », « objectifs » ou
+       « mentions » doit mener au bloc, pas a une page de recherche. La
+       proposition dit ou il se regle, ce qui est la reponse avant meme
+       d'avoir clique. */
+    (ctx.blocs || []).forEach(function (b) {
+      var w = poidsPhrase(tapes, b.nom);
+      if (!w) w = poidsPhrase(tapes, b.page) - 2;
+      if (w > 0) out.push({ texte: b.nom, genre: 'bloc', id: b.id,
+                            sous: b.titreEcran ? 'Bloc · ' + b.titreEcran : 'Bloc non rattaché',
+                            poids: w });
+    });
+
     /* ET CE QU'ON PEUT COMPTER, ECRAN PAR ECRAN. C'est ce qui rend les
        cinquante ecrans interrogeables et pas seulement ouvrables :
        « combien de partenaires » n'est ecrit nulle part, il se fabrique
@@ -193,7 +206,7 @@
        On plafonne donc chaque famille, puis on reclasse l'ensemble : le
        meilleur reste en tete, mais il ne mange plus toute la place.
        ------------------------------------------------------------------ */
-    var PART = { personne: 4, question: 4, ecran: 3 };
+    var PART = { personne: 4, question: 4, ecran: 3, bloc: 3 };
     var pris = {};
     var vus = {};
     /* A POIDS EGAL, L'ALPHABET. Trois joueuses commencent par « mar » :

@@ -9099,6 +9099,54 @@
     academy_registrations:1, recruitment_requests:1, orders:1, reservations:1
   };
 
+  /* ==================================================================
+     LES BLOCS DE CONTENU : OU SE CHANGE CE QUE LE SITE AFFICHE
+     ------------------------------------------------------------------
+     « Ou est-ce que je change le titre de la page d'accueil ? » est la
+     premiere question de quelqu'un a qui on confie l'admin, et MAYA n'y
+     repondait pas : elle connaissait les cinquante ecrans, pas les
+     trente blocs qu'ils contiennent.
+
+     LE REGISTRE EXISTE DEJA -- CONTENT_BLOCKS pour les textes du site,
+     SETTINGS_BLOCKS pour les coordonnees. On ne le recopie pas : on le
+     lit. Un bloc ajoute demain sera su sans qu'une ligne change ici.
+
+     ET C'EST CONTENT_GROUPS QUI DIT L'ECRAN, pas CONTENT_BLOCKS. Un bloc
+     declare sans groupe n'est dessine par aucun ecran : qgcRender n'est
+     appele qu'avec qgcGroup(...) ou SETTINGS_BLOCKS. Elle le dira plutot
+     que d'envoyer quelqu'un chercher un champ qui n'existe nulle part.
+     ================================================================== */
+  function mayaBlocs(){
+    var out = [], vus = {};
+    function pousse(bl, ecran){
+      if (!bl || !bl.id || vus[bl.id]) return;
+      if (ecran && !canSection(ecran)) return;
+      vus[bl.id] = 1;
+      out.push({
+        id: bl.id,
+        nom: String(bl.label || bl.id),
+        page: String(bl.page || ''),
+        ecran: ecran || null,
+        titreEcran: ecran ? ((SECTION_META[ecran] && SECTION_META[ecran].t) || ecran) : '',
+        champs: (bl.fields || []).length
+      });
+    }
+    try {
+      Object.keys(CONTENT_GROUPS).forEach(function(cle){
+        // tk_texts vit dans un sous-onglet de Billetterie, pas dans un ecran a lui
+        var ecran = cle === 'tk_texts' ? 'tickets' : cle;
+        qgcGroup(cle).forEach(function(bl){ pousse(bl, ecran); });
+      });
+      (typeof SETTINGS_BLOCKS !== 'undefined' ? SETTINGS_BLOCKS : []).forEach(function(bl){
+        pousse(bl, 'reglages');
+      });
+      // Et ceux que le registre declare sans les rattacher : elle les
+      // connait, et elle dit qu'ils ne sont editables nulle part.
+      (typeof qgcAll === 'function' ? qgcAll() : []).forEach(function(bl){ pousse(bl, null); });
+    } catch(e){}
+    return out;
+  }
+
   function mayaSujets(){
     var out = [];
     Object.keys(SECTION_META).forEach(function(cle){
@@ -9803,6 +9851,7 @@
               personnes: function(){ return mayaPersonnes; },
               ecrans: mayaEcrans,
               sujets: mayaSujets,
+              blocs: mayaBlocs,
               vocabulaire: mayaVocabulaire,
               ecranCourant: function(){
                 var s = document.querySelector('section[id^="section-"]:not(.hide)');

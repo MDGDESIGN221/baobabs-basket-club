@@ -506,6 +506,11 @@
 
      « Leur » y est : on dit « leur dossier » d'un groupe qu'on vient de
      lister. */
+  /* Les tournures qui demandent OU L'ON REGLE quelque chose. Elles font
+     gagner le bloc contre l'ecran : « ouvre la page d'accueil » est une
+     navigation, « ou je change le titre de l'accueil » ne l'est pas. */
+  var MOTS_REGLER = /\b(ou est|ou se|ou sont|ou puis|ou je|ou on|comment changer|comment modifier|comment mettre|changer|modifier|editer|corriger|remplacer|regler|mettre a jour)\b/;
+
   var PRONOM_PERS = /\b(elle|lui|son|sa|ses|leur|leurs)\b/;
   var MOTS_TEMPS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche',
                     'demain','hier','aujourd','prochain','prochaine','semaine','matin','soir'];
@@ -690,6 +695,25 @@
     return out.map(function (x) { return x.e; });
   }
 
+  /* ------------------------------------------------------------------
+     LES BLOCS DE CONTENU
+     ------------------------------------------------------------------
+     « Ou est-ce que je change le titre de la page d'accueil ? » est la
+     premiere question de quelqu'un a qui on confie l'admin. Le bloc
+     s'appelle « Hero d'accueil -- le grand bloc du haut » ; on ne tape
+     jamais cela, on tape « hero », ou « titre accueil ». Meme pesee que
+     pour les ecrans, et sur le nom ET sur la page du site.
+     ------------------------------------------------------------------ */
+  function blocs(texte, liste) {
+    var t = plat(texte), jetons = t.split(' '), out = [];
+    (liste || []).forEach(function (b) {
+      var p = Math.max(pesee(jetons, b.nom), pesee(jetons, b.page) - 2);
+      if (p) out.push({ b: b, poids: p });
+    });
+    out.sort(function (a, b) { return b.poids - a.poids; });
+    return out.map(function (x) { return x.b; });
+  }
+
   /* LES DATES. Le francais parle peu et bien : « samedi », « demain »,
      « le 12 ». On ne couvre que ce qui sert reellement ici, et on rend
      une date ISO plutot qu'un objet a interpreter plus loin. */
@@ -811,6 +835,25 @@
 
     var ecr = ecrans(t, ctx.ecrans);
     if (ecr.length) res.entites.ecran = ecr[0];
+
+    /* ------------------------------------------------------------------
+       « OU EST-CE QUE JE CHANGE LE TITRE DE L'ACCUEIL ? »
+       ------------------------------------------------------------------
+       Le bloc perd contre l'ecran quand la phrase dit d'OUVRIR quelque
+       chose : « ouvre la page d'accueil » est une navigation. Mais des
+       qu'on demande OU l'on regle quelque chose, c'est le bloc qu'on
+       cherche, et lui seul sait dire sur quel ecran il se trouve.
+
+       On est ici AVANT les replis sur le sujet : un bloc nomme est plus
+       precis qu'un « on parle peut-etre de l'accueil », et doit donc
+       passer devant.
+       ------------------------------------------------------------------ */
+    var bl = blocs(t, ctx.blocs);
+    if (bl.length) {
+      res.entites.bloc = bl[0];
+      var regler = MOTS_REGLER.test(t);
+      if (regler || !res.intention) res.intention = 'bloc';
+    }
 
     var d = date(t, ctx.maintenant); if (d) res.entites.date = d;
     var h = heure(t); if (h) res.entites.heure = h;

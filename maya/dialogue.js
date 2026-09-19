@@ -96,7 +96,8 @@
     var ctx = {
       personnes: CTX && CTX.personnes ? CTX.personnes() : [],
       ecrans: CTX && CTX.ecrans ? CTX.ecrans() : [],
-      sujets: CTX && CTX.sujets ? CTX.sujets() : []
+      sujets: CTX && CTX.sujets ? CTX.sujets() : [],
+      blocs: CTX && CTX.blocs ? CTX.blocs() : []
     };
     devineListe = G.propositions(champ.value, ctx, 7);
     devineChoix = -1;
@@ -391,6 +392,10 @@
       // Les ecrans de l administration deviennent autant de sujets : ce
       // qui est ajoute demain est compris demain.
       sujets: CTX && CTX.sujets ? CTX.sujets() : [],
+      // Et les trente blocs de contenu : c'est la que vit chaque texte
+      // du site, et « ou est-ce que je change ca » est la premiere
+      // question de quelqu'un a qui on confie l'administration.
+      blocs: CTX && CTX.blocs ? CTX.blocs() : [],
       // Tout le vocabulaire du club : adversaires, salles, postes,
       // categories. C'est lui qui permet de rattraper une faute sur
       // « Saltigue » ou « ailiere », pas seulement sur « joueuse ».
@@ -508,6 +513,7 @@
       case 'qui':       return rQui(r);
       case 'manque':    return rManque(r);
       case 'aller':     return rAller(r);
+      case 'bloc':      return rBloc(r);
       case 'convoquer': return rConvoquer(r);
       case 'aide':      return rAide();
       case 'politesse': return rSocial(r);
@@ -732,6 +738,38 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------
+     OU SE CHANGE CE QUE LE SITE AFFICHE
+     ------------------------------------------------------------------
+     La question de quelqu'un a qui on vient de confier l'admin : « ou
+     est-ce que je change le titre de la page d'accueil ? ». Elle connait
+     les cinquante ecrans ; il lui manquait les trente blocs qu'ils
+     contiennent, et c'est dans un bloc que vit chaque texte du site.
+
+     ET ELLE DIT QUAND CA NE SE CHANGE NULLE PART. Cinq blocs sont
+     declares dans le registre sans etre rattaches a un ecran : leurs
+     textes partent sur le site et ne sont modifiables d'aucun endroit.
+     Envoyer quelqu'un chercher un champ qui n'existe pas lui ferait
+     perdre une demi-heure et douter de lui.
+     ------------------------------------------------------------------ */
+  function rBloc(r) {
+    var b = r.entites.bloc;
+    if (!b) return rIncomprisePure(r);
+    var ou = b.page ? '<p class="doux">Ce bloc alimente ' + esc(b.page) + '.</p>' : '';
+
+    if (!b.ecran) {
+      return elle('<p><b>' + esc(b.nom) + '</b> existe, mais n’est rattaché à aucun écran.</p>' +
+        ou + '<p class="doux">Ses textes partent sur le site et ne se modifient ' +
+        'nulle part dans l’administration aujourd’hui. Je préfère vous le dire ' +
+        'plutôt que de vous envoyer le chercher.</p>');
+    }
+
+    elle('<p><b>' + esc(b.nom) + '</b> se règle sur <b>' + esc(b.titreEcran) + '</b>.</p>' +
+      ou + (b.champs ? '<p class="doux">' + b.champs + ' champ' + (b.champs > 1 ? 's' : '') +
+                       ' à y remplir.</p>' : '') +
+      pistesEcran(b.ecran));
+  }
+
   function rAller(r) {
     var e = r.entites.ecran;
     /* « OUVRE SA FICHE » N'EST PAS UN ECRAN. Aucun nom d'ecran dans la
