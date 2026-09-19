@@ -353,6 +353,7 @@
       case 'liste':     return rListe(r);
       case 'quand':     return rQuand();
       case 'resultat':  return rResultat();
+      case 'filtrer':   return rFiltrer(r);
       case 'sujet':     return rSujet(r);
       default:          return rIncomprise(r);
     }
@@ -987,6 +988,59 @@
     var titre = CTX && CTX.titreEcran ? CTX.titreEcran(cle) : cle;
     return '<div class="maya-pistes"><button type="button" class="maya-piste" data-aller="' +
            esc(cle) + '">ouvrir ' + esc(titre) + '</button></div>';
+  }
+
+  /* ------------------------------------------------------------------
+     LE RESULTAT D'UN FILTRE
+     ------------------------------------------------------------------
+     Elle dit ce qu'elle a cherche, combien elle a trouve SUR COMBIEN, et
+     les nomme. Le « sur combien » compte autant que le nombre : « 14 sans
+     licence » ne veut rien dire sans « sur 17 ».
+
+     ET ZERO EST UNE BONNE NOUVELLE, ici. « Aucune joueuse sans licence »
+     se dit autrement que « aucune joueuse » : c'est le seul endroit de
+     MAYA ou un zero est ce qu'on esperait.
+     ------------------------------------------------------------------ */
+  function rFiltrer(r) {
+    var f = outil('filtrer');
+    if (!f) return rIncomprisePure(r);
+    penser();
+    return f(r.criteres || []).then(function (d) {
+      if (!d) return elle('<p>Je n’ai pas pu chercher.</p>');
+      if (d.interdit) return elle('<p>Votre casquette ne donne pas accès à l’effectif.</p>');
+      if (d.illisible) return elle('<p>Je n’ai pas pu lire ' + esc(d.illisible) + '.</p>' +
+        '<p class="doux">Sans cela je ne peux pas répondre, et je préfère le dire.</p>');
+      if (d.sansCritere) return rIncomprisePure(r);
+
+      var quoi = d.criteres.join(' et ');
+
+      if (!d.n) {
+        return elle('<p><b>Aucune</b> joueuse ' + esc(quoi) + '.</p>' +
+          '<p class="doux">Sur les ' + d.total + ' de l’effectif.</p>');
+      }
+
+      var h = '<p><b>' + d.n + '</b> joueuse' + (d.n > 1 ? 's' : '') + ' ' + esc(quoi) +
+              ', sur ' + d.total + '.</p>';
+      h += '<div class="maya-faits">' + d.items.slice(0, 20).map(function (it) {
+        return '<button type="button" class="maya-pers" data-fiche="' + esc(it.id) +
+          '" data-genre="joueuse"><span class="rond">' +
+          esc(String(it.nom || '?').slice(0, 2).toUpperCase()) + '</span>' +
+          '<span><b>' + esc(it.nom) + '</b>' + (it.sous ? '<s>' + esc(it.sous) + '</s>' : '') +
+          '</span></button>';
+      }).join('') + '</div>';
+      if (d.items.length > 20) h += '<p class="doux">et ' + (d.items.length - 20) + ' autres.</p>';
+
+      /* UN CRITERE QU'ELLE A RECONNU MAIS NE SAIT PAS APPLIQUER se dit :
+         le taire ferait croire que le filtre a tout pris en compte. */
+      if (d.inconnus && d.inconnus.length) {
+        h += '<p class="doux">Je n’ai pas su tenir compte de : ' +
+             esc(d.inconnus.join(', ')) + '.</p>';
+      }
+
+      elle(h + (d.ecran ? pistesEcran(d.ecran) : ''));
+    }).catch(function () {
+      elle('<p>Je n’ai pas pu chercher.</p>');
+    });
   }
 
   /* ------------------------------------------------------------------

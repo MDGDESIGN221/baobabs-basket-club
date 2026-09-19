@@ -262,6 +262,45 @@
     return null;
   }
 
+  /* ==================================================================
+     LES CRITERES : « QUI N'A PAS ENCORE DE LICENCE »
+     ------------------------------------------------------------------
+     Teste en production : « qui est blessee » cherchait un NOM et
+     repondait « je ne trouve personne de ce nom ». « les joueuses sans
+     photo » ouvrait l'ecran. « qui n'a pas de licence » n'etait pas
+     comprise du tout.
+
+     Trois questions sur quatre que pose un vrai utilisateur sont des
+     FILTRES, et c'est ce qui manquait. Les ecrire un par un comme des
+     intentions aurait redonne la course sans fin : « sans photo », puis
+     « sans numero », puis « sans bio »... On declare donc des CRITERES
+     combinables, et la question devient une requete.
+
+     UN CRITERE NE DIT PAS COMMENT CHERCHER, il dit QUOI chercher. La
+     traduction en requete vit dans l'administration, avec les tables ;
+     ici on ne fait que reconnaitre le francais.
+     ================================================================== */
+  var CRITERES = [
+    { cle: 'sans_photo',   motif: /\b(sans photo|pas de photo|photo manquante|aucune photo|pas encore de photo)\b/ },
+    { cle: 'sans_compte',  motif: /\b(sans compte|pas de compte|pas d acces|sans acces|pas encore de compte)\b/ },
+    { cle: 'sans_licence', motif: /\b(sans licence|pas de licence|pas licenciee|licence manquante|pas encore de licence)\b/ },
+    { cle: 'sans_medical', motif: /\b(sans certificat|pas de certificat|certificat manquant|sans medical|pas de medical|sans visite)\b/ },
+    { cle: 'sans_numero',  motif: /\b(sans numero|pas de numero|numero manquant)\b/ },
+    { cle: 'blessee',      motif: /\bblessee?s?\b/ },
+    { cle: 'active',       motif: /\bactives?\b/ },
+    { cle: 'partie',       motif: /\b(partie?s? du club|qui ont quitte|anciennes)\b/ },
+    { cle: 'en_pret',      motif: /\ben pret\b/ },
+    { cle: 'dossier_attente', motif: /\b(a verifier|a completer|dossier incomplet|dossiers? en attente|pas encore validee?s?)\b/ },
+    { cle: 'sans_reponse', motif: /\b(n a pas repondu|sans reponse|pas repondu|n ont pas repondu|qui manquent a l appel)\b/ },
+    { cle: 'sans_bio',     motif: /\b(sans bio|pas de bio|sans presentation)\b/ }
+  ];
+
+  function criteres(texte) {
+    var t = plat(texte), out = [];
+    CRITERES.forEach(function (C) { if (C.motif.test(t)) out.push(C.cle); });
+    return out;
+  }
+
   var INTENTIONS = [
     /* ON DIT BONJOUR. Repondre « je ne comprends pas cette demande » a
        quelqu'un qui vous salue est froid et bete, et c'est la premiere
@@ -489,6 +528,12 @@
        meme piege que « urgent » corrige en « argent », a un autre
        endroit. Tout ce qui sert a reconnaitre doit etre au lexique. */
     SOCIAL.forEach(function (S) { motsDuMotif(S.motif).forEach(pousse); });
+    /* ET LES MOTS DES CRITERES. « les joueuses sans numero » devenait
+       « sans enumere » -- enumere vient du motif de « liste », numero ne
+       venait de nulle part. Troisieme fois que le meme oubli produit la
+       meme panne : tout ce qui sert a reconnaitre doit etre au lexique,
+       sans exception. */
+    CRITERES.forEach(function (C) { motsDuMotif(C.motif).forEach(pousse); });
     MOTS_TEMPS.forEach(pousse);
     (ctx.personnes || []).forEach(function (p) { pousse(p.nom); });
     (ctx.ecrans || []).forEach(function (e) { pousse(e.titre); });
@@ -656,6 +701,28 @@
     var soc = social(t);
     if (soc) { res.intention = 'politesse'; res.social = soc; return res; }
 
+    /* LES CRITERES AVANT TOUT LE RESTE. « qui est blessee » cherchait un
+       nom ; « les joueuses sans photo » ouvrait un ecran. Un critere
+       reconnu change la nature de la demande : ce n'est plus une
+       recherche ni une navigation, c'est un filtre. */
+    var crit = criteres(t);
+    if (crit.length) {
+      /* SAUF SI QUELQU'UN EST NOMME. « Ce qui reste a completer pour
+         Aissatou » contient « a completer », mais ce n'est pas un filtre
+         sur l'effectif : c'est une question sur elle, et sa fiche porte
+         deja ce qui manque. Filtrer aurait rendu la liste de toutes
+         celles dont le dossier attend, en ignorant le nom cite. */
+      var qui = personnes(t, ctx.personnes);
+      if (qui.length !== 1) {
+        res.criteres = crit;
+        res.intention = 'filtrer';
+        res.sujet = sujet(t, ctx.sujets) || SUJETS[0];   // l'effectif par defaut
+        res.entites = {};
+        var d0 = date(t, ctx.maintenant); if (d0) res.entites.date = d0;
+        return res;
+      }
+    }
+
     var suj = sujet(t, ctx.sujets);
     if (suj) res.sujet = suj;
 
@@ -750,6 +817,8 @@
     heure: heure,
     corriger: corriger,
     social: social,
+    criteres: criteres,
+    CRITERES: CRITERES,
     distance: distance,
     lexique: lexique,
     INTENTIONS: INTENTIONS

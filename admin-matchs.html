@@ -9529,6 +9529,113 @@
     }).catch(function(){ return { illisible: true }; });
   }
 
+  /* ==================================================================
+     FILTRER L'EFFECTIF SUR DES CRITERES COMBINABLES
+     ------------------------------------------------------------------
+     « Qui n'a pas encore de licence », « qui est blessee », « les
+     joueuses sans photo », « qui n'a pas repondu » : quatre questions,
+     un seul mecanisme. Les ecrire une par une aurait redonne la course
+     sans fin.
+
+     LES CRITERES SE COMBINENT. « les joueuses actives sans licence »
+     applique les deux, et rien n'a ete ecrit pour ce cas-la : c'est la
+     difference entre une grammaire et une liste de reponses.
+
+     ON LIT UNE FOIS, ON FILTRE EN MEMOIRE. Dix-sept joueuses, deux
+     lectures : traduire chaque critere en clause PostgREST aurait
+     multiplie les requetes et les cas particuliers, pour un gain nul a
+     cette echelle.
+     ================================================================== */
+  var MAYA_CRITERES_MOTS = {
+    sans_photo:      'sans photo',
+    sans_compte:     'sans compte',
+    sans_licence:    'sans licence',
+    sans_medical:    'sans certificat médical',
+    sans_numero:     'sans numéro',
+    sans_bio:        'sans présentation',
+    blessee:         'blessées',
+    active:          'actives',
+    partie:          'parties du club',
+    en_pret:         'en prêt',
+    dossier_attente: 'dont le dossier attend',
+    sans_reponse:    'qui n’ont pas répondu'
+  };
+
+  function mayaFiltrer(criteres){
+    criteres = criteres || [];
+    if (!can('effectif', 'voir')) return Promise.resolve({ interdit: true });
+
+    var besoinPieces = criteres.indexOf('sans_licence') >= 0 || criteres.indexOf('sans_medical') >= 0;
+    var besoinConv   = criteres.indexOf('sans_reponse') >= 0;
+
+    return Promise.all([
+      sbGet('players?select=id,name,jersey_number,position,photo_url,status,fiche_etat,compte_uid,bio&order=sort.asc&limit=300'),
+      besoinPieces ? sbGet('players_documents?select=player_id,kind,expires_on').catch(function(){ return null; })
+                   : Promise.resolve([]),
+      besoinConv ? sbGet('match_center?select=id&statut=in.(aujourdhui,a_venir)&order=match_date.asc&limit=1')
+                     .then(function(ms){
+                       var m = (ms || [])[0];
+                       if (!m) return [];
+                       return sbGet('match_convocations?select=player_id,statut&match_id=eq.' + encodeURIComponent(m.id));
+                     }).catch(function(){ return null; })
+                 : Promise.resolve([])
+    ]).then(function(r){
+      var joueuses = r[0] || [], docs = r[1], conv = r[2];
+      if (besoinPieces && docs === null) return { illisible: 'les pièces' };
+      if (besoinConv && conv === null)   return { illisible: 'les convocations' };
+
+      var auj = todayISO();
+      var piece = {};
+      (docs || []).forEach(function(d){
+        // Une piece expiree ne compte pas comme presente : c'est le sens
+        // de la question « qui n'a pas de licence ».
+        if (d.expires_on && d.expires_on < auj) return;
+        piece[d.player_id + '|' + d.kind] = 1;
+      });
+      var repondu = {};
+      (conv || []).forEach(function(c){ if (c.statut !== 'convoquee') repondu[String(c.player_id)] = 1; });
+      var convoquee = {};
+      (conv || []).forEach(function(c){ convoquee[String(c.player_id)] = 1; });
+
+      var TESTS = {
+        sans_photo:      function(p){ return !p.photo_url; },
+        sans_compte:     function(p){ return !p.compte_uid; },
+        sans_numero:     function(p){ return p.jersey_number == null || p.jersey_number === ''; },
+        sans_bio:        function(p){ return !p.bio || String(p.bio).trim().length < 20; },
+        sans_licence:    function(p){ return !piece[p.id + '|licence']; },
+        sans_medical:    function(p){ return !piece[p.id + '|medical']; },
+        blessee:         function(p){ return (p.status || 'active') === 'blessee'; },
+        active:          function(p){ return (p.status || 'active') === 'active'; },
+        partie:          function(p){ return (p.status || '') === 'partie'; },
+        en_pret:         function(p){ return (p.status || '') === 'pret'; },
+        dossier_attente: function(p){ return ['recue','a_verifier','a_completer'].indexOf(p.fiche_etat || 'publiee') >= 0; },
+        // « qui n'a pas repondu » ne parle que des convoquees : une
+        // joueuse non convoquee n'a rien a repondre.
+        sans_reponse:    function(p){ return convoquee[String(p.id)] && !repondu[String(p.id)]; }
+      };
+
+      var inconnus = criteres.filter(function(c){ return !TESTS[c]; });
+      var utiles   = criteres.filter(function(c){ return !!TESTS[c]; });
+      if (!utiles.length) return { sansCritere: true };
+
+      var gardees = joueuses.filter(function(p){
+        return utiles.every(function(c){ return TESTS[c](p); });
+      });
+
+      return {
+        n: gardees.length,
+        total: joueuses.length,
+        criteres: utiles.map(function(c){ return MAYA_CRITERES_MOTS[c] || c; }),
+        inconnus: inconnus,
+        items: gardees.map(function(p){
+          return { id: p.id, genre: 'joueuse', nom: p.name,
+                   sous: [p.position, p.jersey_number != null ? 'n° ' + p.jersey_number : ''].filter(Boolean).join(' · ') };
+        }),
+        ecran: 'squad'
+      };
+    }).catch(function(){ return { illisible: 'l’effectif' }; });
+  }
+
   function mayaOutils(){
     return {
       aller: function(cle){ try { showSection(cle); } catch(e){} },
@@ -9545,6 +9652,7 @@
       prochainMatch: mayaProchainMatch,
       ficheMatch: mayaFicheMatch,
       fichePersonne: mayaFichePersonne,
+      filtrer: mayaFiltrer,
       dernierResultat: mayaDernierResultat
     };
   }
