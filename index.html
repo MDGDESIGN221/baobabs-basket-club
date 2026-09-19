@@ -8743,8 +8743,8 @@ window.bbCloud = function(url, w){
      =================================================================== */
   var BB_LU_DUREE = 4400, BB_LU_BANC = 5600, BB_LU_INTRO = 2700, BB_LU_DUEL = 3200;
   var bbLuScene = { i:0, n:0, t:null, tSort:null, forme:null, tForme:null, dernier:-1,
-                    obs:null, vu:false, survol:false, pauseDepuis:0,
-                    depuis:0, duree:0, hote:null };
+                    obs:null, vu:false,
+                    depuis:0, duree:0, hote:null, compteurs:[] };
 
   function bbLuPeu(){
     return window.bbCalme();
@@ -9147,7 +9147,7 @@ window.bbCloud = function(url, w){
   }
   function bbLuRelancer(duree){
     clearTimeout(bbLuScene.t);
-    if (bbLuScene.survol || !bbLuScene.vu || document.hidden) return;
+    if (!bbLuScene.vu || document.hidden) return;
     // MOINS D'ANIMATION NE VEUT PAS DIRE PLUS RIEN.
     // On coupait la boucle entiere quand le systeme demande moins
     // d'animation : les quatre autres joueuses devenaient invisibles, et
@@ -9158,44 +9158,37 @@ window.bbCloud = function(url, w){
     bbLuScene.t = setTimeout(function(){ bbLuAller(bbLuScene.i + 1); },
       (duree || BB_LU_DUREE) * (bbLuPeu() ? 1.5 : 1));
   }
-  /* LE PIEGE DU TACTILE.
-     « c'est pas automatique sur les appareils et ca s'arrete parfois »
+  /* LA BOUCLE NE S'ARRETE PAS.
+     « quand on arrive sur le cinq l'animation commence, et en boucle
+       sans arret, parfois on dirait que ca fige sur un affichage »
 
-     Sur un telephone, poser le doigt sur la scene declenche
-     « mouseenter » -- mais « mouseleave » ne vient JAMAIS, parce qu'il
-     n'y a pas de curseur qui s'en va. La boucle se mettait donc en
-     pause au premier contact, et n'en repartait plus. Vu nulle part
-     dans le code : c'est le navigateur qui invente l'evenement.
-
-     Deux garde-fous :
-       - on n'ecoute le survol que sur les appareils qui SURVOLENT
-         vraiment (hover:hover) ;
-       - et un chien de garde regarde toutes les deux secondes si la
-         scene devrait avancer et ne l'a pas fait. Quelle qu'en soit la
-         raison -- une pause restee coincee, un minuteur perdu par une
-         mise en veille, un onglet revenu au premier plan -- elle
-         repart. */
-  var BB_LU_SOURIS = (function(){
-    try { return window.matchMedia('(hover: hover) and (pointer: fine)').matches; }
-    catch(e){ return true; }
-  })();
-
-  function bbLuPause(oui){
-    bbLuScene.survol = !!oui;
-    bbLuScene.pauseDepuis = oui ? Date.now() : 0;
-    if (oui) clearTimeout(bbLuScene.t); else bbLuRelancer();
+     Deux choses figeaient la scene :
+       - elle se mettait en pause sous la souris (et sous le doigt, sur
+         un telephone, ou « mouseleave » ne vient jamais) : une lecture
+         un peu longue, et l'image restait la vingt secondes ;
+       - montee hors de l'ecran, elle jouait son generique dans le vide ;
+         quand on arrivait dessus, on trouvait une image finie, immobile,
+         jusqu'au minuteur suivant.
+     Plus de pause au survol : les vignettes suffisent a piloter. Et
+     quand la scene entre dans l'ecran, elle REPART du generique, ses
+     entrees rejouent sous les yeux (bbLuRedemarrer). Un chien de garde
+     regarde toutes les deux secondes si elle devrait avoir avance et ne
+     l'a pas fait -- minuteur perdu par une mise en veille, onglet revenu
+     au premier plan -- et la fait repartir. */
+  function bbLuRedemarrer(){
+    var h = bbLuScene.hote; if (!h || !bbLuScene.n) return;
+    // on retire l'etat « on » avant de le remettre : une transition ne
+    // rejoue pas si la classe ne bouge pas.
+    h.querySelectorAll('.bb-lu-act.on, .bb-lu-act.sort').forEach(function(a){ a.classList.remove('on'); a.classList.remove('sort'); });
+    void h.offsetWidth;
+    bbLuScene.dernier = undefined;
+    bbLuAller(0);
   }
 
   setInterval(function(){
     var h = bbLuScene.hote;
     if (!h || !bbLuScene.n || !bbLuScene.vu || document.hidden) return;
     if (!document.body.contains(h)) return;
-    // une pause qui dure plus de vingt secondes n'est pas une pause,
-    // c'est un blocage : on repart.
-    if (bbLuScene.survol){
-      if (Date.now() - (bbLuScene.pauseDepuis || 0) < 20000) return;
-      bbLuScene.survol = false;
-    }
     var duree = bbLuScene.duree || BB_LU_DUREE;
     if (Date.now() - (bbLuScene.depuis || 0) > duree + 1500) bbLuAller(bbLuScene.i + 1);
   }, 2000);
@@ -9246,31 +9239,26 @@ window.bbCloud = function(url, w){
 
     h.querySelectorAll('[data-go]').forEach(function(b){
       b.addEventListener('click', function(){ bbLuAller(parseInt(b.getAttribute('data-go'), 10)); });
-      // pareil pour le focus : sur un ecran tactile, un bouton touche
-      // garde le focus et la boucle serait restee en pause.
-      if (BB_LU_SOURIS){
-        b.addEventListener('focus', function(){ bbLuPause(true); });
-        b.addEventListener('blur',  function(){ bbLuPause(false); });
-      }
     });
-    // seulement la ou un curseur peut vraiment s'en aller
-    if (BB_LU_SOURIS){
-      h.addEventListener('mouseenter', function(){ bbLuPause(true); });
-      h.addEventListener('mouseleave', function(){ bbLuPause(false); });
-    }
 
-    // Hors de l'ecran, la scene ne tourne pas. Sans cela, elle s'anime
-    // en bas de page pendant qu'on lit le hero.
+    // Hors de l'ecran, la scene ne tourne pas : elle s'animerait en bas
+    // de page pendant qu'on lit le hero. Quand elle entre dans l'ecran,
+    // elle repart du generique -- on arrive sur une entree, pas sur une
+    // image finie.
     if (bbLuScene.obs) bbLuScene.obs.disconnect();
     if (window.IntersectionObserver){
       bbLuScene.obs = new IntersectionObserver(function(e){
-        bbLuScene.vu = e[0].isIntersecting;
-        if (bbLuScene.vu) bbLuRelancer(); else clearTimeout(bbLuScene.t);
+        var vu = e[0].isIntersecting;
+        if (vu && !bbLuScene.vu){ bbLuScene.vu = true; bbLuRedemarrer(); }
+        else if (!vu){ bbLuScene.vu = false; clearTimeout(bbLuScene.t); }
       }, { threshold:.2 });
+      bbLuScene.vu = false;
       bbLuScene.obs.observe(h);
-    } else bbLuScene.vu = true;
+    } else { bbLuScene.vu = true; bbLuAller(0); }
 
-    bbLuAller(0);
+    // le premier acte est dessine tout de suite, meme hors ecran : la
+    // scene n'est jamais vide. L'observateur le rejouera a l'arrivee.
+    if (window.IntersectionObserver) bbLuAller(0);
     bbLuNormaliser(h);
   }
   document.addEventListener('visibilitychange', function(){
