@@ -21818,7 +21818,14 @@
          l'annonce encore comme a venir et le classement ne bouge pas. */
       var m=aVenir[0], passe=false;
       if(!m){
-        m = joues.length ? joues[joues.length-1] : null;
+        /* PAS SEULEMENT LES MATCHS « TERMINE ». Rak Tak, joue la veille,
+           attend son score : son statut n'est ni « a venir » ni
+           « termine », et le repli le sautait pour montrer le match
+           d'avant -- celui qui, justement, n'avait rien a signaler.
+           On prend le plus recent de TOUT ce qui n'est pas a venir.
+           Les lignes arrivent triees par date croissante. */
+        var passes = rows.filter(function(x){ return aVenir.indexOf(x) < 0; });
+        m = passes.length ? passes[passes.length-1] : null;
         passe = true;
       }
       if(!m){
