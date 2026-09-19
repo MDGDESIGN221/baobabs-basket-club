@@ -7267,6 +7267,160 @@ window.BaobabsStudio = (function () {
 
   /* Bloc d'informations en petites capitales espacées — présent sur
      dix références sur onze, toujours au même endroit. */
+  /* ===================================================================
+     CINQ GESTES QUI MANQUAIENT
+     -------------------------------------------------------------------
+     En regardant les quarante-six modeles cote a cote, le meme reproche
+     revient : « les designs sont pas beaux ». Ils ne sont pas rates, ils
+     sont TIMIDES. Titres a douze pour cent de la hauteur, tout centre,
+     tout empile, photos posees dans des rectangles, aplats verts sans
+     matiere. Sur les references d'habillage sportif, ce qui frappe tient
+     en cinq gestes -- et aucun des cinq n'existait ici.
+
+       tMur      un mur de lettres, interlignage NEGATIF, qui occupe le
+                 tiers de l'affiche au lieu d'un dixieme
+       tSujet    la joueuse detouree qui SORT du cadre par le bas, avec
+                 sa lumiere derriere et son ombre portee
+       tEclats   des eclats en biais derriere le sujet : ce qui donne du
+                 mouvement a une image fixe
+       tBarre    la barre du bas, en petites capitales espacees, separee
+                 par des filets -- le mobilier qui fait « officiel »
+       tCoins    les mentions d'angle, saison et competition
+
+     Ils ne remplacent rien : les anciens modeles continuent de marcher
+     exactement pareil.
+     =================================================================== */
+
+  /* UN MUR DE LETTRES.
+     L'interlignage descend a 0,82 : les lignes se touchent presque,
+     comme sur une affiche de match. Une ligne sur deux peut etre creuse
+     (contour seul), ce qui donne la profondeur sans ajouter de couleur. */
+  function tMur(d, lignes, opts) {
+    opts = opts || {};
+    var pad = opts.pad == null ? d.w * .062 : opts.pad;
+    var taille = (opts.size || .155) * d.w;
+    var t = tTexte(d, opts.role || 'assommoir', lignes.join('\n'),
+      { x: opts.x == null ? pad : opts.x, y: opts.y, w: opts.w == null ? d.w - pad * 2 : opts.w }, {
+        size: taille, align: opts.align || 'left', lh: opts.lh == null ? .82 : opts.lh,
+        track: opts.track == null ? -.02 : opts.track, upper: true,
+        ombre: opts.ombre, col: opts.col || d.palette.fg, nom: opts.nom || 'Mur de titre'
+      });
+    /* une ligne sur deux en creux, ou la ligne choisie en accent */
+    if (opts.creux != null || opts.accent != null) {
+      t.runs = lignes.map(function (l, i) {
+        var st = {};
+        if (opts.accent === i) st.color = color(opts.accentCol || d.palette.accent, 1);
+        if (opts.creux === i || opts.creux === 'impaires' && i % 2) {
+          st.hollow = true; st.strokeW = Math.max(2, d.w * .0035);
+        }
+        return { t: l + (i < lignes.length - 1 ? '\n' : ''), s: st };
+      });
+      syncTextBox(t);
+    }
+    return t;
+  }
+
+  /* LA JOUEUSE SORT DU CADRE.
+     Le bas est volontairement HORS de la page : les portraits du club
+     sont coupes a mi-cuisse, et un detourage qui s'arrete au milieu de
+     l'affiche donne une silhouette qui flotte. On la fait deborder, et
+     la coupe n'existe plus. */
+  function tSujet(d, slot, opts) {
+    opts = opts || {};
+    var out = [];
+    var larg = (opts.w || .62) * d.w;
+    var haut = larg * (opts.ratio || 4 / 3);
+    var gx = opts.cx == null ? d.w * .5 - larg / 2 : opts.cx * d.w - larg / 2;
+    var gy = (opts.bas == null ? 1.06 : opts.bas) * d.h - haut;
+    if (opts.lumiere !== false) {
+      out.push(tHalo(d, opts.lumiereCol || d.palette.accent, {
+        cx: (gx + larg / 2) / d.w, cy: (gy + haut * .42) / d.h,
+        w: (larg * 1.5) / d.w, h: (haut * .8) / d.h,
+        a: opts.lumiereA == null ? .34 : opts.lumiereA, nom: 'Lumiere du sujet'
+      }));
+    }
+    var f = makeFrame(d, { x: gx, y: gy, w: larg, h: haut, slot: slot || 'photoJoueuse' });
+    f.fit = 'contain';
+    f.name = opts.nom || 'La joueuse';
+    f.shadow = { on: true, x: 0, y: d.w * .016, blur: d.w * .06, color: color('#000000', .6) };
+    if (opts.gray) f.fx.gray = opts.gray;
+    if (opts.contrast) f.fx.contrast = opts.contrast;
+    out.push(f);
+    return out;
+  }
+
+  /* DES ECLATS EN BIAIS.
+     Trois bandes de largeurs inegales, inclinees du meme angle. C'est le
+     geste le moins cher pour qu'une image fixe ait l'air lancee. */
+  function tEclats(d, hex, opts) {
+    opts = opts || {};
+    var rot = opts.rot == null ? -16 : opts.rot;
+    var y = (opts.y == null ? .34 : opts.y) * d.h;
+    var larg = [.055, .018, .032];
+    var ecart = [0, .085, .125];
+    var out = [];
+    larg.forEach(function (l, i) {
+      var b = tRect(d, { x: -d.w * .25, y: y + ecart[i] * d.h, w: d.w * 1.5, h: l * d.h }, hex, {
+        a: (opts.a == null ? .9 : opts.a) * (i === 0 ? 1 : .55), rot: rot,
+        nom: 'Eclat ' + (i + 1)
+      });
+      out.push(b);
+    });
+    return out;
+  }
+
+  /* LA BARRE DU BAS.
+     Trois a quatre cases separees par des filets, en petites capitales
+     espacees. C'est ce qui distingue une affiche de club d'une image
+     faite a la va-vite : on sait ou lire la date, l'heure, le lieu. */
+  function tBarre(d, cases, opts) {
+    opts = opts || {};
+    var pad = opts.pad == null ? d.w * .062 : opts.pad;
+    var y = (opts.y == null ? .9 : opts.y) * d.h;
+    var h = (opts.h == null ? .062 : opts.h) * d.h;
+    var out = [];
+    var fond = tRect(d, { x: pad, y: y, w: d.w - pad * 2, h: h }, opts.fond || d.palette.fg, {
+      a: opts.fondA == null ? .07 : opts.fondA, radius: opts.radius == null ? d.w * .004 : opts.radius,
+      nom: 'Barre du bas'
+    });
+    fond.stroke = { color: color(d.palette.fg, .16), w: Math.max(1, d.w * .0014), dash: 0 };
+    out.push(fond);
+    var n = cases.length, lw = (d.w - pad * 2) / n;
+    cases.forEach(function (c, i) {
+      out.push(tTexte(d, 'mention', c[0], { x: pad + lw * i, y: y + h * .2, w: lw }, {
+        size: d.w * .0125, align: 'center', col: d.palette.fg2, track: .18, upper: true,
+        nom: 'Etiquette ' + (i + 1)
+      }));
+      var v = tTexte(d, 'donnee', c[1], { x: pad + lw * i, y: y + h * .46, w: lw }, {
+        size: d.w * .021, align: 'center', col: d.palette.fg, upper: true,
+        bind: c[2] || null, nom: 'Valeur ' + (i + 1)
+      });
+      out.push(v);
+      if (i) {
+        out.push(tRect(d, { x: pad + lw * i, y: y + h * .2, w: Math.max(1, d.w * .0012), h: h * .6 },
+          d.palette.fg, { a: .16, nom: 'Filet ' + i }));
+      }
+    });
+    return out;
+  }
+
+  /* LES MENTIONS D'ANGLE : la saison a gauche, la competition a droite.
+     Du mobilier, mais qui dit une vraie information. */
+  function tCoins(d, gauche, droite, opts) {
+    opts = opts || {};
+    var pad = opts.pad == null ? d.w * .062 : opts.pad;
+    var y = (opts.y == null ? .052 : opts.y) * d.h;
+    return [
+      tTexte(d, 'mention', gauche, { x: pad, y: y, w: d.w * .42 }, {
+        size: d.w * .0128, col: d.palette.fg2, track: .26, upper: true, nom: 'Mention gauche'
+      }),
+      tTexte(d, 'mention', droite, { x: d.w - pad - d.w * .42, y: y, w: d.w * .42 }, {
+        size: d.w * .0128, col: opts.col || d.palette.accent, track: .26, upper: true,
+        align: 'right', bind: opts.bind || 'match.competition', nom: 'Mention droite'
+      })
+    ];
+  }
+
   function tInfos(d, lignes, y, opts) {
     opts = opts || {};
     var pad = opts.pad == null ? d.w * .07 : opts.pad;
@@ -8575,6 +8729,187 @@ window.BaobabsStudio = (function () {
         o.push(tTexte(d, 'mention', '© 2026 BAOBABS BASKET CLUB', { x: 0, y: H * .945, w: W }, {
           align: 'center', col: '#6A6A6A', size: W * .013, nom: 'Mention légale'
         }));
+        o.push(tGrain(d, { a: .2 }));
+        return o;
+      }
+    },
+
+    /* ================================================================
+       LA SERIE « GRAND FORMAT »
+       ----------------------------------------------------------------
+       Six affiches construites sur les cinq gestes ajoutes plus haut :
+       un mur de lettres qui occupe le tiers de la page, la joueuse qui
+       sort du cadre par le bas, des eclats en biais, la barre du bas,
+       les mentions d'angle.
+
+       Ce qui change par rapport aux quarante-six d'avant, en une
+       phrase : le titre passe de 12 % a 30 % de la hauteur, la photo
+       cesse d'etre posee dans un rectangle, et le texte passe DEVANT
+       ou DERRIERE le sujet au lieu de rester a cote.
+       ================================================================ */
+    {
+      id: 'gf-gameday', cat: 'Match Day', label: 'Jour de match, grand format', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#123A22', {
+          grad: d.palette.bg, a: .9, a2: 1, angle: 155, nom: 'Degrade' }));
+        o = o.concat(tEclats(d, A, { y: .30, a: .85, rot: -15 }));
+        /* le mur passe DERRIERE la joueuse : c'est ce croisement qui
+           fait qu'une affiche a l'air composee et non empilee */
+        o.push(tMur(d, ['JOUR', 'DE', 'MATCH'], {
+          y: H * .085, size: .215, lh: .8, accent: 2, ombre: true, nom: 'Mur du titre' }));
+        o = o.concat(tSujet(d, 'photoJoueuse', { cx: .60, w: 1.34, bas: 1.06, lumiereA: .3 }));
+        o = o.concat(tCoins(d, 'BAOBABS BASKET CLUB', 'CHAMPIONNAT'));
+        o = o.concat(tBarre(d, [
+          ['Date', 'SAMEDI 00', 'match.dateLongue'],
+          ['Heure', '19H00', 'match.heure'],
+          ['Salle', 'MARIUS NDIAYE', 'match.lieu']
+        ], { y: .885 }));
+        o.push(tLogo(d, { x: W * .062, y: H * .855, w: W * .075, h: W * .075 }, 'logoClub',
+          { mask: 'rect', nom: 'Logo du club' }));
+        o.push(tGrain(d, { a: .22 }));
+        return o;
+      }
+    },
+
+    {
+      id: 'gf-nom', cat: 'Joueuse', label: 'Le nom en grand', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tHalo(d, A, { cx: .5, cy: .34, w: 1.3, h: .6, a: .26, nom: 'Halo' }));
+        /* le prenom en creux au-dessus, le nom plein en dessous, et la
+           joueuse qui coupe les deux */
+        o.push(tMur(d, ['PRENOM'], { y: H * .10, size: .105, col: d.palette.fg2, nom: 'Prenom' }));
+        o.push(tMur(d, ['NOM'], { y: H * .175, size: .30, accent: 0, ombre: true, nom: 'Nom' }));
+        o = o.concat(tSujet(d, 'photoJoueuse', { cx: .5, w: 1.42, bas: 1.06, lumiere: false }));
+        var num = tTexte(d, 'chiffre', '00', { x: W * .62, y: H * .60, w: W * .33 }, {
+          size: W * .30, align: 'right', col: d.palette.fg, opacity: .12, nom: 'Numero' });
+        o.push(num);
+        o = o.concat(tCoins(d, 'SAISON 2026-2027', 'EFFECTIF'));
+        o = o.concat(tBarre(d, [
+          ['Poste', 'MENEUSE', 'joueuse.poste'],
+          ['Maillot', '\u2116 00', 'joueuse.numero'],
+          ['Taille', '1,70 M', 'joueuse.taille']
+        ], { y: .885 }));
+        o.push(tGrain(d, { a: .2 }));
+        return o;
+      }
+    },
+
+    {
+      id: 'gf-duel', cat: 'Match Day', label: 'Duel, grand format', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        /* le partage en biais : la moitie gauche au club, la droite a
+           l'adversaire. Deux champs de couleur, pas deux photos collees. */
+        var biais = tRect(d, { x: -W * .2, y: -H * .1, w: W * .95, h: H * 1.3 }, '#0F3A22', {
+          a: .96, rot: -9, nom: 'Champ du club' });
+        o.push(biais);
+        o.push(tRect(d, { x: W * .58, y: -H * .1, w: W * .8, h: H * 1.3 }, '#1A1210', {
+          a: .9, rot: -9, nom: 'Champ adverse' }));
+        o = o.concat(tSujet(d, 'photoJoueuse', { cx: .24, w: .95, bas: 1.04, lumiere: false }));
+        o = o.concat(tSujet(d, 'photoJoueuse', { cx: .76, w: .95, bas: 1.04, lumiere: false,
+          nom: 'La joueuse adverse' }));
+        o.push(tMur(d, ['VS'], {
+          y: H * .36, size: .34, align: 'center', col: d.palette.fg, ombre: true, nom: 'VS' }));
+        o.push(tLogo(d, { x: W * .10, y: H * .10, w: W * .13, h: W * .13 }, 'logoClub',
+          { mask: 'rect', nom: 'Logo du club' }));
+        o.push(tLogo(d, { x: W - W * .23, y: H * .10, w: W * .13, h: W * .13 }, 'logoAdv',
+          { mask: 'rect', nom: 'Logo adverse' }));
+        o = o.concat(tCoins(d, 'JOUR DE MATCH', 'CHAMPIONNAT'));
+        o = o.concat(tBarre(d, [
+          ['Date', 'SAMEDI 00', 'match.dateLongue'],
+          ['Heure', '19H00', 'match.heure'],
+          ['Salle', 'MARIUS NDIAYE', 'match.lieu']
+        ], { y: .885 }));
+        o.push(tGrain(d, { a: .24 }));
+        return o;
+      }
+    },
+
+    {
+      id: 'gf-score', cat: 'R\u00e9sultat', label: 'Le score en grand', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tFondPhoto(d, 'photoMatch', { veil: .8, gray: 60, nom: 'Photo de fond' }));
+        o = o.concat(tEclats(d, A, { y: .46, a: .9, rot: 8 }));
+        o.push(tMur(d, ['VICTOIRE'], {
+          y: H * .10, size: .175, accent: 0, ombre: true, nom: 'Le mot' }));
+        var sc = tTexte(d, 'chiffre', '68 \u2013 54', { x: W * .062, y: H * .30, w: W - W * .124 }, {
+          size: W * .27, align: 'left', col: d.palette.fg, ombre: true, nom: 'Le score' });
+        o.push(sc);
+        o = o.concat(tSujet(d, 'photoJoueuse', { cx: .74, w: 1.1, bas: 1.05, lumiere: false }));
+        o = o.concat(tCoins(d, 'BAOBABS BASKET CLUB', 'R\u00c9SULTAT'));
+        o = o.concat(tBarre(d, [
+          ['Adversaire', 'DUC DAKAR', 'match.adversaire'],
+          ['Date', 'SAMEDI 00', 'match.dateLongue'],
+          ['Salle', 'MARIUS NDIAYE', 'match.lieu']
+        ], { y: .885 }));
+        o.push(tGrain(d, { a: .22 }));
+        return o;
+      }
+    },
+
+    {
+      id: 'gf-cinq', cat: '\u00c9quipe', label: 'Le cinq, grand format', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, '#0C2418', { nom: 'Fond' }));
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, A, {
+          grad: '#0C2418', a: .22, a2: 0, angle: 200, nom: 'Lumiere' }));
+        o.push(tMur(d, ['LE CINQ', 'MAJEUR'], {
+          y: H * .07, size: .155, accent: 1, nom: 'Titre' }));
+        /* cinq silhouettes alignees, la meme hauteur pour toutes :
+           c'est l'alignement des pieds qui fait la planche, pas la
+           taille des cadres */
+        var n = 5, lw = (W - W * .09) / n;
+        for (var i = 0; i < n; i++) {
+          var f = makeFrame(d, {
+            x: W * .045 + lw * i, y: H * .34, w: lw * .98, h: lw * 1.34, slot: 'photoJoueuse'
+          });
+          f.fit = 'contain'; f.name = 'Joueuse ' + (i + 1);
+          f.serie = { i: i, champ: 'photo' };
+          f.shadow = { on: true, x: 0, y: W * .01, blur: W * .04, color: color('#000000', .55) };
+          o.push(f);
+          var nm = tTexte(d, 'donnee', 'NOM', { x: W * .045 + lw * i, y: H * .34 + lw * 1.36, w: lw * .98 }, {
+            size: W * .019, align: 'center', col: d.palette.fg, upper: true, nom: 'Nom ' + (i + 1)
+          });
+          nm.serie = { i: i, champ: 'nom' }; o.push(nm);
+          var ps = tTexte(d, 'mention', 'POSTE', { x: W * .045 + lw * i, y: H * .34 + lw * 1.36 + W * .026, w: lw * .98 }, {
+            size: W * .0125, align: 'center', col: A, track: .16, upper: true, nom: 'Poste ' + (i + 1)
+          });
+          ps.serie = { i: i, champ: 'poste' }; o.push(ps);
+        }
+        o = o.concat(tCoins(d, 'SAISON 2026-2027', 'COMPOSITION'));
+        o = o.concat(tBarre(d, [
+          ['Adversaire', 'DUC DAKAR', 'match.adversaire'],
+          ['Date', 'SAMEDI 00', 'match.dateLongue'],
+          ['Salle', 'MARIUS NDIAYE', 'match.lieu']
+        ], { y: .885 }));
+        o.push(tGrain(d, { a: .2 }));
+        return o;
+      }
+    },
+
+    {
+      id: 'gf-bienvenue', cat: 'Joueuse', label: 'Bienvenue, grand format', pal: 'nuit',
+      build: function (d) {
+        var W = d.w, H = d.h, A = d.palette.accent, o = [];
+        o.push(tRect(d, { x: 0, y: 0, w: W, h: H }, d.palette.bg, { nom: 'Fond' }));
+        o.push(tRect(d, { x: 0, y: H * .42, w: W, h: H * .58 }, A, {
+          grad: d.palette.bg, a: .9, a2: 0, angle: 0, nom: 'Champ d accueil' }));
+        /* le mot entier, en creux, coupe par la joueuse */
+        o.push(tMur(d, ['BIEN', 'VENUE'], {
+          y: H * .08, size: .225, creux: 'impaires', ombre: true, nom: 'Le mot' }));
+        o = o.concat(tSujet(d, 'photoJoueuse', { cx: .52, w: 1.34, bas: 1.06, lumiere: false }));
+        o.push(tTexte(d, 'titre', 'PR\u00c9NOM NOM', { x: W * .062, y: H * .795, w: W - W * .124 }, {
+          size: W * .062, align: 'center', col: '#06180E', upper: true, nom: 'Nom de la joueuse'
+        }));
+        o = o.concat(tCoins(d, 'BAOBABS BASKET CLUB', 'NOUVELLE RECRUE'));
         o.push(tGrain(d, { a: .2 }));
         return o;
       }
@@ -15626,6 +15961,21 @@ window.BaobabsStudio = (function () {
     open: open,
     close: close,
     isOpen: isOpen,
+    /* LE BANC D'ESSAI DESSINE UN MODELE A LA TAILLE QU'IL VEUT.
+       On ne juge pas une affiche dans une vignette de 150 px : il faut
+       pouvoir la sortir en grand, hors de l'ecran des modeles, pour
+       voir ce que le titre ecrase et ce que la photo mange. Deux
+       lectures, aucune ecriture. */
+    modeles: function () {
+      return TEMPLATES.map(function (t) { return { id: t.id, label: t.label, cat: t.cat }; });
+    },
+    planche: function (id, cvs) {
+      var t = null;
+      TEMPLATES.forEach(function (x) { if (x.id === id) t = x; });
+      if (!t) return false;
+      templateThumb(t, cvs);
+      return true;
+    },
     /* Ouvrir sur un match precis : l'accueil, avec ce match deja choisi
        pour les modeles. Un projet ouvert et modifie n'est pas perdu, on
        revient seulement a l'accueil. */
