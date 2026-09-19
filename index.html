@@ -2777,7 +2777,17 @@ window.bbLienSur = function (u) {
        sur elle, les deux boutons se partagent une ligne, la carte se
        resserre : le tout tient en un ecran et quart. */
     #bb-hero-left{ margin-top:calc(-1 * clamp(170px,46vw,230px)); padding:0 clamp(16px,4vw,24px) 18px }
-    .bb-hh-h1{ max-width:none }
+    /* DEUX LIGNES, PAS TROIS. Le retour a la ligne du titre est fait
+       pour l'ecran large ; sur un telephone il coupait « Le basket /
+       senegalais / qui monte » en trois etages. Le <br> s'efface, le
+       corps descend juste assez pour que « LE BASKET SENEGALAIS » tienne
+       sur une ligne (mesure : 6,6 vw a 375 et 414 px), et « qui monte »
+       garde la sienne. */
+    .bb-hh-h1{ max-width:none; font-size:clamp(24px,6.6vw,30px) }
+    .bb-hh-h1 br{ display:none }
+    /* Le bandeau « A la une » ne garde que le premier segment du
+       sous-titre (la date) : le lieu attend dans le bloc de l'evenement. */
+    #bb-hero-sub > span:not(:first-child){ display:none }
     #bb-hs-text{ font-size:13.5px; line-height:1.55; margin-bottom:16px }
     #bb-hs-ctas{ gap:8px; margin-bottom:18px }
     #bb-hs-btn1, #bb-hs-btn2{ flex:1 1 auto; justify-content:center; padding:12px 14px; font-size:10.5px; letter-spacing:.08em }
@@ -3552,7 +3562,7 @@ window.bbLienSur = function (u) {
              éditorial · Hero d'accueil), voir applyHeroSplit(). Les
              identifiants sont le contrat : aucun ne doit disparaître d'ici. -->
         <div id="bb-hero-left">
-          <h1 class="bb-hh-h1"><span id="bb-hs-title" data-bb-reveal data-reveal-step="86">Le basket<br>sénégalais</span> <span id="bb-hs-accent" data-bb-reveal data-reveal-step="86">qui monte</span><span class="bb-hh-seo"> · Baobabs Basket Club, club de basketball officiel de Dakar, Championnat D2</span></h1>
+          <h1 class="bb-hh-h1"><span id="bb-hs-title" data-bb-reveal data-reveal-step="86">Le basket <br>sénégalais</span> <span id="bb-hs-accent" data-bb-reveal data-reveal-step="86">qui monte</span><span class="bb-hh-seo"> · Baobabs Basket Club, club de basketball officiel de Dakar, Championnat D2</span></h1>
 
           <p id="bb-hs-text" data-bb-reveal data-reveal-step="24">Formation, compétition, communauté. Depuis 2026, les Baobabs construisent à Dakar un club où les joueuses progressent et où le public a sa place.</p>
 
@@ -8542,7 +8552,7 @@ window.bbCloud = function(url, w){
 
     var t = document.getElementById('bb-hs-title');
     if (t){
-      t.innerHTML = b.title ? esc(b.title).replace(/\r?\n/g, '<br>') : base.titleHtml;
+      t.innerHTML = b.title ? esc(b.title).replace(/\r?\n/g, ' <br>') : base.titleHtml;
       t.style.color = b.title_color || base.titleColor;
     }
     // « qui monte » complète le titre d'origine : une bannière qui apporte le
@@ -11684,7 +11694,10 @@ window.bbCloud = function(url, w){
   function applyHeroSplit(s){
     if(!s) return;
     bbSet('bb-hs-kicker', s.hs_kicker);
-    if(s.hs_title){ var t=document.getElementById('bb-hs-title'); if(t) t.innerHTML=esc(s.hs_title).replace(/\r?\n/g,'<br>'); }
+    // L'espace avant le <br> compte : sur telephone le <br> s'efface (voir
+    // .bb-hh-h1 br sous @media) et « Le basket senegalais » coule sur une
+    // ligne, au lieu de se coller en un seul mot.
+    if(s.hs_title){ var t=document.getElementById('bb-hs-title'); if(t) t.innerHTML=esc(s.hs_title).replace(/\r?\n/g,' <br>'); }
     bbSet('bb-hs-accent', s.hs_accent);
     bbSet('bb-hs-text', s.hs_text);
     bbSet('bb-hs-f1v', s.hs_f1_value); bbSet('bb-hs-f1l', s.hs_f1_label);
@@ -11763,7 +11776,14 @@ window.bbCloud = function(url, w){
     // le site sans la remplacer.
     bbCadre(document.getElementById('bb-hero-img'), s, 'hero_image_url');
     if(s.hero_title){ var t=document.getElementById('bb-hero-title'); if(t) t.textContent=s.hero_title; }
-    if(s.hero_subtitle){ var sub=document.getElementById('bb-hero-sub'); if(sub) sub.innerHTML='<span>'+esc(s.hero_subtitle)+'</span>'; }
+    // Le sous-titre est saisi sur plusieurs lignes (la date, puis le
+    // lieu) : chaque ligne devient un segment, separe d'un point comme
+    // le gabarit d'origine. Sur telephone, seul le premier segment
+    // reste : « Cap sur Nouakchott » tenait sur trois lignes.
+    if(s.hero_subtitle){ var sub=document.getElementById('bb-hero-sub'); if(sub){
+      var seg=String(s.hero_subtitle).split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean);
+      sub.innerHTML=seg.map(function(l){ return '<span>'+esc(l)+'</span>'; }).join('<span style="opacity:.4">•</span>');
+    } }
     var titleEl=document.getElementById('bb-hero-title'); if(titleEl) titleEl.style.color=s.hero_title_color||'#F3EFE6';
     var subEl=document.getElementById('bb-hero-sub'); if(subEl) subEl.style.color=s.hero_subtitle_color||'#B9C2BB';
   }
