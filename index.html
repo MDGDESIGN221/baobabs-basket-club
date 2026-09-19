@@ -1670,7 +1670,7 @@ window.bbLienSur = function (u) {
     transform:scale(.96) translate3d(-3%,0,0);
   }
   .bb-lu-act.sort .bb-lu-ph{ animation:none;
-    transform:translate3d(0,var(--dy,0%),0) scale(calc(var(--z,1) * 1.1)) !important;
+    transform:translate3d(var(--sx,0%),calc(var(--dy,0%) + var(--sy,0%)),0) scale(calc(var(--z,1) * var(--sz,1) * 1.1)) !important;
     transition:transform .62s cubic-bezier(.4,0,.2,1) }
   .bb-lu-act.sort .bb-lu-l{
     transition:transform .34s ease-in, opacity .26s ease-in;
@@ -1725,23 +1725,30 @@ window.bbLienSur = function (u) {
      --z : l'echelle qui met toutes les silhouettes a la meme hauteur ;
      --dy : la correction qui pose les pieds sur la meme ligne. Mesures,
      pas devines (bbLuNormaliser). */
+  /* LE REGLAGE DU CLUB S'AJOUTE A LA MESURE. --z et --dy viennent de
+     bbLuNormaliser (toutes a la meme hauteur, les pieds sur la meme
+     ligne). --sx, --sy, --sz viennent de la fiche de la joueuse
+     (scene_x, scene_y, scene_zoom), regles depuis l'admin avec le site
+     sous les yeux : un peu a gauche, un peu plus haut, un peu plus
+     grande. Sans reglage, ils valent zero et un. */
   .bb-lu-ph{
     width:100%; height:100%; object-fit:contain; display:block;
     transform-origin:50% 50%;
     filter:contrast(1.06) saturate(1.06) drop-shadow(0 20px 28px rgba(0,0,0,.62));
-    transform:translate3d(0,var(--dy,0%),0) scale(var(--z,1));
+    transform:translate3d(var(--sx,0%),calc(var(--dy,0%) + var(--sy,0%)),0) scale(calc(var(--z,1) * var(--sz,1)));
   }
   /* KEN BURNS : la photo respire pendant l'acte ; un acte sur deux
      dezoome, sinon le mouvement devient previsible au deuxieme tour. */
   .bb-lu-act.on .bb-lu-ph{ animation:bb-lu-kb 9.5s cubic-bezier(.24,.6,.3,1) forwards }
+  .bb-lu-scene.bb-lu-figee .bb-lu-act.on .bb-lu-ph{ animation:none }
   .bb-lu-act:nth-child(even).on .bb-lu-ph{ animation-name:bb-lu-kb2 }
   @keyframes bb-lu-kb{
-    from{ transform:translate3d(0,var(--dy,0%),0) scale(var(--z,1)) }
-    to  { transform:translate3d(0,calc(var(--dy,0%) - 1.2%),0) scale(calc(var(--z,1) * 1.06)) }
+    from{ transform:translate3d(var(--sx,0%),calc(var(--dy,0%) + var(--sy,0%)),0) scale(calc(var(--z,1) * var(--sz,1))) }
+    to  { transform:translate3d(var(--sx,0%),calc(var(--dy,0%) + var(--sy,0%) - 1.2%),0) scale(calc(var(--z,1) * var(--sz,1) * 1.06)) }
   }
   @keyframes bb-lu-kb2{
-    from{ transform:translate3d(.8%,calc(var(--dy,0%) - 1.2%),0) scale(calc(var(--z,1) * 1.06)) }
-    to  { transform:translate3d(-.6%,var(--dy,0%),0) scale(var(--z,1)) }
+    from{ transform:translate3d(calc(var(--sx,0%) + .8%),calc(var(--dy,0%) + var(--sy,0%) - 1.2%),0) scale(calc(var(--z,1) * var(--sz,1) * 1.06)) }
+    to  { transform:translate3d(calc(var(--sx,0%) - .6%),calc(var(--dy,0%) + var(--sy,0%)),0) scale(calc(var(--z,1) * var(--sz,1))) }
   }
   .bb-lu-halo{
     position:absolute; left:50%; bottom:1%; width:128%; aspect-ratio:1.1;
@@ -8743,7 +8750,7 @@ window.bbCloud = function(url, w){
      =================================================================== */
   var BB_LU_DUREE = 4400, BB_LU_BANC = 5600, BB_LU_INTRO = 2700, BB_LU_DUEL = 3200;
   var bbLuScene = { i:0, n:0, t:null, tSort:null, forme:null, tForme:null, dernier:-1,
-                    obs:null, vu:false,
+                    obs:null, vu:false, fige:false,
                     depuis:0, duree:0, hote:null, compteurs:[] };
 
   function bbLuPeu(){
@@ -8863,6 +8870,12 @@ window.bbCloud = function(url, w){
     return '<div class="bb-lu-segs" aria-hidden="true">' + out + '</div>';
   }
 
+  /* Le reglage de scene d'une joueuse, en variables CSS sur son acte :
+     sx et sy en % de la boite, sz en facteur. Voir .bb-lu-ph. */
+  function bbLuSceneVars(p){
+    var n = function(v, d){ var x = parseFloat(v); return (v == null || v === '' || isNaN(x)) ? d : x; };
+    return '--sx:' + n(p.sx, 0) + '%;--sy:' + n(p.sy, 0) + '%;--sz:' + (n(p.sz, 100) / 100);
+  }
   function bbLuActe(p, i, total){
     var n = bbLuNom(p.name);
     var no = (p.no == null || p.no === '') ? '' : String(p.no);
@@ -8871,7 +8884,8 @@ window.bbCloud = function(url, w){
     // decide vraiment s'il tiendra sur la ligne.
     var lg = (n.fam || '').length;
     var f = lg > 15 ? .56 : lg > 12 ? .68 : lg > 9 ? .82 : 1;
-    return '<article class="bb-lu-act" data-i="' + i + '" style="--lu-f:' + f + '">' +
+    return '<article class="bb-lu-act" data-i="' + i + '" data-pid="' + esc(p.id == null ? '' : String(p.id)) +
+             '" style="--lu-f:' + f + ';' + bbLuSceneVars(p) + '">' +
       (no ? '<span class="bb-lu-num" aria-hidden="true">' + esc(no) + '</span>' : '') +
       '<figure class="bb-lu-fig">' +
         '<span class="bb-lu-halo" aria-hidden="true"></span>' +
@@ -9147,7 +9161,7 @@ window.bbCloud = function(url, w){
   }
   function bbLuRelancer(duree){
     clearTimeout(bbLuScene.t);
-    if (!bbLuScene.vu || document.hidden) return;
+    if (bbLuScene.fige || !bbLuScene.vu || document.hidden) return;
     // MOINS D'ANIMATION NE VEUT PAS DIRE PLUS RIEN.
     // On coupait la boucle entiere quand le systeme demande moins
     // d'animation : les quatre autres joueuses devenaient invisibles, et
@@ -9188,7 +9202,7 @@ window.bbCloud = function(url, w){
   setInterval(function(){
     var h = bbLuScene.hote;
     if (!h || !bbLuScene.n || !bbLuScene.vu || document.hidden) return;
-    if (!document.body.contains(h)) return;
+    if (!document.body.contains(h) || bbLuScene.fige) return;
     var duree = bbLuScene.duree || BB_LU_DUREE;
     if (Date.now() - (bbLuScene.depuis || 0) > duree + 1500) bbLuAller(bbLuScene.i + 1);
   }, 2000);
@@ -9333,6 +9347,61 @@ window.bbCloud = function(url, w){
       .catch(function(){ return sbFetch('match_stats?select=player_id,is_starter' + q); });
   }
 
+  // Le coach affiche sur la feuille de match : meme regle que l'effectif,
+  // sinon un profil en attente s'afficherait en direct. La table staff
+  // porte un telephone et un jeton de reprise ; la vue n'en porte pas.
+  function bbLuCoach(){
+    return sbFetch('staff_site?select=*&order=sort.asc')
+      .catch(function(){ return sbFetch('staff?select=*&fiche_etat=eq.publiee&order=sort.asc'); })
+      .catch(function(){ return sbFetch('staff?select=*&order=sort.asc'); })
+      .then(function(sr){
+        return (sr || []).filter(function(s){
+          return (s.fiche_etat || 'publiee') === 'publiee' && /coach|entra/i.test(s.role || '');
+        })[0] || null;
+      });
+  }
+
+  // LE TEMOIN DE L'ADMIN JOUE LA COMPOSITION QU'ON LUI ENVOIE.
+  // L'admin (fiche du match, Composition) ouvre le site dans son volet
+  // et lui poste le match, le cinq et le banc tels qu'ils sont a
+  // l'ecran, avant meme d'enregistrer. Les lignes sont celles de la
+  // table players : on les normalise comme au chargement, avec la meme
+  // fonction, pour que ce soit exactement le rendu public.
+  function bbLuTemoin(t){
+    var norm = function(r){ var p = window.bbNormaliserJoueuse(r); p.cap = !!r.is_captain; p.rang = null; return p; };
+    var cinq = (t.cinq || []).map(norm), banc = (t.banc || []).map(norm);
+    // la cible se lit maintenant : l'appelant l'efface juste apres, et
+    // le rendu peut attendre la lecture du coach
+    var cible = t.cible;
+    var rendre = function(coach){
+      bbLuRendre(t.match || {}, cinq.slice(0, 5), banc, coach || null);
+      if (cible) bbTemoinAller(cible);
+    };
+    if (t.coach !== undefined) rendre(t.coach);
+    else bbLuCoach().then(rendre).catch(function(){ rendre(null); });
+  }
+  // Un reglage de scene qui bouge : on le pose sur l'acte de la joueuse,
+  // on va sur elle, et la boucle se fige le temps du reglage.
+  function bbLuTemoinScene(t){
+    var h = bbLuScene.hote; if (!h) return;
+    var a = h.querySelector('.bb-lu-act[data-pid="' + String(t.pid) + '"]'); if (!a) return;
+    var vars = bbLuSceneVars({ sx:t.sx, sy:t.sy, sz:t.sz }).split(';');
+    vars.forEach(function(kv){ var i = kv.indexOf(':'); a.style.setProperty(kv.slice(0, i), kv.slice(i + 1)); });
+    // et dans la composition envoyee, pour qu'une relecture la garde
+    (bbLuScene.temoin ? [].concat(bbLuScene.temoin.cinq || [], bbLuScene.temoin.banc || []) : []).forEach(function(r){
+      if (String(r.id) === String(t.pid)){ r.scene_x = t.sx; r.scene_y = t.sy; r.scene_zoom = t.sz; }
+    });
+    var i = parseInt(a.getAttribute('data-i'), 10);
+    bbLuScene.fige = true; h.classList.add('bb-lu-figee');
+    clearTimeout(bbLuScene.t);
+    if (!a.classList.contains('on')) bbLuAller(i);
+  }
+  function bbLuTemoinRejouer(){
+    var h = bbLuScene.hote; if (!h) return;
+    bbLuScene.fige = false; h.classList.remove('bb-lu-figee');
+    bbLuRedemarrer();
+  }
+
   // LE CLUB CHOISIT CE QUE L'ACCUEIL MONTRE.
   // La section prenait TOUJOURS le prochain match par la date. Une
   // composition faite pour le match de vendredi ne s'affichait donc pas
@@ -9352,6 +9421,10 @@ window.bbCloud = function(url, w){
   function bbLineup(){
     var hote = document.getElementById('bb-lineup');
     if (!hote) return;
+    // Sous le temoin de l'admin, c'est la composition envoyee qui fait
+    // foi, pas celle de la base : on la rejoue a chaque relecture des
+    // joueuses, au lieu de la remplacer.
+    if (bbLuScene.temoin){ bbLuTemoin(bbLuScene.temoin); return; }
     var reg = bbLineupReglage();
     // Masqué à la demande : on le cache VRAIMENT, même si une
     // composition complète existe. C'est un choix du club.
@@ -9430,15 +9503,11 @@ window.bbCloud = function(url, w){
             // sinon un profil en attente s'afficherait en direct.
             // Meme raison que pour l'effectif : la table staff porte un
             // telephone et un jeton de reprise. La vue n'en porte pas.
-            return sbFetch('staff_site?select=*&order=sort.asc')
-              .catch(function(){ return sbFetch('staff?select=*&fiche_etat=eq.publiee&order=sort.asc'); })
-              .catch(function(){ return sbFetch('staff?select=*&order=sort.asc'); })
-              .then(function(sr){
-              var coach = (sr || []).filter(function(s){
-                return (s.fiche_etat || 'publiee') === 'publiee' && /coach|entra/i.test(s.role || '');
-              })[0] || null;
-              bbLuRendre(m, cinq.slice(0, 5), banc, coach);
-            }).catch(function(){ bbLuRendre(m, cinq.slice(0, 5), banc, null); });
+            // La chaine est longue (match, lignes, coach) : si le temoin
+            // a parle entre-temps, c'est lui qui a le dernier mot, pas la
+            // base. Mesure : la vraie compo recouvrait celle envoyee.
+            var poser = function(coach){ if (!bbLuScene.temoin) bbLuRendre(m, cinq.slice(0, 5), banc, coach); };
+            return bbLuCoach().then(poser).catch(function(){ poser(null); });
           });
       })
       .catch(function(){});                          // pas de compo lisible : la section se tait
@@ -9481,6 +9550,24 @@ window.bbCloud = function(url, w){
     }
     window.bbAge = bbAge;
 
+    // UNE LIGNE DE LA BASE DEVIENT UNE JOUEUSE DU SITE. Une seule
+    // fonction, parce que deux chemins l'appellent : le chargement, et
+    // le temoin de l'admin (bbLuTemoin), qui envoie des lignes de la
+    // table telles qu'elles sont a l'ecran. sx, sy, sz : le reglage de
+    // la joueuse sur la scene du Cinq majeur.
+    function bbNormaliserJoueuse(r){
+      return { no: (r.jersey_number!=null?r.jersey_number:''), name:r.name||'', pos:r.position||'',
+        status:(r.status||'active'),
+        age:bbAge(r.birth_date, r.birth_year), height:r.height||'', foot:r.city||'',
+        src:(window.bbCloud?window.bbCloud(r.photo_url||'',800):(r.photo_url||'')),
+        srcFull:(window.bbCloud?window.bbCloud(r.photo_url||'',1400):(r.photo_url||'')),
+        nameColor:r.name_color||'', bio:r.bio||'', gender:(r.gender==='M'?'M':'F'),
+        px:(r.photo_x==null||r.photo_x==='')?50:r.photo_x, py:(r.photo_y==null||r.photo_y==='')?0:r.photo_y, pz:(r.photo_zoom==null||r.photo_zoom==='')?100:r.photo_zoom,
+        sx:r.scene_x, sy:r.scene_y, sz:r.scene_zoom,
+        id:r.id, weight:r.weight||'', stats:(function(s){ if(typeof s==='string'){ try{ s=JSON.parse(s); }catch(e){ s=null; } } return (s&&typeof s==='object')?s:{}; })(r.stats) };
+    }
+    window.bbNormaliserJoueuse = bbNormaliserJoueuse;
+
     // L'EFFECTIF SE LIT PAR UNE VUE, PAS PAR LA TABLE.
     // `players?select=*` rendait la fiche ENTIERE a n'importe quel
     // visiteur : date de naissance, numero de licence, note de blessure,
@@ -9502,16 +9589,7 @@ window.bbCloud = function(url, w){
       players = rows.filter(function(r){
         if ((r.status||'active') === 'partie') return false;
         return (r.fiche_etat || 'publiee') === 'publiee';
-      }).map(function(r){
-        return { no: (r.jersey_number!=null?r.jersey_number:''), name:r.name||'', pos:r.position||'',
-          status:(r.status||'active'),
-          age:bbAge(r.birth_date, r.birth_year), height:r.height||'', foot:r.city||'',
-          src:(window.bbCloud?window.bbCloud(r.photo_url||'',800):(r.photo_url||'')),
-          srcFull:(window.bbCloud?window.bbCloud(r.photo_url||'',1400):(r.photo_url||'')),
-          nameColor:r.name_color||'', bio:r.bio||'', gender:(r.gender==='M'?'M':'F'),
-          px:(r.photo_x==null||r.photo_x==='')?50:r.photo_x, py:(r.photo_y==null||r.photo_y==='')?0:r.photo_y, pz:(r.photo_zoom==null||r.photo_zoom==='')?100:r.photo_zoom,
-          id:r.id, weight:r.weight||'', stats:(function(s){ if(typeof s==='string'){ try{ s=JSON.parse(s); }catch(e){ s=null; } } return (s&&typeof s==='object')?s:{}; })(r.stats) };
-      });
+      }).map(bbNormaliserJoueuse);
       renderPlayers(); renderAppRoster();
       // Apres les joueurs, jamais avant : la composition les retrouve par
       // leur identifiant dans le tableau deja normalise.
@@ -9693,12 +9771,18 @@ window.bbCloud = function(url, w){
     var page = typeof c === 'object' ? c.page : null, sel = typeof c === 'object' ? c.sel : c;
     var change = page && typeof PAGES !== 'undefined' && PAGES.indexOf(page) >= 0 && state.page !== page;
     if (change) goTo(page, true);
-    setTimeout(function(){
+    // Sous l'ecran d'ouverture, la page fait 100 % de haut et ne defile
+    // pas : un defilement demande a ce moment-la ne fait rien, et la
+    // cible du premier envoi restait hors de vue. On attend qu'il parte.
+    var essais = 0;
+    var viser = function(){
+      if (document.documentElement.classList.contains('bb-splash-lock') && essais++ < 40){ setTimeout(viser, 100); return; }
       var el = sel && document.querySelector(sel); if (!el) return;
       el.scrollIntoView({ block:'start' });
       el.classList.add('bb-temoin-vise');
       setTimeout(function(){ el.classList.remove('bb-temoin-vise'); }, 1800);
-    }, change ? 320 : 0);
+    };
+    setTimeout(viser, change ? 320 : 0);
   }
   if (bbTemoin){
     document.documentElement.classList.add('bb-temoin');
@@ -9725,6 +9809,17 @@ window.bbCloud = function(url, w){
       if (m.type === 'bbc-temoin-lignes' && bbPoser[m.table]){
         try { bbPoser[m.table](m.lignes || []); } catch(err){ console.warn('[temoin]', err); }
       }
+      // LE CINQ MAJEUR, depuis la fiche du match : la composition telle
+      // qu'elle est a l'ecran de l'admin, puis les reglages de scene
+      // d'une joueuse a la fois, et « rejouer ».
+      if (m.type === 'bbc-temoin-cinq'){
+        bbLuScene.temoin = m;
+        try { bbLuTemoin(m); } catch(err){ console.warn('[temoin]', err); }
+        m.cible = null;                                  // un seul defilement, pas un a chaque relecture
+        return;
+      }
+      if (m.type === 'bbc-temoin-cinq-scene'){ try { bbLuTemoinScene(m); } catch(err){ console.warn('[temoin]', err); } return; }
+      if (m.type === 'bbc-temoin-cinq-rejouer'){ try { bbLuTemoinRejouer(); } catch(err){ console.warn('[temoin]', err); } return; }
       if (m.cible) bbTemoinAller(m.cible);
     });
     window.addEventListener('load', function(){

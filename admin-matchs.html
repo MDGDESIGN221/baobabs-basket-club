@@ -2652,6 +2652,39 @@
   .mc-cp-grid{
     display:grid; grid-template-columns:repeat(auto-fill,minmax(134px,1fr)); gap:10px;
   }
+
+  /* ── l'annonce sur le site, et le reglage de chaque joueuse ──
+     Le temoin (le vrai site, dans le volet de droite) joue la scene ;
+     ici, trois curseurs par titulaire deplacent et agrandissent sa
+     silhouette, et le site suit a chaque cran. */
+  .mc-sc-bar{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 10px }
+  .mc-sc-bar .btn{ min-height:38px; padding:8px 14px; font-size:12.5px; width:auto }
+  .mc-sc-bar .btn-primary{ box-shadow:none }
+  .mc-sc-bar .mc-sc-etat{ font-size:12px; color:var(--faint); margin-left:auto }
+  .mc-sc-rows{ display:grid; gap:8px }
+  .mc-sc-row{
+    display:grid; grid-template-columns:minmax(120px,1fr) repeat(3,minmax(140px,1.4fr)) auto;
+    gap:10px 14px; align-items:center; padding:9px 12px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-sm);
+  }
+  .mc-sc-row.dirty{ border-color:rgba(70,191,29,.5) }
+  .mc-sc-nom{ display:flex; align-items:center; gap:9px; min-width:0 }
+  .mc-sc-nom img,.mc-sc-nom i{ width:30px; height:30px; border-radius:50%; object-fit:cover; flex:none;
+    background:var(--surface); border:1px solid var(--line-strong); font-style:normal }
+  .mc-sc-nom b{ font-family:var(--font-ui); font-weight:700; font-size:12.5px; color:var(--text);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .mc-sc-nom small{ display:block; font-size:10.5px; color:var(--faint); font-weight:500 }
+  .mc-sc-f{ display:grid; grid-template-columns:1fr auto; gap:2px 8px; align-items:center; min-width:0 }
+  .mc-sc-f span{ grid-column:1 / -1; font-family:var(--font-ui); font-weight:700; font-size:9.5px;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--faint) }
+  .mc-sc-f input[type=range]{ width:100%; min-width:0; margin:0; accent-color:var(--gold) }
+  .mc-sc-f output{ font-family:var(--font-ui); font-weight:700; font-size:11.5px; color:var(--text);
+    min-width:4ch; text-align:right; font-variant-numeric:tabular-nums }
+  .mc-sc-row .mc-cp-bt{ width:30px; height:30px }
+  @media (max-width:900px){
+    .mc-sc-row{ grid-template-columns:1fr 1fr; }
+    .mc-sc-nom{ grid-column:1 / -1 }
+  }
   .mc-cp-c{
     border:1px solid var(--line); border-radius:var(--r-md); overflow:hidden;
     background:var(--surface-2); transition:border-color .15s, background .15s;
@@ -15619,7 +15652,7 @@
   // n'ont pas de formulaire declaratif, ou les lignes d'une collection
   // (joueuses, produits, actualites...). Apres chaque ecriture en base
   // (auditDiffFields), le temoin se remet a jour tout seul.
-  var tmEtat = { ouvert:false, mode:'ordi', pret:false, id:null, titre:'', cible:null, reglages:null, table:null, lignes:null, timer:null };
+  var tmEtat = { ouvert:false, mode:'ordi', pret:false, id:null, titre:'', cible:null, reglages:null, table:null, lignes:null, envoyer:null, timer:null };
   var TM_LARGEURS = { ordi:1280, tel:390 };
 
   // Ou chaque bloc du registre s'affiche sur le site : la page, puis la section.
@@ -15681,6 +15714,8 @@
     var el = document.getElementById('temoin'); if (!el) return;
     tmEtat.id = o.id || null; tmEtat.titre = o.titre || 'Le site'; tmEtat.cible = o.cible || null;
     tmEtat.reglages = o.reglages || null; tmEtat.table = o.table || null; tmEtat.lignes = o.lignes || null;
+    // un ecran qui parle au site dans sa propre langue (le Cinq majeur)
+    tmEtat.envoyer = typeof o.envoyer === 'function' ? o.envoyer : null;
     document.getElementById('tm-titre').textContent = tmEtat.titre;
     document.getElementById('tm-lien').href = tmLien(tmEtat.cible);
     el.hidden = false; document.body.classList.add('tm-ouvert'); tmEtat.ouvert = true;
@@ -15706,6 +15741,7 @@
     try {
       if (reglages){ w.postMessage({ type:'bbc-temoin-reglages', reglages: reglages, cible: cible }, location.origin); envoye = true; cible = null; }
       if (tmEtat.table && lignes){ w.postMessage({ type:'bbc-temoin-lignes', table: tmEtat.table, lignes: lignes, cible: cible }, location.origin); envoye = true; cible = null; }
+      if (tmEtat.envoyer){ tmEtat.envoyer(w, !!avecCible); envoye = true; cible = null; }
       if (!envoye && cible) w.postMessage({ type:'bbc-temoin-aller', cible: cible }, location.origin);
     } catch(e){ /* une valeur non serialisable : on n'envoie rien, le site garde la base */ }
   }
@@ -26644,7 +26680,9 @@
     mcCompo.mid = m.id;
     var box = document.getElementById('mc-compo-list'); if (!box) return;
     Promise.all([
-      sbGet('players?select=id,name,jersey_number,position,status,photo_url,photo_x,photo_y,photo_zoom&order=jersey_number.asc' + SANS_ATTENTE),
+      // aussi ce que la scene du site affiche (taille, age) et le reglage
+      // de chaque joueuse sur cette scene (scene_x, scene_y, scene_zoom)
+      sbGet('players?select=id,name,jersey_number,position,status,photo_url,photo_x,photo_y,photo_zoom,height,birth_date,birth_year,gender,city,scene_x,scene_y,scene_zoom&order=jersey_number.asc' + SANS_ATTENTE),
       mcCompoLire(m.id)
     ]).then(function(res){
       // Une joueuse partie du club ne peut plus etre alignee. Les
@@ -26853,6 +26891,161 @@
 
     box.innerHTML = h;
     mcCompoArmer(box);
+    mcSceneRendre();
+    mcCompoTemoin(false);
+  }
+
+  // =================================================================
+  // L'ANNONCE SUR LE SITE, ET LE REGLAGE DE CHAQUE JOUEUSE
+  // =================================================================
+  // « dans l'admin, pour le cinq, pouvoir voir si les choses vont
+  //   s'afficher correctement, modifier le positionnement de chaque
+  //   joueuse et sa taille, et voir l'animation »
+  //
+  // On ne redessine rien : le temoin ouvre le vrai site dans le volet
+  // de droite et lui envoie la composition telle qu'elle est ici
+  // (bbc-temoin-cinq), avant meme d'enregistrer. Trois curseurs par
+  // titulaire -- gauche/droite, haut/bas, taille -- posent scene_x,
+  // scene_y, scene_zoom sur la joueuse : le site les applique a chaque
+  // cran (bbc-temoin-cinq-scene) et se fige sur elle le temps du
+  // reglage ; « Rejouer » relance l'annonce du generique.
+  var mcScene = { dirty:{} };
+
+  function mcSceneVal(p, k, def){
+    var v = p ? p[k] : null, x = parseFloat(v);
+    return (v == null || v === '' || isNaN(x)) ? def : x;
+  }
+  function mcSceneRendre(){
+    var box = document.getElementById('mc-compo-scene'); if (!box) return;
+    if (!mcCompo.cinq.length){ box.innerHTML = ''; return; }
+    var h = '<div class="mc-cp-h2"><b>L’annonce sur le site</b><span>ce que l’accueil jouera, avec les mêmes photos</span><i></i></div>';
+    h += '<div class="mc-sc-bar">' +
+      '<button type="button" class="btn btn-primary" data-sc="voir">Voir l’annonce sur le site</button>' +
+      '<button type="button" class="btn btn-ghost" data-sc="rejouer">Rejouer l’animation</button>' +
+      '<button type="button" class="btn btn-ghost" data-sc="enregistrer" disabled>Enregistrer les réglages</button>' +
+      '<span class="mc-sc-etat" id="mc-sc-etat">Bougez un curseur : le site suit, et se fige sur la joueuse.</span>' +
+    '</div>';
+    h += '<div class="mc-sc-rows">' + mcCompo.cinq.map(function(pid, i){
+      var p = mcCompoJoueuse(pid) || {};
+      var x = mcSceneVal(p, 'scene_x', 0), y = mcSceneVal(p, 'scene_y', 0), z = mcSceneVal(p, 'scene_zoom', 100);
+      var curseur = function(k, lib, min, max, val, unite){
+        return '<label class="mc-sc-f"><span>' + lib + '</span>' +
+          '<input type="range" data-k="' + k + '" min="' + min + '" max="' + max + '" step="1" value="' + val + '">' +
+          '<output>' + (val > 0 && k !== 'scene_zoom' ? '+' : '') + val + unite + '</output></label>';
+      };
+      return '<div class="mc-sc-row' + (mcScene.dirty[pid] ? ' dirty' : '') + '" data-pid="' + esc(pid) + '">' +
+        '<div class="mc-sc-nom">' + (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '<i></i>') +
+          '<div><b>' + esc(p.name || '—') + '</b><small>' + (i + 1) + (i === 0 ? 're' : 'e') + ' annoncée' +
+          (p.jersey_number != null ? ' · nº ' + esc(String(p.jersey_number)) : '') + '</small></div></div>' +
+        curseur('scene_x', 'Gauche ↔ droite', -40, 40, x, ' %') +
+        curseur('scene_y', 'Haut ↔ bas', -40, 40, y, ' %') +
+        curseur('scene_zoom', 'Taille', 60, 160, z, ' %') +
+        '<button type="button" class="mc-cp-bt" data-sc="zero" title="Remettre le réglage d’origine" aria-label="Remettre le réglage d’origine">↺</button>' +
+      '</div>';
+    }).join('') + '</div>';
+    box.innerHTML = h;
+
+    box.querySelectorAll('input[type=range]').forEach(function(r){
+      r.addEventListener('input', function(){
+        var row = r.closest('[data-pid]'), pid = row.getAttribute('data-pid'), p = mcCompoJoueuse(pid);
+        if (!p) return;
+        p[r.getAttribute('data-k')] = Number(r.value);
+        var out = r.parentNode.querySelector('output');
+        if (out) out.textContent = (Number(r.value) > 0 && r.getAttribute('data-k') !== 'scene_zoom' ? '+' : '') + r.value + ' %';
+        mcSceneSali(pid, row);
+        mcSceneEnvoyer(p);
+      });
+    });
+    box.querySelectorAll('[data-sc]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var a = b.getAttribute('data-sc');
+        if (a === 'voir') return mcCompoTemoin(true);
+        if (a === 'rejouer') return mcSceneRejouer();
+        if (a === 'enregistrer') return mcSceneEnregistrer();
+        if (a === 'zero'){
+          var row = b.closest('[data-pid]'), pid = row.getAttribute('data-pid'), p = mcCompoJoueuse(pid);
+          if (!p) return;
+          p.scene_x = 0; p.scene_y = 0; p.scene_zoom = 100;
+          row.querySelectorAll('input[type=range]').forEach(function(r){
+            var k = r.getAttribute('data-k'); r.value = p[k];
+            var out = r.parentNode.querySelector('output'); if (out) out.textContent = p[k] + ' %';
+          });
+          mcSceneSali(pid, row);
+          mcSceneEnvoyer(p);
+        }
+      });
+    });
+  }
+  function mcSceneSali(pid, row){
+    mcScene.dirty[pid] = true;
+    if (row) row.classList.add('dirty');
+    var b = document.querySelector('#mc-compo-scene [data-sc="enregistrer"]'); if (b) b.disabled = false;
+    var e = document.getElementById('mc-sc-etat'); if (e) e.textContent = 'Réglage modifié, pas encore enregistré.';
+  }
+  // Le temoin du cinq : le vrai site, a droite, qui joue cette
+  // composition. Ouvert d'ici ou par un curseur.
+  function mcCompoTemoinId(){ return 'cinq:' + mcCompo.mid; }
+  function mcCompoTemoin(ouvrir){
+    if (!mcCompo.mid) return;
+    if (ouvrir){
+      tmOuvrir({ id: mcCompoTemoinId(), titre: 'Le Cinq majeur, sur le site',
+        cible: { page:'accueil', sel:'#bb-lineup' },
+        envoyer: function(w, avecCible){ mcCompoTemoinPoster(w, avecCible); } });
+      return;
+    }
+    if (!tmEtat.ouvert || !tmEtat.pret || tmEtat.id !== mcCompoTemoinId()) return;
+    var f = tmIframe(), w = f && f.contentWindow; if (w) mcCompoTemoinPoster(w, false);
+  }
+  function mcCompoTemoinPoster(w, avecCible){
+    var m = mcById(mcCompo.mid); if (!m) return;
+    var ligne = function(pid){
+      var p = mcCompoJoueuse(pid); if (!p) return null;
+      var c = {}; for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) c[k] = p[k];
+      c.is_captain = String(mcCompo.cap) === String(pid);
+      return c;
+    };
+    var cinq = mcCompo.cinq.map(ligne).filter(Boolean), banc = mcCompo.banc.map(ligne).filter(Boolean);
+    try {
+      w.postMessage({ type:'bbc-temoin-cinq',
+        match: { id:m.id, opponent_name:m.opponent_name, opponent_logo_url:m.opponent_logo_url, match_date:m.match_date,
+                 match_time:m.match_time, venue:m.venue, is_home:m.is_home, competition:m.competition, round_label:m.round_label },
+        cinq: cinq, banc: banc,
+        cible: avecCible ? { page:'accueil', sel:'#bb-lineup' } : null }, location.origin);
+    } catch(e){ /* une valeur non serialisable : le site garde ce qu'il a */ }
+  }
+  function mcSceneEnvoyer(p){
+    if (!tmEtat.ouvert || tmEtat.id !== mcCompoTemoinId()){ mcCompoTemoin(true); }
+    if (!tmEtat.pret) return;                         // le site arrive : la compo part avec ses reglages
+    var f = tmIframe(), w = f && f.contentWindow; if (!w) return;
+    try {
+      w.postMessage({ type:'bbc-temoin-cinq-scene', pid:String(p.id),
+        sx:mcSceneVal(p, 'scene_x', 0), sy:mcSceneVal(p, 'scene_y', 0), sz:mcSceneVal(p, 'scene_zoom', 100) }, location.origin);
+    } catch(e){}
+  }
+  function mcSceneRejouer(){
+    if (!tmEtat.ouvert || tmEtat.id !== mcCompoTemoinId()){ mcCompoTemoin(true); return; }
+    var f = tmIframe(), w = f && f.contentWindow; if (!w) return;
+    try { w.postMessage({ type:'bbc-temoin-cinq-rejouer' }, location.origin); } catch(e){}
+  }
+  // Les trois nombres vivent sur la joueuse, pas sur le match : la photo
+  // est la meme d'une affiche a l'autre.
+  function mcSceneEnregistrer(){
+    var pids = Object.keys(mcScene.dirty); if (!pids.length) return;
+    var b = document.querySelector('#mc-compo-scene [data-sc="enregistrer"]'); if (b) b.disabled = true;
+    Promise.all(pids.map(function(pid){
+      var p = mcCompoJoueuse(pid); if (!p) return Promise.resolve();
+      return sbUpdate('players', pid, {
+        scene_x: mcSceneVal(p, 'scene_x', 0), scene_y: mcSceneVal(p, 'scene_y', 0), scene_zoom: mcSceneVal(p, 'scene_zoom', 100)
+      }, 'Effectif');
+    })).then(function(){
+      mcScene.dirty = {};
+      document.querySelectorAll('#mc-compo-scene .mc-sc-row.dirty').forEach(function(r){ r.classList.remove('dirty'); });
+      var e = document.getElementById('mc-sc-etat'); if (e) e.textContent = 'Réglages enregistrés : le site les applique.';
+      qgToast('Réglages de scène enregistrés ✓');
+    }).catch(function(){
+      if (b) b.disabled = false;
+      qgToast('Les réglages n’ont pas pu être enregistrés.', true);
+    });
   }
 
   // ---------- les gestes ----------
@@ -27257,7 +27450,9 @@
             'Tout est publié dès qu’une titulaire est désignée : la composition peut donc s’annoncer ' +
             'plusieurs jours avant le match. Le cinq posé ici se retrouve sur le terrain dans « Soir de match ».</p>' +
           '<div id="mc-compo-list"><div class="empty">Lecture de l’effectif…</div></div>' +
+          '<div id="mc-compo-scene"></div>' +
         '</div>';
+      mcScene.dirty = {};
       mcCompoCharger(m);
       mcWireSave(m, ['mc-date','mc-time','mc-home','mc-venue','mc-comp','mc-round','mc-ref','mc-att','mc-notes'], function(){
         var t = document.getElementById('mc-time').value;
