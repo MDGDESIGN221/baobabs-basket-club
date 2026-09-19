@@ -3,9 +3,10 @@
    ---------------------------------------------------------------------
    Un tournoi, un stage, un déplacement : qui part. La liste officielle
    des joueuses sélectionnées avec leurs caractéristiques (poste,
-   maillot, taille, naissance, licence), puis le staff qui les
-   accompagne et sa fonction sur place. Un bandeau, l'essentiel en
-   cases, les deux tableaux, la mention qui engage, la signature.
+   maillot, taille, naissance), puis le staff qui les accompagne et sa
+   fonction sur place. Un bandeau, l'essentiel en cases, les deux
+   tableaux, la mention qui engage, la signature. Le numéro de licence
+   n'y est plus : « tu peux enlever le bloc licence ».
 
    Pré-rempli depuis l'écran Présentations de l'administration ; les
    numéros de maillot sont ceux des fiches, pas ceux d'une liste tapée
@@ -61,20 +62,19 @@
         avecSignature: true, avecCachet: true,
         tables: {
           joueuses: {
-            titre: "Les joueuses sélectionnées", singulier: "joueuse", vide: 0,
+            titre: "Les joueuses sélectionnées", singulier: "joueuse", vide: 0, aere: true,
             colonnes: [
-              { cle: 'photo',     titre: "", poids: 9, forme: 'photo', align: 'centre' },
-              { cle: 'nom',       titre: "Nom et prénom(s)", poids: 34, forme: 'fort' },
-              { cle: 'poste',     titre: "Poste", poids: 16 },
-              { cle: 'maillot',   titre: "Maillot", poids: 11, forme: 'nombre', align: 'centre' },
-              { cle: 'taille',    titre: "Taille", poids: 11, align: 'centre' },
-              { cle: 'naissance', titre: "Naissance", poids: 15, align: 'centre' },
-              { cle: 'licence',   titre: "Licence", poids: 16, forme: 'code', align: 'centre' }
+              { cle: 'photo',     titre: "", poids: 10, forme: 'photo', align: 'centre' },
+              { cle: 'nom',       titre: "Nom et prénom(s)", poids: 40, forme: 'fort' },
+              { cle: 'poste',     titre: "Poste", poids: 20 },
+              { cle: 'maillot',   titre: "Maillot", poids: 12, forme: 'pastille', align: 'centre' },
+              { cle: 'taille',    titre: "Taille", poids: 12, align: 'centre' },
+              { cle: 'naissance', titre: "Naissance", poids: 16, align: 'centre' }
             ],
             lignes: []
           },
           staff: {
-            titre: "Le staff qui accompagne", singulier: "membre du staff", vide: 0,
+            titre: "Le staff qui accompagne", singulier: "membre du staff", vide: 0, aere: true,
             colonnes: [
               { cle: 'photo',    titre: "", poids: 9, forme: 'photo', align: 'centre' },
               { cle: 'nom',      titre: "Nom et prénom(s)", poids: 38, forme: 'fort' },
@@ -108,7 +108,7 @@
                   { label: "Quand", valeur: d.dates || U.dateLongue(d.jour, true) || '', sous: d.fin && d.jour ? "jusqu'au " + U.dateLongue(d.fin, false) : '' },
                   { label: "Où", valeur: '@lieuEv', sous: d.organisateur ? "org. " + d.organisateur : '' }];
         } },
-      { b: 'tableau', source: 'joueuses' },
+      { b: 'tableau', source: 'joueuses', tonPastille: function () { return 'ton-plein'; } },
       { b: 'tableau', source: 'staff', si: function (d) { return G.lignes(d, 'staff').length > 0; } },
       { b: 'texte', etiquette: "Mention", texte: '@mention' },
       { b: 'texte', etiquette: "Remarque", texte: '@remarque', si: function (d) { return !!String(d.remarque || '').trim(); } },

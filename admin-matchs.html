@@ -26783,7 +26783,7 @@
       pzRoster = (r[3] || []).filter(function(p){ return (p.status || 'active') !== 'partie'; });
       pzStaffRows = r[4] || []; pzEvs = r[5] || [];
       // l'etat d'edition repart de la base a chaque lecture
-      pzEtat = {};
+      pzEtat = {}; pzFiche = {};
       pzRows.forEach(function(pr){
         var id = String(pr.id), js = pzJ[id] || [];
         pzEtat[id] = { joueuses: js.map(function(l){ return String(l.player_id); }),
@@ -26840,8 +26840,29 @@
         '<span class="pz-faces">' + pzVisages(o.pids, o.vide) + '</span>' +
       '</button>';
     };
+    var pr = pzOuverte === 'cinq' ? null : pzRows.filter(function(x){ return String(x.id) === pzOuverte; })[0];
+    box.innerHTML = pzRail() + '<div class="pz-blocs">' + (pr ? pzPlaqueSel(pr) : pzPlaqueCinq()) + '</div>';
+    pzRailArmer(box);
+    pzVizMonter(document.getElementById('pz-viz'), pzOuverte);
+    if (pr){ box.querySelectorAll('.pz-c').forEach(pzArmer); pzBarreArmer(box, String(pr.id)); }
+    else { pzArmerCinq(box); pzCinqMonter(); }
+    pzActMaj();
+  }
+  function pzRail(){
+    var cinqOn = !(pzCinq && pzCinq.mode === 'off');
+    var onglet = function(o){
+      return '<button type="button" role="tab" class="pz-onglet ' + o.cls + (pzOuverte === o.id ? ' on' : '') + '"' +
+          ' data-pz-go="' + esc(o.id) + '" aria-selected="' + (pzOuverte === o.id) + '">' +
+        '<span class="pz-onglet-h"><span class="pz-onglet-n">' + o.n + '</span>' +
+          '<span class="pz-onglet-k">' + esc(o.kicker) + '</span>' +
+          '<span class="pz-onglet-e' + (o.on ? ' on' : '') + '">' + esc(o.etat) + '</span></span>' +
+        '<b class="pz-onglet-t">' + esc(o.titre) + '</b>' +
+        '<span class="pz-onglet-s">' + esc(o.sous) + '</span>' +
+        '<span class="pz-faces">' + pzVisages(o.pids, o.vide) + '</span>' +
+      '</button>';
+    };
     var cq = pzCinq || {}, mCq = cq.m, sCq = pzCinqSrc();
-    var rail = '<nav class="pz-rail" role="tablist" aria-label="Les blocs de l’accueil">' +
+    return '<nav class="pz-rail" role="tablist" aria-label="Les blocs de l’accueil">' +
       onglet({ id:'cinq', n:1, cls:'cinq' + (cinqOn && mCq ? ' on-site' : ''), kicker:'Le match', titre:'Cinq majeur',
         sous: mCq ? 'Baobabs ' + (mCq.is_home === false ? 'chez ' : 'vs ') + (mCq.opponent_name || '')
                   : 'Les cinq titulaires du prochain match',
@@ -26866,18 +26887,37 @@
         '<span class="pz-onglet-s">Une sélection, un stage, une liste libre : un bloc de plus à l’accueil.</span>' +
       '</button>' +
     '</nav>';
-    var pr = pzOuverte === 'cinq' ? null : pzRows.filter(function(x){ return String(x.id) === pzOuverte; })[0];
-    box.innerHTML = rail + '<div class="pz-blocs">' + (pr ? pzPlaqueSel(pr) : pzPlaqueCinq()) + '</div>';
+  }
+  function pzRailArmer(box){
     box.querySelectorAll('[data-pz-go]').forEach(function(b){
       b.addEventListener('click', function(){
         var id = b.getAttribute('data-pz-go');
+        // ON NE QUITTE PAS UN BLOC AVEC DES CHANGEMENTS EN L'AIR SANS LE
+        // DIRE : les reglages en attente disparaitraient sans un mot.
+        var att = pzAttente();
+        if (att.n && !confirm('Ce bloc a des changements non enregistrés (' + att.texte + ').\n\nQuitter sans enregistrer ?')) return;
         if (id === 'nouveau') return pzNouveau();
-        pzOuverte = id; pzRender();
+        pzOuverte = id;
+        // abandonner, c'est relire la base : les curseurs bouges vivent
+        // sur les objets joueuse, ils ne doivent pas survivre au refus
+        if (att.n){ pzFiche = {}; pzViz.dirty = {}; pzLoad(); return; }
+        pzRender();
       });
     });
-    pzVizMonter(document.getElementById('pz-viz'), pzOuverte);
-    if (pr) box.querySelectorAll('.pz-c').forEach(pzArmer);
-    else { pzArmerCinq(box); pzCinqMonter(); }
+  }
+  /* Le rail et l'etat de la plaque suivent un changement (affiche,
+     masque, visages) sans remonter le visualiseur : remonter l'iframe
+     rechargerait le site et perdrait la scene en cours. */
+  function pzRailMaj(){
+    var box = document.getElementById('pz-liste'), vieux = box && box.querySelector('.pz-rail'); if (!vieux) return;
+    var tmp = document.createElement('div'); tmp.innerHTML = pzRail();
+    vieux.replaceWith(tmp.firstChild); pzRailArmer(box);
+    var plaque = box.querySelector('.pz-plaque'); if (!plaque) return;
+    var on = pzOuverte === 'cinq' ? !(pzCinq && pzCinq.mode === 'off') : pzSurSite(pzOuverte);
+    plaque.classList.toggle('on-site', on); plaque.classList.toggle('off', pzOuverte === 'cinq' && !on);
+    var c = plaque.querySelector('.pz-c'); if (c) c.classList.toggle('on-site', on);
+    var sw = plaque.querySelector('[data-pz="site"], [data-pz="cinq-site"]'); if (sw) sw.checked = on;
+    pzTeteMaj(); pzActMaj();
   }
 
   /* ================================================================
@@ -26931,10 +26971,7 @@
         '</div>';
     return '<section class="pz-plaque cinq' + (off ? ' off' : ' on-site') + '">' +
       '<div class="pz-plaque-h">' + pzTeteCinq() + '</div>' + corps +
-      '<div class="pz-act">' +
-        '<button type="button" class="btn btn-ghost" data-pz="cinq-site">' + (off ? 'Afficher sur l’accueil' : 'Masquer de l’accueil') + '</button>' +
-        (m ? '<button type="button" class="btn btn-ghost" data-pz="cinq-fiche">Ouvrir la fiche du match</button>' : '') +
-      '</div>' +
+      pzBarre('cinq', !off, { fiche: !!m }) +
     '</section>';
   }
   function pzTeteSel(pr){
@@ -26952,11 +26989,25 @@
   }
   function pzPlaqueSel(pr){
     var surSite = pzSurSite(pr.id);
+    // LA BARRE EST A LA PLAQUE, PAS A LA CARTE. Collante, elle ne peut
+    // remonter que dans son conteneur : dans la carte, elle restait
+    // sous le visualiseur, la ou l'on regle les joueuses (mesure).
     return '<section class="pz-plaque sel' + (surSite ? ' on-site' : '') + '">' +
       '<div class="pz-plaque-h">' + pzTeteSel(pr) + '</div>' +
       '<div class="pz-viz" id="pz-viz"></div>' +
       pzCarte(pr) +
+      pzBarre(String(pr.id), surSite, {}) +
     '</section>';
+  }
+  /* Les gestes de la barre d'une presentation : armes une fois par
+     rendu de la plaque (la carte, elle, se redessine a chaque clic). */
+  function pzBarreArmer(box, id){
+    var bar = box.querySelector('.pz-plaque.sel .pz-act'); if (!bar) return;
+    var carte = function(){ return document.querySelector('#pz-liste .pz-c[data-id="' + id + '"]'); };
+    bar.querySelector('[data-pz="save"]').addEventListener('click', function(){ pzToutEnregistrer(this); });
+    bar.querySelector('[data-pz="site"]').addEventListener('change', function(){ pzSurAccueil(id); });
+    bar.querySelector('[data-pz="pdf"]').addEventListener('click', function(){ pzListeOfficielle(id, carte()); });
+    bar.querySelector('[data-pz="del"]').addEventListener('click', function(){ pzSupprimer(id); });
   }
   /* L'en-tete suit l'edition -- les visages, le compte, le rang --
      sans remonter le visualiseur : remonter l'iframe a chaque clic
@@ -26968,10 +27019,14 @@
     if (pr) t.innerHTML = pzTeteSel(pr);
   }
   function pzArmerCinq(box){
+    var sw = box.querySelector('.pz-plaque.cinq [data-pz="cinq-site"]');
+    if (sw) sw.addEventListener('change', pzCinqSurAccueil);
+    var sv = box.querySelector('.pz-plaque.cinq [data-pz="save"]');
+    if (sv) sv.addEventListener('click', function(){ pzToutEnregistrer(this); });
     box.querySelectorAll('.pz-plaque.cinq [data-pz]').forEach(function(b){
       b.addEventListener('click', function(){
         var a = b.getAttribute('data-pz');
-        if (a === 'cinq-site') return pzCinqSurAccueil();
+        if (a === 'cinq-site') return;                       // la bascule ecoute « change », plus bas
         if (a === 'cinq-cal') return showSection('matches2');
         if (a === 'cinq-fiche'){
           showSection('matches2');
@@ -27126,18 +27181,22 @@
         '<output>' + (val > 0 && k !== K.z ? '+' : '') + val + ' %</output></label>';
     };
     r.classList.toggle('dirty', !!pzViz.dirty[cle]);
+    // PLUS DE BOUTON ICI. Il n'ecrivait que la joueuse a l'ecran, sur
+    // l'ecran regarde : on en reglait cinq, on en sauvait une. Le
+    // reglage se marque « en attente » et part avec le seul
+    // « Enregistrer » du bloc, dans la barre du bas.
     r.innerHTML = '<div class="mc-sc-nom">' + (p.photo_url ? '<img src="' + esc(p.photo_url) + '" alt="">' : '<i></i>') +
-        '<div><b>' + esc(pzNom(p)) + '</b><small>' + (tel ? 'sur téléphone' : 'sur ordinateur') + ' · sa place et sa taille</small></div></div>' +
+        '<div><b>' + esc(pzNom(p)) + '</b><small>' + (tel ? 'sur téléphone' : 'sur ordinateur') + ' · sa place et sa taille, en centièmes du cadre</small></div></div>' +
       curseur(K.x, 'Gauche ↔ droite', -40, 40, x) + curseur(K.y, 'Haut ↔ bas', -40, 40, y) + curseur(K.z, 'Taille', 60, 160, z) +
       '<button type="button" class="mc-cp-bt" data-viz-zero title="Remettre le réglage d’origine">↺</button>' +
-      '<button type="button" class="btn btn-primary" data-viz-save' + (pzViz.dirty[cle] ? '' : ' disabled') + '>Enregistrer</button>';
+      '<span class="pz-viz-attente-r" data-viz-attente' + (pzViz.dirty[cle] ? '' : ' hidden') + '>Modifié · part avec « Enregistrer », en bas</span>';
     var envoyer = function(){
       // toucher un curseur arrete la scene : on ne regle pas une image
       // qui bouge encore.
       pzViz.fige = true; pzVizJeuMaj();
       pzVizPoster({ type:'bbc-temoin-cinq-scene', pid: pid, mobile: tel, sx: lire(K.x, 'scene_x', 0), sy: lire(K.y, 'scene_y', 0), sz: lire(K.z, 'scene_zoom', 100) });
       pzViz.dirty[cle] = true; r.classList.add('dirty');
-      var b = r.querySelector('[data-viz-save]'); if (b) b.disabled = false;
+      pzActMaj();
     };
     r.querySelectorAll('input[type=range]').forEach(function(i){
       i.addEventListener('input', function(){
@@ -27150,13 +27209,6 @@
       p[K.x] = 0; p[K.y] = 0; p[K.z] = 100;
       r.querySelectorAll('input[type=range]').forEach(function(i){ var k = i.getAttribute('data-k'); i.value = p[k]; var o = i.parentNode.querySelector('output'); if (o) o.textContent = p[k] + ' %'; });
       envoyer();
-    });
-    r.querySelector('[data-viz-save]').addEventListener('click', function(){
-      var b = this; b.disabled = true;
-      var corps = {}; corps[K.x] = lire(K.x, 'scene_x', 0); corps[K.y] = lire(K.y, 'scene_y', 0); corps[K.z] = lire(K.z, 'scene_zoom', 100);
-      sbUpdate('players', pid, corps, 'Effectif')
-        .then(function(){ delete pzViz.dirty[cle]; r.classList.remove('dirty'); qgToast('Réglage ' + (tel ? 'téléphone' : 'ordinateur') + ' de ' + pzNom(p) + ' enregistré ✓'); })
-        .catch(function(){ b.disabled = false; qgToast('Le réglage n’a pas pu être enregistré.', true); });
     });
   }
   function pzVizDimensionner(){
@@ -27240,8 +27292,116 @@
       settings.lineup_mode = val;
       if (pzCinq) pzCinq.mode = val;
       qgToast(off ? 'Le cinq du match s’affiche sur l’accueil ✓' : 'Le cinq du match est retiré de l’accueil ✓');
-      pzRender();
-    }).catch(function(){ qgToast('Le réglage n’a pas pu être enregistré.', true); });
+      pzRailMaj();
+    }).catch(function(){ qgToast('Le réglage n’a pas pu être enregistré.', true); pzRailMaj(); });
+  }
+
+  /* ================================================================
+     UN SEUL « ENREGISTRER » PAR BLOC
+     ================================================================
+     « parfois dans un bloc il peut y avoir plusieurs "enregistrer" ou
+       "publier", du coup on se perd : on ne sait plus si ca va sur le
+       site ou si c'est juste enregistre pour une seule chose »
+
+     Il y avait trois boutons : celui de la fiche (titre, joueuses,
+     staff), celui du visualiseur (la place d'UNE joueuse, sur UN ecran)
+     et la bascule de l'accueil. On en reglait cinq, on en sauvait une.
+     Il n'y en a plus qu'un par bloc, dans une barre qui reste au bas de
+     l'ecran : il ecrit TOUT ce qui a change dans le bloc -- la fiche et
+     chaque reglage de joueuse en attente, ordinateur et telephone -- et
+     dit ce qu'il va ecrire avant qu'on clique. A cote, la bascule dit
+     si le site montre le bloc : c'est elle, et elle seule, qui publie.
+     ================================================================ */
+  var pzFiche = {};   /* id du bloc -> vrai si sa fiche a change et n'est pas ecrite */
+  function pzSale(id){ pzFiche[String(id)] = true; pzActMaj(); }
+  /* Ce qui attend d'etre ecrit : la fiche du bloc ouvert, et les
+     reglages de scene touches dans le visualiseur (pzViz.dirty, cle
+     « pid:ordi » ou « pid:tel »). Les reglages vivent sur la joueuse :
+     ils restent en attente d'un bloc a l'autre. */
+  function pzAttente(){
+    var id = String(pzOuverte), scenes = [], parPid = {};
+    Object.keys(pzViz.dirty).forEach(function(cle){
+      var m = /^(.+):(tel|ordi)$/.exec(cle); if (!m || !pzViz.dirty[cle]) return;
+      var p = pzJoueuse(m[1]); if (!p) return;
+      scenes.push({ pid: m[1], tel: m[2] === 'tel', nom: pzNom(p) });
+      parPid[m[1]] = 1;
+    });
+    var fiche = id !== 'cinq' && !!pzFiche[id];
+    var noms = Object.keys(parPid).map(function(pid){ var p = pzJoueuse(pid); return p ? bbNomCourt(p.name) : ''; }).filter(Boolean);
+    var parts = [];
+    if (fiche) parts.push('la présentation');
+    if (scenes.length) parts.push(scenes.length + ' réglage' + (scenes.length > 1 ? 's' : '') + ' de joueuse' + (noms.length ? ' : ' + noms.join(', ') : ''));
+    return { fiche: fiche, scenes: scenes, n: (fiche ? 1 : 0) + scenes.length, texte: parts.join(' · ') };
+  }
+  function bbNomCourt(nom){ var t = String(nom || '').trim().split(/\s+/); return t.length > 1 ? t[t.length - 1] : (t[0] || ''); }
+  /* La barre du bloc : Enregistrer, ce qu'il va ecrire, la bascule de
+     l'accueil, et les gestes secondaires. */
+  function pzBarre(id, surSite, opt){
+    opt = opt || {};
+    var cinq = id === 'cinq';
+    return '<div class="pz-act" data-bloc="' + esc(String(id)) + '">' +
+      '<div class="pz-act-l">' +
+        '<button type="button" class="btn btn-primary" data-pz="save" disabled>Enregistrer</button>' +
+        '<span class="pz-act-etat" data-pz-etat>Rien à enregistrer</span>' +
+      '</div>' +
+      '<div class="pz-act-r">' +
+        '<label class="pz-sw" title="' + (cinq ? 'Le site montre ou non le cinq du match sur l’accueil' : 'Le site montre ou non cette présentation sur l’accueil') + '">' +
+          '<input type="checkbox" data-pz="' + (cinq ? 'cinq-site' : 'site') + '"' + (surSite ? ' checked' : '') + '><i></i><span>Affiché sur l’accueil</span></label>' +
+        (cinq && opt.fiche ? '<button type="button" class="btn btn-ghost" data-pz="cinq-fiche">Ouvrir la fiche du match</button>' : '') +
+        (!cinq ? '<button type="button" class="btn btn-ghost" data-pz="pdf" title="La liste des joueuses et du staff, avec leurs caractéristiques, dans le Greffe">Liste officielle (PDF)</button>' : '') +
+        (!cinq ? '<button type="button" class="ds-act" data-pz="del">Supprimer</button>' : '') +
+      '</div>' +
+      '<p class="pz-act-note">' + (cinq
+        ? 'La composition s’enregistre toute seule à chaque clic. <b>Enregistrer</b> écrit les réglages des joueuses faits dans le visualiseur (place et taille, ordinateur et téléphone) ; ils valent pour tous les blocs où elles apparaissent.'
+        : '<b>Enregistrer</b> écrit tout ce qui a changé dans ce bloc : la présentation (titre, joueuses, staff, options) et les réglages des joueuses faits dans le visualiseur. Le site le montre si le bloc est <b>affiché sur l’accueil</b> ; sinon rien ne change en ligne.') +
+      '</p>' +
+    '</div>';
+  }
+  function pzActMaj(){
+    var bar = document.querySelector('#pz-liste .pz-act'); if (!bar) return;
+    var att = pzAttente(), b = bar.querySelector('[data-pz="save"]'), e = bar.querySelector('[data-pz-etat]');
+    bar.classList.toggle('attente', !!att.n);
+    if (b){ b.disabled = !att.n; b.textContent = att.n ? 'Enregistrer' + (att.n > 1 ? ' (' + att.n + ')' : '') : 'Enregistrer'; }
+    if (e) e.textContent = att.n ? 'À écrire : ' + att.texte : 'Rien à enregistrer';
+    var regl = document.getElementById('pz-viz-regl');
+    if (regl){
+      var p = pzViz.pid ? pzJoueuse(pzViz.pid) : null, cle = p ? String(p.id) + (pzViz.mode === 'tel' ? ':tel' : ':ordi') : '';
+      regl.classList.toggle('dirty', !!(cle && pzViz.dirty[cle]));
+      var m = regl.querySelector('[data-viz-attente]'); if (m) m.hidden = !(cle && pzViz.dirty[cle]);
+    }
+  }
+  /* Tout ce qui attend, d'un coup : d'abord les reglages de scene (une
+     ecriture par joueuse, les deux ecrans ensemble), puis la fiche. */
+  function pzToutEnregistrer(btn){
+    var att = pzAttente(); if (!att.n) return;
+    if (btn) btn.disabled = true;
+    var id = String(pzOuverte);
+    var corps = {};
+    att.scenes.forEach(function(s){
+      var p = pzJoueuse(s.pid); if (!p) return;
+      var c = corps[s.pid] = corps[s.pid] || {};
+      var lire = function(k, kd, d){ var v = mcSceneVal(p, k, null); return v === null ? mcSceneVal(p, kd, d) : v; };
+      if (s.tel){ c.scene_mx = lire('scene_mx', 'scene_x', 0); c.scene_my = lire('scene_my', 'scene_y', 0); c.scene_mzoom = lire('scene_mzoom', 'scene_zoom', 100); }
+      else { c.scene_x = mcSceneVal(p, 'scene_x', 0); c.scene_y = mcSceneVal(p, 'scene_y', 0); c.scene_zoom = mcSceneVal(p, 'scene_zoom', 100); }
+    });
+    var ecrits = [];
+    Promise.all(Object.keys(corps).map(function(pid){
+      return sbUpdate('players', pid, corps[pid], 'Effectif').then(function(){ ecrits.push(pid); });
+    })).then(function(){
+      att.scenes.forEach(function(s){ if (ecrits.indexOf(s.pid) >= 0) delete pzViz.dirty[s.pid + (s.tel ? ':tel' : ':ordi')]; });
+      if (!att.fiche) return;
+      var carte = document.querySelector('#pz-liste .pz-c[data-id="' + id + '"]');
+      return pzEnregistrerFiche(id, carte).then(function(){ delete pzFiche[id]; });
+    }).then(function(){
+      var surSite = id === 'cinq' ? !(pzCinq && pzCinq.mode === 'off') : pzSurSite(id);
+      qgToast('Enregistré ✓ ' + att.texte + (surSite ? ' · en ligne sur l’accueil' : ' · le bloc est masqué : rien ne change sur le site tant qu’il l’est'));
+      sbMemoVider();
+      if (!pzAttente().n) dirtyClear();
+      pzRailMaj();
+    }).catch(function(){
+      qgToast('L’enregistrement a échoué : rien n’a été perdu, réessayez.', true);
+      pzActMaj();
+    });
   }
 
 
@@ -27322,15 +27482,14 @@
       '<div class="pz-sel">' + (chips || '<span class="empty">Aucune joueuse : cliquez des photos ci-dessous.</span>') + '</div>' +
       '<div class="mc-cp-h2"><b>L’effectif</b><span>cliquez pour ajouter ou retirer</span><i></i></div>' +
       '<div class="pz-grid">' + grille + '</div>' +
-      '<div class="mc-cp-h2"><b>Le staff et les dirigeants qui accompagnent</b><span>pour la liste officielle, pas pour le site</span><i></i></div>' +
+      '<div class="mc-cp-h2"><b>Le staff et les dirigeants qui accompagnent</b><span>pour la liste officielle · et en fin d’annonce, si vous l’activez</span><i></i></div>' +
       '<div class="pz-staff">' + (staff || '<span class="empty">Aucun membre du staff sur le site.</span>') + '</div>' +
-      '<div class="pz-act">' +
-        '<button type="button" class="btn btn-primary" data-pz="save">Enregistrer</button>' +
-        '<button type="button" class="btn btn-ghost" data-pz="site">' + (surSite ? 'Masquer de l’accueil' : 'Afficher sur l’accueil') + '</button>' +
-        '<button type="button" class="btn btn-ghost" data-pz="pdf" title="La liste des joueuses et du staff, avec leurs caractéristiques, dans le Greffe">Liste officielle (PDF)</button>' +
-        '<span class="grow"></span>' +
-        '<button type="button" class="ds-act" data-pz="del">Supprimer</button>' +
-      '</div>' +
+      // L'ENCADREMENT EN FIN D'ANNONCE : une option de la presentation.
+      // « la photo du chef de delegation a la fin, et le nom des deux
+      // coachs, et on choisit de l'activer ou pas »
+      '<label class="pz-opt' + (pr.staff_acte ? ' on' : '') + '"><input type="checkbox" data-c="staff_acte"' + (pr.staff_acte ? ' checked' : '') + '>' +
+        '<span><b>Annoncer l’encadrement à la fin de l’animation</b>' +
+        '<small>Après le groupe, un dernier acte : la personne cochée comme « chef de délégation » (à défaut la première) en photo, celle de sa fiche, détourée ; les autres personnes cochées nommées avec leur fonction sur place.</small></span></label>' +
     '</div>';
   }
   function pzNouveau(){
@@ -27348,7 +27507,7 @@
         var pid = b.getAttribute('data-pid'), i = e.joueuses.indexOf(pid);
         if (i >= 0){ e.joueuses.splice(i, 1); if (String(e.cap) === pid) e.cap = null; }
         else e.joueuses.push(pid);
-        pzRafraichir(id);
+        pzSale(id); pzRafraichir(id);
       });
     });
     carte.querySelectorAll('.pz-j [data-pz]').forEach(function(b){
@@ -27359,7 +27518,7 @@
         if (a === 'cap') e.cap = String(e.cap) === pid ? null : pid;
         if (a === 'haut' && i > 0){ e.joueuses.splice(i, 1); e.joueuses.splice(i - 1, 0, pid); }
         if (a === 'bas' && i < e.joueuses.length - 1){ e.joueuses.splice(i, 1); e.joueuses.splice(i + 1, 0, pid); }
-        pzRafraichir(id);
+        pzSale(id); pzRafraichir(id);
       });
     });
     carte.querySelectorAll('.pz-s').forEach(function(l){
@@ -27368,19 +27527,22 @@
         e.staff = e.staff.filter(function(x){ return x.staff_id !== sid; });
         if (cb.checked) e.staff.push({ staff_id: sid, fonction: fn.value.trim() });
         fn.disabled = !cb.checked;
-        // la ligne prend son cadre a l'instant, et l'en-tete recompte
+        // la ligne prend son cadre a l'instant, et l'en-tete recompte ;
+        // le visualiseur suit, pour l'acte de l'encadrement
         l.classList.toggle('on', cb.checked);
-        pzTeteMaj();
+        pzTeteMaj(); pzSale(id); pzVizMaj();
       });
       fn.addEventListener('input', function(){
         var x = e.staff.filter(function(y){ return y.staff_id === sid; })[0]; if (x) x.fonction = fn.value.trim();
+        pzSale(id); pzVizMaj();
       });
     });
-    carte.querySelectorAll('.pz-g [data-c]').forEach(function(el){ el.addEventListener('input', pzVizMaj); el.addEventListener('change', pzVizMaj); });
-    carte.querySelector('[data-pz="save"]').addEventListener('click', function(){ pzEnregistrer(id, carte, this); });
-    carte.querySelector('[data-pz="site"]').addEventListener('click', function(){ pzSurAccueil(id); });
-    carte.querySelector('[data-pz="pdf"]').addEventListener('click', function(){ pzListeOfficielle(id, carte); });
-    carte.querySelector('[data-pz="del"]').addEventListener('click', function(){ pzSupprimer(id); });
+    var sale = function(){ pzSale(id); pzVizMaj(); };
+    carte.querySelectorAll('.pz-g [data-c]').forEach(function(el){ el.addEventListener('input', sale); el.addEventListener('change', sale); });
+    var opt = carte.querySelector('[data-c="staff_acte"]');
+    if (opt) opt.addEventListener('change', function(){ opt.closest('.pz-opt').classList.toggle('on', opt.checked); sale(); });
+    // la barre (Enregistrer, accueil, liste, supprimer) est a la plaque :
+    // voir pzBarreArmer
   }
   // Redessiner la carte sans perdre ce qui est tape dans ses champs.
   function pzRafraichir(id){
@@ -27391,24 +27553,28 @@
     var neuve = tmp.firstChild; vieille.replaceWith(neuve); pzArmer(neuve);
     pzTeteMaj();
     pzVizMaj();
+    pzActMaj();
   }
   function pzValeurs(carte){
     var v = {};
     carte.querySelectorAll('.pz-g [data-c]').forEach(function(el){ v[el.getAttribute('data-c')] = el.value; });
+    var opt = carte.querySelector('[data-c="staff_acte"]');
     return { titre: (v.titre || '').trim() || 'La sélection', kicker: (v.kicker || '').trim() || null, sous_titre: (v.sous_titre || '').trim() || null,
-             type: v.type === 'libre' ? 'libre' : 'selection', evenement_id: (v.evenement_id || '').trim() || null };
+             type: v.type === 'libre' ? 'libre' : 'selection', evenement_id: (v.evenement_id || '').trim() || null,
+             staff_acte: !!(opt && opt.checked) };
   }
 
   // TOUT S'ENREGISTRE D'UN COUP : la fiche, puis les joueuses et le
   // staff reecrits en entier (les lignes de la base sont remplacees par
   // celles de l'ecran, l'ordre compris).
-  function pzEnregistrer(id, carte, btn){
-    var e = pzEtat[id], v = pzValeurs(carte); if (btn) btn.disabled = true;
+  function pzEnregistrerFiche(id, carte){
+    var e = pzEtat[id], pr = pzRows.filter(function(x){ return String(x.id) === String(id); })[0] || {};
+    var v = carte ? pzValeurs(carte) : { titre: pr.titre, kicker: pr.kicker, sous_titre: pr.sous_titre, type: pr.type, evenement_id: pr.evenement_id, staff_acte: !!pr.staff_acte };
     var effacer = function(table){
       return fetch(SUPABASE_URL + '/rest/v1/' + table + '?presentation_id=eq.' + encodeURIComponent(id), { method:'DELETE', headers: sbHeaders() })
         .then(function(r){ if (!r.ok) return sbThrow(r, 'delete', table); });
     };
-    sbUpdate('presentations', id, v, 'Présentations')
+    return sbUpdate('presentations', id, v, 'Présentations')
       .then(function(){ return effacer('presentation_joueuses'); })
       .then(function(){
         if (!e.joueuses.length) return;
@@ -27423,8 +27589,11 @@
           return { presentation_id: id, staff_id: x.staff_id, sort: i + 1, fonction: x.fonction || null };
         }), 'Présentations');
       })
-      .then(function(){ qgToast('Présentation enregistrée ✓'); sbMemoVider(); return pzLoad(); })
-      .catch(function(){ qgToast('L’enregistrement a échoué.', true); if (btn) btn.disabled = false; });
+      .then(function(){
+        // la ligne en memoire suit la base : le rail et l'en-tete la
+        // lisent, sans recharger l'ecran ni remonter le visualiseur
+        for (var k in v) if (Object.prototype.hasOwnProperty.call(v, k)) pr[k] = v[k];
+      });
   }
   function pzSupprimer(id){
     var pr = pzRows.filter(function(x){ return String(x.id) === id; })[0];
@@ -27442,8 +27611,8 @@
     sbUpdate('presentations', id, { actif: actif }, 'Présentations').then(function(){
       pr.actif = actif;
       qgToast(actif ? 'La présentation s’affiche sur l’accueil ✓' : 'La présentation est retirée de l’accueil ✓');
-      pzRender();
-    }).catch(function(){ qgToast('Le réglage n’a pas pu être enregistré.', true); });
+      pzRailMaj();
+    }).catch(function(){ qgToast('Le réglage n’a pas pu être enregistré.', true); pzRailMaj(); });
   }
 
   // LE TEMOIN : le site joue cette presentation, telle qu'elle est ici.
@@ -27451,15 +27620,21 @@
     var pr = pzRows.filter(function(x){ return String(x.id) === id; })[0], e = pzEtat[id]; if (!pr || !e) return;
     var carte = document.querySelector('#pz-liste .pz-c[data-id="' + id + '"]');
     var v = carte ? pzValeurs(carte) : pr;
-    var pres = { id:id, titre:v.titre, kicker:v.kicker, sous_titre:v.sous_titre, type:v.type, evenement_id:v.evenement_id };
+    var pres = { id:id, titre:v.titre, kicker:v.kicker, sous_titre:v.sous_titre, type:v.type, evenement_id:v.evenement_id,
+                 staff_acte: !!v.staff_acte };
     var ev = pzEvs.filter(function(x){ return String(x.id) === String(v.evenement_id); })[0] || null;
     var joueuses = e.joueuses.map(function(pid){
       var p = pzJoueuse(pid); if (!p) return null;
       var c = {}; for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) c[k] = p[k];
       c.is_captain = String(e.cap) === pid; return c;
     }).filter(Boolean);
+    // l'encadrement coche, tel qu'il est ici, pour l'acte de fin
+    var staff = e.staff.map(function(x, i){
+      var st = pzStaffRows.filter(function(y){ return String(y.id) === x.staff_id; })[0]; if (!st) return null;
+      return { id: st.id, name: st.name || '', role: st.role || '', photo_url: st.photo_url || '', fonction: x.fonction || '', sort: i + 1 };
+    }).filter(Boolean);
     try {
-      w.postMessage({ type:'bbc-temoin-cinq', presentation: pres, evenement: ev, joueuses: joueuses,
+      w.postMessage({ type:'bbc-temoin-cinq', presentation: pres, evenement: ev, joueuses: joueuses, staff: staff,
         cible: avecCible ? { page:'accueil', sel:'#bb-lineup' } : null }, location.origin);
     } catch(err){}
   }
@@ -27477,8 +27652,7 @@
       return { photo: p.photo_url || '', nom: pzNom(p) + (String(e.cap) === pid ? ' (cap.)' : ''), poste: p.position || '',
                maillot: p.jersey_number == null ? '' : String(p.jersey_number),
                taille: p.height ? String(p.height).replace(/\s*m\s*$/i, '') + ' m' : '',
-               naissance: p.birth_date ? formatDateShort(String(p.birth_date).slice(0, 10)) : (p.birth_year ? String(p.birth_year) : ''),
-               licence: p.licence_num || '' };
+               naissance: p.birth_date ? formatDateShort(String(p.birth_date).slice(0, 10)) : (p.birth_year ? String(p.birth_year) : '') };
     }).filter(Boolean);
     var staff = e.staff.map(function(x, i){
       var st = pzStaffRows.filter(function(y){ return String(y.id) === x.staff_id; })[0]; if (!st) return null;
@@ -38526,7 +38700,43 @@
     .pz-s{ grid-template-columns:auto auto minmax(0,1fr) }
     .pz-s .pz-s-fn{ grid-column:1 / -1 }
   }
-  .pz-act{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line) }
+  /* LA BARRE DU BLOC : un seul Enregistrer, ce qu'il va ecrire, et la
+     bascule de l'accueil. Elle reste au bas de l'ecran tant que le bloc
+     depasse : on regle une joueuse en haut, on enregistre sans
+     descendre. */
+  .pz-act{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin-top:16px; padding-top:14px; border-top:1px solid var(--line) }
+  .pz-plaque .pz-act{ position:sticky; bottom:0; z-index:4; margin:16px -22px -22px; padding:12px 22px 14px;
+    background:rgba(6,20,13,.9); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-top:1px solid var(--line-strong); border-radius:0 0 var(--r-lg) var(--r-lg) }
+  .pz-plaque .pz-act.attente{ border-top-color:var(--gold); box-shadow:0 -10px 30px rgba(0,0,0,.25) }
+  .pz-act-l{ display:flex; align-items:center; gap:12px; flex:1 1 320px; min-width:0 }
+  .pz-act-l .btn{ width:auto; flex:none }
+  .pz-act-etat{ font-size:12.5px; line-height:1.4; color:var(--faint); min-width:0 }
+  .pz-act.attente .pz-act-etat{ color:var(--gold-bright) }
+  .pz-act-r{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-left:auto }
+  .pz-act-r .btn{ width:auto }
+  .pz-act-note{ flex-basis:100%; margin:2px 0 0; font-size:11.5px; line-height:1.5; color:var(--faint) }
+  .pz-act-note b{ color:var(--muted); font-weight:700 }
+  /* la bascule de l'accueil : c'est elle qui publie, et elle le dit */
+  .pz-sw{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px 6px 8px; border-radius:var(--r-full); cursor:pointer;
+    background:var(--surface-2); border:1px solid var(--line-strong); font:700 12px var(--font-ui); color:var(--muted); user-select:none }
+  .pz-sw input{ position:absolute; opacity:0; width:0; height:0 }
+  .pz-sw i{ width:30px; height:17px; border-radius:100px; background:var(--line-loud); position:relative; flex:none; transition:background .15s }
+  .pz-sw i::after{ content:''; position:absolute; top:2px; left:2px; width:13px; height:13px; border-radius:50%; background:#0A1B0D; transition:transform .15s }
+  .pz-sw:has(input:checked){ border-color:rgba(168,217,59,.45); background:rgba(168,217,59,.1); color:var(--lime) }
+  .pz-sw:has(input:checked) i{ background:var(--lime) }
+  .pz-sw:has(input:checked) i::after{ transform:translateX(13px) }
+  .pz-sw:has(input:focus-visible){ outline:2px solid var(--gold); outline-offset:2px }
+  /* l'option de l'encadrement, sous le staff */
+  .pz-opt{ display:flex; align-items:flex-start; gap:12px; margin-top:10px; padding:11px 14px; border-radius:var(--r-md); cursor:pointer;
+    background:rgba(4,12,8,.35); border:1px solid var(--line) }
+  .pz-opt:hover{ border-color:var(--line-strong) }
+  .pz-opt.on{ border-color:var(--gold); background:var(--gold-soft) }
+  .pz-opt input{ accent-color:var(--gold); width:16px; height:16px; flex:none; margin-top:2px; cursor:pointer }
+  .pz-opt b{ display:block; font-family:var(--font-ui); font-weight:700; font-size:13px; color:var(--text) }
+  .pz-opt small{ display:block; margin-top:3px; font-size:11.5px; line-height:1.45; color:var(--faint) }
+  .pz-viz-attente-r{ font:700 11px var(--font-ui); color:var(--gold-bright); white-space:nowrap }
+  .pz-viz-attente-r[hidden]{ display:none }
   .pz-act .btn{ min-height:38px; padding:8px 14px; font-size:12.5px; width:auto }
   .pz-act .btn-primary{ box-shadow:none }
   .pz-act .grow{ flex:1 }

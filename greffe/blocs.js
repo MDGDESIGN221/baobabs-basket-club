@@ -441,11 +441,19 @@
       "td.f-fort{ font-weight:500; color:var(--encre); font-size:8.2pt; }",
       "td.f-code{ letter-spacing:.035em; white-space:nowrap; font-size:8pt; }",
       "td.f-nombre{ font-family:'Gilroy',sans-serif; font-weight:700; color:var(--encre); }",
-      "td.f-photo{ padding-top:3pt; padding-bottom:3pt; }",
-      ".f-photo{ display:inline-block; width:22pt; height:22pt; border-radius:50%; overflow:hidden; vertical-align:middle;",
-      "  background:#EDF1EE; border:1.2pt solid #fff; box-shadow:0 0 0 .8pt var(--filet); }",
-      ".f-photo img{ width:100%; height:100%; object-fit:cover; object-position:50% 12%; display:block; }",
-      ".f-photo-vide{ background:repeating-linear-gradient(45deg,#EDF1EE 0 2pt,#F7F9F7 2pt 4pt); }",
+      /* LE ROND N'EST PAS LA CELLULE. La cellule d'une colonne « photo »
+         s'appelle td.f-photo comme toute forme (f-fort, f-code...) ; le
+         rond portait le meme nom, et sa regle (inline-block, 22 pt,
+         overflow cache) s'appliquait au <td> : la table se cassait et la
+         photo sortait de sa case (vu sur la liste de la delegation). */
+      "td.f-photo{ padding-top:2.5pt; padding-bottom:2.5pt; line-height:0; }",
+      ".photo-rond{ display:inline-block; width:26pt; height:26pt; border-radius:50%; overflow:hidden; vertical-align:middle;",
+      "  background:#EDF1EE; border:1.2pt solid #fff; box-shadow:0 0 0 .9pt var(--or); }",
+      ".photo-rond img{ width:100%; height:100%; object-fit:cover; object-position:50% 12%; display:block; }",
+      ".photo-rond.vide{ background:repeating-linear-gradient(45deg,#EDF1EE 0 2pt,#F7F9F7 2pt 4pt); box-shadow:0 0 0 .8pt var(--filet); }",
+      /* un tableau « aere » : des lignes qui laissent respirer un portrait */
+      "table.aere tbody td{ padding-top:6pt; padding-bottom:6pt; }",
+      "table.aere td.f-fort{ font-size:8.6pt; }",
       ".q{ display:inline-block; font-size:6.2pt; font-weight:600; letter-spacing:.07em;",
       "  text-transform:uppercase; padding:2.4pt 6pt; border-radius:99pt; white-space:nowrap; }",
       ".q.ton-plein{ background:var(--vert); color:#fff; }",
@@ -759,7 +767,7 @@
        un rond vide (la liste reste alignee) */
     if (col.forme === 'photo') {
       var ok = /^(https?:\/\/|\/)/.test(v.trim());
-      return ok ? '<span class="f-photo"><img src="' + U.ech(v.trim()) + '" alt=""></span>' : '<span class="f-photo f-photo-vide"></span>';
+      return ok ? '<span class="photo-rond"><img src="' + U.ech(v.trim()) + '" alt=""></span>' : '<span class="photo-rond vide"></span>';
     }
     return U.enLigne(v);
   }
@@ -840,7 +848,7 @@
     }
 
     return ligne('div', 'tab-titre', slot(cfg, 'titre', d, ctx))
-      + '<table><colgroup>' + colgroup + '</colgroup>'
+      + '<table' + (table.aere ? ' class="aere"' : '') + '><colgroup>' + colgroup + '</colgroup>'
       + '<thead>' + thead + '</thead><tbody>' + tbody + '</tbody>' + tfoot + '</table>';
   };
 

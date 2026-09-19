@@ -1695,7 +1695,7 @@ window.bbLienSur = function (u) {
     transform:scale(.96) translate3d(-3%,0,0);
   }
   .bb-lu-act.sort .bb-lu-ph{ animation:none;
-    transform:translate3d(var(--sx,0%),calc(var(--dy,0%) + var(--sy,0%)),0) scale(calc(var(--z,1) * var(--sz,1) * 1.1)) !important;
+    transform:translate3d(calc(var(--sx,0) * 1cqw),calc(var(--dy,0%) + var(--sy,0) * 1cqw),0) scale(calc(var(--z,1) * var(--sz,1) * 1.1)) !important;
     transition:transform .62s cubic-bezier(.4,0,.2,1) }
   .bb-lu-act.sort .bb-lu-l{
     transition:transform .34s ease-in, opacity .26s ease-in;
@@ -1755,12 +1755,23 @@ window.bbLienSur = function (u) {
      ligne). --sx, --sy, --sz viennent de la fiche de la joueuse
      (scene_x, scene_y, scene_zoom), regles depuis l'admin avec le site
      sous les yeux : un peu a gauche, un peu plus haut, un peu plus
-     grande. Sans reglage, ils valent zero et un. */
+     grande. Sans reglage, ils valent zero et un.
+     L'UNITE EST LE CADRE, PAS LA PHOTO. --sx et --sy sont des nombres :
+     des centiemes de la largeur du cadre (cqw). Ils etaient des
+     pourcentages de la boite de la photo, et cette boite fait 35 % du
+     cadre sur ordinateur, 48 % sur telephone : « -11 % » deplacait la
+     joueuse de 17 px sur un telephone, mesure. « Ca n'a pas trop
+     bouge. » Un cran vaut maintenant la meme fraction du cadre partout. */
+  /* UN BUSTE N'EST PAS UNE SILHOUETTE EN PIED. La photo du chef de
+     delegation est coupee a la taille : mise a l'echelle d'une joueuse
+     (118 % de la boite, les pieds sous le bord), elle remplirait tout le
+     cadre. Elle se pose sur le bord bas, a sa hauteur (bbLuNormaliser). */
+  .bb-lu-ph.bb-lu-buste{ object-position:50% 100% }
   .bb-lu-ph{
     width:100%; height:100%; object-fit:contain; display:block;
     transform-origin:50% 50%;
     filter:contrast(1.06) saturate(1.06) drop-shadow(0 20px 28px rgba(0,0,0,.62));
-    transform:translate3d(var(--sx,0%),calc(var(--dy,0%) + var(--sy,0%)),0) scale(calc(var(--z,1) * var(--sz,1)));
+    transform:translate3d(calc(var(--sx,0) * 1cqw),calc(var(--dy,0%) + var(--sy,0) * 1cqw),0) scale(calc(var(--z,1) * var(--sz,1)));
   }
   /* LE TELEPHONE A SON PROPRE REGLAGE. « Ce qui s'affiche bien sur
      ordinateur peut ne pas etre ca sur mobile » : le cadre n'a pas le
@@ -1771,9 +1782,9 @@ window.bbLienSur = function (u) {
   /* --sx n'est jamais pose en ligne : la feuille le derive de --dsx
      (ordinateur) ou de --msx (telephone). Un --sx en ligne battrait la
      regle @media, mesure : le telephone gardait l'ordinateur. */
-  .bb-lu-act{ --sx:var(--dsx,0%); --sy:var(--dsy,0%); --sz:var(--dsz,1) }
+  .bb-lu-act{ --sx:var(--dsx,0); --sy:var(--dsy,0); --sz:var(--dsz,1) }
   @media (max-width:640px){
-    .bb-lu-act{ --sx:var(--msx,var(--dsx,0%)); --sy:var(--msy,var(--dsy,0%)); --sz:var(--msz,var(--dsz,1)) }
+    .bb-lu-act{ --sx:var(--msx,var(--dsx,0)); --sy:var(--msy,var(--dsy,0)); --sz:var(--msz,var(--dsz,1)) }
   }
   /* KEN BURNS : la photo respire pendant l'acte ; un acte sur deux
      dezoome, sinon le mouvement devient previsible au deuxieme tour. */
@@ -1822,12 +1833,12 @@ window.bbLienSur = function (u) {
   .bb-lu-scene.bb-lu-figee .bb-lu-vg.on .bb-lu-jauge i{ animation:none; width:100% }
   .bb-lu-act:nth-child(even).on .bb-lu-ph{ animation-name:bb-lu-kb2 }
   @keyframes bb-lu-kb{
-    from{ transform:translate3d(var(--sx,0%),calc(var(--dy,0%) + var(--sy,0%)),0) scale(calc(var(--z,1) * var(--sz,1))) }
-    to  { transform:translate3d(var(--sx,0%),calc(var(--dy,0%) + var(--sy,0%) - 1.2%),0) scale(calc(var(--z,1) * var(--sz,1) * 1.06)) }
+    from{ transform:translate3d(calc(var(--sx,0) * 1cqw),calc(var(--dy,0%) + var(--sy,0) * 1cqw),0) scale(calc(var(--z,1) * var(--sz,1))) }
+    to  { transform:translate3d(calc(var(--sx,0) * 1cqw),calc(var(--dy,0%) + var(--sy,0) * 1cqw - 1.2%),0) scale(calc(var(--z,1) * var(--sz,1) * 1.06)) }
   }
   @keyframes bb-lu-kb2{
-    from{ transform:translate3d(calc(var(--sx,0%) + .8%),calc(var(--dy,0%) + var(--sy,0%) - 1.2%),0) scale(calc(var(--z,1) * var(--sz,1) * 1.06)) }
-    to  { transform:translate3d(calc(var(--sx,0%) - .6%),calc(var(--dy,0%) + var(--sy,0%)),0) scale(calc(var(--z,1) * var(--sz,1))) }
+    from{ transform:translate3d(calc(var(--sx,0) * 1cqw + .8%),calc(var(--dy,0%) + var(--sy,0) * 1cqw - 1.2%),0) scale(calc(var(--z,1) * var(--sz,1) * 1.06)) }
+    to  { transform:translate3d(calc(var(--sx,0) * 1cqw - .6%),calc(var(--dy,0%) + var(--sy,0) * 1cqw),0) scale(calc(var(--z,1) * var(--sz,1))) }
   }
   .bb-lu-halo{
     position:absolute; left:50%; bottom:1%; width:128%; aspect-ratio:1.1;
@@ -1977,6 +1988,16 @@ window.bbLienSur = function (u) {
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .bb-lu-tuile.vert b{ color:var(--bb-or); font-size:clamp(11px,2cqw,26px); letter-spacing:.02em; text-transform:uppercase }
+  /* UNE TUILE QUI PORTE UN NOM, PAS UN CHIFFRE : les coachs, sous le
+     chef de delegation. Le corps d'un chiffre ne tient pas un nom en
+     deux mots ; celui-ci se compose plus petit et peut passer a la
+     ligne. */
+  .bb-lu-tuile.nom{ text-align:left }
+  .bb-lu-tuile.nom b{
+    font-family:'Inter',sans-serif; font-weight:700; letter-spacing:-.01em;
+    font-size:clamp(9px,1.3cqw,17px); line-height:1.15; white-space:normal; overflow-wrap:anywhere;
+  }
+  .bb-lu-tuiles-enc{ grid-template-columns:repeat(auto-fit,minmax(clamp(80px,13cqw,190px),1fr)) }
   /* DANS UN PETIT CADRE, LA COLONNE SE SERRE. Mesure sur 375 px : role,
      nom, quatre tuiles sur deux rangees et la barre faisaient 231 px
      pour 213 disponibles, et le nom montait sur la pastille de coin. */
@@ -2109,6 +2130,9 @@ window.bbLienSur = function (u) {
   .bb-lu-vg-intro figure{
     display:grid; place-items:center; background:rgba(243,239,230,.07); border-radius:50%;
   }
+  /* la vignette de l'encadrement : le visage du chef de delegation, au
+     ras du haut comme les joueuses */
+  .bb-lu-vg-staff figure img{ object-position:50% 8% }
   .bb-lu-vg-intro figure img{ width:72%; height:72% !important; object-fit:contain }
 
   /* L'AFFICHE : les deux ecussons entrent par les cotes et se croisent
@@ -2218,15 +2242,22 @@ window.bbLienSur = function (u) {
     transition:transform .55s cubic-bezier(.16,1.05,.3,1), opacity .4s ease;
   }
   .bb-lu-act.on .bb-lu-grp li{ transform:none; opacity:1 }
+  /* LE NUMERO SE VOIT. Le portrait etait un rond en overflow:hidden et
+     le numero pose dans son coin : le cercle en decoupait plus de la
+     moitie, il ne restait qu'un croissant vert (mesure en ligne : un
+     badge de 21 px centre sur le bord d'un rond de 71 px). C'est l'IMAGE
+     qui est ronde, pas la boite : le numero deborde du rond, entier,
+     avec un lisere sombre pour se detacher du maillot. */
   .bb-lu-grp figure{
-    position:relative; margin:0; width:clamp(38px,7cqw,88px); height:clamp(38px,7cqw,88px); border-radius:50%; overflow:hidden;
+    position:relative; margin:0; width:clamp(38px,7cqw,88px); height:clamp(38px,7cqw,88px); border-radius:50%; overflow:visible;
     background:#0F4030; border:2px solid rgba(243,239,230,.14); box-shadow:0 8px 20px rgba(0,0,0,.45);
   }
-  .bb-lu-grp figure img{ width:100%; height:100%; object-fit:cover; object-position:50% 12%; display:block }
+  .bb-lu-grp figure img{ width:100%; height:100%; object-fit:cover; object-position:50% 12%; display:block; border-radius:50% }
   .bb-lu-grp figure b{
-    position:absolute; right:-2px; bottom:-2px; min-width:1.9em; padding:0 .3em; height:1.9em; border-radius:100px;
-    display:grid; place-items:center; font-family:'Anton',Impact,sans-serif; font-size:clamp(8px,1.1cqw,14px);
+    position:absolute; right:-7%; bottom:-7%; z-index:1; min-width:1.8em; padding:0 .32em; height:1.8em; border-radius:100px;
+    display:grid; place-items:center; font-family:'Anton',Impact,sans-serif; font-size:clamp(9.5px,1.3cqw,17px);
     color:#0A1B0D; background:var(--bb-or); line-height:1;
+    box-shadow:0 0 0 2px #0A1B0D, 0 4px 10px rgba(0,0,0,.45);
   }
   .bb-lu-grp span{
     font-family:'Inter',sans-serif; font-weight:700; font-size:clamp(6.5px,.8cqw,10.5px); letter-spacing:.06em;
@@ -9078,15 +9109,16 @@ window.bbCloud = function(url, w){
   }
 
   /* Le reglage de scene d'une joueuse, en variables CSS sur son acte :
-     sx et sy en % de la boite, sz en facteur. Voir .bb-lu-ph. */
+     sx et sy en centiemes de la largeur du cadre (nombres, la feuille
+     les multiplie par 1cqw), sz en facteur. Voir .bb-lu-ph. */
   function bbLuSceneVars(p){
     var n = function(v, d){ var x = parseFloat(v); return (v == null || v === '' || isNaN(x)) ? d : x; };
     var m = function(v){ var x = parseFloat(v); return (v == null || v === '' || isNaN(x)) ? null : x; };
     // --dsx : la valeur ordinateur, gardee a part pour servir de repli
     // au telephone (la regle @media reecrit --sx).
-    var out = '--dsx:' + n(p.sx, 0) + '%;--dsy:' + n(p.sy, 0) + '%;--dsz:' + (n(p.sz, 100) / 100);
-    if (m(p.smx) !== null) out += ';--msx:' + m(p.smx) + '%';
-    if (m(p.smy) !== null) out += ';--msy:' + m(p.smy) + '%';
+    var out = '--dsx:' + n(p.sx, 0) + ';--dsy:' + n(p.sy, 0) + ';--dsz:' + (n(p.sz, 100) / 100);
+    if (m(p.smx) !== null) out += ';--msx:' + m(p.smx);
+    if (m(p.smy) !== null) out += ';--msy:' + m(p.smy);
     if (m(p.smz) !== null) out += ';--msz:' + (m(p.smz) / 100);
     return out;
   }
@@ -9262,6 +9294,44 @@ window.bbCloud = function(url, w){
       '<span class="bb-lu-liq" aria-hidden="true"></span>' +
     '</article>';
   }
+  /* L'ENCADREMENT : dernier acte d'une presentation, si elle le demande
+     (presentations.staff_acte). Celui qui porte la fonction « chef de
+     delegation » -- a defaut le premier de la liste -- est annonce comme
+     une joueuse : sa photo detouree a gauche, son nom qui se forme ; et
+     les autres sont nommes a droite, une tuile chacun avec sa fonction :
+     les coachs qui partent avec le groupe. */
+  function bbLuStaffChef(staff){
+    var l = (staff || []).slice().sort(function(a, b){ return (a.sort || 0) - (b.sort || 0); });
+    var chef = l.filter(function(s){ return /chef|d[\u00e9e]l[\u00e9e]gation/i.test(s.fonction || ''); })[0] || l[0] || null;
+    return { chef: chef, autres: l.filter(function(s){ return s !== chef; }) };
+  }
+  function bbLuActeStaff(staff, i, total){
+    var s = bbLuStaffChef(staff); if (!s.chef) return '';
+    var chef = s.chef, n = bbLuNom(chef.name);
+    var lg = (n.fam || '').length;
+    var f = lg > 15 ? .56 : lg > 12 ? .68 : lg > 9 ? .82 : 1;
+    return '<article class="bb-lu-act bb-lu-act-staff" data-i="' + i + '" data-libelle="L\u2019encadrement" style="--lu-f:' + f + '">' +
+      '<figure class="bb-lu-fig">' +
+        '<span class="bb-lu-halo" aria-hidden="true"></span>' +
+        (chef.src ? '<img class="bb-lu-ph bb-lu-buste" src="' + window.bbSafeUrl(chef.src) + '" alt="' + esc(chef.name || '') +
+                    '" loading="lazy" decoding="async">' : '') +
+      '</figure>' +
+      '<div class="bb-lu-id">' +
+        '<p class="bb-lu-role"><i></i>' + esc(chef.fonction || chef.role || 'Encadrement') + '</p>' +
+        '<div class="bb-lu-nom-bloc">' +
+          '<span class="bb-lu-litt">' + esc(chef.name || '') + '</span>' +
+          (n.pre ? '<span class="bb-lu-pre" aria-hidden="true">' + bbLuLettres(n.pre, 0) + '</span>' : '') +
+          '<span class="bb-lu-fam" aria-hidden="true">' + bbLuLettres(n.fam, n.pre ? n.pre.length : 0) + '</span>' +
+        '</div>' +
+        (s.autres.length ? '<ul class="bb-lu-tuiles bb-lu-tuiles-enc">' + s.autres.map(function(x, k){
+          return '<li class="bb-lu-tuile nom" style="--i:' + k + '"><span>' + esc(x.fonction || x.role || 'Staff') + '</span><b>' + esc(x.name || '') + '</b></li>';
+        }).join('') + '</ul>' : '') +
+        bbLuSegs(i, total) +
+      '</div>' +
+      '<span class="bb-lu-liq" aria-hidden="true"></span>' +
+      '<span class="bb-lu-ray" aria-hidden="true"></span>' +
+    '</article>';
+  }
   function bbLuActeBanc(banc, i){
     return '<article class="bb-lu-act bb-lu-act-banc" data-i="' + i + '">' +
       '<div class="bb-lu-plaque bb-lu-plaque-c">' +
@@ -9290,6 +9360,9 @@ window.bbCloud = function(url, w){
     if (banc && banc.kind === 'groupe') return '<button type="button" class="bb-lu-vg bb-lu-vg-grp" data-go="' + i +
       '" aria-label="Le groupe"><figure>' + esc(String(banc.n || '')) + '</figure>' +
       '<span class="bb-lu-vn">Le groupe</span><span class="bb-lu-jauge"><i></i></span></button>';
+    if (banc && banc.kind === 'staff') return '<button type="button" class="bb-lu-vg bb-lu-vg-staff" data-go="' + i +
+      '" aria-label="L\u2019encadrement"><figure>' + (banc.img ? '<img src="' + window.bbSafeUrl(banc.img) + '" alt="" loading="lazy" decoding="async">' : '<span>ENC</span>') + '</figure>' +
+      '<span class="bb-lu-vn">L\u2019encadrement</span><span class="bb-lu-jauge"><i></i></span></button>';
     if (banc) return '<button type="button" class="bb-lu-vg bb-lu-vg-banc" data-go="' + i +
       '" aria-label="Le banc"><figure>BANC</figure>' +
       '<span class="bb-lu-vn">Le banc</span><span class="bb-lu-jauge"><i></i></span></button>';
@@ -9341,6 +9414,12 @@ window.bbCloud = function(url, w){
      jambes sortent par le bas du cadre. */
   var BB_LU_HAUT  = 1.18;               /* la silhouette occupe 118 % de la boite */
   var BB_LU_SOL   = 1.17;               /* et ses pieds sont sous le bord bas */
+  /* UN BUSTE (photo coupee a la taille, souvent en paysage) : aussi haut
+     qu'une joueuse -- « trop timide » a 96 % de la boite --, la coupe
+     juste sous le bord bas. Mais un buste est large : on le borne par sa
+     LARGEUR, pour qu'il ne passe pas sous la colonne de droite (135 % de
+     la boite dans un grand cadre, 115 % dans un cadre etroit). */
+  var BB_LU_BUSTE_SOL = 1.03, BB_LU_BUSTE_LARGE = 1.35, BB_LU_BUSTE_LARGE_ETROIT = 1.15;
 
   function bbLuSilhouette(src){
     if (BB_LU_SILHO[src]) return BB_LU_SILHO[src];
@@ -9354,14 +9433,18 @@ window.bbCloud = function(url, w){
           var c = document.createElement('canvas'); c.width = L; c.height = H;
           var x = c.getContext('2d', { willReadFrequently:true });
           x.drawImage(im, 0, 0, L, H);
-          var d = x.getImageData(0, 0, L, H).data, t = H, b = -1;
+          var d = x.getImageData(0, 0, L, H).data, t = H, b = -1, g = L, dr = -1;
           for (var y = 0; y < H; y++){
             for (var k = 0; k < L; k++){
-              if (d[(y * L + k) * 4 + 3] > 18){ if (y < t) t = y; if (y > b) b = y; break; }
+              if (d[(y * L + k) * 4 + 3] > 18){
+                if (y < t) t = y; if (y > b) b = y;
+                if (k < g) g = k; if (k > dr) dr = k;
+              }
             }
           }
           if (b < 0 || b <= t){ fini(null); return; }      // image vide ou opaque
-          fini({ haut:t / H, bas:(b + 1) / H, hauteur:(b + 1 - t) / H });
+          fini({ haut:t / H, bas:(b + 1) / H, hauteur:(b + 1 - t) / H,
+                 gauche:g / L, droite:(dr + 1) / L, largeur:(dr + 1 - g) / L });
         } catch(e){ fini(null); }                          // lecture refusee
       };
       im.src = src;
@@ -9373,12 +9456,31 @@ window.bbCloud = function(url, w){
   function bbLuNormaliser(hote){
     hote.querySelectorAll('.bb-lu-ph').forEach(function(img){
       var src = img.currentSrc || img.src; if (!src) return;
+      var buste = img.classList.contains('bb-lu-buste');
       bbLuSilhouette(src).then(function(m){
         if (!m || !m.hauteur) return;
-        var k = BB_LU_HAUT / m.hauteur;
-        var basApres = 0.5 + (m.bas - 0.5) * k;            /* mise a l'echelle depuis le centre */
-        img.style.setProperty('--z', k.toFixed(4));
-        img.style.setProperty('--dy', ((BB_LU_SOL - basApres) * 100).toFixed(2) + '%');
+        if (!buste){
+          var k = BB_LU_HAUT / m.hauteur;
+          var basApres = 0.5 + (m.bas - 0.5) * k;          /* mise a l'echelle depuis le centre */
+          img.style.setProperty('--z', k.toFixed(4));
+          img.style.setProperty('--dy', ((BB_LU_SOL - basApres) * 100).toFixed(2) + '%');
+          return;
+        }
+        // LE BUSTE. « contain » ne remplit pas la boite : une photo en
+        // paysage n'en prend que 60 % de haut (mesure), posee en bas
+        // (object-position 50% 100%). On raisonne donc dans la boite,
+        // pas dans l'image, en hauteur comme en largeur.
+        var fig = img.parentNode, cadre = img.closest('.bb-lu-cadre');
+        var rb = fig && fig.clientWidth ? fig.clientHeight / fig.clientWidth : 4 / 3;
+        var ri = img.naturalWidth ? img.naturalHeight / img.naturalWidth : rb;
+        var hImg = Math.min(1, ri / rb), wImg = Math.min(1, rb / ri);   /* part de la boite que prend l'image */
+        var hSil = m.hauteur * hImg, wSil = (m.largeur || 1) * wImg;
+        var etroit = cadre && cadre.clientWidth && cadre.clientWidth < 560;
+        var kb = Math.min(BB_LU_HAUT / hSil, (etroit ? BB_LU_BUSTE_LARGE_ETROIT : BB_LU_BUSTE_LARGE) / wSil);
+        var basBoite = 1 - (1 - m.bas) * hImg;             /* le bas de la silhouette, dans la boite */
+        var basApresB = 0.5 + (basBoite - 0.5) * kb;
+        img.style.setProperty('--z', kb.toFixed(4));
+        img.style.setProperty('--dy', ((BB_LU_BUSTE_SOL - basApresB) * 100).toFixed(2) + '%');
       });
     });
   }
@@ -9538,7 +9640,7 @@ window.bbCloud = function(url, w){
      un evenement. Le generique porte son titre ; s'il y a un evenement,
      son affiche vient ensuite ; puis chaque joueuse ; et le groupe
      entier pour finir. La meme scene, les memes gestes. */
-  function bbLuScenerPresentation(bloc, pres, joueuses, ev){
+  function bbLuScenerPresentation(bloc, pres, joueuses, ev, staff){
     var h = bloc && bloc.querySelector('.bb-lu-scene'); if (!h) return;
     var actes = [bbLuActeIntroPres(pres, joueuses, 0)];
     var vgs   = [bbLuVignette(null, 0, { kind:'intro', libelle: pres.titre || 'La s\u00e9lection' })];
@@ -9546,7 +9648,11 @@ window.bbCloud = function(url, w){
       actes.push(bbLuActeEvenement(ev, actes.length));
       vgs.push(bbLuVignette(null, vgs.length, { kind:'evenement', img: ((typeof bbSafeMedia === 'function' ? bbSafeMedia(ev.affiche_url) : ev.affiche_url)) }));
     }
-    var total = actes.length + joueuses.length + (joueuses.length > 1 ? 1 : 0);
+    // l'encadrement ferme la scene si la presentation le demande et
+    // qu'elle a quelqu'un a annoncer
+    var enc = (pres.staff_acte && staff && staff.length) ? bbLuStaffChef(staff) : null;
+    if (enc && !enc.chef) enc = null;
+    var total = actes.length + joueuses.length + (joueuses.length > 1 ? 1 : 0) + (enc ? 1 : 0);
     joueuses.forEach(function(p){
       p.role = pres.type === 'libre' ? (pres.titre || 'Joueuse') : 'S\u00e9lectionn\u00e9e';
       actes.push(bbLuActe(p, actes.length, total));
@@ -9555,6 +9661,10 @@ window.bbCloud = function(url, w){
     if (joueuses.length > 1){
       actes.push(bbLuActeGroupe(joueuses, pres, actes.length));
       vgs.push(bbLuVignette(null, vgs.length, { kind:'groupe', n: joueuses.length }));
+    }
+    if (enc){
+      actes.push(bbLuActeStaff(staff, actes.length, total));
+      vgs.push(bbLuVignette(null, vgs.length, { kind:'staff', img: enc.chef.src }));
     }
     bbLuMonter(h, actes, vgs, 'joueuses');
   }
@@ -9675,7 +9785,7 @@ window.bbCloud = function(url, w){
   /* L'EN-TETE ET LE PIED D'UNE PRESENTATION. Le titre de la section
      devient celui de la presentation ; le pied porte l'encadrement et
      l'evenement (dates, lieu) a la place du match. */
-  function bbLuRendrePresentation(bloc, pres, joueuses, ev, coach){
+  function bbLuRendrePresentation(bloc, pres, joueuses, ev, coach, staff){
     var sec = document.getElementById('bb-lineup'); if (!sec || !bloc) return;
     if (!pres || !joueuses.length) return;
     var q = function(c){ return bloc.querySelector('.' + c); };
@@ -9684,7 +9794,7 @@ window.bbCloud = function(url, w){
     q('bb-lu-when').textContent = ev
       ? [ev.dates, ev.lieu].filter(Boolean).join(' \u00b7 ')
       : (pres.sous_titre || '');
-    bbLuScenerPresentation(bloc, pres, joueuses, ev);
+    bbLuScenerPresentation(bloc, pres, joueuses, ev, staff || []);
     q('bb-lu-coach-wrap').innerHTML = coach
       ? '<p class="bb-lu-lab">Encadrement</p>' +
         '<p class="bb-lu-staff">' + esc(coach.name || '') + '</p>' +
@@ -9702,8 +9812,20 @@ window.bbCloud = function(url, w){
     sec.classList.remove('bb-hide');
     if (window.bbRescanMotion) window.bbRescanMotion();
   }
+  /* UNE PERSONNE DE L'ENCADREMENT, POUR LA SCENE : une ligne de staff
+     (la vue staff_site, ou la ligne envoyee par le temoin) et ce que la
+     presentation dit d'elle (fonction sur place, rang). */
+  function bbLuStaffNormaliser(r, lien){
+    lien = lien || {};
+    var u = String(r.photo_url || '').trim();
+    return { id: r.id, name: r.name || '', role: r.role || '',
+             fonction: String(lien.fonction != null ? lien.fonction : (r.fonction || '')).trim(),
+             sort: (lien.sort != null ? lien.sort : r.sort) || 0,
+             src: u ? (window.bbCloud ? window.bbCloud(u, 800) : u) : '' };
+  }
   /* La lecture d'une presentation : la liste, les joueuses (deja
-     normalisees dans `players`), l'evenement s'il y en a un. */
+     normalisees dans `players`), l'evenement s'il y en a un, et
+     l'encadrement si elle l'annonce (staff_acte). */
   function bbLuLirePresentation(id){
     return Promise.all([
       sbFetch('presentations?select=*&id=eq.' + encodeURIComponent(id) + '&limit=1'),
@@ -9720,7 +9842,18 @@ window.bbCloud = function(url, w){
       var ev = pres.evenement_id
         ? sbFetch('evenements?select=*&id=eq.' + encodeURIComponent(pres.evenement_id) + '&limit=1').then(function(e){ return (e || [])[0] || null; }).catch(function(){ return null; })
         : Promise.resolve(null);
-      return ev.then(function(e){ return { pres: pres, joueuses: joueuses, ev: e }; });
+      // l'encadrement ne se lit que s'il monte sur la scene : deux
+      // requetes de moins pour les presentations qui ne l'annoncent pas
+      var staff = pres.staff_acte
+        ? Promise.all([
+            sbFetch('presentation_staff?select=staff_id,sort,fonction&presentation_id=eq.' + encodeURIComponent(id) + '&order=sort.asc'),
+            sbFetch('staff_site?select=id,name,role,photo_url,sort')
+          ]).then(function(s){
+            var parSid = {}; (s[1] || []).forEach(function(x){ parSid[String(x.id)] = x; });
+            return (s[0] || []).map(function(l){ var x = parSid[String(l.staff_id)]; return x ? bbLuStaffNormaliser(x, l) : null; }).filter(Boolean);
+          }).catch(function(){ return []; })
+        : Promise.resolve([]);
+      return Promise.all([ev, staff]).then(function(x){ return { pres: pres, joueuses: joueuses, ev: x[0], staff: x[1] }; });
     });
   }
 
@@ -9779,10 +9912,12 @@ window.bbCloud = function(url, w){
   function bbLuTemoinPresentation(t){
     var norm = function(r){ var p = window.bbNormaliserJoueuse(r); p.cap = !!r.is_captain; return p; };
     var joueuses = (t.joueuses || []).map(norm);
+    // l'encadrement tel que l'admin le coche, avant meme d'enregistrer
+    var staff = (t.staff || []).map(function(r){ return bbLuStaffNormaliser(r); });
     var cible = t.cible;
     var rendre = function(coach){
       bbLuBlocsGarder(1);
-      bbLuRendrePresentation(bbLuBloc(0), t.presentation, joueuses, t.evenement || null, coach || null);
+      bbLuRendrePresentation(bbLuBloc(0), t.presentation, joueuses, t.evenement || null, coach || null, staff);
       bbLuTemoinReprendre();
       if (cible) bbTemoinAller(cible);
     };
@@ -9849,9 +9984,9 @@ window.bbCloud = function(url, w){
     var a = document.querySelector('#bb-lineup .bb-lu-act[data-pid="' + String(t.pid) + '"]'); if (!a) return;
     var h = a.closest('.bb-lu-scene'), sc = h && h.__sc; if (!sc) return;
     if (t.mobile){
-      a.style.setProperty('--msx', t.sx + '%'); a.style.setProperty('--msy', t.sy + '%'); a.style.setProperty('--msz', String(t.sz / 100));
+      a.style.setProperty('--msx', String(t.sx)); a.style.setProperty('--msy', String(t.sy)); a.style.setProperty('--msz', String(t.sz / 100));
     } else {
-      a.style.setProperty('--dsx', t.sx + '%'); a.style.setProperty('--dsy', t.sy + '%'); a.style.setProperty('--dsz', String(t.sz / 100));
+      a.style.setProperty('--dsx', String(t.sx)); a.style.setProperty('--dsy', String(t.sy)); a.style.setProperty('--dsz', String(t.sz / 100));
     }
     // et dans la composition envoyee, pour qu'une relecture la garde
     var td = bbLuTemoinData;
@@ -10004,7 +10139,7 @@ window.bbCloud = function(url, w){
       if (bbLuTemoinData) return;                    // le temoin a parle entre-temps : il a le dernier mot
       var cinq = r[0], pres = r[1], coach = r[2], k = 0;
       if (cinq){ bbLuRendre(bbLuBloc(k), cinq.m, cinq.cinq, cinq.banc, coach); k++; }
-      pres.forEach(function(d){ bbLuRendrePresentation(bbLuBloc(k), d.pres, d.joueuses, d.ev, coach); k++; });
+      pres.forEach(function(d){ bbLuRendrePresentation(bbLuBloc(k), d.pres, d.joueuses, d.ev, coach, d.staff); k++; });
       bbLuBlocsGarder(k);
       if (!k){ hote.style.display = 'none'; return; }
       hote.style.display = '';
