@@ -1068,8 +1068,11 @@
           '<p class="doux">Sur les ' + d.total + ' de l’effectif.</p>');
       }
 
+      /* QUAND LE FILTRE PREND TOUT LE MONDE, « 17 sur 17 » se lit comme
+         une coincidence. C'en est une information : il n'y a pas
+         d'exception, et c'est cela qu'il faut dire. */
       var h = '<p><b>' + d.n + '</b> joueuse' + (d.n > 1 ? 's' : '') + ' ' + esc(quoi) +
-              ', sur ' + d.total + '.</p>';
+              (d.n === d.total ? ', soit tout l’effectif.' : ', sur ' + d.total + '.') + '</p>';
       h += '<div class="maya-faits">' + d.items.slice(0, 20).map(function (it) {
         return '<button type="button" class="maya-pers" data-fiche="' + esc(it.id) +
           '" data-genre="joueuse"><span class="rond">' +

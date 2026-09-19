@@ -9102,7 +9102,12 @@
       var t = null;
       if (typeof COLLECTIONS === 'object' && COLLECTIONS[cle] && COLLECTIONS[cle].table) t = COLLECTIONS[cle].table;
       else if (MAYA_TABLES[cle] !== undefined) t = MAYA_TABLES[cle];
-      out.push({ cle: 'ecran:' + cle, nom: m.t, ecran: cle, table: t, quoi: m.d || '' });
+      // ET LES MOTS DE CE QU'IL CONTIENT : l'ecran s'appelle Newsletter,
+      // on demande « combien d'abonnes ». Ce sont les memes mots avec
+      // lesquels elle repondra.
+      var mots = t ? mayaNomTable(t) : null;
+      out.push({ cle: 'ecran:' + cle, nom: m.t, ecran: cle, table: t, quoi: m.d || '',
+                 mots: mots && mots.nom !== 'ligne' ? [mots.nom, mots.pluriel] : [] });
     });
     return out;
   }

@@ -168,12 +168,20 @@
 
     // Aucun sujet riche : on retombe sur les ecrans, et la c'est le titre
     // le plus long qui gagne (« Le match » bat « Matchs » sur « le match »).
-    var ecran = null;
+    var ecran = null, gagnant = '';   // le mot qui a gagne, pas l'objet
     (extra || []).forEach(function (S) {
-      var nom = plat(S.nom);
-      if (nom.length < 4) return;   // « Club », « Home » : trop court pour trancher
-      if (t.indexOf(nom) < 0) return;
-      if (!ecran || nom.length > plat(ecran.nom).length) ecran = S;
+      /* UN ECRAN REPOND AUSSI AU NOM DE CE QU'IL CONTIENT. « Combien
+         d'abonnes » ne trouvait rien : l'ecran s'appelle Newsletter, et
+         personne ne dit « combien de newsletter ». L'administration
+         fournit ces mots-la avec l'ecran -- ce sont ceux avec lesquels
+         elle repondra, donc ceux avec lesquels on doit pouvoir demander. */
+      var noms = [S.nom].concat(S.mots || []);
+      for (var k = 0; k < noms.length; k++) {
+        var nom = plat(noms[k]);
+        if (nom.length < 4) continue;   // « Club », « Home » : trop court pour trancher
+        if (t.indexOf(nom) < 0) continue;
+        if (!ecran || nom.length > gagnant.length) { ecran = S; gagnant = nom; }
+      }
     });
     return ecran;
   }
