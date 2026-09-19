@@ -497,6 +497,17 @@
 
   /* Les jours et les reperes de temps : ils ne sont dans aucun motif a
      alternatives, et « samdi » est la faute la plus courante de toutes. */
+  /* Les pronoms qui designent quelqu'un.
+
+     « IL » N'Y EST PAS, et c'est le banc qui l'a impose : « l'entree de
+     ce match est-IL payant ? » partait sur la fiche d'une joueuse. En
+     francais « il » est le plus souvent impersonnel -- il faut, il y a,
+     est-il -- et le gain sur « il joue a quel poste » ne valait pas ce
+     detournement.
+
+     « Leur » y est : on dit « leur dossier » d'un groupe qu'on vient de
+     lister. */
+  var PRONOM_PERS = /\b(elle|lui|son|sa|ses|leur|leurs)\b/;
   var MOTS_TEMPS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche',
                     'demain','hier','aujourd','prochain','prochaine','semaine','matin','soir'];
 
@@ -770,6 +781,22 @@
        frequent quand on cherche quelqu'un, et le plus penible a taper en
        entier. */
     if (!res.intention && res.entites.personne && res.mots.length <= 3) res.intention = 'qui';
+
+    /* UN NOM DE FAMILLE SEUL AUSSI. « Ndiaye » ne designe pas une
+       personne mais trois, et la phrase tombait sur « je ne comprends
+       pas » : le cas le plus banal quand on cherche quelqu'un dans un
+       club ou les fratries sont nombreuses. Plusieurs reponses possibles
+       n'est pas une incomprehension -- c'est une question a poser. */
+    if (!res.intention && res.entites.personnes && res.mots.length <= 3) res.intention = 'qui';
+
+    /* ET « ELLE », « SON », « SA ». Apres avoir montre une fiche, on
+       enchaine : « elle a quel numero », « et son poste », « ouvre sa
+       fiche ». Trois phrases qui ne contiennent aucun nom et qui ne
+       parlent que d'elle. On signale le pronom ; c'est le dialogue qui
+       sait de QUI on vient de parler, pas la grammaire. */
+    if (!res.entites.personne && !res.entites.personnes && PRONOM_PERS.test(t)) {
+      res.pronomPersonne = true;
+    }
 
     /* UN NOM D'ECRAN SEUL EST UNE NAVIGATION, meme regle. */
     if (!res.intention && res.entites.ecran && res.mots.length <= 3) res.intention = 'aller';

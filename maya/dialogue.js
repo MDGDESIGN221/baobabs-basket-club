@@ -40,6 +40,10 @@
      C'est ce qui permet a « continue » de reprendre la ou on en etait,
      et ce sur quoi s'appuiera la correction (« non, les U20 »). */
   var dernier = null;
+  /* ET LA DERNIERE PERSONNE MONTREE, a part. « Elle », « son », « sa »
+     ne renvoient pas a la derniere DEMANDE mais a la derniere PERSONNE,
+     et les deux divergent des qu'on intercale « fais-moi le point ». */
+  var dernierePersonne = null;
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -329,6 +333,40 @@
        qu'on le nomme ; si le nom ne donne rien, c'est le nom qui est en
        cause, pas le contexte. « manque » peut au contraire ne nommer
        personne (« qu'est-ce qui manque a son dossier »). */
+    /* ------------------------------------------------------------------
+       « ELLE », « SON », « SA » : LA PERSONNE DONT ON VIENT DE PARLER
+       ------------------------------------------------------------------
+       Teste en production, juste apres avoir montre une fiche :
+
+         « elle a quel numero »  -> « On parlait de Inscriptions ... »
+         « et son poste »        -> « Je ne comprends pas. »
+         « ouvre sa fiche »      -> « Quel ecran voulez-vous ouvrir ? »
+
+       Trois phrases d'affilee, toutes a propos de la meme joueuse, et
+       aucune comprise. C'est ainsi qu'on parle : on nomme quelqu'un une
+       fois, puis on dit « elle ».
+
+       ET LA FICHE REPOND DEJA A TOUT. Numero, poste, taille, licence,
+       compte, convocations : on n'a donc pas a comprendre la question,
+       seulement a savoir DE QUI elle parle. C'est la meme doctrine que
+       pour le match -- une fiche vaut cinquante motifs.
+
+       LE PRONOM NE REMONTE PAS LOIN : seulement la derniere personne
+       montree. Deviner au-dela ferait repondre sur quelqu'un d'autre,
+       ce qui est pire que de ne pas repondre.
+       ------------------------------------------------------------------ */
+    /* ET SEULEMENT SI LA PHRASE NE PARLE DE RIEN D'AUTRE. Des qu'un
+       sujet du club ou un ecran est reconnu, c'est de LUI qu'on parle :
+       un pronom ne doit pas prendre le pas sur un sujet nomme. */
+    if (r.pronomPersonne && dernierePersonne && !r.sujet && !r.entites.ecran) {
+      r.entites.personne = dernierePersonne;
+      // « ouvre sa fiche » reste une ouverture, et c'est sa fiche a elle
+      // qu'on ouvre ; tout le reste devient une question sur elle, et la
+      // fiche y repond deja.
+      if (!r.intention || r.intention === 'sujet') r.intention = 'qui';
+      r.herite = 'personne';
+    }
+
     var BESOIN = { manque: 'personne', convoquer: 'date', quand: 'date' };
     var besoin = BESOIN[r.intention];
     if (besoin && !r.entites[besoin] && dernier && dernier.entites && dernier.entites[besoin]) {
@@ -489,6 +527,9 @@
      responsable, contenu d'une piece. Ces colonnes ne sont meme pas
      demandees a la base -- ce qui n'est pas lu ne peut pas fuir. */
   function montrerPersonne(p) {
+    // C'est ici, et nulle part ailleurs, qu'on retient de qui on parle :
+    // une fiche montree est ce qui rend « elle » sans ambiguite.
+    dernierePersonne = p;
     var f = outil('fichePersonne');
     if (!f) {
       var suite = [];
@@ -577,6 +618,16 @@
   /* ------------------------------------------------------------------ */
   function rAller(r) {
     var e = r.entites.ecran;
+    /* « OUVRE SA FICHE » N'EST PAS UN ECRAN. Aucun nom d'ecran dans la
+       phrase, mais une personne dont on vient de parler : c'est sa fiche
+       a elle qu'on demande, et l'administration sait l'ouvrir. */
+    if (!e && r.entites.personne) {
+      var p = r.entites.personne;
+      elle('<p>J’ouvre la fiche de <b>' + esc(p.nom) + '</b>.</p>');
+      var fo = outil('ouvrirPersonne');
+      if (fo) setTimeout(function () { fo(p.genre, p.id); fermer(); }, 320);
+      return;
+    }
     if (!e) {
       return elle('<p>Quel écran voulez-vous ouvrir ?</p>' +
         pistes(['ouvre la billetterie', 'ouvre l’effectif', 'ouvre le match']));
@@ -970,7 +1021,14 @@
       // « qui sont l'ecole de basket » ne se dit pas. « la liste des
       // inscriptions » se dit toujours, quel que soit le sujet, et le
       // mot « liste » est justement ce que l'analyse reconnait.
-      elle(h + pistes(['la liste des ' + d.pluriel, 'fais-moi le point']));
+      //
+      // MAIS ON NE PROPOSE PAS CE QU'ON REFUSERA. « 6 abonnes » suivi de
+      // « la liste des abonnes » menait a « je ne les fais pas defiler
+      // ici » : une piste qui se referme sur un refus vaut moins que pas
+      // de piste du tout.
+      var suites = d.sansListe ? [] : ['la liste des ' + d.pluriel];
+      elle(h + (d.sansListe && d.ecran ? pistesEcran(d.ecran) : '') +
+           pistes(suites.concat(['fais-moi le point'])));
     });
   }
 
