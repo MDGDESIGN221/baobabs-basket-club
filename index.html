@@ -690,9 +690,19 @@ window.bbLienSur = function (u) {
 
      Mesure : le bloc faisait 880 px sur un 375x812 en empilant six
      informations de meme poids. */
+  /* LE FOND. Il etait bleu-nuit, pour marquer un evenement hors saison :
+     c'etait s'eloigner des couleurs du club. Il prend l'effet du hero :
+     une image en fond -- l'affiche, floutee jusqu'a n'etre qu'une
+     lumiere -- sous un voile vert dense a gauche, ou se lit le texte. */
   .bb-ev{position:relative;overflow:hidden;border-radius:20px;
-    border:1px solid rgba(var(--bb-or-rgb),.3);
-    background:radial-gradient(120% 130% at 88% 0%,#0E3644 0%,#0A2430 46%,#061218 100%)}
+    border:1px solid var(--hh-accent-cerne);background:#081C13}
+  .bb-ev-fond{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+  .bb-ev-fond img{width:100%;height:100%;object-fit:cover;object-position:center 30%;
+    filter:blur(26px) saturate(.8);transform:scale(1.2);opacity:.45}
+  .bb-ev-fond span{position:absolute;inset:0;
+    background:
+      linear-gradient(90deg,rgba(6,20,13,.94) 0%,rgba(6,20,13,.86) 42%,rgba(6,20,13,.62) 100%),
+      linear-gradient(180deg,rgba(5,16,11,.2) 0%,rgba(5,16,11,.6) 100%)}
   .bb-ev-grid{position:relative;z-index:1;display:grid;
     grid-template-columns:auto minmax(0,1fr);
     column-gap:clamp(18px,2.6vw,32px);row-gap:12px;
@@ -819,7 +829,10 @@ window.bbLienSur = function (u) {
     .bb-ev-k{gap:6px 8px;row-gap:5px}
     .bb-ev-jx{order:-1}
     .bb-ev-k i{order:-2}
-    .bb-ev-k span{flex:1 0 100%;letter-spacing:.14em;font-size:9.5px;line-height:1.45}
+    /* « span » sans plus attrapait aussi le J-13, qui est un span : la
+       pastille s'etirait sur toute la largeur, « J-4 » perdu a gauche
+       d'un long ruban vert. */
+    .bb-ev-k span:not(.bb-ev-jx){flex:1 0 100%;letter-spacing:.14em;font-size:9.5px;line-height:1.45}
 
     /* La ligne du second tournoi se cassait en trois. Le bouton passe
        dessous, en pleine largeur : plus lisible, et une cible plus
@@ -2327,26 +2340,76 @@ window.bbLienSur = function (u) {
      Le positionnement du panneau d'attente est passe du style en
      ligne a cette classe : un style en ligne l'emporte sur la feuille
      de style, il aurait fallu un !important pour le replier. */
+  /* LA CARTE PARLE LA LANGUE DU HERO.
+     Elle etait une bande plate, bord rouge a gauche, texte gris. Elle
+     prend la photo en fond, voilee de vert, dense a gauche ou se lit le
+     message ; la pastille du haut est de verre comme celle du direct
+     dans le hero, et au repos le message est une plaque de verre comme
+     la carte du match. Les trois etats (repos, lecteur, score, renvoi)
+     gardent leurs classes : seul l'habillage change. */
+  #bb-live-card{
+    position:relative; overflow:hidden; border-radius:16px; background:#0F1E15;
+    border:1px solid rgba(243,239,230,.1); border-top:2px solid var(--hh-accent);
+  }
+  /* En direct, le filet du haut prend le rouge de la pastille. */
+  #bb-live-card:not(.bb-live-repos){ border-top-color:#C0271B }
+  .bb-lv-fond{ position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden }
+  .bb-lv-fond img{ width:100%; height:100%; object-fit:cover; object-position:center 28% }
+  .bb-lv-fond span{
+    position:absolute; inset:0;
+    background:
+      linear-gradient(90deg, rgba(6,20,13,.94) 0%, rgba(6,20,13,.86) 38%, rgba(6,20,13,.5) 66%, rgba(6,20,13,.2) 100%),
+      linear-gradient(180deg, rgba(5,16,11,.25) 0%, rgba(5,16,11,.55) 100%);
+  }
+  #bb-live-header{
+    position:relative; z-index:1;
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    padding:14px 16px 0;
+  }
+  #bb-live-badge, #bb-offline-badge{
+    display:flex; align-items:center; gap:9px; padding:8px 13px; border-radius:100px;
+    background:rgba(5,16,11,.7); backdrop-filter:blur(8px); border:1px solid rgba(243,239,230,.16);
+    font-family:'Inter',sans-serif; font-weight:800; font-size:10px;
+    letter-spacing:.16em; text-transform:uppercase; color:#F3EFE6;
+  }
+  #bb-offline-badge{ color:#B9C2BB }
+  #bb-live-badge > span, #bb-offline-badge > span{ width:7px; height:7px; border-radius:50%; flex:none }
+  #bb-live-badge > span{ background:#C0271B; animation:bbPulse 1.3s ease-in-out infinite }
+  #bb-offline-badge > span{ background:#7E8A82 }
+  .bb-live-info-title{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-.015em;
+    font-size:clamp(15px,1.5vw,18px); line-height:1.25; color:#F3EFE6;
+  }
+  .bb-live-info-sub{ font-family:'Inter',sans-serif; font-size:12.5px; line-height:1.5; color:#A9B2AB }
+
   .bb-live-scene{
-    position:relative; width:100%; aspect-ratio:16/9; margin-top:14px; background:#07130D;
+    position:relative; z-index:1; width:100%; aspect-ratio:16/9; margin-top:14px; background:#07130D;
   }
   .bb-live-fb{
     position:absolute; inset:0;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:8px; text-align:center; padding:20px;
   }
-  #bb-live-card.bb-live-repos .bb-live-scene{ aspect-ratio:auto; margin-top:12px }
+  /* Au repos : la scene n'a plus de fond propre, la photo de la carte
+     passe derriere, et le message est une plaque de verre. */
+  #bb-live-card.bb-live-repos .bb-live-scene{ aspect-ratio:auto; margin-top:12px; background:transparent }
+  #bb-live-card.bb-live-repos .bb-live-scene > div:first-child,
+  #bb-live-card.bb-live-repos .bb-live-scene > div:nth-child(2){ display:none }
   #bb-live-card.bb-live-repos .bb-live-fb{
     position:relative; inset:auto;
     flex-direction:row; flex-wrap:wrap; align-items:center; justify-content:flex-start;
-    gap:4px 12px; text-align:left; padding:13px 16px 15px;
+    gap:4px 12px; text-align:left; padding:14px 16px 16px;
+    margin:0 16px 16px; border-radius:12px;
+    background:rgba(6,20,13,.62); backdrop-filter:blur(12px);
+    border:1px solid rgba(243,239,230,.1);
   }
-  #bb-live-card.bb-live-repos .bb-live-info-icon{ width:19px; height:19px; flex:none }
+  #bb-live-card.bb-live-repos .bb-live-info-icon{ width:20px; height:20px; flex:none }
   #bb-live-card.bb-live-repos .bb-live-info-title{ flex:none }
   #bb-live-card.bb-live-repos .bb-live-info-sub{ flex:1 1 200px; min-width:0 }
   @media (max-width:620px){
-    #bb-live-card.bb-live-repos .bb-live-fb{ gap:3px 10px }
+    #bb-live-card.bb-live-repos .bb-live-fb{ gap:3px 10px; margin:0 12px 12px }
     #bb-live-card.bb-live-repos .bb-live-info-title{ flex:1 1 100% }
+    #bb-live-header{ padding:12px 12px 0 }
   }
   /* LE DIRECT QUE LE CLUB POSSEDE VRAIMENT.
      Un soir de match sans camera, la carte n'annonce plus « aucun direct »
@@ -3529,13 +3592,21 @@ window.bbLienSur = function (u) {
       <!-- La carte "direct" quitte le hero et prend toute la largeur : elle ne se
            remplit que les jours de match (voir window.bbInitLive). -->
       <div id="bb-live-wrap" style="margin-top:16px">
-        <div id="bb-live-card" class="bb-live-repos" style="background:#0F1E15;border:1px solid rgba(243,239,230,.09);border-left:3px solid #C0271B;border-radius:12px;overflow:hidden">
-            <div id="bb-live-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0">
-              <div id="bb-live-badge" style="display:none;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#F3EFE6">
-                <span style="width:8px;height:8px;border-radius:50%;background:#C0271B;animation:bbPulse 1.3s infinite"></span>EN DIRECT
+        <div id="bb-live-card" class="bb-live-repos">
+            <!-- La photo en fond, voilee de vert comme celle du hero : la
+                 carte parle la meme langue que lui, pastille de verre et
+                 plaque de verre. Les styles sont dans la feuille (LA CARTE
+                 DU DIRECT), le JS ne touche qu'aux classes d'etat. -->
+            <div class="bb-lv-fond" aria-hidden="true">
+              <img src="/media/img/Duo_Baobabs___contre-plong_e_snmhff.webp" alt="" loading="lazy" decoding="async">
+              <span></span>
+            </div>
+            <div id="bb-live-header">
+              <div id="bb-live-badge" style="display:none">
+                <span></span>EN DIRECT
               </div>
-              <div id="bb-offline-badge" style="display:flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;color:#7E8A82">
-                <span style="width:8px;height:8px;border-radius:50%;background:#7E8A82"></span>PAS DE DIRECT EN COURS
+              <div id="bb-offline-badge">
+                <span></span>PAS DE DIRECT EN COURS
               </div>
               <!-- La sortie de secours. Un lecteur integre peut refuser de
                    charger sans qu'aucun code ne le sache : la plateforme
@@ -3550,8 +3621,8 @@ window.bbLienSur = function (u) {
               <iframe id="bb-live-iframe" src="" title="Direct Baobabs Basket Club" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:none" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
               <div id="bb-live-fallback" class="bb-live-fb">
                 <svg class="bb-live-info-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#A8D93B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2"></rect></svg>
-                <span class="bb-live-info-title" style="font-family:'Inter',sans-serif;font-weight:600;font-size:13px;color:#B9C2BB">Aucun match en direct pour le moment</span>
-                <span class="bb-live-info-sub" style="font-family:'Inter',sans-serif;font-weight:500;font-size:11.5px;color:#7E8A82">La diffusion démarre automatiquement ici dès qu'un live commence</span>
+                <span class="bb-live-info-title">Aucun match en direct pour le moment</span>
+                <span class="bb-live-info-sub">La diffusion démarre automatiquement ici dès qu'un live commence</span>
               </div>
               <!-- Le score de la table de marque, quand le match se joue
                    sans etre filme. Rempli par bbLiveScore(). -->
@@ -3888,6 +3959,13 @@ window.bbLienSur = function (u) {
            y pense. -->
       <section id="bb-evenement" class="bb-hide" style="padding:clamp(36px,5vw,64px) 0 0">
         <div class="bb-ev">
+          <!-- L'affiche en fond, floutee et voilee de vert : le meme effet
+               que le hero, dans les couleurs du club. Elle suit l'affiche
+               de l'evenement (bbEvPeindre). -->
+          <div class="bb-ev-fond" aria-hidden="true">
+            <img id="bb-ev-fond-img" src="/media/img/tournoi-nouakchott-2026-t.webp" alt="" loading="lazy" decoding="async">
+            <span></span>
+          </div>
           <div class="bb-ev-grid">
             <button type="button" class="bb-ev-aff" id="bb-ev-aff" aria-label="Voir l'affiche en grand">
               <img id="bb-ev-poster" src="/media/img/tournoi-nouakchott-2026-t.webp" alt="Affiche du Tournoi Women’s Sport International de basketball feminin, Nouakchott, du 23 au 29 septembre 2026" loading="lazy" decoding="async">
@@ -5914,7 +5992,6 @@ window.bbCloud = function(url, w){
     var mediaSide = document.getElementById('bb-media-side');
     var hasSide = mediaSide && mediaSide.style.display !== 'none';
     mediaGrid.style.gridTemplateColumns = (mq || !hasSide) ? '1fr' : '1.62fr 1fr';
-    document.getElementById('bb-live-header').style.padding = mq ? '14px 14px 0' : '16px 16px 0';
     // Page Inscriptions : le formulaire passe sous les informations plutôt
     // qu'à côté dès que la colonne devient trop étroite pour deux champs.
     var insBody = document.getElementById('bb-ins-body');
@@ -10322,6 +10399,10 @@ window.bbCloud = function(url, w){
       im.src = vign;
       if (ev.affiche_alt) im.alt = ev.affiche_alt;
     }
+    // Le fond du bloc est la meme affiche, floutee ; sans affiche, il
+    // reste vert uni.
+    var fond = document.getElementById('bb-ev-fond-img');
+    if (fond){ fond.src = vign || ''; fond.style.display = vign ? '' : 'none'; }
     var aff = document.getElementById('bb-ev-aff');
     if (aff){
       aff.classList.toggle('bb-hide', !vign);
