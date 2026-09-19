@@ -8634,10 +8634,15 @@
       document.head.appendChild(sc);
     });
   }
-  /* TROIS FICHIERS, DANS CET ORDRE, ET IL COMPTE : comprendre.js et
-     dialogue.js se posent sur le noyau et le verifient a leur premiere
-     ligne. La feuille de style part en meme temps, sans qu'on l'attende :
-     le panneau n'est pas ouvert a cette seconde. */
+  /* QUATRE FICHIERS, DANS CET ORDRE, ET IL COMPTE : comprendre.js,
+     deviner.js et dialogue.js se posent sur le noyau et le verifient a
+     leur premiere ligne. La feuille de style part en meme temps, sans
+     qu'on l'attende : le panneau n'est pas ouvert a cette seconde.
+
+     deviner.js AVANT dialogue.js, parce que le panneau lui demande ses
+     propositions des la premiere frappe. Et dialogue.js sait se passer
+     de lui : si ce fichier manque, MAYA repond, simplement sans deviner.
+     Une liste absente ne doit pas emporter la conversation. */
   function mayaCharger(){
     if (window.BaobabsMaya && window.BaobabsMaya.dialogue) return Promise.resolve();
     if (!document.getElementById('maya-css')){
@@ -8649,7 +8654,8 @@
     return debut.then(function(){
       if (!window.BaobabsMaya) throw new Error('global absent');
       return mayaScript('/maya/comprendre.js');
-    }).then(function(){ return mayaScript('/maya/dialogue.js'); });
+    }).then(function(){ return mayaScript('/maya/deviner.js'); })
+      .then(function(){ return mayaScript('/maya/dialogue.js'); });
   }
 
   /* Ne rejette JAMAIS : l'appelant enchaine sur attCollecte dans tous

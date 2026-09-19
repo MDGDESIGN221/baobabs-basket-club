@@ -168,20 +168,19 @@
 
     // Aucun sujet riche : on retombe sur les ecrans, et la c'est le titre
     // le plus long qui gagne (« Le match » bat « Matchs » sur « le match »).
-    var ecran = null, gagnant = '';   // le mot qui a gagne, pas l'objet
+    var ecran = null, poids = 0;
+    var jetons2 = t.split(' ');
     (extra || []).forEach(function (S) {
       /* UN ECRAN REPOND AUSSI AU NOM DE CE QU'IL CONTIENT. « Combien
          d'abonnes » ne trouvait rien : l'ecran s'appelle Newsletter, et
          personne ne dit « combien de newsletter ». L'administration
          fournit ces mots-la avec l'ecran -- ce sont ceux avec lesquels
-         elle repondra, donc ceux avec lesquels on doit pouvoir demander. */
-      var noms = [S.nom].concat(S.mots || []);
-      for (var k = 0; k < noms.length; k++) {
-        var nom = plat(noms[k]);
-        if (nom.length < 4) continue;   // « Club », « Home » : trop court pour trancher
-        if (t.indexOf(nom) < 0) continue;
-        if (!ecran || nom.length > gagnant.length) { ecran = S; gagnant = nom; }
-      }
+         elle repondra, donc ceux avec lesquels on doit pouvoir
+         demander. */
+      [S.nom].concat(S.mots || []).forEach(function (n) {
+        var p = pesee(jetons2, n);
+        if (p > poids) { ecran = S; poids = p; }
+      });
     });
     return ecran;
   }
@@ -640,11 +639,52 @@
     return out.map(function (x) { return x.p; });
   }
 
+  /* ==================================================================
+     CE QU'UN TITRE PESE DANS UNE PHRASE
+     ------------------------------------------------------------------
+     Un ecran ne se trouvait que si son titre ENTIER figurait dans ce
+     qu'on tape. Cela marche pour « Matchs » et « Joueuses ». Cela ne
+     marche pour aucun des seize autres :
+
+       « c'est quoi la coherence »  -> Coherence site ↔ admin
+       « le pied de page »          -> Pied de page & mentions
+       « analytics »                -> Analytics du club
+       « la page du club »          -> Page « Le Club »
+
+     Personne ne tape « Cohérence site ↔ admin ». Seize ecrans sur
+     cinquante etaient donc inatteignables par leur nom, et repondaient
+     « je ne comprends pas » ou, pire, « on parlait d'autre chose ».
+
+     ON PESE DONC LES MOTS DU TITRE, un par un. Un mot exact vaut le
+     double d'un mot amorce, un titre entierement retrouve vaut une
+     prime, et les mots trop courts ou trop communs ne comptent pas --
+     sans quoi « page » ferait gagner trois ecrans a egalite.
+     ================================================================== */
+  function pesee(jetons, nom) {
+    var mots_ = plat(nom).split(' ').filter(function (m) {
+      return m.length >= 4 && VIDES.indexOf(m) < 0;
+    });
+    if (!mots_.length) return 0;
+    var n = 0, touches = 0;
+    mots_.forEach(function (m) {
+      for (var i = 0; i < jetons.length; i++) {
+        var j = jetons[i];
+        if (j === m) { n += m.length * 2; touches++; return; }
+        if (j.length >= 4 && (j.indexOf(m) === 0 || m.indexOf(j) === 0)) { n += m.length; touches++; return; }
+      }
+    });
+    if (!touches) return 0;
+    /* UN TITRE RETROUVE EN ENTIER BAT UN TITRE EFFLEURE. « Page
+       d'accueil » doit gagner sur « Page Tryouts » quand on ecrit
+       « page d'accueil », et perdre quand on ecrit « page tryouts ». */
+    return n + (touches === mots_.length ? 4 : 0);
+  }
+
   function ecrans(texte, liste) {
-    var t = plat(texte), out = [];
+    var t = plat(texte), jetons = t.split(' '), out = [];
     (liste || []).forEach(function (e) {
-      var titre = plat(e.titre);
-      if (titre.length > 2 && t.indexOf(titre) >= 0) out.push({ e: e, poids: titre.length });
+      var p = pesee(jetons, e.titre);
+      if (p) out.push({ e: e, poids: p });
     });
     out.sort(function (a, b) { return b.poids - a.poids; });
     return out.map(function (x) { return x.e; });

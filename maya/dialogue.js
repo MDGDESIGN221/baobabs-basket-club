@@ -56,6 +56,73 @@
 
 
   /* ==================================================================
+     LA LISTE QUI S'OUVRE SOUS LA FRAPPE
+     ------------------------------------------------------------------
+     MAYA sait repondre sur cinquante ecrans, vingt et une personnes et
+     douze criteres combinables, et rien de tout cela ne se voit. La
+     liste est le SOMMAIRE de ce qu'elle sait : sans elle, on decouvre
+     ses limites en se cognant dedans, une question a la fois.
+
+     LE CLASSEMENT VIT DANS deviner.js, SANS DOM. Ici on ne fait
+     qu'afficher et ecouter le clavier -- c'est ce qui permet au banc de
+     mesurer les propositions sans navigateur.
+     ------------------------------------------------------------------ */
+  var devine = null, devineListe = [], devineChoix = -1;
+
+  function devineFermer() {
+    if (!devine) return;
+    devine.hidden = true;
+    devine.innerHTML = '';
+    devineListe = [];
+    devineChoix = -1;
+    champ.setAttribute('aria-expanded', 'false');
+  }
+
+  function devineMarquer() {
+    if (!devine) return;
+    var b = devine.querySelectorAll('.maya-dev');
+    for (var i = 0; i < b.length; i++) {
+      var on = i === devineChoix;
+      b[i].classList.toggle('on', on);
+      b[i].setAttribute('aria-selected', on ? 'true' : 'false');
+    }
+    if (devineChoix >= 0 && b[devineChoix]) b[devineChoix].scrollIntoView({ block: 'nearest' });
+  }
+
+  function devineRendre() {
+    if (!devine) return;
+    var G = M.deviner;
+    if (!G) return;                     // le fichier n'a pas suivi : on se tait
+    var ctx = {
+      personnes: CTX && CTX.personnes ? CTX.personnes() : [],
+      ecrans: CTX && CTX.ecrans ? CTX.ecrans() : [],
+      sujets: CTX && CTX.sujets ? CTX.sujets() : []
+    };
+    devineListe = G.propositions(champ.value, ctx, 7);
+    devineChoix = -1;
+    if (!devineListe.length) return devineFermer();
+
+    devine.innerHTML = devineListe.map(function (x, i) {
+      var ico = x.genre === 'personne' ? '<span class="rond">' + esc(initiales(x.texte)) + '</span>'
+              : x.genre === 'ecran'    ? '<span class="carre">›</span>'
+                                       : '<span class="carre">?</span>';
+      return '<button type="button" class="maya-dev" role="option" aria-selected="false" ' +
+             'data-i="' + i + '">' + ico +
+             '<span><b>' + esc(x.texte) + '</b><s>' + esc(x.sous || '') + '</s></span></button>';
+    }).join('');
+    devine.hidden = false;
+    champ.setAttribute('aria-expanded', 'true');
+  }
+
+  function devineChoisir(i) {
+    var x = devineListe[i];
+    if (!x) return;
+    devineFermer();
+    champ.value = x.texte;
+    envoyer();
+  }
+
+  /* ==================================================================
      LE PANNEAU
      ================================================================== */
   function batir() {
@@ -71,6 +138,7 @@
         '<button type="button" class="maya-x" id="maya-x" aria-label="Fermer">×</button>' +
       '</div>' +
       '<div class="maya-fil" id="maya-fil"></div>' +
+      '<div class="maya-devine" id="maya-devine" role="listbox" hidden></div>' +
       '<div class="maya-bas">' +
         '<textarea id="maya-champ" rows="1" placeholder="Dites-moi ce que vous cherchez…" ' +
         'autocomplete="off" spellcheck="false"></textarea>' +
@@ -85,6 +153,7 @@
 
     fil = panneau.querySelector('#maya-fil');
     champ = panneau.querySelector('#maya-champ');
+    devine = panneau.querySelector('#maya-devine');
     var envoi = panneau.querySelector('#maya-envoi');
 
     panneau.querySelector('#maya-x').addEventListener('click', fermer);
@@ -93,11 +162,49 @@
       envoi.disabled = !champ.value.trim();
       champ.style.height = 'auto';
       champ.style.height = Math.min(champ.scrollHeight, 120) + 'px';
+      devineRendre();
     });
+    champ.addEventListener('focus', function () { devineRendre(); });
+    /* Le flou ferme la liste, mais APRES le clic : sans ce delai, le
+       bouton disparait sous le doigt avant d'avoir servi. */
+    champ.addEventListener('blur', function () { setTimeout(devineFermer, 160); });
+
+    // Le panneau doit vivre meme sans la liste : si le conteneur manque
+    // (vieux cache, fichier non deploye), MAYA repond, simplement sans
+    // deviner. Un panneau mort vaudrait bien pire.
+    if (devine) devine.addEventListener('mousedown', function (e) {
+      var b = e.target.closest ? e.target.closest('.maya-dev') : null;
+      if (!b) return;
+      e.preventDefault();                       // garder le focus dans le champ
+      devineChoisir(Number(b.getAttribute('data-i')));
+    });
+
     champ.addEventListener('keydown', function (e) {
+      /* LA LISTE PREND LE CLAVIER QUAND ELLE EST OUVERTE. Les fleches y
+         circulent, Entree valide ce qui est surligne, et Echap la ferme
+         SANS fermer le panneau -- fermer les deux d'un coup fait perdre
+         la conversation pour une liste qu'on voulait seulement tasser. */
+      var ouverte = devine && !devine.hidden && devineListe.length;
+      if (ouverte && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault();
+        var n = devineListe.length;
+        devineChoix = e.key === 'ArrowDown'
+          ? (devineChoix + 1) % n
+          : (devineChoix <= 0 ? n - 1 : devineChoix - 1);
+        devineMarquer();
+        return;
+      }
+      if (ouverte && e.key === 'Tab' && devineChoix >= 0) {
+        e.preventDefault(); devineChoisir(devineChoix); return;
+      }
+      if (ouverte && e.key === 'Escape') { e.preventDefault(); devineFermer(); return; }
       // Entree envoie, Maj+Entree passe a la ligne : c'est le geste que
       // tout le monde a dans les doigts.
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyer(); }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (ouverte && devineChoix >= 0) devineChoisir(devineChoix);
+        else { devineFermer(); envoyer(); }
+      }
       if (e.key === 'Escape') fermer();
     });
     // Un clic dans le panneau ne doit pas fermer les popovers de l'hote.
@@ -992,6 +1099,17 @@
     if (d.interdit) return '<p>Votre casquette ne donne pas accès à ' + esc(nomSujet) + '.</p>';
     if (d.illisible) return '<p>Je n’ai pas pu lire ' + esc(nomSujet) + '.</p>' +
       '<p class="doux">Ce n’est pas zéro : c’est que je n’ai rien obtenu.</p>';
+    /* SEIZE ECRANS N'ONT RIEN A COMPTER : la page d'accueil, le pied de
+       page, les reglages, la mediatheque. Ils rendaient « undefined » et
+       « la liste des undefined » -- vu a l'ecran, en production.
+
+       ILS NE SONT PAS POUR AUTANT INCONNUS. Chacun porte une phrase qui
+       dit a quoi il sert, et c'est exactement la reponse attendue quand
+       on demande « a quoi sert la page d'accueil ». Savoir compter n'est
+       pas la seule facon de savoir quelque chose. */
+    if (d.sansChiffre) return '<p>' + esc(d.quoi || ('L’écran ' + nomSujet + '.')) + '</p>' +
+      '<p class="doux">Rien à compter là : c’est un écran qu’on remplit, pas une liste.</p>' +
+      (d.ecran ? pistesEcran(d.ecran) : '');
     return null;
   }
 
