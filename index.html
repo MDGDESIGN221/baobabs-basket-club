@@ -622,6 +622,20 @@ window.bbLienSur = function (u) {
   .bb-tk-cta:active{transform:scale(.985)}
   .bb-tk-off{font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.09em;text-transform:uppercase;padding:12px;border-radius:9px;border:1px solid rgba(243,239,230,.14);color:#7E8A82;text-align:center}
   .bb-tk-perf{height:1px;background:repeating-linear-gradient(90deg,rgba(var(--bb-or-rgb),.4) 0 5px,transparent 5px 10px)}
+  /* les tarifs : cinq cartes sur grand ecran, une liste courte sur telephone */
+  .bb-tk-grille{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:14px}
+  .bb-tk-liste{display:none}
+  .bb-tk-l{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border:1px solid rgba(243,239,230,.09);border-left:2px solid var(--bb-or);border-radius:10px;background:#0E1A12}
+  .bb-tk-l + .bb-tk-l{margin-top:6px}
+  .bb-tk-l span{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .bb-tk-l b{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14.5px;color:#F3EFE6}
+  .bb-tk-l small{font-size:11.5px;color:#7E8A82}
+  .bb-tk-l em{font-style:normal;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;letter-spacing:-.01em;color:var(--bb-or);white-space:nowrap}
+  .bb-tk-liste .bb-tk-cta{margin-top:12px}
+  @media (max-width:640px){
+    .bb-tk-grille{display:none}
+    .bb-tk-liste{display:block}
+  }
 
   /* ===== fluidité de navigation ===== */
   html{scroll-behavior:auto;overscroll-behavior-y:none;-webkit-text-size-adjust:100%}
@@ -764,7 +778,20 @@ window.bbLienSur = function (u) {
   .bb-ph .bb-bl-e:last-child{border-right:1px solid rgba(243,239,230,.1)}
   .bb-ph .bb-ins-tarif{background:rgba(6,20,13,.66);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(243,239,230,.1);border-top:2px solid var(--bb-or)}
   .bb-ph .bb-ins-tarif.lead{border-top-color:#A8D93B;background:rgba(10,32,20,.7)}
-  @media (max-width:720px){ .bb-ph .bb-bl-e:last-child{border-bottom:2px solid transparent} }
+  @media (max-width:720px){
+    .bb-ph .bb-bl-etapes{gap:6px;margin-top:18px}
+    .bb-ph .bb-bl-e{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:2px 10px;padding:9px 12px;border-top-width:1px;border-left:2px solid #A8D93B}
+    .bb-ph .bb-bl-e:last-child{border-bottom:1px solid rgba(243,239,230,.1)}
+    .bb-ph .bb-bl-e b{margin:0;font-size:10px;white-space:nowrap}
+    .bb-ph .bb-bl-e span{font-size:12px;line-height:1.45}
+  }
+  @media (max-width:640px){
+    .bb-ph-in{padding:clamp(32px,9vw,48px) clamp(16px,4vw,24px) 28px}
+    .bb-ph-p{margin-top:14px;font-size:14px}
+    .bb-ph-rep{margin-top:18px}
+    .bb-ph .bb-ins-tarifs{margin-top:20px!important;gap:8px}
+    .bb-ph .bb-ins-tarif{padding:14px 16px}
+  }
   .bb-sec{max-width:1500px;margin:0 auto;padding:clamp(36px,5vw,64px) clamp(16px,4vw,24px)}
   .bb-sec-h{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 clamp(18px,2.4vw,26px)}
   .bb-sec-k{display:block;font-family:'Inter',sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:#A8D93B;margin-bottom:8px}
@@ -5281,7 +5308,7 @@ window.bbLienSur = function (u) {
           <div><span class="bb-sec-k" data-bb="tk_tarifs_badge">Nos tarifs</span><h2 data-bb-reveal data-reveal-step="58" class="bb-sec-t" data-bb="tk_tarifs_h2">Les catégories de place</h2></div>
         </div>
         <p style="max-width:60ch;font-size:14px;line-height:1.65;color:#A9B2AB;margin:-6px 0 clamp(20px,2.6vw,28px);text-wrap:pretty" data-bb="tk_tarifs_subtitle">Tarifs de référence pour un match à domicile. Le prix exact de chaque rencontre est indiqué au-dessus, dans la carte du match.</p>
-        <div id="bb-bill-tarifs" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:14px"></div>
+        <div id="bb-bill-tarifs"></div>
         <p id="bb-bill-note" style="font-size:12.5px;line-height:1.7;color:#7E8A82;margin:16px 0 0;max-width:74ch;text-wrap:pretty"><b style="color:#A9B2AB">À noter&nbsp;:</b> pour les rencontres régulières du championnat sénégalais, l'entrée standard (virages et tribunes découvertes) est généralement fixée à 1 000 FCFA, les tribunes officielles et loges entre 2 000 et 5 000 FCFA selon l'affiche et le stade. Lors de certains tournois ou matchs amicaux, l'entrée de gamme peut démarrer entre 1 000 et 2 000 FCFA.</p>
       </section>
 
@@ -8372,12 +8399,20 @@ window.bbCloud = function(url, w){
     var box = document.getElementById('bb-bill-tarifs');
     if (!box || box.dataset.done) return;
     box.dataset.done = '1';
-    box.innerHTML = BB_TARIFS.map(function(t){
+    // DEUX DESSINS, UN SEUL VISIBLE. Les cinq billets en cartes font
+    // 1 100 px de haut sur un telephone (mesure) : « les billets
+    // prennent trop de place, le visiteur perd le fil ». Sous 640 px la
+    // feuille montre la liste -- une ligne par tarif, un seul bouton --
+    // et cache les cartes ; au-dessus, l'inverse.
+    box.innerHTML = '<div class="bb-tk-grille">' + BB_TARIFS.map(function(t){
       return bbTkStub({
         category: t.category, price: t.price, meta: t.meta,
         action: '<button type="button" class="bb-tk-cta" data-bill-scroll="1">Voir les matchs</button>'
       });
-    }).join('');
+    }).join('') + '</div>' +
+    '<div class="bb-tk-liste">' + BB_TARIFS.map(function(t){
+      return '<div class="bb-tk-l"><span><b>' + bbTkEsc(t.category) + '</b><small>' + bbTkEsc(t.meta || '') + '</small></span><em>' + bbTkEsc(bbTkPrice(t.price)) + '</em></div>';
+    }).join('') + '<button type="button" class="bb-tk-cta" data-bill-scroll="1">Voir les matchs</button></div>';
     if (window.bbTilt) window.bbTilt.scan(box);
   }
 
