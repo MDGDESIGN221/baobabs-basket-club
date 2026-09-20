@@ -8851,12 +8851,26 @@
      Greffe lui-meme tient cette regle (voir DROITS dans greffe.js) : ici
      on decide seulement qui voit la porte.
      ================================================================== */
-  // La direction sportive tire les memes fiches que les coachs (fiche
-  // joueuse, convocation, attestation) : elle compose, elle ne signe pas.
-  var GREFFE_CASQUETTES = ['super_admin', 'president', 'coach', 'directeur_sportif'];
+  // LE MEME JOUR, LA REGLE A CHANGE DE MAIN. La casquette ouvrait la
+  // porte ; mais une casquette se distribue par tout super
+  // administrateur, alors que le Greffe engage la signature du
+  // president. « Je voudrais sur mon compte pouvoir donner acces a qui
+  // je veux » : l'acces est donc une ligne de greffe_acces, posee par le
+  // proprietaire seul depuis l'ecran Comptes, avec son niveau :
+  // 'composer' (les fiches, sans l'encre) ou 'signer'. Le proprietaire
+  // est toujours dedans. La base tient la meme regle (bbc_greffe_ouvert,
+  // bbc_greffe_signe) : la porte et la serrure disent une seule chose.
+  var greffeNiveau = null;   // 'composer' | 'signer' | null, lu a l'ouverture
   function greffeAutorise(){
     if (typeof cpJeSuisProprio === 'function' && cpJeSuisProprio()) return true;
-    return GREFFE_CASQUETTES.indexOf(currentRole) >= 0;
+    return greffeNiveau === 'composer' || greffeNiveau === 'signer';
+  }
+  function greffeNiveauCharger(){
+    var uid = currentSession && currentSession.user && currentSession.user.id;
+    if (!uid){ greffeNiveau = null; return Promise.resolve(null); }
+    return sbGet('greffe_acces?select=niveau&user_id=eq.' + encodeURIComponent(uid))
+      .then(function(rows){ greffeNiveau = (rows && rows[0] && rows[0].niveau) || null; return greffeNiveau; })
+      .catch(function(){ greffeNiveau = null; return null; });
   }
 
   /* CE QUE LE GREFFE RECOIT DE L'ADMINISTRATION, EN UN SEUL ENDROIT.
@@ -8867,7 +8881,7 @@
      mayaVisage : son visage, dessine en un seul endroit (suiteVisage).
      Le Greffe ne sait rien d'elle au-dela de ces deux mots. */
   function greffeContexte(plus){
-    var c = { proprietaire: cpJeSuisProprio(), role: currentRole, base: greffeBase(),
+    var c = { proprietaire: cpJeSuisProprio(), role: currentRole, greffe: greffeNiveau, base: greffeBase(),
               maya: function(q){ mayaParler(q || null); },
               mayaVisage: function(){ return suiteVisage(true); } };
     Object.keys(plus || {}).forEach(function(k){ c[k] = plus[k]; });
@@ -10590,19 +10604,19 @@
     greffeOuvrir();
   }
   function greffeAcces(){
-    // LA PORTE SUIVAIT ENCORE LE SEUL PROPRIETAIRE. greffeAutorise()
-    // ouvrait le Greffe a trois casquettes depuis le 16 septembre, mais
-    // ce bouton, lui, se cachait pour tout compte autre que le
-    // proprietaire : « y'a que moi qui l'ai » (20 septembre 2026). La
-    // porte et la serrure disent maintenant la meme chose.
-    var b = document.getElementById('greffe-open');
-    if (b) b.hidden = !greffeAutorise();
-    // La page a ete rafraichie pendant qu'un acte etait ouvert : le Greffe
-    // a note ou il en etait (localStorage), on le rouvre au meme endroit.
-    // La cle disparait quand on quitte le Greffe soi-meme.
-    var reprise = false;
-    try { reprise = !!localStorage.getItem('bbc-greffe-reprise') || /[?&]greffe=/.test(location.search); } catch(e){}
-    if (reprise && cpJeSuisProprio()) setTimeout(greffeOuvrir, 400);
+    // La porte suit la serrure : le niveau donne par le proprietaire est
+    // lu d'abord, le bouton se montre ensuite. Jusqu'au 20 septembre 2026
+    // ce bouton ne suivait que le proprietaire : « y'a que moi qui l'ai ».
+    greffeNiveauCharger().then(function(){
+      var b = document.getElementById('greffe-open');
+      if (b) b.hidden = !greffeAutorise();
+      // La page a ete rafraichie pendant qu'un acte etait ouvert : le Greffe
+      // a note ou il en etait (localStorage), on le rouvre au meme endroit.
+      // La cle disparait quand on quitte le Greffe soi-meme.
+      var reprise = false;
+      try { reprise = !!localStorage.getItem('bbc-greffe-reprise') || /[?&]greffe=/.test(location.search); } catch(e){}
+      if (reprise && greffeAutorise()) setTimeout(greffeOuvrir, 400);
+    });
   }
 
   document.getElementById('greffe-open').addEventListener('click', greffeOuvrir);
@@ -34156,8 +34170,19 @@
   // admin_users est lisible par tout administrateur (politique
   // admin_users_lecture) : aucun mot de passe n'est nécessaire pour
   // répondre à « qui est qui ».
+  // LE GREFFE, COMPTE PAR COMPTE. cpGreffe : user_id -> 'composer' | 'signer'.
+  // Lisible par tout admin (on voit qui a la porte), ecrit par le seul
+  // proprietaire (la base le garantit : greffe_acces_proprio).
+  var cpGreffe = {};
+  var CP_GREFFE_NOMS = { '': 'Greffe : aucun accès', composer: 'Greffe : compose', signer: 'Greffe : compose et signe' };
+  function cpGreffeCharger(){
+    return sbGet('greffe_acces?select=user_id,niveau')
+      .then(function(rows){ cpGreffe = {}; (rows || []).forEach(function(r){ cpGreffe[String(r.user_id)] = r.niveau; }); })
+      .catch(function(){ cpGreffe = {}; });
+  }
   function cpCharger(){
-    return sbGet('admin_users?select=user_id,email,role,nom,photo_url,photo_x,photo_y,photo_zoom&order=email.asc')
+    return cpGreffeCharger().then(function(){
+      return sbGet('admin_users?select=user_id,email,role,nom,photo_url,photo_x,photo_y,photo_zoom&order=email.asc'); })
       .catch(function(){ /* colonne nom absente : on relit sans elle */
         return sbGet('admin_users?select=user_id,email,role&order=email.asc'); })
       .then(function(rows){ cpRows = rows || []; cpRendre(); })
@@ -34256,8 +34281,22 @@
         '<div class="rec-meta">'+
           (nom ? esc(u.email||'') + ' · ' : '')+
           esc(ROLE_NOMS[u.role]||u.role||'—')+
-          (estProtege ? ' · propriétaire du site, compte verrouillé' : '')+'</div></div>'+
+          (estProtege ? ' · propriétaire du site, compte verrouillé' : '')+
+          // Le Greffe se lit sur la ligne, pour tout le monde : qui a la
+          // porte, et si sa main signe. Le proprietaire l'a toujours.
+          ' · ' + esc(estProtege ? 'Greffe : compose et signe (propriétaire)' : CP_GREFFE_NOMS[cpGreffe[String(u.user_id)] || ''])+
+          '</div></div>'+
         droite+
+        // LE PROPRIETAIRE DONNE LE GREFFE, compte par compte, une fois le
+        // mot de passe redonne (cpOuvert), comme pour un role : donner la
+        // signature vaut bien un role. La base refuse de toute facon tout
+        // autre compte (greffe_acces_proprio), et on relit la ligne apres.
+        (proprio && cpOuvert && !estProtege
+          ? '<select class="qg-in" data-cpgreffe="'+esc(u.user_id)+'" title="L’accès au Greffe de ce compte" style="flex:none;width:auto;min-width:200px">'+
+            Object.keys(CP_GREFFE_NOMS).map(function(k){
+              return '<option value="'+k+'"'+((cpGreffe[String(u.user_id)] || '') === k ? ' selected' : '')+'>'+esc(CP_GREFFE_NOMS[k])+'</option>';
+            }).join('')+'</select>'
+          : '')+
         // RENOMMER : sur TOUTES les lignes, la sienne comprise. Le nom
         // n'est pas un droit, c'est une etiquette -- et le proprietaire
         // a autant besoin de corriger le sien que celui des autres.
@@ -34278,6 +34317,7 @@
     }).join('') || '<div class="empty">Aucun compte.</div>';
 
     box.querySelectorAll('[data-cprole]').forEach(cpBrancherMenu);
+    box.querySelectorAll('[data-cpgreffe]').forEach(cpBrancherGreffe);
     // Retirer un acces : reserve au proprietaire, et seulement une fois
     // le mot de passe donne. Le bouton n'apparait pas autrement, parce
     // qu'un bouton qui repond « refuse » fait perdre deux fois du temps.
@@ -34293,6 +34333,37 @@
     cpProprioRendre();
   }
 
+  function cpBrancherGreffe(sel){
+    var avant = sel.value;
+    sel.addEventListener('change', function(){
+      var uid = sel.getAttribute('data-cpgreffe'), vise = sel.value;
+      var u = cpRows.filter(function(x){ return String(x.user_id) === String(uid); })[0];
+      if (!u){ sel.value = avant; return; }
+      sel.disabled = true;
+      var ecrire = vise
+        ? sbUpsert('greffe_acces', { user_id: uid, niveau: vise, donne_par: cpMoi(), donne_le: new Date().toISOString() }, 'Comptes')
+        : fetch(SUPABASE_URL + '/rest/v1/greffe_acces?user_id=eq.' + encodeURIComponent(uid), { method:'DELETE', headers: sbHeaders() })
+            .then(function(r){ sbMemoVider(); if (!r.ok) return sbThrow(r, 'delete', 'greffe_acces'); });
+      ecrire
+        // On ne croit pas la reponse : on retourne voir la ligne. Un
+        // refus RLS ne leve rien, il modifie zero ligne.
+        .then(function(){ return sbGet('greffe_acces?select=niveau&user_id=eq.' + encodeURIComponent(uid)); })
+        .then(function(rows){
+          var pose = (rows && rows[0] && rows[0].niveau) || '';
+          if (pose !== vise){ var e = new Error('refus'); e.detail = 'La base a refusé sans le dire (aucune ligne modifiée).'; throw e; }
+          avant = vise; cpGreffe[String(uid)] = vise || undefined; if (!vise) delete cpGreffe[String(uid)];
+          showMsg(document.getElementById('cp-msg'),
+            (vise ? 'Greffe donné (' + (vise === 'signer' ? 'compose et signe' : 'compose') + ').' : 'Greffe retiré.') +
+            ' Il s’appliquera à la prochaine connexion de ' + (u.email || 'la personne') + '.', true);
+          cpRendre();
+        })
+        .catch(function(e){
+          sel.value = avant; sel.disabled = false;
+          var d = (e && (e.detail || e.reason)) || '';
+          showMsg(document.getElementById('cp-msg'), 'L’accès au Greffe n’a pas été changé.' + (d ? ' ' + d : ''), false);
+        });
+    });
+  }
   function cpBrancherMenu(sel){
     var avant = sel.value;
     sel.addEventListener('change', function(){

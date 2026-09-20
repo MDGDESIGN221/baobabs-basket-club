@@ -7304,13 +7304,18 @@
   G.mount = function (root, contexte) {
     /* la barre d'outils et le panneau de propriétés, une fois pour toutes */
     setTimeout(brancherOutils, 0);
-    /* Le Greffe est réservé au propriétaire du site : l'admin le dit au
-       montage, après avoir comparé la session à bbc_proprietaire_email().
-       Sans ce mot, rien ne se monte, même si un bouton a fui. */
-    if (!contexte || (contexte.proprietaire !== true && !DROITS[contexte.role]))
-      return Promise.reject(new Error('Le Greffe n’est pas ouvert à cette casquette'));
+    /* L'admin dit au montage qui est là : le propriétaire (comparé à
+       bbc_proprietaire_email()), ou un compte auquel le propriétaire a
+       donné le Greffe (contexte.greffe : 'composer' ou 'signer', lu dans
+       greffe_acces). Sans ce mot, rien ne se monte, même si un bouton a
+       fui. La casquette ne suffit plus ; elle ne sert qu'à choisir les
+       familles qu'un compte qui compose voit en premier. */
+    if (!contexte || (contexte.proprietaire !== true && contexte.greffe !== 'composer' && contexte.greffe !== 'signer'))
+      return Promise.reject(new Error('Le Greffe n’est pas ouvert à ce compte'));
     racine = root; api = contexte || {};
-    droits = contexte.proprietaire === true ? DROITS_TOUT : DROITS[contexte.role];
+    droits = (contexte.proprietaire === true || contexte.greffe === 'signer') ? DROITS_TOUT
+           : { familles: (DROITS[contexte.role] || {}).familles || null, signer: false,
+               nom: (DROITS[contexte.role] || {}).nom || 'Compose' };
     brancher();
     mayaBouton();
     /* le registre en base d'abord : ce poste recoit ce qu'il n'a pas,
