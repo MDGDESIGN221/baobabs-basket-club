@@ -4311,6 +4311,15 @@
      ligne, copiee-collee (29274, 30784, 31649) : une regle ici les
      couvre tous les trois, et le prochain ecran qui reprendra ce
      tableau en heritera sans rien savoir. */
+  /* Le rappel des fiches sans colonne. Il ne se peint pas en rouge :
+     ce n'est pas une panne, c'est une donnee qu'on n'a pas su ranger.
+     Un liseré, le compte en gras, et les noms. */
+  .ds-perdus{display:flex;flex-direction:column;gap:4px;margin:0 0 12px 0;padding:11px 14px;
+    border:1px solid var(--line-strong);border-left:3px solid var(--gold);
+    border-radius:var(--r-sm);background:var(--surface-2)}
+  .ds-perdus b{font-family:var(--font-ui);font-weight:700;font-size:13px;color:var(--text)}
+  .ds-perdus span{font-size:12.5px;line-height:1.55;color:var(--muted)}
+
   .ds-board:not(:has(.ds-col:not(.est-vide))) .ds-col.est-vide{flex:1 1 0;min-width:0}
   .ds-board:not(:has(.ds-col:not(.est-vide))) .ds-col.est-vide .ds-col-h{
     flex-direction:row;align-items:baseline;min-height:0;padding-bottom:10px}
@@ -29192,6 +29201,61 @@
   }
 
   // ===================== COMMANDES (bon de préparation) =====================
+  /* ==================================================================
+     CE QUI NE TOMBE DANS AUCUNE COLONNE SE DIT
+     ------------------------------------------------------------------
+     Les trois tableaux (Commandes, Candidatures, Inscriptions) rangent
+     leurs fiches en filtrant, colonne par colonne, sur LA cle de la
+     colonne :
+
+         rows.filter(function(r){ return statutDe(r) === s.key; })
+
+     Une fiche dont le statut n'est dans aucune cle n'entre donc nulle
+     part -- et rien ne le disait. Le compteur du haut, lui, la
+     comptait.
+
+     Mesure du 20/09/2026, au banc :
+       Candidatures   « 2 dossiers »   2 affichees   0 perdue
+       Inscriptions   « 2 dossiers »   0 affichee    2 perdues
+       Commandes      « 2 commandes »  1 affichee    1 perdue
+
+     Les statuts du banc sont des bouchons, mais le trou est reel et ne
+     depend pas d'eux : un statut derive des qu'un ancien formulaire du
+     site ecrit encore l'ancienne valeur, qu'une ligne est posee a la
+     main, ou qu'une migration renomme une etape. Le jour ou cela
+     arrive, la fiche disparait de l'ecran sans un mot, et on ne
+     l'apprend que par le client qui rappelle.
+
+     ON NE DEVINE PAS OU LA RANGER. La ranger d'office dans « Nouvelle »
+     ecraserait une information qu'on ne comprend pas. On la NOMME, avec
+     son statut tel qu'il est ecrit en base, au-dessus du tableau.
+     ================================================================== */
+  function dsPerdus(board, rows, cles, statutDe, nomDe){
+    if (!board) return;
+    var avant = board.previousElementSibling;
+    if (avant && avant.classList.contains('ds-perdus')) avant.remove();
+    var perdues = (rows || []).filter(function(r){ return cles.indexOf(statutDe(r)) < 0; });
+    if (!perdues.length) return;
+    var etats = [];
+    perdues.forEach(function(r){
+      var v = statutDe(r);
+      v = (v === null || v === undefined || v === '') ? 'vide' : String(v);
+      if (etats.indexOf(v) < 0) etats.push(v);
+    });
+    var noms = perdues.slice(0, 5).map(function(r){ return esc(nomDe(r) || '—'); });
+    var reste = perdues.length - noms.length;
+    board.insertAdjacentHTML('beforebegin',
+      '<div class="ds-perdus">' +
+        '<b>' + perdues.length + (perdues.length > 1
+          ? ' fiches ne sont dans aucune colonne'
+          : ' fiche n\'est dans aucune colonne') + '</b>' +
+        '<span>' + (perdues.length > 1 ? 'Leur étape' : 'Son étape') +
+          ' (' + etats.map(esc).join(', ') + ') ne correspond à aucune de celles du tableau&nbsp;: ' +
+          noms.join(', ') + (reste ? ' et ' + reste + ' autre' + (reste > 1 ? 's' : '') : '') + '. ' +
+          'La liste, elle, les montre toutes.</span>' +
+      '</div>');
+  }
+
   var OD_ST = [
     { key:'nouvelle',  label:'Nouvelle',  color:'#9DB8E8' },
     { key:'confirmée', label:'Confirmée', color:'#C6A257' },
@@ -29340,6 +29404,9 @@
             '</div>';
           }).join('') : '<div class="ds-empty">Aucune</div>') +'</div></div>';
       }).join('');
+      dsPerdus(board, rows, OD_ST.map(function(s){ return s.key; }),
+        function(r){ return normalizeOrderStatus(r.status); },
+        function(r){ return r.customer_name || odNum(r); });
       odWireBoard();
     } else {
       var sigOd = ['od-search','od-filter'].map(function(id){
@@ -30844,6 +30911,9 @@
             '</div>';
           }).join('') : '<div class="ds-empty">Aucune</div>') +'</div></div>';
       }).join('');
+      dsPerdus(board, rows, CD_ST.map(function(s){ return s.key; }),
+        function(r){ return r.status || 'nouvelle'; },
+        function(r){ return r.full_name; });
       cdWireBoard();
     } else {
       var sigCd = ['cd-search','cd-filter-cat'].map(function(id){
@@ -31712,6 +31782,9 @@
             '</div>';
           }).join('') : '<div class="ds-empty">Aucun</div>') +'</div></div>';
       }).join('');
+      dsPerdus(board, rows, IN_ST.map(function(s){ return s.key; }),
+        function(r){ return r.status || 'nouvelle'; },
+        function(r){ return r.full_name; });
       inWireBoard();
     } else {
       // Changer de filtre remet à la première page : chercher « Diop » et
