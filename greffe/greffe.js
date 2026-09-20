@@ -7132,6 +7132,169 @@
     });
   }
 
+  /* =================================================================
+     MAYA DANS LE GREFFE
+     « et si aussi maya peut intervenir dans le greffe »
+     Elle ne le pouvait pas, et ce n'etait pas une question de code mais
+     de plan : son panneau est en z-index:640, le Greffe en 9000. Elle
+     s'ouvrait DERRIERE le Greffe, invisible, sans la moindre erreur.
+
+     Le Greffe ne connait pas MAYA, et MAYA ne connait pas le Greffe.
+     C'est l'administration qui les branche, comme elle branche tout le
+     reste : rien dans /maya/ ne doit connaitre un nom de modele, et
+     rien ici ne doit connaitre un nom de fichier de MAYA.
+     Le Greffe fournit trois choses, et rien de plus :
+       G.etat()   ce qui est ouvert, en clair ;
+       G.actes()  ce qu'il y a au registre, en clair ;
+       G.faire()  ce qu'elle a le droit de declencher, par son nom.
+
+     CE QU'ELLE NE PEUT PAS FAIRE, ET C'EST VOULU : emettre, annuler,
+     archiver, retirer. Emettre fige un acte au registre avec son
+     empreinte et son numero ; c'est un geste qui engage le club devant
+     un tiers. Il reste un clic d'un humain devant sa feuille. MAYA peut
+     amener jusque-la, verifier, dire ce qui manque -- pas signer.
+     ================================================================= */
+  function mayaAppelable() { return !!(api && typeof api.maya === 'function'); }
+  function mayaAppeler(question) {
+    if (!mayaAppelable()) { dire('L\'assistante n\'est pas branchée sur ce poste.', 'erreur'); return; }
+    try { api.maya(question || null); } catch (e) { dire('L\'assistante n\'a pas répondu.', 'erreur'); }
+  }
+  function mayaBouton() {
+    var b = $('gf-maya');
+    if (!b) return;
+    b.hidden = !mayaAppelable();
+    if (b.hidden || b.getAttribute('data-branche')) return;
+    b.setAttribute('data-branche', '1');
+    /* Le visage vient de l'hote : il est dessine en un seul endroit, et
+       deux dessins du meme visage finiraient par diverger. Sans lui, une
+       pastille neutre -- jamais une copie approximative. */
+    if (api.mayaVisage) { try { b.innerHTML = api.mayaVisage(); } catch (e) {} }
+    b.addEventListener('click', function () { mayaAppeler(null); });
+  }
+
+  /* Ce qui est ouvert, dit en mots, sans un identifiant interne inutile. */
+  G.etat = function () {
+    var etats = { brouillon: 0, emis: 0, remplace: 0, annule: 0, archive: 0 };
+    registre.forEach(function (a) { var e = a.etat || 'brouillon'; if (etats[e] != null) etats[e]++; });
+    return {
+      ouvert: ouvert,
+      espace: espace,
+      casquette: G.casquette(),
+      peutSigner: G.peutSigner(),
+      ressourcesCompletes: ressourcesCompletes(),
+      acte: modeleActif ? {
+        modele: modeleActif.cle,
+        typeActe: modeleActif.nom,
+        intitule: sansMarques(donnees.nomActe || donnees.titre || modeleActif.nom),
+        numero: donnees.numero || '',
+        etat: acteEtat,
+        version: acteVersion,
+        pages: nbPages,
+        objetsPoses: (donnees.objets || []).length,
+        filigraneBrouillon: filigraneVisible(),
+        enregistre: !!acteSauve,
+        lectureSeule: lectureSeule(),
+        dossier: nomDossier(acteDossier) || null
+      } : null,
+      onglets: onglets.map(function (o) { return o.nom; }),
+      registre: { total: registre.length, brouillons: etats.brouillon, emis: etats.emis,
+                  remplaces: etats.remplace, annules: etats.annule, archives: etats.archive },
+      dossiers: dossiers.map(function (d) { return { nom: d.nom, actes: actesDuDossier(d.id).length }; }),
+      prereglages: tousPrereglages().length,
+      modeles: MODELES.filter(function (k) { return G.peutCreer(k); }).length,
+      derniereSauvegarde: derniereSauvegarde || null
+    };
+  };
+
+  /* Le registre, en clair. filtre : 'brouillon', 'emis', 'archive',
+     'remplace', 'annule', ou un mot a chercher. */
+  G.actes = function (filtre, combien) {
+    var f = String(filtre || '').toLowerCase();
+    var etats = ['brouillon', 'emis', 'remplace', 'annule', 'archive'];
+    var liste = registre.slice();
+    if (etats.indexOf(f) >= 0) liste = liste.filter(function (a) { return (a.etat || 'brouillon') === f; });
+    else if (f) {
+      var mots = cleRecherche(f).split(' ');
+      liste = liste.filter(function (a) {
+        var t = cleRecherche([a.intitule, a.nom, a.numero, nomDossier(a.dossier)].join(' '));
+        return mots.every(function (w) { return t.indexOf(w) >= 0; });
+      });
+    }
+    return liste.slice(0, combien || 20).map(function (a) {
+      return { id: a.id, intitule: a.intitule || a.nom, typeActe: a.nom, numero: a.numero || '',
+               etat: a.etat || 'brouillon', date: a.date || null, dossier: nomDossier(a.dossier) || null,
+               touche: a.maj || null };
+    });
+  };
+
+  /* Les modeles ouverts a cette casquette, avec ce qu'ils font. */
+  G.catalogue = function () {
+    return MODELES.filter(function (k) { return G.peutCreer(k); }).map(function (k) {
+      var m = G.modeles[k];
+      return { cle: k, nom: m.nom, famille: m.famille || 'Actes', resume: m.resume || '' };
+    });
+  };
+
+  /* CE QU'ELLE A LE DROIT DE DECLENCHER. Un seul endroit : ajouter une
+     capacite, c'est ajouter une ligne ici. Chaque geste passe par la
+     meme fonction que le bouton correspondant, donc par les memes
+     controles de casquette et de lecture seule. */
+  var GESTES = {
+    'accueil':     { dit: 'Aller à l\'accueil du Greffe', fn: function () { montrer('accueil'); } },
+    'registre':    { dit: 'Ouvrir le registre', fn: function () { montrer('registre'); } },
+    'parametres':  { dit: 'Ouvrir les paramètres', fn: function () { montrer('parametres'); } },
+    'atelier':     { dit: 'Revenir à l\'acte ouvert', fn: function () { if (modeleActif) montrer('atelier'); else dire('Aucun acte ouvert.', 'erreur'); } },
+    'nouveau':     { dit: 'Choisir un acte à établir', fn: function (a) { ouvrirNouveau(a === 'prereglages' ? 'prereglages' : null); } },
+    'modele':      { dit: 'Commencer un acte depuis un modèle', fn: function (cle) {
+                      if (!G.modeles[cle]) { dire('Modèle « ' + cle + ' » introuvable.', 'erreur'); return false; }
+                      if (!G.peutCreer(cle)) { dire('Ce modèle n\'est pas ouvert à votre casquette.', 'erreur'); return false; }
+                      nouvelActe(cle); } },
+    'ouvrir':      { dit: 'Ouvrir un acte du registre', fn: function (id) {
+                      var f = registre.filter(function (a) { return a.id === id; })[0];
+                      if (!f) { dire('Cet acte n\'est pas au registre.', 'erreur'); return false; }
+                      ouvrirActe(f); } },
+    'brouillons':  { dit: 'Montrer les brouillons en cours', fn: function () {
+                      exp.etagere = 'brouillon'; exp.q = ''; exp.sel = null;
+                      expGarder(); montrer('accueil'); } },
+    'chercher':    { dit: 'Chercher dans le registre', fn: function (mots) {
+                      exp.etagere = 'tout'; exp.q = String(mots || ''); exp.sel = null;
+                      montrer('accueil');
+                      var q = $('gf-exp-q'); if (q) { q.value = exp.q; q.focus(); } } },
+    'filigrane':   { dit: 'Retirer ou remettre le filigrane BROUILLON', fn: function (v) {
+                      if (!modeleActif) { dire('Ouvrez d\'abord un acte.', 'erreur'); return false; }
+                      if (acteEtat !== 'brouillon') { dire('Cet acte n\'est plus un brouillon.', 'erreur'); return false; }
+                      var veut = (v === false || v === 'non' || v === 'retirer') ? false : true;
+                      if (filigraneVisible() !== veut) basculerFiligrane(); } },
+    'enregistrer': { dit: 'Enregistrer l\'acte ouvert', fn: function () {
+                      if (!modeleActif) { dire('Aucun acte ouvert.', 'erreur'); return false; }
+                      enregistrer(false); } },
+    'verifier':    { dit: 'Vérifier l\'acte avant émission', fn: function () {
+                      if (!modeleActif) { dire('Aucun acte ouvert.', 'erreur'); return false; }
+                      verifier(); } },
+    'imprimer':    { dit: 'Imprimer l\'acte en PDF', fn: function () {
+                      if (!modeleActif) { dire('Aucun acte ouvert.', 'erreur'); return false; }
+                      imprimer(); } },
+    'sauvegarder': { dit: 'Sauvegarder le Greffe dans un fichier', fn: function () { sauvegarderGreffe(); } },
+    'outils':      { dit: 'Montrer à quoi sert chaque outil', fn: function () { aideOutils(); } },
+    'raccourcis':  { dit: 'Montrer les raccourcis', fn: function () { aideRaccourcis(); } },
+    'fermer':      { dit: 'Quitter le Greffe', fn: function () { fermer(); } }
+  };
+  G.gestes = function () {
+    return Object.keys(GESTES).map(function (k) { return { geste: k, dit: GESTES[k].dit }; });
+  };
+  G.faire = function (geste, arg) {
+    var g = GESTES[geste];
+    if (!g) return false;
+    if (!ouvert && geste !== 'fermer') G.open();
+    try { return g.fn(arg) !== false; } catch (e) { return false; }
+  };
+  /* Ce que MAYA a besoin de savoir pour se poser au-dessus : l'admin
+     accroche sa feuille de style a cette classe. Le Greffe ne touche
+     pas au panneau de MAYA, il dit seulement qu'il est la. */
+  function marquerGreffeOuvert(on) {
+    try { document.documentElement.classList.toggle('bbc-greffe-ouvert', !!on); } catch (e) {}
+  }
+
   G.mount = function (root, contexte) {
     /* la barre d'outils et le panneau de propriétés, une fois pour toutes */
     setTimeout(brancherOutils, 0);
@@ -7143,6 +7306,7 @@
     racine = root; api = contexte || {};
     droits = contexte.proprietaire === true ? DROITS_TOUT : DROITS[contexte.role];
     brancher();
+    mayaBouton();
     /* le registre en base d'abord : ce poste recoit ce qu'il n'a pas,
        et seulement ensuite on lit le poste */
     return chargerMoteur().then(synchroniser).then(function () {
@@ -7179,6 +7343,7 @@
     racine.classList.add('is-open');
     racine.setAttribute('aria-hidden', 'false');
     document.documentElement.style.overflow = 'hidden';
+    marquerGreffeOuvert(true);
     /* le zoom « largeur » calcule pendant que le Greffe etait cache valait
        25 % (scene sans largeur) : on le refait ici, la scene visible */
     if (!zoomChoisi && modeleActif && elt.scene.clientWidth > 0) zoom = zoomLargeur();
@@ -7197,6 +7362,7 @@
       racine.classList.remove('is-open');
       racine.setAttribute('aria-hidden', 'true');
       document.documentElement.style.overflow = '';
+      marquerGreffeOuvert(false);
       if (api && typeof api.onClose === 'function') { try { api.onClose(); } catch (e) {} }
     });
   }

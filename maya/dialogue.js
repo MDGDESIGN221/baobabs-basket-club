@@ -544,6 +544,7 @@
       case 'qui':       return rQui(r);
       case 'manque':    return rManque(r);
       case 'aller':     return rAller(r);
+      case 'greffe':    return rGreffe(r);
       case 'confidentiel': return rConfidentiel(r);
       case 'bloc':      return rBloc(r);
       case 'convoquer': return rConvoquer(r);
@@ -920,6 +921,135 @@
     elle('<p>J’ouvre <b>' + esc(e.titre) + '</b>.</p>');
     var f = outil('aller');
     if (f) setTimeout(function () { f(e.cle); fermer(); }, 320);
+  }
+
+
+  /* ==================================================================
+     LE GREFFE
+     ------------------------------------------------------------------
+     « et si aussi maya peut intervenir dans le greffe »
+     Elle ne le pouvait pas : son panneau est en z-index:640, le Greffe
+     en 9000 -- elle s'ouvrait derriere lui, invisible, sans une ligne
+     d'erreur. La couche est reglee par l'administration ; ce qui suit
+     est l'autre moitie : savoir de quoi on parle.
+
+     ELLE N'EMET JAMAIS UN ACTE. Emettre fige un acte au registre avec
+     son numero et son empreinte : c'est un geste qui engage le club
+     devant un tiers. Elle amene jusqu'a la feuille, elle compte, elle
+     dit ce qui manque. Le dernier clic est celui d'un humain.
+
+     ET AUCUN NOM DE MODELE N'EST ECRIT ICI. Le Greffe declare son
+     catalogue et ses gestes ; on ne fait que les lire. Le jour ou un
+     modele s'ajoute la-bas, elle le connait ici sans qu'on y touche.
+     ------------------------------------------------------------------ */
+  function greffePlat(s) {
+    s = String(s == null ? '' : s).toLowerCase();
+    if (s.normalize) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return s.replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+  function greffeGeste(nom, arg, dit) {
+    var f = outil('greffeGeste');
+    if (!f) { elle('<p>Je ne peux pas atteindre le Greffe d’ici.</p>'); return; }
+    if (dit) elle('<p>' + dit + '</p>');
+    setTimeout(function () { try { f(nom, arg); } catch (e) {} fermer(); }, 320);
+  }
+  var GREFFE_ETATS = { brouillon: 'au brouillon', emis: 'émis', remplace: 'remplacé',
+                       annule: 'annulé', archive: 'archivé' };
+  function rGreffe(r) {
+    var lire = outil('greffeEtat');
+    if (!lire) {
+      return elle('<p>Le Greffe n’est pas branché sur cette page. Je ne peux pas vous en parler d’ici.</p>');
+    }
+    var e = lire() || {};
+    if (!e.ouvertAVous) {
+      return elle('<p>Le Greffe n’est pas ouvert à votre casquette : je n’ai pas le droit de vous en dire quoi que ce soit.</p>' +
+        pistes(['que sais-tu faire']));
+    }
+    var t = r.plat || '';
+
+    /* ---- le filigrane BROUILLON ---- */
+    if (/\bfiligrane\b/.test(t)) {
+      var oter = /\b(enleve|enlever|retire|retirer|supprime|supprimer|sans|vire|virer|cache|cacher|ote|oter)\b/.test(t);
+      var mettre = /\b(remets|remettre|remet|ajoute|ajouter|affiche|afficher|avec)\b/.test(t);
+      if (!e.acte) {
+        return elle('<p>Le filigrane <b>BROUILLON</b> se retire acte par acte : il faut d’abord en ouvrir un.</p>' +
+          '<p class="doux">Dans l’atelier, l’interrupteur « Filigrane » est au-dessus de la feuille, et dans la barre d’outils.</p>' +
+          pistes(['ouvre le Greffe', 'montre mes brouillons']));
+      }
+      if (e.acte.etat !== 'brouillon') {
+        return elle('<p><b>' + esc(e.acte.intitule) + '</b> n’est plus un brouillon : il n’a pas de filigrane.</p>');
+      }
+      if (oter && !mettre) return greffeGeste('filigrane', false, 'Je retire le filigrane <b>BROUILLON</b> de la feuille.');
+      if (mettre && !oter) return greffeGeste('filigrane', true, 'Je remets le filigrane <b>BROUILLON</b>.');
+      return elle('<p>Le filigrane est ' + (e.acte.filigraneBrouillon ? '<b>posé</b>' : '<b>retiré</b>') +
+        ' sur <b>' + esc(e.acte.intitule) + '</b>.</p>' +
+        pistes([e.acte.filigraneBrouillon ? 'enlève le filigrane' : 'remets le filigrane']));
+    }
+
+    /* ---- les etageres ---- */
+    if (/\bbrouillons?\b/.test(t)) {
+      if (!e.registre || !e.registre.brouillons) {
+        return elle('<p>Aucun brouillon en cours au Greffe.</p>' + pistes(['ouvre les modèles d’acte']));
+      }
+      return greffeGeste('brouillons', null, 'Vos <b>' + e.registre.brouillons + '</b> brouillon' +
+        (e.registre.brouillons > 1 ? 's' : '') + ', dans le Greffe.');
+    }
+    if (/\bregistre\b/.test(t)) {
+      return greffeGeste('registre', null, 'J’ouvre le registre des actes.');
+    }
+    if (/\bprereglages?\b/.test(t)) {
+      return greffeGeste('nouveau', 'prereglages',
+        'J’ouvre les <b>préréglages</b> : des actes déjà composés, qu’il ne reste qu’à corriger.');
+    }
+    if (/\bmodeles? d acte/.test(t)) {
+      return greffeGeste('nouveau', null,
+        'J’ouvre les <b>modèles</b> : des actes vierges, dont la forme est posée et le contenu à écrire.');
+    }
+
+    /* ---- etablir un acte, nomme ou non ---- */
+    if (/\b(etablir|etablis|redige|rediger|fabrique|prepare|nouvel|nouveau|nouvelle|creer|cree)\b/.test(t)) {
+      var cible = null;
+      (e.catalogue || []).forEach(function (m) {
+        var n = greffePlat(m.nom);
+        if (n && t.indexOf(n) >= 0 && (!cible || n.length > cible.n.length)) {
+          cible = { cle: m.cle, nom: m.nom, n: n };
+        }
+      });
+      if (cible) return greffeGeste('modele', cible.cle, 'J’ouvre un <b>' + esc(cible.nom) + '</b> neuf dans le Greffe.');
+      return greffeGeste('nouveau', null,
+        'J’ouvre le choix des actes : les <b>modèles</b> sont vierges, les <b>préréglages</b> déjà composés.');
+    }
+    if (/\b(ouvre|ouvrir|va|aller|montre|affiche|emmene|lance)\b/.test(t) && /\bgreffe\b/.test(t)) {
+      return greffeGeste('accueil', null, 'J’ouvre le Greffe.');
+    }
+
+    /* ---- sinon : l'etat du Greffe, en clair ---- */
+    var reg = e.registre || {};
+    var h = '';
+    if (e.acte) {
+      h += '<p>Dans le Greffe, vous avez <b>' + esc(e.acte.intitule) + '</b>' +
+           (e.acte.numero ? ' n° ' + esc(e.acte.numero) : '') + ', ' +
+           (GREFFE_ETATS[e.acte.etat] || esc(e.acte.etat)) + ', ' +
+           e.acte.pages + ' page' + (e.acte.pages > 1 ? 's' : '') +
+           (e.acte.enregistre ? '' : ' · <b>pas encore enregistré</b>') + '.</p>';
+    }
+    h += '<p>Le registre compte <b>' + (reg.total || 0) + '</b> acte' + ((reg.total || 0) > 1 ? 's' : '') +
+         ' : ' + (reg.brouillons || 0) + ' brouillon' + ((reg.brouillons || 0) > 1 ? 's' : '') +
+         ', ' + (reg.emis || 0) + ' émis' +
+         ((reg.archives || 0) ? ', ' + reg.archives + ' archivé' + (reg.archives > 1 ? 's' : '') : '') + '.</p>';
+    if (e.charge === false) {
+      h += '<p class="doux">Le Greffe n’est pas encore chargé sur cette page : je l’ouvrirai au premier geste.</p>';
+    } else if (!e.ressourcesCompletes) {
+      h += '<p class="doux">Les polices et le cachet ne sont pas déposés sur ce poste : les actes sortiraient sans eux.</p>';
+    }
+    if (e.derniereSauvegarde) {
+      var j = Math.floor((Date.now() - e.derniereSauvegarde) / 86400000);
+      if (j >= 14) h += '<p class="doux">Dernière sauvegarde du Greffe il y a ' + j + ' jours. Le registre vit dans ce navigateur.</p>';
+    } else if ((reg.total || 0) >= 3) {
+      h += '<p class="doux">Le registre n’a jamais été sauvegardé. Il vit dans ce navigateur : un profil vidé, et il n’y est plus.</p>';
+    }
+    h += pistes(['ouvre le Greffe', 'montre mes brouillons', 'ouvre les modèles d’acte', 'ouvre les préréglages']);
+    return elle(h);
   }
 
   /* ------------------------------------------------------------------

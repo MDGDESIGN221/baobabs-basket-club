@@ -396,6 +396,35 @@
                /qui es tu/, /tu sers a quoi/],
       exemple: 'que sais-tu faire' },
 
+
+    /* LE GREFFE. Place TRES HAUT : les
+       deux mordraient dessus. « Etablis une convocation » n'est pas
+       « convoque l'equipe » -- l'une fabrique un papier, l'autre
+       inscrit des joueuses sur une feuille de match ; et « ouvre le
+       greffe » serait tombe dans « aller », qui ne sait pas nommer un
+       espace qui n'est pas un ecran de l'administration.
+       Les motifs restent ETROITS a dessein : « acte » tout seul ou
+       « convocation » tout seul ne suffisent pas, sinon ils voleraient
+       des demandes qui ne parlent pas de papiers. */
+    { cle: 'greffe', ecrit: false,
+      motifs: [/\bgreffe\b/,
+               /\bbrouillons?\b/,
+               /\bfiligrane\b/,
+               /\bregistre des actes?\b/,
+               /\bactes? (officiels?|du club|emis|au registre|a etablir)\b/,
+               /* « prepare MOI UN ordre de mission » : le verbe et le papier
+                  ne se touchent pas toujours. Quatorze caracteres de jeu
+                  entre les deux, pas davantage : au-dela on attraperait
+                  deux phrases collees.
+                  CONVOCATION N'EST PAS ICI, ET C'EST VOULU. Dans cette
+                  administration, « convocation » veut dire convoquer des
+                  joueuses a un match : le mot appartient a l'intention
+                  « convoquer », qui sait deja proposer le papier. */
+               /\b(etabli(r|s)|redige|rediger|fabrique|fabriquer|prepare|preparer|cree|creer) [a-z' ]{0,14}\b(acte|attestation|certificat|decharge|recu|courrier|proces verbal|ordre de mission|communique|note de service|autorisation parentale|feuille de presence|fiche de fonction)\b/,
+               /\b(papier|document|courrier) officiel/,
+               /\bmodeles? d acte/,
+               /\bprereglages?\b/],
+      exemple: 'ouvre le Greffe' },
     /* « ici » AVANT « manque » : un marqueur d'ecran l'emporte toujours.
        « il manque quoi sur cet ecran » parle de l'ecran, pas d'un
        dossier. Dans l'autre ordre, elle repondait a cote avec aplomb --

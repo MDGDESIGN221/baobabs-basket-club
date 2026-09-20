@@ -8742,6 +8742,21 @@
     return GREFFE_CASQUETTES.indexOf(currentRole) >= 0;
   }
 
+  /* CE QUE LE GREFFE RECOIT DE L'ADMINISTRATION, EN UN SEUL ENDROIT.
+     Il y avait deux appels a mount(), donc deux listes a tenir d'accord ;
+     brancher MAYA sur l'une et pas l'autre aurait donne un bouton qui
+     existe ou pas selon la porte par laquelle on est entre.
+     maya : ce que fait le bouton d'appel, dans la barre du Greffe.
+     mayaVisage : son visage, dessine en un seul endroit (suiteVisage).
+     Le Greffe ne sait rien d'elle au-dela de ces deux mots. */
+  function greffeContexte(plus){
+    var c = { proprietaire: cpJeSuisProprio(), role: currentRole, base: greffeBase(),
+              maya: function(q){ mayaParler(q || null); },
+              mayaVisage: function(){ return suiteVisage(true); } };
+    Object.keys(plus || {}).forEach(function(k){ c[k] = plus[k]; });
+    return c;
+  }
+
   function greffeOuvrir(){
     if (greffeEnCours) return;
     if (!greffeAutorise()){ qgToast('Le Greffe n’est pas ouvert à votre casquette', true); return; }
@@ -8752,7 +8767,7 @@
     var demande = null;
     try { demande = new URLSearchParams(location.search).get('greffe'); } catch(e){}
     greffeCharger().then(function(){
-      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), { acte: demande, proprietaire: cpJeSuisProprio(), role: currentRole, base: greffeBase() });
+      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), greffeContexte({ acte: demande }));
     }).then(function(){
       greffePret = true;
       window.BaobabsGreffe.open();
@@ -8774,7 +8789,7 @@
     if (greffeEnCours) return;
     greffeEnCours = true;
     greffeCharger().then(function(){
-      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), { acte: null, proprietaire: cpJeSuisProprio(), role: currentRole, base: greffeBase() });
+      return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), greffeContexte({ acte: null }));
     }).then(function(){ greffePret = true; lancer(); })
       .catch(function(e){ console.error('[Greffe]', e); qgToast('Le Greffe n\'a pas pu se charger', true); })
       .then(function(){ greffeEnCours = false; });
@@ -10141,6 +10156,41 @@
     }).catch(function(){ return { illisible: 'l’effectif' }; });
   }
 
+  /* ================= LES TROIS PORTES DE MAYA VERS LE GREFFE =================
+     Elles ne franchissent jamais greffeAutorise() : une casquette qui
+     n'ouvre pas le Greffe n'en apprend rien par MAYA non plus. Et rien
+     ici ne connait un nom de modele : c'est le Greffe qui les nomme. */
+  function mayaGreffeVivant(){
+    return !!(greffeAutorise() && window.BaobabsGreffe && typeof window.BaobabsGreffe.etat === 'function' && greffePret);
+  }
+  function mayaGreffeEtat(){
+    if (!greffeAutorise()) return { ouvertAVous: false };
+    if (!mayaGreffeVivant()) return { ouvertAVous: true, charge: false };
+    var e = window.BaobabsGreffe.etat();
+    e.ouvertAVous = true; e.charge = true;
+    e.gestes = window.BaobabsGreffe.gestes();
+    e.catalogue = window.BaobabsGreffe.catalogue();
+    return e;
+  }
+  function mayaGreffeActes(filtre, combien){
+    if (!mayaGreffeVivant()) return [];
+    try { return window.BaobabsGreffe.actes(filtre, combien); } catch(e){ return []; }
+  }
+  /* Le Greffe peut ne pas etre encore monte : on le monte, puis on fait.
+     Sans cela « emmene-moi a mes brouillons » ne marchait qu'a la
+     deuxieme demande, et personne ne comprenait pourquoi. */
+  function mayaGreffeGeste(geste, arg){
+    if (!greffeAutorise()){ qgToast('Le Greffe n’est pas ouvert à votre casquette', true); return Promise.resolve(false); }
+    var faire = function(){
+      try { return !!window.BaobabsGreffe.faire(geste, arg); } catch(e){ return false; }
+    };
+    if (greffePret) { window.BaobabsGreffe.open(); return Promise.resolve(faire()); }
+    return greffeCharger()
+      .then(function(){ return window.BaobabsGreffe.mount(document.getElementById('bgreffe'), greffeContexte({ acte: null })); })
+      .then(function(){ greffePret = true; window.BaobabsGreffe.open(); return faire(); })
+      .catch(function(){ qgToast('Le Greffe n\'a pas pu se charger', true); return false; });
+  }
+
   function mayaOutils(){
     return {
       aller: function(cle){
@@ -10168,6 +10218,16 @@
       noter: mayaNoter,
       souvenirs: mayaSouvenirs,
       dernierResultat: mayaDernierResultat,
+      // LE GREFFE. Elle n'y touche pas directement : elle passe par
+      // G.faire(), qui est la liste, cote Greffe, de ce qu'elle a le
+      // droit de declencher. Emettre, annuler, archiver et retirer n'y
+      // sont PAS : emettre fige un acte au registre avec son empreinte
+      // et son numero, c'est un geste qui engage le club devant un
+      // tiers. Elle amene jusque-la, elle verifie, elle dit ce qui
+      // manque. Elle ne signe pas.
+      greffeEtat: mayaGreffeEtat,
+      greffeActes: mayaGreffeActes,
+      greffeGeste: mayaGreffeGeste,
       // ELLE SE PRESENTAIT EN TROIS PUCES. « Que sais-tu faire »
       // passait par le repli de dialogue.js, parce que capacites
       // etait a cote des outils et non dedans : le banc, lui, le
@@ -37845,6 +37905,18 @@
   /* Le Studio a sa propre feuille : /studio/studio.css, chargée
      par le <link> de l'en-tête. Elle est entièrement scopée sous
      #bstudio : elle ne peut rien repeindre ici. */
+
+  /* ===================== MAYA AU-DESSUS DU GREFFE =====================
+     « et si aussi maya peut intervenir dans le greffe »
+     Elle ne le pouvait pas, et ce n'était pas une question de code :
+     son panneau est en z-index:640, le Greffe et le Studio en 9000.
+     Elle s'ouvrait DERRIÈRE eux, invisible, sans une ligne d'erreur.
+     Le Greffe pose la classe sur <html> quand il s'ouvre ; c'est ici,
+     chez l'hôte qui les compose tous les deux, que la couche se décide.
+     Ni /maya/ ni /greffe/ ne connaissent l'autre. */
+  html.bbc-greffe-ouvert #maya-panneau{ z-index:9400; }
+  html.bbc-greffe-ouvert .maya-carte,
+  html.bbc-greffe-ouvert .su-carte{ z-index:9380; }
 
   /* ===================== ANNULER =====================
      La barre s'affiche au-dessus du bandeau de message, et reste plus
