@@ -385,6 +385,35 @@
        exemple, que l'aide affiche. */
     { cle: 'politesse', ecrit: false, motifs: [], exemple: 'bonjour' },
 
+    /* LA MAISON ELLE-MEME : la base, les ecrans, le code.
+       Placee tres haut, juste avant le Greffe, parce que « combien de
+       tables » contient « combien » et serait tombe dans le comptage,
+       qui ne connait que les sujets du club.
+       LES MOTIFS EXIGENT UN MOT DE STRUCTURE **ET** UNE TOURNURE DE
+       QUESTION. « table » tout seul ne suffit pas : on ajoute des
+       colonnes a un tableau du Greffe toute la journee, et voler ces
+       phrases-la ferait plus de degats que de n'en comprendre aucune.
+       « tableau » ne matche pas \btables?\b : le mot continue. */
+    { cle: 'maison', ecrit: false,
+      motifs: [/\b(quelles?|combien de|liste des|toutes les|montre les) tables?\b/,
+               /\bla table [a-z0-9_]+/,
+               /\btables? de la base\b/,
+               /\bbase de donnees\b/,
+               /\bschema (de la base|des donnees)\b/,
+               /\b(quelles?|combien de|liste des) colonnes?\b/,
+               /\bcolonnes? de (la table )?[a-z0-9_]+/,
+               /\b(quel|quels|combien de|liste des) fichiers?\b/,
+               /\ble fichier [a-z0-9_.\/-]+/,
+               /\blignes de code\b/,
+               /\b(ton|le|ce) code\b/,
+               /\barchitecture\b/,
+               /\bcombien (de|d) (ecrans|modules)\b/,
+               /\bou (vivent|vit|sont rangees?|est range|sont stockees?|est stocke|se trouve)\b/,
+               /\bde quoi est faite? (la maison|l administration|le site|tout ca)\b/,
+               /\bcomment (est faite?|marche|fonctionne) (la maison|l administration|le site|tout ca)\b/,
+               /\bque (sais|connais) tu de (la base|la maison|ce projet|ce code)\b/],
+      exemple: 'quelles tables existent' },
+
     { cle: 'aide', ecrit: false,
       motifs: [/\b(aide|help)\b/, /que (sais|peux) tu (faire)?/, /comment (ca|tu) march/,
                /qu est ce que tu sais/, /tes? (commandes|possibilites)/,

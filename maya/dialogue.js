@@ -545,6 +545,7 @@
       case 'manque':    return rManque(r);
       case 'aller':     return rAller(r);
       case 'greffe':    return rGreffe(r);
+      case 'maison':    return rMaison(r);
       case 'confidentiel': return rConfidentiel(r);
       case 'bloc':      return rBloc(r);
       case 'convoquer': return rConvoquer(r);
@@ -923,6 +924,153 @@
     if (f) setTimeout(function () { f(e.cle); fermer(); }, 320);
   }
 
+
+  /* ==================================================================
+     LA MAISON : LA BASE, LES ECRANS, LE CODE
+     ------------------------------------------------------------------
+     « donner a MAYA l'acces a tout pour qu'elle comprenne toutes les
+       donnees, ou le code meme »
+
+     CE QU'ELLE PEUT HONNETEMENT FAIRE. Elle ne lit pas le code : elle
+     n'est pas un modele de langage, et le lui faire croire serait la
+     meilleure facon de la rendre confiante et fausse. Ce qu'elle a, et
+     qui vaut mieux, c'est la CARTE : les tables, leurs colonnes, qui
+     s'en sert, les ecrans et leur casquette, et le role de chacun des
+     177 fichiers -- recolte dans leurs propres en-tetes par
+     outils/fabrique-carte.js. Les chiffres, eux, se demandent a la base
+     a la seconde ou on les demande.
+
+     ELLE NE MONTRE JAMAIS LE CONTENU D'UNE COLONNE PERSONNELLE. Elle
+     dira qu'une table porte un telephone ; jamais lequel. Le refus des
+     coordonnees ne doit pas avoir une porte de service par la carte.
+     ------------------------------------------------------------------ */
+  function maisonPlat(s) {
+    s = String(s == null ? '' : s).toLowerCase();
+    if (s.normalize) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return s;
+  }
+  /* Le nom de table cite dans la phrase, s'il y en a un. On cherche
+     dans la carte plutot que de deviner : « la table players » comme
+     « les colonnes de match_center ». */
+  function maisonTableCitee(t, C) {
+    var vu = null;
+    (C.tables || []).forEach(function (x) {
+      if (t.indexOf(x.n) >= 0 && (!vu || x.n.length > vu.n.length)) vu = x;
+    });
+    return vu;
+  }
+  function maisonNombre(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+  function rMaison(r) {
+    var lire = outil('carte');
+    if (!lire) return elle('<p>Je n’ai pas la carte de la maison sur cette page.</p>');
+    var C = lire();
+    if (!C) {
+      return elle('<p>La carte de la maison n’a pas été chargée. Elle se fabrique avec ' +
+        '<b>node outils/fabrique-carte.js</b> et se sert depuis <b>/maya/carte.js</b>.</p>');
+    }
+    var t = maisonPlat(r.plat || '');
+    var citee = maisonTableCitee(t, C);
+
+    /* ---- une table nommee : ses colonnes, son module, son compte ---- */
+    if (citee) {
+      penser();
+      var fCol = outil('colonnes'), fCpt = outil('compter');
+      return Promise.all([
+        fCol ? fCol(citee.n) : Promise.resolve(null),
+        fCpt ? fCpt(citee.n) : Promise.resolve(null)
+      ]).then(function (res) {
+        var col = res[0] || {}, cpt = res[1] || {};
+        var h = '<p><b>' + esc(citee.n) + '</b>';
+        /* UN ZERO NE PROUVE RIEN. Mesure du 20/09/2026 : sans session,
+           players rend un total de zero -- la table n'est pas
+           vide, c'est la regle de securite qui n'en montre aucune. Dire
+           « 0 ligne » serait faux et on le croirait. */
+        if (cpt && cpt.n === 0) h += ' · <b>aucune ligne visible</b>';
+        else if (cpt && typeof cpt.n === 'number') h += ' · <b>' + maisonNombre(cpt.n) + '</b> ligne' + (cpt.n > 1 ? 's' : '');
+        else if (cpt && cpt.interdit) h += ' · <i>votre casquette ne la voit pas</i>';
+        else if (cpt && cpt.fermee) h += ' · <i>fermée : elle décide qui peut quoi</i>';
+        else if (cpt && cpt.illisible) h += ' · <i>la base ne l’a pas dit</i>';
+        h += '</p>';
+        if (cpt && cpt.n === 0) {
+          h += '<p class="doux">Zéro ne veut pas dire vide : soit il n’y a rien, ' +
+               'soit la règle de sécurité de la base ne m’en montre aucune. Je ne peux pas trancher d’ici.</p>';
+        }
+        h += '<p class="doux">Sous la casquette <b>' + esc(citee.module || 'aucune') + '</b>' +
+             (citee.ecrit ? ', et l’administration y écrit' : ', en lecture seule ici') + '.</p>';
+        var toutes = col.toutes || [];
+        if (toutes.length) {
+          h += '<p>Elle a <b>' + toutes.length + '</b> colonne' + (toutes.length > 1 ? 's' : '') +
+               ', dont <b>' + citee.colonnes.length + '</b> que les écrans lisent :</p>' +
+               '<p class="doux">' + esc(citee.colonnes.join(', ')) + '</p>';
+        } else if (col.vide) {
+          h += '<p class="doux">Elle est vide, ou fermée pour vous : je ne peux pas en lire les colonnes. ' +
+               'Les écrans, eux, y lisent ' + citee.colonnes.length + ' colonne' + (citee.colonnes.length > 1 ? 's' : '') + '.</p>';
+        }
+        if (citee.perso && citee.perso.length) {
+          h += '<p class="doux">Elle porte des données personnelles (' + esc(citee.perso.join(', ')) +
+               ') : je peux dire qu’elles existent, jamais ce qu’elles contiennent.</p>';
+        }
+        if (citee.ou && citee.ou.length) {
+          h += '<p class="doux">Elle est utilisée dans ' + esc(citee.ou.slice(0, 4).join(', ')) +
+               (citee.ou.length > 4 ? ' et ' + (citee.ou.length - 4) + ' autre' + (citee.ou.length - 4 > 1 ? 's' : '') : '') + '.</p>';
+        }
+        return elle(h);
+      });
+    }
+
+    /* ---- un fichier, un ecran, un mot : ou ca vit ---- */
+    if (/\b(ou |quel fichier|le fichier|dans quel)\b/.test(t) || /\bfichiers?\b/.test(t)) {
+      var fOu = outil('ou');
+      /* le mot cherche : ce qui reste quand on retire les mots outils */
+      var mot = t.replace(/\b(ou|est|sont|se|trouve|trouvent|vit|vivent|range|rangee|rangees|stocke|stockee|stockees|le|la|les|l|du|de|des|d|un|une|quel|quels|quelle|quelles|fichier|fichiers|dans|qui|tient|fait|gere|code|c|est)\b/g, ' ')
+                 .replace(/\s+/g, ' ').trim();
+      var trouve = (fOu && mot) ? fOu(mot) : null;
+      if (trouve && (trouve.tables.length || trouve.ecrans.length || trouve.fichiers.length)) {
+        var h2 = '<p>Pour « <b>' + esc(mot) + '</b> » :</p>';
+        if (trouve.tables.length) {
+          h2 += '<p class="doux"><b>En base</b> — ' + trouve.tables.map(function (x) {
+            return esc(x.n) + ' (' + esc(x.module || 'sans casquette') + ')';
+          }).join(', ') + '</p>';
+        }
+        if (trouve.ecrans.length) {
+          h2 += '<p class="doux"><b>À l’écran</b> — ' + trouve.ecrans.map(function (x) { return esc(x.titre); }).join(', ') + '</p>';
+        }
+        if (trouve.fichiers.length) {
+          h2 += '<p class="doux"><b>Dans le code</b> — ' + trouve.fichiers.slice(0, 5).map(function (f) {
+            return esc(f.f) + ' (' + maisonNombre(f.l) + ' lignes)';
+          }).join(', ') + '</p>';
+          var p1 = trouve.fichiers[0];
+          if (p1 && p1.t) h2 += '<p class="doux">' + esc(p1.f) + ' : <b>' + esc(p1.t) + '</b>. ' + esc(p1.d) + '</p>';
+        }
+        if (trouve.ecrans.length) {
+          h2 += '<div class="maya-pistes">' + trouve.ecrans.slice(0, 3).map(function (x) {
+            return '<button type="button" class="maya-piste" data-aller="' + esc(x.cle) + '">ouvrir ' + esc(x.titre) + '</button>';
+          }).join('') + '</div>';
+        }
+        return elle(h2);
+      }
+      if (mot) return elle('<p>Je ne trouve ni table, ni écran, ni fichier pour « <b>' + esc(mot) + '</b> ».</p>' +
+        pistes(['quelles tables existent', 'de quoi est faite la maison']));
+    }
+
+    /* ---- sinon : la maison en entier ---- */
+    var h3 = '<p>La maison, telle que je la connais au <b>' + esc(C.fait) + '</b> :</p>';
+    h3 += '<p><b>' + C.tables.length + '</b> table' + (C.tables.length > 1 ? 's' : '') +
+          ' que votre casquette voit' + (C.tablesTotal > C.tables.length
+            ? ', sur ' + C.tablesTotal + ' au total' : '') + '.';
+    if (C.modules && C.modules.length) h3 += ' Elles se rangent sous : ' + esc(C.modules.join(', ')) + '.';
+    h3 += '</p>';
+    h3 += '<p><b>' + C.ecrans.length + '</b> écran' + (C.ecrans.length > 1 ? 's' : '') + ' ouvert' +
+          (C.ecrans.length > 1 ? 's' : '') + ' à votre casquette, sur ' + C.ecransTotal + '.</p>';
+    h3 += '<p><b>' + C.fichiersTotal + '</b> fichiers, <b>' + maisonNombre(C.lignes) + '</b> lignes. Les plus gros : ' +
+          C.fichiers.slice(0, 4).map(function (f) { return esc(f.f) + ' (' + maisonNombre(f.l) + ')'; }).join(', ') + '.</p>';
+    h3 += '<p class="doux">Je connais leurs noms, leurs colonnes et leur rôle. Je ne lis pas le code, ' +
+          'et je ne montre jamais le contenu d’une donnée personnelle.</p>';
+    h3 += pistes(['la table players', 'où vivent les joueuses', 'quel fichier tient le Greffe', 'combien de fichiers']);
+    return elle(h3);
+  }
 
   /* ==================================================================
      LE GREFFE

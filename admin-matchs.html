@@ -8947,6 +8947,12 @@
       // premiere phrase corrigee. Six mille mots, soixante kilo-octets,
       // charges une fois et mis en cache comme le reste.
       return mayaScript('/maya/mots.js')
+        // LA CARTE DE LA MAISON : 68 tables, 52 ecrans, 177 fichiers,
+        // fabriquee depuis le depot par outils/fabrique-carte.js. Elle
+        // ne porte aucune donnee du club, seulement des noms. Si elle
+        // manque, MAYA repond comme avant, sans savoir parler de la
+        // maison : une carte absente ne doit pas emporter le dialogue.
+        .then(function(){ return mayaScript('/maya/carte.js').catch(function(){}); })
         .then(function(){ return mayaScript('/maya/comprendre.js'); });
     }).then(function(){ return mayaScript('/maya/deviner.js'); })
       .then(function(){ return mayaScript('/maya/dialogue.js'); });
@@ -9639,6 +9645,160 @@
      ses reussites oblige a decouvrir ses limites une par une, en se
      cognant. Les dire d'avance fait gagner du temps a tout le monde.
      ================================================================== */
+  /* ==================================================================
+     CE QU'ELLE SAIT DE LA MAISON
+     ------------------------------------------------------------------
+     « donner a MAYA l'acces a tout pour qu'elle comprenne toutes les
+       donnees, ou le code meme »
+
+     CE QUI EST VRAI, ET CE QUI NE L'EST PAS. MAYA n'est pas un modele
+     de langage : elle ne LIT pas le code, elle ne le comprend pas au
+     sens ou un humain le comprend. Ce qu'on peut lui donner, et qui
+     vaut mieux qu'une illusion, c'est une CARTE COMPLETE et vraie :
+     quelles tables existent, qui s'en sert, quelles colonnes les
+     ecrans lisent, quels ecrans existent sous quelle casquette, quel
+     fichier fait quoi et de quelle taille il est. Cette carte est
+     fabriquee depuis le depot par outils/fabrique-carte.js, et servie
+     dans /maya/carte.js.
+
+     POURQUOI PAS LA BASE ELLE-MEME. Mesure du 20/09/2026 : Supabase
+     refuse le document OpenAPI aux cles publiables --
+     GET /rest/v1/ rend 401 « Secret API key required ». Une cle
+     secrete n'a rien a faire dans une page publique. Les CHIFFRES, eux,
+     se demandent a la base au moment ou on les demande, sous les droits
+     de la session.
+
+     TROIS VERROUS, ET AUCUN N'EST DECORATIF :
+       1. une table qui n'est pas rattachee a un module ne se compte
+          pas -- une assistante qui compte sans savoir quelle casquette
+          gouverne la table, c'est une fuite de droits ;
+       2. quatre tables sont fermees a dessein (admin_users,
+          admin_roles, role_permissions, maya_questions) : compter les
+          comptes et les permissions donnerait le plan de la serrure ;
+       3. elle ne LISTE jamais le contenu d'une colonne personnelle.
+          Elle peut dire qu'une table porte un telephone ; jamais
+          lequel. Le refus des coordonnees existait deja cote dialogue,
+          il ne doit pas avoir une porte de service par ici.
+     ET RIEN NE S'ECRIT PAR CETTE VOIE. Elle lit, elle compte, c'est tout.
+     ================================================================== */
+  function mayaCarteBrute(){
+    return (window.BaobabsMaya && window.BaobabsMaya.carte) || null;
+  }
+  function mayaTable(nom){
+    var C = mayaCarteBrute();
+    if (!C) return null;
+    nom = String(nom || '').toLowerCase().trim();
+    return C.tables.filter(function(t){ return t.n === nom; })[0] || null;
+  }
+  /* Le droit de savoir qu'une table existe, et de la compter. */
+  function mayaTableVisible(t){
+    if (!t || !t.rattachee) return false;            // table neuve, jamais rattachee
+    if (t.module === null) return currentRole === 'super_admin';
+    return can(t.module, 'voir');
+  }
+  /* LA CARTE, FILTREE PAR LA CASQUETTE. Elle ne doit pas apprendre
+     l'existence d'une table qu'elle n'a pas le droit de voir : le
+     total, lui, se dit (« 68 tables, vous en voyez 41 »), parce que
+     cacher qu'il existe autre chose serait mentir. */
+  function mayaCarte(){
+    var C = mayaCarteBrute();
+    if (!C) return null;
+    var tables = C.tables.filter(mayaTableVisible);
+    var ecrans = C.ecrans.filter(function(e){ return canSection(e.cle); });
+    return {
+      fait: C.fait,
+      tables: tables.map(function(t){
+        return { n: t.n, module: t.module, ecrit: t.ecrit, ou: t.ou,
+                 colonnes: t.colonnes, perso: t.perso };
+      }),
+      tablesTotal: C.tables.length,
+      ecrans: ecrans,
+      ecransTotal: C.ecrans.length,
+      fichiers: C.fichiers,
+      fichiersTotal: C.fichiers.length,
+      lignes: C.fichiers.reduce(function(n, f){ return n + f.l; }, 0),
+      modules: Object.keys(C.tables.reduce(function(a, t){ if (t.module) a[t.module] = 1; return a; }, {})).sort()
+    };
+  }
+
+  /* COMPTER N'IMPORTE QUELLE TABLE, SOUS LES DROITS DE LA SESSION.
+     Un GET avec limit=0 et Prefer: count=exact : la base rend le total
+     dans Content-Range et AUCUNE ligne. On ne recoit donc aucune donnee
+     du club -- juste un nombre, celui que la RLS accepte de dire. */
+  function mayaCompter(nom){
+    var t = mayaTable(nom);
+    if (!t) return Promise.resolve({ inconnue: true });
+    if (!t.rattachee) return Promise.resolve({ sansModule: true });
+    if (t.module === null && currentRole !== 'super_admin') return Promise.resolve({ fermee: true });
+    if (t.module && !can(t.module, 'voir')) return Promise.resolve({ interdit: true, module: t.module });
+    return fetch(SUPABASE_URL + '/rest/v1/' + encodeURIComponent(t.n) + '?select=*&limit=0',
+                 { headers: sbHeaders({ 'Prefer': 'count=exact' }) })
+      .then(function(r){
+        if (!r.ok) return { illisible: true, statut: r.status };
+        var cr = r.headers.get('content-range') || '';
+        var m = /\/(\d+)\s*$/.exec(cr);
+        return { n: m ? Number(m[1]) : null, table: t.n, module: t.module };
+      })
+      .catch(function(){ return { illisible: true }; });
+  }
+
+  /* LES VRAIES COLONNES D'UNE TABLE.
+     La carte sait ce que les ECRANS lisent ; la base en a davantage. On
+     demande une ligne, et on n'en garde QUE LES NOMS DE COLONNES : les
+     valeurs ne sortent pas de cette fonction, ne sont ni affichees ni
+     retenues. Une table vide, ou fermee par la RLS, ne rend rien -- et
+     on le dit plutot que de conclure qu'elle n'a pas de colonnes. */
+  function mayaColonnes(nom){
+    var t = mayaTable(nom);
+    if (!t) return Promise.resolve({ inconnue: true });
+    if (!mayaTableVisible(t)) return Promise.resolve({ interdit: true, module: t.module });
+    return fetch(SUPABASE_URL + '/rest/v1/' + encodeURIComponent(t.n) + '?select=*&limit=1',
+                 { headers: sbHeaders() })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(rows){
+        if (!rows || !rows.length) return { table: t.n, vide: true, citees: t.colonnes, perso: t.perso };
+        var noms = Object.keys(rows[0]).sort();
+        rows = null;                                  // les valeurs ne vont pas plus loin
+        return { table: t.n, toutes: noms, citees: t.colonnes, perso: t.perso, module: t.module };
+      })
+      .catch(function(){ return { illisible: true }; });
+  }
+
+  /* CHERCHER DANS LA CARTE : une table, un ecran, un fichier, par un
+     mot. C'est ce qui permet « ou vivent les joueuses » et « quel
+     fichier tient le Greffe ». */
+  function mayaOu(mot){
+    var C = mayaCarte();
+    if (!C) return null;
+    var q = String(mot || '').toLowerCase().normalize ? String(mot || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') : String(mot || '').toLowerCase();
+    q = q.replace(/[^a-z0-9_. \/-]+/g, ' ').trim();
+    if (!q) return null;
+    var mots = q.split(/\s+/);
+    function colle(texte){
+      var t = String(texte || '').toLowerCase();
+      if (t.normalize) t = t.normalize('NFD').replace(/[̀-ͯ]/g, '');
+      return mots.every(function(w){ return t.indexOf(w) >= 0; });
+    }
+    /* LE CHEMIN PESE PLUS QUE LE TEXTE.
+       « quel fichier tient le Greffe » rendait admin-matchs.html en
+       tete -- 38 883 lignes, et le mot n'apparait que dans sa
+       description. Un fichier dont le CHEMIN porte le mot est la
+       reponse ; un fichier qui en PARLE vient apres. A rang egal, le
+       plus gros d'abord : c'est celui qui tient la chose. */
+    function rang(f){
+      if (colle(f.f)) return 3;
+      if (colle(String(f.t || ''))) return 2;
+      return 1;
+    }
+    var fichiers = C.fichiers.filter(function(f){ return colle(f.f + ' ' + f.t + ' ' + f.d); });
+    fichiers.sort(function(a, b){ return rang(b) - rang(a) || b.l - a.l; });
+    return {
+      tables: C.tables.filter(function(t){ return colle(t.n); }).slice(0, 8),
+      ecrans: C.ecrans.filter(function(e){ return colle(e.cle + ' ' + e.titre); }).slice(0, 8),
+      fichiers: fichiers.slice(0, 8)
+    };
+  }
+
   function mayaCapacites(){
     var sujets = [];
     Object.keys(MAYA_SAVOIR).forEach(function(cle){
@@ -9656,6 +9816,12 @@
     actions.push({ quoi: 'ouvrir n’importe quel écran', comment: 'par son nom, même mal orthographié' });
     actions.push({ quoi: 'retrouver une personne', comment: 'par nom ou prénom, chez les joueuses comme au staff' });
     actions.push({ quoi: 'dire ce qui manque à un dossier', comment: 'pièces, compte, état de la fiche' });
+    var C = mayaCarte();
+    if (C) actions.push({
+      quoi: 'décrire la maison elle-même',
+      comment: 'les ' + C.tables.length + ' tables que votre casquette voit sur ' + C.tablesTotal
+        + ', leurs colonnes, le nombre de lignes de chacune, et lequel des ' + C.fichiersTotal + ' fichiers fait quoi'
+    });
 
     return {
       sujets: sujets,
@@ -10225,6 +10391,14 @@
       // et son numero, c'est un geste qui engage le club devant un
       // tiers. Elle amene jusque-la, elle verifie, elle dit ce qui
       // manque. Elle ne signe pas.
+      // LA MAISON. Ce qu'elle sait de la base et du code, sous les
+      // droits de la session : une table sans module ne se compte pas,
+      // quatre tables sont fermees a dessein, et le contenu d'une
+      // colonne personnelle ne sort jamais par ici.
+      carte: mayaCarte,
+      compter: mayaCompter,
+      colonnes: mayaColonnes,
+      ou: mayaOu,
       greffeEtat: mayaGreffeEtat,
       greffeActes: mayaGreffeActes,
       greffeGeste: mayaGreffeGeste,
