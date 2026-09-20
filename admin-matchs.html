@@ -7107,6 +7107,18 @@
         <p class="card-sub hide" id="cp-new-hint">Donnez d'abord le mot de passe (bouton <b>Changer un rôle</b> plus haut)&nbsp;: ajouter un administrateur engage autant que changer une casquette.</p>
         <div class="msg" id="cp-new-msg"></div>
 
+        <!-- LE SECOND MOT DE PASSE. Celui que Comptes et Historique demandent
+             au cadenas. Il ne se relit pas ; ici le proprietaire le remplace
+             sans l'ancien, sa session etant la preuve (bbc_secret_changer). -->
+        <div class="tm-panel-h" style="margin-top:20px">Le mot de passe des Comptes et de l'Historique</div>
+        <p class="card-sub">Le second mot de passe, celui que ces deux écrans demandent au cadenas. Il ne se relit pas&nbsp;: d'ici vous le remplacez, sans l'ancien. Votre compte de propriétaire est la preuve.</p>
+        <div class="cp-form">
+          <input type="password" id="cp-sec-1" class="qg-in" placeholder="Nouveau mot de passe (8 caractères au moins)" autocomplete="new-password">
+          <input type="password" id="cp-sec-2" class="qg-in" placeholder="Le même, une seconde fois" autocomplete="new-password">
+          <button type="button" class="btn btn-ghost" id="cp-sec-go">Remplacer</button>
+        </div>
+        <div class="msg" id="cp-sec-msg"></div>
+
         <div class="tm-panel-h" style="margin-top:20px">Les casquettes</div>
         <p class="card-sub">Une casquette neuve n'ouvre aucun écran tant que vous ne lui en donnez pas dans le tableau ci-dessus.</p>
         <div id="cp-cq-list" class="cp-cq-list"></div>
@@ -34148,6 +34160,10 @@
     if (ln) ln.addEventListener('keydown', function(e){ if (e.key === 'Enter') cpListeEnregistrer(); });
     var mn = document.getElementById('cp-new-mail');
     if (mn) mn.addEventListener('keydown', function(e){ if (e.key === 'Enter') cpAjouterCompte(); });
+    var bs = document.getElementById('cp-sec-go');
+    if (bs) bs.addEventListener('click', cpSecretChanger);
+    var s2 = document.getElementById('cp-sec-2');
+    if (s2) s2.addEventListener('keydown', function(e){ if (e.key === 'Enter') cpSecretChanger(); });
     document.getElementById('cp-demander').addEventListener('click', function(){
       document.getElementById('cp-lock').classList.remove('hide');
       document.getElementById('cp-demander').classList.add('hide');
@@ -34566,6 +34582,30 @@
     return m;
   }
 
+  // LE SECOND MOT DE PASSE, REMPLACE SANS L'ANCIEN. On ne le compare a
+  // rien ici, on ne le garde nulle part : il part a bbc_secret_changer,
+  // qui refuse tout compte autre que le proprietaire et le hache.
+  function cpSecretChanger(){
+    var a = document.getElementById('cp-sec-1'), b = document.getElementById('cp-sec-2');
+    var msg = document.getElementById('cp-sec-msg'), btn = document.getElementById('cp-sec-go');
+    var v1 = a.value || '', v2 = b.value || '';
+    if (v1.length < 8){ showMsg(msg, 'Huit caractères au moins.', false); a.focus(); return; }
+    if (v1 !== v2){ showMsg(msg, 'Les deux saisies ne sont pas identiques.', false); b.focus(); return; }
+    btn.disabled = true; showMsg(msg, 'Remplacement…', true);
+    tkRpc('bbc_secret_changer', { p_nouveau: v1 })
+      .then(function(){
+        a.value = ''; b.value = ''; btn.disabled = false;
+        showMsg(msg, 'Mot de passe remplacé. Il vaut dès maintenant pour Comptes et pour Historique.', true);
+        // Le cadenas de cet ecran attend peut-etre encore l'ancien : on le
+        // referme pour que le prochain deverrouillage parte du nouveau.
+        try { cpRefermer(); } catch(e){}
+      })
+      .catch(function(e){
+        btn.disabled = false;
+        var d = (e && (e.detail || e.message || e.reason)) || '';
+        showMsg(msg, 'Le mot de passe n’a pas été remplacé.' + (d ? ' ' + d : ''), false);
+      });
+  }
   function cpAjouterCompte(){
     var champ = document.getElementById('cp-new-mail');
     var msg = document.getElementById('cp-new-msg');
