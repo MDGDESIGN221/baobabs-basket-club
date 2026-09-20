@@ -4216,6 +4216,17 @@
     border-left:2px solid var(--gold-edge);border-radius:0;padding:2px 0 2px 14px;
     color:var(--muted);font-size:12.5px;margin-bottom:22px}
 
+  /* LE MEME HOMME, TROIS ECRANS. Sous le nom d'un titulaire (Bureau) et
+     sous celui du fondateur, une ligne dit si une fiche du Staff porte ce
+     nom et ce qui diverge, les gestes en bout de ligne. Une ligne, pas un
+     encadre : elle ne doit pas crier quand tout concorde. */
+  .ds-lien{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:2px;
+    font-size:12.5px;line-height:1.5;color:var(--muted);text-wrap:pretty}
+  .ds-lien[hidden]{display:none}
+  .ds-lien b{color:var(--text);font-weight:600}
+  .ds-lien-t{flex:1 1 240px}
+  .ds-lien .qg-file-btn{padding:6px 10px;font-size:11.5px}
+
   /* ---- Le releve de chiffres : libelle d'abord, filet en tete pour les
          deux seuls postes qui appellent une action ---- */
   .ds-band{display:flex;flex-wrap:wrap;border-top:1px solid var(--line-strong);
@@ -6832,7 +6843,7 @@
           <div class="qg-photo-actions" id="founder_cadrer_zone"></div>
           <img id="founder_preview" alt="" class="logo-preview" style="width:110px;height:110px;border-radius:50%;object-fit:cover" alt="">
         </div>
-        <div class="field"><label for="set_founder_name">Nom</label><input type="text" id="set_founder_name" placeholder="Ex : Antoine Jean-Pierre Ndong"></div>
+        <div class="field"><label for="set_founder_name">Nom</label><input type="text" id="set_founder_name" placeholder="Ex : Antoine Jean-Pierre Ndong"><div class="ds-lien" id="founder_lien" hidden></div></div>
         <div class="field"><label for="set_founder_role">Fonction / titre</label><input type="text" id="set_founder_role" placeholder="Ex : Fondateur & initiateur"></div>
         <div class="field"><label for="set_founder_bio">Présentation</label><textarea id="set_founder_bio" style="min-height:150px" placeholder="Son parcours, sa vision pour le club…"></textarea></div>
         <button class="btn btn-primary" id="save-founder-btn">Enregistrer</button>
@@ -6874,7 +6885,7 @@
                porte les trois nombres du titulaire choisi. -->
           <div class="qg-photo-actions" id="bureau_cadrer_zone"></div>
         </div>
-        <div class="field"><label for="set_bureau_holder">Nom du titulaire <span class="opt">(optionnel)</span></label><input type="text" id="set_bureau_holder" placeholder="Ex : Awa Sène"></div>
+        <div class="field"><label for="set_bureau_holder">Nom du titulaire <span class="opt">(optionnel)</span></label><input type="text" id="set_bureau_holder" placeholder="Ex : Awa Sène"><div class="ds-lien" id="bureau_lien" hidden></div></div>
         <div class="field"><label for="set_bureau_intro">Intro de la fiche</label><textarea id="set_bureau_intro" placeholder="Rôle général du poste…"></textarea></div>
         <div class="field"><label for="set_bureau_resp">Responsabilités</label><textarea id="set_bureau_resp" style="min-height:120px" placeholder="Une par ligne…"></textarea><span class="hint">Une responsabilité par ligne.</span></div>
         <div class="field"><label for="set_bureau_powers">Pouvoirs <span class="opt">(optionnel)</span></label><textarea id="set_bureau_powers" placeholder="Un par ligne…"></textarea><span class="hint">Un par ligne.</span></div>
@@ -21462,6 +21473,7 @@
     founderCadreBouton();
     document.getElementById('founder_url').value=settings.founder_photo_url||''; var p=document.getElementById('founder_preview'); if(settings.founder_photo_url){p.src=settings.founder_photo_url;p.style.display='block';}
     updateFounderPreview();
+    lienStaffCharger().then(founderLienMaj);
   };
   document.getElementById('save-founder-btn').addEventListener('click',function(){
     var msg=document.getElementById('founder-msg'); var btn=this; btn.disabled=true;
@@ -21492,6 +21504,195 @@
   document.getElementById('founder_preview').addEventListener('load',updateFounderPreview);
   document.getElementById('founder_preview_collapse').addEventListener('click',function(){ document.getElementById('founder_preview_aside').classList.toggle('collapsed'); });
 
+  // ===================== LE MEME HOMME, TROIS ECRANS =====================
+  // Le president a une fiche au Staff, occupe un poste a l'organigramme et
+  // fonde le club : trois faits, trois ecrans, et c'est voulu (le poste
+  // survivra a son titulaire, le fondateur restera fondateur). Mais son
+  // nom y etait tape trois fois, sa photo televersee et cadree trois fois,
+  // et rien ne disait quand les copies divergeaient. L'utilisateur l'a
+  // senti avant de le prouver, le 20 septembre 2026 : « il est carrement
+  // sur les 3, je sais pas si c'est moi ».
+  //
+  // Le Staff est la fiche de reference : c'est la seule des trois qui porte
+  // la PERSONNE (telephone, diplome, famille), et non un poste ou un bloc
+  // du site. Sous le nom du titulaire (Bureau) et sous celui du fondateur,
+  // une ligne regarde le Staff : elle dit qui c'est, ce qui differe, et
+  // propose de reprendre le nom ou la photo. Elle ne remplace rien toute
+  // seule : on clique, puis on enregistre, comme pour un cadrage. Seuls le
+  // rattachement d'une fiche a un poste et le don d'une photo au Staff
+  // s'ecrivent tout de suite, parce qu'ils touchent l'autre fiche, pas
+  // celle-ci.
+  //
+  // La liste est relue a chaque ouverture de l'ecran, SANS le filtre
+  // SANS_ATTENTE : un president qui vient de deposer son profil par un lien
+  // de collecte a deja une fiche, elle attend seulement d'etre verifiee, et
+  // la ligne le dit plutot que de repondre « aucune fiche ».
+  var lienStaffRows = null;
+  function lienStaffCharger(){
+    return sbGet('staff?select=id,name,role,categorie,org_role_key,fiche_etat,photo_url,photo_url_x,photo_url_y,photo_url_zoom&order=sort.asc')
+      .then(function(rows){ lienStaffRows = rows || []; return lienStaffRows; })
+      .catch(function(){ lienStaffRows = lienStaffRows || []; return lienStaffRows; });
+  }
+  // La fiche qui porte ce nom, aux accents et aux majuscules pres (efCle,
+  // la meme cle que la chasse aux doublons de l'effectif).
+  function lienStaffParNom(nom){
+    var cle = efCle(nom);
+    if (!cle) return null;
+    return (lienStaffRows || []).filter(function(r){ return efCle(r.name) === cle; })[0] || null;
+  }
+  function lienStaffNom(f){
+    var n = '<b>' + esc(f.name) + '</b>';
+    return (typeof efEnAttente === 'function' && f.fiche_etat && efEnAttente(f)) ? n + ' (fiche encore à vérifier)' : n;
+  }
+  // La ligne elle-meme : un texte, puis les gestes en bout de ligne.
+  // Vide, elle se cache ; .ds-lien[hidden] est pose dans le CSS, parce
+  // qu'un display de classe bat l'attribut sinon.
+  function lienStaffRendre(box, html, gestes){
+    if (!box) return;
+    if (!html){ box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    box.innerHTML = '<span class="ds-lien-t">' + html + '</span>' +
+      gestes.map(function(g, i){ return '<button type="button" class="qg-file-btn" data-lien="' + i + '">' + esc(g[0]) + '</button>'; }).join('');
+    gestes.forEach(function(g, i){ var b = box.querySelector('[data-lien="' + i + '"]'); if (b) b.addEventListener('click', g[1]); });
+  }
+  // Ce que dit la photo, et le geste qui va avec. `courante` est l'adresse
+  // dans le formulaire : '' quand il n'y en a pas, null quand un fichier
+  // vient d'etre choisi et n'est pas encore televerse (rien a comparer,
+  // mais on peut toujours reprendre celle du Staff a la place). `donner`
+  // n'est fourni que si la photo d'ici est deja enregistree : on ne pousse
+  // pas vers le Staff une image que cet ecran n'a pas encore gardee.
+  function lienStaffPhoto(f, courante, reprendre, donner){
+    var sienne = String(f.photo_url || '').trim();
+    if (!sienne){
+      if (courante && donner) return { texte: ' Sa fiche du Staff n\'a pas de photo.', gestes: [['Lui donner celle-ci', donner]] };
+      return { texte: courante === '' ? '' : ' Sa fiche du Staff n\'a pas de photo.', gestes: [] };
+    }
+    if (courante === sienne) return { texte: ' Même photo.', gestes: [] };
+    return { texte: courante === '' ? ' Pas de photo ici.' : (courante === null ? '' : ' La photo n\'est pas la même.'), gestes: [['Reprendre sa photo', reprendre]] };
+  }
+  // L'inverse : la photo posee ici part sur la fiche du Staff, avec son
+  // cadrage (les trois memes nombres, le rond est le meme).
+  function lienStaffDonnerPhoto(f, url, cadre, apres){
+    var body = { photo_url: url };
+    if (cadre){ body.photo_url_x = cadre.x; body.photo_url_y = cadre.y; body.photo_url_zoom = cadre.zoom; }
+    sbUpdate('staff', f.id, body, 'Staff').then(function(){
+      Object.keys(body).forEach(function(k){ f[k] = body[k]; });
+      qgToast('Photo donnée à sa fiche du Staff.'); apres();
+    }).catch(function(){ qgToast('La base a refusé d\'écrire sur sa fiche du Staff.', true); });
+  }
+
+  // --- Fondateur : sous « Nom » ---
+  function founderCadreNombres(){
+    var v = founderCadreValeurs();
+    return { x: parseInt(v.founder_photo_url_x, 10), y: parseInt(v.founder_photo_url_y, 10), zoom: parseInt(v.founder_photo_url_zoom, 10) };
+  }
+  function founderLienMaj(){
+    var box = document.getElementById('founder_lien'); if (!box) return;
+    if (lienStaffRows === null){ box.hidden = true; return; }
+    var nom = document.getElementById('set_founder_name').value.trim();
+    var fichier = document.getElementById('founder_file').files[0];
+    var courante = fichier ? null : document.getElementById('founder_url').value.trim();
+    var f = lienStaffParNom(nom);
+    var html = '', gestes = [];
+    if (f){
+      var poste = f.org_role_key ? ORG_ROLES.filter(function(o){ return o.key === f.org_role_key; })[0] : null;
+      html = lienStaffNom(f) + ' a sa fiche au Staff' + (poste ? ' et occupe le poste « ' + esc(poste.label) + ' » à l\'organigramme' : '') + '.';
+      var enBase = String(settings.founder_photo_url || '').trim();
+      var ph = lienStaffPhoto(f, courante, function(){ founderReprendrePhoto(f); },
+        (courante && courante === enBase) ? function(){ lienStaffDonnerPhoto(f, courante, founderCadreNombres(), founderLienMaj); } : null);
+      html += ph.texte; gestes = ph.gestes;
+    } else if (nom){
+      html = 'Aucune fiche du Staff ne porte ce nom.';
+    }
+    lienStaffRendre(box, html, gestes);
+  }
+  function founderReprendrePhoto(f){
+    var url = String(f.photo_url || '').trim();
+    document.getElementById('founder_url').value = url;
+    document.getElementById('founder_file').value = '';
+    var p = document.getElementById('founder_preview'); p.src = url; p.style.display = 'block';
+    // Le cadrage suit la photo : au Staff, le visage est deja place dans son rond.
+    var v = { x: f.photo_url_x == null ? 50 : f.photo_url_x, y: f.photo_url_y == null ? 50 : f.photo_url_y, zoom: f.photo_url_zoom == null ? 100 : f.photo_url_zoom, mx: null };
+    var b = document.querySelector('#founder_cadrer_zone .qgc-cadrer');
+    if (b){ b.dataset.cx = v.x; b.dataset.cy = v.y; b.dataset.cz = v.zoom; var lab = b.querySelector('span'); if (lab) lab.textContent = cadreResume(v, 'founder_photo_url'); }
+    p.style.objectPosition = v.x + '% ' + v.y + '%'; p.style.transform = 'scale(' + (v.zoom / 100) + ')'; p.style.transformOrigin = v.x + '% ' + v.y + '%';
+    updateFounderPreview(); founderLienMaj();
+    qgToast('Photo reprise de sa fiche du Staff. Cliquez sur « Enregistrer » pour l\'appliquer au site.');
+  }
+  ['set_founder_name', 'founder_url'].forEach(function(id){ document.getElementById(id).addEventListener('input', founderLienMaj); });
+  document.getElementById('founder_file').addEventListener('change', founderLienMaj);
+
+  // --- Bureau : sous « Nom du titulaire » ---
+  // Deux facons de reconnaitre la personne : la colonne org_role_key de sa
+  // fiche du Staff (« Sa fonction a l'organigramme », posee dans l'ecran
+  // Staff), et a defaut son nom. La premiere est un lien, la seconde une
+  // coincidence : la ligne les distingue.
+  function bureauLienMaj(){
+    var box = document.getElementById('bureau_lien'); if (!box) return;
+    if (lienStaffRows === null){ box.hidden = true; return; }
+    var k = document.getElementById('bureau_role').value;
+    var holder = document.getElementById('set_bureau_holder').value.trim();
+    var fichier = document.getElementById('bureau_file').files[0];
+    var courante = fichier ? null : document.getElementById('bureau_url').value.trim();
+    var enBase = String((bureauMap[k] || {}).photo_url || '').trim();
+    var lie = (lienStaffRows || []).filter(function(r){ return r.org_role_key === k; })[0] || null;
+    var hom = lienStaffParNom(holder);
+    var html = '', gestes = [];
+    function reprendreNom(f){ return function(){ document.getElementById('set_bureau_holder').value = f.name; updateBureauPreview(); bureauLienMaj(); }; }
+    function reprendrePhoto(f){ return function(){ bureauReprendrePhoto(f); }; }
+    function donnerPhoto(f){ return (courante && courante === enBase) ? function(){ var c = bureauCadreValeurs(); lienStaffDonnerPhoto(f, courante, { x: c.photo_url_x, y: c.photo_url_y, zoom: c.photo_url_zoom }, bureauLienMaj); } : null; }
+    function rattacher(f){ return function(){ bureauRattacher(f, k); }; }
+    if (lie && !holder){
+      html = 'Au Staff, ce poste est rattaché à la fiche de ' + lienStaffNom(lie) + '.';
+      gestes.push(['Reprendre le nom', reprendreNom(lie)]);
+      var ph0 = lienStaffPhoto(lie, courante, reprendrePhoto(lie), donnerPhoto(lie));
+      html += ph0.texte; gestes = gestes.concat(ph0.gestes);
+    } else if (lie && efCle(lie.name) === efCle(holder)){
+      html = lienStaffNom(lie) + ' a sa fiche au Staff, rattachée à ce poste.';
+      if (lie.name !== holder) gestes.push(['Reprendre le nom', reprendreNom(lie)]);
+      var ph1 = lienStaffPhoto(lie, courante, reprendrePhoto(lie), donnerPhoto(lie));
+      html += ph1.texte; gestes = gestes.concat(ph1.gestes);
+    } else if (lie){
+      // Le poste a change de mains ici, pas au Staff.
+      html = 'Au Staff, ce poste est encore rattaché à la fiche de ' + lienStaffNom(lie) + ', pas à « ' + esc(holder) + ' ».';
+      if (hom) gestes.push(['Rattacher plutôt la fiche de ' + hom.name, rattacher(hom)]);
+      else html += ' Aucune fiche du Staff ne porte ce nom.';
+    } else if (hom){
+      var ailleurs = hom.org_role_key ? ORG_ROLES.filter(function(o){ return o.key === hom.org_role_key; })[0] : null;
+      html = lienStaffNom(hom) + ' a une fiche au Staff, ' + (ailleurs ? 'rattachée au poste « ' + esc(ailleurs.label) + ' »' : 'pas encore rattachée à ce poste') + '.';
+      if (hom.name !== holder) gestes.push(['Reprendre le nom', reprendreNom(hom)]);
+      gestes.push([ailleurs ? 'Rattacher plutôt à ce poste' : 'Rattacher sa fiche à ce poste', rattacher(hom)]);
+      var ph2 = lienStaffPhoto(hom, courante, reprendrePhoto(hom), donnerPhoto(hom));
+      html += ph2.texte; gestes = gestes.concat(ph2.gestes);
+    } else if (holder){
+      html = 'Aucune fiche du Staff ne porte ce nom : la personne n\'apparaîtra qu\'à l\'organigramme, pas dans la liste du club.';
+    }
+    lienStaffRendre(box, html, gestes);
+  }
+  function bureauReprendrePhoto(f){
+    var url = String(f.photo_url || '').trim();
+    document.getElementById('bureau_url').value = url;
+    document.getElementById('bureau_file').value = '';
+    var p = document.getElementById('bureau_preview'); p.src = url; p.style.display = 'block';
+    // Le cadrage suit la photo : au Staff, le visage est deja place dans son rond.
+    bureauCadreBouton({ photo_url_x: f.photo_url_x, photo_url_y: f.photo_url_y, photo_url_zoom: f.photo_url_zoom });
+    updateBureauPreview(); bureauLienMaj();
+    qgToast('Photo reprise de sa fiche du Staff. Cliquez sur « Enregistrer ce poste » pour l\'appliquer au site.');
+  }
+  // Le rattachement s'ecrit tout de suite dans la fiche du Staff : c'est
+  // la colonne org_role_key, celle que l'ecran Staff propose sous « Sa
+  // fonction a l'organigramme ». Un poste n'a qu'un titulaire : la fiche
+  // qui le portait avant en est detachee.
+  function bureauRattacher(f, k){
+    var avant = (lienStaffRows || []).filter(function(r){ return r.org_role_key === k && r.id !== f.id; });
+    var p = sbUpdate('staff', f.id, { org_role_key: k }, 'Staff').then(function(){ f.org_role_key = k; });
+    avant.forEach(function(a){ p = p.then(function(){ return sbUpdate('staff', a.id, { org_role_key: null }, 'Staff').then(function(){ a.org_role_key = null; }); }); });
+    p.then(function(){ bureauLienMaj(); qgToast('Fiche rattachée au poste' + (avant.length ? ', celle de ' + avant[0].name + ' en est détachée.' : '.')); })
+     .catch(function(){ bureauLienMaj(); qgToast('La base a refusé le rattachement.', true); });
+  }
+  ['set_bureau_holder', 'bureau_url'].forEach(function(id){ document.getElementById(id).addEventListener('input', bureauLienMaj); });
+  document.getElementById('bureau_file').addEventListener('change', bureauLienMaj);
+
   // ===================== BUREAU / ORGANIGRAMME =====================
   var ORG_ROLES=[
     {key:'president',label:'Président'},{key:'vp',label:'Vice-Président'},
@@ -21516,6 +21717,7 @@
     document.getElementById('bureau_mode_upload').click();
     showMsg(document.getElementById('bureau-msg'),'',true);
     updateBureauPreview();
+    bureauLienMaj();
   }
   // LE CADRAGE DU TITULAIRE. Meme atelier que le fondateur : le rond du
   // site est un carre, le visage se place a la souris. Les trois nombres
@@ -21549,8 +21751,12 @@
   LOADERS_bureau=function(){
     var sel=document.getElementById('bureau_role');
     sel.innerHTML=ORG_ROLES.map(function(o){ return '<option value="'+o.key+'">'+esc(o.label)+'</option>'; }).join('');
-    sbGet('org_roles?select=*').then(function(rows){ bureauMap={}; (rows||[]).forEach(function(r){ bureauMap[r.role_key]=r; }); bureauFillForm(); bureauGreffeBoutons(); })
-      .catch(function(){ bureauMap={}; bureauFillForm(); bureauGreffeBoutons(); });
+    // La liste du Staff part en meme temps que les postes : la ligne sous
+    // le nom du titulaire s'en sert, et on ne remplit le formulaire qu'une
+    // fois les deux arrivees, sinon la ligne se dessine deux fois.
+    Promise.all([ sbGet('org_roles?select=*').catch(function(){ return []; }), lienStaffCharger() ]).then(function(res){
+      bureauMap={}; (res[0]||[]).forEach(function(r){ bureauMap[r.role_key]=r; }); bureauFillForm(); bureauGreffeBoutons();
+    });
   };
   // LE BUREAU AU GREFFE. Les membres viennent de org_roles : le PV de
   // reunion arrive avec la liste des presents a emarger, la convocation
@@ -21602,7 +21808,7 @@
         var before=bureauMap[k]||{};
         return sbUpsert('org_roles',body,'Organigramme — '+(bureauMap[k]&&bureauMap[k].holder_name?bureauMap[k].holder_name:k)).then(function(){
           auditDiffFields(before, body, 'Organigramme', 'org_roles', k);
-          bureauMap[k]=body; showMsg(msg,'Poste enregistré.',true);
+          bureauMap[k]=body; showMsg(msg,'Poste enregistré.',true); bureauLienMaj();
         });
       })
       .catch(function(){ showMsg(msg,"Erreur. Vérifiez que la table 'org_roles' existe (migration SQL).",false); })
