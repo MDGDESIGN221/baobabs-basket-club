@@ -87,7 +87,7 @@
   /* AJOUTER UN TYPE D'ACTE : un fichier dans modeles/, son nom ici. */
   var MODELES = ['ordre-mission', 'acte-libre', 'page-blanche', 'courrier',
                  'convention', 'contrat', 'fiche-fonction', 'budget',
-                 'pv-reunion', 'ordre-du-jour', 'rapport-saison', 'recu', 'note-frais', 'demande-subvention', 'demande-appui',
+                 'pv-reunion', 'ordre-du-jour', 'rapport-saison', 'recu', 'facture', 'note-frais', 'demande-subvention', 'demande-appui',
                  'convocation', 'feuille-presence', 'planning', 'fiche-joueuse', 'cartes-membre',
                  'autorisation-parentale', 'decharge', 'certificat', 'communique', 'invitation',
                  'liste-delegation'];

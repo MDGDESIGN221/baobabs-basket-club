@@ -774,6 +774,12 @@
       try { var n = calculer(col.formule, ligne); return U.ech(U.nombre(n)); } catch (e) { return '<span class="q ton-alerte">formule ?</span>'; }
     }
     v = (v == null ? '' : String(v));
+    /* un nombre tape d'un bloc (« 1200000 ») se lit avec ses milliers
+       (« 1 200 000 ») ; la donnee garde ce qui a ete tape. Vu sur la
+       facture : le prix unitaire brut a cote d'un montant calcule propre. */
+    if (col.forme === 'nombre' && /^\s*-?\d[\d \u00a0\u202f]*([.,]\d+)?\s*$/.test(v) && v.replace(/\D/g, '').length > 3) {
+      return U.ech(U.nombre(nombreDe(v)));
+    }
     if (col.forme === 'pastille' && v) {
       var ton = (cfg.tonPastille && cfg.tonPastille(v, ligne)) || 'ton-doux';
       return '<span class="q ' + ton + '">' + U.enLigne(v) + '</span>';
