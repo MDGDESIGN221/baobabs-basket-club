@@ -5390,6 +5390,7 @@
         <button class="sb-link" data-section="orders2">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
           Commandes
+          <span class="sb-link-badge hide" id="sb-orders2-badge">0</span>
         </button>
       </div>
 
@@ -23033,7 +23034,17 @@
       {key:'contact', table:'contact_messages'},
       {key:'orders', table:'orders'}
     ];
+    // CHAQUE PASTILLE COMPTE SON ECRAN. Les commandes en attente
+    // s'ajoutaient a la pastille « Messages », et « Commandes » n'en
+    // avait pas : une commande passee, et rien ne bougeait en face du
+    // mot Commandes (20 septembre 2026). Une pastille dit ce qui attend
+    // DERRIERE l'entree qu'elle marque, sinon elle ne dit rien.
     var totalNew = 0, doneCount = 0;
+    function pastille(id, n){
+      var b=document.getElementById(id); if(!b) return;
+      if(n>0){ b.textContent = n>99?'99+':n; b.classList.remove('hide'); }
+      else b.classList.add('hide');
+    }
     Promise.all(inboxTables.map(function(t){
       return sbGet(t.table+'?select=id'+(t.key==='orders'?',status':'')+(t.key==='contact'?',is_read':'')+'&order=created_at.desc').then(function(rows){
         rows=rows||[];
@@ -23041,7 +23052,7 @@
         if(t.key==='orders'){
           var pending = rows.filter(function(r){ var s=normalizeOrderStatus(r.status); return s!=='récupérée' && s!=='annulée'; }).length;
           var osub = document.getElementById('dash-orders-new-sub'); if (osub) osub.textContent = pending ? (pending+' en attente') : 'Tout traité';
-          totalNew += pending;
+          pastille('sb-orders2-badge', pending);
         } else if (t.key==='contact') {
           // Un message lu (« Marquer comme traité » dans Messages) ne compte
           // plus : la pastille disait 2 alors que tout etait traite.
@@ -23053,9 +23064,7 @@
         return rows.length;
       }).catch(function(){ dashNum(t.key, '—'); return 0; });
     })).then(function(){
-      var badge=document.getElementById('sb-messages-badge');
-      if(totalNew>0){ badge.textContent = totalNew>99?'99+':totalNew; badge.classList.remove('hide'); }
-      else badge.classList.add('hide');
+      pastille('sb-messages-badge', totalNew);
     });
 
     // Compteur Candidatures : distinct du badge Messages depuis que les
@@ -38960,7 +38969,9 @@
   /* 9px capitales a 2,35:1 etaient illisibles. Un texte aussi petit
      demande plus de contraste, pas moins. */
   .sb-link-num{font-size:9px;opacity:1;color:var(--muted)}
-  .sb-link-badge{border-radius:4px;padding:3px 6px;font-size:9.5px}
+  /* 9,5 px sur 18 px de large : on devinait le chiffre plus qu'on ne le
+     lisait. Une pastille est un chiffre a lire d'un coup d'oeil. */
+  .sb-link-badge{border-radius:5px;padding:3px 7px;font-size:11px;min-width:20px}
   .sidebar{padding:16px 10px 40px}
   .card{border-radius:var(--r-lg)}
   .qg-tabbar,.qg-tab{border-radius:var(--r-sm)}
