@@ -282,7 +282,22 @@
       ".objet-cachet{ background-size:contain; background-repeat:no-repeat; background-position:center; mix-blend-mode:multiply; }",
       ".objet-signature{ mix-blend-mode:multiply; }",
       ".objet-signature .sig-ink{ transform:none; }",
-      ".objet-image img{ display:block; width:100%; height:100%; object-fit:contain; }",
+      /* L'IMAGE POSEE SE REGLE
+         « ni incruster des images ni les modifier ». L'ajustement, la
+         nuance, les coins, le bord vivent dans la donnee de l'objet ;
+         ici les trois facons de remplir le cadre et les cinq nuances. */
+      ".objet-image img{ display:block; width:100%; height:100%; object-fit:contain; object-position:center; }",
+      ".objet-image.ajust-contenir img{ object-fit:contain; }",
+      ".objet-image.ajust-remplir img{ object-fit:cover; }",
+      ".objet-image.ajust-etirer img{ object-fit:fill; }",
+      ".objet-image.teinte-nb img{ filter:grayscale(1); }",
+      ".objet-image.teinte-sepia img{ filter:sepia(.72) saturate(1.15); }",
+      ".objet-image.teinte-contraste img{ filter:contrast(1.32) saturate(1.1); }",
+      ".objet-image.teinte-pale img{ filter:grayscale(.35) opacity(.62); }",
+      /* les trois formes qui manquaient : le rond, le trait, le feutre */
+      ".objet-ellipse{ border:1.2pt solid var(--or); border-radius:50%; }",
+      ".objet-ligne{ overflow:visible; }",
+      ".objet-surligneur{ border-radius:1.5pt; mix-blend-mode:multiply; }",
       ".objet-annotation{ border:1pt solid var(--or); border-radius:3pt; padding:2.5pt 5pt; font-size:7.6pt; line-height:1.35;",
       "  background:rgba(255,255,255,.85); overflow:hidden; }",
       ".objet-annotation p{ margin:0; }",

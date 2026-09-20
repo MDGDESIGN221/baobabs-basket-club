@@ -951,3 +951,264 @@
 .gf-frise-pt b{ font-weight:700; }
 .gf-frise-trait{ flex:0 0 26px; height:1px; background:var(--gf-line); }
 .gf-frise-fin{ flex:1 1 auto; text-align:right; font-size:11px; color:var(--gf-pale); }
+
+/* =====================================================================
+   LES BULLES D'AIDE
+   « manque les bulles de dialogue et explique le role des outils »
+   Le title du navigateur arrive apres une seconde, en gris systeme, et
+   ne tient qu'une ligne : personne n'y lit le role d'un outil. Ici une
+   bulle a nous : un nom, une phrase qui dit a quoi ca sert, le
+   raccourci. Elle sort au bout de 220 ms, et tout de suite au clavier.
+   ===================================================================== */
+.gf-bulle{
+  position:fixed; z-index:9600; max-width:280px; pointer-events:none;
+  background:var(--gf-surf2); color:var(--gf-texte);
+  border:1px solid var(--gf-line-fort); border-radius:11px;
+  padding:9px 12px 10px 12px;
+  box-shadow:0 14px 38px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.35);
+  font-size:12px; line-height:1.5;
+}
+.gf-bulle[hidden]{ display:none !important; }
+.gf-bulle-tete{ display:flex; align-items:baseline; gap:8px; }
+.gf-bulle-tete b{
+  font-family:var(--gf-titre); font-weight:700; font-size:12.5px;
+  letter-spacing:-.01em; color:var(--gf-texte);
+}
+.gf-bulle-tete kbd{
+  margin-left:auto; flex:0 0 auto;
+  font-family:inherit; font-size:10.5px; font-weight:600; color:var(--gf-pale);
+  background:var(--gf-surf3); border:1px solid var(--gf-line);
+  border-radius:5px; padding:1px 6px; white-space:nowrap;
+}
+.gf-bulle-role{
+  display:block; margin-top:5px; font-size:11.5px; line-height:1.5;
+  color:var(--gf-doux);
+}
+.gf-bulle-fleche{
+  position:absolute; width:9px; height:9px; transform:rotate(45deg);
+  background:var(--gf-surf2); border:1px solid var(--gf-line-fort);
+}
+.gf-bulle[data-cote="droite"] .gf-bulle-fleche{ left:-5px; border-right:0; border-top:0; }
+.gf-bulle[data-cote="gauche"] .gf-bulle-fleche{ right:-5px; border-left:0; border-bottom:0; }
+.gf-bulle[data-cote="bas"] .gf-bulle-fleche{ top:-5px; border-right:0; border-bottom:0; }
+.gf-bulle[data-cote="haut"] .gf-bulle-fleche{ bottom:-5px; border-left:0; border-top:0; }
+
+/* =====================================================================
+   LA BARRE D'OUTILS QUI DIT SON NOM
+   « y'a pas l'outil main » : il y etait, deuxieme en partant du haut.
+   Quinze pastilles de 18 px sans un mot, toutes de la meme couleur :
+   l'outil existait sans etre trouvable. La barre s'ouvre maintenant et
+   ecrit le nom de chaque outil, sous un titre de famille ; repliee,
+   elle revient aux icones et les bulles prennent le relais.
+   ===================================================================== */
+.gf-rail{
+  flex:0 0 var(--gf-rail-l, 176px); width:var(--gf-rail-l, 176px);
+  display:flex; flex-direction:column; align-items:stretch; gap:1px;
+  padding:8px 8px 10px 8px; overflow-y:auto; overflow-x:hidden;
+  background:var(--gf-surf); border-right:1px solid var(--gf-line);
+  scrollbar-width:thin;
+}
+.gf-rail::-webkit-scrollbar{ width:8px; }
+.gf-rail::-webkit-scrollbar-thumb{ background:var(--gf-surf3); border-radius:99px; }
+.gf-rail-tete{
+  display:flex; align-items:center; gap:6px; padding:2px 2px 8px 6px;
+  margin-bottom:2px; border-bottom:1px solid var(--gf-line);
+}
+.gf-rail-tete b{
+  flex:1 1 auto; font-family:var(--gf-titre); font-size:10px; font-weight:700;
+  letter-spacing:.17em; text-transform:uppercase; color:var(--gf-pale);
+}
+.gf-rail-plier{
+  flex:0 0 26px; width:26px; height:26px; display:grid; place-items:center;
+  border-radius:7px; border:1px solid transparent; background:transparent;
+  color:var(--gf-pale); cursor:pointer;
+}
+.gf-rail-plier svg{ width:15px; height:15px; }
+.gf-rail-plier:hover{ color:var(--gf-texte); background:var(--gf-surf3); border-color:var(--gf-line); }
+.gf-rail-groupe{
+  padding:11px 6px 4px 6px; font-size:9.5px; font-weight:700;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--gf-pale);
+  font-family:var(--gf-titre);
+}
+.gf-rail-groupe:first-of-type{ padding-top:4px; }
+
+/* l'outil : une ligne, une icone, un nom, le raccourci a droite */
+.gf-outil{
+  display:flex; align-items:center; gap:10px; width:100%;
+  height:34px; padding:0 8px; border-radius:8px;
+  background:transparent; border:1px solid transparent;
+  color:var(--gf-doux); font:inherit; font-size:12.5px; text-align:left;
+  cursor:pointer; white-space:nowrap;
+}
+.gf-outil svg{ width:18px; height:18px; flex:0 0 18px; }
+.gf-outil-nom{ flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; }
+.gf-outil-rac{
+  flex:0 0 auto; font-size:10px; font-weight:600; color:var(--gf-pale);
+  opacity:.75;
+}
+.gf-outil:hover{ color:var(--gf-texte); background:var(--gf-surf3); border-color:var(--gf-line); }
+.gf-outil.is-actif{
+  color:var(--gf-encre); background:var(--gf-accent); border-color:var(--gf-accent);
+  font-weight:600;
+}
+.gf-outil.is-actif .gf-outil-rac{ color:rgba(10,27,13,.65); }
+.gf-outil:disabled{ opacity:.32; cursor:not-allowed; }
+.gf-outil:focus-visible{ outline:2px solid var(--gf-accent-v); outline-offset:1px; }
+/* une bascule qui n'est pas allumee montre quand meme qu'elle est une
+   bascule : un petit temoin eteint a gauche du nom */
+.gf-outil-temoin{
+  flex:0 0 7px; width:7px; height:7px; border-radius:99px;
+  background:var(--gf-surf3); border:1px solid var(--gf-line-fort);
+}
+.gf-outil.is-actif .gf-outil-temoin{ background:var(--gf-encre); border-color:transparent; }
+.gf-rail-esp{ flex:0 0 6px; }
+.gf-rail-sep{ height:1px; background:var(--gf-line); margin:6px 6px; width:auto; }
+
+/* --- repliee : les icones seules, centrees, les bulles disent le reste --- */
+.gf-rail.est-pliee{ --gf-rail-l:52px; align-items:center; padding:8px 6px 10px 6px; }
+.gf-rail.est-pliee .gf-rail-tete{ border-bottom:0; padding:0 0 6px 0; }
+.gf-rail.est-pliee .gf-rail-tete b{ display:none; }
+.gf-rail.est-pliee .gf-rail-groupe{
+  padding:8px 0 4px 0; font-size:0; letter-spacing:0;
+  height:1px; margin:6px 4px; background:var(--gf-line); border-radius:1px;
+}
+.gf-rail.est-pliee .gf-outil{ width:38px; height:38px; padding:0; justify-content:center; gap:0; }
+.gf-rail.est-pliee .gf-outil-nom,
+.gf-rail.est-pliee .gf-outil-rac,
+.gf-rail.est-pliee .gf-outil-temoin{ display:none; }
+
+/* =====================================================================
+   LE FILIGRANE BROUILLON SE RETIRE
+   « on doit pouvoir facilement enlever le watermark Brouillon »
+   Deux endroits pour la meme bascule : la barre d'outils, et la barre
+   de l'apercu, juste au-dessus de la feuille ou on le voit.
+   ===================================================================== */
+.gf-bascule-barre{
+  display:flex; align-items:center; gap:6px; height:26px; padding:0 9px;
+  border-radius:7px; border:1px solid var(--gf-line); background:transparent;
+  color:var(--gf-pale); font:inherit; font-size:11.5px; cursor:pointer;
+  white-space:nowrap;
+}
+.gf-bascule-barre svg{ width:13px; height:13px; }
+.gf-bascule-barre:hover{ color:var(--gf-texte); border-color:var(--gf-line-fort); background:var(--gf-surf3); }
+.gf-bascule-barre.is-actif{ color:var(--gf-accent-v); border-color:rgba(70,191,29,.45); background:rgba(70,191,29,.1); }
+
+/* =====================================================================
+   L'APERCU REPLIE NE PIEGE PLUS PERSONNE
+   « par erreur j'ai ferme l'apparition, je peux plus l'ouvrir »
+   Mesure : la languette qui rouvre l'apercu tient sur 29 px a x=1174 ;
+   sous 1500 px de large, le panneau de proprietes se pose EN ABSOLU de
+   x=914 a x=1214 avec z-index:15. Il recouvrait la languette au pixel
+   pres. Les deux regles pesaient pareil (.gf-sans-apercu .gf-props et
+   .gf-avec-props .gf-props) : celle ecrite plus loin gagnait.
+   Trois verrous : le panneau se retire tant que l'apercu est replie,
+   la colonne de l'apercu passe devant, et la languette devient un
+   bouton qu'on ne peut pas ne pas voir.
+   ===================================================================== */
+.gf-sans-apercu.gf-avec-props .gf-props,
+.gf-sans-apercu.gf-avec-props .gf-poignee[data-poignee="props"]{ display:none; }
+.gf-sans-apercu .gf-apercu{ position:relative; z-index:30; }
+.gf-sans-apercu .gf-apercu-languette{
+  display:flex; flex-direction:column; align-items:center; gap:9px;
+  margin:10px auto 0; padding:12px 7px 14px 7px; width:30px;
+  border:1px solid var(--gf-accent); border-radius:9px;
+  background:rgba(70,191,29,.14); color:var(--gf-accent-v);
+  font:inherit; font-size:10px; font-weight:700; letter-spacing:.16em;
+  text-transform:uppercase; writing-mode:vertical-rl; cursor:pointer;
+}
+.gf-sans-apercu .gf-apercu-languette::before{
+  content:''; flex:0 0 14px; width:14px; height:14px; writing-mode:horizontal-tb;
+  border:1.5px solid currentColor; border-radius:3px;
+  border-left-width:5px;
+}
+.gf-sans-apercu .gf-apercu-languette:hover{
+  background:var(--gf-accent); color:var(--gf-encre); border-color:var(--gf-accent);
+}
+
+/* ---------------- la loupe : le curseur dit ce qu'un clic fera ---------------- */
+.gf-scene.gf-zoomeur{ cursor:zoom-in; }
+.gf-scene.gf-zoomeur iframe{ pointer-events:none; }
+
+/* ---------------- la liste « a quoi sert chaque outil » ---------------- */
+.gf-aide-outils{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:6px; margin-bottom:6px;
+}
+.gf-aide-outil{
+  display:flex; align-items:flex-start; gap:11px;
+  padding:10px 12px; border-radius:9px;
+  background:var(--gf-surf2); border:1px solid var(--gf-line);
+}
+.gf-aide-ico{
+  flex:0 0 30px; width:30px; height:30px; display:grid; place-items:center;
+  border-radius:8px; background:var(--gf-surf3); color:var(--gf-accent-v);
+}
+.gf-aide-ico svg{ width:17px; height:17px; }
+.gf-aide-txt{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.gf-aide-txt b{ font-family:var(--gf-titre); font-size:12.5px; font-weight:600; }
+.gf-aide-txt b kbd{
+  margin-left:6px; font-family:inherit; font-size:10px; font-weight:600;
+  color:var(--gf-pale); background:var(--gf-surf3); border:1px solid var(--gf-line);
+  border-radius:4px; padding:1px 5px;
+}
+.gf-aide-txt > span{ font-size:11.5px; line-height:1.5; color:var(--gf-doux); }
+
+/* =====================================================================
+   LA LIAISON, VUE DU PANNEAU
+   « si on touche aussi a un element on doit aussi voir ca dans le bloc
+     concerne »
+   La ligne du bloc, ou le champ, s'allume quand on touche la partie
+   correspondante de la feuille. Une bande a gauche, pas un clignotement :
+   l'ecran de l'utilisateur annonce prefers-reduced-motion, rien ne bouge
+   jamais chez lui.
+   ===================================================================== */
+.gf-bloc-item.is-lie,
+.gf-champ.is-lie{
+  position:relative;
+  background:rgba(70,191,29,.1);
+  box-shadow:inset 3px 0 0 var(--gf-accent);
+  border-radius:8px;
+}
+.gf-bloc-item.is-lie .gf-bloc-nom{ color:var(--gf-accent-v); font-weight:600; }
+.gf-champ.is-lie > .gf-lab{ color:var(--gf-accent-v); }
+/* la ligne d'un bloc se clique : le curseur le dit */
+.gf-bloc-nom{ cursor:pointer; }
+.gf-bloc-nom:hover{ color:var(--gf-accent-v); text-decoration:underline; text-underline-offset:3px; }
+.gf-bloc-item:hover{ background:var(--gf-surf2); border-radius:8px; }
+
+/* =====================================================================
+   LE PANNEAU DE DROITE NE COUVRE PLUS LE ZOOM
+   « le panneau des propriétés doit pouvoir être fermé comme l'aperçu,
+     ça gêne trop, même pour le zoom qu'il vient cacher »
+   Mesure, fenetre de 1390 px : la barre de l'apercu va de y=127 a
+   y=167 ; le panneau se posait a y=127, x=1090, large de 300. Le moins
+   du zoom (x=1147), le plus (x=1225) et la liste « Zoom… » (x=1260)
+   etaient tous SOUS les onglets du panneau. Il commence maintenant a
+   la hauteur ou la barre finit, et il se ferme.
+   ===================================================================== */
+.gf-atelier{ position:relative; }
+@media (max-width:1500px){
+  .gf-avec-props .gf-props{ top:40px; border-top:1px solid var(--gf-line-fort); border-radius:0 0 0 12px; }
+}
+
+/* la croix du panneau, au bout de ses onglets */
+.gf-props-onglets{ position:relative; }
+.gf-props-x{ margin-left:auto; flex:0 0 auto; align-self:center; }
+
+/* la languette qui le rouvre, sur le bord droit, en echo a celle de
+   l'apercu : meme forme, meme couleur, de l'autre cote de l'ecran */
+.gf-props-languette{
+  position:absolute; right:0; top:52px; z-index:24;
+  display:flex; flex-direction:column; align-items:center; gap:9px;
+  padding:12px 7px 14px 7px; width:30px;
+  border:1px solid var(--gf-accent); border-right:0; border-radius:9px 0 0 9px;
+  background:rgba(70,191,29,.14); color:var(--gf-accent-v);
+  font:inherit; font-size:10px; font-weight:700; letter-spacing:.16em;
+  text-transform:uppercase; writing-mode:vertical-rl; cursor:pointer;
+}
+.gf-props-languette::before{
+  content:''; flex:0 0 14px; width:14px; height:14px; writing-mode:horizontal-tb;
+  border:1.5px solid currentColor; border-radius:3px; border-right-width:5px;
+}
+.gf-props-languette:hover{ background:var(--gf-accent); color:var(--gf-encre); }
+.gf-props-languette[hidden]{ display:none !important; }

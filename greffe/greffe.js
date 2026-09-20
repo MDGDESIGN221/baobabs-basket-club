@@ -2067,7 +2067,7 @@
         { lab: 'Coller', rac: 'Ctrl+V', off: !enAtelier || lect, act: collerElement },
         { sep: true },
         { lab: 'Tous les objets de la page', rac: 'Ctrl+A', off: !enAtelier || lect, act: selectionnerTout },
-        { lab: 'Aligner et répartir…', off: !enAtelier || lect || objetsSel.length < 2, act: function () { propsOnglet = 'proprietes'; racine.classList.remove('gf-sans-props'); racine.classList.add('gf-avec-props'); peindreProps(); } },
+        { lab: 'Aligner et répartir…', off: !enAtelier || lect || objetsSel.length < 2, act: function () { propsOnglet = 'proprietes'; ouvrirProps(true); peindreProps(); } },
         { sep: true },
         { lab: 'Textes d\'origine du modèle', off: !enAtelier || lect, act: textesOrigine }
       ]},
@@ -2091,7 +2091,10 @@
         { lab: 'Image…', off: !enAtelier || lect, act: poserImageObjet },
         { lab: 'Annotation', off: !enAtelier || lect, act: function () { poserObjet('annotation'); } },
         { lab: 'Cadre', off: !enAtelier || lect, act: function () { poserObjet('cadre'); } },
+        { lab: 'Rond', off: !enAtelier || lect, act: function () { poserObjet('ellipse'); } },
+        { lab: 'Trait', off: !enAtelier || lect, act: function () { poserObjet('ligne'); } },
         { lab: 'Flèche', off: !enAtelier || lect, act: function () { poserObjet('fleche'); } },
+        { lab: 'Surligneur', off: !enAtelier || lect, act: function () { poserObjet('surligneur'); } },
         { lab: 'Case à cocher', off: !enAtelier || lect, act: function () { poserObjet('case'); } },
         { lab: 'Variable…', off: !enAtelier || lect, act: insererVariable },
         { sep: true }
@@ -2118,7 +2121,13 @@
         { sep: true },
         { lab: (racine.classList.contains('gf-sans-panneau') ? 'Montrer' : 'Masquer') + ' le panneau', rac: 'Ctrl+Maj+P', off: !enAtelier, act: basculerPanneau },
         { lab: (apercuReplie ? 'Rouvrir' : 'Replier') + ' l\'aperçu', off: !enAtelier, act: basculerApercu },
+        { lab: (propsOuvert() ? 'Fermer' : 'Rouvrir') + ' le panneau de droite', off: !enAtelier, act: basculerProps },
         { lab: (outilMain ? 'Quitter l\'outil' : 'Outil') + ' main (glisser la feuille)', rac: 'H · Espace tenue', off: !enAtelier, act: function () { mainActiver(!outilMain); } },
+        { lab: (outilZoom ? 'Quitter la' : 'Outil') + ' loupe', rac: 'Z', off: !enAtelier, act: function () { zoomActiver(!outilZoom); } },
+        { lab: (railPlie ? 'Ouvrir' : 'Replier') + ' la barre d\'outils', off: !enAtelier, act: function () { railPlie = !railPlie; try { localStorage.setItem(CLE_RAIL, railPlie ? '1' : '0'); } catch (e) {} peindreRail(); remesurer(); } },
+        { lab: 'À quoi sert chaque outil…', act: aideOutils },
+        { sep: true },
+        { lab: (filigraneVisible() ? 'Retirer' : 'Remettre') + ' le filigrane BROUILLON', off: !enAtelier || acteEtat !== 'brouillon', act: basculerFiligrane },
         { lab: (vignettesVoulues() ? 'Masquer' : 'Montrer') + ' les vignettes des pages', off: !enAtelier, act: basculerVignettes },
         { lab: (modeLecture ? 'Quitter le' : 'Passer en') + ' mode lecture', rac: 'Ctrl+Maj+R', off: !enAtelier, act: basculerLecture }
       ]},
@@ -3238,7 +3247,7 @@
        acte et l'encre y sera, sans qu'il ait rien a recocher. */
     var ressources = G.peutSigner() ? res : Object.assign({}, res, { cachet: null });
     return identiteAppliquee(G.blocs.assembler(modeleActif, donnees,
-      { res: ressources, brouillon: acteEtat === 'brouillon', sansEncre: !G.peutSigner() }));
+      { res: ressources, brouillon: filigraneVisible(), sansEncre: !G.peutSigner() }));
   }
 
   /* À l'écran seulement : le cadre est transparent (la scène de
@@ -3255,6 +3264,25 @@
     '  td[data-edit]:empty::after{ content:"\\00a0"; }',
     '  tr.tr-suite td{ border-bottom-style:dashed; }',
     '  body.lecture [data-edit]{ outline:none; cursor:default; }',
+    /* LA LIAISON, VUE DE LA FEUILLE
+       « si on touche a un element on doit aussi voir ca dans le bloc
+         concerne ». Un bloc survole dit son nom et se souligne ; le bloc
+       qu'on touche reste allume ; le bloc choisi porte un plein contour.
+       Rien de tout ceci n'existe a l'impression : c'est du @media screen. */
+    '  .bloc{ position:relative; }',
+    '  body:not(.lecture) .bloc::after{ content:attr(data-nom); position:absolute; right:0; top:0; z-index:6;',
+    '    font-family:Inter,Arial,sans-serif; font-size:5.2pt; font-weight:700; line-height:1; letter-spacing:.13em;',
+    '    text-transform:uppercase; color:#0A1B0D; background:#46BF1D; border-radius:0 2pt 0 2pt;',
+    '    padding:2.2pt 4pt; opacity:0; pointer-events:none; white-space:nowrap; }',
+    '  body:not(.lecture) .bloc:hover::after, body:not(.lecture) .bloc.est-choisi::after{ opacity:1; }',
+    '  body:not(.lecture) .bloc:hover{ outline:1px dashed rgba(70,191,29,.45); outline-offset:3px; border-radius:2pt; }',
+    '  body:not(.lecture) .bloc.est-lie{ outline:1.5px solid rgba(70,191,29,.5); outline-offset:3px; border-radius:2pt; }',
+    '  body:not(.lecture) .bloc.est-survole{ outline:1.5px dashed #46BF1D; outline-offset:3px; border-radius:2pt; background:rgba(70,191,29,.05); }',
+    '  body:not(.lecture) .bloc.est-choisi{ outline:2px solid #46BF1D; outline-offset:3px; border-radius:2pt; background:rgba(70,191,29,.06); }',
+    '  .est-lie-champ{ box-shadow:0 0 0 2pt rgba(70,191,29,.22); border-radius:2pt; }',
+    '  body.depose::after{ content:"Lachez l\'image ici"; position:fixed; inset:0; z-index:99; display:flex;',
+    '    align-items:center; justify-content:center; font-family:Inter,Arial,sans-serif; font-size:11pt; font-weight:700;',
+    '    color:#0A1B0D; background:rgba(70,191,29,.25); border:3px dashed #46BF1D; pointer-events:none; }',
     '  .objet{ cursor:move; }',
     '  .objet.is-sel{ outline:2px solid #46BF1D; outline-offset:2px; }',
     '  .objet-poignee{ position:absolute; right:-6px; bottom:-6px; width:12px; height:12px; border-radius:99px;',
@@ -3319,6 +3347,8 @@
     cacher('texte');
     majBarreBloc(c ? doc.activeElement : null);
     marquerSelection();
+    nommerBlocs(doc);
+    marquerLiaison(false);
     appliquerGrille();
     /* Les polices arrivent parfois après la première mise en page : les
        hauteurs de ligne changent, les coupures aussi. Une seconde passe
@@ -3524,7 +3554,17 @@
     doc.body.addEventListener('keydown', surTouche);
     doc.body.addEventListener('paste', surCollage);
     doc.body.addEventListener('focusout', surSortie);
-    doc.body.addEventListener('focusin', function (e) { majBarreBloc(cibleEdit(e)); });
+    doc.body.addEventListener('focusin', function (e) { majBarreBloc(cibleEdit(e)); lierDepuisFeuille(e.target, false); });
+    /* deux clics sur un bloc, hors d'un texte : ses reglages s'ouvrent */
+    doc.body.addEventListener('dblclick', function (e) {
+      var t = e.target;
+      if (!t || !t.closest || t.closest('[data-edit]') || t.closest('.objet')) return;
+      var b = t.closest('.bloc[data-bloc]');
+      if (!b || lectureSeule()) return;
+      e.preventDefault();
+      commandeBloc('reglages', b.getAttribute('data-bloc'));
+      lieBloc = b.getAttribute('data-bloc'); marquerLiaison(true);
+    });
     doc.body.addEventListener('contextmenu', surClicDroit);
     /* une case à cocher se coche d'un clic, sur la feuille : dans la donnée */
     doc.body.addEventListener('click', function (e) {
@@ -3553,7 +3593,11 @@
         if (o && !o.verrou) { o.coche = !o.coche; oc.classList.toggle('cochee', !!o.coche); salir(); if (panneau === 'objet') peindreFormulaire(); }
       }
     });
-    doc.body.addEventListener('mousedown', function (e) { sourisEnfoncee = true; cacher('slash'); cacher('menu'); surSourisObjet(e); });
+    brancherDeposeImage(doc);
+    doc.body.addEventListener('mousedown', function (e) {
+      sourisEnfoncee = true; cacher('slash'); cacher('menu'); surSourisObjet(e);
+      lierDepuisFeuille(e.target, e.button === 0);
+    });
     doc.addEventListener('mousemove', surSourisBouge);
     doc.addEventListener('mouseup', surSourisLache);
     /* hors d'un texte, les raccourcis valent aussi sur la feuille (Ctrl+V d'un objet, Ctrl+S, Ctrl+P...) */
@@ -3580,6 +3624,163 @@
     var t = e.target;
     if (t && t.nodeType !== 1) t = t.parentNode;
     return (t && t.closest) ? t.closest('[data-edit]') : null;
+  }
+
+  /* =================================================================
+     LA LIAISON : CE QU'ON TOUCHE S'ALLUME DES DEUX COTES
+     « si on touche aussi a un element on doit aussi voir ca dans le
+       bloc concerne »
+     La feuille et le panneau de gauche disaient la meme chose sans
+     jamais se montrer du doigt. Trois chemins, un seul surlignage :
+      - toucher un texte ou un bloc de la feuille allume sa ligne dans
+        le panneau, ouvre la section qui la contient et l'amene a
+        l'ecran ;
+      - survoler une ligne du panneau allume le bloc sur la feuille ;
+      - un clic hors d'un texte CHOISIT le bloc : ses reglages
+        s'ouvrent a droite, et sa barre apparait. C'est par la qu'on
+        modifie enfin les parties deja posees d'un prereglage.
+     On ouvre une section, on n'en referme jamais.
+     ================================================================= */
+  var lieBloc = null, lieChemin = null;
+  function docFeuille() { return cadre && cadrePret ? cadre.contentDocument : null; }
+  function pourSel(v) { return String(v == null ? '' : v).replace(/["\\]/g, '\\$&'); }
+  /* chaque bloc de la feuille porte son nom : c'est lui qui s'affiche au
+     survol, et c'est le meme mot que dans le panneau */
+  function nommerBlocs(doc) {
+    if (!doc) return;
+    Array.prototype.forEach.call(doc.querySelectorAll('.bloc[data-bloc]'), function (b) {
+      b.setAttribute('data-nom', nomDuBloc(b.getAttribute('data-bloc')));
+    });
+  }
+  function marquerLiaison(amener) {
+    var doc = docFeuille();
+    if (doc) {
+      Array.prototype.forEach.call(doc.querySelectorAll('.bloc.est-lie'), function (b) { b.classList.remove('est-lie'); });
+      Array.prototype.forEach.call(doc.querySelectorAll('.bloc.est-choisi'), function (b) { b.classList.remove('est-choisi'); });
+      Array.prototype.forEach.call(doc.querySelectorAll('.est-lie-champ'), function (b) { b.classList.remove('est-lie-champ'); });
+      if (lieBloc) {
+        var b = doc.querySelector('.bloc[data-bloc="' + pourSel(lieBloc) + '"]');
+        if (b) b.classList.add(blocSel === lieBloc ? 'est-choisi' : 'est-lie');
+      }
+      if (blocSel && blocSel !== lieBloc) {
+        var bs = doc.querySelector('.bloc[data-bloc="' + pourSel(blocSel) + '"]');
+        if (bs) bs.classList.add('est-choisi');
+      }
+      if (lieChemin) {
+        var c = doc.querySelector('[data-edit="' + pourSel(lieChemin) + '"]');
+        if (c) c.classList.add('est-lie-champ');
+      }
+    }
+    var hote = elt && elt.formDefile;
+    if (!hote) return;
+    Array.prototype.forEach.call(hote.querySelectorAll('.is-lie'), function (x) { x.classList.remove('is-lie'); });
+    var vise = null;
+    if (lieBloc && modeleActif && modeleActif.libre && /^b\d+$/.test(lieBloc)) {
+      vise = hote.querySelector('.gf-bloc-item[data-i="' + (+lieBloc.slice(1)) + '"]');
+    }
+    if (!vise && lieChemin) {
+      var n = hote.querySelector('[data-cle="' + pourSel(lieChemin) + '"]');
+      vise = n ? (n.closest('.gf-champ') || n) : null;
+    }
+    if (!vise && lieChemin && /^tables\./.test(lieChemin)) {
+      vise = hote.querySelector('[data-table="' + pourSel(lieChemin.split('.')[1]) + '"]');
+    }
+    if (!vise) return;
+    vise.classList.add('is-lie');
+    var sect = vise.closest('.gf-sect');
+    if (sect && !sect.classList.contains('is-ouvert')) sect.classList.add('is-ouvert');
+    if (!amener) return;
+    clearTimeout(marquerLiaison._t);
+    marquerLiaison._t = setTimeout(function () {
+      if (!vise.isConnected) return;
+      try { vise.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { try { vise.scrollIntoView(); } catch (e2) {} }
+    }, 80);
+  }
+  /* depuis la feuille : qu'est-ce qu'on vient de toucher ? */
+  function lierDepuisFeuille(cible, choisir) {
+    if (!cible || !cible.closest) { return; }
+    if (cible.nodeType !== 1) cible = cible.parentNode;
+    if (!cible || !cible.closest) return;
+    var bloc = cible.closest('.bloc[data-bloc]');
+    var edit = cible.closest('[data-edit]');
+    lieBloc = bloc ? bloc.getAttribute('data-bloc') : null;
+    lieChemin = edit ? edit.getAttribute('data-edit') : null;
+    /* hors d'un texte et hors d'un objet : le bloc se CHOISIT */
+    if (choisir && lieBloc && !edit && !cible.closest('.objet') && !lectureSeule()) {
+      blocSel = lieBloc;
+      propsOnglet = 'proprietes';
+      ouvrirProps(false);
+      peindreProps(); majOutils();
+      majBarreBloc(bloc.querySelector('[data-edit]') || bloc);
+    } else if (edit && blocSel) {
+      blocSel = null;
+      if (propsOnglet === 'proprietes') peindreProps();
+    }
+    marquerLiaison(true);
+  }
+  /* depuis le panneau : la ligne survolee allume son bloc sur la feuille */
+  function survolerBloc(bi) {
+    var doc = docFeuille(); if (!doc) return;
+    Array.prototype.forEach.call(doc.querySelectorAll('.bloc.est-survole'), function (b) { b.classList.remove('est-survole'); });
+    if (!bi) return;
+    var b = doc.querySelector('.bloc[data-bloc="' + pourSel(bi) + '"]');
+    if (b) b.classList.add('est-survole');
+  }
+  function amenerBlocAEcran(bi) {
+    var doc = docFeuille(), sc = elt && elt.scene;
+    if (!doc || !sc) return;
+    var b = doc.querySelector('.bloc[data-bloc="' + pourSel(bi) + '"]');
+    if (!b) return;
+    var r = b.getBoundingClientRect(), rs = sc.getBoundingClientRect();
+    if (r.top >= rs.top + 6 && r.bottom <= rs.bottom - 6) return;
+    sc.scrollTop += (r.top - rs.top) - Math.min(120, sc.clientHeight / 3);
+  }
+  /* le panneau de gauche, cable une fois pour toutes : il se repeint
+     souvent, la delegation survit a chaque repeinte */
+  function brancherLiaisonPanneau() {
+    var hote = elt && elt.formDefile;
+    if (!hote || hote.getAttribute('data-liaison')) return;
+    hote.setAttribute('data-liaison', '1');
+    hote.addEventListener('mouseover', function (e) {
+      var it = e.target.closest ? e.target.closest('.gf-bloc-item[data-i]') : null;
+      survolerBloc(it ? 'b' + it.getAttribute('data-i') : null);
+      var ch = e.target.closest ? e.target.closest('[data-cle]') : null;
+      var doc = docFeuille();
+      if (doc) {
+        Array.prototype.forEach.call(doc.querySelectorAll('.est-lie-champ'), function (x) { x.classList.remove('est-lie-champ'); });
+        if (ch) {
+          var c = doc.querySelector('[data-edit="' + pourSel(ch.getAttribute('data-cle')) + '"]');
+          if (c) c.classList.add('est-lie-champ');
+        } else if (lieChemin) {
+          var c2 = doc.querySelector('[data-edit="' + pourSel(lieChemin) + '"]');
+          if (c2) c2.classList.add('est-lie-champ');
+        }
+      }
+    });
+    hote.addEventListener('mouseleave', function () { survolerBloc(null); });
+    hote.addEventListener('click', function (e) {
+      var nom = e.target.closest ? e.target.closest('.gf-bloc-nom, .gf-rang-num') : null;
+      if (!nom) return;
+      var it = nom.closest('.gf-bloc-item[data-i]');
+      if (!it) return;
+      var bi = 'b' + it.getAttribute('data-i');
+      lieBloc = bi; lieChemin = null; blocSel = bi;
+      propsOnglet = 'proprietes';
+      ouvrirProps(true);
+      peindreProps(); majOutils(); marquerLiaison(false); amenerBlocAEcran(bi);
+      dire('Bloc « ' + nomDuBloc(bi) + ' » choisi · ses réglages sont à droite', 'ok');
+    });
+    hote.addEventListener('focusin', function (e) {
+      var ch = e.target.closest ? e.target.closest('[data-cle]') : null;
+      if (!ch) return;
+      var doc = docFeuille(); if (!doc) return;
+      var c = doc.querySelector('[data-edit="' + pourSel(ch.getAttribute('data-cle')) + '"]');
+      if (!c) return;
+      Array.prototype.forEach.call(doc.querySelectorAll('.est-lie-champ'), function (x) { x.classList.remove('est-lie-champ'); });
+      c.classList.add('est-lie-champ');
+      var b = c.closest('.bloc[data-bloc]');
+      if (b) amenerBlocAEcran(b.getAttribute('data-bloc'));
+    });
   }
 
   function surSaisie(e) {
@@ -4252,7 +4453,7 @@
     return cfg ? (noms[cfg.b] || cfg.b) : 'Bloc';
   }
   function commandeBloc(cmd, bi) {
-    if (cmd === 'reglages') { blocSel = bi; propsOnglet = 'proprietes'; racine.classList.remove('gf-sans-props'); racine.classList.add('gf-avec-props'); peindreProps(); majOutils(); return; }
+    if (cmd === 'reglages') { blocSel = bi; propsOnglet = 'proprietes'; ouvrirProps(true); peindreProps(); majOutils(); return; }
     if (!modeleActif.libre) return;
     var i = +bi.slice(1), blocs = donnees.blocs || [];
     if (cmd === 'monter' && i > 0) { var t = blocs[i - 1]; blocs[i - 1] = blocs[i]; blocs[i] = t; deplacerStyle(bi, 'b' + (i - 1)); }
@@ -4315,7 +4516,11 @@
     }).join('');
     hote.innerHTML =
       '<div class="gf-controle">'
-      + '<p class="gf-acc-intro">' + ech(nomDuBloc(bi)) + '</p>'
+      + '<p class="gf-acc-intro"><b>' + ech(nomDuBloc(bi)) + '</b><br>'
+      + (libre
+          ? 'Son texte s\'écrit sur la feuille. Ici : sa taille, son alignement, sa couleur, sa police, et ses propres réglages.'
+          : 'Cet acte suit un modèle fixe : le bloc ne se retire pas, mais sa taille, son alignement, sa couleur et sa police se règlent ici, et son texte s\'écrit sur la feuille.')
+      + '</p>'
       + '<span class="gf-lab">Taille</span>' + choix('taille', [[85, 'Petit'], [100, 'Normal'], [112, 'Grand'], [125, 'Très grand']], st.taille || 100)
       + '<span class="gf-lab" style="margin-top:12px">Alignement</span>' + choix('align', [['gauche', 'Gauche'], ['centre', 'Centre'], ['droite', 'Droite']], st.align || 'gauche')
       + '<span class="gf-lab" style="margin-top:12px">Couleur</span>' + choix('theme', [['', 'Charte'], ['vert', 'Vert'], ['rouge', 'Rouge'], ['neutre', 'Neutre'], ['plein', 'Bandeau plein']], st.theme || '')
@@ -4342,7 +4547,7 @@
         lireFichier(f).then(function (uri) { return alleger(uri, 1600); }).then(function (uri) { ecrire(n.getAttribute('data-image'), uri); salir(); planifier(); });
       });
     });
-    $('gf-bloc-retour').addEventListener('click', function () { blocSel = null; peindreProps(); });
+    $('gf-bloc-retour').addEventListener('click', function () { blocSel = null; peindreProps(); marquerLiaison(false); });
   }
 
   /* ---- « / » et le clic droit : les textes prédéfinis ---- */
@@ -4489,9 +4694,17 @@
     image:      { nom: 'Image',      w: 50, h: 35 },
     annotation: { nom: 'Annotation', w: 60, h: 14, texte: 'Annotation' },
     cadre:      { nom: 'Cadre',      w: 60, h: 30 },
+    ellipse:    { nom: 'Rond',       w: 42, h: 28 },
+    ligne:      { nom: 'Trait',      w: 60, h: 4 },
     fleche:     { nom: 'Flèche',     w: 40, h: 10 },
+    /* le surligneur naît translucide : un feutre ne cache pas le texte */
+    surligneur: { nom: 'Surligneur', w: 55, h: 6, couleur: 'jaune', op: 38 },
     case:       { nom: 'Case à cocher', w: 45, h: 6, texte: 'À cocher' }
   };
+  /* les teintes des objets, en un seul endroit : la feuille et le
+     panneau lisent la même table */
+  var TEINTES_OBJET = { or: '#C1A462', vert: '#0F432B', rouge: '#B4231F', gris: '#8C948F',
+                        noir: '#15201A', bleu: '#152E72', jaune: '#F2D64B' };
 
   function poserObjet(type, extra) {
     if (!modeleActif || lectureSeule()) return;
@@ -4507,7 +4720,8 @@
       if (p) page = Array.prototype.indexOf.call(doc.querySelectorAll('.page'), p) + 1;
     } catch (e) {}
     var o = Object.assign({ id: 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), type: type, page: page,
-                            x: 120, y: 200, w: T.w, h: T.h, rotation: 0, opacite: 100, texte: T.texte || '', couleur: 'or',
+                            x: 120, y: 200, w: T.w, h: T.h, rotation: 0, opacite: (T.op == null ? 100 : T.op),
+                            texte: T.texte || '', couleur: T.couleur || 'or',
                             verrou: !!T.verrou }, extra || {});
     donnees.objets.push(o);
     salir(); rafraichir();
@@ -4515,6 +4729,124 @@
     setTimeout(function () { marquerSelection(); }, 50);
     dire(T.nom + ' posé' + (type === 'annotation' ? 'e' : '') + ' sur la page ' + page + (o.verrou ? ' · verrouillé' : ''), 'ok');
   }
+  /* =================================================================
+     UNE IMAGE POSEE SE MODIFIE
+     « on peut pas incruster des images ni les modifier »
+     On pouvait en poser une, et plus rien apres : ni la remplacer, ni
+     la recadrer, ni la border. Voici ce qui manquait, dans le panneau
+     de droite, plus deux chemins pour l'incruster sans passer par la
+     barre d'outils : glisser le fichier sur la feuille, ou coller une
+     image du presse-papiers.
+     ================================================================= */
+  function panneauImage(o) {
+    var ajust = o.ajust || 'contenir';
+    var teinte = o.teinte || 'couleur';
+    function puces(cle, options, courant) {
+      return '<div class="gf-puces">' + options.map(function (x) {
+        return '<button type="button" class="gf-puce' + (String(courant) === String(x[0]) ? ' is-actif' : '') + '" data-oi="' + cle + '" data-oiv="' + x[0] + '">' + x[1] + '</button>';
+      }).join('') + '</div>';
+    }
+    return '<div class="gf-props-titre">L\'image</div>'
+      + '<div class="gf-controle-actions" style="justify-content:flex-start;flex-wrap:wrap;margin-bottom:10px">'
+      + '<button type="button" class="gf-mini" data-img="remplacer">Remplacer l\'image…</button>'
+      + '<button type="button" class="gf-mini" data-img="proportions">Proportions d\'origine</button>'
+      + '<button type="button" class="gf-mini" data-img="retourner">Retourner</button>'
+      + '</div>'
+      + '<span class="gf-lab">Ajustement</span>'
+      + puces('ajust', [['contenir', 'Entière'], ['remplir', 'Remplir le cadre'], ['etirer', 'Étirer']], ajust)
+      + (ajust === 'remplir'
+          ? '<span class="gf-lab" style="margin-top:12px">Cadrage dans le cadre</span>'
+            + '<div class="gf-duo"><div>' + '<div class="gf-champ"><label class="gf-lab">Horizontal (%)</label><input class="gf-in" type="number" data-o="cadX" value="' + (o.cadX == null ? 50 : o.cadX) + '" min="0" max="100" step="5"></div></div>'
+            + '<div><div class="gf-champ"><label class="gf-lab">Vertical (%)</label><input class="gf-in" type="number" data-o="cadY" value="' + (o.cadY == null ? 50 : o.cadY) + '" min="0" max="100" step="5"></div></div></div>'
+          : '')
+      + '<span class="gf-lab" style="margin-top:12px">Nuance</span>'
+      + puces('teinte', [['couleur', 'Couleur'], ['nb', 'Noir et blanc'], ['sepia', 'Sépia'], ['contraste', 'Contrasté'], ['pale', 'Pâle']], teinte)
+      + '<div class="gf-duo" style="margin-top:8px">'
+      + '<div><div class="gf-champ"><label class="gf-lab">Coins arrondis (pt)</label><input class="gf-in" type="number" data-o="coins" value="' + (o.coins || 0) + '" min="0" max="40" step="1"></div></div>'
+      + '<div><div class="gf-champ"><label class="gf-lab">Bord (pt)</label><input class="gf-in" type="number" data-o="bord" value="' + (o.bord || 0) + '" min="0" max="6" step="0.2"></div></div></div>'
+      + '<div class="gf-champ"><label class="gf-bascule"><input type="checkbox" data-ob="ombre"' + (o.ombre ? ' checked' : '') + '><span class="gf-bascule-piste"></span><span class="gf-bascule-txt">Ombre portée</span></label></div>';
+  }
+  function brancherPanneauImage(hote, o) {
+    hote.querySelectorAll('[data-oi]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        reglerObjet(o.id, b.getAttribute('data-oi'), b.getAttribute('data-oiv'));
+        peindreObjet();
+      });
+    });
+    hote.querySelectorAll('[data-img]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var quoi = b.getAttribute('data-img');
+        if (quoi === 'retourner') { reglerObjet(o.id, 'retourne', !o.retourne); peindreObjet(); return; }
+        if (quoi === 'proportions') {
+          if (!o.ratio) { dire('Les proportions d\'origine de cette image ne sont pas connues.', 'erreur'); return; }
+          reglerObjet(o.id, 'h', Math.round(o.w / o.ratio * 10) / 10);
+          peindreObjet(); dire('Proportions rétablies', 'ok'); return;
+        }
+        choisirImage(function (uri, img) {
+          reglerObjet(o.id, 'src', uri);
+          if (img) reglerObjet(o.id, 'ratio', img.width / img.height);
+          peindreObjet(); dire('Image remplacée', 'ok');
+        });
+      });
+    });
+  }
+  /* choisir un fichier image, l'alleger, en connaitre les proportions */
+  function choisirImage(fin) {
+    var input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*'; input.hidden = true;
+    document.body.appendChild(input);
+    input.addEventListener('change', function () {
+      var f = input.files && input.files[0];
+      input.remove();
+      if (f) lireImage(f, fin);
+    });
+    input.click();
+  }
+  function lireImage(f, fin) {
+    lireFichier(f).then(function (uri) { return alleger(uri, 1600); }).then(function (uri) {
+      var img = new Image();
+      img.onload = function () { fin(uri, img); };
+      img.onerror = function () { fin(uri, null); };
+      img.src = uri;
+    }).catch(function () { dire('Image illisible', 'erreur'); });
+  }
+  /* une image glissee sur la feuille se pose la ou on la lache */
+  function brancherDeposeImage(doc) {
+    if (doc.body.getAttribute('data-depose')) return;
+    doc.body.setAttribute('data-depose', '1');
+    doc.body.addEventListener('dragover', function (e) {
+      if (lectureSeule()) return;
+      e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+      doc.body.classList.add('depose');
+    });
+    doc.body.addEventListener('dragleave', function () { doc.body.classList.remove('depose'); });
+    doc.body.addEventListener('drop', function (e) {
+      doc.body.classList.remove('depose');
+      if (lectureSeule()) return;
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!f || !/^image\//.test(f.type)) return;
+      e.preventDefault();
+      var ou = ouSurLaPage(doc, e.clientX, e.clientY);
+      lireImage(f, function (uri, img) {
+        var L = 55, H = img ? Math.round(L * img.height / img.width * 10) / 10 : 38;
+        poserObjet('image', { src: uri, w: L, h: H, ratio: img ? img.width / img.height : null,
+                              page: ou.page, x: Math.max(0, ou.x - L / 2), y: Math.max(0, ou.y - H / 2) });
+        dire('Image posée sur la page ' + ou.page, 'ok');
+      });
+    });
+  }
+  /* de quel point de quelle page vient ce clic, en millimetres */
+  function ouSurLaPage(doc, cx, cy) {
+    var pages = doc.querySelectorAll('.page');
+    for (var i = 0; i < pages.length; i++) {
+      var r = pages[i].getBoundingClientRect();
+      if (cy >= r.top && cy <= r.bottom) {
+        return { page: i + 1, x: Math.round((cx - r.left) / r.width * 210), y: Math.round((cy - r.top) / r.height * 297) };
+      }
+    }
+    return { page: 1, x: 105, y: 148 };
+  }
+
   function poserImageObjet() {
     var input = document.createElement('input');
     input.type = 'file'; input.accept = 'image/*'; input.hidden = true;
@@ -4552,8 +4884,7 @@
       el.style.width = o.w + 'mm'; el.style.height = o.h + 'mm';
       el.style.opacity = (o.opacite == null ? 100 : o.opacite) / 100;
       if (o.rotation) el.style.transform = 'rotate(' + o.rotation + 'deg)';
-      var couleurs = { or: '#C1A462', vert: '#0F432B', rouge: '#B4231F', gris: '#8C948F', noir: '#15201A', bleu: '#152E72' };
-      var c = couleurs[o.couleur] || couleurs.or;
+      var c = TEINTES_OBJET[o.couleur] || TEINTES_OBJET.or;
       if (o.type === 'cachet') {
         el.style.backgroundImage = res.cachet ? 'url(' + res.cachet + ')' : '';
       } else if (o.type === 'signature') {
@@ -4561,7 +4892,19 @@
         el.innerHTML = '<div class="sig-ink" style="position:static;width:100%;transform:none"><div class="sig-name">' + ech(initialeNom(nom)) + '</div>'
           + '<div class="sig-paraphe">' + G.blocs.PARAPHE + '</div></div>';
       } else if (o.type === 'image') {
-        el.innerHTML = o.src ? '<img src="' + o.src + '" alt="">' : '<div class="fig-vide" style="width:100%;height:100%"></div>';
+        /* UNE IMAGE POSEE SE MODIFIE : « ni incruster des images ni les
+           modifier ». L'ajustement, le cadrage, les coins, le bord et la
+           nuance vivent dans la donnee de l'objet ; la feuille les lit. */
+        if (o.ajust) el.classList.add('ajust-' + o.ajust);
+        if (o.teinte && o.teinte !== 'couleur') el.classList.add('teinte-' + o.teinte);
+        if (o.coins) el.style.borderRadius = o.coins + 'pt';
+        if (o.bord) { el.style.border = o.bord + 'pt solid ' + c; }
+        if (o.ombre) el.style.boxShadow = '0 1.5pt 5pt rgba(0,0,0,.28)';
+        el.style.overflow = 'hidden';
+        var pos = (o.cadX == null ? 50 : o.cadX) + '% ' + (o.cadY == null ? 50 : o.cadY) + '%';
+        el.innerHTML = o.src
+          ? '<img src="' + o.src + '" alt="" style="object-position:' + pos + (o.retourne ? ';transform:scaleX(-1)' : '') + '">'
+          : '<div class="fig-vide" style="width:100%;height:100%"></div>';
       } else if (o.type === 'annotation') {
         el.style.borderColor = c; el.style.color = c;
         el.innerHTML = '<div class="objet-txt">' + U_paragraphes(o.texte || '') + '</div>';
@@ -4573,8 +4916,20 @@
         el.innerHTML = '<i></i><span>' + ech(o.texte || '') + '</span>';
       } else if (o.type === 'fleche') {
         el.innerHTML = '<svg viewBox="0 0 100 20" preserveAspectRatio="none" style="width:100%;height:100%;display:block;overflow:visible">'
-          + '<line x1="2" y1="10" x2="86" y2="10" stroke="' + c + '" stroke-width="2.2" vector-effect="non-scaling-stroke"/>'
+          + '<line x1="2" y1="10" x2="86" y2="10" stroke="' + c + '" stroke-width="' + (o.trait || 2.2) + '" vector-effect="non-scaling-stroke"'
+          + (o.pointille ? ' stroke-dasharray="7 5"' : '') + '/>'
           + '<polygon points="84,3 98,10 84,17" fill="' + c + '"/></svg>';
+      } else if (o.type === 'ellipse') {
+        el.style.borderColor = c;
+        el.style.borderWidth = (o.trait || 1.2) + 'pt';
+        if (o.pointille) el.style.borderStyle = 'dashed';
+        if (o.fond) el.style.background = c + '22';
+      } else if (o.type === 'ligne') {
+        el.innerHTML = '<svg viewBox="0 0 100 10" preserveAspectRatio="none" style="width:100%;height:100%;display:block;overflow:visible">'
+          + '<line x1="0" y1="5" x2="100" y2="5" stroke="' + c + '" stroke-width="' + (o.trait || 1.4) + '" vector-effect="non-scaling-stroke"'
+          + (o.pointille ? ' stroke-dasharray="7 5"' : '') + '/></svg>';
+      } else if (o.type === 'surligneur') {
+        el.style.background = c;
       }
       page.appendChild(el);
     });
@@ -4624,7 +4979,7 @@
       objetSel = objetsSel.length ? objetsSel[objetsSel.length - 1] : null;
     } else { objetSel = id; objetsSel = [id]; }
     marquerSelection();
-    if (objetSel) { propsOnglet = 'proprietes'; racine.classList.remove('gf-sans-props'); racine.classList.add('gf-avec-props'); }
+    if (objetSel) { propsOnglet = 'proprietes'; ouvrirProps(false); }
     peindreProps(); majOutils();
   }
   function selectionnerTout() {
@@ -4934,7 +5289,9 @@
     function nombre(cle, lab, min, max, pas) {
       return '<div class="gf-champ"><label class="gf-lab">' + lab + '</label><input class="gf-in" type="number" data-o="' + cle + '" value="' + (o[cle] == null ? '' : o[cle]) + '" min="' + min + '" max="' + max + '" step="' + (pas || 1) + '"></div>';
     }
-    var couleurs = [['or', 'Or'], ['vert', 'Vert'], ['rouge', 'Rouge'], ['gris', 'Gris'], ['noir', 'Noir'], ['bleu', 'Bleu encre']];
+    var couleurs = [['or', 'Or'], ['vert', 'Vert'], ['rouge', 'Rouge'], ['gris', 'Gris'], ['noir', 'Noir'], ['bleu', 'Bleu encre'], ['jaune', 'Jaune']];
+    var TEINTABLES = ['annotation', 'cadre', 'fleche', 'ellipse', 'ligne', 'surligneur', 'image'];
+    var TRAITABLES = ['cadre', 'ellipse', 'ligne', 'fleche'];
     hote.innerHTML =
       '<div class="gf-controle">'
       + '<p class="gf-acc-intro">' + ech(T.nom) + (T.sensible ? ' · <span class="gf-badge gf-badge-annule">élément sensible</span>' : '') + '</p>'
@@ -4944,11 +5301,17 @@
       + '<div class="gf-champ"><label class="gf-lab">Page</label><input class="gf-in" type="number" data-o="page" value="' + o.page + '" min="1" max="' + nbPages + '"></div>'
       + (o.type === 'annotation' || o.type === 'signature' || o.type === 'case' ? '<div class="gf-champ"><label class="gf-lab">' + (o.type === 'signature' ? 'Nom signé' : (o.type === 'case' ? 'Libellé' : 'Texte')) + '</label><textarea class="gf-ta" data-o="texte" rows="' + (o.type === 'case' ? 2 : 3) + '">' + ech(o.texte || '') + '</textarea></div>' : '')
       + (o.type === 'case' ? '<div class="gf-champ"><label class="gf-bascule"><input type="checkbox" data-ob="coche"' + (o.coche ? ' checked' : '') + '><span class="gf-bascule-piste"></span><span class="gf-bascule-txt">Cochée</span></label></div>' : '')
-      + (o.type === 'annotation' || o.type === 'cadre' || o.type === 'fleche'
+      + (TEINTABLES.indexOf(o.type) >= 0
           ? '<span class="gf-lab">Couleur</span><div class="gf-puces">' + couleurs.map(function (c) {
               return '<button type="button" class="gf-puce' + ((o.couleur || 'or') === c[0] ? ' is-actif' : '') + '" data-oc="' + c[0] + '">' + c[1] + '</button>';
             }).join('') + '</div>' : '')
-      + (o.type === 'cadre' ? '<div class="gf-champ"><label class="gf-bascule"><input type="checkbox" data-ob="fond"' + (o.fond ? ' checked' : '') + '><span class="gf-bascule-piste"></span><span class="gf-bascule-txt">Fond teinté</span></label></div>' : '')
+      + (TRAITABLES.indexOf(o.type) >= 0
+          ? '<div class="gf-duo"><div>' + nombre('trait', 'Épaisseur du trait (pt)', 0.3, 8, 0.1) + '</div>'
+            + '<div><label class="gf-lab">Style</label><div class="gf-puces">'
+            + '<button type="button" class="gf-puce' + (o.pointille ? '' : ' is-actif') + '" data-opl="0">Plein</button>'
+            + '<button type="button" class="gf-puce' + (o.pointille ? ' is-actif' : '') + '" data-opl="1">Pointillé</button></div></div></div>' : '')
+      + (o.type === 'cadre' || o.type === 'ellipse' ? '<div class="gf-champ"><label class="gf-bascule"><input type="checkbox" data-ob="fond"' + (o.fond ? ' checked' : '') + '><span class="gf-bascule-piste"></span><span class="gf-bascule-txt">Fond teinté</span></label></div>' : '')
+      + (o.type === 'image' ? panneauImage(o) : '')
       + '<div class="gf-champ"><label class="gf-bascule"><input type="checkbox" data-ob="verrou"' + (o.verrou ? ' checked' : '') + '><span class="gf-bascule-piste"></span><span class="gf-bascule-txt">Verrouillé : ne se déplace pas à la souris</span></label></div>'
       + '<div class="gf-controle-actions" style="margin-top:14px;justify-content:flex-start;flex-wrap:wrap">'
       + '<button type="button" class="gf-mini" data-oa="dupliquer">Dupliquer</button>'
@@ -4971,6 +5334,10 @@
     hote.querySelectorAll('[data-oc]').forEach(function (b) {
       b.addEventListener('click', function () { reglerObjet(o.id, 'couleur', b.getAttribute('data-oc')); peindreObjet(); });
     });
+    hote.querySelectorAll('[data-opl]').forEach(function (b) {
+      b.addEventListener('click', function () { reglerObjet(o.id, 'pointille', b.getAttribute('data-opl') === '1'); peindreObjet(); });
+    });
+    brancherPanneauImage(hote, o);
     hote.querySelectorAll('[data-oa]').forEach(function (b) {
       b.addEventListener('click', function () {
         var a = b.getAttribute('data-oa'), list = donnees.objets, i = list.indexOf(o);
@@ -5015,6 +5382,23 @@
     if (lectureSeule()) return false;
     var doc = cadre && cadrePret ? cadre.contentDocument : null;
     if (doc && doc.activeElement && doc.activeElement.closest && doc.activeElement.closest('[data-edit]')) return false;  /* dans un texte : coller du texte */
+    /* une image dans le presse-papiers se pose comme objet */
+    if (navigator.clipboard && navigator.clipboard.read) {
+      navigator.clipboard.read().then(function (items) {
+        for (var i = 0; i < items.length; i++) {
+          var t = items[i].types.filter(function (x) { return /^image\//.test(x); })[0];
+          if (!t) continue;
+          items[i].getType(t).then(function (b) {
+            lireImage(b, function (uri, img) {
+              var L = 55, H = img ? Math.round(L * img.height / img.width * 10) / 10 : 38;
+              poserObjet('image', { src: uri, w: L, h: H, ratio: img ? img.width / img.height : null });
+              dire('Image collée', 'ok');
+            });
+          });
+          return;
+        }
+      }).catch(function () {});
+    }
     var contenu = null;
     try { contenu = JSON.parse(localStorage.getItem(CLE_PRESSE) || 'null'); } catch (e) {}
     if (!contenu) return false;
@@ -5228,6 +5612,49 @@
      de décoratif : chaque bouton fait quelque chose.
      ================================================================= */
   var propsOnglet = 'proprietes', grilleVisible = false, aimantActif = true;
+  var outilZoom = false;
+
+  /* =================================================================
+     LE PANNEAU DE DROITE SE FERME, ET RESTE FERME
+     « le panneau des propriétés doit pouvoir être fermé comme l'aperçu
+       car ça gêne trop, même pour le zoom qu'il vient cacher »
+     Mesure : sous 1500 px le panneau se pose en absolu depuis le haut
+     de l'atelier, c'est-a-dire SUR la barre de l'apercu. Le moins du
+     zoom (x=1147), le plus (x=1225) et la liste (x=1260) renvoyaient
+     tous « gf-props-onglet ». Deux reponses : la feuille de style le
+     fait commencer SOUS la barre, et il se ferme pour de bon. Ferme a
+     la main, il ne se rouvre plus tout seul quand on choisit un objet :
+     seul un geste qui demande des reglages (le bouton ⋯ d'un bloc, un
+     onglet, l'outil, la languette) le rappelle.
+     ================================================================= */
+  var CLE_PROPS = 'greffe-props-ouvert';
+  var propsVoulu = true;
+  function propsLire() {
+    try { var v = localStorage.getItem(CLE_PROPS); if (v !== null) propsVoulu = (v === '1'); } catch (e) {}
+  }
+  function propsOuvert() {
+    var p = $('gf-props');
+    return !!(p && p.offsetParent !== null);
+  }
+  function ouvrirProps(force) {
+    if (!force && !propsVoulu) return false;
+    if (force) { propsVoulu = true; try { localStorage.setItem(CLE_PROPS, '1'); } catch (e) {} }
+    racine.classList.remove('gf-sans-props');
+    racine.classList.add('gf-avec-props');
+    majOutils();
+    return true;
+  }
+  function fermerProps() {
+    propsVoulu = false;
+    try { localStorage.setItem(CLE_PROPS, '0'); } catch (e) {}
+    racine.classList.add('gf-sans-props');
+    racine.classList.remove('gf-avec-props');
+    majOutils(); remesurer();
+  }
+  function basculerProps() {
+    if (propsOuvert()) { fermerProps(); dire('Panneau de droite fermé · la languette du bord le rouvre', 'ok'); }
+    else ouvrirProps(true);
+  }
 
   /* ================================================================
      LES FENETRES SE REGLENT A LA MAIN
@@ -5273,20 +5700,57 @@
       p.addEventListener('dblclick', function () { largeurPoser(quoi, null); remesurer(); });
     });
   }
+  /* Replier l'apercu ne doit jamais enfermer : sous 1500 px, le panneau
+     de proprietes se pose en absolu sur le bord droit, exactement sur la
+     languette qui rouvre. On le retire en meme temps, et on dit par ou
+     revenir : « par erreur j'ai ferme l'apparition, je peux plus
+     l'ouvrir » ne doit plus pouvoir arriver. */
   function basculerApercu() {
     apercuReplie = !apercuReplie;
     racine.classList.toggle('gf-sans-apercu', apercuReplie);
-    if (apercuReplie && outilMain) mainActiver(false);
+    if (apercuReplie) {
+      racine.classList.remove('gf-avec-props');
+      racine.classList.add('gf-sans-props');
+      if (outilMain) mainActiver(false);
+      if (outilZoom) zoomActiver(false);
+      dire('Aperçu replié · la languette à droite le rouvre', 'ok');
+    } else if (propsVoulu) {
+      racine.classList.remove('gf-sans-props');
+      racine.classList.add('gf-avec-props');
+    }
     majOutils(); remesurer();
   }
   function mainActiver(on) {
     outilMain = !!on;
+    if (outilMain) zoomActiver(false, true);
     var sc = $('gf-scene'); if (sc) sc.classList.toggle('gf-main', outilMain);
     majOutils();
+  }
+  /* LA LOUPE : le troisieme outil de navigation, a cote de la main.
+     Un clic grossit autour du point clique, Alt+clic recule, deux clics
+     reviennent a la largeur de la feuille. */
+  function zoomActiver(on, sansMaj) {
+    outilZoom = !!on;
+    if (outilZoom && outilMain) { outilMain = false; var s0 = $('gf-scene'); if (s0) s0.classList.remove('gf-main'); }
+    var sc = $('gf-scene'); if (sc) sc.classList.toggle('gf-zoomeur', outilZoom);
+    if (!sansMaj) majOutils();
+  }
+  function zoomAutour(e, sens) {
+    var sc = $('gf-scene'); if (!sc) return;
+    var r = sc.getBoundingClientRect();
+    var px = sc.scrollLeft + (e.clientX - r.left), py = sc.scrollTop + (e.clientY - r.top);
+    var avant = zoom;
+    zoomChoisi = true;
+    zoom = Math.max(0.25, Math.min(2, sens > 0 ? zoom * 1.25 : zoom / 1.25));
+    appliquerZoom();
+    var k = zoom / avant;
+    sc.scrollLeft = px * k - (e.clientX - r.left);
+    sc.scrollTop = py * k - (e.clientY - r.top);
   }
   function brancherMain() {
     var sc = $('gf-scene'); if (!sc) return;
     sc.addEventListener('mousedown', function (e) {
+      if (outilZoom && e.button === 0) { e.preventDefault(); zoomAutour(e, e.altKey ? -1 : 1); return; }
       if (!outilMain || e.button !== 0) return;
       e.preventDefault();
       var x0 = e.clientX, y0 = e.clientY, sx = sc.scrollLeft, sy = sc.scrollTop;
@@ -5301,20 +5765,257 @@
       if (!ouvert || espace !== 'atelier' || !modeleActif) return;
       var t = e.target; if (t && t.closest && t.closest('input, textarea, select, button, [contenteditable="true"]')) return;
       if (e.code === 'Space' && !e.repeat && !mainTemp && !outilMain) { e.preventDefault(); mainTemp = true; mainActiver(true); return; }
-      if (e.key.toLowerCase() === 'h' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); mainActiver(!outilMain); }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      var k = e.key.toLowerCase();
+      if (k === 'h') { e.preventDefault(); mainActiver(!outilMain); }
+      else if (k === 'z') { e.preventDefault(); zoomActiver(!outilZoom); }
+      else if (k === 'v') { e.preventDefault(); outil('selection'); }
     });
     document.addEventListener('keyup', function (e) { if (e.code === 'Space' && mainTemp) { mainTemp = false; mainActiver(false); } });
+    sc.addEventListener('dblclick', function (e) { if (outilZoom) { e.preventDefault(); zoomer('largeur'); } });
+  }
+
+  /* =================================================================
+     LES BULLES : LE ROLE DE CHAQUE OUTIL, ECRIT EN TOUTES LETTRES
+     « pas assez d'icones pour nous y retrouver, manque les bulles de
+       dialogue, explique le role des outils »
+     Le title du navigateur sort au bout d'une seconde, en gris systeme,
+     sur une ligne, et il ne sort jamais au clavier. Ici : un nom, une
+     phrase qui dit a quoi sert la chose, le raccourci. 240 ms a la
+     souris, tout de suite au clavier. Un seul branchement sur la
+     racine : tout ce qui porte data-bulle en herite, meme ce qui est
+     dessine plus tard.
+     ================================================================= */
+  var bulle = null, bulleMinuteur = null, bulleCible = null;
+  function bulleCacher() {
+    clearTimeout(bulleMinuteur); bulleCible = null;
+    if (bulle) { bulle.hidden = true; bulle.innerHTML = ''; }
+  }
+  function bulleMontrer(el) {
+    if (!el || !el.getAttribute) return;
+    var titre = el.getAttribute('data-bulle');
+    if (!titre) return;
+    if (el.disabled && !el.getAttribute('data-bulle-off')) { /* une bulle sur un bouton eteint dit pourquoi */ }
+    if (!bulle || !bulle.parentNode) {
+      bulle = document.createElement('div');
+      bulle.className = 'gf-bulle';
+      bulle.setAttribute('role', 'tooltip');
+      bulle.hidden = true;
+      racine.appendChild(bulle);
+    }
+    bulleCible = el;
+    var role = el.getAttribute('data-bulle-off') && el.disabled
+      ? el.getAttribute('data-bulle-off') : (el.getAttribute('data-bulle-role') || '');
+    var rac = el.getAttribute('data-bulle-rac') || '';
+    bulle.innerHTML = '<span class="gf-bulle-fleche"></span>'
+      + '<span class="gf-bulle-tete"><b>' + ech(titre) + '</b>'
+      + (rac ? '<kbd>' + ech(rac) + '</kbd>' : '') + '</span>'
+      + (role ? '<span class="gf-bulle-role">' + ech(role) + '</span>' : '');
+    bulle.hidden = false;
+    bulle.style.left = '-9999px'; bulle.style.top = '0px';
+    var r = el.getBoundingClientRect();
+    var bw = bulle.offsetWidth, bh = bulle.offsetHeight, m = 10;
+    var W = window.innerWidth, H = window.innerHeight, x, y, cote;
+    if (r.right + m + bw <= W - 6) { x = r.right + m; cote = 'droite'; }
+    else if (r.left - m - bw >= 6) { x = r.left - m - bw; cote = 'gauche'; }
+    else {
+      x = Math.min(Math.max(6, r.left + r.width / 2 - bw / 2), W - bw - 6);
+      cote = (r.bottom + m + bh <= H - 6) ? 'bas' : 'haut';
+    }
+    if (cote === 'droite' || cote === 'gauche') y = Math.min(Math.max(6, r.top + r.height / 2 - bh / 2), H - bh - 6);
+    else y = (cote === 'bas') ? r.bottom + m : r.top - m - bh;
+    bulle.style.left = Math.round(x) + 'px';
+    bulle.style.top = Math.round(y) + 'px';
+    bulle.setAttribute('data-cote', cote);
+    var f = bulle.querySelector('.gf-bulle-fleche');
+    if (cote === 'droite' || cote === 'gauche') f.style.top = Math.round(Math.min(Math.max(9, r.top + r.height / 2 - y - 5), bh - 18)) + 'px';
+    else f.style.left = Math.round(Math.min(Math.max(11, r.left + r.width / 2 - x - 5), bw - 20)) + 'px';
+  }
+  function brancherBulles() {
+    if (racine.getAttribute('data-bulles')) return;
+    racine.setAttribute('data-bulles', '1');
+    racine.addEventListener('mouseover', function (e) {
+      var c = e.target && e.target.closest ? e.target.closest('[data-bulle]') : null;
+      if (c === bulleCible) return;
+      bulleCacher();
+      if (!c) return;
+      var cible = c;
+      bulleMinuteur = setTimeout(function () { bulleMontrer(cible); }, 240);
+    });
+    racine.addEventListener('mouseleave', bulleCacher);
+    racine.addEventListener('focusin', function (e) {
+      var c = e.target && e.target.closest ? e.target.closest('[data-bulle]') : null;
+      if (c) bulleMontrer(c); else bulleCacher();
+    });
+    racine.addEventListener('focusout', bulleCacher);
+    racine.addEventListener('mousedown', bulleCacher, true);
+    racine.addEventListener('scroll', bulleCacher, true);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') bulleCacher(); }, true);
+  }
+
+  /* =================================================================
+     LE REGISTRE DES OUTILS
+     Un seul endroit dit ce qui existe, a quoi ca sert, et ce que ca
+     dessine. Le rail est peint depuis lui : un outil ne peut plus etre
+     dessine sans etre cable, ni cable sans etre dessine.
+     ================================================================= */
+  function gfSvg(d, epaisseur) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (epaisseur || 1.9)
+      + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  }
+  var OUTILS = [
+    { g: 'Se déplacer' },
+    { o: 'selection', nom: 'Sélection', rac: 'Échap',
+      role: "Prendre, déplacer et régler ce qui est posé sur la feuille. C'est l'outil de repos : Échap y ramène toujours.",
+      ico: '<path d="M4 3l7 17 2.5-7 7-2.5z"/>' },
+    { o: 'main', nom: 'Main', rac: 'H',
+      role: "Faire glisser la feuille sans rien déplacer dessus. La barre d'espace tenue fait la même chose le temps qu'on la tient.",
+      ico: '<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>' },
+    { o: 'zoom', nom: 'Loupe', rac: 'Z',
+      role: "Cliquer sur la feuille pour grossir à cet endroit, Alt et clic pour reculer, deux clics pour revenir à la largeur.",
+      ico: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6M8.2 11h5.6M11 8.2v5.6"/>' },
+
+    { g: 'Poser sur la feuille' },
+    { o: 'annotation', nom: 'Texte', pose: true,
+      role: "Un texte libre posé où l'on veut, par-dessus l'acte. Il flotte : il ne rentre pas dans la mise en pages.",
+      ico: '<path d="M5 6h14M12 6v13M9 19h6"/>' },
+    { o: 'case', nom: 'Case à cocher', pose: true,
+      role: "Une case et son libellé. Elle se coche d'un clic, directement sur la feuille.",
+      ico: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>' },
+    { o: 'image', nom: 'Image', pose: true,
+      role: "Choisir une image et la poser. Une fois posée, elle se remplace, se recadre, se borde et se met en noir et blanc dans le panneau de droite. Une image glissée sur la feuille se pose aussi.",
+      ico: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m21 16-5-5-8 8"/>' },
+    { o: 'cadre', nom: 'Cadre', pose: true,
+      role: "Un rectangle : encadrer un passage, réserver une zone, poser un fond teinté.",
+      ico: '<rect x="4" y="5" width="16" height="14" rx="2"/>' },
+    { o: 'ellipse', nom: 'Rond', pose: true,
+      role: "Un ovale ou un cercle : entourer un mot, marquer un endroit de la feuille.",
+      ico: '<ellipse cx="12" cy="12" rx="9" ry="6.6"/>' },
+    { o: 'ligne', nom: 'Trait', pose: true,
+      role: "Un trait droit, plein ou pointillé : souligner, barrer, séparer deux parties.",
+      ico: '<path d="M4 18.5 20 5.5"/>' },
+    { o: 'fleche', nom: 'Flèche', pose: true,
+      role: "Un trait fléché, pour montrer quelque chose sur la feuille.",
+      ico: '<path d="M4 12h14M13 6l6 6-6 6"/>' },
+    { o: 'surligneur', nom: 'Surligneur', pose: true,
+      role: "Un aplat translucide posé par-dessus le texte, comme un feutre. Il s'imprime.",
+      ico: '<path d="M15 3.5 20.5 9 11 18.5H6.5L4 21v-3l2.5-2.5z"/><path d="M12.5 6 18 11.5"/>' },
+
+    { g: 'Signer' },
+    { o: 'signature', nom: 'Signature', pose: true,
+      role: "La signature manuscrite du signataire, posée à l'endroit voulu. Elle ne part pas dans le fichier source.",
+      ico: '<path d="M3 17c3-6 5-6 6 0s3 6 5 0 3-4 7 0"/><path d="M3 21h18"/>' },
+    { o: 'cachet', nom: 'Cachet', pose: true,
+      role: "Le cachet de la présidence. Il naît verrouillé : un élément sensible ne se déplace pas par mégarde.",
+      ico: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>' },
+
+    { g: 'Composer l\'acte' },
+    { o: 'variable', nom: 'Variable', pose: true,
+      role: "Insérer une valeur du club (nom, président, date, numéro) là où est le curseur. Elle s'écrit en clair et reste une variable.",
+      ico: '<path d="M8 4c-2 0-3 1-3 3v3c0 1-1 2-2 2 1 0 2 1 2 2v3c0 2 1 3 3 3M16 4c2 0 3 1 3 3v3c0 1 1 2 2 2-1 0-2 1-2 2v3c0 2-1 3-3 3"/>' },
+    { o: 'bloc', nom: 'Bloc', pose: true,
+      role: "Ajouter une partie entière : en-tête, titre, tableau, articles, signatures. Réservé aux actes libres et aux préréglages.",
+      offRole: "Cet acte suit un modèle fixe : ses parties sont écrites par le modèle. Les objets (texte, image, cadre) se posent quand même.",
+      ico: '<rect x="4" y="4" width="16" height="6" rx="1.5"/><rect x="4" y="14" width="16" height="6" rx="1.5"/>' },
+
+    { g: 'Repères' },
+    { o: 'grille', nom: 'Grille de 5 mm', bascule: true,
+      role: "Un quadrillage de 5 mm sur la page, à l'écran seulement. Il ne s'imprime jamais.",
+      ico: '<path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>' },
+    { o: 'aimant', nom: 'Aimant', bascule: true,
+      role: "Ce qu'on déplace se colle aux marges, au milieu de la page et aux bords des autres objets. Alt tenu passe outre.",
+      ico: '<path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 3h4v8H6zM14 3h4v8h-4z"/>' },
+    { o: 'filigrane', nom: 'Filigrane BROUILLON', bascule: true,
+      role: "Le mot BROUILLON écrit en travers de chaque page tant que l'acte n'est pas émis. Ici on l'enlève, et on le remet.",
+      offRole: "Cet acte n'est plus un brouillon : il n'y a plus de filigrane à retirer.",
+      ico: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="m7.5 15.5 9-9"/>' },
+
+    { g: 'Panneaux' },
+    { o: 'proprietes', nom: 'Panneau de droite', bascule: true,
+      role: "Ce que demande ce qui est choisi : l'objet, le bloc, le texte. Et les calques, les variables, l'historique.",
+      ico: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>' },
+    { o: 'apercu', nom: 'Aperçu de la feuille', bascule: true,
+      role: "Replier la feuille pour donner toute la place au panneau de gauche, ou la rouvrir. Repliée, une languette la rappelle.",
+      ico: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>' },
+    { o: 'aide-outils', nom: 'À quoi sert chaque outil',
+      role: "La liste des outils, ce que chacun fait, et son raccourci.",
+      ico: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.2 2.4c-.6.2-1 .8-1 1.4v.6"/><path d="M11.9 17.2h.02"/>' }
+  ];
+
+  var railPlie = false, CLE_RAIL = 'greffe-rail-plie';
+  function railLire() {
+    var v = null;
+    try { v = localStorage.getItem(CLE_RAIL); } catch (e) {}
+    /* Jamais regle : ouvert si l'ecran est assez large pour les noms,
+       replie sinon. On ne vole pas la feuille sur un petit ecran. */
+    railPlie = (v === null) ? (window.innerWidth < 1280) : (v === '1');
+  }
+  function peindreRail() {
+    var rail = $('gf-rail');
+    if (!rail) return;
+    rail.classList.toggle('est-pliee', railPlie);
+    var h = '<div class="gf-rail-tete"><b>Outils</b>'
+      + '<button type="button" class="gf-rail-plier" data-rail="plier"'
+      + ' data-bulle="' + (railPlie ? 'Ouvrir la barre d\'outils' : 'Replier la barre d\'outils') + '"'
+      + ' data-bulle-role="' + (railPlie ? 'Écrire le nom de chaque outil à côté de son icône.' : 'Ne garder que les icônes, et rendre la largeur à la feuille.') + '"'
+      + ' aria-label="' + (railPlie ? 'Ouvrir' : 'Replier') + ' la barre d\'outils">'
+      + gfSvg(railPlie ? '<path d="m9 6 6 6-6 6"/>' : '<path d="m15 6-6 6 6 6"/>') + '</button></div>';
+    OUTILS.forEach(function (o) {
+      if (o.g) { h += '<div class="gf-rail-groupe">' + ech(o.g) + '</div>'; return; }
+      h += '<button type="button" class="gf-outil" data-outil="' + ech(o.o) + '"'
+        + ' data-bulle="' + ech(o.nom) + '" data-bulle-role="' + ech(o.role) + '"'
+        + (o.offRole ? ' data-bulle-off="' + ech(o.offRole) + '"' : '')
+        + (o.rac ? ' data-bulle-rac="' + ech(o.rac) + '"' : '')
+        + ' aria-label="' + ech(o.nom) + '">'
+        + gfSvg(o.ico)
+        + '<span class="gf-outil-nom">' + ech(o.nom) + '</span>'
+        + (o.bascule ? '<span class="gf-outil-temoin"></span>'
+                     : (o.rac ? '<span class="gf-outil-rac">' + ech(o.rac) + '</span>' : ''))
+        + '</button>';
+    });
+    rail.innerHTML = h;
+    rail.querySelectorAll('[data-outil]').forEach(function (b) {
+      b.addEventListener('mousedown', function (e) { e.preventDefault(); });   /* la sélection de la feuille reste */
+      b.addEventListener('click', function () { outil(b.getAttribute('data-outil')); });
+    });
+    var pl = rail.querySelector('[data-rail="plier"]');
+    if (pl) pl.addEventListener('click', function () {
+      railPlie = !railPlie;
+      try { localStorage.setItem(CLE_RAIL, railPlie ? '1' : '0'); } catch (e) {}
+      bulleCacher(); peindreRail(); remesurer();
+    });
+    majOutils();
+  }
+  /* la liste des outils, en clair : ce que chacun fait, son raccourci */
+  function aideOutils() {
+    var h = '<p class="gf-modale-aide">La barre est à gauche de la feuille. Le chevron, en haut, l\'ouvre pour écrire les noms, ou la replie sur ses icônes. Passer la souris sur un outil en dit le rôle.</p>';
+    var groupe = '';
+    OUTILS.forEach(function (o) {
+      if (o.g) { groupe = o.g; h += '<h4 class="gf-modale-h4">' + ech(o.g) + '</h4><div class="gf-aide-outils">'; return; }
+      h += '<div class="gf-aide-outil"><span class="gf-aide-ico">' + gfSvg(o.ico) + '</span>'
+        + '<span class="gf-aide-txt"><b>' + ech(o.nom) + (o.rac ? ' <kbd>' + ech(o.rac) + '</kbd>' : '') + '</b>'
+        + '<span>' + ech(o.role) + '</span></span></div>';
+    });
+    h += '</div>';
+    modale('À quoi sert chaque outil', h, [{ lab: 'Fermer' }]);
   }
 
   function brancherOutils() {
     var rail = $('gf-rail');
     if (!rail) return;
+    brancherBulles();
+    /* hors du rail : la languette de l'apercu, sa croix, le bouton du
+       filigrane de la barre. Le rail, lui, cable au moment ou il peint. */
     racine.querySelectorAll('[data-outil]').forEach(function (b) {
+      if (b.closest('#gf-rail')) return;
       b.addEventListener('mousedown', function (e) { e.preventDefault(); });   /* la sélection de la feuille reste */
       b.addEventListener('click', function () { outil(b.getAttribute('data-outil')); });
     });
     var vx = racine.querySelector('[data-vignettes="fermer"]');
     if (vx) vx.addEventListener('click', basculerVignettes);
+    railLire(); propsLire(); peindreRail();
+    if (!propsVoulu) { racine.classList.add('gf-sans-props'); racine.classList.remove('gf-avec-props'); }
+    brancherLiaisonPanneau();
     brancherPoignees(); brancherMain();
     var props = $('gf-props');
     if (props) {
@@ -5329,16 +6030,15 @@
   }
   function outil(nom) {
     if (nom === 'apercu') { basculerApercu(); return; }
+    if (nom === 'aide-outils') { aideOutils(); return; }
+    if (nom === 'proprietes') { basculerProps(); return; }
     if (!modeleActif) { dire('Ouvrez d\'abord un acte.', 'erreur'); return; }
     if (nom === 'main') { mainActiver(!outilMain); return; }
-    if (nom === 'selection') { mainActiver(false); selectionnerObjet(null); majOutils(); return; }
+    if (nom === 'zoom') { zoomActiver(!outilZoom); return; }
+    if (nom === 'filigrane') { basculerFiligrane(); return; }
+    if (nom === 'selection') { mainActiver(false); zoomActiver(false); selectionnerObjet(null); majOutils(); return; }
     if (nom === 'grille') { grilleVisible = !grilleVisible; appliquerGrille(); majOutils(); return; }
     if (nom === 'aimant') { aimantActif = !aimantActif; majOutils(); dire(aimantActif ? 'Aimant activé' : 'Aimant désactivé', 'ok'); return; }
-    if (nom === 'proprietes') {
-      var visible = $('gf-props') && $('gf-props').offsetParent !== null;
-      racine.classList.toggle('gf-sans-props', visible); racine.classList.toggle('gf-avec-props', !visible);
-      setTimeout(function () { if (cadre && cadrePret) mesurer(cadre.contentDocument); }, 50); majOutils(); return;
-    }
     if (lectureSeule()) { dire('Cet acte ne se modifie plus.', 'erreur'); return; }
     if (nom === 'image') { poserImageObjet(); return; }
     if (nom === 'variable') { insererVariable(); return; }
@@ -5348,19 +6048,50 @@
     }
     if (TYPES_OBJET[nom]) { poserObjet(nom); return; }
   }
+  /* LE FILIGRANE « BROUILLON » SE RETIRE
+     « on doit pouvoir facilement enlever le watermark Brouillon »
+     Il etait pose par l'etat de l'acte, sans aucun interrupteur. La
+     reponse tient dans la donnee de l'acte : elle se sauve, se rouvre
+     et s'exporte avec lui. Deux boutons pour la meme bascule, la barre
+     d'outils et la barre de l'apercu, plus le menu Affichage. */
+  function filigraneVisible() {
+    return acteEtat === 'brouillon' && !!donnees && donnees.filigrane !== false;
+  }
+  function basculerFiligrane() {
+    if (!modeleActif) { dire('Ouvrez d\'abord un acte.', 'erreur'); return; }
+    if (acteEtat !== 'brouillon') { dire('Cet acte n\'est plus un brouillon : il n\'a pas de filigrane.', 'ok'); return; }
+    if (donnees.filigrane === false) delete donnees.filigrane; else donnees.filigrane = false;
+    salir(); rafraichir(); majOutils();
+    dire(donnees.filigrane === false ? 'Filigrane BROUILLON retiré de la feuille' : 'Filigrane BROUILLON remis', 'ok');
+  }
+
   function majOutils() {
     var rail = $('gf-rail');
     if (!rail) return;
+    var props = $('gf-props');
+    var propsVu = !!(props && props.offsetParent !== null);
+    var fili = filigraneVisible();
     rail.querySelectorAll('[data-outil]').forEach(function (b) {
       var n = b.getAttribute('data-outil');
-      if (n === 'selection') b.classList.toggle('is-actif', !objetSel && !outilMain);
+      if (n === 'selection') b.classList.toggle('is-actif', !objetSel && !outilMain && !outilZoom);
       else if (n === 'main') b.classList.toggle('is-actif', outilMain);
+      else if (n === 'zoom') b.classList.toggle('is-actif', outilZoom);
       else if (n === 'apercu') b.classList.toggle('is-actif', !apercuReplie);
       else if (n === 'grille') b.classList.toggle('is-actif', grilleVisible);
       else if (n === 'aimant') b.classList.toggle('is-actif', aimantActif);
-      else if (n === 'proprietes') b.classList.toggle('is-actif', !!($('gf-props') && $('gf-props').offsetParent !== null));
+      else if (n === 'filigrane') { b.classList.toggle('is-actif', fili); b.disabled = !modeleActif || acteEtat !== 'brouillon'; }
+      else if (n === 'proprietes') b.classList.toggle('is-actif', propsVu);
       else if (n === 'bloc') b.disabled = !modeleActif || !modeleActif.libre;
+      else if (n !== 'aide-outils') b.disabled = !modeleActif;
     });
+    var lan = racine.querySelector('.gf-props-languette');
+    if (lan) lan.hidden = propsOuvert() || apercuReplie || espace !== 'atelier';
+    var bf = $('gf-filigrane');
+    if (bf) {
+      bf.classList.toggle('is-actif', fili);
+      bf.disabled = !modeleActif || acteEtat !== 'brouillon';
+      bf.hidden = !modeleActif || acteEtat !== 'brouillon';
+    }
   }
   function appliquerGrille() {
     var doc = cadre && cadrePret ? cadre.contentDocument : null;
