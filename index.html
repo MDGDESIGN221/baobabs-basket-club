@@ -445,7 +445,7 @@ window.bbLienSur = function (u) {
      0,186em (deux), 0,179em (trois) : le translateX recule d'autant, plus
      0,06em de marge, pour effleurer le bord sans le franchir. */
   .bb-player .bb-bignum{position:absolute;right:0;top:50%;transform:translateY(-50%) translate(-.22em,-.077em);z-index:1;font-family:'Anton',sans-serif;font-weight:400;font-style:italic;font-size:180px;line-height:1;letter-spacing:-.03em;color:rgba(168,217,59,.16);-webkit-text-stroke:1.6px rgba(168,217,59,.72);animation:bbNumGlow 2.2s ease-in-out infinite;pointer-events:none;white-space:nowrap}
-  @media (prefers-reduced-motion:reduce){.bb-calme .bb-player .bb-cardbg{animation:none}.bb-calme .bb-player .bb-bignum{animation:none;opacity:.5}.bb-calme .bb-flip-inner{transition:none!important}.bb-calme @media (hover:hover){.bb-player:hover .bb-flip-inner{transform:none!important}}}
+  @media (prefers-reduced-motion:reduce){.bb-calme .bb-player .bb-cardbg{animation:none}.bb-calme .bb-player .bb-bignum{animation:none;opacity:.5}.bb-calme .bb-flip-inner{transition:none!important}.bb-calme .bb-pl-voir{transition:none!important}}
 
   /* ===== Colonnes de lumière derrière l'effectif =====
      Une seule instance pour toute la section, pas une par carte : le portrait
@@ -475,9 +475,28 @@ window.bbLienSur = function (u) {
   /* ===== flip carte joueuse (fiche scouting) ===== */
   .bb-player{perspective:1400px}
   .bb-flip-inner{position:relative;width:100%;height:100%;min-height:330px;transition:transform .65s cubic-bezier(.4,.2,.2,1);transform-style:preserve-3d}
-  @media (hover:hover){.bb-player:hover .bb-flip-inner{transform:rotateY(180deg)}}
+  /* LA CARTE NE SE RETOURNE PLUS. Son dos repetait la fiche de la
+     joueuse et masquait la photo au survol ; depuis le 20/09/2026 la
+     fiche est une page a elle seule. Ce qui reste du survol : la photo
+     avance d'un souffle, et « Voir sa fiche » apparait. */
+  @media (hover:hover){
+    .bb-player:hover .bb-portrait{ filter:saturate(1.06) }
+    .bb-player:hover .bb-pl-voir{ opacity:1; transform:none }
+    .bb-player:hover .bb-pl-nom{ color:#fff }
+  }
+  .bb-pl-nom{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:clamp(16px,1.35vw,20px);line-height:1.06;letter-spacing:-.035em;text-transform:uppercase;transition:color .25s ease}
+  .bb-pl-ligne{display:flex;align-items:center;gap:9px;margin-top:8px;flex-wrap:wrap}
+  .bb-pl-ligne .bb-bar{width:18px;height:2px;background:var(--bb-or);border-radius:2px;display:block;flex:none}
+  .bb-pl-pos{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;color:var(--bb-or);letter-spacing:.12em;text-transform:uppercase}
+  .bb-pl-mes{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:#93A099;letter-spacing:.06em;padding-left:9px;border-left:1px solid rgba(243,239,230,.18)}
+  /* l'appel au clic : pose sous le nom, il ne prend de la place que
+     lorsqu'il se montre -- sinon il repousserait le nom vers le haut */
+  .bb-pl-voir{display:inline-flex;align-items:center;gap:7px;margin-top:10px;font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#A8D93B;opacity:0;transform:translateY(6px);transition:opacity .25s ease,transform .25s ease}
+  .bb-pl-voir svg{width:13px;height:13px;flex:none}
+  /* sans survol -- un telephone -- l'appel reste visible : c'est la
+     seule facon d'y apprendre qu'une fiche existe */
+  @media (hover:none){ .bb-pl-voir{opacity:1;transform:none;color:#8FBF33} }
   .bb-flip-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;overflow:hidden}
-  .bb-flip-back{transform:rotateY(180deg);background:linear-gradient(150deg,#0A1B12,#0F2417);border:1px solid rgba(168,217,59,.28);padding:18px;display:flex;flex-direction:column;justify-content:space-between;z-index:2}
   /* Le retournement 3D n'existe que sous (hover:hover) : sur iPhone et Android
      il ne se produit jamais, mais preserve-3d et backface-visibility restaient
      actifs — c'est cette combinaison qui fait rogner iOS Safari. On les neutralise
@@ -486,14 +505,7 @@ window.bbLienSur = function (u) {
   @media (hover:none){
     .bb-flip-inner{transform-style:flat;transition:none}
     .bb-flip-face{backface-visibility:visible;-webkit-backface-visibility:visible}
-    .bb-flip-back{display:none}
   }
-  .bb-flip-back .bb-fb-head{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:19px;color:#F3EFE6;line-height:1.05}
-  .bb-flip-back .bb-fb-tag{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;color:#A8D93B;margin:3px 0 14px}
-  .bb-flip-back .bb-fb-row{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid rgba(243,239,230,.08);padding:7px 0}
-  .bb-flip-back .bb-fb-k{font-family:'Inter',sans-serif;font-weight:500;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7E8A82}
-  .bb-flip-back .bb-fb-v{font-family:'Inter',sans-serif;font-weight:700;font-size:13.5px;color:#F3EFE6}
-  .bb-flip-back .bb-fb-bio{font-family:'Inter',sans-serif;font-size:11.5px;line-height:1.55;color:#A9B2AB;margin:12px 0 0}
   .bb-pos-badge{position:absolute;top:12px;right:12px;z-index:4;font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;border-radius:100px;padding:4px 10px;line-height:1;border:1px solid}
   .bb-pos-meneuse{color:#D9C4F0;background:rgba(168,120,217,.16);border-color:rgba(168,120,217,.5)}
   .bb-pos-arriere{color:#C6E3F5;background:rgba(90,168,217,.16);border-color:rgba(90,168,217,.5)}
@@ -4033,8 +4045,17 @@ window.bbLienSur = function (u) {
 .bb-jf-in{position:relative;z-index:2;max-width:1500px;margin:0 auto;padding:clamp(18px,2.4cqw,44px) clamp(16px,2.4cqw,24px) 0;display:grid;grid-template-columns:minmax(220px,33cqw) 1fr;gap:clamp(16px,3cqw,56px);align-items:end}
 /* la photo est detouree : on la montre ENTIERE, posee sur le bas du
    cadre. Pas de rognage, pas de boite. */
-.bb-jf-portrait{position:relative;align-self:end;aspect-ratio:.78;display:flex;align-items:flex-end;justify-content:center}
-.bb-jf-portrait img{width:100%;height:100%;object-fit:contain;object-position:50% 100%;display:block;filter:drop-shadow(0 26px 34px rgba(11,26,16,.28))}
+.bb-jf-portrait{position:relative;align-self:end;aspect-ratio:.78;display:flex;align-items:flex-end;justify-content:center;isolation:isolate}
+/* L'APPUI. Une photo detouree posee sur du creme n'a pas de sol : sans
+   cette ombre basse elle flotte, et le telephone -- qui n'a pas le
+   filet vert du bas de bandeau -- le montrait crument. */
+.bb-jf-portrait::after{content:"";position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(72%,300px);height:clamp(16px,2.6cqw,30px);border-radius:50%;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at center,rgba(11,26,16,.26),rgba(11,26,16,.1) 55%,transparent 72%)}
+/* LE FONDU DU BAS. Les photos de l'effectif sont coupees a mi-cuisses
+   dans le fichier meme (mesure : leur derniere ligne opaque est la
+   derniere ligne du fichier). Les six derniers pourcents s'effacent
+   donc dans le creme, pour que la tranche ne se lise plus comme une
+   coupure. */
+.bb-jf-portrait img{width:100%;height:100%;object-fit:contain;object-position:50% 100%;display:block;filter:drop-shadow(0 26px 34px rgba(11,26,16,.22));-webkit-mask-image:linear-gradient(to bottom,#000 88%,rgba(0,0,0,.55) 95%,transparent 100%);mask-image:linear-gradient(to bottom,#000 88%,rgba(0,0,0,.55) 95%,transparent 100%)}
 .bb-jf-portrait .vide{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Archivo Black',sans-serif;font-size:clamp(56px,9cqw,110px);color:rgba(11,26,16,.13)}
 .bb-jf-id{padding-bottom:clamp(20px,2.8cqw,44px);min-width:0}
 .bb-jf-retour{display:inline-flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--jf-gris);background:none;border:none;padding:0;cursor:pointer;margin-bottom:clamp(14px,1.8cqw,26px)}
@@ -6642,24 +6663,18 @@ window.bbCloud = function(url, w){
               '<img class="bb-portrait" src="' + window.bbSafeUrl(p.src)+ '" alt="' + esc(p.name) + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';transform:scale(' + ((p.pz==null?100:p.pz)/100) + ');transform-origin:' + ((p.px==null?50:p.px)+'% '+(p.py==null?0:p.py)+'%') + ';z-index:2;transition:transform .5s cubic-bezier(.16,.8,.3,1)" loading="lazy" decoding="async">' +
               '<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(6,13,9,.93) 0%,rgba(6,13,9,.12) 42%,transparent 62%);z-index:3"></div>' +
               '<div class="bb-name" style="position:absolute;left:16px;right:14px;bottom:16px;z-index:5">' +
-                '<div style="font-family:\'Space Grotesk\',sans-serif;font-weight:700;font-size:22px;color:' + (p.nameColor||'#F3EFE6') + ';line-height:1.02;letter-spacing:-.01em">' + esc(p.name) + '</div>' +
-                '<div style="display:flex;align-items:center;gap:8px;margin-top:7px">' +
-                  '<span class="bb-bar" style="width:20px;height:2px;background:var(--bb-or);border-radius:2px;display:block"></span>' +
-                  '<span style="font-family:\'Inter\',sans-serif;font-size:11px;font-weight:600;color:var(--bb-or);letter-spacing:.12em;text-transform:uppercase">' + esc(p.pos) + '</span>' +
+                '<div class="bb-pl-nom" style="color:' + (p.nameColor||'#F3EFE6') + '">' + esc(p.name) + '</div>' +
+                '<div class="bb-pl-ligne">' +
+                  '<span class="bb-bar"></span>' +
+                  '<span class="bb-pl-pos">' + esc(p.pos) + '</span>' +
+                  (bbTaille(p.height) ? '<span class="bb-pl-mes">' + esc(bbTaille(p.height)) + '</span>' : '') +
                 '</div>' +
+                '<span class="bb-pl-voir">Voir sa fiche' +
+                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>' +
               '</div>' +
             '</div>' +
-            '<div class="bb-flip-face bb-flip-back">' +
-              '<div>' +
-                '<div class="bb-fb-head">' + esc(p.name) + '</div>' +
-                '<div class="bb-fb-tag">FICHE SCOUTING · #' + p.no + '</div>' +
-                '<div class="bb-fb-row"><span class="bb-fb-k">Poste</span><span class="bb-fb-v">' + esc(p.pos) + '</span></div>' +
-                '<div class="bb-fb-row"><span class="bb-fb-k">Âge</span><span class="bb-fb-v">' + p.age + ' ans</span></div>' +
-                '<div class="bb-fb-row"><span class="bb-fb-k">Taille</span><span class="bb-fb-v">' + esc(p.height) + '</span></div>' +
-                '<div class="bb-fb-row"><span class="bb-fb-k">Ville</span><span class="bb-fb-v">' + esc(p.foot) + '</span></div>' +
-              '</div>' +
-              '<p class="bb-fb-bio">' + bbRich(p.bio) + '</p>' +
-            '</div>' +
+            /* le dos de la carte a ete retire le 20/09/2026 : il repetait
+               la fiche de la joueuse, qui a maintenant sa propre page */
           '</div>' +
         '</div>';
     }).join('');
