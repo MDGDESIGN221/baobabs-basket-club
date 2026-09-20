@@ -1212,3 +1212,285 @@
 }
 .gf-props-languette:hover{ background:var(--gf-accent); color:var(--gf-encre); }
 .gf-props-languette[hidden]{ display:none !important; }
+
+/* =====================================================================
+   L'ACCUEIL EN EXPLORATEUR
+   « repense la page d'accueil ; un double clic pour ouvrir, un clic
+     seulement pour visualiser, un peu comme l'explorateur Windows »
+   Trois colonnes : ou l'on cherche, ce qu'il y a, ce qu'on a choisi.
+   L'ancien accueil tenait dans 860 px au milieu d'un ecran vide ; ici
+   toute la largeur travaille, et la troisieme colonne montre la vraie
+   premiere page de ce qu'on designe, sans l'ouvrir.
+   ===================================================================== */
+.gf-accueil{ overflow:hidden; }
+.gf-accueil > .gf-acc-defile{ max-width:none; margin:0; padding:0; height:100%; display:block; }
+.gf-exp{
+  height:100%; display:grid; min-height:0;
+  grid-template-columns:var(--gf-exp-cote, 232px) minmax(0,1fr) var(--gf-exp-fiche, 296px);
+}
+
+/* ------------------------------- la colonne de gauche ------------------------------- */
+.gf-exp-cote{
+  display:flex; flex-direction:column; gap:1px; min-height:0; overflow-y:auto;
+  padding:16px 12px 14px 12px;
+  background:var(--gf-surf); border-right:1px solid var(--gf-line);
+  scrollbar-width:thin;
+}
+.gf-exp-neuf{ width:100%; justify-content:center; margin-bottom:14px; padding:11px 14px; font-size:13.5px; }
+.gf-exp-neuf svg{ width:16px; height:16px; margin-right:7px; }
+.gf-exp-fam{
+  padding:14px 8px 5px 8px; font-family:var(--gf-titre);
+  font-size:9.5px; font-weight:700; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--gf-pale);
+}
+.gf-exp-fam:first-of-type{ padding-top:2px; }
+.gf-exp-eta{
+  display:flex; align-items:center; gap:9px; width:100%;
+  height:33px; padding:0 9px; border-radius:8px;
+  background:transparent; border:1px solid transparent;
+  color:var(--gf-doux); font:inherit; font-size:12.5px; text-align:left; cursor:pointer;
+}
+.gf-exp-eta svg{ width:16px; height:16px; flex:0 0 16px; }
+.gf-exp-eta > span{ flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gf-exp-eta > i{
+  flex:0 0 auto; font-style:normal; font-size:11px; font-weight:600;
+  color:var(--gf-pale); font-variant-numeric:tabular-nums;
+}
+.gf-exp-eta:hover{ color:var(--gf-texte); background:var(--gf-surf3); border-color:var(--gf-line); }
+.gf-exp-eta.is-actif{
+  color:var(--gf-encre); background:var(--gf-accent); border-color:var(--gf-accent); font-weight:600;
+}
+.gf-exp-eta.is-actif > i{ color:rgba(10,27,13,.62); }
+.gf-exp-pied{ margin-top:auto; padding-top:16px; display:flex; flex-direction:column; gap:1px; }
+.gf-exp-lien{
+  display:flex; align-items:center; gap:9px; width:100%; height:30px; padding:0 9px;
+  border-radius:8px; background:transparent; border:0; color:var(--gf-pale);
+  font:inherit; font-size:12px; text-align:left; cursor:pointer;
+}
+.gf-exp-lien svg{ width:15px; height:15px; flex:0 0 15px; }
+.gf-exp-lien:hover{ color:var(--gf-texte); background:var(--gf-surf3); }
+
+/* ------------------------------- le milieu ------------------------------- */
+.gf-exp-centre{ display:flex; flex-direction:column; min-width:0; min-height:0; }
+.gf-exp-tete{
+  flex:0 0 auto; padding:18px 22px 12px 22px; border-bottom:1px solid var(--gf-line);
+}
+.gf-exp-titre h2{
+  margin:0; font-family:var(--gf-titre); font-size:20px; font-weight:700; letter-spacing:-.02em;
+}
+.gf-exp-titre p{ margin:5px 0 0 0; font-size:12.5px; line-height:1.55; color:var(--gf-doux); max-width:78ch; }
+.gf-exp-barre{ display:flex; align-items:center; gap:9px; margin-top:13px; flex-wrap:wrap; }
+.gf-exp-q{ flex:1 1 240px; max-width:420px; }
+.gf-exp-tri{ flex:0 0 auto; height:32px; }
+.gf-exp-vues{ display:flex; gap:3px; margin-left:auto; padding:2px; border-radius:9px; background:var(--gf-surf2); }
+.gf-exp-vues .gf-ico.is-actif{ background:var(--gf-accent); color:var(--gf-encre); }
+.gf-exp-rappel{
+  flex:0 0 auto; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  margin:12px 22px 0 22px; padding:12px 16px; border-radius:11px;
+  background:var(--gf-surf2); border:1px solid var(--gf-line-fort); border-left:3px solid var(--gf-rouge);
+}
+.gf-exp-rappel b{ font-family:var(--gf-titre); font-size:13px; }
+.gf-exp-rappel span{ flex:1 1 320px; font-size:12.5px; color:var(--gf-doux); line-height:1.5; }
+
+.gf-exp-liste{ flex:1 1 auto; min-height:0; overflow-y:auto; padding:16px 22px 20px 22px; outline:none; }
+.gf-exp-liste:focus-visible{ box-shadow:inset 0 0 0 2px var(--gf-accent); border-radius:10px; }
+.gf-exp-liste.est-vignettes{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+  gap:12px; align-content:start;
+}
+.gf-exp-liste.est-liste{ display:flex; flex-direction:column; gap:3px; }
+.gf-exp-vide{ grid-column:1/-1; margin:26px 0; font-size:13px; color:var(--gf-pale); line-height:1.6; }
+
+/* --- une vignette : la premiere page, le nom, l'etat --- */
+.gf-exp-vig{
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:11px 9px 12px 9px; border-radius:11px; cursor:pointer;
+  border:1px solid transparent; background:transparent;
+  -webkit-user-select:none; user-select:none;
+}
+.gf-exp-vig:hover{ background:var(--gf-surf2); border-color:var(--gf-line); }
+.gf-exp-vig.is-sel{
+  background:rgba(70,191,29,.13); border-color:var(--gf-accent);
+  box-shadow:0 0 0 1px var(--gf-accent);
+}
+.gf-exp-page{
+  width:100%; max-width:120px; aspect-ratio:210/297; height:auto;
+  flex:0 0 auto; border-radius:4px; overflow:hidden;
+  background:#F4F5F3; border:1px solid rgba(0,0,0,.28);
+  box-shadow:0 5px 16px rgba(0,0,0,.4);
+}
+.gf-exp-vig.is-sel .gf-exp-page{ box-shadow:0 5px 18px rgba(0,0,0,.5), 0 0 0 2px var(--gf-accent); }
+.gf-exp-v-txt{ display:flex; flex-direction:column; gap:2px; text-align:center; width:100%; min-width:0; }
+.gf-exp-v-txt b{
+  font-family:var(--gf-titre); font-size:12.5px; font-weight:600; line-height:1.3;
+  letter-spacing:-.01em; overflow:hidden; display:-webkit-box;
+  -webkit-line-clamp:2; -webkit-box-orient:vertical;
+}
+.gf-exp-v-txt span{
+  font-size:11px; color:var(--gf-pale); line-height:1.35;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* --- une ligne : le numero, l'intitule, la date, l'etat --- */
+.gf-exp-ligne{
+  display:flex; align-items:center; gap:12px; padding:9px 12px; border-radius:9px;
+  cursor:pointer; border:1px solid transparent; background:var(--gf-surf2);
+  -webkit-user-select:none; user-select:none;
+}
+.gf-exp-ligne:hover{ background:var(--gf-surf3); border-color:var(--gf-line); }
+.gf-exp-ligne.is-sel{ background:rgba(70,191,29,.13); border-color:var(--gf-accent); }
+.gf-exp-ico{ width:17px; height:17px; flex:0 0 17px; color:var(--gf-pale); }
+.gf-exp-ligne.is-sel .gf-exp-ico{ color:var(--gf-accent-v); }
+.gf-exp-num{
+  flex:0 0 54px; font-family:var(--gf-titre); font-weight:700; font-size:12.5px;
+  color:var(--gf-accent-v); font-variant-numeric:tabular-nums;
+}
+.gf-exp-l-txt{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.gf-exp-l-txt b{ font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gf-exp-l-txt span{ font-size:11.5px; color:var(--gf-pale); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gf-exp-date{ flex:0 0 auto; font-size:11.5px; color:var(--gf-pale); white-space:nowrap; }
+@media (max-width:1100px){ .gf-exp-date{ display:none; } }
+
+.gf-exp-geste{
+  flex:0 0 auto; margin:0; padding:9px 22px 12px 22px;
+  border-top:1px solid var(--gf-line); font-size:11.5px; color:var(--gf-pale);
+}
+.gf-exp-geste b{ color:var(--gf-doux); font-weight:600; }
+.gf-exp-geste kbd{
+  font-family:inherit; font-size:10.5px; font-weight:600; color:var(--gf-pale);
+  background:var(--gf-surf2); border:1px solid var(--gf-line); border-radius:4px; padding:1px 5px; margin-left:3px;
+}
+
+/* deux badges de plus : ce qui separe un modele d'un prereglage */
+.gf-badge-vierge{ color:#9AA8D6; }
+.gf-badge-compose{ color:var(--gf-accent-v); }
+
+/* ------------------------------- l'inspecteur ------------------------------- */
+.gf-exp-fiche{
+  display:flex; flex-direction:column; gap:12px; min-height:0; overflow-y:auto;
+  padding:18px 16px 20px 16px;
+  background:var(--gf-surf); border-left:1px solid var(--gf-line);
+  scrollbar-width:thin;
+}
+.gf-exp-fiche-vide{
+  margin:auto 0; display:flex; flex-direction:column; align-items:center; gap:10px;
+  text-align:center; color:var(--gf-pale); padding:20px 6px;
+}
+.gf-exp-fiche-vide svg{ width:38px; height:38px; opacity:.5; }
+.gf-exp-fiche-vide b{ font-family:var(--gf-titre); font-size:13.5px; color:var(--gf-doux); }
+.gf-exp-fiche-vide span{ font-size:12px; line-height:1.6; }
+.gf-exp-fiche-vide span b{ font-size:12px; color:var(--gf-texte); }
+.gf-exp-f-tete{ display:flex; flex-direction:column; gap:3px; }
+.gf-exp-f-tete b{ font-family:var(--gf-titre); font-size:15px; font-weight:700; letter-spacing:-.015em; line-height:1.25; }
+.gf-exp-f-tete span{ font-size:11.5px; color:var(--gf-pale); }
+.gf-exp-grand{
+  width:100%; align-self:center; border-radius:5px; overflow:hidden;
+  background:#F4F5F3; border:1px solid rgba(0,0,0,.3);
+  box-shadow:0 10px 28px rgba(0,0,0,.45);
+}
+.gf-exp-f-lignes{ display:flex; flex-direction:column; gap:1px; }
+.gf-exp-f-l{
+  display:flex; align-items:baseline; gap:10px; padding:6px 2px;
+  border-bottom:1px solid var(--gf-line); font-size:12px;
+}
+.gf-exp-f-l:last-child{ border-bottom:0; }
+.gf-exp-f-l > span{ flex:0 0 96px; color:var(--gf-pale); }
+.gf-exp-f-l > b{ flex:1 1 auto; min-width:0; font-weight:600; color:var(--gf-texte); line-height:1.45; }
+.gf-exp-f-actions{ display:flex; flex-direction:column; gap:6px; margin-top:2px; }
+.gf-exp-f-actions .gf-btn{ width:100%; justify-content:center; }
+.gf-exp-f-actions .gf-mini{ width:100%; justify-content:center; }
+
+/* ------------------------------- le clic droit ------------------------------- */
+.gf-exp-menu{
+  position:absolute; z-index:9500; min-width:212px; padding:5px;
+  border-radius:10px; background:var(--gf-surf2); border:1px solid var(--gf-line-fort);
+  box-shadow:0 16px 42px rgba(0,0,0,.6);
+  display:flex; flex-direction:column; gap:1px;
+}
+.gf-exp-menu button{
+  display:block; width:100%; text-align:left; padding:8px 11px; border:0; border-radius:7px;
+  background:transparent; color:var(--gf-texte); font:inherit; font-size:12.5px; cursor:pointer;
+}
+.gf-exp-menu button:hover, .gf-exp-menu button:focus-visible{ background:var(--gf-accent); color:var(--gf-encre); outline:none; }
+
+/* --------- l'ecran se retrecit : la fiche passe dessous, puis s'efface --------- */
+@media (max-width:1240px){ .gf-exp{ --gf-exp-fiche:252px; --gf-exp-cote:198px; } }
+@media (max-width:1040px){
+  .gf-exp{ grid-template-columns:var(--gf-exp-cote, 190px) minmax(0,1fr); }
+  .gf-exp-fiche{ display:none; }
+}
+
+/* .gf-sel vaut width:100% partout ailleurs : dans la barre de
+   l'explorateur, il prenait toute la ligne et rejetait les deux boutons
+   de vue en dessous. */
+.gf-exp-barre .gf-exp-tri{ width:auto; flex:0 0 auto; min-width:152px; height:32px; padding:0 30px 0 10px; font-size:12.5px; }
+
+/* =====================================================================
+   LA BOITE « QUEL ACTE VOULEZ-VOUS ETABLIR ? »
+   « je me perds dans Modeles et Prereglages, y'a pas de difference »
+   Les deux etageres ne sont plus deux onglets nus : chacune porte son
+   icone, son compte, et LA PHRASE qui dit ce qu'elle contient. En
+   dessous, la meme grille et la meme fiche que l'accueil : un clic
+   regarde, deux clics creent.
+   ===================================================================== */
+.gf-modale-choix{ display:flex; flex-direction:column; min-height:0; }
+.gf-modale-choix .gf-modale-top{ gap:14px; flex-wrap:wrap; }
+.gf-cx-q{ flex:1 1 260px; max-width:440px; margin-left:auto; }
+
+.gf-cx-etageres{
+  flex:0 0 auto; display:grid; grid-template-columns:1fr 1fr; gap:9px;
+  padding:14px 18px 12px 18px; border-bottom:1px solid var(--gf-line);
+}
+.gf-cx-eta{
+  display:flex; align-items:flex-start; gap:11px; padding:12px 14px;
+  border-radius:11px; cursor:pointer; text-align:left;
+  background:var(--gf-surf2); border:1px solid var(--gf-line-fort);
+  color:var(--gf-doux); font:inherit;
+}
+.gf-cx-eta > svg{ width:19px; height:19px; flex:0 0 19px; margin-top:1px; }
+.gf-cx-eta > span{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.gf-cx-eta b{ font-family:var(--gf-titre); font-size:13.5px; font-weight:700; color:var(--gf-texte); }
+.gf-cx-eta i{ font-style:normal; font-size:11.5px; line-height:1.45; }
+.gf-cx-eta i em{ font-style:normal; font-weight:700; color:var(--gf-accent-v); }
+.gf-cx-eta > u{
+  flex:0 0 auto; text-decoration:none; font-size:11.5px; font-weight:700;
+  color:var(--gf-pale); font-variant-numeric:tabular-nums;
+}
+.gf-cx-eta:hover{ border-color:var(--gf-line-fort); background:var(--gf-surf3); color:var(--gf-texte); }
+.gf-cx-eta.is-actif{
+  border-color:var(--gf-accent); background:rgba(70,191,29,.12); color:var(--gf-texte);
+  box-shadow:inset 3px 0 0 var(--gf-accent);
+}
+.gf-cx-eta.is-actif i em{ color:var(--gf-accent-v); }
+@media (max-width:820px){ .gf-cx-etageres{ grid-template-columns:1fr; } }
+
+.gf-cx-corps{
+  flex:1 1 auto; min-height:0;
+  display:grid; grid-template-columns:186px minmax(0,1fr) 274px;
+}
+.gf-cx-fams{
+  display:flex; flex-direction:column; gap:1px; min-height:0; overflow-y:auto;
+  padding:14px 10px; border-right:1px solid var(--gf-line); scrollbar-width:thin;
+}
+.gf-cx-liste{ padding:14px 16px 18px 16px; }
+.gf-cx-fiche{ border-left:1px solid var(--gf-line); background:var(--gf-surf); }
+.gf-cx-pied{ flex:0 0 auto; align-items:center; gap:12px; }
+.gf-cx-geste{ margin:0 auto 0 0; font-size:11.5px; color:var(--gf-pale); }
+.gf-cx-geste b{ color:var(--gf-doux); font-weight:600; }
+.gf-cx-geste kbd{
+  font-family:inherit; font-size:10.5px; font-weight:600; color:var(--gf-pale);
+  background:var(--gf-surf2); border:1px solid var(--gf-line); border-radius:4px; padding:1px 5px; margin-left:3px;
+}
+.gf-cx-depot{ display:inline-flex; align-items:center; gap:7px; cursor:pointer; }
+.gf-cx-depot[hidden]{ display:none !important; }
+/* en recherche, les familles ne veulent plus rien dire : les deux
+   etageres sont fouillees d'un coup */
+.gf-en-recherche .gf-cx-fams, .gf-en-recherche .gf-cx-etageres{ opacity:.4; pointer-events:none; }
+@media (max-width:1060px){
+  .gf-cx-corps{ grid-template-columns:minmax(0,1fr) 256px; }
+  .gf-cx-fams{ display:none; }
+}
+@media (max-width:820px){
+  .gf-cx-corps{ grid-template-columns:minmax(0,1fr); }
+  .gf-cx-fiche{ display:none; }
+}

@@ -1466,296 +1466,799 @@
     return s.replace(/[^a-z0-9]+/g, ' ').trim();
   }
 
-  /* ---- l'accueil : que voulez-vous faire ? ---- */
-  /* Le registre vit dans CE navigateur : sans sauvegarde, un profil vidé
-     ou un autre poste ne le connaît pas. L'accueil le rappelle quand il faut. */
+  /* =================================================================
+     L'ACCUEIL : UN EXPLORATEUR, PAS UNE AFFICHE
+     « repense la page d'accueil ; pour ouvrir un element, un double
+       clic ; un clic ne sert qu'a visualiser le fichier sans l'ouvrir,
+       un peu comme l'explorateur Windows »
+     L'ancien accueil tenait dans une colonne de 860 px au milieu d'un
+     ecran vide : une salutation, un bouton, six lignes, six vignettes.
+     On ne pouvait ni chercher, ni trier, ni REGARDER un acte sans
+     l'ouvrir -- donc sans risquer d'y toucher.
+     Ici, trois colonnes et un seul geste a apprendre :
+       - a gauche, OU l'on cherche : le registre, ses etats, ses
+         dossiers ; et les deux etageres pour commencer un acte ;
+       - au milieu, CE QU'IL Y A : en vignettes (la vraie premiere
+         page) ou en liste ;
+       - a droite, CE QU'ON A CHOISI : sa premiere page en grand, sa
+         fiche, et ce qu'on peut en faire.
+     Un clic choisit et montre. Deux clics ouvrent. Entree ouvre, Echap
+     lache, les fleches se deplacent, le clic droit donne les gestes.
+     Rien ne s'ouvre par surprise.
+     ================================================================= */
+  var EXP_CLE = 'greffe-explorateur';
+  var exp = { etagere: 'tout', q: '', vue: 'vignettes', tri: 'recent', sel: null, items: [] };
+  (function () {
+    try {
+      var v = JSON.parse(localStorage.getItem(EXP_CLE) || '{}');
+      if (v.vue) exp.vue = v.vue;
+      if (v.tri) exp.tri = v.tri;
+      if (v.etagere) exp.etagere = v.etagere;
+    } catch (e) {}
+  })();
+  function expGarder() {
+    try { localStorage.setItem(EXP_CLE, JSON.stringify({ vue: exp.vue, tri: exp.tri, etagere: exp.etagere })); } catch (e) {}
+  }
+
+  /* Le registre vit dans CE navigateur : sans sauvegarde, un profil vide
+     ou un autre poste ne le connait pas. L'accueil le rappelle quand il faut. */
   function rappelSauvegarde() {
     if (registre.length < 3) return '';
     var jours = derniereSauvegarde ? Math.floor((Date.now() - derniereSauvegarde) / 86400000) : null;
     var recents = registre.filter(function (a) { return (a.maj || 0) > (derniereSauvegarde || 0); }).length;
     if (jours !== null && jours < 14 && recents < 10) return '';
     var texte = jours === null ? 'Le registre n\'a jamais été sauvegardé' : ('Dernière sauvegarde il y a ' + jours + ' jour' + (jours > 1 ? 's' : ''));
-    texte += ' · ' + (recents ? recents + ' acte' + (recents > 1 ? 's' : '') + ' modifié' + (recents > 1 ? 's' : '') + ' depuis' : 'rien de nouveau depuis') + '. Le registre vit dans ce navigateur : un profil vidé ou un autre ordinateur ne le connaît pas.';
-    return '<div class="gf-acc-carte gf-acc-rappel"><b>Sauvegarde</b><span>' + ech(texte) + '</span><button type="button" class="gf-btn gf-btn-accent" id="gf-acc-sauver-2">Sauvegarder maintenant</button></div>';
+    texte += ' · ' + (recents ? recents + ' acte' + (recents > 1 ? 's' : '') + ' modifié' + (recents > 1 ? 's' : '') + ' depuis' : 'rien de nouveau depuis')
+           + '. Le registre vit dans ce navigateur : un profil vidé ou un autre ordinateur ne le connaît pas.';
+    return '<div class="gf-exp-rappel"><b>Sauvegarde</b><span>' + ech(texte)
+      + '</span><button type="button" class="gf-btn gf-btn-accent" id="gf-acc-sauver-2">Sauvegarder maintenant</button></div>';
   }
+
+  /* ---- les etageres : ou l'on cherche ---- */
+  function expEtageres() {
+    var brouillons = registre.filter(function (a) { return (a.etat || 'brouillon') === 'brouillon'; }).length;
+    var emis = registre.filter(function (a) { return a.etat === 'emis'; }).length;
+    var archives = registre.filter(function (a) { return a.etat === 'archive'; }).length;
+    var autres = registre.filter(function (a) { return a.etat === 'remplace' || a.etat === 'annule'; }).length;
+    var out = [
+      { t: 'Au registre' },
+      { c: 'tout', n: 'Tous les actes', k: registre.length, i: '<path d="M4 5h16M4 12h16M4 19h16"/>' },
+      { c: 'recent', n: 'Récents', i: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 1.8"/>' },
+      { c: 'brouillon', n: 'Brouillons', k: brouillons, i: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M14.5 6.5 17.5 9.5"/>' },
+      { c: 'emis', n: 'Émis', k: emis, i: '<path d="M4.5 12.5 9.5 17.5 19.5 6.5"/>' },
+      { c: 'archive', n: 'Archivés', k: archives, i: '<rect x="3" y="4" width="18" height="5" rx="1.4"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/>' }
+    ];
+    if (autres) out.push({ c: 'autres', n: 'Remplacés et annulés', k: autres, i: '<circle cx="12" cy="12" r="8.5"/><path d="m8.5 15.5 7-7"/>' });
+    if (dossiers.length) {
+      out.push({ t: 'Dossiers' });
+      dossiers.slice().sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); }).forEach(function (d) {
+        out.push({ c: 'dos:' + d.id, n: d.nom, k: actesDuDossier(d.id).length,
+                   i: '<path d="M3 7a1.6 1.6 0 0 1 1.6-1.6h4L11 8h8a1.6 1.6 0 0 1 1.6 1.6v8A1.6 1.6 0 0 1 19 19H4.6A1.6 1.6 0 0 1 3 17.4z"/>' });
+      });
+    }
+    out.push({ t: 'Commencer un acte' });
+    out.push({ c: 'modeles', n: 'Modèles', k: MODELES.filter(function (k) { return G.peutCreer(k); }).length,
+               i: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>' });
+    out.push({ c: 'prereglages', n: 'Préréglages', k: tousPrereglages().length,
+               i: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h6M8 12h7M8 16h4"/><path d="m14.8 18.4 2.2 2.2 4-4.4"/>' });
+    return out;
+  }
+
+  /* LA PHRASE QUI DIT CE QU'ON A SOUS LES YEUX.
+     « je me perds dans Modeles et Prereglages, y'a pas de difference » :
+     il y en a une, et elle n'etait ecrite nulle part. Elle l'est ici,
+     en tete de l'etagere, a chaque fois. */
+  function expLegende() {
+    if (exp.etagere === 'modeles') {
+      return { t: 'Modèles', s: 'Un acte VIERGE. La forme est posée, le contenu est à écrire. C\'est le point de départ quand rien n\'existe encore.' };
+    }
+    if (exp.etagere === 'prereglages') {
+      return { t: 'Préréglages', s: 'Un acte DÉJÀ COMPOSÉ : un modèle et son contenu, enregistrés ensemble. Il s\'ouvre rempli, il ne reste qu\'à corriger. Depuis l\'atelier, « Garder comme préréglage » en fabrique un ; un fichier .json le fait voyager d\'un poste à l\'autre.' };
+    }
+    if (exp.etagere === 'recent') return { t: 'Récents', s: 'Les actes touchés en dernier, le plus récent d\'abord.' };
+    if (exp.etagere === 'brouillon') return { t: 'Brouillons', s: 'Commencés, pas encore émis. Ils se modifient librement et portent le filigrane BROUILLON, qui se retire d\'un clic dans l\'atelier.' };
+    if (exp.etagere === 'emis') return { t: 'Actes émis', s: 'Figés au registre avec leur empreinte. Pour changer quelque chose : une nouvelle version.' };
+    if (exp.etagere === 'archive') return { t: 'Archivés', s: 'Sortis du courant, gardés au registre.' };
+    if (exp.etagere === 'autres') return { t: 'Remplacés et annulés', s: 'Ils restent au registre : un numéro attribué ne se réattribue jamais.' };
+    if (/^dos:/.test(exp.etagere)) {
+      var d = dossierDe(exp.etagere.slice(4));
+      return { t: d ? d.nom : 'Dossier', s: (d && d.note) || 'Les actes rangés dans ce dossier.' };
+    }
+    return { t: 'Tous les actes', s: 'Le registre entier. Un clic montre, deux clics ouvrent.' };
+  }
+
+  /* ---- ce qu'il y a sur l'etagere choisie ---- */
+  function expItems() {
+    var out = [];
+    if (exp.etagere === 'modeles') {
+      MODELES.forEach(function (k) {
+        var m = G.modeles[k];
+        if (!m || !G.peutCreer(k)) return;
+        out.push({ genre: 'modele', id: 'm:' + k, nom: m.nom, sous: m.resume || (m.famille || 'Actes'), famille: m.famille || 'Actes',
+                   m: m, d: null, mots: [m.nom, m.resume, m.famille, m.cle].join(' ') });
+      });
+      return out;
+    }
+    if (exp.etagere === 'prereglages') {
+      tousPrereglages().forEach(function (p, i) {
+        var m = G.modeles[p.modele];
+        if (!m) return;
+        var d = donneesApercu(m, p);
+        out.push({ genre: 'prereglage', id: 'p:' + (p.id || ('l' + i)), nom: p.nom,
+                   sous: m.nom + (p.livre ? ' · livré avec le Greffe' : ' · le vôtre'),
+                   famille: m.famille || 'Actes', m: m, d: d, p: p, livre: !!p.livre,
+                   mots: [p.nom, m.nom, m.famille, d.destNom, d.destQualite, d.objet, d.titre, d.evenement, d.lieuEvenement].join(' ') });
+      });
+      return out;
+    }
+    var liste = registre.slice();
+    if (exp.etagere === 'brouillon') liste = liste.filter(function (a) { return (a.etat || 'brouillon') === 'brouillon'; });
+    else if (exp.etagere === 'emis') liste = liste.filter(function (a) { return a.etat === 'emis'; });
+    else if (exp.etagere === 'archive') liste = liste.filter(function (a) { return a.etat === 'archive'; });
+    else if (exp.etagere === 'autres') liste = liste.filter(function (a) { return a.etat === 'remplace' || a.etat === 'annule'; });
+    else if (/^dos:/.test(exp.etagere)) { var di = exp.etagere.slice(4); liste = liste.filter(function (a) { return (a.dossier || null) === di; }); }
+    liste.forEach(function (a) {
+      out.push({ genre: 'acte', id: 'a:' + a.id, fiche: a, nom: a.intitule || a.nom,
+                 sous: a.nom + (a.numero ? ' · n° ' + a.numero : ''), etat: a.etat || 'brouillon',
+                 m: G.modeles[a.modele] || null, d: a.donnees || null,
+                 mots: [a.intitule, a.nom, a.numero, nomDossier(a.dossier), dateLongue(a.date, false)].join(' ') });
+    });
+    return out;
+  }
+  function expTrier(items) {
+    var t = (exp.etagere === 'recent') ? 'recent' : exp.tri;
+    items.sort(function (a, b) {
+      if (t === 'nom') return a.nom.localeCompare(b.nom, 'fr');
+      if (t === 'numero') return String((a.fiche && a.fiche.numero) || '~').localeCompare(String((b.fiche && b.fiche.numero) || '~'), 'fr');
+      if (t === 'etat') return String(a.etat || '').localeCompare(String(b.etat || ''), 'fr') || a.nom.localeCompare(b.nom, 'fr');
+      if (a.fiche && b.fiche) return (b.fiche.maj || 0) - (a.fiche.maj || 0);
+      return 0;
+    });
+    return items;
+  }
+
+  /* la vignette : le schema d'abord (instantane), puis la VRAIE premiere
+     page par-dessus quand elle arrive a l'ecran */
+  function expBoite(it) {
+    return '<span class="gf-exp-page gf-schema" data-vue="' + ech(it.id) + '">' + apercuSchemaDe(it) + '</span>';
+  }
+  function apercuSchemaDe(it) {
+    try {
+      if (it.genre === 'prereglage') return apercuPrereglage(it.p);
+      if (it.genre === 'modele') return apercuModele(it.m);
+      if (it.m) return apercuSchema(typesDeBlocs(it.m, it.d));
+    } catch (e) {}
+    return '';
+  }
+  function expIcone(it) {
+    if (it.genre === 'modele') return '<path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/>';
+    if (it.genre === 'prereglage') return '<path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/><path d="M8.6 14.4 11 16.8l4.4-4.8"/>';
+    return '<path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h4.5"/>';
+  }
+
   function peindreAccueil() {
     var hote = elt.accueil;
     if (!hote) return;
-    var brouillons = registre.filter(function (a) { return (a.etat || 'brouillon') === 'brouillon'; });
-    var dossiersRecents = dossiers.slice().sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); }).slice(0, 6);
-    var emis = registre.filter(function (a) { return a.etat === 'emis'; });
-    var recents = registre.slice(0, 6);
-    var pres = tousPrereglages().slice(0, 6);
-    var h = new Date().getHours();
-    var salut = h < 18 ? 'Bonjour' : 'Bonsoir';
+    var lg = expLegende();
 
     hote.innerHTML =
-      '<div class="gf-acc-carte gf-acc-hero">'
-      + '<h2 class="gf-acc-titre">' + salut + '.</h2>'
-      + '<p class="gf-acc-intro">Que voulez-vous faire ?</p>'
-      + '<div class="gf-acc-actions">'
-      + '<button type="button" class="gf-btn gf-btn-accent gf-btn-grand" id="gf-acc-nouveau">'
-      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nouvel acte <kbd>Alt+N</kbd></button>'
-      + (brouillons.length ? '<button type="button" class="gf-btn gf-btn-fant gf-btn-grand" id="gf-acc-brouillon">Reprendre un brouillon <span class="gf-compte">' + brouillons.length + '</span></button>' : '')
-      + '</div></div>'
-      + (recents.length
-          ? '<div class="gf-acc-carte"><h2 class="gf-acc-titre gf-acc-titre-sm">Récents</h2><div class="gf-actes-liste">' + recents.map(ligneActe).join('') + '</div>'
-            + '<button type="button" class="gf-lien" id="gf-acc-registre">Ouvrir le registre · ' + registre.length + ' acte' + (registre.length > 1 ? 's' : '')
-            + (brouillons.length ? ' · ' + brouillons.length + ' brouillon' + (brouillons.length > 1 ? 's' : '') : '')
-            + (emis.length ? ' · ' + emis.length + ' émis' : '') + '</button></div>'
-          : '')
-      + (dossiersRecents.length
-          ? '<div class="gf-acc-carte"><h2 class="gf-acc-titre gf-acc-titre-sm">Dossiers</h2><div class="gf-puces">' + dossiersRecents.map(function (d) {
-              return '<button type="button" class="gf-puce" data-acc-dossier="' + ech(d.id) + '">' + ech(d.nom) + ' <span class="gf-compte">' + actesDuDossier(d.id).length + '</span></button>';
-            }).join('') + '</div></div>' : '')
-      + '<div class="gf-acc-carte"><h2 class="gf-acc-titre gf-acc-titre-sm">Préréglages</h2>'
-      + '<p class="gf-acc-intro">Un acte déjà composé : ouvrez-le, il ne reste qu\'à écrire.</p>'
-      + '<div class="gf-cartes gf-cartes-mini">' + pres.map(function (p, i) {
-          return '<button type="button" class="gf-carte gf-carte-mini" data-pre="' + i + '">' + apercuPrereglage(p) + '<b>' + ech(p.nom) + '</b></button>';
-        }).join('') + '</div><button type="button" class="gf-lien" id="gf-acc-tous-pre">Tous les préréglages…</button></div>'
-      + rappelSauvegarde()
-      + '<p class="gf-acc-pied"><button type="button" class="gf-lien" data-espace="parametres">Paramètres</button> · '
-      + '<button type="button" class="gf-lien" id="gf-acc-sauver">Sauvegarder le Greffe</button></p>';
+      '<div class="gf-exp">'
 
-    $('gf-acc-nouveau').addEventListener('click', function () { ouvrirNouveau(); });
+      /* ------------------------------------------- la colonne de gauche */
+      + '<nav class="gf-exp-cote" aria-label="Où chercher">'
+      + '<button type="button" class="gf-btn gf-btn-accent gf-exp-neuf" id="gf-acc-nouveau" '
+      + 'data-bulle="Nouvel acte" data-bulle-rac="Alt+N" data-bulle-role="Choisir un modèle vierge ou un préréglage déjà composé, et ouvrir l\'atelier.">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>'
+      + 'Nouvel acte</button>'
+      + expEtageres().map(function (e) {
+          if (e.t) return '<div class="gf-exp-fam">' + ech(e.t) + '</div>';
+          return '<button type="button" class="gf-exp-eta' + (exp.etagere === e.c ? ' is-actif' : '') + '" data-eta="' + ech(e.c) + '">'
+            + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + e.i + '</svg>'
+            + '<span>' + ech(e.n) + '</span>'
+            + (e.k != null ? '<i>' + e.k + '</i>' : '') + '</button>';
+        }).join('')
+      + '<div class="gf-exp-pied">'
+      + '<button type="button" class="gf-exp-lien" data-espace="registre">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H18a2 2 0 0 1 2 2v13a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Registre complet</button>'
+      + '<button type="button" class="gf-exp-lien" data-espace="parametres">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8 2 2 0 1 1-2.8 2.8 1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5 2 2 0 1 1-4 0 1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3 2 2 0 1 1-2.8-2.8 1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1 2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8 2 2 0 1 1 2.8-2.8 1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5 2 2 0 1 1 4 0 1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3 2 2 0 1 1 2.8 2.8 1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1 2 2 0 1 1 0 4 1.7 1.7 0 0 0-1.5 1z"/></svg>Paramètres</button>'
+      + '<button type="button" class="gf-exp-lien" id="gf-acc-sauver">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>Sauvegarder le Greffe</button>'
+      + '</div></nav>'
+
+      /* -------------------------------------------------- le milieu */
+      + '<section class="gf-exp-centre">'
+      + '<header class="gf-exp-tete">'
+      + '<div class="gf-exp-titre"><h2>' + ech(lg.t) + '</h2><p>' + ech(lg.s) + '</p></div>'
+      + '<div class="gf-exp-barre">'
+      + '<div class="gf-chercher gf-exp-q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+      + '<input type="search" id="gf-exp-q" autocomplete="off" spellcheck="false" value="' + ech(exp.q) + '" placeholder="Chercher sur cette étagère…" aria-label="Chercher"></div>'
+      + '<select class="gf-sel gf-exp-tri" id="gf-exp-tri" aria-label="Trier">'
+      + [['recent', 'Les plus récents'], ['nom', 'Par nom'], ['numero', 'Par numéro'], ['etat', 'Par état']].map(function (t) {
+          return '<option value="' + t[0] + '"' + (exp.tri === t[0] ? ' selected' : '') + '>' + t[1] + '</option>';
+        }).join('') + '</select>'
+      + '<div class="gf-exp-vues">'
+      + '<button type="button" class="gf-ico gf-ico-sm' + (exp.vue === 'vignettes' ? ' is-actif' : '') + '" data-vue-mode="vignettes" data-bulle="Vignettes" data-bulle-role="La première page de chaque acte, dessinée en vrai.">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.2"/></svg></button>'
+      + '<button type="button" class="gf-ico gf-ico-sm' + (exp.vue === 'liste' ? ' is-actif' : '') + '" data-vue-mode="liste" data-bulle="Liste" data-bulle-role="Une ligne par acte : le numéro, l\'intitulé, la date, l\'état.">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>'
+      + '</div></div></header>'
+      + rappelSauvegarde()
+      + '<div class="gf-exp-liste" id="gf-exp-liste" tabindex="0" role="listbox" aria-label="' + ech(lg.t) + '"></div>'
+      + '<p class="gf-exp-geste">Un clic pour <b>regarder</b> · deux clics pour <b>ouvrir</b> · clic droit pour les gestes · <kbd>↑↓</kbd> <kbd>Entrée</kbd> <kbd>Échap</kbd></p>'
+      + '</section>'
+
+      /* ---------------------------------------------- l'inspecteur */
+      + '<aside class="gf-exp-fiche" id="gf-exp-fiche" aria-live="polite"></aside>'
+      + '</div>';
+
+    $('gf-acc-nouveau').addEventListener('click', function () { ouvrirNouveau(exp.etagere === 'prereglages' ? 'prereglages' : null); });
     var s2 = $('gf-acc-sauver-2'); if (s2) s2.addEventListener('click', sauvegarderGreffe);
-    elt.accueil.querySelectorAll('[data-acc-dossier]').forEach(function (x) { x.addEventListener('click', function () { registreDossier = x.getAttribute('data-acc-dossier'); montrer('registre'); }); });
-    var b = $('gf-acc-brouillon');
-    if (b) b.addEventListener('click', function () { montrer('registre', 'brouillon'); });
-    var r = $('gf-acc-registre');
-    if (r) r.addEventListener('click', function () { montrer('registre'); });
-    hote.querySelectorAll('[data-pre]').forEach(function (x) {
-      x.addEventListener('click', function () { var p = pres[+x.getAttribute('data-pre')]; nouvelActe(p.modele, p); });
-    });
-    $('gf-acc-tous-pre').addEventListener('click', function () { ouvrirNouveau('prereglages'); });
+    $('gf-acc-sauver').addEventListener('click', sauvegarderGreffe);
     hote.querySelectorAll('[data-espace]').forEach(function (x) {
       x.addEventListener('click', function () { montrer(x.getAttribute('data-espace')); });
     });
-    $('gf-acc-sauver').addEventListener('click', sauvegarderGreffe);
-    brancherLignesActes(hote);
+    hote.querySelectorAll('[data-eta]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        exp.etagere = b.getAttribute('data-eta'); exp.sel = null; exp.q = '';
+        expGarder(); peindreAccueil();
+      });
+    });
+    hote.querySelectorAll('[data-vue-mode]').forEach(function (b) {
+      b.addEventListener('click', function () { exp.vue = b.getAttribute('data-vue-mode'); expGarder(); peindreAccueil(); });
+    });
+    var q = $('gf-exp-q');
+    q.addEventListener('input', function () { exp.q = q.value; expPeindreListe(); });
+    q.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && q.value) { e.stopPropagation(); q.value = ''; exp.q = ''; expPeindreListe(); return; }
+      if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); $('gf-exp-liste').focus(); if (!exp.sel) expDeplacer(1); }
+    });
+    $('gf-exp-tri').addEventListener('change', function () { exp.tri = this.value; expGarder(); expPeindreListe(); });
+    expPeindreListe();
   }
 
-  /* ---- le choix d'un acte nouveau : modèles et préréglages ---- */
-  function ouvrirNouveau(onglet) {
-    var familles = {};
-    MODELES.forEach(function (k) {
-      var m = G.modeles[k];
-      /* Une casquette ne voit QUE ce qu'elle peut creer. Griser les
-         autres donnerait une liste de portes fermees ; les retirer dit
-         la meme chose sans le reproche. */
-      if (!m || !G.peutCreer(k)) return;
-      (familles[m.famille || 'Actes'] = familles[m.famille || 'Actes'] || []).push(m);
-    });
-    var htmlModeles = Object.keys(familles).map(function (f) {
-      return '<div class="gf-fam"><span class="gf-lab">' + ech(f) + '</span><div class="gf-cartes">'
-        + familles[f].map(function (m) {
-            return '<button type="button" class="gf-carte gf-carte-apercu" data-modele="' + ech(m.cle) + '">' + apercuModele(m)
-              + '<span class="gf-carte-txt"><b>' + ech(m.nom) + '</b><span>' + ech(m.resume || '') + '</span></span></button>';
-          }).join('') + '</div></div>';
+  /* ---- le milieu : vignettes ou liste ---- */
+  var expGuetteur = null;
+  function expPeindreListe() {
+    var hote = $('gf-exp-liste');
+    if (!hote) return;
+    if (expGuetteur) { try { expGuetteur.disconnect(); } catch (e) {} expGuetteur = null; }
+    var items = expTrier(expItems());
+    var cle = cleRecherche(exp.q);
+    if (cle) {
+      var ms = cle.split(' ');
+      items = items.filter(function (it) {
+        var t = cleRecherche(it.mots || it.nom);
+        return ms.every(function (w) { return t.indexOf(w) >= 0; });
+      });
+    }
+    exp.items = items;
+    hote.className = 'gf-exp-liste est-' + exp.vue;
+    if (!items.length) {
+      hote.innerHTML = '<p class="gf-exp-vide">' + (exp.q
+        ? 'Rien ne correspond à « ' + ech(exp.q) + ' » sur cette étagère.'
+        : (exp.etagere === 'prereglages'
+            ? 'Aucun préréglage. Depuis l\'atelier : Fichier, « Garder comme préréglage ».'
+            : 'Rien ici pour l\'instant.')) + '</p>';
+      exp.sel = null;
+      expPeindreFiche();
+      return;
+    }
+    hote.innerHTML = items.map(function (it, i) {
+      var badge = it.genre === 'acte' ? badgeEtat(it.etat, it.fiche && it.fiche.version)
+                : '<span class="gf-badge gf-badge-' + (it.genre === 'modele' ? 'vierge' : 'compose') + '">'
+                  + (it.genre === 'modele' ? 'Vierge' : 'Déjà composé') + '</span>';
+      if (exp.vue === 'liste') {
+        return '<div class="gf-exp-ligne' + (exp.sel === it.id ? ' is-sel' : '') + '" data-it="' + ech(it.id) + '" role="option" tabindex="-1" aria-selected="' + (exp.sel === it.id ? 'true' : 'false') + '">'
+          + '<svg class="gf-exp-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + expIcone(it) + '</svg>'
+          + '<span class="gf-exp-num">' + ech((it.fiche && it.fiche.numero) || '') + '</span>'
+          + '<span class="gf-exp-l-txt"><b>' + ech(it.nom) + '</b><span>' + ech(it.sous) + '</span></span>'
+          + '<span class="gf-exp-date">' + ech(it.fiche ? (dateLongue(it.fiche.date, false) || '') : (it.famille || '')) + '</span>'
+          + badge + '</div>';
+      }
+      return '<div class="gf-exp-vig' + (exp.sel === it.id ? ' is-sel' : '') + '" data-it="' + ech(it.id) + '" role="option" tabindex="-1" aria-selected="' + (exp.sel === it.id ? 'true' : 'false') + '">'
+        + expBoite(it)
+        + '<span class="gf-exp-v-txt"><b>' + ech(it.nom) + '</b><span>' + ech(it.sous) + '</span></span>'
+        + badge + '</div>';
     }).join('');
-    var pres = tousPrereglages();
-    var htmlPre = '<div class="gf-cartes">' + pres.map(function (p, i) {
+
+    /* les vraies premieres pages, fabriquees quand elles arrivent a l'ecran */
+    if (exp.vue === 'vignettes') {
+      var boites = hote.querySelectorAll('.gf-exp-page');
+      var poser = function (b) {
+        var it = expTrouver(b.getAttribute('data-vue'));
+        if (!it || !it.m) return;
+        poserApercu(b, it.m, it.d || donneesApercu(it.m, null), b.clientWidth || 118, false);
+      };
+      if (window.IntersectionObserver) {
+        expGuetteur = new IntersectionObserver(function (es) {
+          es.forEach(function (e) { if (!e.isIntersecting) return; expGuetteur.unobserve(e.target); poser(e.target); });
+        }, { root: hote, rootMargin: '320px' });
+        Array.prototype.forEach.call(boites, function (b) { expGuetteur.observe(b); });
+      } else {
+        Array.prototype.forEach.call(boites, poser);
+      }
+    }
+
+    /* UN CLIC REGARDE, DEUX CLICS OUVRENT. C'est la regle de
+       l'explorateur, et c'est celle qui manquait : on ne pouvait pas
+       regarder un acte sans l'ouvrir, donc sans risquer d'y toucher. */
+    hote.querySelectorAll('[data-it]').forEach(function (el) {
+      el.addEventListener('click', function (e) { e.preventDefault(); expChoisir(el.getAttribute('data-it')); });
+      el.addEventListener('dblclick', function (e) { e.preventDefault(); expOuvrir(el.getAttribute('data-it')); });
+      el.addEventListener('contextmenu', function (e) {
+        e.preventDefault(); expChoisir(el.getAttribute('data-it'));
+        expMenu(el.getAttribute('data-it'), e.clientX, e.clientY);
+      });
+    });
+    if (!hote.getAttribute('data-touches')) {
+      hote.setAttribute('data-touches', '1');
+      hote.addEventListener('keydown', expTouche);
+    }
+    if (exp.sel && !expTrouver(exp.sel)) exp.sel = null;
+    expPeindreFiche();
+  }
+  function expTrouver(id) { return exp.items.filter(function (x) { return x.id === id; })[0] || null; }
+  function expChoisir(id) {
+    exp.sel = id;
+    var hote = $('gf-exp-liste');
+    if (hote) hote.querySelectorAll('[data-it]').forEach(function (el) {
+      var on = el.getAttribute('data-it') === id;
+      el.classList.toggle('is-sel', on);
+      el.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (on) { try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+    });
+    expPeindreFiche();
+  }
+  function expDeplacer(pas) {
+    if (!exp.items.length) return;
+    var i = exp.items.map(function (x) { return x.id; }).indexOf(exp.sel);
+    i = (i < 0) ? 0 : Math.max(0, Math.min(exp.items.length - 1, i + pas));
+    expChoisir(exp.items[i].id);
+  }
+  function expColonnes() {
+    var hote = $('gf-exp-liste');
+    if (!hote || exp.vue !== 'vignettes') return 1;
+    var v = hote.querySelector('.gf-exp-vig');
+    if (!v) return 1;
+    return Math.max(1, Math.round(hote.clientWidth / (v.getBoundingClientRect().width + 12)));
+  }
+  function expTouche(e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); expDeplacer(expColonnes()); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); expDeplacer(-expColonnes()); }
+    else if (e.key === 'ArrowRight' && exp.vue === 'vignettes') { e.preventDefault(); expDeplacer(1); }
+    else if (e.key === 'ArrowLeft' && exp.vue === 'vignettes') { e.preventDefault(); expDeplacer(-1); }
+    else if (e.key === 'Home') { e.preventDefault(); if (exp.items[0]) expChoisir(exp.items[0].id); }
+    else if (e.key === 'End') { e.preventDefault(); if (exp.items.length) expChoisir(exp.items[exp.items.length - 1].id); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (exp.sel) expOuvrir(exp.sel); }
+    else if (e.key === 'Escape' && exp.sel) { e.stopPropagation(); exp.sel = null; expPeindreListe(); }
+  }
+  function expOuvrir(id) {
+    var it = expTrouver(id);
+    if (!it) return;
+    if (it.genre === 'acte') { ouvrirActe(it.fiche); return; }
+    if (it.genre === 'modele') { nouvelActe(it.m.cle); return; }
+    if (!G.modeles[it.p.modele]) { dire('Modèle « ' + it.p.modele + ' » introuvable.', 'erreur'); return; }
+    nouvelActe(it.p.modele, it.p);
+  }
+
+  /* ---- l'inspecteur : ce qu'on a choisi, sans l'ouvrir ---- */
+  function expPeindreFiche() {
+    var hote = $('gf-exp-fiche');
+    if (!hote) return;
+    var it = exp.sel ? expTrouver(exp.sel) : null;
+    if (!it) {
+      hote.innerHTML = '<div class="gf-exp-fiche-vide">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/></svg>'
+        + '<b>Rien de choisi</b>'
+        + '<span>Cliquez <b>une fois</b> sur un élément : sa première page s\'affiche ici, sa fiche aussi, et rien ne s\'ouvre. <b>Deux clics</b> l\'ouvrent pour de bon.</span></div>';
+      return;
+    }
+    var lignes = [];
+    if (it.genre === 'acte') {
+      var f = it.fiche;
+      lignes.push(['Modèle', f.nom]);
+      if (f.numero) lignes.push(['Numéro', f.numero]);
+      lignes.push(['Date de l\'acte', dateLongue(f.date, false) || 'sans date']);
+      lignes.push(['État', (ETATS[f.etat || 'brouillon'] || ETATS.brouillon).lab + (f.version > 1 ? ' · version ' + f.version : '')]);
+      lignes.push(['Dossier', nomDossier(f.dossier) || 'aucun']);
+      lignes.push(['Dernière touche', f.maj ? dateHeure(f.maj) : 'jamais']);
+      if (f.emisLe) lignes.push(['Émis le', dateHeure(f.emisLe)]);
+      if ((f.versions || []).length) lignes.push(['Versions émises', String(f.versions.length)]);
+      var nObj = ((f.donnees || {}).objets || []).length;
+      if (nObj) lignes.push(['Objets posés', String(nObj)]);
+    } else if (it.genre === 'modele') {
+      lignes.push(['Famille', it.famille]);
+      lignes.push(['Ce que c\'est', 'Un acte vierge : la forme est posée, le contenu est à écrire.']);
+      if (it.m.prefixe) lignes.push(['Numérotation', 'Automatique, au registre']);
+    } else {
+      lignes.push(['Bâti sur', it.m.nom]);
+      lignes.push(['Ce que c\'est', 'Un acte déjà composé : il s\'ouvre rempli, il ne reste qu\'à corriger.']);
+      lignes.push(['Origine', it.livre ? 'Livré avec le Greffe' : 'Le vôtre']);
+    }
+
+    var actions;
+    if (it.genre === 'acte') {
+      actions = '<button type="button" class="gf-btn gf-btn-accent" data-fa="ouvrir">Ouvrir l\'acte</button>'
+        + '<button type="button" class="gf-mini" data-fa="dossier">Ranger…</button>'
+        + '<button type="button" class="gf-mini" data-fa="dupliquer">Repartir de celui-ci</button>'
+        + '<button type="button" class="gf-mini" data-fa="registre">Voir au registre</button>'
+        + ((it.etat || 'brouillon') === 'brouillon' ? '<button type="button" class="gf-mini gf-mini-danger" data-fa="retirer">Retirer</button>' : '');
+    } else if (it.genre === 'modele') {
+      actions = '<button type="button" class="gf-btn gf-btn-accent" data-fa="ouvrir">Commencer un acte vierge</button>';
+    } else {
+      actions = '<button type="button" class="gf-btn gf-btn-accent" data-fa="ouvrir">Ouvrir ce préréglage</button>'
+        + (it.livre ? '' : '<button type="button" class="gf-mini" data-fa="exporter">Exporter en .json</button>'
+            + '<button type="button" class="gf-mini gf-mini-danger" data-fa="retirer-pre">Retirer</button>');
+    }
+
+    hote.innerHTML =
+      '<div class="gf-exp-f-tete"><b>' + ech(it.nom) + '</b><span>' + ech(it.sous) + '</span></div>'
+      + '<div class="gf-exp-grand gf-schema" id="gf-exp-grand"></div>'
+      + '<div class="gf-exp-f-lignes">' + lignes.map(function (l) {
+          return '<div class="gf-exp-f-l"><span>' + ech(l[0]) + '</span><b>' + ech(l[1]) + '</b></div>';
+        }).join('') + '</div>'
+      + '<div class="gf-exp-f-actions">' + actions + '</div>';
+
+    var grand = $('gf-exp-grand');
+    if (grand && it.m) {
+      var L = Math.max(140, Math.min(300, grand.clientWidth || 230));
+      grand.style.height = Math.round(L * 297 / 210) + 'px';
+      poserApercu(grand, it.m, it.d || donneesApercu(it.m, null), L, true);
+    } else if (grand) {
+      grand.innerHTML = '<p class="gf-exp-vide">Le modèle de cet acte n\'est pas chargé : il ne peut pas être dessiné ici.</p>';
+    }
+    hote.querySelectorAll('[data-fa]').forEach(function (b) {
+      b.addEventListener('click', function () { expAction(b.getAttribute('data-fa'), it); });
+    });
+  }
+
+  /* ---- les gestes, au bouton comme au clic droit ---- */
+  function expAction(quoi, it) {
+    if (quoi === 'ouvrir') { expOuvrir(it.id); return; }
+    if (quoi === 'registre') { registreDossier = 'tous'; registreFiltre = 'tous'; registreRecherche = it.nom; montrer('registre'); return; }
+    if (quoi === 'dossier') {
+      choisirDossier([it.fiche], 'Ranger cet acte').then(function (d) {
+        if (!d) return;
+        peindreAccueil();
+        dire(d.id ? 'Rangé dans « ' + d.nom + ' »' : 'Sorti de son dossier', 'ok');
+      });
+      return;
+    }
+    /* REPARTIR D'UN ACTE : ses donnees deviennent le point de depart d'un
+       acte NEUF. nouvelActe retire le numero et la date : on ne duplique
+       jamais un numero de registre. */
+    if (quoi === 'dupliquer') {
+      if (!it.m) { dire('Le modèle de cet acte n\'est pas chargé.', 'erreur'); return; }
+      nouvelActe(it.fiche.modele, { nom: it.nom, donnees: it.fiche.donnees, dossier: it.fiche.dossier || null });
+      dire('Acte neuf, repris de « ' + it.nom + ' » · numéro et date à lui', 'ok');
+      return;
+    }
+    if (quoi === 'retirer') {
+      confirmer('Retirer ce brouillon ?',
+        '<p class="gf-modale-aide"><b>' + ech(it.nom) + '</b> sera retiré du registre. Un acte émis, lui, ne se retire jamais.</p>', 'Retirer')
+        .then(function (ok) {
+          if (!ok) return;
+          dbOter(MAG_ACTES, it.fiche.id).then(function () {
+            registre = registre.filter(function (a) { return a.id !== it.fiche.id; });
+            exp.sel = null; peindreAccueil(); dire('Brouillon retiré', 'ok');
+          });
+        });
+      return;
+    }
+    if (quoi === 'exporter') { exporterPrereglage(it.p); return; }
+    if (quoi === 'retirer-pre') {
+      dbOter(MAG_PRE, it.p.id).then(function () {
+        prereglages = prereglages.filter(function (q) { return q.id !== it.p.id; });
+        exp.sel = null; peindreAccueil(); dire('Préréglage retiré', 'ok');
+      });
+    }
+  }
+  function expMenu(id, x, y) {
+    var it = expTrouver(id);
+    if (!it) return;
+    racine.querySelectorAll('.gf-exp-menu').forEach(function (m) { m.remove(); });
+    var gestes = it.genre === 'acte'
+      ? [['ouvrir', 'Ouvrir'], ['dossier', 'Ranger dans un dossier…'], ['dupliquer', 'Repartir de celui-ci'], ['registre', 'Voir au registre']]
+          .concat((it.etat || 'brouillon') === 'brouillon' ? [['retirer', 'Retirer le brouillon']] : [])
+      : (it.genre === 'modele'
+          ? [['ouvrir', 'Commencer un acte vierge']]
+          : [['ouvrir', 'Ouvrir ce préréglage']].concat(it.livre ? [] : [['exporter', 'Exporter en .json'], ['retirer-pre', 'Retirer']]));
+    var m = document.createElement('div');
+    m.className = 'gf-exp-menu';
+    m.setAttribute('role', 'menu');
+    m.innerHTML = gestes.map(function (g, i) {
+      return '<button type="button" role="menuitem" data-g="' + i + '">' + ech(g[1]) + '</button>';
+    }).join('');
+    racine.appendChild(m);
+    var rr = racine.getBoundingClientRect();
+    m.style.left = Math.round(Math.max(6, Math.min(x - rr.left, rr.width - m.offsetWidth - 8))) + 'px';
+    m.style.top = Math.round(Math.max(6, Math.min(y - rr.top, rr.height - m.offsetHeight - 8))) + 'px';
+    m.querySelectorAll('[data-g]').forEach(function (b) {
+      b.addEventListener('click', function () { var g = gestes[+b.getAttribute('data-g')]; m.remove(); expAction(g[0], it); });
+    });
+    var fin = function (e) {
+      if (m.contains(e.target)) return;
+      m.remove(); document.removeEventListener('mousedown', fin, true);
+    };
+    setTimeout(function () { document.addEventListener('mousedown', fin, true); }, 0);
+    var p0 = m.querySelector('button'); if (p0) p0.focus();
+  }
+
+  /* =================================================================
+     CHOISIR UN ACTE : LA MEME BOITE QUE L'EXPLORATEUR
+     « aujourd'hui je me perds dans Modeles et Prereglages, y'a pas de
+       difference, si ce n'est ranger des fichiers, et le fonctionnement
+       m'est un peu bizarre »
+     Deux onglets nus, deux grilles de cartes qui se ressemblaient, et
+     nulle part la phrase qui dit ce qui les separe. Elle est ecrite
+     ici, en tete, a chaque fois :
+       un MODELE est un acte VIERGE       -- la forme, rien dedans ;
+       un PREREGLAGE est un acte DEJA COMPOSE -- la forme ET le contenu.
+     Et le geste est celui de l'accueil, pas un autre : un clic regarde,
+     deux clics creent. Trois colonnes, les memes classes, les memes
+     habitudes.
+     ================================================================= */
+  function ouvrirNouveau(onglet) {
+    var page = (onglet === 'prereglages') ? 'prereglages' : 'modeles';
+    var famille = 'toutes';
+    var sel = null, items = [], guetteur = null;
+
+    /* ---- ce qu'il y a a choisir, des deux cotes ---- */
+    function lesModeles() {
+      var out = [];
+      MODELES.forEach(function (k) {
+        var m = G.modeles[k];
+        /* Une casquette ne voit QUE ce qu'elle peut creer. Griser les
+           autres donnerait une liste de portes fermees ; les retirer dit
+           la meme chose sans le reproche. */
+        if (!m || !G.peutCreer(k)) return;
+        out.push({ genre: 'modele', id: 'm:' + k, nom: m.nom, sous: m.resume || '', famille: m.famille || 'Actes',
+                   m: m, d: null, mots: cleRecherche([m.nom, m.resume, m.famille, m.cle].join(' ')) });
+      });
+      return out;
+    }
+    function lesPrereglages() {
+      var out = [];
+      tousPrereglages().forEach(function (p, i) {
         var m = G.modeles[p.modele];
-        return '<div class="gf-carte gf-carte-pre" data-pre="' + i + '">'
-          + '<button type="button" class="gf-carte-ouvrir gf-carte-apercu">' + apercuPrereglage(p) + '<span class="gf-carte-txt"><b>' + ech(p.nom) + '</b>'
-          + '<span>' + ech(m ? m.nom : p.modele) + (p.livre ? ' · livré avec le Greffe' : ' · le vôtre') + '</span></span></button>'
-          + (p.livre ? '' : '<span class="gf-carte-actions">'
-              + '<button type="button" class="gf-ico" data-exporter title="Exporter en fichier .json" aria-label="Exporter">'
-              + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 9l6-6 6 6M4 21h16"/></svg></button>'
-              + '<button type="button" class="gf-ico" data-retirer title="Retirer ce préréglage" aria-label="Retirer">'
-              + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>')
-          + '</div>';
-      }).join('') + '</div>'
-      + '<div class="gf-depot-pre"><label class="gf-mini" for="gf-pre-fichier">'
-      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9M6 15l6 6 6-6M4 3h16"/></svg>'
-      + 'Déposer un préréglage (.json)</label><input type="file" id="gf-pre-fichier" accept=".json,application/json" multiple hidden></div>';
+        if (!m) return;
+        var d = donneesApercu(m, p);
+        out.push({ genre: 'prereglage', id: 'p:' + (p.id || ('l' + i)), nom: p.nom,
+                   sous: m.nom + (p.livre ? ' · livré avec le Greffe' : ' · le vôtre'),
+                   famille: m.famille || 'Actes', m: m, d: d, p: p, livre: !!p.livre,
+                   mots: cleRecherche([p.nom, m.nom, m.famille, d.destNom, d.destQualite, d.objet, d.titre, d.evenement, d.lieuEvenement].join(' ')) });
+      });
+      return out;
+    }
+    var TOUT = { modeles: lesModeles(), prereglages: lesPrereglages() };
 
     var voile = document.createElement('div');
     voile.className = 'gf-voile';
     voile.innerHTML =
-      '<div class="gf-modale gf-modale-large" role="dialog" aria-modal="true">'
-      + '<header class="gf-modale-top"><h3>Quel acte voulez-vous établir ?</h3>'
-      + '<div class="gf-chercher"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
-      + '<input type="search" id="gf-nouveau-q" autocomplete="off" spellcheck="false"'
+      '<div class="gf-modale gf-modale-large gf-modale-choix" role="dialog" aria-modal="true" aria-labelledby="gf-cx-titre">'
+      + '<header class="gf-modale-top">'
+      + '<h3 id="gf-cx-titre">Quel acte voulez-vous établir ?</h3>'
+      + '<div class="gf-chercher gf-cx-q"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
+      + '<input type="search" id="gf-cx-q" autocomplete="off" spellcheck="false"'
       + ' placeholder="Chercher : maire, tournoi, reçu, convocation…" aria-label="Chercher un acte"></div>'
-      + '<div class="gf-onglets"><button type="button" class="gf-onglet is-actif" data-onglet="modeles">Modèles</button>'
-      + '<button type="button" class="gf-onglet" data-onglet="prereglages">Préréglages</button></div>'
       + '<button type="button" class="gf-ico gf-ico-close" data-x aria-label="Fermer">'
       + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>'
-      + '<p class="gf-rien" hidden>Rien ne correspond. Essayez un mot du nom de l\'acte, ou du destinataire.</p>'
-      + '<div class="gf-modale-corps"><div data-page="modeles">' + htmlModeles + '</div>'
-      + '<div data-page="prereglages" hidden><p class="gf-modale-aide">Depuis l\'atelier, « Préréglage » garde l\'acte en cours sous cette forme ; un fichier .json le fait voyager d\'un poste à l\'autre.</p>' + htmlPre + '</div></div>'
-      + '</div>';
+
+      /* les deux etageres, avec la phrase qui les separe */
+      + '<div class="gf-cx-etageres" role="tablist">'
+      + '<button type="button" class="gf-cx-eta" data-page="modeles" role="tab">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>'
+      + '<span><b>Modèles</b><i>Un acte <em>vierge</em> : la forme est posée, tout le contenu est à écrire.</i></span>'
+      + '<u>' + TOUT.modeles.length + '</u></button>'
+      + '<button type="button" class="gf-cx-eta" data-page="prereglages" role="tab">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h6M8 12h7M8 16h4"/><path d="m14.8 18.4 2.2 2.2 4-4.4"/></svg>'
+      + '<span><b>Préréglages</b><i>Un acte <em>déjà composé</em> : il s\'ouvre rempli, il ne reste qu\'à corriger.</i></span>'
+      + '<u>' + TOUT.prereglages.length + '</u></button>'
+      + '</div>'
+
+      + '<div class="gf-cx-corps">'
+      + '<nav class="gf-cx-fams" id="gf-cx-fams" aria-label="Familles"></nav>'
+      + '<div class="gf-exp-liste est-vignettes gf-cx-liste" id="gf-cx-liste" tabindex="0" role="listbox"></div>'
+      + '<aside class="gf-exp-fiche gf-cx-fiche" id="gf-cx-fiche" aria-live="polite"></aside>'
+      + '</div>'
+      + '<footer class="gf-modale-pied gf-cx-pied">'
+      + '<p class="gf-cx-geste">Un clic pour <b>regarder</b> · deux clics pour <b>créer</b> · <kbd>↑↓</kbd> <kbd>Entrée</kbd></p>'
+      + '<label class="gf-mini gf-cx-depot" for="gf-pre-fichier">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9M6 15l6 6 6-6M4 3h16"/></svg>'
+      + 'Déposer un préréglage (.json)</label>'
+      + '<input type="file" id="gf-pre-fichier" accept=".json,application/json" multiple hidden>'
+      + '</footer></div>';
     racine.appendChild(voile);
 
-    /* ---- les cartes, leur acte et leur texte cherchable ---- */
-    var cartes = [];
-    voile.querySelectorAll('.gf-carte').forEach(function (c) {
-      var m, d, mots;
-      if (c.hasAttribute('data-modele')) {
-        m = G.modeles[c.getAttribute('data-modele')];
-        if (!m) return;
-        d = donneesApercu(m, null);
-        mots = [m.nom, m.resume, m.famille, m.cle];
-      } else {
-        var p = pres[+c.getAttribute('data-pre')];
-        m = p && G.modeles[p.modele];
-        if (!m) return;
-        d = donneesApercu(m, p);
-        /* un préréglage se cherche aussi par son destinataire et son
-           objet : « maire », « Mermoz », « tournoi » doivent le trouver */
-        mots = [p.nom, m.nom, m.famille, d.destNom, d.destQualite, d.objet, d.titre, d.evenement, d.lieuEvenement];
-      }
-      c.setAttribute('data-q', cleRecherche(mots.join(' ')));
-      cartes.push({ el: c, m: m, d: d, hote: c.querySelector('.gf-schema') });
-    });
-
-    /* ---- la vignette, fabriquée à l'arrivée à l'écran ---- */
-    function poserVignette(c) {
-      if (c && c.hote) poserApercu(c.hote, c.m, c.d, c.hote.clientWidth || 90, false);
+    function q() { return voile.querySelector('#gf-cx-q'); }
+    function fermer() {
+      if (guetteur) { try { guetteur.disconnect(); } catch (e) {} guetteur = null; }
+      if (voile.parentNode) voile.remove();
     }
-    var guetteur = null;
-    if (window.IntersectionObserver) {
-      guetteur = new IntersectionObserver(function (entrees) {
-        entrees.forEach(function (e) {
-          if (!e.isIntersecting) return;
-          guetteur.unobserve(e.target);
-          poserVignette(cartes.filter(function (x) { return x.hote === e.target; })[0]);
-        });
-      }, { root: voile.querySelector('.gf-modale-corps'), rootMargin: '220px' });
-      cartes.forEach(function (c) { if (c.hote) guetteur.observe(c.hote); });
-    } else {
-      cartes.forEach(poserVignette);
-    }
-    /* Une carte de l'onglet caché n'est jamais « à l'écran » : le guetteur
-       ne la voit pas, et une recherche qui la révèle la laissait avec son
-       schéma de barres. On rattrape après chaque filtrage. */
-    function rattraperVignettes() {
-      var n = 0;
-      cartes.forEach(function (c) {
-        if (n >= 24 || c.el.hidden || !c.hote || c.hote.getAttribute('data-pose') === '1') return;
-        if (!c.hote.clientWidth) return;
-        poserVignette(c); n++;
-      });
-    }
-
-    /* ---- l'aperçu en grand, au survol : UN seul cadre pour toutes ---- */
-    var grande = document.createElement('div');
-    grande.className = 'gf-vue-grande';
-    grande.hidden = true;
-    voile.appendChild(grande);
-    var minuteurVue = null, carteVue = null;
-    function cacherGrande() {
-      clearTimeout(minuteurVue); carteVue = null;
-      grande.hidden = true; grande.innerHTML = '';
-    }
-    function montrerGrande(c) {
-      if (carteVue === c.el) return;
-      carteVue = c.el;
-      grande.innerHTML = '';
-      grande.hidden = false;
-      var boite = document.createElement('div');
-      boite.className = 'gf-vue-boite';
-      grande.appendChild(boite);
-      var L = 330;
-      boite.style.width = L + 'px';
-      boite.style.height = Math.round(L * 297 / 210) + 'px';
-      poserApercu(boite, c.m, c.d, L, true);
-      var r = c.el.getBoundingClientRect(), rv = voile.getBoundingClientRect();
-      var x = r.right + 12, H = Math.round(L * 297 / 210);
-      if (x + L + 12 > rv.right) x = r.left - L - 12;
-      if (x < rv.left + 8) x = Math.max(rv.left + 8, Math.min(r.left, rv.right - L - 8));
-      grande.style.left = Math.round(x) + 'px';
-      grande.style.top = Math.round(Math.max(rv.top + 8, Math.min(r.top, rv.bottom - H - 8))) + 'px';
-    }
-    cartes.forEach(function (c) {
-      var ouvrir = c.el.querySelector('.gf-carte-ouvrir') || c.el;
-      function entrer() { clearTimeout(minuteurVue); minuteurVue = setTimeout(function () { montrerGrande(c); }, 260); }
-      c.el.addEventListener('mouseenter', entrer);
-      ouvrir.addEventListener('focus', entrer);
-      c.el.addEventListener('mouseleave', cacherGrande);
-      ouvrir.addEventListener('blur', cacherGrande);
-    });
-
-    function fermer() { cacherGrande(); if (guetteur) guetteur.disconnect(); if (voile.parentNode) voile.remove(); }
     voile.querySelector('[data-x]').addEventListener('click', fermer);
 
-    /* ---- la recherche ---- */
-    var champ = voile.querySelector('#gf-nouveau-q');
-    var rien = voile.querySelector('.gf-rien');
-    var onglets = voile.querySelector('.gf-onglets');
-    function filtrer() {
-      var q = cleRecherche(champ.value);
-      var mots = q ? q.split(' ') : [];
-      voile.classList.toggle('gf-en-recherche', !!mots.length);
-      var vus = 0;
-      cartes.forEach(function (c) {
-        var texte = c.el.getAttribute('data-q') || '';
-        var ok = mots.every(function (w) { return texte.indexOf(w) >= 0; });
-        c.el.hidden = !ok;
-        if (ok) vus++;
+    /* ---- les familles de l'etagere courante ---- */
+    function peindreFamilles() {
+      var hote = voile.querySelector('#gf-cx-fams');
+      var comptes = {};
+      TOUT[page].forEach(function (it) { comptes[it.famille] = (comptes[it.famille] || 0) + 1; });
+      var noms = Object.keys(comptes).sort(function (a, b) { return a.localeCompare(b, 'fr'); });
+      hote.innerHTML = '<button type="button" class="gf-exp-eta' + (famille === 'toutes' ? ' is-actif' : '') + '" data-fam="toutes">'
+          + '<span>Toutes les familles</span><i>' + TOUT[page].length + '</i></button>'
+        + noms.map(function (n) {
+            return '<button type="button" class="gf-exp-eta' + (famille === n ? ' is-actif' : '') + '" data-fam="' + ech(n) + '">'
+              + '<span>' + ech(n) + '</span><i>' + comptes[n] + '</i></button>';
+          }).join('');
+      hote.querySelectorAll('[data-fam]').forEach(function (b) {
+        b.addEventListener('click', function () { famille = b.getAttribute('data-fam'); sel = null; peindreFamilles(); peindreListe(); });
       });
-      /* une famille dont toutes les cartes sont masquées disparaît aussi,
-         sinon la liste garde des titres qui ne mènent à rien */
-      voile.querySelectorAll('.gf-fam').forEach(function (f) {
-        f.hidden = !!mots.length && !f.querySelector('.gf-carte:not([hidden])');
-      });
-      /* en recherche, les deux onglets s'affichent d'un coup : c'est ce
-         qu'on veut quand on cherche « maire » sans savoir où il est */
-      voile.querySelectorAll('[data-page]').forEach(function (p) {
-        p.hidden = mots.length ? !p.querySelector('.gf-carte:not([hidden])')
-          : p.getAttribute('data-page') !== (voile.querySelector('.gf-onglet.is-actif') || {}).getAttribute('data-onglet');
-      });
-      if (onglets) onglets.hidden = !!mots.length;
-      rien.hidden = !(mots.length && !vus);
-      cacherGrande();
-      setTimeout(rattraperVignettes, 0);
     }
-    champ.addEventListener('input', filtrer);
-    setTimeout(function () { try { champ.focus(); } catch (e) {} }, 60);
 
+    /* ---- le milieu ---- */
+    function peindreListe() {
+      var hote = voile.querySelector('#gf-cx-liste');
+      if (guetteur) { try { guetteur.disconnect(); } catch (e) {} guetteur = null; }
+      var cle = cleRecherche(q().value);
+      var mots = cle ? cle.split(' ') : [];
+      /* EN RECHERCHE, LES DEUX ETAGERES D'UN COUP : c'est ce qu'on veut
+         quand on cherche « maire » sans savoir de quel cote il est. */
+      var base = mots.length ? TOUT.modeles.concat(TOUT.prereglages) : TOUT[page];
+      items = base.filter(function (it) {
+        if (!mots.length && famille !== 'toutes' && it.famille !== famille) return false;
+        return mots.every(function (w) { return it.mots.indexOf(w) >= 0; });
+      });
+      voile.classList.toggle('gf-en-recherche', !!mots.length);
+      if (!items.length) {
+        hote.innerHTML = '<p class="gf-exp-vide">Rien ne correspond. Essayez un mot du nom de l\'acte, ou du destinataire.</p>';
+        sel = null; peindreFiche();
+        return;
+      }
+      hote.innerHTML = items.map(function (it) {
+        return '<div class="gf-exp-vig' + (sel === it.id ? ' is-sel' : '') + '" data-it="' + ech(it.id) + '" role="option" tabindex="-1" aria-selected="' + (sel === it.id ? 'true' : 'false') + '">'
+          + '<span class="gf-exp-page gf-schema" data-vue="' + ech(it.id) + '">'
+          + (it.genre === 'modele' ? apercuModele(it.m) : apercuPrereglage(it.p)) + '</span>'
+          + '<span class="gf-exp-v-txt"><b>' + ech(it.nom) + '</b><span>' + ech(it.sous || it.famille) + '</span></span>'
+          + '<span class="gf-badge gf-badge-' + (it.genre === 'modele' ? 'vierge' : 'compose') + '">'
+          + (it.genre === 'modele' ? 'Vierge' : 'Déjà composé') + '</span></div>';
+      }).join('');
+      var poser = function (b) {
+        var it = trouver(b.getAttribute('data-vue'));
+        if (it && it.m) poserApercu(b, it.m, it.d || donneesApercu(it.m, null), b.clientWidth || 118, false);
+      };
+      var boites = hote.querySelectorAll('.gf-exp-page');
+      if (window.IntersectionObserver) {
+        guetteur = new IntersectionObserver(function (es) {
+          es.forEach(function (e) { if (!e.isIntersecting) return; guetteur.unobserve(e.target); poser(e.target); });
+        }, { root: hote, rootMargin: '320px' });
+        Array.prototype.forEach.call(boites, function (b) { guetteur.observe(b); });
+      } else {
+        Array.prototype.forEach.call(boites, poser);
+      }
+      hote.querySelectorAll('[data-it]').forEach(function (el) {
+        el.addEventListener('click', function (e) { e.preventDefault(); choisir(el.getAttribute('data-it')); });
+        el.addEventListener('dblclick', function (e) { e.preventDefault(); creer(el.getAttribute('data-it')); });
+      });
+      if (sel && !trouver(sel)) sel = null;
+      if (!sel) choisir(items[0].id); else peindreFiche();
+    }
+    function trouver(id) { return items.filter(function (x) { return x.id === id; })[0] || null; }
+    function choisir(id) {
+      sel = id;
+      voile.querySelectorAll('#gf-cx-liste [data-it]').forEach(function (el) {
+        var on = el.getAttribute('data-it') === id;
+        el.classList.toggle('is-sel', on);
+        el.setAttribute('aria-selected', on ? 'true' : 'false');
+        if (on) { try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+      });
+      peindreFiche();
+    }
+    function deplacer(pas) {
+      if (!items.length) return;
+      var i = items.map(function (x) { return x.id; }).indexOf(sel);
+      i = (i < 0) ? 0 : Math.max(0, Math.min(items.length - 1, i + pas));
+      choisir(items[i].id);
+    }
+    function colonnes() {
+      var hote = voile.querySelector('#gf-cx-liste');
+      var v = hote.querySelector('.gf-exp-vig');
+      if (!v) return 1;
+      return Math.max(1, Math.round(hote.clientWidth / (v.getBoundingClientRect().width + 12)));
+    }
+
+    /* ---- la fiche : ce qu'on a choisi, avant de le creer ---- */
+    function peindreFiche() {
+      var hote = voile.querySelector('#gf-cx-fiche');
+      var it = sel ? trouver(sel) : null;
+      if (!it) { hote.innerHTML = '<div class="gf-exp-fiche-vide"><b>Rien de choisi</b><span>Cliquez une fois sur une carte.</span></div>'; return; }
+      var lignes = it.genre === 'modele'
+        ? [['Famille', it.famille],
+           ['Ce que c\'est', 'Un acte vierge : la forme est posée, le contenu est à écrire.'],
+           ['Numérotation', it.m.prefixe ? 'Automatique, au registre' : 'Sans numéro']]
+        : [['Bâti sur', it.m.nom],
+           ['Famille', it.famille],
+           ['Ce que c\'est', 'Un acte déjà composé : il s\'ouvre rempli, il ne reste qu\'à corriger.'],
+           ['Origine', it.livre ? 'Livré avec le Greffe' : 'Le vôtre']];
+      hote.innerHTML =
+        '<div class="gf-exp-f-tete"><b>' + ech(it.nom) + '</b><span>' + ech(it.sous || it.famille) + '</span></div>'
+        + '<div class="gf-exp-grand gf-schema" id="gf-cx-grand"></div>'
+        + '<div class="gf-exp-f-lignes">' + lignes.map(function (l) {
+            return '<div class="gf-exp-f-l"><span>' + ech(l[0]) + '</span><b>' + ech(l[1]) + '</b></div>';
+          }).join('') + '</div>'
+        + '<div class="gf-exp-f-actions">'
+        + '<button type="button" class="gf-btn gf-btn-accent" data-creer>'
+        + (it.genre === 'modele' ? 'Commencer un acte vierge' : 'Ouvrir ce préréglage') + '</button>'
+        + (it.genre === 'prereglage' && !it.livre
+            ? '<button type="button" class="gf-mini" data-exporter>Exporter en .json</button>'
+              + '<button type="button" class="gf-mini gf-mini-danger" data-retirer>Retirer ce préréglage</button>' : '')
+        + '</div>';
+      var grand = hote.querySelector('#gf-cx-grand');
+      var L = Math.max(140, Math.min(280, grand.clientWidth || 220));
+      grand.style.height = Math.round(L * 297 / 210) + 'px';
+      poserApercu(grand, it.m, it.d || donneesApercu(it.m, null), L, true);
+      hote.querySelector('[data-creer]').addEventListener('click', function () { creer(it.id); });
+      var ex = hote.querySelector('[data-exporter]');
+      if (ex) ex.addEventListener('click', function () { exporterPrereglage(it.p); });
+      var ret = hote.querySelector('[data-retirer]');
+      if (ret) ret.addEventListener('click', function () {
+        dbOter(MAG_PRE, it.p.id).then(function () {
+          prereglages = prereglages.filter(function (x) { return x.id !== it.p.id; });
+          TOUT.prereglages = lesPrereglages();
+          sel = null; peindreFamilles(); peindreListe(); dire('Préréglage retiré', 'ok');
+        });
+      });
+    }
+
+    function creer(id) {
+      var it = trouver(id);
+      if (!it) return;
+      if (it.genre === 'modele') { fermer(); nouvelActe(it.m.cle); return; }
+      if (!G.modeles[it.p.modele]) { dire('Modèle « ' + it.p.modele + ' » introuvable.', 'erreur'); return; }
+      fermer(); nouvelActe(it.p.modele, it.p);
+    }
+
+    /* ---- les etageres, la recherche, le clavier ---- */
+    function majEtageres() {
+      voile.querySelectorAll('[data-page]').forEach(function (b) {
+        b.classList.toggle('is-actif', b.getAttribute('data-page') === page);
+        b.setAttribute('aria-selected', b.getAttribute('data-page') === page ? 'true' : 'false');
+      });
+      voile.querySelector('.gf-cx-depot').hidden = (page !== 'prereglages');
+    }
+    voile.querySelectorAll('[data-page]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        page = b.getAttribute('data-page'); famille = 'toutes'; sel = null;
+        majEtageres(); peindreFamilles(); peindreListe();
+      });
+    });
+    q().addEventListener('input', function () { sel = null; peindreListe(); });
+    q().addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); voile.querySelector('#gf-cx-liste').focus(); deplacer(1); }
+      else if (e.key === 'Enter' && sel) { e.preventDefault(); creer(sel); }
+    });
+    voile.querySelector('#gf-cx-liste').addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); deplacer(colonnes()); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); deplacer(-colonnes()); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); deplacer(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); deplacer(-1); }
+      else if (e.key === 'Enter' && sel) { e.preventDefault(); creer(sel); }
+    });
     voile.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       e.preventDefault(); e.stopPropagation();
-      /* Échap efface d'abord la recherche : on ne perd pas la modale
-         parce qu'on voulait juste repartir de la liste entière */
-      if (champ.value) { champ.value = ''; filtrer(); champ.focus(); return; }
+      /* Echap efface d'abord la recherche : on ne perd pas la boite
+         parce qu'on voulait repartir de la liste entiere */
+      if (q().value) { q().value = ''; sel = null; peindreListe(); q().focus(); return; }
       fermer();
-    });
-    voile.querySelectorAll('.gf-onglet').forEach(function (o) {
-      o.addEventListener('click', function () {
-        voile.querySelectorAll('.gf-onglet').forEach(function (x) { x.classList.toggle('is-actif', x === o); });
-        voile.querySelectorAll('[data-page]').forEach(function (p) { p.hidden = p.getAttribute('data-page') !== o.getAttribute('data-onglet'); });
-        setTimeout(rattraperVignettes, 0);
-      });
-    });
-    if (onglet === 'prereglages') voile.querySelector('[data-onglet="prereglages"]').click();
-    voile.querySelectorAll('[data-modele]').forEach(function (b) {
-      b.addEventListener('click', function () { fermer(); nouvelActe(b.getAttribute('data-modele')); });
-    });
-    voile.querySelectorAll('.gf-carte-pre').forEach(function (c) {
-      var p = pres[+c.getAttribute('data-pre')];
-      c.querySelector('.gf-carte-ouvrir').addEventListener('click', function () {
-        if (!G.modeles[p.modele]) { dire('Modèle « ' + p.modele + ' » introuvable.', 'erreur'); return; }
-        fermer(); nouvelActe(p.modele, p);
-      });
-      var ex = c.querySelector('[data-exporter]');
-      if (ex) ex.addEventListener('click', function () { exporterPrereglage(p); });
-      var ret = c.querySelector('[data-retirer]');
-      if (ret) ret.addEventListener('click', function () {
-        dbOter(MAG_PRE, p.id).then(function () {
-          prereglages = prereglages.filter(function (q) { return q.id !== p.id; });
-          fermer(); ouvrirNouveau('prereglages'); dire('Préréglage retiré', 'ok');
-        });
-      });
     });
     var depot = voile.querySelector('#gf-pre-fichier');
     if (depot) depot.addEventListener('change', function () {
       deposerPrereglages(depot.files); depot.value = '';
-      setTimeout(function () { fermer(); ouvrirNouveau('prereglages'); }, 600);
+      setTimeout(function () { TOUT.prereglages = lesPrereglages(); page = 'prereglages'; majEtageres(); peindreFamilles(); peindreListe(); }, 700);
     });
-    var premier = voile.querySelector('[data-modele]');
-    if (premier) premier.focus();
+
+    majEtageres(); peindreFamilles(); peindreListe();
+    setTimeout(function () { try { q().focus(); } catch (e) {} }, 60);
   }
 
   /* ---- le registre : chercher, filtrer, ouvrir ---- */
