@@ -29785,6 +29785,88 @@
   function odItems(r){ var it; try{ it = Array.isArray(r.items)?r.items:JSON.parse(r.items||'[]'); }catch(e){ it=[]; } return Array.isArray(it)?it:[]; }
   function odNum(r){ return r.order_number || ('#'+String(r.id).slice(0,4).toUpperCase()); }
 
+  // LES ARTICLES ONT LEUR PHOTO EN BASE, PAS DANS LE CODE.
+  // SHOP_PRODUCTS est le mini-catalogue d'origine : quatre articles en
+  // dur, ranges par surnom (domicile, exterieur...). Depuis que la
+  // boutique vit dans la table products, une ligne de commande porte
+  // l'identifiant du produit, et SHOP_PRODUCTS[it.id] ne trouvait plus
+  // rien : le bon de preparation sortait sans une seule image (vu sur
+  // CMD-0005, 20 septembre 2026). On lit la table, le surnom reste en
+  // repli pour les vieilles commandes.
+  var odProduits = {};
+  function odProduitsCharger(){
+    return sbGet('products?select=id,name,image_url,images,price').then(function(rows){
+      odProduits = {};
+      (rows || []).forEach(function(p){
+        var imgs = p.images; if (typeof imgs === 'string'){ try { imgs = JSON.parse(imgs); } catch(e){ imgs = null; } }
+        var img = (Array.isArray(imgs) && imgs.filter(Boolean)[0]) || p.image_url || null;
+        odProduits[String(p.id)] = { name: p.name, image: img, price: p.price };
+      });
+    }).catch(function(){});
+  }
+  function odProduit(it){
+    if (!it) return null;
+    var p = odProduits[String(it.id)] || SHOP_PRODUCTS[it.id];
+    if (p) return p;
+    var nom = String(it.name || '').trim().toLowerCase(); if (!nom) return null;
+    var cles = Object.keys(odProduits);
+    for (var i = 0; i < cles.length; i++) if (String(odProduits[cles[i]].name || '').trim().toLowerCase() === nom) return odProduits[cles[i]];
+    return null;
+  }
+  function odSousTotal(items){
+    return items.reduce(function(a, it){ var q = it.qty || it.quantity || 1; return a + (it.unit_price != null ? Number(it.unit_price) * q : 0); }, 0);
+  }
+
+  // LE RECU DU CLIENT. « Imprimer » sort le bon de preparation, un
+  // document pour le club (cases a cocher, notes internes). Le client,
+  // lui, attend un papier a son nom : ce que ca coute, la remise, ce
+  // qu'il a paye, ou il retire. Facture tant que ce n'est pas encaisse,
+  // recu ensuite. Le document s'ouvre dans une fenetre a part et part a
+  // l'imprimante ; aucune ecriture, on peut le sortir dix fois.
+  function odRecuHtml(r){
+    var items = odItems(r), paye = !!r.paid, titre = paye ? 'Reçu' : 'Facture';
+    var lignes = items.map(function(it){
+      var p = odProduit(it); var qty = it.qty || it.quantity || 1;
+      var pu = it.unit_price != null ? Number(it.unit_price) : (p && p.price != null ? Number(p.price) : null);
+      return '<tr><td>' + esc(it.name || (p ? p.name : 'Article')) + (it.size ? ' <small>taille ' + esc(it.size) + '</small>' : '') + '</td>' +
+        '<td class="n">' + qty + '</td><td class="n">' + (pu != null ? esc(odMoney(pu)) : '') + '</td><td class="n">' + (pu != null ? esc(odMoney(pu * qty)) : '') + '</td></tr>';
+    }).join('');
+    var sousTotal = odSousTotal(items), remise = Number(r.discount_fcfa) || 0;
+    var d = r.created_at ? new Date(r.created_at) : new Date();
+    var fr = { day:'numeric', month:'long', year:'numeric' };
+    return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>' + titre + ' ' + esc(odNum(r)) + '</title>' +
+      '<style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;padding:32px;max-width:720px}' +
+      'header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #1f6b3a;padding-bottom:14px;margin-bottom:22px}' +
+      'header img{width:64px;height:64px;object-fit:contain}h1{font-size:22px;margin:0;color:#1f6b3a}header p{margin:2px 0 0;font-size:12px;color:#555}' +
+      '.meta{display:flex;justify-content:space-between;gap:20px;font-size:13px;margin-bottom:18px}.meta b{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#777;margin-bottom:3px}' +
+      'table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 8px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top}th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#777}td.n,th.n{text-align:right;white-space:nowrap}small{color:#666}' +
+      '.tot td{border:none;padding:5px 8px}.tot .g td{font-weight:700;font-size:15px;border-top:2px solid #1f6b3a;padding-top:10px}' +
+      '.etat{margin-top:22px;padding:12px 14px;border:1px solid #ddd;border-radius:6px;font-size:13px}.etat b{color:#1f6b3a}' +
+      'footer{margin-top:28px;font-size:11px;color:#777;border-top:1px solid #ddd;padding-top:10px}@media print{body{padding:0}}</style></head><body>' +
+      '<header><img src="' + esc(BAOBABS_LOGO) + '" alt=""><div><h1>Baobabs Basket Club</h1><p>Dakar · www.baobabsbasketclub.com</p></div></header>' +
+      '<div class="meta"><div><b>' + titre + '</b>' + esc(odNum(r)) + '</div><div><b>Date</b>' + esc(d.toLocaleDateString('fr-FR', fr)) + '</div>' +
+        '<div><b>Client</b>' + esc(r.customer_name || '') + (r.customer_phone ? '<br>' + esc(r.customer_phone) : '') + (r.customer_email ? '<br>' + esc(r.customer_email) : '') + '</div></div>' +
+      '<table><thead><tr><th>Article</th><th class="n">Qté</th><th class="n">Prix unitaire</th><th class="n">Montant</th></tr></thead><tbody>' + lignes + '</tbody>' +
+      '<tbody class="tot">' +
+        (sousTotal && (remise || sousTotal !== Number(r.total)) ? '<tr><td colspan="3" class="n">Sous-total</td><td class="n">' + esc(odMoney(sousTotal)) + '</td></tr>' : '') +
+        (remise ? '<tr><td colspan="3" class="n">Remise' + (r.promo_code ? ' (code ' + esc(String(r.promo_code).toUpperCase()) + ')' : '') + '</td><td class="n">' + esc(odMoney(-remise)) + '</td></tr>' : '') +
+        '<tr class="g"><td colspan="3" class="n">Total</td><td class="n">' + esc(odMoney(r.total)) + '</td></tr>' +
+      '</tbody></table>' +
+      '<div class="etat">' + (paye
+        ? '<b>Réglé' + (r.payment_method ? ' · ' + esc(r.payment_method) : '') + '.</b> Merci pour votre commande.'
+        : '<b>À régler au retrait' + (r.payment_method ? ' · ' + esc(r.payment_method) : '') + '.</b> Cette facture vaut bon de retrait.') +
+        (r.pickup_location ? ' Retrait : ' + esc(r.pickup_location) + '.' : '') + '</div>' +
+      '<footer>Baobabs Basket Club · document établi le ' + esc(new Date().toLocaleDateString('fr-FR', fr)) + '</footer>' +
+      '</body></html>';
+  }
+  function odRecuOuvrir(r){
+    var w = null; try { w = window.open('', '_blank'); } catch(e){}
+    if (!w){ qgToast('Le navigateur a bloqué la fenêtre du reçu : autorisez les fenêtres pour ce site.', true); return; }
+    w.document.open(); w.document.write(odRecuHtml(r)); w.document.close();
+    // l'imprimante attend le logo
+    setTimeout(function(){ try { w.focus(); w.print(); } catch(e){} }, 400);
+  }
+
   var odRows = [], odSel = null, odView = 'board', odStarted = false;
   var odPgn = { page: 1, sig: null };
 
@@ -29806,7 +29888,8 @@
   function odLoad(){
     // On tente la vue enrichie, avec repli sur la table brute : le module
     // reste utilisable si la migration n'a pas encore été passée.
-    return sbGetAll('commandes_admin?select=*&order=created_at.desc')
+    // Les produits d'abord : le bon les cite par leur photo.
+    return odProduitsCharger().then(function(){ return sbGetAll('commandes_admin?select=*&order=created_at.desc'); })
       .then(function(rows){ odRows = rows||[]; odRender(); })
       .catch(function(){
         return sbGetAll('orders?select=*&order=created_at.desc')
@@ -29998,7 +30081,7 @@
     var history; try{ history = Array.isArray(r.status_history)?r.status_history:JSON.parse(r.status_history||'[]'); }catch(e){ history=[]; }
 
     var lines = items.map(function(it, idx){
-      var prod = SHOP_PRODUCTS[it.id];
+      var prod = odProduit(it);
       var name = it.name || (prod?prod.name:'Article');
       var img = prod ? prod.image : null;
       var qty = it.qty || it.quantity || 1;
@@ -30020,6 +30103,7 @@
       ? '<span class="ds-tag cri">En attente depuis '+Math.floor(hAge/24)+' j</span>' : '';
 
     var nArt = items.reduce(function(a,it){ return a + (it.qty||it.quantity||1); }, 0);
+    var sousTotal = odSousTotal(items), remise = Number(r.discount_fcfa) || 0;
 
     box.innerHTML =
       '<div class="ds-doc" id="print-root">'+
@@ -30054,6 +30138,7 @@
                 return lienPrevenir(r.customer_phone, r.customer_email, 'Votre commande ' + num + ' : Baobabs Basket Club', texte);
               })()+
               '<button type="button" id="od-paid-toggle">'+(r.paid?'Marquer non encaissée':'Marquer encaissée')+'</button>'+
+              '<button type="button" id="od-recu">'+(r.paid?'Reçu':'Facture')+' pour le client</button>'+
               '<button type="button" id="od-print"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>Imprimer le bon</button>'+
             '</div>'+
           '</div>'+
@@ -30071,6 +30156,19 @@
           '<div class="cd-sec wide"><div class="cd-sec-h">À emballer — '+items.length+' ligne(s)</div><div class="cd-sec-b">'+
             (lines || '<p class="cd-prose" style="color:var(--faint)">Aucun article enregistré sur cette commande.</p>')+
             '<p class="cd-prose od-noprint" style="color:var(--faint);margin-top:11px;font-size:12px">Cochez au fur et à mesure de l\'emballage. Les cases ne sont pas enregistrées : elles servent à ne rien oublier pendant la préparation.</p>'+
+          '</div></div>'+
+
+          // CE QUE CA COUTE, ET POURQUOI. Le bon montrait un total sans
+          // dire d'ou il venait : un code promo saisi sur le site restait
+          // invisible ici, et on ne pouvait pas repondre a « ma remise
+          // a-t-elle ete prise ? ».
+          '<div class="cd-sec"><div class="cd-sec-h">Prix</div><div class="cd-sec-b">'+
+            (sousTotal ? kv('Sous-total', odMoney(sousTotal)) : '')+
+            (r.promo_code
+              ? kv('Code promo', String(r.promo_code).toUpperCase() + (remise > 0 ? ' · appliqué : ' + odMoney(-remise) : ' · saisi, mais aucune remise'))
+              : kv('Code promo', 'Aucun'))+
+            kv('Total', odMoney(r.total))+
+            (r.total_suspect ? '<p class="cd-prose" style="color:var(--danger);margin-top:9px;font-size:12px">Le total envoyé par le navigateur du client ('+esc(odMoney(r.total_client))+') ne correspondait pas : le club a recalculé, et c\'est ce total qui fait foi.</p>' : '')+
           '</div></div>'+
 
           // La decision passe en segment : cinq bonbons colores
@@ -30122,6 +30220,8 @@
     });
     var pb = document.getElementById('od-print');
     if (pb) pb.addEventListener('click', function(){ window.print(); });
+    var rb = document.getElementById('od-recu');
+    if (rb) rb.addEventListener('click', function(){ odRecuOuvrir(r); });
     var gc = document.getElementById('od-goto-client');
     if (gc) gc.addEventListener('click', function(){
       clSel = gc.getAttribute('data-cid'); odSel = null;
