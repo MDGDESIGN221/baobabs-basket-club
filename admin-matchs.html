@@ -1414,8 +1414,12 @@
     background:transparent;cursor:pointer;transition:border-color .16s}
   .ef-card:hover{border-color:var(--gold)}
   /* Un portrait manquant n'est pas un degrade vert : c'est un vide. */
-  .ef-photo{aspect-ratio:3/4;width:100%;object-fit:cover;object-position:top center;display:block;
+  /* La boite rogne, l'image porte le cadrage (object-position + scale) :
+     meme raison que .logo-rond. Sans cette boite, la grille montrait le
+     portrait entier, cadre ou non. */
+  .ef-photo{aspect-ratio:3/4;width:100%;display:block;overflow:hidden;position:relative;
     background:var(--surface-3)}
+  .ef-photo img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
   .ef-jersey{position:absolute;top:9px;left:11px;font-family:var(--font-ui);font-weight:700;font-size:26px;line-height:1;letter-spacing:-.04em;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.75)}
   .ef-st{position:absolute;top:11px;right:9px}
   /* LE LIEN DE COLLECTE, TOUJOURS SOUS LES YEUX.
@@ -1547,6 +1551,8 @@
     background:var(--surface);border-top:2px solid var(--gold);border-bottom:1px solid var(--line-strong)}
   .ef-hero-photo{flex:none;width:132px;aspect-ratio:3/4;border-radius:var(--r-sm);object-fit:cover;
     object-position:top center;background:var(--surface-3);border:1px solid var(--line-strong)}
+  .ef-hero-cadre{display:block;overflow:hidden}
+  .ef-hero-cadre img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
   /* La photo envoyée, en attendant celle du site. Le liseré d'attente et
      la mention disent qu'elle n'est pas publiée : sans eux on croirait la
      fiche finie. */
@@ -24392,6 +24398,15 @@
       });
   }
 
+  // Les trois nombres du cadrage, tels que le site les applique a la carte
+  // (photo_x / photo_y / photo_zoom ; y vaut 0 par defaut, le haut du
+  // portrait, comme sur la page Equipe).
+  function efCadreStyle(r){
+    var x = (r.photo_x == null || r.photo_x === '') ? 50 : r.photo_x,
+        y = (r.photo_y == null || r.photo_y === '') ? 0 : r.photo_y,
+        z = (r.photo_zoom == null || r.photo_zoom === '') ? 100 : r.photo_zoom;
+    return 'object-position:' + x + '% ' + y + '%;transform:scale(' + (z / 100) + ');transform-origin:' + x + '% ' + y + '%';
+  }
   function efRender(){
     var lv = document.getElementById('ef-list-view'), dv = document.getElementById('ef-doc-view');
     if (efSel){ lv.classList.add('hide'); dv.classList.remove('hide'); efRenderDoc(); return; }
@@ -24425,7 +24440,7 @@
     box.innerHTML = rows.map(function(r){
       var st = efStats(r);
       var photo = r.photo_url
-        ? '<img class="ef-photo" src="' + esc(r.photo_url) + '" alt="" loading="lazy">'
+        ? '<div class="ef-photo"><img src="' + esc(r.photo_url) + '" alt="" loading="lazy" style="' + efCadreStyle(r) + '"></div>'
         : '<div class="ef-photo"></div>';
       var stats = EF_STATS.slice(0, 3).map(function(k){
         return '<div class="ef-stat"><b>' + esc(st[k[0]] != null && st[k[0]] !== '' ? st[k[0]] : '—') + '</b><span>' + esc(k[1].split('/')[0]) + '</span></div>';
@@ -24563,7 +24578,7 @@
           // Faute de photo finale, on montre celle qu'elle a envoyée, et
           // on le dit : rien ne laisse croire qu'elle est déjà publiée.
           (r.photo_url
-            ? '<img class="ef-hero-photo" src="' + esc(r.photo_url) + '" alt="">'
+            ? '<span class="ef-hero-photo ef-hero-cadre"><img id="ef-hero-img" src="' + esc(r.photo_url) + '" alt="" style="' + efCadreStyle(r) + '"></span>'
             : (r.photo_source_url
                 ? '<div class="ef-hero-src"><img class="ef-hero-photo" src="' + esc(r.photo_source_url) + '" alt=""' +
                   ' onerror="this.closest(\'.ef-hero-src\').classList.add(\'ko\')">' +
@@ -24843,6 +24858,11 @@
       var url = (document.getElementById('ef-photo').value || '').trim();
       cadrerCollection('photo', url, r, function(){
         efDirty = true;
+        // Le portrait du haut de fiche montre le cadrage pose, tout de
+        // suite : avant, seule une phrase disait qu'il s'etait passe
+        // quelque chose.
+        var hi = document.getElementById('ef-hero-img');
+        if (hi){ hi.src = url; hi.style.cssText = efCadreStyle(r); }
         if (note) note.textContent = 'Cadrage posé — pensez à enregistrer.';
       });
     });
@@ -36755,11 +36775,11 @@
       preview:function(v){
         function bar(a,b){ var va=parseFloat(a)||0, vb=parseFloat(b)||0, max=Math.max(va,vb,0.0001); return [va/max*100, vb/max*100]; }
         function stat(label,a,b,suf){ suf=suf||''; var w=bar(a,b); return '<div style="margin-top:10px"><div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center"><span style="text-align:right;font-weight:800;font-size:12.5px;color:#C6A257">'+esc(a||'—')+suf+'</span><span style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#7E8A82;text-align:center">'+esc(label)+'</span><span style="text-align:left;font-weight:800;font-size:12.5px;color:#A8D93B">'+esc(b||'—')+suf+'</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px"><div style="height:4px;border-radius:3px;background:rgba(243,239,230,.08);overflow:hidden"><i style="display:block;height:100%;width:'+w[0]+'%;background:#C6A257;float:right"></i></div><div style="height:4px;border-radius:3px;background:rgba(243,239,230,.08);overflow:hidden"><i style="display:block;height:100%;width:'+w[1]+'%;background:#A8D93B"></i></div></div></div>'; }
-        function side(photo,name,num,pos,align){ return '<div style="text-align:'+align+'"><div style="width:48px;height:48px;border-radius:var(--r-md);overflow:hidden;background:#12211A;margin:'+(align==='right'?'0 0 0 auto':'0')+'">'+(photo?'<img src="'+esc(photo)+'" alt="" style="width:100%;height:100%;object-fit:cover">':'')+'</div><div style="font-family:var(--font-ui);font-weight:700;font-size:13px;color:#F3EFE6;margin-top:7px">'+esc(name)+'</div><div style="font-size:10.5px;font-weight:600;color:#C6A257;margin-top:2px">#'+esc(num)+' · '+esc(pos)+'</div></div>'; }
+        function side(photo,name,num,pos,align,cle){ return '<div style="text-align:'+align+'"><div style="width:48px;height:48px;border-radius:var(--r-md);overflow:hidden;background:#12211A;margin:'+(align==='right'?'0 0 0 auto':'0')+'">'+(photo?'<img src="'+esc(photo)+'" alt="" style="width:100%;height:100%;object-fit:cover'+cadreCss(cadreDeVue(v,cle))+'">':'')+'</div><div style="font-family:var(--font-ui);font-weight:700;font-size:13px;color:#F3EFE6;margin-top:7px">'+esc(name)+'</div><div style="font-size:10.5px;font-weight:600;color:#C6A257;margin-top:2px">#'+esc(num)+' · '+esc(pos)+'</div></div>'; }
         return '<div style="background:linear-gradient(150deg,#0F1E15,#0A150F);border:1px solid rgba(198,162,87,.22);border-radius:var(--r-lg);padding:18px"><div style="font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#7E8A82;text-align:right;margin-bottom:10px">'+esc(v.fo_subtitle)+'</div><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'+
-          side(v.fo_p1_photo_url,v.fo_p1_name,v.fo_p1_number,v.fo_p1_position,'left')+
+          side(v.fo_p1_photo_url,v.fo_p1_name,v.fo_p1_number,v.fo_p1_position,'left','fo_p1_photo_url')+
           '<div style="width:28px;height:28px;border-radius:50%;background:#A8D93B;color:#0A1B0D;display:flex;align-items:center;justify-content:center;font-family:var(--font-ui);font-weight:700;font-size:10px;flex:none;margin-top:8px">VS</div>'+
-          side(v.fo_p2_photo_url,v.fo_p2_name,v.fo_p2_number,v.fo_p2_position,'right')+
+          side(v.fo_p2_photo_url,v.fo_p2_name,v.fo_p2_number,v.fo_p2_position,'right','fo_p2_photo_url')+
         '</div>'+
         stat('Points',v.fo_p1_points,v.fo_p2_points)+
         stat('Rebonds',v.fo_p1_rebounds,v.fo_p2_rebounds)+
