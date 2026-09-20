@@ -8851,7 +8851,9 @@
      Greffe lui-meme tient cette regle (voir DROITS dans greffe.js) : ici
      on decide seulement qui voit la porte.
      ================================================================== */
-  var GREFFE_CASQUETTES = ['super_admin', 'president', 'coach'];
+  // La direction sportive tire les memes fiches que les coachs (fiche
+  // joueuse, convocation, attestation) : elle compose, elle ne signe pas.
+  var GREFFE_CASQUETTES = ['super_admin', 'president', 'coach', 'directeur_sportif'];
   function greffeAutorise(){
     if (typeof cpJeSuisProprio === 'function' && cpJeSuisProprio()) return true;
     return GREFFE_CASQUETTES.indexOf(currentRole) >= 0;
@@ -10588,8 +10590,13 @@
     greffeOuvrir();
   }
   function greffeAcces(){
+    // LA PORTE SUIVAIT ENCORE LE SEUL PROPRIETAIRE. greffeAutorise()
+    // ouvrait le Greffe a trois casquettes depuis le 16 septembre, mais
+    // ce bouton, lui, se cachait pour tout compte autre que le
+    // proprietaire : « y'a que moi qui l'ai » (20 septembre 2026). La
+    // porte et la serrure disent maintenant la meme chose.
     var b = document.getElementById('greffe-open');
-    if (b) b.hidden = !cpJeSuisProprio();
+    if (b) b.hidden = !greffeAutorise();
     // La page a ete rafraichie pendant qu'un acte etait ouvert : le Greffe
     // a note ou il en etait (localStorage), on le rouvre au meme endroit.
     // La cle disparait quand on quitte le Greffe soi-meme.

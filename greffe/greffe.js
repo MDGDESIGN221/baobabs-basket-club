@@ -74,6 +74,12 @@
     coach: {
       familles: ['Vie sportive', 'Familles', 'Distinctions'],
       signer: false, nom: 'Coach'
+    },
+    /* La direction sportive tire les mêmes fiches que les coachs, et ne
+       signe pas davantage : c'est le président qui pose l'encre. */
+    directeur_sportif: {
+      familles: ['Vie sportive', 'Familles', 'Distinctions'],
+      signer: false, nom: 'Direction sportive'
     }
   };
   var droits = DROITS_TOUT;
