@@ -90,7 +90,11 @@
                  'pv-reunion', 'ordre-du-jour', 'rapport-saison', 'recu', 'facture', 'note-frais', 'demande-subvention', 'demande-appui',
                  'convocation', 'feuille-presence', 'planning', 'fiche-joueuse', 'cartes-membre',
                  'autorisation-parentale', 'decharge', 'certificat', 'communique', 'invitation',
-                 'liste-delegation'];
+                 'liste-delegation',
+                 /* le 20 septembre 2026, pour le relais : ce que le club signe avec chacun */
+                 'contrat-staff', 'convention-benevolat', 'contrat-prestation', 'convention-essai',
+                 'engagement-dirigeant', 'pret-joueuse', 'liberation', 'charte',
+                 'pv-passation', 'procuration', 'devis', 'avoir'];
 
   /* =================================================================
      1. LES PETITS OUTILS, PARTAGÉS AVEC LES BLOCS ET LES MODÈLES
