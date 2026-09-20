@@ -19248,6 +19248,220 @@
     });
   }
 
+  /* ==================================================================
+     LA VEILLE DES ARRIVEES : CE QUI ENTRE PENDANT QU'ON Y EST
+     ------------------------------------------------------------------
+     « si je m'y trouve et une inscription ou candidature arrive je dois
+       etre prevenu par MAYA, ou meme quand je me reconnecte ; pour les
+       mises a jour je suis oblige de rafraichir toujours la page »
+     (20 septembre 2026).
+
+     Sept tables recoivent des choses de l'exterieur : candidatures,
+     inscriptions a l'ecole, commandes, messages, abonnes, et les profils
+     deposes par un lien de collecte (joueuses, staff). Deux sources, un
+     seul chemin (veilleArrivee) :
+       - le temps reel de Supabase (postgres_changes, INSERT) : la ligne
+         arrive a la seconde. Il faut que la table soit dans la
+         publication supabase_realtime (MIGRATION-2026-09-20-veille) ;
+       - une ronde toutes les soixante secondes, qui relit ce qui est
+         plus recent que la derniere marque. Elle rattrape ce que le temps
+         reel n'a pas porte (canal ferme, onglet endormi, table hors
+         publication), et c'est elle qui tient la marque.
+     Une ligne annoncee ne l'est jamais deux fois : veilleVus, garde
+     aussi dans localStorage pour que le compte du retour ne repete pas
+     ce qu'on a vu la veille au soir.
+
+     CE QU'ON FAIT D'UNE ARRIVEE. Rien ne se redessine tout seul sous
+     les yeux : « pas besoin de voir que ca se rafraichit tout seul ».
+     Les chiffres (tableau de bord, pastilles, cloche) se remettent a jour
+     sans bruit. L'ecran concerne, s'il est ouvert, recoit un bandeau
+     « pendant que vous travailliez » avec un bouton ; ferme, il se
+     rechargera a l'ouverture (SECTION_AGE remis a zero). Et MAYA le dit,
+     avec le bouton qui y mene.
+
+     AU RETOUR. La marque vit dans localStorage, par personne : a la
+     reconnexion, MAYA fait le compte de ce qui est arrive depuis.
+     ================================================================== */
+  var VEILLE_TABLES = {
+    recruitment_requests:   { section:'applications', genre:'f', un:'candidature', des:'candidatures',
+                              cols:'id,created_at,first_name,last_name',
+                              nom:function(r){ return [r.first_name, r.last_name].filter(Boolean).join(' '); } },
+    academy_registrations:  { section:'inscriptions', genre:'f', un:'inscription à l\'école', des:'inscriptions à l\'école',
+                              cols:'id,created_at,child_first_name,child_last_name',
+                              nom:function(r){ return [r.child_first_name, r.child_last_name].filter(Boolean).join(' '); } },
+    orders:                 { section:'orders2', genre:'f', un:'commande', des:'commandes',
+                              cols:'id,created_at,order_number,customer_name',
+                              nom:function(r){ return [(r.order_number ? 'n° ' + r.order_number : ''), (r.customer_name ? 'de ' + r.customer_name : '')].filter(Boolean).join(' '); } },
+    contact_messages:       { section:'forms', genre:'m', un:'message', des:'messages',
+                              cols:'id,created_at,name,email',
+                              nom:function(r){ return r.name || r.email || ''; } },
+    newsletter_subscribers: { section:'newsl', genre:'m', un:'abonné à la newsletter', des:'abonnés à la newsletter',
+                              cols:'id,created_at,email',
+                              nom:function(r){ return r.email || ''; } },
+    players:                { section:'squad', genre:'m', un:'profil de joueuse', des:'profils de joueuses',
+                              cols:'id,created_at,name,fiche_etat', filtre:'&fiche_etat=eq.recue',
+                              nom:function(r){ return r.name || ''; }, garde:function(r){ return r.fiche_etat === 'recue'; } },
+    staff:                  { section:'staff', genre:'m', un:'profil de staff', des:'profils de staff',
+                              cols:'id,created_at,name,fiche_etat', filtre:'&fiche_etat=eq.recue',
+                              nom:function(r){ return r.name || ''; }, garde:function(r){ return r.fiche_etat === 'recue'; } }
+  };
+  var veilleVus = null, veilleNeufs = {}, veilleCanal = null, veilleRonde = null, veilleTempsReel = false;
+
+  function veilleCle(suffixe){
+    var u = currentSession && currentSession.user && currentSession.user.id;
+    return 'bbc_veille_' + suffixe + '_' + (u || 'x');
+  }
+  function veilleMarqueLire(){ try { return localStorage.getItem(veilleCle('vu')) || ''; } catch(e){ return ''; } }
+  function veilleMarquePoser(iso){ try { localStorage.setItem(veilleCle('vu'), iso); } catch(e){} }
+  // Les cles deja annoncees, les trois cents dernieres.
+  function veilleVusCharger(){
+    if (veilleVus) return veilleVus;
+    veilleVus = {};
+    try { JSON.parse(localStorage.getItem(veilleCle('vus')) || '[]').forEach(function(k){ veilleVus[k] = 1; }); } catch(e){}
+    return veilleVus;
+  }
+  function veilleVu(k){
+    var v = veilleVusCharger();
+    if (v[k]) return true;
+    v[k] = 1;
+    try {
+      var liste = Object.keys(v); if (liste.length > 300) liste = liste.slice(-300);
+      localStorage.setItem(veilleCle('vus'), JSON.stringify(liste));
+    } catch(e){}
+    return false;
+  }
+
+  function veilleLibelle(d, n){
+    if (n === 1) return (d.genre === 'f' ? 'une ' : 'un ') + d.un;
+    return n + ' ' + d.des;
+  }
+  function veilleQuand(iso){
+    var t = new Date(iso); if (isNaN(t.getTime())) return '';
+    var h = t.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+    if (t.toDateString() === new Date().toDateString()) return 'aujourd\'hui à ' + h;
+    return 'le ' + t.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) + ' à ' + h;
+  }
+  function veilleRequete(t, d, depuis){
+    return sbGet(t + '?select=' + d.cols + '&created_at=gt.' + encodeURIComponent(depuis) + (d.filtre || '') + '&order=created_at.asc&limit=50');
+  }
+  function veilleOuverte(d){ return !(typeof canSection === 'function') || canSection(d.section); }
+
+  // Ce qui se remet a jour sans bruit : des chiffres, jamais une liste.
+  function veilleChiffres(section){
+    try { sbMemoVider(); } catch(e){}
+    SECTION_AGE[section] = 0;
+    try { if (loadedSections.dashboard) loadDashboard(); } catch(e){}
+    try { attCollecte(true); } catch(e){}
+  }
+
+  // Le bandeau de l'ecran ouvert : il attend un clic, la liste ne bouge
+  // pas toute seule. Meme dessin que celui des joueuses (ef-neuf).
+  function veilleBandeau(section, texte){
+    var sec = document.getElementById('section-' + section); if (!sec) return;
+    var b = document.getElementById('veille-neuf-' + section);
+    if (!b){
+      b = document.createElement('div'); b.id = 'veille-neuf-' + section; b.className = 'ef-neuf';
+      sec.insertBefore(b, sec.firstChild);
+    }
+    b.innerHTML = '<b>' + esc(texte) + '</b><span>pendant que vous travailliez</span>' +
+      '<button type="button" class="ds-act" data-veille-voir="' + esc(section) + '">Afficher</button>';
+    b.querySelector('[data-veille-voir]').addEventListener('click', function(){
+      b.remove(); veilleNeufs[section] = 0; SECTION_AGE[section] = 0; showSection(section);
+    });
+  }
+
+  function veilleArrivee(table, r){
+    var d = VEILLE_TABLES[table]; if (!d || !r || r.id == null) return;
+    if (d.garde && !d.garde(r)) return;
+    if (!veilleOuverte(d)) return;
+    if (veilleVu(table + ':' + r.id)) return;
+    veilleChiffres(d.section);
+    var nom = ''; try { nom = d.nom(r) || ''; } catch(e){}
+    var e = d.genre === 'f' ? 'e' : '';
+    if (sectionCourante === d.section){
+      if (d.section === 'squad' && typeof efVeilleTic === 'function'){ try { efVeilleTic(); } catch(e2){} }
+      else {
+        veilleNeufs[d.section] = (veilleNeufs[d.section] || 0) + 1;
+        var n = veilleNeufs[d.section];
+        veilleBandeau(d.section, veilleLibelle(d, n) + (n > 1 ? ' sont arrivé' + e + 's' : ' est arrivé' + e));
+      }
+    }
+    var titre = veilleLibelle(d, 1); titre = titre.charAt(0).toUpperCase() + titre.slice(1);
+    mayaCarteFait({ quoi:'arrivee', cible: table + ':' + r.id, niveau:'important',
+      titre: titre + ' vient d\'arriver' + (nom ? ' : ' + nom : '') + '.',
+      detail: 'Arrivé' + e + ' ' + veilleQuand(r.created_at || new Date().toISOString()) + '.',
+      section: d.section });
+  }
+
+  // La ronde : ce qui est plus recent que la marque, table par table.
+  // La marque n'avance que si toutes ont repondu, sinon une panne
+  // passagere ferait sauter des arrivees.
+  function veilleRondeFaire(){
+    if (!currentSession || document.hidden) return Promise.resolve();
+    var depuis = veilleMarqueLire(), maintenant = new Date().toISOString();
+    if (!depuis){ veilleMarquePoser(maintenant); return Promise.resolve(); }
+    var tables = Object.keys(VEILLE_TABLES);
+    return Promise.all(tables.map(function(t){
+      var d = VEILLE_TABLES[t];
+      if (!veilleOuverte(d)) return [];
+      return veilleRequete(t, d, depuis).catch(function(){ return null; });
+    })).then(function(res){
+      var rate = res.some(function(x){ return x === null; });
+      tables.forEach(function(t, i){ (res[i] || []).forEach(function(r){ try { veilleArrivee(t, r); } catch(e){} }); });
+      if (!rate) veilleMarquePoser(maintenant);
+    });
+  }
+
+  // Au retour : un seul compte, pas une carte par ligne.
+  function veilleRetour(){
+    var depuis = veilleMarqueLire(), maintenant = new Date().toISOString();
+    if (!depuis){ veilleMarquePoser(maintenant); return Promise.resolve(); }
+    var tables = Object.keys(VEILLE_TABLES);
+    return Promise.all(tables.map(function(t){
+      var d = VEILLE_TABLES[t];
+      if (!veilleOuverte(d)) return [];
+      return veilleRequete(t, d, depuis).catch(function(){ return null; });
+    })).then(function(res){
+      var rate = res.some(function(x){ return x === null; });
+      var parts = [], premiere = null, total = 0;
+      tables.forEach(function(t, i){
+        var d = VEILLE_TABLES[t];
+        var neuves = (res[i] || []).filter(function(r){ return (!d.garde || d.garde(r)) && !veilleVu(t + ':' + r.id); });
+        if (!neuves.length) return;
+        total += neuves.length; parts.push(veilleLibelle(d, neuves.length)); if (!premiere) premiere = d;
+      });
+      if (!rate) veilleMarquePoser(maintenant);
+      if (!total) return;
+      veilleChiffres(premiere.section);
+      mayaCarteFait({ quoi:'retour', cible: depuis, niveau:'important',
+        titre: 'Pendant votre absence : ' + parts.join(', ') + '.',
+        detail: 'Depuis votre dernier passage, ' + veilleQuand(depuis) + '.',
+        section: premiere.section });
+    }).catch(function(){});
+  }
+
+  function veilleTempsReelDemarrer(){
+    if (veilleCanal || !sb || typeof sb.channel !== 'function') return;
+    try {
+      var c = sb.channel('bbc-veille-admin');
+      Object.keys(VEILLE_TABLES).forEach(function(t){
+        c.on('postgres_changes', { event:'INSERT', schema:'public', table:t }, function(p){
+          try { veilleArrivee(t, p && p['new']); } catch(e){}
+        });
+      });
+      c.subscribe(function(etat){ veilleTempsReel = (etat === 'SUBSCRIBED'); });
+      veilleCanal = c;
+    } catch(e){ veilleCanal = null; }
+  }
+  function veilleArriveesDemarrer(){
+    veilleRetour().then(function(){
+      veilleTempsReelDemarrer();
+      if (veilleRonde) clearInterval(veilleRonde);
+      veilleRonde = setInterval(function(){ veilleRondeFaire(); }, 60000);
+      document.addEventListener('visibilitychange', function(){ if (!document.hidden) veilleRondeFaire(); });
+    });
+  }
+
   function notifInit(){
     var bell = document.getElementById('notif-bell'), pop = document.getElementById('notif-pop');
     if (!bell || !pop) return;
@@ -19270,6 +19484,8 @@
     // Un rappel toutes les cinq minutes : assez pour qu'un match qui
     // approche remonte, assez rare pour ne pas peser.
     setInterval(function(){ attCollecte(true); }, 300000);
+    // Et la veille des arrivees : le compte du retour, puis le temps reel.
+    veilleArriveesDemarrer();
   }
 
   // ===================== TABLE DE MARQUE =====================
