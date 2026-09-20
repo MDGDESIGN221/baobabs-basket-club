@@ -3794,6 +3794,383 @@ window.bbLienSur = function (u) {
     .bb-calme .bb-bl-cta{ transition:none } .bb-calme .bb-bl-cta:hover{ transform:none }
   }
 </style>
+<style id="bb-fiches-css">
+/* =====================================================================
+   LES FICHES DE MATCH ET DE JOUEUSE
+   ---------------------------------------------------------------------
+   Deux pages ecrites dans le vocabulaire du Cinq majeur : un CADRE qui
+   se mesure lui-meme (container-type:inline-size) et des tailles en
+   « cqw », donc une seule composition de 320 px a 1500 px, sans media
+   query pour les proportions.
+
+   LES POLICES (choisies le 20 septembre 2026). Archivo Black porte les
+   noms et les nombres ; Space Grotesk les titres et les noms de club ;
+   Inter les etiquettes et les tableaux. Anton, qui tenait ce role au
+   premier jet, ne sert plus dans ces deux pages : « trop etroit, trop
+   affiche ». Il reste partout ailleurs sur le site.
+
+   LES DEUX FONDS. Le match est une soiree : fond nuit, score en clair.
+   La joueuse est un portrait : fond CREME plein cadre, parce que les
+   photos de l'effectif sont detourees (la moitie de leurs pixels sont
+   transparents) et qu'un fond sombre les enfermait dans une boite. La
+   joueuse se pose donc sur le creme, en entier, et le vert du club
+   passe derriere elle.
+
+   Une regle a tenu la main de tout ce fichier : le club n'a pour
+   l'instant AUCUNE statistique saisie. Une fiche qui n'aurait de
+   presence qu'avec des chiffres serait vide aujourd'hui. Tout ce qui
+   porte ces pages -- le face a face, les blasons en filigrane, la bande
+   des faits, la composition, la carte d'identite -- se nourrit de ce
+   que l'admin ecrit vraiment : un adversaire, une date, une salle, un
+   cinq de depart, une taille, une ville.
+   ===================================================================== */
+
+/* ============================ LE MATCH ============================ */
+.bb-mf-hero{position:relative;overflow:hidden;background:#06110B;border-bottom:1px solid rgba(var(--bb-fil-rgb),.22);container-type:inline-size}
+/* les deux camps teintent le fond, chacun de son cote : la couleur de
+   l'adversaire est celle que le site lui donne deja partout (son nom la
+   decide), le club garde son vert */
+.bb-mf-teintes{position:absolute;inset:0;z-index:0}
+.bb-mf-teintes i{position:absolute;inset:0;display:block}
+.bb-mf-fond{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;opacity:.3;filter:saturate(.85)}
+.bb-mf-fond::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,#06110B 10%,rgba(6,17,11,.62) 52%,rgba(6,17,11,.3))}
+/* les blasons, enormes et sourds, derriere chaque camp : ce qui donne
+   sa largeur au bandeau quand aucune photo n'a ete deposee */
+.bb-mf-ombres{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+/* le masque radial n'est pas un ornement : le logo de HLM est une
+   image carree a fond plein, et son carre se voyait en entier au
+   milieu du bandeau */
+.bb-mf-ombres span{position:absolute;top:50%;width:clamp(200px,44cqw,560px);aspect-ratio:1;transform:translateY(-50%);opacity:.075;filter:grayscale(1) contrast(.85);-webkit-mask-image:radial-gradient(closest-side,#000 48%,rgba(0,0,0,.35) 76%,transparent 100%);mask-image:radial-gradient(closest-side,#000 48%,rgba(0,0,0,.35) 76%,transparent 100%)}
+.bb-mf-ombres span.g{left:clamp(-140px,-9cqw,-40px)}
+.bb-mf-ombres span.d{right:clamp(-140px,-9cqw,-40px)}
+.bb-mf-ombres img{width:100%;height:100%;object-fit:contain;display:block}
+.bb-mf-ombres b{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-family:'Archivo Black',sans-serif;font-weight:400;font-size:clamp(70px,17cqw,200px);color:#F3EFE6;line-height:1}
+.bb-mf-trame{position:absolute;inset:0;z-index:1;background:radial-gradient(58% 78% at 50% 100%,rgba(var(--bb-fil-rgb),.13),transparent 72%)}
+.bb-mf-in{position:relative;z-index:2;max-width:1500px;margin:0 auto;padding:clamp(22px,3cqw,54px) clamp(16px,2.4cqw,24px) 0}
+
+.bb-mf-retour{display:inline-flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:#93A099;background:none;border:none;padding:0;cursor:pointer;margin-bottom:clamp(16px,2.4cqw,30px)}
+.bb-mf-retour:hover{color:#F3EFE6}
+.bb-mf-kick{display:flex;align-items:center;justify-content:center;gap:10px 14px;flex-wrap:wrap;font-family:'Inter',sans-serif;font-weight:800;font-size:clamp(10px,1.05cqw,12px);letter-spacing:.22em;text-transform:uppercase;color:#A8D93B;text-align:center}
+.bb-mf-kick .or{color:var(--bb-or)}
+.bb-mf-etat{display:inline-flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:800;font-size:clamp(9.5px,.95cqw,11px);letter-spacing:.16em;text-transform:uppercase;padding:6px 12px;border-radius:999px;border:1px solid rgba(243,239,230,.16);color:#F3EFE6;white-space:nowrap}
+.bb-mf-etat.win{color:#0A1B0D;background:#A8D93B;border-color:#A8D93B}
+.bb-mf-etat.lose{color:#F3EFE6;background:rgba(224,101,92,.22);border-color:rgba(224,101,92,.5)}
+.bb-mf-etat.draw,.bb-mf-etat.soon{color:#0A1B0D;background:var(--bb-or);border-color:var(--bb-or)}
+.bb-mf-etat.live{color:#fff;background:#C0271B;border-color:#C0271B}
+.bb-mf-etat.live i{width:7px;height:7px;border-radius:50%;background:#fff;animation:bbMfPulse 1.2s ease-in-out infinite}
+@keyframes bbMfPulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* L'AFFICHE. Trois colonnes : chaque camp occupe sa moitie du cadre au
+   lieu de se serrer contre le score. */
+.bb-mf-affiche{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:clamp(10px,2.6cqw,48px);margin:clamp(18px,2.6cqw,36px) 0 clamp(12px,1.6cqw,20px)}
+.bb-mf-club{display:flex;flex-direction:column;align-items:center;text-align:center;gap:clamp(8px,1.1cqw,14px);min-width:0}
+.bb-mf-crest{width:clamp(58px,9cqw,132px);height:clamp(58px,9cqw,132px);border-radius:50%;object-fit:contain;background:#0c1913;border:1px solid rgba(243,239,230,.16);box-shadow:0 18px 44px rgba(0,0,0,.5)}
+.bb-mf-crest.txt{display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(17px,2.6cqw,34px);color:#fff}
+.bb-mf-nom{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(13px,1.85cqw,26px);line-height:1.12;color:#F3EFE6;max-width:13ch;text-wrap:balance}
+.bb-mf-nom small{display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:clamp(8.5px,.78cqw,10.5px);letter-spacing:.2em;text-transform:uppercase;color:#7E8A82;margin-top:7px}
+/* le club qui gagne porte un lisere : le resultat se lit sans lire les
+   chiffres */
+.bb-mf-club.gagne .bb-mf-crest{border-color:rgba(168,217,59,.75);box-shadow:0 0 0 2px rgba(168,217,59,.22),0 18px 44px rgba(0,0,0,.5)}
+.bb-mf-club.perd{opacity:.82}
+
+.bb-mf-score{display:flex;align-items:center;justify-content:center;gap:clamp(8px,1.5cqw,22px);font-family:'Archivo Black',sans-serif;font-weight:400;letter-spacing:-.02em;line-height:.9;font-size:clamp(40px,8.6cqw,116px);color:#F3EFE6;text-shadow:0 10px 40px rgba(0,0,0,.5);font-variant-numeric:tabular-nums}
+.bb-mf-score i{display:block;width:2px;height:.5em;background:rgba(243,239,230,.24);flex:none}
+.bb-mf-score .win{color:#A8D93B}
+.bb-mf-score .lose{color:#F3EFE6;opacity:.66}
+.bb-mf-quand{text-align:center;padding:0 clamp(4px,1cqw,16px)}
+.bb-mf-quand b{display:block;font-family:'Archivo Black',sans-serif;font-weight:400;font-size:clamp(24px,4.4cqw,60px);line-height:1;color:var(--bb-or);letter-spacing:-.02em;white-space:nowrap}
+.bb-mf-quand span{display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:clamp(10px,.92cqw,12px);letter-spacing:.14em;text-transform:uppercase;color:#93A099;margin-top:9px}
+/* le verdict en toutes lettres, sous le score : un ecart se lit plus
+   vite qu'une soustraction */
+.bb-mf-verdict{text-align:center;font-family:'Inter',sans-serif;font-weight:700;font-size:clamp(12px,1.05cqw,14.5px);letter-spacing:.04em;color:#93A099;margin-top:clamp(2px,.6cqw,8px)}
+.bb-mf-verdict b{font-weight:800}
+.bb-mf-verdict.v b{color:#A8D93B}
+.bb-mf-verdict.d b{color:#E0655C}
+.bb-mf-verdict.n b{color:var(--bb-or)}
+
+.bb-mf-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:clamp(16px,2.2cqw,28px)}
+.bb-mf-act{display:inline-flex;align-items:center;gap:9px;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:12px 18px;border-radius:9px;border:1px solid rgba(243,239,230,.18);background:rgba(243,239,230,.04);color:#F3EFE6;cursor:pointer;text-decoration:none;transition:border-color .2s,background .2s}
+.bb-mf-act:hover{border-color:rgba(var(--bb-or-rgb),.7);background:rgba(var(--bb-or-rgb),.1)}
+.bb-mf-act.fort{background:#A8D93B;border-color:#A8D93B;color:#0A1B0D}
+.bb-mf-act.fort:hover{background:#B9E455;border-color:#B9E455}
+.bb-mf-act svg{width:15px;height:15px;flex:none}
+
+/* LA BANDE DES FAITS. Elle ferme le bandeau sur toute sa largeur : la
+   date, la salle, les arbitres, l'affluence. Avant le match comme
+   apres, il y a toujours quelque chose a y mettre. */
+.bb-mf-faits{position:relative;z-index:2;margin-top:clamp(18px,2.4cqw,30px);border-top:1px solid rgba(243,239,230,.1);background:rgba(4,12,8,.5)}
+.bb-mf-faits-in{max-width:1500px;margin:0 auto;padding:clamp(12px,1.5cqw,18px) clamp(16px,2.4cqw,24px);display:flex;flex-wrap:wrap;justify-content:center;gap:clamp(12px,2.4cqw,40px)}
+.bb-mf-fait{position:relative;min-width:0;text-align:center}
+.bb-mf-fait + .bb-mf-fait::before{content:"";position:absolute;left:clamp(-20px,-1.2cqw,-6px);top:50%;transform:translateY(-50%);width:1px;height:26px;background:rgba(243,239,230,.12)}
+.bb-mf-fait .l{display:block;font-family:'Inter',sans-serif;font-weight:800;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:#6F7D74;margin-bottom:5px}
+.bb-mf-fait .v{display:block;font-family:'Inter',sans-serif;font-weight:600;font-size:clamp(12px,1.05cqw,14px);color:#E4E9E2;line-height:1.3}
+.bb-mf-fait .v.or{color:var(--bb-or)}
+.bb-mf-fait .v a{color:var(--bb-or)}
+
+/* ---- le corps ---- */
+.bb-mf-sec{padding-top:clamp(28px,4vw,44px)}
+/* minmax(0,1fr) et non « auto » : une grille sans colonne declaree
+   prend la largeur MAX-CONTENT de ses enfants, et une carte de match
+   mesurait 1700 px dans un cadre de 1097. */
+.bb-mf{display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(28px,4vw,48px)}
+.bb-mf-bloc{min-width:0}
+.bb-mf-bloc .bb-sec-h{margin-bottom:clamp(14px,2vw,20px)}
+.bb-mf-tops{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px}
+.bb-mf-top{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;background:rgba(8,22,14,.7);border:1px solid rgba(243,239,230,.09);cursor:pointer}
+.bb-mf-top:hover{border-color:rgba(var(--bb-or-rgb),.55)}
+.bb-mf-top .rond{width:46px;height:46px;border-radius:50%;overflow:hidden;flex:none;background:#12211A;border:1px solid rgba(243,239,230,.14)}
+.bb-mf-top .rond img{width:100%;height:100%;object-fit:cover;display:block}
+.bb-mf-top .v{font-family:'Archivo Black',sans-serif;font-size:26px;line-height:1;color:var(--bb-or)}
+.bb-mf-top .l{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#7E8A82}
+.bb-mf-top .n{font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;color:#F3EFE6;margin-top:2px}
+.bb-mf-table{width:100%;border-collapse:collapse;min-width:720px}
+.bb-mf-table th{font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;color:#7E8A82;text-transform:uppercase;padding:13px 8px;text-align:center;white-space:nowrap;border-bottom:1px solid rgba(243,239,230,.1)}
+.bb-mf-table th:first-child,.bb-mf-table td:first-child{text-align:left;padding-left:18px}
+.bb-mf-table td{font-family:'Inter',sans-serif;font-size:13.5px;color:#D6DDD7;padding:11px 8px;text-align:center;border-bottom:1px solid rgba(243,239,230,.06);font-variant-numeric:tabular-nums}
+.bb-mf-table td.pts{font-weight:800;color:#F3EFE6;font-size:15px}
+.bb-mf-table tr.tot td{font-weight:800;color:#F3EFE6;background:rgba(243,239,230,.04);border-top:1px solid rgba(243,239,230,.14)}
+.bb-mf-table tr.dnp td{color:#7E8A82}
+.bb-mf-table td.nr{color:#4E5A50}
+.bb-mf-table tr[data-joueuse]{cursor:pointer}
+.bb-mf-table tr[data-joueuse]:hover td{background:rgba(var(--bb-or-rgb),.06)}
+.bb-mf-jo{display:flex;align-items:center;gap:11px;min-width:0}
+.bb-mf-jo .rond{width:32px;height:32px;border-radius:50%;overflow:hidden;flex:none;background:#12211A;border:1px solid rgba(243,239,230,.14)}
+.bb-mf-jo .rond img{width:100%;height:100%;object-fit:cover;display:block}
+.bb-mf-jo b{font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;color:#F3EFE6;white-space:nowrap}
+.bb-mf-jo small{display:block;font-size:11px;color:#7E8A82;margin-top:1px}
+.bb-mf-jo .cap{color:var(--bb-or);margin-left:5px}
+
+/* LA COMPOSITION. Des cartes, pas des vignettes : tant qu'aucune
+   statistique n'est saisie, c'est elle qui porte la page. Le numero
+   passe derriere la photo, en geant. */
+.bb-mf-cinq{display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(132px,15vw,190px),1fr));gap:clamp(10px,1.2vw,16px)}
+.bb-mf-cinq.banc{grid-template-columns:repeat(auto-fill,minmax(clamp(108px,11vw,150px),1fr))}
+.bb-mf-jc{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;padding:clamp(16px,1.6vw,22px) 12px clamp(14px,1.4vw,18px);border-radius:16px;background:linear-gradient(180deg,rgba(12,29,19,.86),rgba(8,22,14,.72));border:1px solid rgba(243,239,230,.09);cursor:pointer;text-align:center;overflow:hidden;transition:border-color .2s,transform .2s}
+.bb-mf-jc:hover{border-color:rgba(168,217,59,.5);transform:translateY(-2px)}
+.bb-mf-jc.tit{border-color:rgba(168,217,59,.3)}
+.bb-mf-jc .fant{position:absolute;top:-8px;right:-2px;font-family:'Archivo Black',sans-serif;font-size:clamp(52px,6vw,78px);line-height:1;color:rgba(243,239,230,.05);pointer-events:none}
+.bb-mf-jc .rond{position:relative;z-index:1;width:clamp(64px,7vw,88px);height:clamp(64px,7vw,88px);border-radius:50%;overflow:hidden;background:#12211A;border:1px solid rgba(243,239,230,.14)}
+.bb-mf-cinq.banc .bb-mf-jc .rond{width:56px;height:56px}
+.bb-mf-jc .rond img{width:100%;height:100%;object-fit:cover;display:block}
+.bb-mf-jc b{position:relative;z-index:1;font-family:'Inter',sans-serif;font-weight:700;font-size:13.5px;color:#F3EFE6;line-height:1.25}
+.bb-mf-jc small{position:relative;z-index:1;font-family:'Inter',sans-serif;font-size:11px;letter-spacing:.06em;color:#8B968D}
+.bb-mf-jc .no{position:relative;z-index:1;font-family:'Archivo Black',sans-serif;font-size:17px;line-height:1;color:var(--bb-or)}
+.bb-mf-jc .brass{color:var(--bb-or);font-size:13px}
+
+.bb-mf-q{display:grid;grid-template-columns:minmax(90px,1.4fr) repeat(var(--q,4),1fr) 1fr;gap:8px;align-items:center}
+.bb-mf-q .h{font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#7E8A82;text-align:center}
+.bb-mf-q .e{font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;color:#F3EFE6}
+.bb-mf-q .v{font-family:'Archivo Black',sans-serif;font-size:19px;color:#D6DDD7;text-align:center;padding:10px 0;border-radius:9px;background:rgba(243,239,230,.04)}
+.bb-mf-q .v.t{color:#F3EFE6;background:rgba(var(--bb-or-rgb),.14)}
+.bb-mf-ev{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(243,239,230,.07);font-family:'Inter',sans-serif;font-size:13.5px;color:#D6DDD7}
+.bb-mf-ev .clk{font-variant-numeric:tabular-nums;color:#7E8A82;min-width:44px}
+.bb-mf-ev .qui{font-weight:700;color:#F3EFE6;min-width:84px}
+.bb-mf-ev .qui.adv{color:#B9C2BB}
+.bb-mf-ev .pt{margin-left:auto;font-family:'Archivo Black',sans-serif;font-size:15px;color:#A8D93B}
+.bb-mf-per{font-family:'Inter',sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--bb-or);margin:16px 0 4px}
+
+/* LE FACE A FACE. Chaque rencontre passee est une ligne cliquable :
+   date, score, ou elle s'est jouee. */
+.bb-mf-hist{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:14px;padding:13px 2px;border-bottom:1px solid rgba(243,239,230,.08);cursor:pointer;font-family:'Inter',sans-serif;font-size:13.5px;color:#B9C2BB}
+.bb-mf-hist:last-child{border-bottom:none}
+.bb-mf-hist:hover{color:#F3EFE6}
+/* le match qu'on est en train de lire, dans sa propre liste : il ne se
+   clique pas, et il se distingue */
+.bb-mf-hist.ici{color:#F3EFE6;cursor:default}
+.bb-mf-hist .ce{display:inline-block;margin-left:8px;font-family:'Inter',sans-serif;font-weight:800;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#0A1B0D;background:#A8D93B;border-radius:999px;padding:3px 9px;vertical-align:middle}
+.bb-mf-hist .d{font-variant-numeric:tabular-nums;min-width:74px}
+.bb-mf-hist b{font-family:'Archivo Black',sans-serif;font-size:17px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.bb-mf-hist i{font-style:normal;color:#7E8A82;text-align:right;font-size:12.5px}
+.bb-mf-bilan{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:16px}
+.bb-mf-bl{padding:14px 16px;border-radius:13px;border:1px solid rgba(243,239,230,.1);background:rgba(8,22,14,.62);text-align:center}
+.bb-mf-bl b{display:block;font-family:'Archivo Black',sans-serif;font-size:clamp(22px,2.6vw,30px);line-height:1;color:#F3EFE6}
+.bb-mf-bl.v b{color:#A8D93B}
+.bb-mf-bl.d b{color:#E0655C}
+.bb-mf-bl span{display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-top:8px}
+
+.bb-mf-infos{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.bb-mf-info{padding:16px 18px;border-radius:14px;background:rgba(8,22,14,.7);border:1px solid rgba(243,239,230,.09)}
+.bb-mf-info .l{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:6px}
+.bb-mf-info .v{font-family:'Inter',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6;line-height:1.4}
+.bb-mf-info a{color:var(--bb-or);text-decoration:none}
+.bb-mf-recit{font-size:15px;line-height:1.75;color:#C7CFC8;max-width:70ch}
+.bb-mf-vide{font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#7E8A82;margin:0}
+
+/* LE MATCH D'AVANT, CELUI D'APRES : deux cartes, blason compris. */
+.bb-mf-nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.bb-mf-nc{display:flex;align-items:center;gap:13px;padding:14px 16px;border-radius:14px;border:1px solid rgba(243,239,230,.1);background:rgba(8,22,14,.62);color:#D6DDD7;font-family:'Inter',sans-serif;cursor:pointer;text-align:left;width:100%;transition:border-color .2s}
+.bb-mf-nc:hover{border-color:rgba(var(--bb-or-rgb),.6)}
+.bb-mf-nc.suiv{flex-direction:row-reverse;text-align:right}
+.bb-mf-nc .crest,.bb-mf-nc .crest img{width:40px;height:40px;border-radius:50%;flex:none}
+.bb-mf-nc .crest{display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0c1913;border:1px solid rgba(243,239,230,.14);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;color:#fff}
+.bb-mf-nc .crest img{object-fit:contain;border:none}
+.bb-mf-nc .tx{min-width:0;flex:1}
+.bb-mf-nc .tx b{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;margin-bottom:4px;font-weight:800}
+.bb-mf-nc .tx span{display:block;font-size:13.5px;font-weight:600;color:#F3EFE6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bb-mf-nc .tx small{display:block;font-size:11.5px;color:#8B968D;margin-top:2px}
+
+/* ========================== LA JOUEUSE ==========================
+   Le bandeau est CREME, sur toute sa largeur. Ses couleurs vivent dans
+   six jetons : de l'encre presque noire, un gris de lecture, et deux
+   verts -- le clair pour les grands nombres, le fonce pour ce qui se
+   lit en petit (un vert lime sur du creme ne se lit pas). */
+.bb-jf-hero{
+  --jf-fond:#F2EEE4; --jf-encre:#0B1A10; --jf-gris:#5C6B5E;
+  --jf-vert:#3F7D19; --jf-vert-fonce:#2A5512; --jf-trait:rgba(11,26,16,.14);
+  position:relative;overflow:hidden;background:var(--jf-fond);
+  border-bottom:3px solid #A8D93B;container-type:inline-size;
+}
+/* ce qui se passe derriere elle : un arc du vert du club, et son numero
+   en geant. Une photo detouree a besoin d'un sol et d'un fond, sinon
+   elle flotte. */
+.bb-jf-decor{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bb-jf-arc{position:absolute;left:clamp(-60px,2cqw,90px);bottom:0;width:clamp(230px,34cqw,520px);height:clamp(230px,34cqw,520px);border-radius:50%;background:radial-gradient(circle at 50% 45%,rgba(168,217,59,.34),rgba(168,217,59,.1) 58%,transparent 72%)}
+/* a gauche, la joueuse le couvrait en entier : il se pose a droite,
+   dans le vide au-dessus du nom */
+.bb-jf-num-fant{position:absolute;right:clamp(-14px,1.5cqw,44px);top:clamp(-34px,-2.4cqw,-8px);font-family:'Archivo Black',sans-serif;font-size:clamp(130px,26cqw,340px);line-height:.8;color:rgba(11,26,16,.055);letter-spacing:-.05em}
+.bb-jf-grille{position:absolute;inset:0;background-image:linear-gradient(rgba(11,26,16,.045) 1px,transparent 1px);background-size:100% clamp(26px,3cqw,44px);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 60%);mask-image:linear-gradient(to bottom,transparent,#000 60%)}
+
+.bb-jf-in{position:relative;z-index:2;max-width:1500px;margin:0 auto;padding:clamp(18px,2.4cqw,44px) clamp(16px,2.4cqw,24px) 0;display:grid;grid-template-columns:minmax(220px,33cqw) 1fr;gap:clamp(16px,3cqw,56px);align-items:end}
+/* la photo est detouree : on la montre ENTIERE, posee sur le bas du
+   cadre. Pas de rognage, pas de boite. */
+.bb-jf-portrait{position:relative;align-self:end;aspect-ratio:.78;display:flex;align-items:flex-end;justify-content:center}
+.bb-jf-portrait img{width:100%;height:100%;object-fit:contain;object-position:50% 100%;display:block;filter:drop-shadow(0 26px 34px rgba(11,26,16,.28))}
+.bb-jf-portrait .vide{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Archivo Black',sans-serif;font-size:clamp(56px,9cqw,110px);color:rgba(11,26,16,.13)}
+.bb-jf-id{padding-bottom:clamp(20px,2.8cqw,44px);min-width:0}
+.bb-jf-retour{display:inline-flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--jf-gris);background:none;border:none;padding:0;cursor:pointer;margin-bottom:clamp(14px,1.8cqw,26px)}
+.bb-jf-retour:hover{color:var(--jf-encre)}
+/* le fil du haut : revenir a l'effectif, ou passer a la joueuse d'a
+   cote. Sans lui, changer de joueuse demandait deux allers-retours. */
+.bb-jf-fil{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:clamp(14px,1.8cqw,26px)}
+.bb-jf-fil .bb-jf-retour{margin-bottom:0}
+.bb-jf-voisines{display:flex;gap:8px;min-width:0}
+.bb-jf-vois{display:inline-flex;align-items:center;gap:7px;min-width:0;max-width:22ch;font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--jf-gris);background:transparent;border:1px solid var(--jf-trait);border-radius:999px;padding:8px 14px;cursor:pointer;transition:color .2s,border-color .2s}
+.bb-jf-vois:hover{color:var(--jf-encre);border-color:var(--jf-vert)}
+.bb-jf-vois span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bb-jf-vois svg{width:13px;height:13px;flex:none}
+.bb-jf-badges{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:clamp(10px,1.2cqw,16px)}
+.bb-jf-badge{font-family:'Inter',sans-serif;font-weight:800;font-size:clamp(9.5px,.85cqw,11px);letter-spacing:.16em;text-transform:uppercase;padding:7px 13px;border-radius:999px;color:#0A1B0D;background:#A8D93B}
+.bb-jf-badge.st{color:var(--jf-encre);background:transparent;border:1px solid var(--jf-trait)}
+/* DEUX LIGNES RESERVEES, TOUJOURS. « Anta Gaye » tient sur une ligne,
+   « Ndeye Siga Sarr » sur deux : sans cette hauteur minimale, tout le
+   haut du bandeau sautait de 58 px d'une joueuse a l'autre. */
+.bb-jf-nom{font-family:'Archivo Black',sans-serif;font-weight:400;text-transform:uppercase;font-size:clamp(28px,5.4cqw,86px);line-height:.94;min-height:1.88em;letter-spacing:-.035em;color:var(--jf-encre);margin:0;text-wrap:balance}
+.bb-jf-nom em{font-style:normal;color:var(--jf-vert);margin-right:.14em}
+/* meme raison : deux lignes reservees, et ce qui depasse est coupe a
+   la deuxieme -- une bio de trois lignes redescendait la carte */
+.bb-jf-sous{font-family:'Space Grotesk',sans-serif;font-weight:500;font-size:clamp(13px,1.3cqw,17px);line-height:1.5;min-height:3em;color:var(--jf-gris);margin-top:clamp(8px,1cqw,14px);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bb-jf-sous b{font-weight:700;color:var(--jf-vert-fonce)}
+/* LA CARTE D'IDENTITE : ce qui remplissait mal le vide a droite du nom.
+   Taille, poste, age, ville : le club les saisit pour chaque joueuse. */
+/* des cases de largeur tenue, alignees a gauche : trois cases etirees
+   sur 864 px faisaient trois panneaux vides. Le fond du conteneur
+   passe entre elles par le gap d'un pixel : ce sont les filets. */
+.bb-jf-ident{display:flex;flex-wrap:wrap;gap:1px;width:-moz-fit-content;width:fit-content;max-width:100%;margin-top:clamp(16px,2cqw,28px);background:var(--jf-trait);border:1px solid var(--jf-trait);border-radius:14px;overflow:hidden}
+.bb-jf-idc{flex:1 0 clamp(96px,10cqw,152px);background:var(--jf-fond);padding:clamp(12px,1.3cqw,17px) clamp(8px,1cqw,14px);text-align:center;min-width:0}
+.bb-jf-idc b{display:block;font-family:'Archivo Black',sans-serif;font-weight:400;font-size:clamp(17px,2cqw,27px);line-height:1;color:var(--jf-encre);letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bb-jf-idc b.vert{color:var(--jf-vert)}
+.bb-jf-idc b.mot{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(12.5px,1.3cqw,17px);letter-spacing:-.01em}
+.bb-jf-idc span{display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--jf-gris);margin-top:7px}
+.bb-jf-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(14px,1.8cqw,24px)}
+/* les boutons du bandeau clair : le meme dessin que ceux du match, mais
+   ecrits a l'encre */
+.bb-jf-act{display:inline-flex;align-items:center;gap:9px;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:12px 18px;border-radius:9px;border:1px solid var(--jf-trait);background:transparent;color:var(--jf-encre);cursor:pointer;text-decoration:none;transition:border-color .2s,background .2s}
+.bb-jf-act:hover{border-color:var(--jf-vert);background:rgba(168,217,59,.14)}
+.bb-jf-act svg{width:15px;height:15px;flex:none}
+/* le coeur des favoris est dessine pour le fond sombre : sur le creme,
+   il reprend l'encre */
+.bb-jf-actions .bb-fav{background:transparent;border-color:var(--jf-trait);color:var(--jf-encre)}
+.bb-jf-actions .bb-fav:hover{border-color:var(--jf-vert);background:rgba(168,217,59,.14)}
+/* les messages d'attente du bandeau clair : le gris du site ne se lit
+   pas sur du creme */
+.bb-jf-mot{font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:var(--jf-gris);margin:0;padding:clamp(26px,4cqw,54px) 0}
+
+
+/* D'UNE JOUEUSE A L'AUTRE : L'UNE SORT, L'AUTRE ENTRE.
+   Cette animation ne se coupe PAS sous « animations reduites » : elle a
+   ete demandee expressement, et Windows pose ce reglage sur la machine
+   du club sans que personne l'ait choisi. Elle reste donc sobre -- un
+   glissement de quelques dizaines de pixels et un fondu, sous une demi-
+   seconde. --sens vaut 1, -1 ou 0 selon le bouton clique. */
+@keyframes bbJfSort{ to{ opacity:0; transform:translate3d(calc(var(--sens,0) * -30px),0,0) } }
+@keyframes bbJfEntre{ from{ opacity:0; transform:translate3d(calc(var(--sens,0) * 38px),0,0) } to{ opacity:1; transform:none } }
+@keyframes bbJfPortraitEntre{ from{ opacity:0; transform:translate3d(calc(var(--sens,0) * 64px),0,0) scale(.975) } to{ opacity:1; transform:none } }
+@keyframes bbJfNumEntre{ from{ opacity:0; transform:translate3d(calc(var(--sens,0) * 46px),0,0) } to{ opacity:1; transform:none } }
+@keyframes bbJfCorpsEntre{ from{ opacity:0; transform:translate3d(0,14px,0) } to{ opacity:1; transform:none } }
+.bb-jf-hero.sort .bb-jf-in,.bb-jf-hero.sort .bb-jf-num-fant{ animation:bbJfSort .2s ease-in forwards }
+.bb-jf-hero.entre .bb-jf-in{ animation:bbJfEntre .36s cubic-bezier(.16,.8,.3,1) both }
+.bb-jf-hero.entre .bb-jf-portrait{ animation:bbJfPortraitEntre .46s cubic-bezier(.16,.8,.3,1) both }
+.bb-jf-hero.entre .bb-jf-num-fant{ animation:bbJfNumEntre .56s cubic-bezier(.16,.8,.3,1) both }
+.bb-jf.sort{ opacity:0; transition:opacity .18s ease }
+.bb-jf.entre{ animation:bbJfCorpsEntre .42s cubic-bezier(.16,.8,.3,1) both }
+/* si le club regle un jour les animations sur « systeme » et que la
+   machine demande de les reduire, la fiche garde le passage de relais
+   -- un fondu sur place, sans glissement : l une sort, l autre entre. */
+@keyframes bbJfFonduSort{ to{ opacity:0 } }
+@keyframes bbJfFonduEntre{ from{ opacity:0 } to{ opacity:1 } }
+.bb-calme .bb-jf-hero.sort .bb-jf-in,.bb-calme .bb-jf-hero.sort .bb-jf-num-fant{ animation-name:bbJfFonduSort }
+.bb-calme .bb-jf-hero.entre .bb-jf-in,.bb-calme .bb-jf-hero.entre .bb-jf-portrait,.bb-calme .bb-jf-hero.entre .bb-jf-num-fant,.bb-calme .bb-jf.entre{ animation-name:bbJfFonduEntre }
+.bb-jf-sec{padding-top:clamp(28px,4vw,44px)}
+.bb-jf{display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(28px,4vw,48px)}
+.bb-jf-tuiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.bb-jf-tuile{padding:16px 12px;border-radius:14px;background:rgba(8,22,14,.7);border:1px solid rgba(243,239,230,.09);text-align:center}
+.bb-jf-tuile b{display:block;font-family:'Archivo Black',sans-serif;font-size:clamp(24px,3vw,34px);line-height:1;color:#F3EFE6;letter-spacing:-.02em}
+.bb-jf-tuile b.or{color:var(--bb-or)}
+.bb-jf-tuile span{display:block;font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#7E8A82;margin-top:8px}
+.bb-jf-table{width:100%;border-collapse:collapse;min-width:560px}
+.bb-jf-table th{font-family:'Inter',sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.12em;color:#7E8A82;text-transform:uppercase;padding:13px 8px;text-align:center;white-space:nowrap;border-bottom:1px solid rgba(243,239,230,.1)}
+.bb-jf-table th:first-child,.bb-jf-table td:first-child{text-align:left;padding-left:18px}
+.bb-jf-table td{font-family:'Inter',sans-serif;font-size:13.5px;color:#D6DDD7;padding:12px 8px;text-align:center;border-bottom:1px solid rgba(243,239,230,.06);font-variant-numeric:tabular-nums}
+.bb-jf-table td.pts{font-weight:800;color:#F3EFE6;font-size:15px}
+/* la case qu'aucune feuille n'a remplie : un point, pas un zero */
+.bb-jf-table td.nr{color:#4E5A50}
+.bb-jf-table tr[data-match]{cursor:pointer}
+.bb-jf-table tr[data-match]:hover td{background:rgba(var(--bb-or-rgb),.06)}
+.bb-jf-adv{display:flex;align-items:center;gap:10px}
+.bb-jf-adv img,.bb-jf-adv .txt{width:28px;height:28px;border-radius:50%;flex:none;object-fit:contain;background:#0c1913;border:1px solid rgba(243,239,230,.14)}
+.bb-jf-adv .txt{display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:10px;color:#fff}
+.bb-jf-adv b{font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;color:#F3EFE6}
+.bb-jf-adv small{display:block;font-size:11px;color:#7E8A82}
+.bb-jf-res{font-family:'Inter',sans-serif;font-weight:800;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.bb-jf-res.v{color:#A8D93B}
+.bb-jf-res.d{color:#E0655C}
+.bb-jf-res.n{color:var(--bb-or)}
+/* la liste des matchs quand la feuille n'est pas saisie : ce qu'on sait
+   d'elle, c'est qu'elle etait sur le terrain */
+.bb-jf-mc{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;border:1px solid rgba(243,239,230,.09);background:rgba(8,22,14,.62);cursor:pointer;transition:border-color .2s}
+.bb-jf-mc:hover{border-color:rgba(var(--bb-or-rgb),.55)}
+.bb-jf-mc + .bb-jf-mc{margin-top:10px}
+.bb-jf-mc .tx b{display:block;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;color:#F3EFE6}
+.bb-jf-mc .tx small{display:block;font-family:'Inter',sans-serif;font-size:11.5px;color:#8B968D;margin-top:3px}
+.bb-jf-mc .rl{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--bb-or);white-space:nowrap}
+.bb-jf-bio{font-size:15px;line-height:1.75;color:#C7CFC8;max-width:70ch}
+.bb-jf-eq{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:thin}
+.bb-jf-eqc{flex:none;width:96px;text-align:center;cursor:pointer}
+/* display:block, et non l'inline d'un span : bbRondHtml rend un SPAN, et
+   ni largeur ni hauteur ne s'appliquent a un element inline. Les autres
+   ronds du site s'en sortaient par accident, leur parent etant un flex. */
+.bb-jf-eqc .rond{display:block;width:64px;height:64px;border-radius:50%;overflow:hidden;margin:0 auto 8px;background:#12211A;border:1px solid rgba(243,239,230,.14)}
+.bb-jf-eqc .rond img{width:100%;height:100%;object-fit:cover;display:block}
+.bb-jf-eqc.moi .rond{border-color:var(--bb-or);box-shadow:0 0 0 2px rgba(var(--bb-or-rgb),.35)}
+.bb-jf-eqc b{display:block;font-family:'Inter',sans-serif;font-weight:600;font-size:12px;color:#F3EFE6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bb-jf-eqc small{font-size:11px;color:var(--bb-or)}
+
+/* Le telephone : le portrait passe en premier, pleine largeur, et la
+   carte d'identite descend sous le nom. Seule rupture de composition du
+   fichier -- une colonne de 220 px n'existe pas a 360 px de large. */
+@media (max-width:760px){
+  .bb-jf-in{grid-template-columns:1fr;gap:0;padding-top:clamp(12px,3vw,20px)}
+  .bb-jf-portrait{aspect-ratio:1.05;max-height:46vh}
+  .bb-jf-id{padding:4px 0 26px}
+  .bb-jf-num-fant{font-size:40vw;right:-6px;top:-18px}
+}
+@media (max-width:640px){
+  .bb-mf-fait + .bb-mf-fait::before{display:none}
+  .bb-mf-fait{text-align:left}
+  .bb-mf-faits-in{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:14px 16px}
+  .bb-mf-act,.bb-jf-act{padding:11px 14px;font-size:11px}
+}
+</style>
 </head>
 <body>
 <!-- Le fil de lecture : pilote par le defilement, sans JavaScript. -->
@@ -4939,6 +5316,25 @@ window.bbLienSur = function (u) {
         </div>
       </div>
     </div>
+  </main>
+
+  <!-- ===== LA FICHE DE MATCH =====
+       Une page au même rang que Compétitions, et plus une fenêtre :
+       elle a une adresse (#match-<id>, et /match/<id> pour le partage),
+       un titre, une image de partage. Tout ce qu'elle montre est dessiné
+       par bbFicheMatch() : le bandeau, la feuille, le déroulé, le face
+       à face. Le balisage ne porte que les deux conteneurs. -->
+  <main id="bb-page-match" class="bb-fade bb-hide">
+    <div id="bb-mf-hero" class="bb-mf-hero"></div>
+    <div class="bb-sec bb-mf-sec"><div id="bb-mf" class="bb-mf"></div></div>
+  </main>
+
+  <!-- ===== LA FICHE DE JOUEUSE =====
+       Même principe : #joueuse-<id> et /joueuse/<id>. Le portrait, la
+       saison, le match par match, la bio, les coéquipières. -->
+  <main id="bb-page-joueuse" class="bb-fade bb-hide">
+    <div id="bb-jf-hero" class="bb-jf-hero"></div>
+    <div class="bb-sec bb-jf-sec"><div id="bb-jf" class="bb-jf"></div></div>
   </main>
 
   <!-- ===== ACTUALITÉS =====
@@ -6485,6 +6881,24 @@ window.bbCloud = function(url, w){
   // Un lien partagé (#billetterie) ou un rafraîchissement rouvre la bonne page.
   window.addEventListener('load', function(){
     var h = (location.hash || '').replace('#', '');
+    // UNE FICHE A SA PROPRE ADRESSE. « #match-<id> » et « #joueuse-<id> »
+    // ouvrent la fiche ; /match/<id> (l'adresse de partage, rendue par
+    // api/partage.js) arrive avec window.bbRouteInitiale, et on lit
+    // aussi le chemin au cas ou la fonction n'aurait pas pu le poser.
+    var route = window.bbRouteInitiale || h;
+    if (!/^(match|joueuse)-/.test(route)){
+      var pm = /^\/(match|joueuse)\/([^\/?#]+)/.exec(location.pathname);
+      if (pm){ try { route = pm[1] + '-' + decodeURIComponent(pm[2]); } catch(e){} }
+    }
+    if (/^(match|joueuse)-/.test(route)){
+      var partsR = /^([a-z]+)-(.+)$/.exec(route);
+      // l'adresse redevient celle du site (/#match-<id>) : les liens
+      // relatifs et le retour se comportent comme partout ailleurs
+      var baseR = /^\/(match|joueuse)\//.test(location.pathname) ? '/' : location.pathname;
+      history.replaceState({ bbPage: partsR[1], bbId: partsR[2] }, '', baseR + '#' + route);
+      bbFicheDepuisRoute(route);
+      return;
+    }
     // « #actualites-12 » ouvre directement l'article : une adresse
     // partagee sur WhatsApp doit tomber sur l'article, pas sur la liste.
     var art = /^actualites-(.+)$/.exec(h);
@@ -6516,12 +6930,22 @@ window.bbCloud = function(url, w){
   // le site a lui-meme empilees.
   window.addEventListener('hashchange', function(){
     var h = (location.hash || '').replace('#', '');
+    // une fiche collee dans la barre d'adresse : on l'ouvre, et on
+    // inscrit l'etape pour que « retour » sache d'ou l'on vient
+    var fiche = /^(match|joueuse)-(.+)$/.exec(h);
+    if (fiche){
+      if (!history.state || history.state.bbId !== fiche[2]) history.replaceState({ bbPage: fiche[1], bbId: fiche[2] }, '', '#' + h);
+      closeOverlays(); bbFicheDepuisRoute(h); return;
+    }
     if (h && PAGES.indexOf(h) !== -1 && h !== state.page) { closeOverlays(); goTo(h, true); }
   });
 
   window.addEventListener('popstate', function(e){
     var p = (e.state && e.state.bbPage) || 'accueil';
     closeOverlays();
+    // une fiche est une etape a elle seule : on la redessine depuis son
+    // identifiant, on ne montre pas la page vide
+    if ((p === 'match' || p === 'joueuse') && e.state.bbId){ bbFicheDepuisRoute(p + '-' + e.state.bbId); return; }
     goTo(p, true);
     // Un article ouvert est une etape d'historique a lui seul : le
     // bouton « retour » du telephone doit le refermer avant de quitter
@@ -6536,14 +6960,19 @@ window.bbCloud = function(url, w){
   function setActiveNav(){
     document.querySelectorAll('.bb-nav-link').forEach(function(a){
       var target = a.getAttribute('data-nav');
-      a.classList.toggle('active', target === state.page);
+      var courante = state.page === 'match' ? 'competitions' : (state.page === 'joueuse' ? 'equipes' : state.page);
+      a.classList.toggle('active', target === courante);
     });
   }
 
   var tryVisibleTimer = null;
   var homeTryInSeen = false;
 
-  var PAGES = ['accueil','actualites','boutique','equipes','competitions','club','tryouts','inscriptions','billetterie'];
+  /* « match » et « joueuse » sont des pages a part entiere, mais leur
+     adresse porte un identifiant : #match-<id>, #joueuse-<id>. Le
+     routeur (chargement, hashchange, popstate, applyPage) les traite
+     avant les pages simples. */
+  var PAGES = ['accueil','actualites','boutique','equipes','competitions','club','tryouts','inscriptions','billetterie','match','joueuse'];
   var equipesInSeen = false;
 
   // goTo joue la sortie de la page courante, puis passe la main à applyPage.
@@ -6591,10 +7020,16 @@ window.bbCloud = function(url, w){
     // téléphone et le geste de retour ramènent à la page précédente sans
     // recharger le site.
     if (!noPush) {
-      var st = { bbPage: page };
-      if (!history.state || !history.state.bbPage) history.replaceState(st, '', '#' + page);
-      else if (history.state.bbPage !== page) history.pushState(st, '', '#' + page);
+      var st = { bbPage: page }, frag = '#' + page;
+      // une fiche s'ecrit avec son identifiant ; passer d'une fiche a
+      // une autre (match suivant, coequipiere) est une etape de plus
+      if (page === 'match' && bbFiche && bbFiche.matchId){ st.bbId = bbFiche.matchId; frag = '#match-' + bbFiche.matchId; }
+      if (page === 'joueuse' && bbFiche && bbFiche.joueuseId){ st.bbId = bbFiche.joueuseId; frag = '#joueuse-' + bbFiche.joueuseId; }
+      if (!history.state || !history.state.bbPage) history.replaceState(st, '', frag);
+      else if (history.state.bbPage !== page || (st.bbId && history.state.bbId !== st.bbId)) history.pushState(st, '', frag);
     }
+    // le titre de l'onglet suit la fiche, et revient avec la page
+    if (page !== 'match' && page !== 'joueuse' && BB_TITRE && document.title !== BB_TITRE) document.title = BB_TITRE;
     var backBtn = document.getElementById('bb-back-btn');
     if (backBtn) backBtn.style.display = (state.isMobile && page !== 'accueil') ? 'flex' : 'none';
     // Une vidéo qui continue de jouer par-dessus la page suivante : jamais.
@@ -6877,7 +7312,10 @@ window.bbCloud = function(url, w){
     preloadPlayerNeighbours();
   }
 
-  function openPlayerByIdx(idx){
+  /* LES FENETRES D'AVANT. Depuis le 20 septembre 2026 une joueuse est
+     une page (bbFicheJoueuse) : openPlayer et openPlayerByIdx, plus bas,
+     y menent. Ces deux-ci ne sont plus appelees par aucun clic. */
+  function openPlayerByIdxFenetre(idx){
     var n = players.length;
     playerIdx = ((idx % n) + n) % n;
     fillPlayer(players[playerIdx]);
@@ -6885,7 +7323,7 @@ window.bbCloud = function(url, w){
     preloadPlayerNeighbours();
   }
 
-  function openPlayer(no){
+  function openPlayerFenetre(no){
     var idx = 0;
     for (var i = 0; i < players.length; i++) if (String(players[i].no) === String(no)) { idx = i; break; }
     playerIdx = idx;
@@ -7670,7 +8108,10 @@ window.bbCloud = function(url, w){
     return Array.isArray(q) ? q : [];
   }
 
-  function openMatch(id){
+  /* LA FENETRE D'AVANT. Depuis le 20 septembre 2026 un match est une
+     page (bbFicheMatch, plus bas) : cette fenetre n'est plus appelee par
+     aucun clic. Elle reste le temps que la page fasse ses preuves. */
+  function openMatchFenetre(id){
     var m = bbMatchById(id); if (!m) return;
     var joue = m.score_baobabs != null && m.score_opponent != null;
     // Date passee, score absent : le match a eu lieu, la fiche ne doit
@@ -7729,7 +8170,740 @@ window.bbCloud = function(url, w){
     document.getElementById('bb-match-body').innerHTML = html;
     openOverlay('bb-match-overlay');
   }
+  /* =====================================================================
+     LES FICHES : LE MATCH ET LA JOUEUSE ONT CHACUN LEUR PAGE
+     ---------------------------------------------------------------------
+     Jusqu'au 20 septembre 2026 un match s'ouvrait dans une fenetre, une
+     joueuse aussi, et ni l'un ni l'autre n'avait d'adresse : rien a
+     partager, rien que Google puisse lire, une seule image de partage
+     pour tout le site. C'etait l'ecart le plus visible avec un club pro :
+     « le match comme une page, pas comme une carte ».
+
+     Deux pages, donc : #match-<id> et #joueuse-<id> dans le site, et
+     /match/<id> et /joueuse/<id> pour le partage. Ces deux dernieres
+     adresses sont servies par api/partage.js (Vercel), qui rend la page
+     avec le bon titre, la bonne description, la bonne image et les
+     donnees structurees, puis laisse le site s'ouvrir sur la fiche
+     (window.bbRouteInitiale, lu au chargement).
+
+     Ce que la fiche de match montre vient de ce que l'admin ecrit deja :
+     le score, les quarts-temps et le recit (matches), la feuille de
+     match (match_stats), la composition (match_lineup_public), le direct
+     (match_live, match_events). Une feuille sans chiffres montre la
+     composition et le dit ; elle n'affiche jamais une colonne de zeros.
+
+     Les anciennes fenetres (openMatchFenetre, openPlayerFenetre) restent
+     dans le fichier, plus appelees par aucun clic.
+     ===================================================================== */
+  var bbFiche = { matchId: null, joueuseId: null, liveTimer: null };
+  var BB_ORIGINE = 'https://www.baobabsbasketclub.com';
+  var BB_LOGO = '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp';
+  /* le titre du site, a remettre quand on quitte une fiche ; api/partage.js
+     le passe en clair parce que sur /match/<id> document.title est deja
+     celui du match */
+  var BB_TITRE = window.bbTitreSite || document.title;
+  var BB_GESTES = {
+    panier2: { t: 'Panier à 2 points', pts: 2 }, panier3: { t: 'Panier à 3 points', pts: 3 }, lf: { t: 'Lancer franc', pts: 1 },
+    contre: { t: 'Contre' }, interception: { t: 'Interception' }, faute: { t: 'Faute' }
+  };
+
+  function bbU(){ return window.bbUtil || null; }
+  function bbEch(s){ var u = bbU(); return u ? u.ech(s) : String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function bbDatePleine(d){ if (!d) return ''; var dt = new Date(String(d).slice(0, 10) + 'T12:00:00'); return isNaN(dt.getTime()) ? '' : dt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
+  function bbImg(u, w){ return window.bbSafeUrl(window.bbCloud ? window.bbCloud(u, w) : u); }
+  function bbHeure(t){ return t ? String(t).slice(0, 5).replace(':', 'h').replace(/h00$/, 'h') : ''; }
+  function bbJoueuseParId(id){ for (var i = 0; i < players.length; i++) if (String(players[i].id) === String(id)) return players[i]; return null; }
+  function bbJoueuseParRoute(x){ return bbJoueuseParId(x) || players.filter(function(k){ return String(k.no) === String(x); })[0] || null; }
+  function bbAdresseMatch(id){ return BB_ORIGINE + '/match/' + encodeURIComponent(id); }
+  function bbAdresseJoueuse(id){ return BB_ORIGINE + '/joueuse/' + encodeURIComponent(id); }
+  function bbRondHtml(p, taille){
+    if (!p || !p.src) return '<span class="rond" style="display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;color:var(--bb-or);font-size:' + Math.round((taille || 32) * .38) + 'px">' + bbEch(p && p.no != null ? p.no : '?') + '</span>';
+    var x = p.px == null ? 50 : p.px, y = p.py == null ? 0 : p.py, z = p.pz == null ? 100 : p.pz;
+    return '<span class="rond"><img src="' + bbImg(p.src, 200) + '" alt="" loading="lazy" decoding="async" style="object-position:' + x + '% ' + y + '%;transform:scale(' + (z / 100) + ');transform-origin:' + x + '% ' + y + '%"></span>';
+  }
+  var BB_ICO = {
+    cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/></svg>',
+    part: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>',
+    billet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+    retour: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
+    chevG: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>',
+    chevD: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>'
+  };
+
+  /* ---- Partager : la feuille de partage du telephone, sinon le lien copie ---- */
+  function bbPartager(titre, texte, url){
+    if (navigator.share){ navigator.share({ title: titre, text: texte, url: url }).catch(function(){}); return; }
+    var p = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(url) : Promise.reject();
+    p.then(function(){ toast('Lien copié'); }, function(){ window.prompt('Copiez ce lien :', url); });
+  }
+
+  /* ---- Ajouter au calendrier : un fichier .ics, sans serveur ----
+     Dakar est a l'heure UTC toute l'annee : la date et l'heure du match
+     s'ecrivent telles quelles avec le Z, et tout agenda les lit juste. */
+  function bbIcsTexte(s){ return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+  function bbIcs(m){
+    if (!m || !m.match_date) return null;
+    var hm = m.match_time ? String(m.match_time).slice(0, 5) : '18:00';
+    var debut = new Date(String(m.match_date).slice(0, 10) + 'T' + hm + ':00Z');
+    if (isNaN(debut.getTime())) return null;
+    var fin = new Date(debut.getTime() + 2 * 3600 * 1000);
+    function z(d){ return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); }
+    var titre = (m.is_home ? 'Baobabs vs ' : 'Baobabs @ ') + (m.opponent_name || 'Adversaire');
+    var desc = [m.competition, m.round_label, m.free_entry ? 'Entrée gratuite' : '', bbAdresseMatch(m.id)].filter(Boolean).join(' · ');
+    return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Baobabs Basket Club//Site//FR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+      'BEGIN:VEVENT', 'UID:match-' + m.id + '@baobabsbasketclub.com', 'DTSTAMP:' + z(new Date()), 'DTSTART:' + z(debut), 'DTEND:' + z(fin),
+      'SUMMARY:' + bbIcsTexte(titre), 'LOCATION:' + bbIcsTexte(m.venue || ''), 'DESCRIPTION:' + bbIcsTexte(desc), 'URL:' + bbAdresseMatch(m.id),
+      'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  }
+  function bbTelechargerIcs(m){
+    var ics = bbIcs(m);
+    if (!ics){ toast('Ce match n\u2019a pas encore de date'); return; }
+    var blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'baobabs-' + String(m.match_date).slice(0, 10) + '.ics';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    toast('Match ajouté à votre agenda');
+  }
+
+  /* ===================== LA FICHE DE MATCH ===================== */
+  function bbMatchTitre(m){ return (m.is_home ? 'Baobabs reçoit ' : 'Baobabs chez ') + (m.opponent_name || 'Adversaire'); }
+  function bbCrestHtml(url, nom){
+    if (url) return '<img class="bb-mf-crest" src="' + bbImg(url, 240) + '" alt="" decoding="async">';
+    var u = bbU();
+    return '<div class="bb-mf-crest txt" style="background:' + (u ? u.couleurDe(nom || '?') : '#15803d') + '">' + bbEch(u ? u.initiales(nom || '?') : '?') + '</div>';
+  }
+  function bbMatchEtat(m, live){
+    var joue = m.score_baobabs != null && m.score_opponent != null;
+    var j = m.match_date ? daysUntil(m.match_date) : null;
+    if (live && live.is_live) return { cls: 'live', texte: '<i></i>En direct' + (live.period ? ' · ' + (live.period <= 4 ? 'Q' + live.period : 'Prol. ' + (live.period - 4)) : ''), joue: false, live: true };
+    if (joue){
+      var g = m.score_baobabs > m.score_opponent, n = m.score_baobabs === m.score_opponent;
+      return { cls: g ? 'win' : (n ? 'draw' : 'lose'), texte: g ? 'Victoire' : (n ? 'Match nul' : 'Défaite'), joue: true };
+    }
+    if (j != null && j < 0) return { cls: '', texte: 'Joué · score à venir', joue: false, attente: true };
+    return { cls: j != null && j <= 3 ? 'soon' : '', texte: j == null ? 'À venir' : (j <= 0 ? "C'est aujourd'hui" : (j === 1 ? 'Demain' : 'Dans ' + j + ' jours')), joue: false, j: j };
+  }
+
+  function bbFicheMatch(id, sansHistorique){
+    var m = bbMatchById(id);
+    bbFiche.matchId = String(id);
+    var hero = document.getElementById('bb-mf-hero'), corps = document.getElementById('bb-mf');
+    if (!hero || !corps) return;
+    if (!m){
+      /* les matchs arrivent par le bloc du bas : on ouvre la page, on
+         attend qu'ils soient la, puis on dessine */
+      hero.innerHTML = '<div class="bb-mf-in"><p class="bb-mf-vide">Chargement du match…</p></div>';
+      corps.innerHTML = '';
+      goTo('match', sansHistorique);
+      var essais = 0, t = setInterval(function(){
+        essais++;
+        if (bbFiche.matchId !== String(id)){ clearInterval(t); return; }
+        if (bbMatchById(id)){ clearInterval(t); bbFicheMatch(id, true); }
+        else if (essais > 60){ clearInterval(t); hero.innerHTML = '<div class="bb-mf-in"><button type="button" class="bb-mf-retour" data-nav="competitions">' + BB_ICO.retour + ' Compétitions</button><p class="bb-mf-vide">Ce match n\u2019existe pas, ou plus.</p></div>'; }
+      }, 250);
+      return;
+    }
+    bbFicheMatchDessiner(m, null);
+    goTo('match', sansHistorique);
+    document.title = bbMatchTitre(m) + ' · Baobabs Basket Club';
+    bbFicheMatchCharger(m);
+  }
+
+  /* LA BANDE DES FAITS. Ce que le club sait de la rencontre et qui ne
+     depend pas du score : la date, la salle, le terrain, les arbitres.
+     Elle ferme le bandeau sur toute sa largeur, avant comme apres le
+     match -- il y a toujours au moins trois choses a y mettre. */
+  function bbMatchFaits(m, et){
+    var f = [];
+    if (m.match_date) f.push(['Date', bbEch(bbDatePleine(m.match_date))]);
+    if (m.match_time) f.push(['Coup d’envoi', bbEch(bbHeure(m.match_time))]);
+    if (m.venue) f.push(['Salle', bbEch(m.venue)]);
+    f.push(['Terrain', m.is_home ? 'À domicile' : 'À l’extérieur']);
+    if (m.competition) f.push([m.round_label ? 'Compétition' : 'Épreuve', bbEch(m.competition) + (m.round_label ? ' · ' + bbEch(m.round_label) : '')]);
+    if (m.attendance) f.push(['Affluence', bbEch(m.attendance) + ' spectateurs']);
+    if (m.referees) f.push(['Arbitres', bbEch(m.referees)]);
+    if (!et.joue && !et.attente && !et.live){
+      if (m.free_entry) f.push(['Entrée', '<span class="or">Gratuite</span>']);
+      else if (m.is_home) f.push(['Entrée', '<a href="#billetterie" data-nav="billetterie">Billetterie</a>']);
+    }
+    return f;
+  }
+
+  /* Le verdict ecrit : l'ecart se lit plus vite qu'une soustraction. */
+  function bbMatchVerdict(m, sb, so){
+    if (sb == null || so == null) return '';
+    var e = Math.abs(sb - so);
+    if (sb > so) return '<div class="bb-mf-verdict v">Les Baobabs l’emportent <b>de ' + e + ' point' + (e > 1 ? 's' : '') + '</b></div>';
+    if (sb < so) return '<div class="bb-mf-verdict d">Défaite <b>de ' + e + ' point' + (e > 1 ? 's' : '') + '</b></div>';
+    return '<div class="bb-mf-verdict n">Les deux équipes se quittent <b>dos à dos</b></div>';
+  }
+
+  /* La couleur d'un club adverse : celle que le site lui donne deja
+     partout ailleurs (son nom la decide), rendue en composantes pour
+     pouvoir la poser en transparence. */
+  function bbRgbDe(nom){
+    var u = bbU(), h = (u ? u.couleurDe(nom || '?') : '#15803d').replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    return parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16);
+  }
+
+  function bbFicheMatchDessiner(m, live){
+    var hero = document.getElementById('bb-mf-hero');
+    var et = bbMatchEtat(m, live);
+    var sb = et.live ? live.score_bbc : m.score_baobabs, so = et.live ? live.score_adv : m.score_opponent;
+    var adv = m.opponent_name || 'Adversaire';
+    /* le club qui recoit a gauche : la convention de toutes les feuilles */
+    var gauche = m.is_home ? { nom: 'Baobabs Basket Club', logo: BB_LOGO, score: sb, rgb: '168,217,59' } : { nom: adv, logo: m.opponent_logo_url, score: so, rgb: bbRgbDe(adv) };
+    var droite = m.is_home ? { nom: adv, logo: m.opponent_logo_url, score: so, rgb: bbRgbDe(adv) } : { nom: 'Baobabs Basket Club', logo: BB_LOGO, score: sb, rgb: '168,217,59' };
+    var compte = (et.joue || et.live) && gauche.score != null && droite.score != null;
+    var cg = compte ? (gauche.score > droite.score ? 'gagne' : (gauche.score < droite.score ? 'perd' : '')) : '';
+    var cd = compte ? (droite.score > gauche.score ? 'gagne' : (droite.score < gauche.score ? 'perd' : '')) : '';
+
+    var centre;
+    if (et.joue || et.live){
+      centre = '<div class="bb-mf-score">' +
+        '<span class="' + (cg === 'gagne' ? 'win' : (cg === 'perd' ? 'lose' : '')) + '">' + (gauche.score == null ? '0' : gauche.score) + '</span><i></i>' +
+        '<span class="' + (cd === 'gagne' ? 'win' : (cd === 'perd' ? 'lose' : '')) + '">' + (droite.score == null ? '0' : droite.score) + '</span></div>';
+    } else if (et.attente){
+      centre = '<div class="bb-mf-quand"><b style="color:#93A099">Joué</b><span>score à venir</span></div>';
+    } else {
+      centre = '<div class="bb-mf-quand"><b>' + (m.match_date ? bbEch(formatDateShort(m.match_date)).toUpperCase() : 'À VENIR') + '</b><span>' + bbEch([bbHeure(m.match_time), et.texte].filter(Boolean).join(' · ')) + '</span></div>';
+    }
+    var verdict = et.joue ? bbMatchVerdict(m, m.score_baobabs, m.score_opponent) : '';
+
+    var actions = '';
+    if (!et.joue && !et.attente && !et.live){
+      actions += '<button type="button" class="bb-mf-act" data-mf-ics>' + BB_ICO.cal + 'Ajouter à mon agenda</button>';
+      if (m.is_home && !m.free_entry) actions += '<a class="bb-mf-act fort" href="#billetterie" data-nav="billetterie">' + BB_ICO.billet + 'Billets</a>';
+    }
+    if (m.stream_url && window.bbSafeUrl(m.stream_url)) actions += '<a class="bb-mf-act' + (et.live ? ' fort' : '') + '" href="' + window.bbSafeUrl(m.stream_url) + '" target="_blank" rel="noopener">' + BB_ICO.play + (et.live ? 'Regarder le direct' : 'Voir la vidéo') + '</a>';
+    actions += '<button type="button" class="bb-mf-act" data-mf-partager>' + BB_ICO.part + 'Partager</button>';
+    actions += bbFavBtn('match', m.id, 'align-self:center');
+
+    /* LE FOND. Une photo quand l'admin en a depose une ; sinon les deux
+       camps teintent chacun son cote et leurs blasons passent derriere,
+       enormes et sourds. Un bandeau noir et vide n'annonce rien. */
+    var fond = m.photo_url ? bbImg(m.photo_url, 1400) : '';
+    var ombre = function(c, cote){
+      if (c.logo && bbImg(c.logo, 600)) return '<span class="' + cote + '"><img src="' + bbImg(c.logo, 600) + '" alt="" aria-hidden="true"></span>';
+      var u = bbU();
+      return '<span class="' + cote + '"><b>' + bbEch(u ? u.initiales(c.nom) : '?') + '</b></span>';
+    };
+    hero.innerHTML =
+      (fond
+        ? '<div class="bb-mf-fond" style="background-image:url(&quot;' + fond + '&quot;)"></div>'
+        : '<div class="bb-mf-teintes" aria-hidden="true">' +
+            '<i style="background:radial-gradient(62% 100% at 0% 50%,rgba(' + gauche.rgb + ',.2),transparent 68%)"></i>' +
+            '<i style="background:radial-gradient(62% 100% at 100% 50%,rgba(' + droite.rgb + ',.2),transparent 68%)"></i>' +
+          '</div>' +
+          '<div class="bb-mf-ombres" aria-hidden="true">' + ombre(gauche, 'g') + ombre(droite, 'd') + '</div>') +
+      '<div class="bb-mf-trame" aria-hidden="true"></div>' +
+      '<div class="bb-mf-in">' +
+        '<button type="button" class="bb-mf-retour" data-mf-retour>' + BB_ICO.retour + ' Compétitions</button>' +
+        '<div class="bb-mf-kick"><span>' + bbEch(m.competition || 'Match') + (m.round_label ? ' <span class="or">· ' + bbEch(m.round_label) + '</span>' : '') + '</span>' +
+          '<span class="bb-mf-etat ' + et.cls + '">' + et.texte + '</span></div>' +
+        '<div class="bb-mf-affiche">' +
+          '<div class="bb-mf-club ' + cg + '">' + bbCrestHtml(gauche.logo, gauche.nom) + '<div class="bb-mf-nom">' + bbEch(gauche.nom) + '<small>Reçoit</small></div></div>' +
+          centre +
+          '<div class="bb-mf-club ' + cd + '">' + bbCrestHtml(droite.logo, droite.nom) + '<div class="bb-mf-nom">' + bbEch(droite.nom) + '<small>Visiteur</small></div></div>' +
+        '</div>' +
+        verdict +
+        '<div class="bb-mf-actions">' + actions + '</div>' +
+      '</div>' +
+      '<div class="bb-mf-faits"><div class="bb-mf-faits-in">' +
+        bbMatchFaits(m, et).map(function(f){ return '<div class="bb-mf-fait"><span class="l">' + f[0] + '</span><span class="v">' + f[1] + '</span></div>'; }).join('') +
+      '</div></div>';
+    bbFavPaint(hero);
+    hero.querySelector('[data-mf-retour]').addEventListener('click', function(){ goTo('competitions'); });
+    var ics = hero.querySelector('[data-mf-ics]'); if (ics) ics.addEventListener('click', function(){ bbTelechargerIcs(m); });
+    hero.querySelector('[data-mf-partager]').addEventListener('click', function(){
+      var t = bbMatchTitre(m) + (et.joue ? ' : ' + m.score_baobabs + ' - ' + m.score_opponent : (m.match_date ? ', le ' + bbDatePleine(m.match_date) : ''));
+      bbPartager(t, t + ' · Baobabs Basket Club', bbAdresseMatch(m.id));
+    });
+  }
+
+  function bbFicheMatchCharger(m){
+    var corps = document.getElementById('bb-mf');
+    corps.innerHTML = '<p class="bb-mf-vide">Chargement de la feuille…</p>';
+    var id = String(m.id);
+    Promise.all([
+      sbFetch('match_stats?select=*&match_id=eq.' + encodeURIComponent(id) + '&order=lineup_sort.asc.nullslast').catch(function(){ return []; }),
+      sbFetch('match_events?select=*&match_id=eq.' + encodeURIComponent(id) + '&order=created_at.asc&limit=600').catch(function(){ return []; }),
+      sbFetch('match_live?select=*&match_id=eq.' + encodeURIComponent(id)).catch(function(){ return []; }),
+      bbLuLignes(id).catch(function(){ return []; })
+    ]).then(function(res){
+      if (bbFiche.matchId !== id) return;
+      var stats = res[0] || [], events = res[1] || [], live = (res[2] || [])[0] || null, lineup = res[3] || [];
+      if (live && live.is_live) bbFicheMatchDessiner(m, live);
+      corps.innerHTML = bbFicheMatchCorps(m, stats, events, lineup, live);
+      bbFicheMatchCabler(corps);
+      /* un direct en cours se relit toutes les trente secondes, tant
+         qu'on reste sur la page */
+      clearInterval(bbFiche.liveTimer);
+      if (live && live.is_live){
+        bbFiche.liveTimer = setInterval(function(){
+          if (bbFiche.matchId !== id || state.page !== 'match'){ clearInterval(bbFiche.liveTimer); return; }
+          bbFicheMatchCharger(m);
+        }, 30000);
+      }
+    });
+  }
+
+  /* Une carte de joueuse dans la composition. Tant qu'aucune feuille
+     n'est saisie, c'est ce bloc qui porte la page : on y met donc tout
+     ce que le club sait d'elle -- son numero, son poste, sa taille. */
+  function bbCompoCarte(s, j){
+    if (!j) return '';
+    var sous = [j.pos, bbTaille(j.height)].filter(Boolean).join(' · ');
+    return '<div class="bb-mf-jc' + (s.is_starter ? ' tit' : '') + '" data-joueuse="' + bbEch(j.id) + '" role="button" tabindex="0">' +
+      '<span class="fant" aria-hidden="true">' + bbEch(j.no) + '</span>' +
+      bbRondHtml(j, 88) +
+      '<span class="no">' + bbEch(j.no) + (s.is_captain ? ' <span class="brass" title="Capitaine">★</span>' : '') + '</span>' +
+      '<b>' + bbEch(j.name) + '</b>' +
+      (sous ? '<small>' + bbEch(sous) + '</small>' : '') +
+      '</div>';
+  }
+
+  function bbFicheMatchCorps(m, stats, events, lineup, live){
+    var html = '', et = bbMatchEtat(m, live);
+    var joue = et.joue || et.live;
+    /* UNE FEUILLE DE MATCH DEMANDE UN SCORE. Sans lui, les chiffres
+       qu'on lit sont ceux d'une saisie commencee ou d'un direct en
+       preparation : ce que la page doit montrer, c'est la composition. */
+    var estSaisie = function(s){ return !!(s.minutes || s.pts || s.reb || s.ast || s.stl || s.blk || s.eval || s.fg2_att || s.fg3_att || s.ft_att); };
+    var chiffres = (et.joue || et.live) ? stats.filter(function(s){ return s.played !== false && estSaisie(s); }) : [];
+
+    /* --- Le deroule : quarts-temps, puis le fil des paniers --- */
+    var q = bbQuarters(m).filter(function(x){ return x && (x.b != null || x.o != null); });
+    var gestes = events.filter(function(e){ return BB_GESTES[e.kind]; });
+    if (joue && (q.length || gestes.length)){
+      html += '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">Le déroulé</span><h3 class="bb-sec-t">Quart-temps par quart-temps</h3></div></div>';
+      if (q.length){
+        var tb = q.reduce(function(a, x){ return a + (Number(x.b) || 0); }, 0), to = q.reduce(function(a, x){ return a + (Number(x.o) || 0); }, 0);
+        html += '<div class="bb-plaque" style="padding:16px 18px"><div class="bb-mf-q" style="--q:' + q.length + '"><span></span>' + q.map(function(_, i){ return '<span class="h">' + (i < 4 ? 'Q' + (i + 1) : 'P' + (i - 3)) + '</span>'; }).join('') + '<span class="h">Total</span>' +
+          '<span class="e">Baobabs</span>' + q.map(function(x){ return '<span class="v">' + (x.b == null ? '' : bbEch(x.b)) + '</span>'; }).join('') + '<span class="v t">' + (m.score_baobabs != null ? m.score_baobabs : tb) + '</span>' +
+          '<span class="e">' + bbEch(m.opponent_name || 'Adversaire') + '</span>' + q.map(function(x){ return '<span class="v">' + (x.o == null ? '' : bbEch(x.o)) + '</span>'; }).join('') + '<span class="v t">' + (m.score_opponent != null ? m.score_opponent : to) + '</span>' +
+          '</div></div>';
+      }
+      if (gestes.length){
+        var parPeriode = {}, cb = 0, co = 0;
+        gestes.forEach(function(e){
+          var g = BB_GESTES[e.kind], advE = e.team === 'adv';
+          if (g.pts){ if (advE) co += g.pts; else cb += g.pts; }
+          e._score = cb + ':' + co;
+          var p = e.period || 1; (parPeriode[p] = parPeriode[p] || []).push(e);
+        });
+        html += '<div class="bb-plaque" style="padding:6px 18px 14px;margin-top:12px">' + Object.keys(parPeriode).sort(function(a, b){ return a - b; }).map(function(p){
+          return '<div class="bb-mf-per">' + (p <= 4 ? 'Quart-temps ' + p : 'Prolongation ' + (p - 4)) + '</div>' + parPeriode[p].map(function(e){
+            var g = BB_GESTES[e.kind], advE = e.team === 'adv';
+            var j = !advE && e.player_id ? bbJoueuseParId(e.player_id) : null;
+            var qui = advE ? (m.opponent_name || 'Adversaire') : (j ? '#' + j.no + ' ' + j.name : 'Baobabs');
+            return '<div class="bb-mf-ev"><span class="clk">' + bbEch(e.clock || '') + '</span><span class="qui' + (advE ? ' adv' : '') + '">' + bbEch(qui) + '</span><span>' + g.t + '</span>' + (g.pts ? '<span class="pt">' + bbEch(e._score) + '</span>' : '') + '</div>';
+          }).join('');
+        }).join('') + '</div>';
+      }
+      html += '</section>';
+    }
+
+    /* --- La feuille de match, ou la composition --- */
+    if (chiffres.length){
+      var tri = stats.slice().sort(function(a, b){ return (a.lineup_sort || 99) - (b.lineup_sort || 99); });
+      var entrees = tri.filter(function(s){ return s.played !== false; }), banc = tri.filter(function(s){ return s.played === false; });
+      var tops = [['pts', 'Points'], ['reb', 'Rebonds'], ['ast', 'Passes'], ['eval', 'Évaluation']].map(function(k){
+        var best = null; entrees.forEach(function(s){ if (s[k[0]] != null && (best == null || s[k[0]] > best[k[0]])) best = s; });
+        if (!best || !best[k[0]]) return '';
+        var j = bbJoueuseParId(best.player_id);
+        return '<div class="bb-mf-top" data-joueuse="' + bbEch(best.player_id) + '">' + bbRondHtml(j, 46) + '<div><div class="l">' + k[1] + '</div><div class="n">' + bbEch(j ? j.name : 'Joueuse') + '</div></div><div class="v" style="margin-left:auto">' + bbEch(best[k[0]]) + '</div></div>';
+      }).join('');
+      var tot = { minutes: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, eval: 0, fg2m: 0, fg2a: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0 };
+      /* une case vide, et non un zero : « elle n'a pas marque » et
+         « personne n'a saisi sa ligne » ne sont pas la meme chose */
+      var cel = function(s, v, cls){ return estSaisie(s) ? '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + v + '</td>' : '<td class="nr">·</td>'; };
+      var ligne = function(s){
+        var j = bbJoueuseParId(s.player_id);
+        if (estSaisie(s)) tot.n = (tot.n || 0) + 1;
+        tot.minutes += s.minutes || 0; tot.pts += s.pts || 0; tot.reb += s.reb || 0; tot.ast += s.ast || 0; tot.stl += s.stl || 0; tot.blk += s.blk || 0; tot.tov += s.tov || 0; tot.pf += s.pf || 0; tot.eval += s.eval || 0;
+        tot.fg2m += s.fg2_made || 0; tot.fg2a += s.fg2_att || 0; tot.fg3m += s.fg3_made || 0; tot.fg3a += s.fg3_att || 0; tot.ftm += s.ft_made || 0; tot.fta += s.ft_att || 0;
+        return '<tr data-joueuse="' + bbEch(s.player_id) + '">' +
+          '<td><div class="bb-mf-jo">' + bbRondHtml(j, 32) + '<div><b>' + bbEch(j ? j.name : 'Joueuse') + (s.is_captain ? '<span class="cap" title="Capitaine">★</span>' : '') + '</b><small>' + (j ? '#' + bbEch(j.no) + (j.pos ? ' · ' + bbEch(j.pos) : '') : '') + (s.is_starter ? ' · titulaire' : '') + '</small></div></div></td>' +
+          cel(s, (s.minutes || 0)) + cel(s, (s.pts || 0), 'pts') +
+          cel(s, (s.fg2_made || 0) + '/' + (s.fg2_att || 0)) + cel(s, (s.fg3_made || 0) + '/' + (s.fg3_att || 0)) + cel(s, (s.ft_made || 0) + '/' + (s.ft_att || 0)) +
+          cel(s, (s.reb || 0)) + cel(s, (s.ast || 0)) + cel(s, (s.stl || 0)) + cel(s, (s.blk || 0)) + cel(s, (s.tov || 0)) + cel(s, (s.pf || 0)) + cel(s, (s.eval || 0)) + '</tr>';
+      };
+      var lignes = entrees.map(ligne).join('');
+      html += '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">La feuille de match</span><h3 class="bb-sec-t">Joueuse par joueuse</h3></div><span class="bb-sec-s">' + (tot.n === entrees.length ? entrees.length + ' joueuses entrées en jeu' : (tot.n || 0) + ' feuille' + ((tot.n || 0) > 1 ? 's' : '') + ' saisie' + ((tot.n || 0) > 1 ? 's' : '') + ' sur ' + entrees.length) + '</span></div>' +
+        (tops ? '<div class="bb-mf-tops">' + tops + '</div>' : '') +
+        '<div class="bb-plaque" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="bb-mf-table"><thead><tr><th>Joueuse</th><th>Min</th><th>Pts</th><th>2 pts</th><th>3 pts</th><th>LF</th><th>Reb</th><th>Pd</th><th>Int</th><th>Ct</th><th>Bp</th><th>Ftes</th><th>Éval</th></tr></thead><tbody>' + lignes +
+        '<tr class="tot"><td>Baobabs</td><td>' + tot.minutes + '</td><td class="pts">' + tot.pts + '</td><td>' + tot.fg2m + '/' + tot.fg2a + '</td><td>' + tot.fg3m + '/' + tot.fg3a + '</td><td>' + tot.ftm + '/' + tot.fta + '</td><td>' + tot.reb + '</td><td>' + tot.ast + '</td><td>' + tot.stl + '</td><td>' + tot.blk + '</td><td>' + tot.tov + '</td><td>' + tot.pf + '</td><td>' + tot.eval + '</td></tr>' +
+        banc.map(function(s){ var j = bbJoueuseParId(s.player_id); return '<tr class="dnp" data-joueuse="' + bbEch(s.player_id) + '"><td><div class="bb-mf-jo">' + bbRondHtml(j, 32) + '<div><b>' + bbEch(j ? j.name : 'Joueuse') + '</b><small>' + bbEch(s.dnp_reason || 'N’est pas entrée en jeu') + '</small></div></div></td><td colspan="12"></td></tr>'; }).join('') +
+        '</tbody></table></div>' +
+        '<p class="bb-mf-vide" style="margin-top:10px;font-size:12.5px">2 pts, 3 pts, LF : tirs réussis sur tentés. Éval : évaluation FIBA.' + (tot.n === entrees.length ? '' : ' Un point remplace le chiffre quand la ligne n\u2019a pas été saisie.') + '</p></section>';
+    } else {
+      var compo = (lineup && lineup.length ? lineup : stats).slice().sort(function(a, b){ return (a.lineup_sort || 99) - (b.lineup_sort || 99); });
+      var titulaires = compo.filter(function(s){ return s.is_starter; }), reste = compo.filter(function(s){ return !s.is_starter; });
+      if (compo.length){
+        html += '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">' + (joue ? 'Sur le terrain' : 'La composition') + '</span><h3 class="bb-sec-t">' + (titulaires.length ? 'Le cinq de départ' : 'Le groupe') + '</h3></div><span class="bb-sec-s">' + compo.length + ' joueuse' + (compo.length > 1 ? 's' : '') + ' sur la feuille</span></div>' +
+          (titulaires.length ? '<div class="bb-mf-cinq">' + titulaires.map(function(s){ return bbCompoCarte(s, bbJoueuseParId(s.player_id)); }).join('') + '</div>' : '') +
+          (reste.length ? '<div class="bb-mf-per" style="margin-top:22px">' + (titulaires.length ? 'Le banc' : 'Le groupe') + '</div><div class="bb-mf-cinq banc">' + reste.map(function(s){ return bbCompoCarte(s, bbJoueuseParId(s.player_id)); }).join('') + '</div>' : '') +
+          (et.joue ? '<p class="bb-mf-vide" style="margin-top:16px">Les statistiques individuelles de ce match n’ont pas été saisies.</p>' : '') + '</section>';
+      } else if (et.joue){
+        html += '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">La feuille de match</span><h3 class="bb-sec-t">Joueuse par joueuse</h3></div></div><p class="bb-mf-vide">La feuille de ce match n’a pas encore été saisie.</p></section>';
+      }
+    }
+
+    /* --- Le recit --- */
+    if (m.recap) html += '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">Le récit</span><h3 class="bb-sec-t">Le match, raconté par le club</h3></div></div><div class="bb-mf-recit">' + bbRich(m.recap) + '</div></section>';
+
+    /* --- Venir au match. La date, la salle et l'entree sont deja dans
+           la bande du bandeau : ici on ne met que ce qui s'y ajoute,
+           l'itineraire et la reservation. --- */
+    if (!joue && !et.attente){
+      var cartes = [];
+      if (m.venue) cartes.push(['Y aller', bbEch(m.venue) + '<br><a href="https://www.google.com/maps/search/?api=1&amp;query=' + encodeURIComponent(m.venue + ' Dakar') + '" target="_blank" rel="noopener">Ouvrir l’itinéraire</a>']);
+      cartes.push(['Entrée', m.free_entry ? 'Gratuite, ouverte à tous' : (m.is_home ? 'Billets en ligne : <a href="#billetterie" data-nav="billetterie">réserver sa place</a>' : 'Selon le club qui reçoit')]);
+      cartes.push(['Le jour même', 'Le score se met à jour ici, point par point.' + (m.stream_url && window.bbSafeUrl(m.stream_url) ? ' Le direct vidéo est annoncé sur cette page.' : '')]);
+      html += '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">Avant le match</span><h3 class="bb-sec-t">Venir nous voir</h3></div></div><div class="bb-mf-infos">' + cartes.map(function(c){ return '<div class="bb-mf-info"><div class="l">' + c[0] + '</div><div class="v">' + c[1] + '</div></div>'; }).join('') + '</div></section>';
+    }
+
+    /* --- Face a face --- */
+    var hist = bbTousLesMatchs().filter(function(x){ return String(x.id) !== String(m.id) && x.opponent_name === m.opponent_name && x.score_baobabs != null && x.score_opponent != null; })
+      .sort(function(a, b){ return String(b.match_date || '').localeCompare(String(a.match_date || '')); });
+    if (hist.length){
+      var v = hist.filter(function(x){ return x.score_baobabs > x.score_opponent; }).length, d = hist.filter(function(x){ return x.score_baobabs < x.score_opponent; }).length, n = hist.length - v - d;
+      var pm = hist.reduce(function(a, x){ return a + x.score_baobabs; }, 0), pe = hist.reduce(function(a, x){ return a + x.score_opponent; }, 0);
+      html += '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">Face à face</span><h3 class="bb-sec-t">Baobabs et ' + bbEch(m.opponent_name || 'cet adversaire') + '</h3></div><span class="bb-sec-s">' + hist.length + ' rencontre' + (hist.length > 1 ? 's' : '') + ' déjà jouée' + (hist.length > 1 ? 's' : '') + '</span></div>' +
+        '<div class="bb-mf-bilan">' +
+          '<div class="bb-mf-bl v"><b>' + v + '</b><span>victoire' + (v > 1 ? 's' : '') + '</span></div>' +
+          (n ? '<div class="bb-mf-bl"><b>' + n + '</b><span>nul' + (n > 1 ? 's' : '') + '</span></div>' : '') +
+          '<div class="bb-mf-bl d"><b>' + d + '</b><span>défaite' + (d > 1 ? 's' : '') + '</span></div>' +
+          '<div class="bb-mf-bl"><b>' + Math.round(pm / hist.length) + '</b><span>points marqués en moyenne</span></div>' +
+          '<div class="bb-mf-bl"><b>' + Math.round(pe / hist.length) + '</b><span>points encaissés en moyenne</span></div>' +
+        '</div>' +
+        '<div class="bb-plaque" style="padding:4px 18px 8px">' + hist.slice(0, 8).map(function(x){
+          var w = x.score_baobabs > x.score_opponent, e = x.score_baobabs === x.score_opponent;
+          return '<div class="bb-mf-hist" data-match="' + bbEch(x.id) + '" role="button" tabindex="0"><span class="d">' + bbEch(formatDateShort(x.match_date)) + '</span><b style="color:' + (w ? '#A8D93B' : (e ? 'var(--bb-or)' : '#E0655C')) + '">' + x.score_baobabs + ' : ' + x.score_opponent + '</b><i>' + (x.is_home ? 'à domicile' : 'à l’extérieur') + (x.competition ? ' · ' + bbEch(x.competition) : '') + '</i></div>';
+        }).join('') + '</div></section>';
+    }
+
+    /* --- Le parcours de la saison. Il y a toujours d'autres matchs,
+           meme quand celui-ci n'a ni feuille ni recit : c'est ce bloc
+           qui empeche une fiche de tenir sur trois lignes. --- */
+    var saison = bbTousLesMatchs().filter(function(x){ return x.score_baobabs != null && x.score_opponent != null; })
+      .sort(function(a, b){ return String(b.match_date || '').localeCompare(String(a.match_date || '')); });
+    if (saison.length >= 2){
+      var sv = saison.filter(function(x){ return x.score_baobabs > x.score_opponent; }).length;
+      var sd = saison.filter(function(x){ return x.score_baobabs < x.score_opponent; }).length;
+      var sn = saison.length - sv - sd;
+      var spm = saison.reduce(function(a, x){ return a + x.score_baobabs; }, 0) / saison.length;
+      var spe = saison.reduce(function(a, x){ return a + x.score_opponent; }, 0) / saison.length;
+      html += '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">La saison</span><h3 class="bb-sec-t">Le parcours des Baobabs</h3></div><span class="bb-sec-s">' + saison.length + ' match' + (saison.length > 1 ? 's' : '') + ' joué' + (saison.length > 1 ? 's' : '') + '</span></div>' +
+        '<div class="bb-mf-bilan">' +
+          '<div class="bb-mf-bl v"><b>' + sv + '</b><span>victoire' + (sv > 1 ? 's' : '') + '</span></div>' +
+          (sn ? '<div class="bb-mf-bl"><b>' + sn + '</b><span>nul' + (sn > 1 ? 's' : '') + '</span></div>' : '') +
+          '<div class="bb-mf-bl d"><b>' + sd + '</b><span>défaite' + (sd > 1 ? 's' : '') + '</span></div>' +
+          '<div class="bb-mf-bl"><b>' + Math.round(spm) + '</b><span>points marqués en moyenne</span></div>' +
+          '<div class="bb-mf-bl"><b>' + Math.round(spe) + '</b><span>points encaissés en moyenne</span></div>' +
+        '</div>' +
+        '<div class="bb-plaque" style="padding:4px 18px 8px">' + saison.slice(0, 10).map(function(x){
+          var w = x.score_baobabs > x.score_opponent, e = x.score_baobabs === x.score_opponent;
+          var ici = String(x.id) === String(m.id);
+          return '<div class="bb-mf-hist' + (ici ? ' ici' : '') + '"' + (ici ? '' : ' data-match="' + bbEch(x.id) + '" role="button" tabindex="0"') + '><span class="d">' + bbEch(formatDateShort(x.match_date)) + '</span>' +
+            '<b style="color:' + (w ? '#A8D93B' : (e ? 'var(--bb-or)' : '#E0655C')) + '">' + x.score_baobabs + ' : ' + x.score_opponent + '</b>' +
+            '<i>' + (x.is_home ? 'contre ' : 'chez ') + bbEch(x.opponent_name || 'Adversaire') + (ici ? ' <span class="ce">ce match</span>' : '') + '</i></div>';
+        }).join('') + '</div></section>';
+    }
+    /* --- Le match d'avant, celui d'apres --- */
+    var tous = bbTousLesMatchs().slice().sort(function(a, b){ return String(a.match_date || '').localeCompare(String(b.match_date || '')); });
+    var i = -1; tous.forEach(function(x, k){ if (String(x.id) === String(m.id)) i = k; });
+    var prev = i > 0 ? tous[i - 1] : null, next = i >= 0 && i < tous.length - 1 ? tous[i + 1] : null;
+    if (prev || next){
+      var carteNav = function(x, sens, etiquette){
+        var u = bbU(), logo = x.opponent_logo_url ? bbImg(x.opponent_logo_url, 120) : '';
+        var crest = logo ? '<span class="crest"><img src="' + logo + '" alt=""></span>'
+                         : '<span class="crest" style="background:' + (u ? u.couleurDe(x.opponent_name || '?') : '#15803d') + '">' + bbEch(u ? u.initiales(x.opponent_name || '?') : '?') + '</span>';
+        var joueX = x.score_baobabs != null && x.score_opponent != null;
+        var bas = [x.match_date ? formatDateShort(x.match_date) : '', joueX ? x.score_baobabs + ' : ' + x.score_opponent : (x.is_home ? 'à domicile' : 'à l’extérieur')].filter(Boolean).join(' · ');
+        return '<button type="button" class="bb-mf-nc' + sens + '" data-match="' + bbEch(x.id) + '">' + crest +
+          '<span class="tx"><b>' + etiquette + '</b><span>' + bbEch(x.opponent_name || 'Adversaire') + '</span><small>' + bbEch(bas) + '</small></span></button>';
+      };
+      html += '<div class="bb-mf-nav">' +
+        (prev ? carteNav(prev, '', 'Match précédent') : '<span></span>') +
+        (next ? carteNav(next, ' suiv', 'Match suivant') : '') + '</div>';
+    }
+    return html || '<p class="bb-mf-vide">Rien de plus sur ce match pour l’instant.</p>';
+  }
+
+  function bbFicheMatchCabler(corps){
+    corps.querySelectorAll('[data-joueuse]').forEach(function(el){
+      el.addEventListener('click', function(){ var p = bbJoueuseParId(el.getAttribute('data-joueuse')); if (p) bbFicheJoueuse(p); });
+    });
+    /* [data-match] est deja ecoute par le document (openMatch) */
+  }
+
+  /* ===================== LA FICHE DE JOUEUSE =====================
+     Le bandeau est creme, et la joueuse s'y pose en entier : les photos
+     de l'effectif sont detourees (la moitie de leurs pixels sont
+     transparents), un fond sombre les enfermait dans une boite. Derriere
+     elle, l'arc vert du club et son numero en geant. */
+  /* LES MESURES SONT SAISIES A LA MAIN. La taille s'ecrit « 1,81 m »
+     ou « 1.77 », le poids « 63 kg » ou « 68 », la ville « Dakar,Pikine ».
+     On les rend d'une seule facon -- et on n'ajoute jamais une unite a
+     une valeur qui la porte deja : la fiche affichait « 55 kg kg ». */
+  function bbTaille(v){
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return '';
+    if (/[a-z]/i.test(s)) return s.replace('.', ',');
+    var x = parseFloat(s.replace(',', '.'));
+    if (isNaN(x)) return s;
+    if (x > 100) x = x / 100;   /* « 177 » : des centimetres */
+    return x.toFixed(2).replace('.', ',') + ' m';
+  }
+  function bbPoids(v){
+    var s = String(v == null ? '' : v).trim();
+    return !s ? '' : (/[a-z]/i.test(s) ? s : s.replace('.', ',') + ' kg');
+  }
+  function bbVille(v){ return String(v == null ? '' : v).trim().replace(/\s*,\s*/g, ', '); }
+  function bbJfAccroche(p){
+    if (!p.bio) return '';
+    var t = String(p.bio).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!t) return '';
+    t = t.replace(/\s+([.,;:!?])/g, '$1');
+    var pt = t.search(/[.!?](\s|$)/);
+    var phrase = pt > 0 ? t.slice(0, pt + 1) : t;
+    /* une phrase trop longue se coupe a sa derniere virgule, pas au
+       milieu d'une proposition : « ... a l'EBDO en deuxieme division
+       avant de... » ne veut rien dire */
+    if (phrase.length > 160){
+      var court = phrase.slice(0, 158);
+      var virg = court.lastIndexOf(',');
+      phrase = (virg > 60 ? court.slice(0, virg) : court.replace(/\s+\S*$/, '')) + '…';
+    }
+    return phrase;
+  }
+
+  /* L'ENVELOPPE. Elle ne dessine rien : elle fait sortir la fiche
+     affichee, laisse bbFicheJoueuseDessiner poser la suivante, puis
+     la fait entrer. Un second clic pendant l'animation ne fait pas la
+     queue : il dessine tout de suite. */
+  var bbJfAnim = null;
+  function bbFicheJoueuse(p, sansHistorique, sens){
+    if (!p) return;
+    var hero0 = document.getElementById('bb-jf-hero'), corps0 = document.getElementById('bb-jf');
+    var change = hero0 && corps0 && state.page === 'joueuse' && bbFiche.joueuseId && String(p.id || p.no) !== bbFiche.joueuseId;
+    if (!change || bbJfAnim){ bbFicheJoueuseDessiner(p, sansHistorique); return; }
+    var s = sens === -1 ? -1 : (sens === 1 ? 1 : 0);
+    hero0.style.setProperty('--sens', s); corps0.style.setProperty('--sens', s);
+    hero0.classList.add('sort'); corps0.classList.add('sort');
+    bbJfAnim = setTimeout(function(){
+      bbJfAnim = null;
+      hero0.classList.remove('sort'); corps0.classList.remove('sort');
+      bbFicheJoueuseDessiner(p, sansHistorique);
+      var h = document.getElementById('bb-jf-hero'), c = document.getElementById('bb-jf');
+      if (!h || !c) return;
+      h.style.setProperty('--sens', s); c.style.setProperty('--sens', s);
+      h.classList.remove('entre'); c.classList.remove('entre');
+      void h.offsetWidth;   /* sans cette lecture, rejouer la meme classe ne relance pas l'animation */
+      h.classList.add('entre'); c.classList.add('entre');
+      setTimeout(function(){ h.classList.remove('entre'); c.classList.remove('entre'); }, 600);
+    }, 200);
+  }
+
+  function bbFicheJoueuseDessiner(p, sansHistorique){
+    if (!p) return;
+    bbFiche.joueuseId = String(p.id || p.no);
+    var hero = document.getElementById('bb-jf-hero'), corps = document.getElementById('bb-jf');
+    if (!hero || !corps) return;
+    var statut = { blessee: 'Blessée', pret: 'En prêt' }[p.status] || '';
+    var R = p.saison;
+
+    /* LA CARTE D'IDENTITE : ce que le club saisit pour chaque joueuse.
+       Une case ne s'affiche que si elle est renseignee -- une fiche a
+       moitie remplie ne doit pas montrer des cases vides. */
+    var ident = [
+      [bbTaille(p.height), 'Taille', 'vert'],
+      [bbPoids(p.weight), 'Poids', ''],
+      [p.age, 'Ans', ''],
+      [bbVille(p.foot), 'Origine', 'mot'],
+      [R && R.matchs_joues ? R.matchs_joues : '', 'Matchs joués', ''],
+      [R && R.pts_moy != null ? R.pts_moy : '', 'Pts / match', 'vert']
+    ].filter(function(k){ return k[0] !== '' && k[0] != null; })
+     .map(function(k){ return '<div class="bb-jf-idc"><b class="' + k[2] + '">' + bbEch(k[0]) + '</b><span>' + k[1] + '</span></div>'; }).join('');
+
+    /* D'UNE JOUEUSE A L'AUTRE, SANS REPASSER PAR L'EFFECTIF. Le rail
+       des coequipieres est en bas de page : il fallait remonter, puis
+       redescendre. Ces deux boutons suivent l'ordre de l'effectif. */
+    var idx = -1;
+    for (var k = 0; k < players.length; k++) if (String(players[k].id || players[k].no) === bbFiche.joueuseId) idx = k;
+    var voisine = function(pas){ return idx >= 0 && players.length > 1 ? players[(idx + pas + players.length) % players.length] : null; };
+    var boutonVoisine = function(j, sens){
+      if (!j) return '';
+      var court = String(j.name).split(' ').slice(-1)[0];
+      return '<button type="button" class="bb-jf-vois" data-jf-aller="' + bbEch(j.id || j.no) + '" data-jf-sens="' + sens + '" title="' + bbEch(j.name) + '">' +
+        (sens < 0 ? BB_ICO.chevG : '') + '<span>' + bbEch(court) + '</span>' + (sens > 0 ? BB_ICO.chevD : '') + '</button>';
+    };
+    var accroche = bbJfAccroche(p);
+    hero.innerHTML =
+      '<div class="bb-jf-decor" aria-hidden="true"><div class="bb-jf-arc"></div><span class="bb-jf-num-fant">' + bbEch(p.no) + '</span><div class="bb-jf-grille"></div></div>' +
+      '<div class="bb-jf-in">' +
+        '<div class="bb-jf-portrait">' +
+          (p.src ? '<img src="' + bbImg(p.srcFull || p.src, 1100) + '" alt="' + bbEch(p.name) + '" decoding="async">' : '<div class="vide">' + bbEch(p.no) + '</div>') +
+        '</div>' +
+        '<div class="bb-jf-id">' +
+          '<div class="bb-jf-fil">' +
+            '<button type="button" class="bb-jf-retour" data-jf-retour>' + BB_ICO.retour + ' L’effectif</button>' +
+            '<div class="bb-jf-voisines">' + boutonVoisine(voisine(-1), -1) + boutonVoisine(voisine(1), 1) + '</div>' +
+          '</div>' +
+          '<div class="bb-jf-badges"><span class="bb-jf-badge">' + bbEch(p.pos || 'Joueuse') + '</span>' + (statut ? '<span class="bb-jf-badge st">' + statut + '</span>' : '') + '</div>' +
+          '<h1 class="bb-jf-nom"><em>#' + bbEch(p.no) + '</em>' + bbEch(p.name) + '</h1>' +
+          '<p class="bb-jf-sous">' + bbEch(accroche) + '</p>' +   /* toujours pose, meme vide : sa place est reservee */
+          (ident ? '<div class="bb-jf-ident">' + ident + '</div>' : '') +
+          '<div class="bb-jf-actions"><button type="button" class="bb-jf-act" data-jf-partager>' + BB_ICO.part + 'Partager sa fiche</button>' + (p.id ? bbFavBtn('player', p.id, 'align-self:center') : '') + '</div>' +
+        '</div>' +
+      '</div>';
+    bbFavPaint(hero);
+    hero.querySelector('[data-jf-retour]').addEventListener('click', function(){ goTo('equipes'); });
+    hero.querySelectorAll('[data-jf-aller]').forEach(function(el){
+      el.addEventListener('click', function(){ var q = bbJoueuseParRoute(el.getAttribute('data-jf-aller')); if (q) bbFicheJoueuse(q, false, Number(el.getAttribute('data-jf-sens')) || 0); });
+    });
+    hero.querySelector('[data-jf-partager]').addEventListener('click', function(){
+      bbPartager(p.name + ' · Baobabs Basket Club', '#' + p.no + (p.pos ? ' ' + p.pos : '') + ' · Baobabs Basket Club', bbAdresseJoueuse(p.id || p.no));
+    });
+
+    /* LE CORPS. Les chiffres de la saison quand il y en a ; sinon on ne
+       pose pas un bloc vide : la page enchaine sur ses matchs. */
+    var tuiles = '';
+    if (R && R.matchs_joues){
+      tuiles = [[R.matchs_joues, 'Matchs', ''], [R.titularisations, 'Titularisations', ''], [R.pts_moy, 'Pts / match', 'or'], [R.reb_moy, 'Reb / match', ''], [R.ast_moy, 'Pd / match', ''], [R.eval_moy, 'Évaluation', ''],
+        [R.pct_tirs != null ? R.pct_tirs + ' %' : null, 'Aux tirs', ''], [R.pct_3pts != null ? R.pct_3pts + ' %' : null, 'À 3 points', ''], [R.pct_lf != null ? R.pct_lf + ' %' : null, 'Lancers francs', ''], [R.minutes_total, 'Minutes', '']]
+        .filter(function(k){ return k[0] !== '' && k[0] != null; }).map(function(k){ return '<div class="bb-jf-tuile"><b class="' + k[2] + '">' + bbEch(k[0]) + '</b><span>' + k[1] + '</span></div>'; }).join('');
+    } else {
+      var S = p.stats || {};
+      tuiles = [['matchs', 'Matchs', ''], ['points', 'Pts / match', 'or'], ['rebonds', 'Reb / match', ''], ['passes', 'Pd / match', '']]
+        .filter(function(k){ return S[k[0]] !== '' && S[k[0]] != null; }).map(function(k){ return '<div class="bb-jf-tuile"><b class="' + k[2] + '">' + bbEch(S[k[0]]) + '</b><span>' + k[1] + '</span></div>'; }).join('');
+    }
+    var coeq = players.filter(function(q){ return String(q.id || q.no) !== bbFiche.joueuseId; }).map(function(q){
+      return '<div class="bb-jf-eqc" data-jf-eq="' + bbEch(q.id || q.no) + '" role="button" tabindex="0">' + bbRondHtml(q, 64) + '<b>' + bbEch(String(q.name).split(' ').slice(-1)[0]) + '</b><small>#' + bbEch(q.no) + '</small></div>';
+    }).join('');
+    corps.innerHTML =
+      (tuiles ? '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">La saison</span><h3 class="bb-sec-t">Ses chiffres</h3></div>' + (R && R.dernier_match ? '<span class="bb-sec-s">Dernier match le ' + bbEch(formatDateShort(R.dernier_match)) + '</span>' : '') + '</div><div class="bb-jf-tuiles">' + tuiles + '</div></section>' : '') +
+      '<section class="bb-mf-bloc" id="bb-jf-matchs"><div class="bb-sec-h"><div><span class="bb-sec-k">Sa saison</span><h3 class="bb-sec-t">Match par match</h3></div></div><p class="bb-mf-vide">Chargement…</p></section>' +
+      (p.bio ? '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">Le portrait</span><h3 class="bb-sec-t">Qui elle est</h3></div></div><div class="bb-jf-bio">' + bbRich(p.bio) + '</div></section>' : '') +
+      (coeq ? '<section class="bb-mf-bloc"><div class="bb-sec-h"><div><span class="bb-sec-k">L’équipe</span><h3 class="bb-sec-t">Ses coéquipières</h3></div><span class="bb-sec-s">' + (players.length - 1) + ' autres joueuses</span></div><div class="bb-jf-eq">' + coeq + '</div></section>' : '');
+    corps.querySelectorAll('[data-jf-eq]').forEach(function(el){
+      el.addEventListener('click', function(){ var q = bbJoueuseParRoute(el.getAttribute('data-jf-eq')); if (q && q !== p) bbFicheJoueuse(q); });
+    });
+    goTo('joueuse', sansHistorique);
+    document.title = p.name + ' · #' + p.no + ' · Baobabs Basket Club';
+    if (p.id) bbFicheJoueuseMatchs(p);
+    else { var s0 = document.querySelector('#bb-jf-matchs .bb-mf-vide'); if (s0) s0.textContent = 'Le détail par match n’est pas disponible pour cette fiche.'; }
+  }
+
+  /* SES MATCHS. Trois etats coexistent en base, et les trois doivent se
+     voir : un match joue dont la feuille est saisie, un match joue dont
+     la feuille ne l'est pas, un match a venir ou elle est convoquee.
+     Le premier jet n'affichait que les lignes portant des chiffres :
+     Anta Gaye avait deux matchs en base, un seul s'affichait. Un tableau
+     qui filtre ses propres lignes perd des fiches sans le dire. */
+  function bbFicheJoueuseMatchs(p){
+    var id = String(p.id);
+    sbFetch('match_stats?select=*&player_id=eq.' + encodeURIComponent(id))
+      .catch(function(){ return sbFetch('match_lineup_public?select=*&player_id=eq.' + encodeURIComponent(id)); })
+      .then(function(rows){
+      if (bbFiche.joueuseId !== id) return;
+      var sec = document.getElementById('bb-jf-matchs'); if (!sec) return;
+      var vide = sec.querySelector('.bb-mf-vide'); if (!vide) return;
+      var mm = {}; bbTousLesMatchs().forEach(function(m){ mm[String(m.id)] = m; });
+      var lignes = (rows || []).map(function(s){ return { s: s, m: mm[String(s.match_id)] }; }).filter(function(x){ return x.m; })
+        .sort(function(a, b){ return String(b.m.match_date || '').localeCompare(String(a.m.match_date || '')); });
+      if (!lignes.length){ vide.textContent = 'Elle ne figure encore sur aucune feuille de match cette saison.'; return; }
+
+      var estJoue = function(m){ return m.score_baobabs != null && m.score_opponent != null; };
+      var estSaisie = function(s){ return !!(s.minutes || s.pts || s.reb || s.ast || s.stl || s.blk || s.eval || s.fg2_att || s.fg3_att || s.ft_att); };
+      var joues = lignes.filter(function(x){ return estJoue(x.m); });
+      var avenir = lignes.filter(function(x){ return !estJoue(x.m); });
+      var u = bbU();
+      var crestDe = function(m){
+        return m.opponent_logo_url
+          ? '<img src="' + bbImg(m.opponent_logo_url, 90) + '" alt="" loading="lazy">'
+          : '<span class="txt" style="background:' + (u ? u.couleurDe(m.opponent_name || '?') : '#15803d') + '">' + bbEch(u ? u.initiales(m.opponent_name || '?') : '?') + '</span>';
+      };
+      var carte = function(x){
+        var m = x.m, s = x.s, joue = estJoue(m);
+        var role = s.played === false ? (s.dnp_reason || 'N’est pas entrée en jeu') : (s.is_starter ? 'Cinq de départ' : (joue ? 'Sur la feuille' : 'Convoquée'));
+        var droite = joue
+          ? '<span class="bb-jf-res ' + (m.score_baobabs > m.score_opponent ? 'v' : (m.score_baobabs < m.score_opponent ? 'd' : 'n')) + '">' + m.score_baobabs + ' : ' + m.score_opponent + '</span>'
+          : '<span class="rl">' + bbEch(m.match_date ? formatDateShort(m.match_date) : 'À venir') + '</span>';
+        return '<div class="bb-jf-mc" data-match="' + bbEch(m.id) + '" role="button" tabindex="0">' +
+          '<div class="bb-jf-adv">' + crestDe(m) + '</div>' +
+          '<div class="tx"><b>' + (m.is_home ? 'contre ' : 'chez ') + bbEch(m.opponent_name || 'Adversaire') + '</b><small>' +
+            bbEch([joue ? formatDateShort(m.match_date) : '', m.competition, role].filter(Boolean).join(' · ')) + '</small></div>' +
+          droite + '</div>';
+      };
+
+      var html = '';
+      if (joues.filter(function(x){ return estSaisie(x.s); }).length){
+        /* une case vide, et non un zero : « elle n'a pas marque » et
+           « personne n'a saisi sa ligne » ne sont pas la meme chose */
+        var c = function(s, v){ return estSaisie(s) ? '<td' + (v[1] ? ' class="pts"' : '') + '>' + (v[0] || 0) + '</td>' : '<td class="nr">·</td>'; };
+        html = '<div class="bb-plaque" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="bb-jf-table"><thead><tr><th>Match</th><th>Résultat</th><th>Min</th><th>Pts</th><th>Reb</th><th>Pd</th><th>Int</th><th>Ct</th><th>Éval</th></tr></thead><tbody>' +
+          joues.map(function(x){
+            var m = x.m, s = x.s;
+            var res = m.score_baobabs > m.score_opponent ? 'v' : (m.score_baobabs < m.score_opponent ? 'd' : 'n');
+            return '<tr data-match="' + bbEch(m.id) + '"><td><div class="bb-jf-adv">' + crestDe(m) + '<div><b>' + bbEch(m.opponent_name || 'Adversaire') + '</b><small>' + bbEch(formatDateShort(m.match_date)) + ' · ' + (m.is_home ? 'domicile' : 'extérieur') + (s.is_starter ? ' · titulaire' : '') + '</small></div></div></td>' +
+              '<td><span class="bb-jf-res ' + res + '">' + (res === 'v' ? 'V' : (res === 'd' ? 'D' : 'N')) + ' ' + m.score_baobabs + ':' + m.score_opponent + '</span></td>' +
+              c(s, [s.minutes]) + c(s, [s.pts, 1]) + c(s, [s.reb]) + c(s, [s.ast]) + c(s, [s.stl]) + c(s, [s.blk]) + c(s, [s.eval]) + '</tr>';
+          }).join('') + '</tbody></table></div>' +
+          (joues.filter(function(x){ return !estSaisie(x.s); }).length ? '<p class="bb-mf-vide" style="margin-top:10px;font-size:12.5px">Un point remplace le chiffre quand la feuille de ce match n’a pas été saisie.</p>' : '');
+      } else if (joues.length){
+        html = joues.map(carte).join('') +
+          '<p class="bb-mf-vide" style="margin-top:14px">Les statistiques individuelles ne sont pas encore saisies : ces matchs disent où elle était, pas ce qu’elle y a fait.</p>';
+      }
+      if (avenir.length){
+        html += (html ? '<div class="bb-mf-per" style="margin-top:24px">À venir</div>' : '') + avenir.map(carte).join('');
+      }
+      vide.outerHTML = html || '<p class="bb-mf-vide">Elle ne figure encore sur aucune feuille de match cette saison.</p>';
+    }).catch(function(){
+      var v = document.querySelector('#bb-jf-matchs .bb-mf-vide'); if (v) v.textContent = 'Le détail par match n’a pas pu être chargé.';
+    });
+  }
+
+  /* Les portes : les cartes du site appellent openMatch / openPlayer ;
+     elles menent desormais a la page, plus a la fenetre. */
+  function openMatch(id){ bbFicheMatch(id); }
+  function openPlayer(no){ var p = bbJoueuseParRoute(no); if (p) bbFicheJoueuse(p); }
+  function openPlayerByIdx(idx){ var p = players[idx]; if (p) bbFicheJoueuse(p); }
+
+  /* Une adresse « match-<id> » ou « joueuse-<id> » : la fiche, sans
+     empiler d'historique (le routeur s'en charge). Rend true si l'adresse
+     etait bien une fiche. */
+  function bbFicheDepuisRoute(h){
+    var mm = /^match-(.+)$/.exec(h || '');
+    if (mm){ bbFicheMatch(mm[1], true); return true; }
+    var jj = /^joueuse-(.+)$/.exec(h || '');
+    if (!jj) return false;
+    var p = bbJoueuseParRoute(jj[1]);
+    if (p){ bbFicheJoueuse(p, true); return true; }
+    /* les joueuses ne sont peut-etre pas encore chargees */
+    bbFiche.joueuseId = jj[1];
+    var hero = document.getElementById('bb-jf-hero'), corps = document.getElementById('bb-jf');
+    if (hero) hero.innerHTML = '<div class="bb-jf-in" style="display:block"><p class="bb-jf-mot">Chargement de la fiche…</p></div>';
+    if (corps) corps.innerHTML = '';
+    goTo('joueuse', true);
+    var essais = 0, t = setInterval(function(){
+      essais++;
+      if (bbFiche.joueuseId !== jj[1]){ clearInterval(t); return; }
+      var q = bbJoueuseParRoute(jj[1]);
+      if (q){ clearInterval(t); bbFicheJoueuse(q, true); }
+      else if (essais > 60){ clearInterval(t); if (hero) hero.innerHTML = '<div class="bb-jf-in" style="display:block"><button type="button" class="bb-jf-retour" data-nav="equipes">' + BB_ICO.retour + ' L\u2019effectif</button><p class="bb-jf-mot">Cette fiche n\u2019existe pas, ou plus.</p></div>'; }
+    }, 250);
+    return true;
+  }
   window.openMatch = openMatch;
+  window.bbFicheMatch = bbFicheMatch;
+  window.bbFicheJoueuse = bbFicheJoueuse;
 
   /* ===== Les téléphones de la section Appli : vraies données =====
      Les écrans étaient des maquettes figées. Chaque écran se met à jour
