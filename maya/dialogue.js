@@ -1055,6 +1055,60 @@
         pistes(['quelles tables existent', 'de quoi est faite la maison']));
     }
 
+    /* ---- LES QUESTIONS QUE LA CARTE SEULE SUFFIT A REPONDRE ----
+       « quelles tables portent des donnees personnelles » et « quelles
+       tables ne sont jamais ecrites » recevaient le resume general :
+       une reponse a cote, donnee avec aplomb. Or les deux se lisent
+       dans la carte en une ligne. */
+    if (/\b(personnel|personnelle|personnelles|sensible|sensibles|prive|privee|privees)\b/.test(t)) {
+      var avecPerso = (C.tables || []).filter(function (x) { return x.perso && x.perso.length; });
+      if (!avecPerso.length) {
+        return elle('<p>Aucune des <b>' + C.tables.length + '</b> tables que vous voyez ne porte de colonne que je considère comme personnelle.</p>');
+      }
+      return elle('<p><b>' + avecPerso.length + '</b> table' + (avecPerso.length > 1 ? 's' : '') +
+        ' porte' + (avecPerso.length > 1 ? 'nt' : '') + ' des données personnelles :</p>' +
+        '<p class="doux">' + avecPerso.map(function (x) {
+          return '<b>' + esc(x.n) + '</b> — ' + esc(x.perso.join(', '));
+        }).join('<br>') + '</p>' +
+        '<p class="doux">Je peux dire qu’elles existent. Je ne montrerai jamais ce qu’elles contiennent.</p>');
+    }
+    if (/\btables?\b/.test(t) && /\b(ecrit|ecrite|ecrites|ecrits|modifiee|modifiees|lecture seule|jamais)\b/.test(t)) {
+      var jamais = /\b(jamais|pas|aucune|lecture seule|non)\b/.test(t);
+      var liste = (C.tables || []).filter(function (x) { return jamais ? !x.ecrit : x.ecrit; });
+      return elle('<p><b>' + liste.length + '</b> table' + (liste.length > 1 ? 's' : '') +
+        (jamais ? ' que l’administration ne modifie jamais' : ' dans lesquelles l’administration écrit') + ' :</p>' +
+        '<p class="doux">' + esc(liste.map(function (x) { return x.n; }).join(', ')) + '</p>' +
+        '<p class="doux">Lu dans la carte : une table est « écrite » si le code appelle sbInsert, sbUpdate, sbUpsert ou sbDelete dessus.</p>');
+    }
+
+    /* ---- CE QUI RESTE : ON CHERCHE, PUIS ON SE TAIT ----
+       Mesure du 20/09/2026 : « dans quelle table je range les
+       blessures » recevait le resume de la maison. Faux, et dit avec
+       assurance -- ce qui est pire que « je ne sais pas ». Une phrase
+       qui parle de la maison sans demander de panorama passe donc par
+       la recherche ; si la carte ne rend rien, elle le dit. */
+    var PANORAMA = /\b(de quoi est faite|comment (est faite|marche|fonctionne)|architecture|que (sais|connais) tu de|base de donnees|schema|combien de (tables|fichiers|lignes|modules)|combien d (ecrans|modules)|quelles tables existent|toutes les tables|montre les tables|liste des tables|la maison)\b/;
+    if (!PANORAMA.test(t)) {
+      var fOu2 = outil('ou');
+      var reste = t.replace(/\b(dans|quel|quels|quelle|quelles|table|tables|colonne|colonnes|je|j|on|me|ma|mon|mes|range|ranger|mets|mettre|trouve|trouver|est|sont|le|la|les|l|du|de|des|d|un|une|au|aux|pour|avec|qui|que|quoi|c|ce|cette|y|a|il|elle|ou|et|sur|ai)\b/g, ' ')
+                 .replace(/\s+/g, ' ').trim();
+      var vu = (fOu2 && reste) ? fOu2(reste) : null;
+      if (vu && (vu.tables.length || vu.ecrans.length || vu.fichiers.length)) {
+        var hx = '<p>Pour « <b>' + esc(reste) + '</b> » :</p>';
+        if (vu.tables.length) hx += '<p class="doux"><b>En base</b> — ' + vu.tables.map(function (x) {
+          return esc(x.n) + ' (' + esc(x.module || 'sans casquette') + ')'; }).join(', ') + '</p>';
+        if (vu.ecrans.length) hx += '<p class="doux"><b>À l’écran</b> — ' + vu.ecrans.map(function (x) { return esc(x.titre); }).join(', ') + '</p>';
+        if (vu.fichiers.length) hx += '<p class="doux"><b>Dans le code</b> — ' + vu.fichiers.slice(0, 4).map(function (f) {
+          return esc(f.f); }).join(', ') + '</p>';
+        return elle(hx);
+      }
+      return elle('<p>Je vois que vous me parlez de la maison, mais je ne sais pas répondre à <b>cette</b> question-là' +
+        (reste ? ' : rien ne s’appelle « ' + esc(reste) +' » dans ma carte' : '') + '.</p>' +
+        '<p class="doux">Je ne raisonne pas sur le code, je lis une carte. Je sais dire ce qu’une table contient, ' +
+        'lesquelles portent des données personnelles, où vit une chose, et ce que fait un fichier.</p>' +
+        pistes(['de quoi est faite la maison', 'quelles tables portent des données personnelles', 'la table players', 'où vivent les joueuses']));
+    }
+
     /* ---- sinon : la maison en entier ---- */
     var h3 = '<p>La maison, telle que je la connais au <b>' + esc(C.fait) + '</b> :</p>';
     h3 += '<p><b>' + C.tables.length + '</b> table' + (C.tables.length > 1 ? 's' : '') +
