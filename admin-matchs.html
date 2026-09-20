@@ -1321,6 +1321,17 @@
   .logo-choice button{flex:1;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--muted);border-radius:var(--r-md);padding:11px;font-size:12.5px;font-weight:600;font-family:var(--font-ui);min-height:44px}
   .logo-choice button.active{background:var(--gold-soft);color:var(--gold);border-color:rgba(70,191,29,.5)}
   .logo-preview{width:56px;height:56px;border-radius:var(--r-md);object-fit:cover;background:var(--surface-2);border:1px solid var(--line-strong);margin-top:10px;display:none}
+  /* LE ROND QUI ROGNE. Le cadrage (object-position + scale) se pose sur
+     l'image ; le rond doit etre un conteneur qui la coupe. Pose sur une
+     image elle-meme arrondie, scale() agrandissait le rond entier au lieu
+     de zoomer dedans : l'admin ne montrait pas ce que le site montre
+     (vu sur le Staff le 20 septembre 2026). Le conteneur suit la
+     visibilite de son image : les ecrans continuent d'ecrire
+     img.style.display, rien d'autre a changer. */
+  .logo-rond{display:block;border-radius:50%;overflow:hidden;flex:none;background:var(--surface-2);border:1px solid var(--line-strong);margin-top:10px}
+  .logo-rond>img.logo-preview{width:100%;height:100%;border-radius:0;border:none;margin:0;background:none}
+  .logo-rond:not(:has(> img[style*="display: block"])){display:none}
+  .pv-rond{display:block;border-radius:50%;overflow:hidden;flex:none;background:var(--surface-3)}
   input[type=file]{color:var(--muted);font-size:13px;width:100%}
   input[type=file]::file-selector-button{font-family:var(--font-ui);font-weight:600;font-size:12.5px;background:var(--surface-2);color:var(--text);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:9px 13px;margin-right:12px;cursor:pointer}
 
@@ -6841,7 +6852,7 @@
           <input type="file" id="founder_file" accept="image/*">
           <input type="text" id="founder_url" placeholder="https://…" class="hide">
           <div class="qg-photo-actions" id="founder_cadrer_zone"></div>
-          <img id="founder_preview" alt="" class="logo-preview" style="width:110px;height:110px;border-radius:50%;object-fit:cover" alt="">
+          <span class="logo-rond" style="width:110px;height:110px"><img id="founder_preview" alt="" class="logo-preview"></span>
         </div>
         <div class="field"><label for="set_founder_name">Nom</label><input type="text" id="set_founder_name" placeholder="Ex : Antoine Jean-Pierre Ndong"><div class="ds-lien" id="founder_lien" hidden></div></div>
         <div class="field"><label for="set_founder_role">Fonction / titre</label><input type="text" id="set_founder_role" placeholder="Ex : Fondateur & initiateur"></div>
@@ -6880,7 +6891,7 @@
           </div>
           <input type="file" id="bureau_file" accept="image/*">
           <input type="text" id="bureau_url" placeholder="https://…" class="hide">
-          <img id="bureau_preview" alt="" class="logo-preview" style="width:88px;height:88px;border-radius:50%;object-fit:cover">
+          <span class="logo-rond" style="width:88px;height:88px"><img id="bureau_preview" alt="" class="logo-preview"></span>
           <!-- Le bouton « Cadrer » est pose ici par bureauCadreBouton() : il
                porte les trois nombres du titulaire choisi. -->
           <div class="qg-photo-actions" id="bureau_cadrer_zone"></div>
@@ -21472,6 +21483,9 @@
     document.getElementById('set_founder_bio').value=settings.founder_bio||'';
     founderCadreBouton();
     document.getElementById('founder_url').value=settings.founder_photo_url||''; var p=document.getElementById('founder_preview'); if(settings.founder_photo_url){p.src=settings.founder_photo_url;p.style.display='block';}
+    // Le cadrage enregistre se voit des l'ouverture, pas seulement apres
+    // un passage par l'atelier : le rond du formulaire montre le site.
+    var cv=cadreValeurs('founder_photo_url'); p.style.objectPosition=cv.x+'% '+cv.y+'%'; p.style.transform='scale('+(cv.zoom/100)+')'; p.style.transformOrigin=cv.x+'% '+cv.y+'%';
     updateFounderPreview();
     lienStaffCharger().then(founderLienMaj);
   };
@@ -21482,6 +21496,13 @@
       .catch(function(){ showMsg(msg,'Erreur lors de l\'upload de l\'image.',false); btn.disabled=false; });
   });
 
+  // Le rond d'un apercu, avec le cadrage dedans : l'image porte les trois
+  // nombres, le conteneur la rogne. `cadre` vient du bouton « Cadrer »,
+  // donc l'apercu montre aussi un cadrage pose et pas encore enregistre.
+  function pvRond(src, taille, cadre, style){
+    return '<span class="pv-rond" style="width:'+taille+'px;height:'+taille+'px;'+(style||'')+'"><img src="'+esc(src)+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block'+cadreCss(cadre)+'"></span>';
+  }
+  function cadreDuBouton(sel){ var b=document.querySelector(sel); return b ? { x:b.dataset.cx, y:b.dataset.cy, zoom:b.dataset.cz } : null; }
   function updateFounderPreview(){
     var body=document.getElementById('founder_preview_body'); if(!body) return;
     var name=document.getElementById('set_founder_name').value.trim();
@@ -21489,7 +21510,7 @@
     var bio=document.getElementById('set_founder_bio').value.trim();
     if(!name){ body.innerHTML='<div class="pv-empty">Renseignez au moins le nom pour voir la fiche.</div>'; return; }
     var photoSrc=collImgSrc('founder_preview');
-    var photo=photoSrc?'<img class="pv-staff-photo" style="margin:0;flex:none" src="'+esc(photoSrc)+'" alt="">':'<div class="pv-staff-photo pv-noimg" style="margin:0;flex:none;background:'+fallbackColor(name)+'">'+esc(initials(name))+'</div>';
+    var photo=photoSrc?pvRond(photoSrc,76,cadreDuBouton('#founder_cadrer_zone .qgc-cadrer'),'margin:0'):'<div class="pv-staff-photo pv-noimg" style="margin:0;flex:none;background:'+fallbackColor(name)+'">'+esc(initials(name))+'</div>';
     var excerpt=bio?esc(bio).slice(0,140)+(bio.length>140?'…':''):'';
     body.innerHTML='<div class="pv-staff-card" style="text-align:left;padding:22px">'+
       '<div style="display:flex;align-items:center;gap:14px;margin-bottom:'+(excerpt?'14px':'0')+'">'+photo+
@@ -21831,7 +21852,7 @@
     var powers=document.getElementById('set_bureau_powers').value;
     var limits=document.getElementById('set_bureau_limits').value;
     var photoSrc=collImgSrc('bureau_preview');
-    var photo=photoSrc?'<img class="pv-staff-photo" style="margin:0;flex:none" src="'+esc(photoSrc)+'" alt="">':'<div class="pv-staff-photo pv-noimg" style="margin:0;flex:none;background:'+fallbackColor(holder||roleLabel)+'">'+esc(initials(holder||roleLabel))+'</div>';
+    var photo=photoSrc?pvRond(photoSrc,76,cadreDuBouton('#bureau_cadrer_zone .qgc-cadrer'),'margin:0'):'<div class="pv-staff-photo pv-noimg" style="margin:0;flex:none;background:'+fallbackColor(holder||roleLabel)+'">'+esc(initials(holder||roleLabel))+'</div>';
     body.innerHTML='<div class="pv-staff-card" style="text-align:left;padding:22px">'+
       '<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">'+photo+
         '<div><div class="pv-staff-name">'+esc(roleLabel)+'</div>'+(holder?'<div class="pv-staff-role">'+esc(holder)+'</div>':'<div class="pv-staff-role" style="color:var(--faint)">Titulaire non renseigné</div>')+'</div></div>'+
@@ -36115,7 +36136,7 @@
     staff:function(rows, draft, sel){
       function card(m,id){
         var isSel=sel!=null&&String(sel)===String(id);
-        var photo=m.photo_url?'<img src="'+esc(m.photo_url)+'" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none;background:var(--surface-3);pointer-events:none">':'<span style="width:64px;height:64px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border:1px solid var(--line-strong);font-family:var(--font-ui);font-weight:700;font-size:18px;color:#46BF1D">'+esc(initials(m.name||'?'))+'</span>';
+        var photo=m.photo_url?pvRond(m.photo_url,64,{x:m.photo_url_x,y:m.photo_url_y,zoom:m.photo_url_zoom},'pointer-events:none'):'<span style="width:64px;height:64px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border:1px solid var(--line-strong);font-family:var(--font-ui);font-weight:700;font-size:18px;color:#46BF1D">'+esc(initials(m.name||'?'))+'</span>';
         return '<div data-qgv-id="'+esc(id)+'" style="position:relative;display:flex;align-items:center;gap:14px;background:transparent;border:1px solid var(--line);border-radius:var(--r-sm);padding:16px 18px;cursor:pointer'+(isSel?';box-shadow:0 0 0 1px var(--gold)':'')+'">'+photo+'<div style="min-width:0"><div style="font-family:var(--font-ui);font-weight:700;font-size:16px;color:#F3EFE6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.name||'Nouveau membre')+'</div><div style="font-family:var(--font-ui);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-top:5px">'+esc(m.role||'Fonction')+'</div></div>'+(isSel?'<div class="qgv-tb" style="position:absolute;top:10px;right:10px;display:flex;gap:5px;background:rgba(9,15,11,.86);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:4px"><button type="button" class="qgv-del" data-qgv-id="'+esc(id)+'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:var(--r-sm);color:#E5564A;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>':'')+'</div>';
       }
       // TROIS FAMILLES, TROIS GROUPES. Une seule liste mettait le
@@ -36289,9 +36310,23 @@
       }
     }
   }
+  // LA FORME DU CADRE DANS L'APERCU. La boite « Cadrage de l'image » etait
+  // une bande de 112 px de haut sur toute la largeur du panneau : aucune
+  // image du site n'a cette forme, et le visage place dans son rond a
+  // l'atelier ressortait comme un morceau de front zoome. Le site le
+  // montrait bien, l'admin non (Salif AW, 20 septembre 2026). La boite
+  // prend le ratio du cadre de l'atelier, et le rond quand le site en
+  // fait un.
+  function qgPosForme(pv, champ, rond){
+    var conf = CADRE_COLLECTION[champ] || {};
+    var h = 112, r = conf.ratio || 1.6;
+    pv.style.width = Math.round(h * r) + 'px'; pv.style.height = h + 'px';
+    pv.style.borderRadius = rond ? '50%' : '';
+  }
   function qgvPosPreview(key,id,field){
     var cur=qgvCurrent(key); if(!cur) return; var pv=document.getElementById(id+'-pos-pv'); if(!pv) return; var img=pv.querySelector('img'); if(!img) return;
     var url=cur[field]||''; if(!url){ pv.style.display='none'; return; } pv.style.display='block'; img.src=url;
+    qgPosForme(pv, field, !!(COLLECTIONS[key]||{}).circle);
     var x=(cur[field+'_x']==null||cur[field+'_x']==='')?50:cur[field+'_x'], y=(cur[field+'_y']==null||cur[field+'_y']==='')?50:cur[field+'_y'], z=(cur[field+'_zoom']==null||cur[field+'_zoom']==='')?100:cur[field+'_zoom'];
     img.style.objectPosition=x+'% '+y+'%'; img.style.transform='scale('+(z/100)+')'; img.style.transformOrigin=x+'% '+y+'%';
   }
@@ -38236,6 +38271,7 @@
   function qgPosBlockPreview(baseId, field){
     var cur=qgCurrent(); if(!cur) return; var pv=document.getElementById(baseId+'-pos-pv'); if(!pv) return; var img=pv.querySelector('img'); if(!img) return;
     var url=cur[field==='photo'?'photo_url':field]||''; if(!url){ pv.style.display='none'; return; } pv.style.display='block'; img.src=url;
+    qgPosForme(pv, field, false);
     var x=(cur[field+'_x']==null||cur[field+'_x']==='')?50:cur[field+'_x'], y=(cur[field+'_y']==null||cur[field+'_y']==='')?0:cur[field+'_y'], z=(cur[field+'_zoom']==null||cur[field+'_zoom']==='')?100:cur[field+'_zoom'];
     img.style.objectPosition=x+'% '+y+'%'; img.style.transform='scale('+(z/100)+')'; img.style.transformOrigin=x+'% '+y+'%';
   }
