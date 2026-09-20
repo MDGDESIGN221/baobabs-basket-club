@@ -4292,6 +4292,33 @@
   .ds-board.on-glisse .ds-col.est-vide .ds-col-n,
   .ds-board.on-glisse .ds-col.est-vide .ds-col-b .ds-empty{writing-mode:horizontal-tb;transform:none}
   .ds-board.on-glisse .ds-col.est-vide .ds-col-n{flex:1;max-height:none}
+  /* UN TABLEAU ENTIEREMENT VIDE NE SE REPLIE PAS.
+     Replier une colonne vide a 96 px et coucher son nom a la verticale
+     est juste quand deux ou trois colonnes sur huit sont vides : on
+     rend la place aux colonnes qui travaillent. Mais quand TOUTES le
+     sont, il n'y a plus de place a rendre a personne, et l'ecran
+     n'affiche plus qu'un peigne d'etiquettes verticales au-dessus du
+     vide.
+     Mesure du 20/09/2026, fenetre de 1600 px, tableau de 988 px :
+       Inscriptions  7 colonnes, 7 vides  -> 7 peignes, aucun contenu
+       Candidatures  8 colonnes, 7 vides  -> 1 carte, puis 7 peignes
+       Commandes     5 colonnes, 4 vides  -> 1 carte, puis 4 peignes
+     C'est l'etat d'un club en debut de saison, pas un cas rare.
+     Alors les colonnes se partagent la largeur a egalite, les noms se
+     relevent, et on voit le circuit que les dossiers vont suivre. Pas
+     de defilement horizontal : tout tient.
+     En CSS et non dans le JS parce que les trois ecrans posent la meme
+     ligne, copiee-collee (29274, 30784, 31649) : une regle ici les
+     couvre tous les trois, et le prochain ecran qui reprendra ce
+     tableau en heritera sans rien savoir. */
+  .ds-board:not(:has(.ds-col:not(.est-vide))) .ds-col.est-vide{flex:1 1 0;min-width:0}
+  .ds-board:not(:has(.ds-col:not(.est-vide))) .ds-col.est-vide .ds-col-h{
+    flex-direction:row;align-items:baseline;min-height:0;padding-bottom:10px}
+  .ds-board:not(:has(.ds-col:not(.est-vide))) .ds-col.est-vide .ds-col-n{
+    writing-mode:horizontal-tb;transform:none;flex:1;max-height:none;white-space:normal}
+  .ds-board:not(:has(.ds-col:not(.est-vide))) .ds-col.est-vide .ds-col-b .ds-empty{
+    display:block;writing-mode:horizontal-tb;transform:none}
+
   .ds-card{position:relative;padding:12px 12px 12px 13px;cursor:pointer;
     border-bottom:1px solid var(--line);transition:background .12s}
   .ds-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
