@@ -1,0 +1,91 @@
+-- =====================================================================
+--  LE CLUB DOIT VOIR LES PHOTOS POUR POUVOIR EN RETIRER UNE
+--  17 septembre 2026, au soir. Idempotent. Aucune donnee supprimee.
+--
+--  A COLLER APRES CORRECTIF-2026-09-17-c-fermer-le-bucket-des-photos.sql
+--  Aucune precondition. Rien ne casse.
+--
+--  CE QUE LE FICHIER c A RATE, ET COMMENT ON S'EN EST APERCU
+--
+--  Le fichier c pose deux portes sur le bucket recruitment-photos :
+--
+--    recruitment_photos_admin_ecriture      for insert
+--    recruitment_photos_admin_suppression   for delete
+--
+--  La seconde ne peut pas fonctionner. Supabase Storage LIT la ligne de
+--  l'objet avant de la supprimer : sans politique de SELECT, l'objet est
+--  invisible, la suppression ne trouve rien, et l'API rend 400. Mesure
+--  en essayant de retirer deux fichiers de test avec un compte
+--  d'administration : suppression=400, et le fichier toujours la ensuite.
+--
+--  C'est pire qu'une porte absente : c'est une porte qui a l'air d'etre
+--  la. Personne ne l'aurait su avant le jour ou il faut retirer la photo
+--  de quelqu'un -- et ce jour-la, c'est souvent parce que la personne le
+--  demande.
+--
+--  CE N'EST PAS UNE REGRESSION. Avant le fichier c, ce bucket n'avait
+--  qu'une seule politique, l'insertion ouverte a anon : ni lecture, ni
+--  suppression, pour personne. MIGRATION-SUPABASE-v6 l'ecrivait :
+--  « pas de SELECT/UPDATE/DELETE accordé ici, la lecture des photos
+--    existantes passe par l'URL publique du bucket ». Ce fichier ajoute
+--  ce qui manquait depuis le debut.
+--
+--  POURQUOI CA NE REND RIEN DE PLUS PUBLIC. Le bucket est deja en
+--  public = true : n'importe qui peut lire une photo dont il connait
+--  l'adresse, et c'est voulu, c'est ainsi que l'administration les
+--  affiche. Ce que la politique ci-dessous ajoute, c'est la capacite de
+--  LISTER et donc de gerer, et elle est reservee a l'administration.
+-- =====================================================================
+
+drop policy if exists recruitment_photos_admin_lecture on storage.objects;
+create policy recruitment_photos_admin_lecture on storage.objects
+  for select to authenticated
+  using (bucket_id = 'recruitment-photos' and public.is_admin());
+
+
+-- ---------------------------------------------------------------------
+--  LE MEME PIEGE, VERIFIE SUR L'AUTRE BUCKET
+--
+--  site-media a recu ses portes d'ecriture et de suppression dans
+--  CORRECTIF-...-journal-et-roles.sql, bloc 2.5, sans politique de
+--  lecture non plus. Mais lui en avait deja une : la mediatheque de
+--  l'administration liste ce bucket depuis des mois, et elle marche.
+--  On ne pose donc rien ici -- on le verifie, plus bas, plutot que de
+--  supposer.
+--
+--  dossiers-prives, lui, a bien sa politique de lecture depuis
+--  MIGRATION-inscriptions-3-depot-pieces.sql : c'est elle qui permet a
+--  l'administration de telecharger une piece par URL signee. Elle est
+--  passee sur bbc_can('inscriptions','voir') le 17 septembre.
+-- ---------------------------------------------------------------------
+
+
+-- =====================================================================
+--  VERIFICATIONS
+-- ---------------------------------------------------------------------
+--  a) LES TROIS BUCKETS ONT CHACUN UNE PORTE DE LECTURE POUR LE CLUB :
+--
+--       select policyname, cmd, roles::text,
+--              left(coalesce(qual, with_check), 80) as condition
+--         from pg_policies
+--        where schemaname = 'storage' and tablename = 'objects'
+--        order by policyname;
+--
+--     Attendu : pour chacun des trois buckets, au moins une ligne en
+--     SELECT. Et AUCUNE ligne dont roles contienne anon.
+--
+--  b) RETIRER UNE PHOTO MARCHE. Depuis l'administration connectee,
+--     dans la console du navigateur :
+--
+--       await fetch(URL + '/storage/v1/object/recruitment-photos/<chemin>',
+--                   { method:'DELETE', headers:{ apikey:CLE,
+--                     Authorization:'Bearer ' + jeton } }).then(r=>r.status)
+--
+--     Attendu : 200. Un 400 veut dire que la politique de lecture
+--     n'est pas passee.
+--
+--  c) LE DEPOT D'UNE PHOTO MARCHE TOUJOURS. La fonction depot-photo
+--     ecrit avec la cle de service, a laquelle les politiques ne
+--     s'appliquent pas : ce fichier ne peut pas la gener. On le verifie
+--     quand meme, parce que c'est le chemin d'une candidate.
+-- =====================================================================
