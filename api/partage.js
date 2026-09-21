@@ -23,6 +23,11 @@ var SB_URL = 'https://lmwbwasupqkvswukieav.supabase.co';
 var SB_KEY = 'sb_publishable_68RKprorqTmVkzjHrKgdZw_h-AcMXRh';
 var ORIGINE = 'https://www.baobabsbasketclub.com';
 var IMAGE_DEFAUT = ORIGINE + '/og-banner.png';
+/* L'AFFICHE. api/og.js la dessine a la demande, aux dimensions que le
+   site annonce deja (1200 x 630) : le score et les deux blasons pour un
+   match, le portrait detoure pour une joueuse. Avant, les trois matchs
+   de la saison partageaient la meme banniere. */
+function afficheDe(type, id){ return ORIGINE + '/og/' + type + '/' + encodeURIComponent(id); }
 var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function ech(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -60,7 +65,7 @@ function metaMatch(m){
   var description = morceaux.join(' · ') || 'Un match du Baobabs Basket Club, Dakar.';
   if (description.length > 200) description = description.slice(0, 197) + '…';
   var debut = m.match_date ? String(m.match_date).slice(0, 10) + 'T' + (m.match_time ? String(m.match_time).slice(0, 5) : '18:00') + ':00Z' : null;
-  var image = absolue(m.photo_url) || IMAGE_DEFAUT;
+  var image = afficheDe('match', m.id);
   var ld = {
     '@context': 'https://schema.org',
     '@type': 'SportsEvent',
@@ -97,7 +102,7 @@ function metaJoueuse(p){
     var bio = String(p.bio).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     if (bio) description = bio.length > 180 ? bio.slice(0, 177) + '…' : bio;
   }
-  var image = absolue(p.photo_url) || IMAGE_DEFAUT;
+  var image = afficheDe('joueuse', p.id);
   var ld = {
     '@context': 'https://schema.org',
     '@type': 'Person',
@@ -142,12 +147,8 @@ function remplacer(html, meta, route){
   rempl(/<meta name="twitter:description" content="[^"]*">/, '<meta name="twitter:description" content="' + desc + '">');
   rempl(/<meta name="twitter:image" content="[^"]*">/, '<meta name="twitter:image" content="' + image + '">');
   rempl(/<link rel="canonical" href="[^"]*">/, '<link rel="canonical" href="' + url + '">');
-  /* les dimensions annoncées sont celles de la bannière du club ; une
-     affiche de match n'a pas ce format, on ne ment pas dessus */
-  if (meta.image !== IMAGE_DEFAUT){
-    rempl(/\s*<meta property="og:image:width" content="[^"]*">/, '');
-    rempl(/\s*<meta property="og:image:height" content="[^"]*">/, '');
-  }
+  /* les dimensions annoncees restent vraies : api/og.js dessine en
+     1200 x 630, exactement ce que la page declare */
   /* les données structurées de la fiche : celles du club restent (sous
      un autre id), Google lit les deux */
   rempl(/<script type="application\/ld\+json" id="bb-jsonld">/, '<script type="application/ld+json" id="bb-jsonld-fiche">' + JSON.stringify(meta.ld).replace(/</g, '\\u003c') + '</script>\n<script type="application/ld+json" id="bb-jsonld">');
