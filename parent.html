@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="theme-color" content="#081C13">
+<title>Le dossier de mon enfant — Baobabs Basket Club</title>
+<!--
+  L'ESPACE DES PARENTS.
+
+  Une page a part, comme joueuse.html, et pour la meme raison : une
+  famille l'ouvre sur son telephone, en donnees mobiles, souvent une
+  seule fois par mois. Le site entier pese plusieurs megaoctets ; celle-ci
+  tient dans un souffle -- aucune police a telecharger, aucune
+  bibliotheque, aucune image hors le blason.
+
+  ELLE NE LIT QUE PAR UNE PORTE. Tout passe par bbc_parent_espace, une
+  fonction de la base qui rend un dossier contre son lien personnel, et
+  rien d'autre : ni notes de sante, ni notes internes, ni dossier voisin.
+  Sans lien valide, il ne se passe rien.
+
+  CE QU'ELLE MONTRE, ET CE QU'ELLE NE MONTRE PAS ENCORE. Les mensualites
+  et l'inscription : payees, dues, et par quel moyen. Les presences et le
+  planning viendront ; ils n'ont de sens que si le pointage est tenu a
+  chaque seance, et cela se decide au club, pas ici.
+-->
+<style>
+  *,*::before,*::after{ box-sizing:border-box }
+  :root{
+    --fond:#081C13; --carte:#0F2A1C; --carte2:#0C2217;
+    --trait:rgba(243,239,230,.13); --trait-fort:rgba(243,239,230,.26);
+    --texte:#F3EFE6; --doux:#C7CFC8; --pale:#8A968E;
+    --vert:#A8D93B; --or:#C6A257; --rouge:#E0655C;
+    --r:14px;
+  }
+  html{ -webkit-text-size-adjust:100% }
+  body{
+    margin:0; background:var(--fond); color:var(--texte);
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    font-size:15px; line-height:1.55;
+    padding:0 0 48px; -webkit-font-smoothing:antialiased;
+  }
+  .enveloppe{ max-width:640px; margin:0 auto; padding:0 16px }
+
+  header{ display:flex; align-items:center; gap:12px; padding:20px 0 8px }
+  header img{ width:44px; height:44px; border-radius:50%; flex:none }
+  header b{ display:block; font-size:15px; letter-spacing:-.01em }
+  header span{ display:block; font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--vert) }
+
+  h1{ font-size:clamp(26px,7vw,34px); line-height:1.08; margin:18px 0 4px; letter-spacing:-.02em }
+  .sous{ color:var(--pale); font-size:13.5px; margin:0 0 20px }
+  .sous b{ color:var(--doux); font-weight:600 }
+
+  /* LE CHIFFRE QUI COMPTE. C'est la premiere question d'une famille :
+     est-ce que je dois quelque chose ? On y repond avant tout le reste. */
+  .bilan{
+    border-radius:var(--r); padding:20px; margin:0 0 18px;
+    border:1px solid var(--trait); background:var(--carte);
+  }
+  .bilan.du{ border-color:rgba(198,162,87,.45); background:linear-gradient(160deg,#1B2416,#0F2A1C) }
+  .bilan.jour{ border-color:rgba(168,217,59,.4) }
+  .bilan .etiq{ font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--pale) }
+  .bilan .somme{ font-size:clamp(30px,9vw,42px); font-weight:800; letter-spacing:-.02em; margin:6px 0 2px }
+  .bilan.du .somme{ color:var(--or) }
+  .bilan.jour .somme{ color:var(--vert) }
+  .bilan p{ margin:8px 0 0; font-size:13.5px; color:var(--doux) }
+
+  h2{ font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--vert);
+      margin:26px 0 10px; font-weight:700 }
+
+  .ligne{
+    display:flex; align-items:center; gap:12px; padding:13px 16px;
+    border:1px solid var(--trait); border-radius:12px; background:var(--carte2);
+    margin-bottom:8px;
+  }
+  .ligne .mois{ font-weight:600; min-width:104px; flex:1 1 auto; min-width:0 }
+  .ligne .etat{
+    margin-left:auto; font-size:11.5px; font-weight:700; letter-spacing:.08em;
+    text-transform:uppercase; padding:5px 11px; border-radius:999px; white-space:nowrap;
+  }
+  .ligne .etat.ok{ color:#0A1B0D; background:var(--vert) }
+  .ligne .etat.non{ color:var(--or); border:1px solid rgba(198,162,87,.5) }
+  .ligne .etat.part{ color:var(--or); border:1px solid rgba(198,162,87,.5) }
+  /* « 20 000 F » ne doit jamais se couper entre le nombre et son unite */
+  .ligne .montant{ font-size:13.5px; color:var(--doux); font-variant-numeric:tabular-nums; white-space:nowrap }
+
+  .paie{ display:flex; gap:12px; align-items:baseline; padding:11px 2px; border-bottom:1px solid var(--trait) }
+  .paie:last-child{ border-bottom:none }
+  .paie .d{ font-size:12.5px; color:var(--pale); min-width:82px; font-variant-numeric:tabular-nums }
+  .paie .q{ font-size:13.5px }
+  .paie .m{ margin-left:auto; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap }
+  .paie .moyen{ font-size:11px; color:var(--pale); text-transform:uppercase; letter-spacing:.08em }
+
+  .mot{ margin:24px 0 0; padding:16px; border-radius:12px; border:1px dashed var(--trait-fort); color:var(--doux); font-size:13.5px }
+  .mot a{ color:var(--vert) }
+
+  .etat-page{ padding:56px 0; text-align:center; color:var(--pale) }
+  .etat-page b{ display:block; color:var(--texte); font-size:17px; margin-bottom:6px }
+
+  footer{ margin-top:32px; padding-top:16px; border-top:1px solid var(--trait); font-size:12px; color:var(--pale) }
+  footer a{ color:var(--doux) }
+</style>
+</head>
+<body>
+<div class="enveloppe">
+  <header>
+    <img src="/favicon-192.png" alt="" width="44" height="44">
+    <div>
+      <span>École de basket</span>
+      <b>Baobabs Basket Club</b>
+    </div>
+  </header>
+
+  <div id="ecran" class="etat-page"><b>Un instant…</b>Nous ouvrons le dossier.</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SB  = 'https://lmwbwasupqkvswukieav.supabase.co';
+  var CLE = 'sb_publishable_68RKprorqTmVkzjHrKgdZw_h-AcMXRh';
+  var ecran = document.getElementById('ecran');
+
+  /* Le lien arrive de deux facons : /parent/<jeton> (l'adresse envoyee
+     aux familles) ou ?j=<jeton> (la meme, une fois reecrite par Vercel).
+     On lit les deux : un lien colle a la main doit marcher aussi. */
+  function jeton() {
+    var q = new URLSearchParams(location.search).get('j');
+    if (q) return q.trim();
+    var m = /\/parent\/([A-Za-z0-9]+)/.exec(location.pathname);
+    return m ? m[1] : '';
+  }
+
+  function ech(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  /* Les montants se lisent en francs CFA, avec leurs milliers separes :
+     « 5000 » se lit mal, « 5 000 F » se lit d'un coup d'oeil. */
+  function fcfa(n) {
+    var x = Number(n || 0);
+    return x.toLocaleString('fr-FR').replace(/ | /g, ' ') + ' F';
+  }
+  var MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  function moisLong(periode) {
+    var p = String(periode || '').split('-');
+    if (p.length < 2) return periode || '';
+    var i = parseInt(p[1], 10) - 1;
+    return (MOIS[i] || p[1]) + ' ' + p[0];
+  }
+  function dateCourte(d) {
+    if (!d) return '';
+    var t = new Date(String(d).slice(0, 10) + 'T12:00:00');
+    if (isNaN(t.getTime())) return '';
+    return t.getDate() + ' ' + ['jan','fév','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'][t.getMonth()];
+  }
+  var MOYENS = {
+    especes: 'espèces', wave: 'Wave', orange_money: 'Orange Money',
+    free_money: 'Free Money', virement: 'virement', autre: 'autre'
+  };
+
+  function perdu(titre, detail) {
+    ecran.className = 'etat-page';
+    ecran.innerHTML = '<b>' + ech(titre) + '</b>' + ech(detail);
+  }
+
+  function dessiner(d) {
+    var e = d.enfant || {}, t = d.tarifs || {}, ins = d.inscription || {};
+    var mois = d.mois || [], paiements = d.paiements || [];
+    var du = Number(d.total_du || 0);
+
+    var h = '';
+    h += '<h1>' + ech(e.prenom || '') + ' ' + ech(e.nom || '') + '</h1>';
+    h += '<p class="sous">' +
+      (e.categorie ? ech(e.categorie) + ' · ' : '') +
+      'dossier <b>' + ech(e.reference || '') + '</b>' +
+      (d.responsable ? ' · responsable <b>' + ech(d.responsable) + '</b>' : '') +
+      '</p>';
+
+    /* LE BILAN, AVANT TOUT LE RESTE. */
+    if (du > 0) {
+      h += '<div class="bilan du"><div class="etiq">Reste à régler</div>' +
+           '<div class="somme">' + fcfa(du) + '</div>' +
+           '<p>Pour régler, passez au club ou appelez-nous : nous notons le paiement et il apparaît ici.</p></div>';
+    } else {
+      h += '<div class="bilan jour"><div class="etiq">Votre situation</div>' +
+           '<div class="somme">À jour</div>' +
+           '<p>Rien à régler pour le moment. Merci.</p></div>';
+    }
+
+    /* L'INSCRIPTION, puis les mensualites, mois par mois. */
+    h += '<h2>L’inscription</h2>';
+    h += '<div class="ligne"><span class="mois">Inscription</span>' +
+         '<span class="montant">' + fcfa(t.inscription) + '</span>' +
+         '<span class="etat ' + (ins.reglee ? 'ok' : 'non') + '">' +
+                      (ins.reglee
+             ? 'Réglée' + (ins.le ? ' le ' + dateCourte(ins.le) : '')
+             : (Number(ins.paye || 0) > 0 ? 'Reste ' + fcfa(ins.solde) : 'À régler')) +
+         '</span></div>';
+
+    h += '<h2>Les mensualités</h2>';
+    if (!mois.length) {
+      h += '<div class="ligne"><span class="montant">Aucune mensualité due pour l’instant.</span></div>';
+    } else {
+      mois.forEach(function (m) {
+        var solde = Number(m.solde || 0), paye = Number(m.paye || 0);
+        var classe = solde === 0 ? 'ok' : (paye > 0 ? 'part' : 'non');
+        var mot = solde === 0 ? 'Payée' : (paye > 0 ? 'Reste ' + fcfa(solde) : 'À régler');
+        h += '<div class="ligne">' +
+               '<span class="mois">' + ech(moisLong(m.periode)) + '</span>' +
+               '<span class="montant">' + fcfa(m.du) + '</span>' +
+               '<span class="etat ' + classe + '">' + ech(mot) + '</span>' +
+             '</div>';
+      });
+    }
+
+    if (paiements.length) {
+      h += '<h2>Ce qui a été versé</h2><div>';
+      paiements.forEach(function (p) {
+        h += '<div class="paie">' +
+               '<span class="d">' + ech(dateCourte(p.le)) + '</span>' +
+               '<span class="q">' + (p.quoi === 'inscription' ? 'Inscription' : (p.periode ? ech(moisLong(p.periode)) : 'Versement')) +
+                 '<span class="moyen"> · ' + ech(MOYENS[p.moyen] || p.moyen || '') + '</span></span>' +
+               '<span class="m">' + fcfa(p.montant) + '</span>' +
+             '</div>';
+      });
+      h += '</div>';
+    }
+
+    h += '<div class="mot">Une question sur ce dossier, un paiement qui n’apparaît pas ? ' +
+         'Écrivez au club : <a href="mailto:baobabsbasketclub@gmail.com">baobabsbasketclub@gmail.com</a>. ' +
+         'Ce lien est personnel : ne le transmettez pas.</div>';
+
+    h += '<footer>Baobabs Basket Club · Dakar · <a href="/">le site du club</a></footer>';
+
+    ecran.className = '';
+    ecran.innerHTML = h;
+  }
+
+  var j = jeton();
+  if (!j) {
+    perdu('Ce lien n’est pas complet', 'Ouvrez le lien que le club vous a envoyé, en entier.');
+    return;
+  }
+
+  fetch(SB + '/rest/v1/rpc/bbc_parent_espace', {
+    method: 'POST',
+    headers: { apikey: CLE, Authorization: 'Bearer ' + CLE, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_jeton: j })
+  }).then(function (r) {
+    if (!r.ok) throw new Error('reseau ' + r.status);
+    return r.json();
+  }).then(function (d) {
+    if (!d || !d.ok) {
+      /* deux situations, deux phrases : un dossier clos EXISTE, il est
+         seulement fermé -- le dire « introuvable » envoie la famille
+         réclamer un lien neuf pour rien. */
+      if (d && d.motif === 'dossier clos') {
+        perdu('Ce dossier est clos',
+              'Il n’est plus suivi par l’école. Appelez le club si c’est une erreur.');
+      } else {
+        perdu('Ce lien ne mène à aucun dossier',
+              'Il a peut-être été renouvelé. Demandez au club de vous en envoyer un neuf.');
+      }
+      return;
+    }
+    dessiner(d);
+  }).catch(function () {
+    perdu('Nous n’avons pas pu ouvrir le dossier',
+          'Vérifiez votre connexion, puis rouvrez le lien.');
+  });
+})();
+</script>
+</body>
+</html>
