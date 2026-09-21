@@ -4442,7 +4442,7 @@ window.addEventListener('error', function (e) {
              images, sinon on voit un clignotement blanc pendant le
              chargement de la suivante. -->
         <div id="bb-hero-img-wrap">
-          <img id="bb-hero-img" src="/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp" alt="Les joueuses des Baobabs" fetchpriority="high" srcset="/i/320/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp 320w, /i/480/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp 480w" sizes="(max-width: 760px) 123px, 172px">
+          <img id="bb-hero-img" src="/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp" alt="Les joueuses des Baobabs" fetchpriority="high">
           <img id="bb-hero-img-b" alt="" aria-hidden="true" fetchpriority="low">
           <span class="bb-hh-voile" aria-hidden="true"></span>
           <span class="bb-hh-grain" aria-hidden="true"></span>
@@ -6516,6 +6516,17 @@ window.bbSafeUrl = function(u){
 window.bbLargeurUtile = function(w){
   var ecran = (window.innerWidth || 1200) * Math.min(window.devicePixelRatio || 1, 2);
   return Math.max(160, Math.min(w || 800, Math.round(ecran)));
+};
+/* QUI CHANGE src EFFACE srcset. Une balise qui porte un srcset ignore
+   son src : le hero, dont le JavaScript pose la photo choisie par le
+   club, continuait d'afficher la photo de secours du HTML -- 171 x 96
+   pixels etires sur 1110 x 711. Cette fonction est le seul endroit par
+   ou passent ces remplacements. */
+window.bbPoserImage = function(el, url){
+  if (!el || !url) return;
+  if (el.hasAttribute('srcset')) el.removeAttribute('srcset');
+  if (el.hasAttribute('sizes')) el.removeAttribute('sizes');
+  el.src = url;
 };
 window.bbCloud = function(url, w){
   if (!url) return url;
@@ -12559,7 +12570,7 @@ window.addEventListener('load', function () {
     bbSet('bb-media-title', s.md_title);
     bbSet('bb-media-tag', s.md_tag);
     bbSet('bb-media-caption', s.md_caption);
-    if(s.md_image_url){ var im=document.getElementById('bb-media-img'); if(im){ im.src=(window.bbCloud?window.bbCloud(s.md_image_url,1800):(s.md_image_url)); if(s.md_caption) im.alt=s.md_caption; } }
+    if(s.md_image_url){ var im=document.getElementById('bb-media-img'); if(im){ window.bbPoserImage(im, (window.bbCloud?window.bbCloud(s.md_image_url,1800):(s.md_image_url))); if(s.md_caption) im.alt=s.md_caption; } }
     bbCadre(document.getElementById('bb-media-img'), s, 'md_image_url');
     bbCadre(document.getElementById('bb-media-2-img'), s, 'md2_image_url');
     bbCadre(document.getElementById('bb-media-3-img'), s, 'md3_image_url');
@@ -14239,7 +14250,7 @@ window.addEventListener('load', function () {
 
   function applyHero(s){
     if(!s) return;
-    if(s.hero_image_url){ var im=document.getElementById('bb-hero-img'); if(im) im.src=(window.bbCloud?window.bbCloud(s.hero_image_url,1800):(s.hero_image_url)); }
+    if(s.hero_image_url){ var im=document.getElementById('bb-hero-img'); if(im) window.bbPoserImage(im, (window.bbCloud?window.bbCloud(s.hero_image_url,1800):(s.hero_image_url))); }
     // Hors du test ci-dessus : on peut vouloir recadrer l'image livree avec
     // le site sans la remplacer.
     bbCadre(document.getElementById('bb-hero-img'), s, 'hero_image_url');
