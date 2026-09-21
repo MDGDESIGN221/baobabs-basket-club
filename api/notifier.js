@@ -27,7 +27,7 @@
 'use strict';
 
 var SB_URL = 'https://lmwbwasupqkvswukieav.supabase.co';
-var VAPID_PUBLIQUE = 'BM-83h4pJG9XvZlkuIs99qAY_Dx1YoPRwfhrJtzpAoAVOt21YYBi6Set2KE75jN4PMQSIfXHeAgjjQxdb6J5dHE';
+var VAPID_PUBLIQUE = 'BClxOiHe_eEYyEBxYGxoKhGkrcOh0tHFk2wRPvNrxoYpLRqyZPuXxUZM6lvUyivQBHvLYX6kNdBbwhvHqIHYwe0';
 var CONTACT = 'mailto:baobabsbasketclub@gmail.com';
 
 /* comme api/og.js : le require vit dans le handler. Une dependance
