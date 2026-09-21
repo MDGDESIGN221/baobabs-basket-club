@@ -62,7 +62,9 @@ self.addEventListener('message', function (e) {
 
 function estMedia(url) {
   return url.origin === self.location.origin &&
-    (/^\/media\//.test(url.pathname) || /\.(webp|png|jpe?g|svg|woff2?|ttf)$/i.test(url.pathname));
+    (/^\/media\//.test(url.pathname) ||
+     /^\/i\/\d+\/media\//.test(url.pathname) ||   /* les memes, redimensionnees */
+     /\.(webp|png|jpe?g|svg|woff2?|ttf)$/i.test(url.pathname));
 }
 
 function bornerMedia() {

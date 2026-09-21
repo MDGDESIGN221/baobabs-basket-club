@@ -6501,6 +6501,12 @@ window.bbCloud = function(url, w){
     return url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') +
       '?width=' + (w || 800) + '&resize=contain&quality=72';
   }
+  /* Les fichiers de /media/ sont servis en statique : Vercel ne les
+     redimensionne pas. /i/<largeur>/<chemin> les fait passer par
+     api/img.js, qui les rend en WebP a la bonne taille et les laisse un
+     an dans le reseau. Une image de fond de 1600 px coutait huit
+     megaoctets de memoire sur un telephone qui l'affiche en 375. */
+  if (/^\/media\/[^?]+\.(webp|png|jpe?g)$/i.test(url)) return '/i/' + w + url;
   return url;
 };
 
@@ -6513,9 +6519,19 @@ window.addEventListener('error', function (e) {
   var el = e && e.target;
   if (!el || el.tagName !== 'IMG' || el.dataset.bbRepli) return;
   var u = el.currentSrc || el.src || '';
-  if (u.indexOf('/storage/v1/render/image/public/') === -1) return;
+  var repli = '';
+  if (u.indexOf('/storage/v1/render/image/public/') !== -1){
+    repli = u.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/').split('?')[0];
+  } else {
+    /* /i/<largeur>/media/... : la fonction de redimensionnement. En local
+       elle n'existe pas du tout, et le banc d'essai afficherait des carres
+       vides a la place des affiches. */
+    var m = /\/i\/\d+(\/media\/.+)$/.exec(u);
+    if (m) repli = m[1];
+  }
+  if (!repli) return;
   el.dataset.bbRepli = '1';
-  el.src = u.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/').split('?')[0];
+  el.src = repli;
 }, true);
 </script>
 <!-- Version figee et empreinte, comme dans admin-matchs.html : voir le
