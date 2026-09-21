@@ -32,6 +32,15 @@ var satori = null, Resvg = null, sharp = null, chargement = null;
 function charger(){
   if (chargement) return chargement;
   chargement = { ok: true, modules: {} };
+  /* LES WEBASSEMBLY, VUS PAR LE TRACEUR DE VERCEL. harfbuzz (le trace des
+     lettres) et yoga (la mise en page) sont ouverts par « __dirname + le
+     nom du fichier » : le traceur ne reconnait pas ce motif, et ne les
+     embarquait donc pas. En ligne, la fonction se chargeait puis rendait
+     ENOENT sur hb.wasm des le premier caractere. require.resolve avec un
+     chemin ecrit en toutes lettres, lui, est reconnu. includeFiles ne
+     suffit pas : il ne porte pas sur node_modules. */
+  try { chargement.modules.hb = require.resolve('harfbuzzjs/hb.wasm'); } catch (e){ chargement.modules.hb = 'introuvable : ' + (e && e.message); }
+  try { chargement.modules.yoga = require.resolve('satori/yoga.wasm'); } catch (e){ chargement.modules.yoga = 'introuvable : ' + (e && e.message); }
   try {
     var s = require('satori');
     satori = s && s.default ? s.default : s;
