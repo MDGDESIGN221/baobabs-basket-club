@@ -17,6 +17,15 @@
    refait : un score corrige apparait donc vite, sans que chaque partage
    coute une generation.
 
+   LES WEBASSEMBLY. satori ouvre harfbuzz (le trace des lettres) et yoga
+   (la mise en page) par « __dirname + le nom du fichier », motif que le
+   traceur de Vercel ne reconnait pas : sans le bloc « functions » de
+   vercel.json, la fonction se charge puis rend ENOENT sur hb.wasm des le
+   premier caractere. Ce commentaire est ici et non dans vercel.json :
+   Vercel valide ce fichier au schema et refuse TOUTE cle inconnue -- une
+   cle « _lisez_moi » y a fait echouer trois deploiements d'affilee, avec
+   pour seul message « Configuration error ».
+
    La police est lue sur le site lui-meme, comme api/partage.js lit
    index.html : rien a configurer, et le CDN la garde.
    ===================================================================== */
