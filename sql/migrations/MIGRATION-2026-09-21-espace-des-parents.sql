@@ -44,11 +44,17 @@ comment on column public.academy_registrations.parent_jeton is
 --  gen_random_bytes vient de pgcrypto : si l'editeur refuse, exécuter
 --  d'abord  create extension if not exists pgcrypto with schema extensions;
 -- ---------------------------------------------------------------------
+--  LES STATUTS, RELEVES EN BASE ET DANS L'ADMIN (admin-matchs.html, IN_ST) :
+--    nouvelle, contactee, essai, inscrite, en_pause, refusee, archivee
+--  On EXCLUT les deux statuts clos au lieu d'enumerer les actifs. Une
+--  liste blanche a deja echoue ici : ecrite avec 'essai, inscrite,
+--  en_pause', elle a rendu ZERO lien sur six dossiers, tous 'nouvelle'.
+--  Une liste d'exclusion survit a un statut ajoute plus tard.
 update public.academy_registrations
    set parent_jeton = encode(gen_random_bytes(24), 'hex'),
        parent_jeton_le = now()
  where parent_jeton is null
-   and status in ('essai', 'inscrite', 'en_pause');
+   and status not in ('refusee', 'archivee');
 
 -- ---------------------------------------------------------------------
 --  CE QUE LA FAMILLE VOIT.
@@ -178,7 +184,7 @@ grant  execute on function public.bbc_parent_espace(text) to anon, authenticated
 --           'https://www.baobabsbasketclub.com/parent/' || parent_jeton as lien
 --      from public.academy_registrations
 --     where parent_jeton is not null
---       and status in ('essai','inscrite','en_pause')
+--       and status not in ('refusee','archivee')
 --     order by child_last_name;
 --
 --  POUR REVOQUER UN LIEN (une famille qui l'aurait partage) :
