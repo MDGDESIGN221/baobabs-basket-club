@@ -306,6 +306,10 @@ module.exports = function(req, res){
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
     res.end(png);
   }).catch(function(e){
+    /* la cause part aussi dans un en-tete : les journaux de Vercel ne se
+       lisent pas d ici, et une affiche qui retombe sur la banniere ne dit
+       rien de ce qui lui a manque. Message seul, jamais la pile. */
+    try { res.setHeader('X-Bbc-Og', String((e && e.message) || e).slice(0, 120).replace(/[^ -~]/g, ' ')); } catch (x) {}
     /* une affiche qui ne se dessine pas ne doit pas casser le partage :
        la banniere du club prend le relais. La cause reste lisible dans
        les journaux de la fonction -- sans elle, un echec est muet. */
