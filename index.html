@@ -29,6 +29,34 @@ window.bbLienSur = function (u) {
   if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return '';   // un schema, et pas un des notres
   return v;                                        // chemin relatif : page.html
 };
+
+/* LE FILET. Si la transformation venait a manquer -- quota, panne --, ce
+   sont TOUTES les images du site qui disparaitraient d'un coup. Cet
+   ecouteur unique, pose a la racine, rattrape l'erreur et repointe sur le
+   fichier d'origine : le site reste entier, seulement plus lourd. Une
+   seule reprise par image, sinon une adresse morte boucle. */
+window.addEventListener('error', function (e) {
+  var el = e && e.target;
+  if (!el || el.tagName !== 'IMG' || el.dataset.bbRepli) return;
+  var u = el.currentSrc || el.src || '';
+  var repli = '';
+  if (u.indexOf('/storage/v1/render/image/public/') !== -1){
+    repli = u.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/').split('?')[0];
+  } else {
+    /* /i/<largeur>/media/... : la fonction de redimensionnement. En local
+       elle n'existe pas du tout, et le banc d'essai afficherait des carres
+       vides a la place des affiches. */
+    var m = /\/i\/\d+(\/media\/.+)$/.exec(u);
+    if (m) repli = m[1];
+  }
+  if (!repli) return;
+  el.dataset.bbRepli = '1';
+  /* srcset l'emporte sur src : tant qu'il est la, reecrire src ne change
+     rien et l'image reste vide. On le retire avant de poser le repli. */
+  if (el.hasAttribute('srcset')) el.removeAttribute('srcset');
+  if (el.hasAttribute('sizes')) el.removeAttribute('sizes');
+  el.src = repli;
+}, true);
 </script>
 <title>Baobabs Basket Club — Dakar</title>
 <meta name="description" content="Baobabs Basket Club, club de basketball fondé à Dakar en 2026. Actualités, effectif, boutique et tryouts officiels 25 & 26 juillet.">
@@ -4293,7 +4321,7 @@ window.bbLienSur = function (u) {
 
 <div id="bb-splash">
   <div class="bb-splash-logo-wrap">
-    <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club">
+    <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" srcset="/i/200/media/img/BBC_-_COLORED_LOGO_jjcrux.webp 200w" sizes="(max-width: 760px) 64px, 83px">
   </div>
   <div style="text-align:center;display:flex;flex-direction:column;gap:20px;align-items:center">
     <div>
@@ -4341,7 +4369,7 @@ window.bbLienSur = function (u) {
   <header id="bb-hdr" style="background:#0A150F;border-bottom:1px solid rgba(243,239,230,.09);position:sticky;top:0;z-index:40;transition:box-shadow .5s ease">
     <div id="bb-hdr-inner" style="max-width:1500px;margin:0 auto;padding:12px clamp(16px,4vw,24px);display:flex;align-items:center;justify-content:space-between;gap:24px">
       <div id="bb-hdr-brand" data-nav="accueil" style="display:flex;align-items:center;gap:12px;cursor:pointer;min-width:0">
-        <img id="bb-hdr-logo" src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" style="width:44px;height:44px;object-fit:contain;flex:none">
+        <img id="bb-hdr-logo" src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" style="width:44px;height:44px;object-fit:contain;flex:none" srcset="/i/200/media/img/BBC_-_COLORED_LOGO_jjcrux.webp 200w" sizes="(max-width: 760px) 64px, 83px">
         <div style="min-width:0">
           <div id="bb-hdr-name" style="font-family:'Inter',sans-serif;font-weight:800;font-size:18px;letter-spacing:.04em;color:#F3EFE6;line-height:1;white-space:nowrap">BAOBABS</div>
           <div id="bb-hdr-sub" style="font-family:'Inter',sans-serif;font-weight:400;font-size:9.5px;letter-spacing:.26em;color:var(--bb-or);margin-top:2px;white-space:nowrap">BASKET CLUB</div>
@@ -4414,7 +4442,7 @@ window.bbLienSur = function (u) {
              images, sinon on voit un clignotement blanc pendant le
              chargement de la suivante. -->
         <div id="bb-hero-img-wrap">
-          <img id="bb-hero-img" src="/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp" alt="Les joueuses des Baobabs" fetchpriority="high">
+          <img id="bb-hero-img" src="/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp" alt="Les joueuses des Baobabs" fetchpriority="high" srcset="/i/320/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp 320w, /i/480/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp 480w" sizes="(max-width: 760px) 123px, 172px">
           <img id="bb-hero-img-b" alt="" aria-hidden="true" fetchpriority="low">
           <span class="bb-hh-voile" aria-hidden="true"></span>
           <span class="bb-hh-grain" aria-hidden="true"></span>
@@ -4424,7 +4452,7 @@ window.bbLienSur = function (u) {
              direct et, s'il y a plusieurs bannières, les points du défilé. -->
         <div id="bb-hero-haut">
           <div class="bb-hh-marque">
-            <img id="bb-hero-logo" src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club">
+            <img id="bb-hero-logo" src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" srcset="/i/200/media/img/BBC_-_COLORED_LOGO_jjcrux.webp 200w" sizes="(max-width: 760px) 64px, 83px">
             <span id="bb-hs-kicker">Baobabs Basket Club · Dakar</span>
           </div>
           <div class="bb-hh-haut-d">
@@ -4500,7 +4528,7 @@ window.bbLienSur = function (u) {
                  plaque de verre. Les styles sont dans la feuille (LA CARTE
                  DU DIRECT), le JS ne touche qu'aux classes d'etat. -->
             <div class="bb-lv-fond" aria-hidden="true">
-              <img src="/media/img/Duo_Baobabs___contre-plong_e_snmhff.webp" alt="" loading="lazy" decoding="async">
+              <img src="/media/img/Duo_Baobabs___contre-plong_e_snmhff.webp" alt="" loading="lazy" decoding="async" srcset="/i/800/media/img/Duo_Baobabs___contre-plong_e_snmhff.webp 800w, /i/1600/media/img/Duo_Baobabs___contre-plong_e_snmhff.webp 1600w" sizes="(max-width: 760px) 342px, 1375px">
               <span></span>
             </div>
             <div id="bb-live-header">
@@ -4865,12 +4893,12 @@ window.bbLienSur = function (u) {
                que le hero, dans les couleurs du club. Elle suit l'affiche
                de l'evenement (bbEvPeindre). -->
           <div class="bb-ev-fond" aria-hidden="true">
-            <img id="bb-ev-fond-img" src="/media/img/tournoi-nouakchott-2026-t.webp" alt="" loading="lazy" decoding="async">
+            <img id="bb-ev-fond-img" src="/media/img/tournoi-nouakchott-2026-t.webp" alt="" loading="lazy" decoding="async" srcset="/i/1200/media/img/tournoi-nouakchott-2026-t.webp 1200w, /i/1600/media/img/tournoi-nouakchott-2026-t.webp 1600w" sizes="(max-width: 760px) 410px, 1650px">
             <span></span>
           </div>
           <div class="bb-ev-grid">
             <button type="button" class="bb-ev-aff" id="bb-ev-aff" aria-label="Voir l'affiche en grand">
-              <img id="bb-ev-poster" src="/media/img/tournoi-nouakchott-2026-t.webp" alt="Affiche du Tournoi Women’s Sport International de basketball feminin, Nouakchott, du 23 au 29 septembre 2026" loading="lazy" decoding="async">
+              <img id="bb-ev-poster" src="/media/img/tournoi-nouakchott-2026-t.webp" alt="Affiche du Tournoi Women’s Sport International de basketball feminin, Nouakchott, du 23 au 29 septembre 2026" loading="lazy" decoding="async" srcset="/i/1200/media/img/tournoi-nouakchott-2026-t.webp 1200w, /i/1600/media/img/tournoi-nouakchott-2026-t.webp 1600w" sizes="(max-width: 760px) 410px, 1650px">
               <span id="bb-ev-aff-label" data-bb="ev_affiche_label">Voir l'affiche</span>
             </button>
 
@@ -4966,7 +4994,7 @@ window.bbLienSur = function (u) {
         <div class="bb-ps">
           <div class="bb-ps-grid">
             <div class="bb-ps-player" id="bb-ps-player" role="button" tabindex="0" aria-label="Lire la vidéo de la pré-saison">
-              <img id="bb-ps-poster" src="/media/video/presaison-2026-2027-poster.webp" alt="Pré-saison 2026–2027 des Baobabs Basket Club" width="810" height="1440" loading="lazy" decoding="async">
+              <img id="bb-ps-poster" src="/media/video/presaison-2026-2027-poster.webp" alt="Pré-saison 2026–2027 des Baobabs Basket Club" width="810" height="1440" loading="lazy" decoding="async" srcset="/i/480/media/video/presaison-2026-2027-poster.webp 480w, /i/640/media/video/presaison-2026-2027-poster.webp 640w" sizes="(max-width: 760px) 238px, 258px">
               <button type="button" class="bb-vplay" aria-label="Lire la vidéo">
                 <svg class="bb-vplay-lire" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
                 <svg class="bb-vplay-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z"/></svg>
@@ -5032,7 +5060,7 @@ window.bbLienSur = function (u) {
              photos empilées, c'était six écrans de défilement. -->
         <div class="bb-det">
           <div class="bb-detvid" id="bb-detvid" role="button" tabindex="0" aria-label="Résumé filmé de la journée de détection">
-            <img id="bb-det-poster" src="/media/video/detection-2026-07-poster.webp" alt="Le terrain des Baobabs pendant la journée de détection" width="810" height="1440" loading="lazy" decoding="async">
+            <img id="bb-det-poster" src="/media/video/detection-2026-07-poster.webp" alt="Le terrain des Baobabs pendant la journée de détection" width="810" height="1440" loading="lazy" decoding="async" srcset="/i/640/media/video/detection-2026-07-poster.webp 640w, /i/800/media/video/detection-2026-07-poster.webp 800w" sizes="(max-width: 760px) 342px, 318px">
             <button type="button" class="bb-vplay is-muet" aria-label="Lire la vidéo">
               <svg class="bb-vplay-lire" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
               <svg class="bb-vplay-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z"/></svg>
@@ -5219,13 +5247,13 @@ window.bbLienSur = function (u) {
                 <div class="bb-tel-ecran">
                   <div class="bb-tel-ilot"></div>
                   <div class="bb-tel-statut"><b>9:41</b><span><i class="bb-tel-sig"></i><i class="bb-tel-wifi"></i><i class="bb-tel-bat"></i></span></div>
-                  <div class="bb-tel-tete"><b><img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="" loading="lazy" decoding="async">Baobabs</b><i class="bb-tel-cloche"></i></div>
+                  <div class="bb-tel-tete"><b><img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="" loading="lazy" decoding="async" srcset="/i/200/media/img/BBC_-_COLORED_LOGO_jjcrux.webp 200w" sizes="(max-width: 760px) 64px, 83px">Baobabs</b><i class="bb-tel-cloche"></i></div>
                   <div class="bb-tel-page">
                     <div class="bb-tel-live">
-                      <img id="bb-asc-live-img" src="/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp" alt="" loading="lazy" decoding="async">
+                      <img id="bb-asc-live-img" src="/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp" alt="" loading="lazy" decoding="async" srcset="/i/320/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp 320w, /i/480/media/img/Person_on_basketball_court_2K_202607220359_qdn8q9.webp 480w" sizes="(max-width: 760px) 123px, 172px">
                       <div class="bb-tel-live-pill"><i></i><span id="bb-asc-live">EN DIRECT · Q4</span></div>
                       <div class="bb-tel-score">
-                        <div><img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="" loading="lazy" decoding="async"><small>Baobabs</small></div>
+                        <div><img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="" loading="lazy" decoding="async" srcset="/i/200/media/img/BBC_-_COLORED_LOGO_jjcrux.webp 200w" sizes="(max-width: 760px) 64px, 83px"><small>Baobabs</small></div>
                         <b id="bb-asc-score">78<span>:</span>72</b>
                         <div><i></i><small id="bb-asc-opp">LOUGA</small></div>
                       </div>
@@ -5303,7 +5331,7 @@ window.bbLienSur = function (u) {
       <div class="bb-try-grid" style="position:relative;z-index:1;max-width:1500px;margin:0 auto;padding:0 clamp(16px,4vw,24px);display:grid">
         <div class="r-portrait-wrap">
           <div class="r-portrait-halo"></div>
-          <img class="r-portrait" width="900" height="1200" fetchpriority="low" src="/media/img/18_juil._2026_02_12_16-Photoroom_dm3j1p.webp" alt="Un membre des Baobabs en maillot vert, détection" loading="lazy" decoding="async">
+          <img class="r-portrait" width="900" height="1200" fetchpriority="low" src="/media/img/18_juil._2026_02_12_16-Photoroom_dm3j1p.webp" alt="Un membre des Baobabs en maillot vert, détection" loading="lazy" decoding="async" srcset="/i/480/media/img/18_juil._2026_02_12_16-Photoroom_dm3j1p.webp 480w, /i/800/media/img/18_juil._2026_02_12_16-Photoroom_dm3j1p.webp 800w" sizes="(max-width: 760px) 343px, 212px">
         </div>
         <div class="r-content" style="position:relative;display:flex;flex-direction:column">
           <div class="r r-eye" style="display:flex;align-items:center;gap:10px"><span style="width:7px;height:7px;border-radius:50%;background:#A8D93B"></span><span style="font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.22em;color:#A8D93B;text-transform:uppercase" data-bb="try-kicker">Détection clôturée · Saison 2026–2027</span></div>
@@ -5619,7 +5647,7 @@ window.bbLienSur = function (u) {
       <div class="bb-try-grid" style="position:relative;z-index:1;max-width:1500px;margin:0 auto;padding:0 clamp(16px,4vw,24px);display:grid;align-items:end">
         <div class="r-portrait-wrap" style="position:relative;align-self:end;justify-self:center;width:100%">
           <div style="position:absolute;left:50%;bottom:6%;width:78%;height:22%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(168,217,59,.35),transparent 70%);filter:blur(18px);z-index:0"></div>
-          <img class="r-portrait" width="900" height="1200" fetchpriority="low" src="/media/img/18_juil._2026_02_12_16-Photoroom_dm3j1p.webp" alt="Un membre des Baobabs en maillot vert — détection" style="position:relative;z-index:1;width:100%;height:auto;display:block;filter:drop-shadow(0 16px 28px rgba(0,0,0,.38))" loading="eager" decoding="async">
+          <img class="r-portrait" width="900" height="1200" fetchpriority="low" src="/media/img/18_juil._2026_02_12_16-Photoroom_dm3j1p.webp" alt="Un membre des Baobabs en maillot vert — détection" style="position:relative;z-index:1;width:100%;height:auto;display:block;filter:drop-shadow(0 16px 28px rgba(0,0,0,.38))" loading="eager" decoding="async" srcset="/i/480/media/img/18_juil._2026_02_12_16-Photoroom_dm3j1p.webp 480w, /i/800/media/img/18_juil._2026_02_12_16-Photoroom_dm3j1p.webp 800w" sizes="(max-width: 760px) 343px, 212px">
         </div>
 
         <div class="r-content" style="position:relative;display:flex;flex-direction:column;gap:20px">
@@ -5890,7 +5918,7 @@ window.bbLienSur = function (u) {
   <!-- ===== FOOTER ===== -->
   <div id="bb-tribu" style="padding:clamp(40px,5vw,56px) 0;background:linear-gradient(155deg,#0F4030,#081C13);text-align:center">
     <div style="max-width:1500px;margin:0 auto;padding:0 clamp(16px,4vw,24px)">
-      <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" style="width:64px;height:64px;object-fit:contain;margin:0 auto 18px" loading="lazy" decoding="async">
+      <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" style="width:64px;height:64px;object-fit:contain;margin:0 auto 18px" loading="lazy" decoding="async" srcset="/i/200/media/img/BBC_-_COLORED_LOGO_jjcrux.webp 200w" sizes="(max-width: 760px) 64px, 83px">
       <h3 data-bb-reveal data-reveal-step="60" style="font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(24px,3.6vw,36px);letter-spacing:-.015em;color:#F3EFE6;margin:0 0 10px" id="bb-tribu-title">Rejoins la tribu Baobabs</h3>
       <p id="bb-tribu-text" style="font-size:15px;color:#C7CFC8;margin:0 0 26px">Billets, boutique, actus : ne rate rien de la saison.</p>
       <div id="bb-footer-ctas" style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
@@ -6035,7 +6063,7 @@ window.bbLienSur = function (u) {
       <div id="bb-footer-desktop" style="display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:40px;margin-bottom:44px">
         <div>
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
-            <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" style="width:48px;height:48px;object-fit:contain" loading="lazy" decoding="async">
+            <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" style="width:48px;height:48px;object-fit:contain" loading="lazy" decoding="async" srcset="/i/200/media/img/BBC_-_COLORED_LOGO_jjcrux.webp 200w" sizes="(max-width: 760px) 64px, 83px">
             <div style="font-family:'Inter',sans-serif;font-weight:800;font-size:17px;color:#F3EFE6;letter-spacing:.05em;line-height:1.25">BAOBABS<br>BASKET CLUB</div>
           </div>
           <p data-bb="footer-text" style="font-size:13px;color:#7E8A82;line-height:1.75;max-width:32ch;margin:0 0 20px">Club de basketball fondé à Dakar en 2026. Former, gagner, faire grandir une communauté autour du jeu.</p>
@@ -6055,7 +6083,7 @@ window.bbLienSur = function (u) {
       <div id="bb-footer-mobile" class="bb-hide">
         <div style="margin-bottom:36px">
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
-            <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" style="width:46px;height:46px;object-fit:contain" loading="lazy" decoding="async">
+            <img src="/media/img/BBC_-_COLORED_LOGO_jjcrux.webp" alt="Baobabs Basket Club" style="width:46px;height:46px;object-fit:contain" loading="lazy" decoding="async" srcset="/i/200/media/img/BBC_-_COLORED_LOGO_jjcrux.webp 200w" sizes="(max-width: 760px) 64px, 83px">
             <div style="font-family:'Inter',sans-serif;font-weight:800;font-size:16px;color:#F3EFE6;letter-spacing:.05em;line-height:1.3">BAOBABS<br>BASKET CLUB</div>
           </div>
           <p data-bb="footer-text" style="font-size:13px;color:#7E8A82;line-height:1.75;margin:0 0 20px">Club de basketball fondé à Dakar en 2026. Former, gagner, faire grandir une communauté autour du jeu.</p>
@@ -6510,29 +6538,34 @@ window.bbCloud = function(url, w){
   return url;
 };
 
-/* LE FILET. Si la transformation venait a manquer -- quota, panne --, ce
-   sont TOUTES les images du site qui disparaitraient d'un coup. Cet
-   ecouteur unique, pose a la racine, rattrape l'erreur et repointe sur le
-   fichier d'origine : le site reste entier, seulement plus lourd. Une
-   seule reprise par image, sinon une adresse morte boucle. */
-window.addEventListener('error', function (e) {
-  var el = e && e.target;
-  if (!el || el.tagName !== 'IMG' || el.dataset.bbRepli) return;
-  var u = el.currentSrc || el.src || '';
-  var repli = '';
-  if (u.indexOf('/storage/v1/render/image/public/') !== -1){
-    repli = u.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/').split('?')[0];
-  } else {
-    /* /i/<largeur>/media/... : la fonction de redimensionnement. En local
-       elle n'existe pas du tout, et le banc d'essai afficherait des carres
-       vides a la place des affiches. */
-    var m = /\/i\/\d+(\/media\/.+)$/.exec(u);
-    if (m) repli = m[1];
-  }
-  if (!repli) return;
-  el.dataset.bbRepli = '1';
-  el.src = repli;
-}, true);
+
+/* UNE SECONDE PASSE, AU CHARGEMENT. Le navigateur commence a chercher
+   les images en lisant le HTML, parfois avant meme que cet ecouteur ne
+   soit en place : releve au banc, cinq images restaient vides sans que
+   le filet ait rien vu. On repasse donc a la fin, et on rattrape celles
+   qui ont echoue trop tot. */
+window.addEventListener('load', function () {
+  setTimeout(function () {
+    var l = document.images, i, el, u, m, repli;
+    for (i = 0; i < l.length; i++) {
+      el = l[i];
+      if (!el.complete || el.naturalWidth || el.dataset.bbRepli) continue;
+      u = el.currentSrc || el.src || '';
+      repli = '';
+      if (u.indexOf('/storage/v1/render/image/public/') !== -1) {
+        repli = u.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/').split('?')[0];
+      } else {
+        m = /\/i\/\d+(\/media\/.+)$/.exec(u);
+        if (m) repli = m[1];
+      }
+      if (!repli) continue;
+      el.dataset.bbRepli = '1';
+      if (el.hasAttribute('srcset')) el.removeAttribute('srcset');
+      if (el.hasAttribute('sizes')) el.removeAttribute('sizes');
+      el.src = repli;
+    }
+  }, 900);
+});
 </script>
 <!-- Version figee et empreinte, comme dans admin-matchs.html : voir le
      commentaire la-bas pour le pourquoi et pour la commande qui
