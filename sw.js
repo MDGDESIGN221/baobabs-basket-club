@@ -131,3 +131,66 @@ self.addEventListener('fetch', function (e) {
   }
   /* tout le reste : le reseau, sans intermediaire */
 });
+
+/* =====================================================================
+   LES NOTIFICATIONS
+   ---------------------------------------------------------------------
+   Le serveur envoie un petit objet JSON ; ce fichier le transforme en
+   notification, et decide ou l'on tombe quand on la touche. Un message
+   illisible n'est pas une raison de ne rien afficher : le club aura
+   quand meme sonne, et le supporter saura qu'il se passe quelque chose.
+
+   Le « tag » fait qu'un second message sur le MEME match remplace le
+   premier au lieu de s'empiler : un score qui se corrige deux fois ne
+   doit pas laisser trois notifications sur le telephone.
+   ===================================================================== */
+self.addEventListener('push', function (e) {
+  var d = {};
+  try { d = e.data ? e.data.json() : {}; }
+  catch (x) { d = { corps: e.data ? e.data.text() : '' }; }
+
+  var titre = d.titre || 'Baobabs Basket Club';
+  var options = {
+    body: d.corps || '',
+    icon: d.image || '/favicon-192.png',
+    badge: '/favicon-96.png',
+    tag: d.tag || 'bbc',
+    renotify: d.renotify !== false,
+    lang: 'fr',
+    data: { url: d.url || '/' },
+    /* une notification de match merite qu'on la sente passer ; une
+       notification de service, non */
+    vibrate: d.discret ? undefined : [90, 60, 90]
+  };
+  e.waitUntil(self.registration.showNotification(titre, options));
+});
+
+/* La toucher ouvre la bonne page -- la fiche du match, pas l'accueil --
+   et reutilise l'onglet du site s'il est deja ouvert. */
+self.addEventListener('notificationclick', function (e) {
+  e.notification.close();
+  var cible = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (fenetres) {
+      for (var i = 0; i < fenetres.length; i++) {
+        var f = fenetres[i];
+        if (f.url.indexOf(self.location.origin) === 0 && 'focus' in f) {
+          if ('navigate' in f) { try { f.navigate(cible); } catch (x) {} }
+          return f.focus();
+        }
+      }
+      return self.clients.openWindow(cible);
+    })
+  );
+});
+
+/* Un abonnement peut etre renouvele par le navigateur sans qu'on ait
+   rien demande. Sans ce rattrapage, le telephone cesse de recevoir en
+   silence, et personne ne le sait. */
+self.addEventListener('pushsubscriptionchange', function (e) {
+  e.waitUntil(
+    self.clients.matchAll({ includeUncontrolled: true }).then(function (l) {
+      l.forEach(function (c) { c.postMessage('bbc-push-renouveler'); });
+    })
+  );
+});
