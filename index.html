@@ -334,7 +334,7 @@ window.addEventListener('error', function (e) {
      marge de defilement. */
   #bb-bill-list{scroll-margin-top:96px}
   .bb-vise{outline:2px solid rgba(var(--bb-or-rgb),.85);outline-offset:10px;border-radius:14px;transition:outline-color .5s ease}
-  @media (prefers-reduced-motion:reduce){.bb-vise{transition:none}}
+  @media (prefers-reduced-motion:reduce){.bb-calme .bb-vise{transition:none}}
   .bb-temoin .bb-cookie,.bb-temoin #bb-cookie{display:none!important}
   img{-webkit-user-drag:none;-khtml-user-drag:none;-moz-user-drag:none;user-drag:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 
@@ -778,7 +778,7 @@ window.addEventListener('error', function (e) {
   .bb-sm, .bb-today{opacity:0;transform:translateY(10px);transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1)}
   .bb-sm.in, .bb-today.in{opacity:1;transform:none}
   @media(prefers-reduced-motion:reduce){
-    .bb-sm,.bb-today{opacity:1;transform:none;transition:none}
+    .bb-calme .bb-sm,.bb-calme .bb-today{opacity:1;transform:none;transition:none}
   }
   @media(max-width:560px){
     .bb-sm{grid-template-columns:1fr;gap:9px}
@@ -918,8 +918,8 @@ window.addEventListener('error', function (e) {
   .bb-ls-per{font-family:'Inter',sans-serif;font-weight:600;font-size:12px;opacity:.82;flex:none}
   .bb-ls-per sup{font-size:8px}
   @media(prefers-reduced-motion:reduce){
-    .bb-ls-tag i{animation:none}
-    .bb-ls-num.bump{animation:none}
+    .bb-calme .bb-ls-tag i{animation:none}
+    .bb-calme .bb-ls-num.bump{animation:none}
   }
   @media(max-width:640px){
     .bb-ls-per{display:none}
@@ -1325,7 +1325,7 @@ window.addEventListener('error', function (e) {
   .bb-vson .bb-vson-on{display:none}
   .bb-vson:not(.is-muet) .bb-vson-on{display:block}
   .bb-vson:not(.is-muet) .bb-vson-off{display:none}
-  @media(prefers-reduced-motion:reduce){ .bb-vplay{transition:none} }
+  @media(prefers-reduced-motion:reduce){.bb-calme .bb-vplay{transition:none}}
 
   /* résumé filmé de la détection */
   .bb-detvid{position:relative;width:100%;max-width:420px;margin:0 auto clamp(14px,2vw,20px);
@@ -1354,7 +1354,7 @@ window.addEventListener('error', function (e) {
     font-size:24px;line-height:1;cursor:pointer}
   .bb-lb-n{position:absolute;bottom:clamp(10px,2vw,22px);left:50%;transform:translateX(-50%);
     font-family:'Inter',sans-serif;font-weight:700;font-size:11.5px;letter-spacing:.14em;color:#C7CFC8}
-  @media(prefers-reduced-motion:reduce){ .bb-gal-i img{transition:none} }
+  @media(prefers-reduced-motion:reduce){.bb-calme .bb-gal-i img{transition:none}}
 
   /* --- cadrage réglé depuis l'admin ---
      Les six variables sont posées sur l'image par bbCadre(). Ces deux
@@ -1458,8 +1458,8 @@ window.addEventListener('error', function (e) {
   @keyframes bb-defile{from{transform:translateX(0)}to{transform:translateX(-50%)}}
   /* qui a demande moins d'animation obtient une bande fixe */
   @media(prefers-reduced-motion:reduce){
-    .bb-partners-piste{animation:none;width:auto;flex-wrap:wrap;justify-content:center}
-    .bb-partners-serie:nth-child(2){display:none}
+    .bb-calme .bb-partners-piste{animation:none;width:auto;flex-wrap:wrap;justify-content:center}
+    .bb-calme .bb-partners-serie:nth-child(2){display:none}
   }
   @media(max-width:520px){
     .st-bande .bb-partner-logo,.st-defile .bb-partner-logo{height:34px;min-width:56px;max-width:124px}
@@ -1577,9 +1577,20 @@ window.addEventListener('error', function (e) {
   /* Parallaxe liée au scroll, sans JS. Ignorée par les navigateurs qui ne
      savent pas la faire — la photo reste alors simplement fixe. */
   @supports (animation-timeline:view()){
-    @media (prefers-reduced-motion:no-preference){
-      #bb-hero-img,#bb-media-img{animation:bbPar linear both;animation-timeline:view();animation-range:entry 0% exit 100%}
-      .bb-flip-front .bb-pl-ph,.bb-flip-front>img{animation:bbParSoft linear both;animation-timeline:view();animation-range:entry 0% exit 100%}
+    /* Elle ne peut PAS vivre derriere « no-preference » : Windows annonce
+       « reduce » chez le proprietaire, et la parallaxe n'a donc jamais
+       joue une seule fois chez lui. Comme partout ailleurs dans ce
+       fichier, elle joue par defaut et se retire derriere .bb-calme. */
+    /* MESURE : #bb-hero-img n'obtient PAS bbPar. La ligne 3071 lui pose
+       bbHhSouffle (le zoom lent), meme specificite mais declaree plus
+       loin, donc elle gagne. Le hero respire, il ne parallaxe pas. On
+       garde son nom ici pour que le jour ou 3071 disparait, la
+       parallaxe reprenne -- mais ne pas y chercher un effet visible. */
+    #bb-hero-img,#bb-media-img{animation:bbPar linear both;animation-timeline:view();animation-range:entry 0% exit 100%}
+    .bb-flip-front .bb-pl-ph,.bb-flip-front>img{animation:bbParSoft linear both;animation-timeline:view();animation-range:entry 0% exit 100%}
+    @media (prefers-reduced-motion:reduce){
+      .bb-calme #bb-hero-img,.bb-calme #bb-media-img,
+      .bb-calme .bb-flip-front .bb-pl-ph,.bb-calme .bb-flip-front>img{animation:none}
     }
   }
   /* ===================================================================
@@ -1759,7 +1770,7 @@ window.addEventListener('error', function (e) {
   .bb-fav.on svg{fill:var(--bb-or);stroke:var(--bb-or)}
   .bb-shop-img{position:relative}
   .bb-sm .bb-fav{width:30px;height:30px;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
-  @media(prefers-reduced-motion:reduce){.bb-fav{transition:none}}
+  @media(prefers-reduced-motion:reduce){.bb-calme .bb-fav{transition:none}}
 
   /* Statistiques de la saison : un bloc à part, pour ne pas se confondre
      avec le gabarit de la joueuse. */
