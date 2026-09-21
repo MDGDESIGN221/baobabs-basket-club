@@ -3115,6 +3115,86 @@ window.bbLienSur = function (u) {
     white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;
   }
   #bb-next-match-detail > span.libre{ border-color:rgba(168,217,59,.5); color:#A8D93B }
+  /* ===================================================================
+     LE MOTION DESIGN DE LA CARTE DU MATCH
+     Trois couches : une entree choregraphiee, des mouvements qui
+     continuent, et la carte qui suit le curseur. Les delais sont
+     ecrits ici et nulle part ailleurs -- le JS ne fait que poser la
+     classe .bb-nm-anime, une fois l'ecran d'ouverture parti.
+     =================================================================== */
+  #bb-next-match{ --nm-rx:0deg; --nm-ry:0deg; --nm-lx:50%; --nm-ly:0%; }
+  /* la lueur qui suit le pointeur, sous le contenu */
+  #bb-next-match::before{
+    content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:0;
+    background:radial-gradient(360px circle at var(--nm-lx) var(--nm-ly), rgba(168,217,59,.16), transparent 62%);
+    opacity:0; transition:opacity .35s ease;
+  }
+  #bb-next-match > *{ position:relative; z-index:1 }
+  @media (hover:hover){
+    #bb-next-match{ transition:transform .5s cubic-bezier(.2,.7,.3,1), box-shadow .5s ease }
+    #bb-next-match.bb-nm-suit{
+      transform:perspective(1100px) rotateX(var(--nm-rx)) rotateY(var(--nm-ry));
+      transition:transform .14s linear, box-shadow .4s ease;
+      box-shadow:0 26px 60px -26px rgba(0,0,0,.7);
+    }
+    #bb-next-match.bb-nm-suit::before{ opacity:1 }
+    #bb-next-match.bb-nm-suit .bb-nm-team{ transform:scale(1.045) }
+  }
+  /* le survol agit sur la colonne, pas sur le logo : un logo qui flotte
+     deja ne peut pas recevoir un second transform */
+  .bb-nm-team{ transition:transform .4s cubic-bezier(.2,.7,.3,1) }
+
+  @keyframes bbNmCarte{ from{ opacity:0; translate:0 26px; scale:.975 } to{ opacity:1; translate:0 0; scale:1 } }
+  @keyframes bbNmDeLaGauche{ from{ opacity:0; transform:translate3d(-34px,0,0) rotate(-16deg) scale(.78) } to{ opacity:1; transform:none } }
+  @keyframes bbNmDeLaDroite{ from{ opacity:0; transform:translate3d(34px,0,0) rotate(16deg) scale(.78) } to{ opacity:1; transform:none } }
+  @keyframes bbNmChoc{ 0%{ opacity:0; transform:scale(.35) rotate(-14deg) } 58%{ opacity:1; transform:scale(1.22) rotate(4deg) } 100%{ opacity:1; transform:none } }
+  @keyframes bbNmMonte{ from{ opacity:0; transform:translate3d(0,11px,0) } to{ opacity:1; transform:none } }
+  @keyframes bbNmGlisse{ from{ opacity:0; transform:translate3d(-12px,0,0) } to{ opacity:1; transform:none } }
+  @keyframes bbNmPastille{ 0%{ opacity:0; transform:scale(.55) } 56%{ opacity:1; transform:scale(1.1) } 100%{ opacity:1; transform:none } }
+  @keyframes bbNmFlotte{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-5px) } }
+  @keyframes bbNmRespire{ 0%,100%{ transform:scale(1) } 50%{ transform:scale(1.08) } }
+  @keyframes bbNmEclat{ 0%{ transform:translateX(-140%) skewX(-18deg) } 22%,100%{ transform:translateX(420%) skewX(-18deg) } }
+
+  /* L'ENTREE. Rien ne bouge tant que la classe n'est pas posee : sans
+     cet etat de repos, la carte apparaitrait une premiere fois sans
+     animation, puis sauterait au debut de la sienne. */
+  #bb-next-match.bb-nm-pret > *{ opacity:0 }
+  /* L'ENTREE DE LA CARTE N'UTILISE PAS « transform ». Une animation qui
+     retient son etat final l'emporte sur toute regle CSS : tant qu'elle
+     y posait un transform, la carte refusait de s'incliner sous le
+     curseur. Et sans etat final retenu, elle restait invisible -- son
+     opacite de depart vient de la revelation au defilement du hero.
+     « translate » et « scale » sont des proprietes a part entiere : elles
+     se composent avec « transform » au lieu de l'ecraser. */
+  #bb-next-match.bb-nm-anime{ animation:bbNmCarte .66s cubic-bezier(.16,.8,.3,1) both }
+  #bb-next-match.bb-nm-anime #bb-hs-matchlabel{ animation:bbNmGlisse .5s .08s cubic-bezier(.16,.8,.3,1) both }
+  #bb-next-match.bb-nm-anime #bb-next-match-badge{ animation:bbNmPastille .54s .16s cubic-bezier(.16,.8,.3,1) both }
+  #bb-next-match.bb-nm-anime .bb-hh-mt-h{ opacity:1 }
+  #bb-next-match.bb-nm-anime #bb-next-match-teams{ opacity:1 }
+  #bb-next-match.bb-nm-anime .bb-nm-team.g .bb-nm-logo{ animation:bbNmDeLaGauche .62s .24s cubic-bezier(.2,.9,.3,1.1) both, bbNmFlotte 5.4s 1.3s ease-in-out infinite }
+  #bb-next-match.bb-nm-anime .bb-nm-team.d .bb-nm-logo{ animation:bbNmDeLaDroite .62s .24s cubic-bezier(.2,.9,.3,1.1) both, bbNmFlotte 6.1s 1.7s ease-in-out infinite }
+  #bb-next-match.bb-nm-anime .bb-nm-name{ animation:bbNmMonte .5s .44s cubic-bezier(.16,.8,.3,1) both }
+  #bb-next-match.bb-nm-anime .bb-nm-vs{ animation:bbNmChoc .6s .52s cubic-bezier(.2,.9,.3,1.2) both, bbNmRespire 3.4s 1.4s ease-in-out infinite }
+  #bb-next-match.bb-nm-anime #bb-next-match-info{ animation:bbNmMonte .52s .62s cubic-bezier(.16,.8,.3,1) both }
+  #bb-next-match.bb-nm-anime #bb-next-match-detail{ opacity:1 }
+  #bb-next-match.bb-nm-anime #bb-next-match-detail > span{ animation:bbNmMonte .46s cubic-bezier(.16,.8,.3,1) both; animation-delay:calc(.72s + var(--i,0) * .07s) }
+  #bb-next-match.bb-nm-anime #bb-hs-ticket{ animation:bbNmMonte .5s .92s cubic-bezier(.16,.8,.3,1) both }
+
+  /* l'eclat qui balaie la pastille du score, toutes les six secondes */
+  #bb-next-match-badge{ position:relative; overflow:hidden }
+  #bb-next-match.bb-nm-anime #bb-next-match-badge::after{
+    content:""; position:absolute; top:-40%; bottom:-40%; left:0; width:34%;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+    animation:bbNmEclat 6s 2.2s linear infinite; pointer-events:none;
+  }
+
+  /* ANIMATIONS REDUITES : le geste reste, le mouvement s'en va. Tout
+     retombe sur un fondu, et plus rien ne tourne en boucle. */
+  .bb-calme #bb-next-match.bb-nm-anime,
+  .bb-calme #bb-next-match.bb-nm-anime *{ animation-name:bbNmFondu !important; animation-duration:.4s !important; animation-iteration-count:1 !important }
+  .bb-calme #bb-next-match.bb-nm-anime #bb-next-match-badge::after{ display:none }
+  .bb-calme #bb-next-match.bb-nm-suit{ transform:none !important }
+  @keyframes bbNmFondu{ from{ opacity:0 } to{ opacity:1 } }
   #bb-hs-ticket{
     display:flex; align-items:center; justify-content:center; gap:8px;
     font-family:'Inter',sans-serif; font-weight:800; font-size:12px;
@@ -15036,6 +15116,69 @@ document.addEventListener('keydown', function(e){
   // s'il y en a un, sinon le dernier joue, score saisi ou pas. Sans match
   // a venir, elle gardait son gabarit d'attente -- une affiche inventee,
   // « DUC Dakar · SAM 12 JUIL · J-3 », en haut du site.
+
+  /* =====================================================================
+     LA CHOREGRAPHIE DE LA CARTE DU MATCH
+     Le dessin est dans le CSS ; ici, seulement QUAND il se joue et le
+     suivi du curseur.
+
+     L'ATTENTE DE L'ECRAN D'OUVERTURE est le point important : la carte
+     est rendue des que les matchs arrivent, c'est-a-dire pendant que le
+     splash couvre encore la page. Jouee la, l'entree ne serait vue de
+     personne. On attend donc que <html> perde bb-splash-lock, avec une
+     limite de six secondes pour le cas ou le splash resterait coince.
+     ===================================================================== */
+  var bbNmMinuteur = null;
+  function bbNmChoregraphie(){
+    var c = document.getElementById('bb-next-match');
+    if (!c || c.classList.contains('bb-hide')) return;
+    c.classList.add('bb-nm-pret');
+    var jouer = function(){
+      c.classList.remove('bb-nm-anime');
+      void c.offsetWidth;   /* sans cette lecture, reposer la classe ne relance rien */
+      c.classList.add('bb-nm-anime');
+    };
+    clearInterval(bbNmMinuteur);
+    if (document.documentElement.classList.contains('bb-splash-lock')){
+      var essais = 0;
+      bbNmMinuteur = setInterval(function(){
+        essais++;
+        if (!document.documentElement.classList.contains('bb-splash-lock') || essais > 50){
+          clearInterval(bbNmMinuteur); jouer();
+        }
+      }, 120);
+    } else jouer();
+  }
+
+  /* LA CARTE SUIT LE CURSEUR. Quelques degres d'inclinaison et une lueur
+     posee sous le pointeur. Rien de tout cela sur un ecran tactile : une
+     inclinaison qui suit un doigt qu'on ne voit pas ne veut rien dire, et
+     le flou d'arriere-plan de la carte coute deja cher a redessiner. */
+  function bbNmSuivreCurseur(){
+    var c = document.getElementById('bb-next-match');
+    if (!c || c.__bbNmSuit) return;
+    if (!(window.matchMedia && window.matchMedia('(hover:hover)').matches)) return;
+    c.__bbNmSuit = true;
+    var cadre = null;
+    c.addEventListener('pointerenter', function(){ cadre = c.getBoundingClientRect(); });
+    c.addEventListener('pointermove', function(e){
+      if (window.bbCalme && window.bbCalme()) return;
+      if (!cadre) cadre = c.getBoundingClientRect();
+      var x = (e.clientX - cadre.left) / cadre.width - .5;
+      var y = (e.clientY - cadre.top) / cadre.height - .5;
+      c.style.setProperty('--nm-ry', (x * 9).toFixed(2) + 'deg');
+      c.style.setProperty('--nm-rx', (-y * 7).toFixed(2) + 'deg');
+      c.style.setProperty('--nm-lx', ((x + .5) * 100).toFixed(1) + '%');
+      c.style.setProperty('--nm-ly', ((y + .5) * 100).toFixed(1) + '%');
+      c.classList.add('bb-nm-suit');
+    });
+    c.addEventListener('pointerleave', function(){
+      cadre = null;
+      c.classList.remove('bb-nm-suit');
+      c.style.setProperty('--nm-rx', '0deg');
+      c.style.setProperty('--nm-ry', '0deg');
+    });
+  }
   function renderNextMatch(upcoming, played, attente){
     // Depose AVANT le garde-fou : sans match a venir, la pastille du
     // direct doit repasser au texte de l'admin, pas garder une date
@@ -15092,12 +15235,15 @@ document.addEventListener('keydown', function(e){
     var homeLogo = m.is_home ? '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp' : m.opponent_logo_url;
     var awayLogo = m.is_home ? m.opponent_logo_url : '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp';
 
-    function teamBlock(name, logo){
+    /* Le cote (g ou d) sert au motion design : le blason de gauche
+       entre par la gauche, celui de droite par la droite, et leur
+       rencontre declenche le « VS ». */
+    function teamBlock(name, logo, cote){
       var img = logo
-        ? '<img src="' + window.bbSafeUrl((window.bbCloud?window.bbCloud(logo,200):(logo)))+ '" alt="' + escHtml(name) + '" style="width:58px;height:58px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18)" loading="lazy" decoding="async">'
-        : '<div style="width:58px;height:58px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:16px;color:#fff;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
-      return '<div style="text-align:center;flex:1">' + img +
-        '<div style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">' + escHtml(name) + '</div></div>';
+        ? '<img class="bb-nm-logo" src="' + window.bbSafeUrl((window.bbCloud?window.bbCloud(logo,200):(logo)))+ '" alt="' + escHtml(name) + '" style="width:58px;height:58px;object-fit:contain;margin:0 auto 8px;border-radius:50%;background:#0c1913;border:1px solid rgba(243,239,230,.18);display:block" loading="lazy" decoding="async">'
+        : '<div class="bb-nm-logo" style="width:58px;height:58px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-family:\'Space Grotesk\',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:16px;color:#fff;background:' + fallbackColor(name) + '">' + escHtml(initials(name)) + '</div>';
+      return '<div class="bb-nm-team ' + cote + '" style="text-align:center;flex:1">' + img +
+        '<div class="bb-nm-name" style="font-family:\'Inter\',sans-serif;font-weight:600;font-size:15px;color:#F3EFE6">' + escHtml(name) + '</div></div>';
     }
 
     var badgeEl = document.getElementById('bb-next-match-badge');
@@ -15105,9 +15251,9 @@ document.addEventListener('keydown', function(e){
 
     var teamsRow = document.getElementById('bb-next-match-teams');
     if (teamsRow) {
-      teamsRow.innerHTML = teamBlock(homeName, homeLogo) +
+      teamsRow.innerHTML = teamBlock(homeName, homeLogo, 'g') +
         '<div class="bb-nm-vs" style="font-family:\'Archivo Black\',sans-serif;font-weight:400;font-size:22px;color:#A8D93B">VS</div>' +
-        teamBlock(awayName, awayLogo);
+        teamBlock(awayName, awayLogo, 'd');
     }
 
     var infoBlock = document.getElementById('bb-next-match-info');
@@ -15134,10 +15280,13 @@ document.addEventListener('keydown', function(e){
       if (m.round_label) puces.push(['', m.round_label]);
       puces.push(['', m.is_home ? 'À domicile' : 'À l\'extérieur']);
       if (!dernier && m.free_entry) puces.push(['libre', 'Entrée gratuite']);
-      det.innerHTML = puces.map(function(p){
-        return '<span' + (p[0] ? ' class="' + p[0] + '"' : '') + '>' + escHtml(p[1]) + '</span>';
+      det.innerHTML = puces.map(function(p, i){
+        return '<span' + (p[0] ? ' class="' + p[0] + '"' : '') + ' style="--i:' + i + '">' + escHtml(p[1]) + '</span>';
       }).join('');
     }
+
+    bbNmChoregraphie();
+    bbNmSuivreCurseur();
   }
 
   // ===== Calendrier (matchs à venir) =====
