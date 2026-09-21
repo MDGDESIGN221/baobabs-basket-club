@@ -6522,12 +6522,34 @@ window.bbLargeurUtile = function(w){
    club, continuait d'afficher la photo de secours du HTML -- 171 x 96
    pixels etires sur 1110 x 711. Cette fonction est le seul endroit par
    ou passent ces remplacements. */
-window.bbPoserImage = function(el, url){
+window.bbPoserImage = function(el, url, memoire){
   if (!el || !url) return;
   if (el.hasAttribute('srcset')) el.removeAttribute('srcset');
   if (el.hasAttribute('sizes')) el.removeAttribute('sizes');
   el.src = url;
+  /* on retient l'adresse pour la prochaine visite : voir bbHeroMemoire */
+  if (memoire) { try { localStorage.setItem(memoire, url); } catch (e) {} }
 };
+
+/* LA PHOTO DE SECOURS NE DOIT SE VOIR QU'UNE FOIS DANS UNE VIE.
+   Le hero porte une photo ecrite en dur : il faut bien montrer quelque
+   chose avant que les reglages du club n'arrivent par le reseau. C'est
+   elle que le president voyait « revenir depuis des mois ». On repose
+   donc, tout de suite, la derniere photo qu'il a choisie -- retenue par
+   le navigateur a la visite precedente. */
+window.bbHeroMemoire = function(){
+  var paires = [['bb-hero-img', 'bbc_hero'], ['bb-media-img', 'bbc_media']];
+  paires.forEach(function(pr){
+    var u = null;
+    try { u = localStorage.getItem(pr[1]); } catch (e) { return; }
+    if (!u || u.indexOf('http') !== 0) return;
+    var el = document.getElementById(pr[0]);
+    if (el) window.bbPoserImage(el, u);
+  });
+};
+document.addEventListener('DOMContentLoaded', function(){
+  try { window.bbHeroMemoire(); } catch (e) {}
+});
 window.bbCloud = function(url, w){
   if (!url) return url;
   if (/\.svg($|\?)/i.test(url)) return url;
@@ -12570,7 +12592,7 @@ window.addEventListener('load', function () {
     bbSet('bb-media-title', s.md_title);
     bbSet('bb-media-tag', s.md_tag);
     bbSet('bb-media-caption', s.md_caption);
-    if(s.md_image_url){ var im=document.getElementById('bb-media-img'); if(im){ window.bbPoserImage(im, (window.bbCloud?window.bbCloud(s.md_image_url,1800):(s.md_image_url))); if(s.md_caption) im.alt=s.md_caption; } }
+    if(s.md_image_url){ var im=document.getElementById('bb-media-img'); if(im){ window.bbPoserImage(im, (window.bbCloud?window.bbCloud(s.md_image_url,1800):(s.md_image_url)), 'bbc_media'); if(s.md_caption) im.alt=s.md_caption; } }
     bbCadre(document.getElementById('bb-media-img'), s, 'md_image_url');
     bbCadre(document.getElementById('bb-media-2-img'), s, 'md2_image_url');
     bbCadre(document.getElementById('bb-media-3-img'), s, 'md3_image_url');
@@ -14250,7 +14272,7 @@ window.addEventListener('load', function () {
 
   function applyHero(s){
     if(!s) return;
-    if(s.hero_image_url){ var im=document.getElementById('bb-hero-img'); if(im) window.bbPoserImage(im, (window.bbCloud?window.bbCloud(s.hero_image_url,1800):(s.hero_image_url))); }
+    if(s.hero_image_url){ var im=document.getElementById('bb-hero-img'); if(im) window.bbPoserImage(im, (window.bbCloud?window.bbCloud(s.hero_image_url,1800):(s.hero_image_url)), 'bbc_hero'); }
     // Hors du test ci-dessus : on peut vouloir recadrer l'image livree avec
     // le site sans la remplacer.
     bbCadre(document.getElementById('bb-hero-img'), s, 'hero_image_url');
