@@ -22,10 +22,31 @@
    ===================================================================== */
 'use strict';
 
-var satori = require('satori');
-satori = satori && satori.default ? satori.default : satori;
-var Resvg = require('@resvg/resvg-js').Resvg;
-var sharp = require('sharp');
+/* LES DEPENDANCES SE CHARGENT DANS LE HANDLER, PAS EN TETE DE FICHIER.
+   Un require qui echoue au chargement du module rend FUNCTION_
+   INVOCATION_FAILED : Vercel repond 500 avant d'entrer dans le code,
+   et aucun try/catch ne peut le rattraper. Or og:image designe cette
+   adresse : une dependance absente casserait alors TOUS les partages.
+   Ici, elle fait seulement retomber sur la banniere du club. */
+var satori = null, Resvg = null, sharp = null, chargement = null;
+function charger(){
+  if (chargement) return chargement;
+  chargement = { ok: true, modules: {} };
+  try {
+    var s = require('satori');
+    satori = s && s.default ? s.default : s;
+    chargement.modules.satori = typeof satori;
+  } catch (e){ chargement.ok = false; chargement.modules.satori = 'ECHEC : ' + (e && e.message); }
+  try {
+    Resvg = require('@resvg/resvg-js').Resvg;
+    chargement.modules.resvg = typeof Resvg;
+  } catch (e){ chargement.ok = false; chargement.modules.resvg = 'ECHEC : ' + (e && e.message); }
+  try {
+    sharp = require('sharp');
+    chargement.modules.sharp = typeof sharp;
+  } catch (e){ chargement.ok = false; chargement.modules.sharp = 'ECHEC : ' + (e && e.message); }
+  return chargement;
+}
 
 var SB_URL = 'https://lmwbwasupqkvswukieav.supabase.co';
 var SB_KEY = 'sb_publishable_68RKprorqTmVkzjHrKgdZw_h-AcMXRh';
@@ -236,7 +257,24 @@ function rendre(noeud, ttf){
 }
 
 module.exports = function(req, res){
+  var etat = charger();
   var type = String(req.query.type || ''), id = String(req.query.id || '');
+  /* faute de pouvoir lire les journaux de Vercel d'ici : ce que la
+     fonction a reussi a charger, en clair */
+  if (type === 'etat'){
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.end(JSON.stringify({ ok: etat.ok, modules: etat.modules, node: process.version }, null, 1));
+    return;
+  }
+  if (!etat.ok){
+    try { console.error('[og] dependances : ' + JSON.stringify(etat.modules)); } catch (x) {}
+    res.statusCode = 302;
+    res.setHeader('Location', '/og-banner.png');
+    res.end();
+    return;
+  }
   if ((type !== 'match' && type !== 'joueuse') || !UUID.test(id)){
     res.statusCode = 302;
     res.setHeader('Location', '/og-banner.png');
