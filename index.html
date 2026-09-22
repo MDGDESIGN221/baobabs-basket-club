@@ -3939,6 +3939,124 @@ window.addEventListener('error', function (e) {
     .bb-calme .bb-bl-cta{ transition:none } .bb-calme .bb-bl-cta:hover{ transform:none }
   }
 </style>
+<style id="bb-tv-css">
+/* =====================================================================
+   BAOBABS TV : LE REGISTRE DE CE QU'ON A FILME
+   ---------------------------------------------------------------------
+   Une colonne datee, pas une vitrine. On reprend la gouttiere et le fil
+   de la colonne de saison (740 a 776) : le site sait deja dire « une
+   archive » avec ce vocabulaire, inutile d'en inventer un second.
+
+   AUCUNE @media (prefers-reduced-motion) ici, volontairement. Le JS
+   pose « anime » sur le fil seulement s'il animera pour de bon. Sans
+   cette classe, rien n'est masque : la section reste lisible sans JS,
+   et chez qui a demande le calme.
+   ===================================================================== */
+
+  .bb-tv-tete{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:clamp(18px,2.6vw,26px)}
+  .bb-tv-kick{font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;color:var(--bb-or);text-transform:uppercase;border-left:2px solid currentColor;padding-left:10px}
+  .bb-tv-titre{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:-.02em;font-size:clamp(28px,4vw,44px);color:#F3EFE6;margin:8px 0 0}
+  .bb-tv-chapo{max-width:56ch;font-size:15px;line-height:1.65;color:#C7CFC8;margin:10px 0 0;text-wrap:pretty}
+  /* La section annonce sa taille. Une TV qui cache qu'elle n'a que deux
+     films a l'air de faire semblant ; une qui l'annonce a l'air de
+     commencer. */
+  .bb-tv-compte{font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#7E8A82;flex:none;white-space:nowrap}
+
+  /* Le rail de categories n'est dessine qu'a partir de trois categories
+     distinctes, et c'est le JS qui compte. Une piece d'interface qui
+     n'a rien a filtrer ne doit pas exister. */
+  .bb-tv-rail{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:clamp(14px,2vw,20px)}
+  .bb-tv-cat{font-family:'Inter',sans-serif;font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:7px 13px;border-radius:99px;border:1px solid rgba(243,239,230,.18);background:transparent;color:#C7CFC8;cursor:pointer;transition:border-color .25s ease,background-color .25s ease,color .25s ease}
+  .bb-tv-cat:hover{border-color:rgba(243,239,230,.34);color:#F3EFE6}
+  .bb-tv-cat.on{border-color:#A8D93B;background:rgba(168,217,59,.08);color:#F3EFE6}
+
+  /* LE FIL. Meme gouttiere que .bb-season : le point et la date vivent
+     dedans, en position absolue, et la ligne commence apres. */
+  .bb-tv-fil{position:relative;list-style:none;margin:0;padding:0 0 0 clamp(58px,7vw,92px)}
+  /* Deux voies dans la gouttiere, qui ne se croisent jamais : la date
+     contre le bord, le fil derriere elle. Mesure a 1536 px : date de 0
+     a 44, pastille de 65,5 a 74,5. La colonne de saison met les deux au
+     meme endroit, mais elle n'a pas de vignette a caler ensuite. */
+  .bb-tv-fil::before{content:'';position:absolute;left:clamp(50px,5.6vw,70px);top:8px;bottom:8px;width:1px;background:linear-gradient(180deg,rgba(var(--bb-or-rgb),.5),rgba(243,239,230,.12))}
+
+  .bb-tv-l{position:relative;border-bottom:1px solid rgba(243,239,230,.07)}
+  .bb-tv-l:last-child{border-bottom:none}
+  .bb-tv-l.off{display:none}
+  .bb-tv-btn{position:relative;width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:clamp(12px,2vw,20px);padding:clamp(13px,1.9vw,19px) 0;background:none;border:0;color:inherit;text-align:left;cursor:pointer;font:inherit}
+  .bb-tv-btn:focus-visible{outline:2px solid rgba(var(--bb-or-rgb),.85);outline-offset:6px;border-radius:10px}
+
+  .bb-tv-node{position:absolute;left:calc(clamp(50px,5.6vw,70px) - clamp(58px,7vw,92px) - 4.5px);top:50%;translate:0 -50%;width:9px;height:9px;border-radius:50%;background:#0A1B0D;border:1.5px solid rgba(243,239,230,.28)}
+  /* La mise en avant ne prend pas la forme d'un grand lecteur : un halo
+     dore et un titre d'un cran plus haut suffisent. C'est le traitement
+     que .bb-sm.next recoit deja en vert (746). */
+  .bb-tv-l.une .bb-tv-node{background:var(--bb-or);border-color:var(--bb-or);box-shadow:0 0 0 4px rgba(var(--bb-or-rgb),.16)}
+
+  .bb-tv-date{position:absolute;left:calc(0px - clamp(58px,7vw,92px));top:50%;translate:0 -50%;width:clamp(34px,3.4vw,44px);text-align:center;font-family:'Inter',sans-serif;line-height:1.1}
+  .bb-tv-d{display:block;font-family:'Archivo Black',sans-serif;font-weight:400;font-size:clamp(17px,2vw,21px);letter-spacing:.01em;color:#F3EFE6}
+  .bb-tv-m{display:block;font-weight:700;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#7E8A82;margin-top:2px}
+
+  /* La vignette garde la forme des films du club, qui sont VERTICAUX
+     (affiches 810x1440). Un cadre 16/9 les afficherait en timbre. */
+  .bb-tv-vig{position:relative;width:clamp(46px,5.4vw,69px);aspect-ratio:3/4;border-radius:8px;overflow:hidden;background:#0c1913;border:1px solid rgba(243,239,230,.14);flex:none;transition:border-color .3s ease}
+  .bb-tv-vig img{width:100%;height:100%;object-fit:cover;display:block}
+  .bb-tv-vig::after{content:'';position:absolute;left:50%;top:50%;translate:-38% -50%;width:0;height:0;border-left:11px solid rgba(243,239,230,.92);border-top:7px solid transparent;border-bottom:7px solid transparent;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));transition:border-left-color .3s ease}
+
+  .bb-tv-t{display:block;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(14px,1.6vw,18px);letter-spacing:-.015em;color:#F3EFE6;line-height:1.25;transition:color .3s ease}
+  .bb-tv-l.une .bb-tv-t{font-size:clamp(16px,2vw,22px)}
+  .bb-tv-s{display:block;font-family:'Inter',sans-serif;font-size:11.5px;color:#7E8A82;margin-top:4px}
+  /* La duree se dit a droite en grand, ou dans le sous-titre sur
+     telephone -- jamais aux deux endroits. Le point median vit DANS
+     ce span : quand la duree manque, il part avec elle. */
+  .bb-tv-durm,.bb-tv-datem{display:none}
+  .bb-tv-dur{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:clamp(14px,1.7vw,19px);letter-spacing:.01em;color:#7E8A82;white-space:nowrap}
+
+  .bb-tv-btn:hover .bb-tv-t,.bb-tv-btn:focus-visible .bb-tv-t{color:#A8D93B}
+  .bb-tv-btn:hover .bb-tv-vig,.bb-tv-btn:focus-visible .bb-tv-vig{border-color:rgba(168,217,59,.5)}
+  .bb-tv-btn:hover .bb-tv-vig::after{border-left-color:#A8D93B}
+
+  .bb-tv-plus{margin:clamp(16px,2.4vw,22px) 0 0;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#A8D93B;background:none;border:0;padding:0;cursor:pointer}
+  .bb-tv-plus:hover{text-decoration:underline}
+
+  /* ------------------------------------------------- LE MOUVEMENT
+     « anime » est posee par le JS, et seulement s'il animera. Sans
+     elle, aucune ligne n'est masquee : c'est ce qui rend le repli
+     atteignable chez le proprietaire, la ou une media query echouerait.
+     Le decalage est plafonne a sept lignes, comme partout ailleurs dans
+     ce fichier (15794) : sans plafond, la vingtieme arriverait des
+     secondes trop tard. */
+  @keyframes bbTvLigne{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes bbTvPoint{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:scale(1)}}
+  @keyframes bbTvVig{from{clip-path:inset(100% 0 0 0)}to{clip-path:inset(0 0 0 0)}}
+  .bb-tv-fil.anime .bb-tv-l{opacity:0}
+  .bb-tv-fil.anime .bb-tv-l.vue{animation:bbTvLigne .62s cubic-bezier(.16,.8,.3,1) var(--d,0ms) both}
+  .bb-tv-fil.anime .bb-tv-l.vue .bb-tv-node{animation:bbTvPoint .5s cubic-bezier(.34,1.56,.64,1) calc(var(--d,0ms) + 160ms) both}
+  .bb-tv-fil.anime .bb-tv-l.vue .bb-tv-vig{animation:bbTvVig .56s cubic-bezier(.16,.8,.3,1) calc(var(--d,0ms) + 90ms) both}
+
+  /* LA FENETRE EN PAYSAGE. La regle 890 borne la video a un facteur
+     0.5625, c'est a dire du 9:16 : elle convient aux deux films du club
+     mais ecraserait un MP4 filme en largeur. On AJOUTE une regle, on ne
+     touche pas a celle-la -- son commentaire raconte qu'elle a deja
+     disparu une fois dans une tranche de CSS remplacee. La classe est
+     posee au chargement des metadonnees, quand on connait enfin la
+     forme reelle de la video. */
+  .bb-vid-modal.paysage video{max-width:min(100%,calc((100vh - 80px) * 1.7778))}
+
+  @media (max-width:760px){
+    /* La gouttiere n'a plus la place de deux voies : on garde le fil et
+       sa pastille, et la date rejoint le sous-titre, ou elle se lit
+       aussi bien et ne serre personne. */
+    .bb-tv-fil{padding-left:28px}
+    .bb-tv-fil::before{left:10px}
+    .bb-tv-date{display:none}
+    .bb-tv-datem{display:inline}
+    .bb-tv-node{left:calc(10px - 28px - 4.5px)}
+    /* Le grand chiffre de duree ecraserait un titre sur deux lignes :
+       il redescend en mention dans le sous-titre, ecrite par le JS. */
+    .bb-tv-btn{grid-template-columns:auto minmax(0,1fr)}
+    .bb-tv-dur{display:none}
+    .bb-tv-durm{display:inline}
+  }
+</style>
 <style id="bb-fiches-css">
 /* =====================================================================
    LES FICHES DE MATCH ET DE JOUEUSE
@@ -5089,6 +5207,25 @@ window.addEventListener('error', function (e) {
             <p class="bb-gal-glisse">Faites glisser pour voir les autres photos →</p>
           </div>
         </div>
+      </section>
+
+      <!-- ===== BAOBABS TV =====
+           Un registre date, pas une vitrine : le club a deux videos, et
+           une colonne de deux lignes est une colonne normale la ou une
+           grille de deux cartes est un trou. La section reste cachee
+           tant que la table « videos » ne rend rien. -->
+      <section id="bb-tv" class="bb-hide" style="padding:clamp(40px,6vw,72px) 0 0">
+        <div class="bb-tv-tete">
+          <div>
+            <span class="bb-tv-kick">Baobabs TV</span>
+            <h2 class="bb-tv-titre">Tout ce qu'on a filmé</h2>
+            <p class="bb-tv-chapo">Les résumés, les journées, les matchs revus. Ce que le club a gardé en images, rangé par date.</p>
+          </div>
+          <span class="bb-tv-compte" id="bb-tv-compte"></span>
+        </div>
+        <div class="bb-tv-rail bb-hide" id="bb-tv-rail"></div>
+        <ol class="bb-tv-fil" id="bb-tv-fil"></ol>
+        <button type="button" class="bb-tv-plus bb-hide" id="bb-tv-plus"></button>
       </section>
 
       <section id="bb-actus" class="bb-hide" style="padding:clamp(40px,6vw,72px) 0 0">
@@ -11940,6 +12077,198 @@ window.addEventListener('load', function () {
     });
   }
 
+  /* ===================================================================
+     BAOBABS TV : LE REGISTRE DE CE QU'ON A FILME
+     -------------------------------------------------------------------
+     Une ligne par video, dans la gouttiere datee de la colonne de
+     saison. Un clic ouvre la fenetre plein ecran du site.
+
+     CE QUE « source » PEUT VALOIR, ET CE QU'ON EN FAIT :
+       /media/...  ou  https://<projet>.supabase.co/...
+           -> lecture EN PLACE dans #bb-vid-modal, par bbOpenVideo.
+       un lien YouTube ou Facebook
+           -> un onglet, jamais un cadre. Raison : la CSP n'autorise
+              media-src que depuis le site, blob: et Supabase, donc un
+              fichier heberge ailleurs serait bloque par le navigateur
+              sans qu'aucune erreur ne remonte au JS. Et le club n'a
+              aucune chaine : yt_channel_id et social_youtube sont vides.
+     =================================================================== */
+  var bbTv = { lignes: [], cat: '', tout: false, oeil: null };
+  var BB_TV_MOIS = ['janv.', 'févr.', 'mars', 'avril', 'mai', 'juin',
+                    'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+  var BB_TV_CATS = { club: 'Le club', match: 'Un match', ecole: "L'école",
+                     detection: 'Détection', coulisses: 'Coulisses' };
+  var BB_TV_MAX = 8;
+
+  function bbTvDuree(n){
+    n = Number(n || 0);
+    if (!n || n < 0) return '';
+    var m = Math.floor(n / 60), r = Math.round(n % 60);
+    return m + ':' + (r < 10 ? '0' : '') + r;
+  }
+
+  /* Un fichier que le navigateur acceptera de lire en place. Tout le
+     reste sort dans un onglet : voir la table de decision ci-dessus. */
+  function bbTvFichier(u){
+    var v = String(u == null ? '' : u).trim();
+    if (!v) return '';
+    if (v.charAt(0) === '/') return v;
+    if (/^https:\/\/[a-z0-9-]+\.supabase\.co\//i.test(v)) return v;
+    return '';
+  }
+
+  function bbTvLigne(v, i){
+    var d = String(v.publie_le || '').slice(0, 10).split('-');
+    var jour = d.length === 3 ? String(Number(d[2])) : '';
+    var mois = d.length === 3 ? (BB_TV_MOIS[Number(d[1]) - 1] || '') : '';
+    var cat = String(v.categorie || 'club');
+    var dur = bbTvDuree(v.duree_s);
+    var poster = v.poster_url ? bbImg(v.poster_url, 200) : '';
+    return '<li class="bb-tv-l' + (v.a_la_une ? ' une' : '') + '"' +
+             ' data-cat="' + bbEch(cat) + '" data-i="' + i + '">' +
+        '<button type="button" class="bb-tv-btn">' +
+          '<span class="bb-tv-node"></span>' +
+          (jour ? '<span class="bb-tv-date"><span class="bb-tv-d">' + bbEch(jour) +
+                  '</span><span class="bb-tv-m">' + bbEch(mois) + '</span></span>' : '') +
+          '<span class="bb-tv-vig">' +
+            (poster ? '<img src="' + poster + '" alt="" width="69" height="92" loading="lazy" decoding="async">' : '') +
+          '</span>' +
+          '<span>' +
+            '<span class="bb-tv-t">' + bbEch(v.titre || 'Sans titre') + '</span>' +
+            '<span class="bb-tv-s">' +
+            (jour ? '<span class="bb-tv-datem">' + bbEch(jour + ' ' + mois) + ' · </span>' : '') +
+            bbEch(BB_TV_CATS[cat] || cat) +
+              (dur ? '<span class="bb-tv-durm"> · ' + bbEch(dur) + '</span>' : '') +
+            '</span>' +
+          '</span>' +
+          /* pas de separateur orphelin quand la duree manque : la
+             journee de detection est justement en base sans duree */
+          (dur ? '<span class="bb-tv-dur">' + bbEch(dur) + '</span>' : '<span></span>') +
+        '</button>' +
+      '</li>';
+  }
+
+  function bbTvRendre(){
+    var sec = document.getElementById('bb-tv'), fil = document.getElementById('bb-tv-fil');
+    if (!sec || !fil || !bbTv.lignes.length) return;
+
+    var vues = bbTv.cat
+      ? bbTv.lignes.filter(function(v){ return String(v.categorie || 'club') === bbTv.cat; })
+      : bbTv.lignes;
+    var bornees = bbTv.tout ? vues : vues.slice(0, BB_TV_MAX);
+    fil.innerHTML = bornees.map(bbTvLigne).join('');
+
+    /* Le compteur dit la verite : une section qui annonce sa taille ne
+       peut pas etre accusee de faire semblant d'etre pleine. */
+    var c = document.getElementById('bb-tv-compte');
+    if (c) c.textContent = bbTv.lignes.length + (bbTv.lignes.length > 1 ? ' vidéos' : ' vidéo');
+
+    /* Le bouton n'existe que s'il reste vraiment quelque chose. */
+    var plus = document.getElementById('bb-tv-plus');
+    if (plus){
+      var reste = vues.length - bornees.length;
+      plus.classList.toggle('bb-hide', reste <= 0);
+      if (reste > 0) plus.textContent = 'Les ' + reste + (reste > 1 ? ' autres vidéos' : ' autre vidéo') + ' →';
+    }
+
+    bbTvAnimer(fil);
+    sec.classList.remove('bb-hide');
+  }
+
+  /* LE MOUVEMENT EST DECIDE ICI, PAS PAR UNE MEDIA QUERY. Le navigateur
+     du proprietaire annonce « reduce » en permanence : une regle de
+     repli en @media tuerait l'animation chez lui. On pose « anime »
+     seulement si on animera, et le CSS ne masque rien sans elle. */
+  function bbTvAnimer(fil){
+    var calme = window.bbCalme && window.bbCalme();
+    if (calme || !('IntersectionObserver' in window)){
+      fil.classList.remove('anime');
+      return;
+    }
+    fil.classList.add('anime');
+    if (bbTv.oeil) bbTv.oeil.disconnect();
+    bbTv.oeil = new IntersectionObserver(function(entrees, oeil){
+      entrees.forEach(function(e){
+        if (!e.isIntersecting) return;
+        /* decalage plafonne a sept, comme partout dans ce fichier */
+        var i = Number(e.target.getAttribute('data-i') || 0);
+        e.target.style.setProperty('--d', (Math.min(i, 6) * 70) + 'ms');
+        e.target.classList.add('vue');
+        oeil.unobserve(e.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: .12 });
+    var lignes = fil.querySelectorAll('.bb-tv-l');
+    for (var i = 0; i < lignes.length; i++) bbTv.oeil.observe(lignes[i]);
+    /* Filet : une section demasquee tard peut n'etre jamais observee a
+       temps. Au bout de deux secondes, ce qui n'a pas ete vu s'affiche. */
+    setTimeout(function(){
+      var r = fil.querySelectorAll('.bb-tv-l:not(.vue)');
+      for (var j = 0; j < r.length; j++) r[j].classList.add('vue');
+    }, 2000);
+  }
+
+  function bbTvRail(){
+    var rail = document.getElementById('bb-tv-rail');
+    if (!rail) return;
+    var vues = [];
+    bbTv.lignes.forEach(function(v){
+      var c = String(v.categorie || 'club');
+      if (vues.indexOf(c) === -1) vues.push(c);
+    });
+    /* Moins de trois categories : il n'y a rien a filtrer, le rail
+       n'existe pas. On compte, on ne devine pas. */
+    if (vues.length < 3){ rail.classList.add('bb-hide'); rail.innerHTML = ''; return; }
+    rail.innerHTML = '<button type="button" class="bb-tv-cat' + (bbTv.cat ? '' : ' on') + '" data-cat="">Tout</button>' +
+      vues.map(function(c){
+        return '<button type="button" class="bb-tv-cat' + (bbTv.cat === c ? ' on' : '') +
+               '" data-cat="' + bbEch(c) + '">' + bbEch(BB_TV_CATS[c] || c) + '</button>';
+      }).join('');
+    rail.classList.remove('bb-hide');
+  }
+
+  function bbTvBrancher(){
+    var sec = document.getElementById('bb-tv');
+    if (!sec || sec.__bbTvArme) return;
+    sec.__bbTvArme = true;
+
+    sec.addEventListener('click', function(e){
+      var cat = e.target.closest && e.target.closest('.bb-tv-cat');
+      if (cat){
+        bbTv.cat = cat.getAttribute('data-cat') || '';
+        bbTv.tout = false;
+        bbTvRail(); bbTvRendre();
+        return;
+      }
+      var plus = e.target.closest && e.target.closest('#bb-tv-plus');
+      if (plus){ bbTv.tout = true; bbTvRendre(); return; }
+
+      var li = e.target.closest && e.target.closest('.bb-tv-l');
+      if (!li) return;
+      var i = Number(li.getAttribute('data-i') || 0);
+      var vues = bbTv.cat
+        ? bbTv.lignes.filter(function(v){ return String(v.categorie || 'club') === bbTv.cat; })
+        : bbTv.lignes;
+      var v = vues[i];
+      if (!v) return;
+      var place = bbTvFichier(v.source);
+      if (place){ bbOpenVideo(place); return; }
+      /* Ni fichier du site ni Supabase : un onglet, jamais un cadre. */
+      var sortie = window.bbLienSur ? window.bbLienSur(v.source) : '';
+      if (sortie) window.open(sortie, '_blank', 'noopener');
+    });
+
+    /* LA FENETRE S'ADAPTE A LA FORME DU FILM. On ne connait sa forme
+       qu'une fois les metadonnees lues. La regle 890 est ecrite pour du
+       9:16 ; .paysage est une regle AJOUTEE, elle n'y touche pas. */
+    var vEl = document.getElementById('bb-vid-el'), vMod = document.getElementById('bb-vid-modal');
+    if (vEl && vMod && !vEl.__bbTvForme){
+      vEl.__bbTvForme = true;
+      vEl.addEventListener('loadedmetadata', function(){
+        vMod.classList.toggle('paysage', vEl.videoWidth > vEl.videoHeight);
+      });
+    }
+  }
+
   function bbHydrate(){
     // Les deux tables peuvent ne pas exister : le site doit continuer de
     // fonctionner si la migration n'a pas encore été passée.
@@ -12110,6 +12439,18 @@ window.addEventListener('load', function () {
         if (photos.length) window.bbDetGalerie.photos(photos);
       })
       .catch(function(){});
+
+    /* Baobabs TV. Si la table n'existe pas encore, on tombe dans le
+       .catch et la section reste cachee : c'est le comportement du
+       site, mais cela veut dire que rien, depuis la page, ne dira que
+       la migration n'a pas ete collee dans Supabase. */
+    sbFetch('videos?select=id,titre,chapo,source,poster_url,categorie,match_id,duree_s,a_la_une,publie_le' +
+            '&publie=is.true&order=a_la_une.desc,ordre.asc,publie_le.desc&limit=24')
+      .then(bbPoser.videos = function(rows){
+        if (!rows || !rows.length) return;
+        bbTv.lignes = rows;
+        bbTvBrancher(); bbTvRail(); bbTvRendre();
+      }).catch(function(){});
 
     sbFetch('news?select=*&order=sort.asc,published_at.desc&limit=12').then(bbPoser.news = function(rows){
       // Filet de sécurité côté site : la politique de lecture en base exclut
@@ -15734,7 +16075,7 @@ document.addEventListener('keydown', function(e){
   document.documentElement.classList.add('bb-motion');
 
   var FULL = ['#bb-hero-left','#bb-hero-img-wrap','#bb-live-wrap','#bb-evenement','#bb-lineup',
-              '#bb-actus','#bb-media-shop','#bb-shop-home','#bb-app','#bb-org',
+              '#bb-tv','#bb-actus','#bb-media-shop','#bb-shop-home','#bb-app','#bb-org',
               '#bb-fo','#bb-nl','#bb-camp','#bb-tribu','footer'];
   var GROUPS = ['#bb-hero-haut > *','#bb-hero-left > *','#bb-hero-overlays > *','#bb-hs-figures > *',
                 '#bb-actus-grid > *','#bb-home-products > *','#bb-media-grid > *',

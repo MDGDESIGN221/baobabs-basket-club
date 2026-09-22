@@ -73,12 +73,12 @@ create policy "videos write auth" on public.videos
 insert into public.videos (titre, chapo, source, poster_url, categorie, duree_s, a_la_une, publie_le, ordre)
 select v.titre, v.chapo, v.source, v.poster, v.cat, v.duree, v.une, v.le, v.ordre
 from (values
-  ('Pre-saison 2026-2027',
-   'Le travail commence ici. Reprise pour les seniors feminines.',
+  ('Pré-saison 2026-2027',
+   'Le travail commence ici. Reprise pour les seniors féminines.',
    '/media/video/presaison-2026-2027.mp4',
    '/media/video/presaison-2026-2027-poster.webp',
    'club', 17, true, date '2026-09-05', 0),
-  ('La journee de detection',
+  ('La journée de détection',
    'Deux jours, un terrain, et tous ceux qui sont venus tenter leur chance.',
    '/media/video/detection-2026-07.mp4',
    '/media/video/detection-2026-07-poster.webp',
