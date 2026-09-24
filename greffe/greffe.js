@@ -906,7 +906,8 @@
       li.innerHTML =
         '<span class="gf-pol-pastille">' + (ok ? '✓' : '') + '</span>' +
         '<span class="gf-pol-nom">' + ech(b.nom)
-        + (douteux ? ' <em style="color:#E2574C;font-style:normal">· italique déposée (' + ech(resNoms[b.cle]) + ') : Tout retirer, puis déposer la version droite</em>' : '') + '</span>' +
+        + (douteux ? ' <em style="color:#E2574C;font-style:normal">· italique déposée (' + ech(resNoms[b.cle]) + ') : glissez ici « '
+            + ech(b.nom.replace(/\s+/g, '-')) + '.ttf »</em>' : '') + '</span>' +
         '<span class="gf-pol-poids">' + (ok ? poids(res[b.cle]) : 'manquant') + '</span>';
       ul.appendChild(li);
     });
@@ -923,7 +924,9 @@
     var fichiers = Array.prototype.slice.call(liste || []);
     if (!fichiers.length) return;
 
-    var restants = BESOINS.filter(function (b) { return !res[b.cle]; });
+    /* une case vide, ou tenue par une italique à tort : un dépôt la remplit
+       (sans « Tout retirer », qui obligeait à redéposer les onze fichiers) */
+    var restants = BESOINS.filter(function (b) { return !res[b.cle] || ressourceDouteuse(b, { nom: resNoms[b.cle] }); });
     var poses = 0, ignores = [];
 
     fichiers.reduce(function (p, f) {
