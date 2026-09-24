@@ -8849,6 +8849,32 @@
       }
     };
   }
+  // LE COFFRE DU GREFFE (bucket prive greffe-coffre, 24 septembre 2026).
+  // Les polices, l'encre et le cachet, deposes une fois par le
+  // proprietaire : chaque poste admis les recoit a l'ouverture du Greffe.
+  // Ici on transporte, avec la session du compte ; c'est la base qui dit
+  // qui lit quoi (polices a qui ouvre, signature et cachet a qui signe,
+  // ecriture au proprietaire seul). Sans le script SQL, lister echoue et
+  // le Greffe reste au depot a la main, comme avant.
+  var GREFFE_COFFRE = 'greffe-coffre';
+  function greffeCoffre(){
+    if (!sb || !sb.storage) return null;
+    var seau = function(){ return sb.storage.from(GREFFE_COFFRE); };
+    var net = function(r){ if (r.error) throw r.error; return r.data; };
+    return {
+      lister: function(dossier){
+        return seau().list(dossier, { limit: 100 }).then(net).then(function(liste){
+          return (liste || []).filter(function(o){ return o && o.id && o.name && o.name.charAt(0) !== '.'; }).map(function(o){
+            return { chemin: dossier + '/' + o.name, maj: Date.parse(o.updated_at || o.created_at || '') || 0 };
+          });
+        });
+      },
+      lire: function(chemin){ return seau().download(chemin).then(net); },
+      ecrire: function(chemin, blob){
+        return seau().upload(chemin, blob, { upsert: true, cacheControl: '0', contentType: blob.type || 'application/octet-stream' }).then(net);
+      }
+    };
+  }
   /* ==================================================================
      LE GREFFE S'OUVRE A TROIS CASQUETTES
      ------------------------------------------------------------------
@@ -8893,7 +8919,7 @@
      mayaVisage : son visage, dessine en un seul endroit (suiteVisage).
      Le Greffe ne sait rien d'elle au-dela de ces deux mots. */
   function greffeContexte(plus){
-    var c = { proprietaire: cpJeSuisProprio(), role: currentRole, greffe: greffeNiveau, base: greffeBase(),
+    var c = { proprietaire: cpJeSuisProprio(), role: currentRole, greffe: greffeNiveau, base: greffeBase(), coffre: greffeCoffre(),
               maya: function(q){ mayaParler(q || null); },
               mayaVisage: function(){ return suiteVisage(true); } };
     Object.keys(plus || {}).forEach(function(k){ c[k] = plus[k]; });

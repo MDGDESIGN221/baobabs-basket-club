@@ -509,28 +509,31 @@
   /* =================================================================
      3. LE POSTE : polices, cachet, et le registre des actes
      ================================================================= */
+  /* coffre : le dossier du coffre du club où la ressource vit. « polices »
+     va à tout compte qui ouvre le Greffe ; « signature » (l'encre et le
+     cachet) à qui signe seulement : la base tient la même règle. */
   var BESOINS = [
     { cle: 'organetto', groupe: 'Polices', nom: 'Organetto ExpUltraBold', jeton: 'organetto',
-      famille: 'Organetto', graisse: 800, italique: false },
+      famille: 'Organetto', graisse: 800, italique: false, coffre: 'polices' },
     { cle: 'gilroy800', groupe: 'Polices', nom: 'Gilroy ExtraBold', jeton: 'gilroyextrabold',
-      famille: 'Gilroy', graisse: 800, italique: false },
+      famille: 'Gilroy', graisse: 800, italique: false, coffre: 'polices' },
     { cle: 'gilroy700', groupe: 'Polices', nom: 'Gilroy Bold', jeton: 'gilroybold',
-      famille: 'Gilroy', graisse: 700, italique: false },
+      famille: 'Gilroy', graisse: 700, italique: false, coffre: 'polices' },
     { cle: 'gilroy600', groupe: 'Polices', nom: 'Gilroy SemiBold', jeton: 'gilroysemibold',
-      famille: 'Gilroy', graisse: 600, italique: false },
+      famille: 'Gilroy', graisse: 600, italique: false, coffre: 'polices' },
     { cle: 'gilroy500', groupe: 'Polices', nom: 'Gilroy Medium', jeton: 'gilroymedium',
-      famille: 'Gilroy', graisse: 500, italique: false },
+      famille: 'Gilroy', graisse: 500, italique: false, coffre: 'polices' },
     { cle: 'inter400',  groupe: 'Polices', nom: 'Inter Regular', jeton: 'interregular',
-      famille: 'InterDoc', graisse: 400, italique: false },
+      famille: 'InterDoc', graisse: 400, italique: false, coffre: 'polices' },
     { cle: 'inter400i', groupe: 'Polices', nom: 'Inter Italic', jeton: 'interitalic',
-      famille: 'InterDoc', graisse: 400, italique: true },
+      famille: 'InterDoc', graisse: 400, italique: true, coffre: 'polices' },
     { cle: 'inter500',  groupe: 'Polices', nom: 'Inter Medium', jeton: 'intermedium',
-      famille: 'InterDoc', graisse: 500, italique: false },
+      famille: 'InterDoc', graisse: 500, italique: false, coffre: 'polices' },
     { cle: 'inter600',  groupe: 'Polices', nom: 'Inter SemiBold', jeton: 'intersemibold',
-      famille: 'InterDoc', graisse: 600, italique: false },
+      famille: 'InterDoc', graisse: 600, italique: false, coffre: 'polices' },
     { cle: 'paraphe',   groupe: 'Polices', nom: 'Holligate Signature', jeton: 'holligate',
-      famille: 'Paraphe', graisse: 400, italique: false },
-    { cle: 'cachet',    groupe: 'Cachet',  nom: 'Cachet de la présidence', jeton: null, image: true }
+      famille: 'Paraphe', graisse: 400, italique: false, coffre: 'signature' },
+    { cle: 'cachet',    groupe: 'Cachet',  nom: 'Cachet de la présidence', jeton: null, image: true, coffre: 'signature' }
   ];
 
   var DB_NOM = 'bbc-greffe', DB_VER = 5, MAG_RES = 'ressources', MAG_ACTES = 'actes', MAG_PRE = 'prereglages', MAG_REG = 'reglages', MAG_DOS = 'dossiers';
@@ -605,7 +608,8 @@
      l'ouverture ramene ce que ce poste n'a pas : le plus recent (maj)
      l'emporte. Une suppression est une pierre tombale (fiche.supprime)
      et non un effacement : sinon l'autre poste, qui a encore la copie,
-     la remonterait. Les polices et le cachet ne montent jamais.
+     la remonterait. Les polices et le cachet ne passent jamais par
+     ces tables : ils ont leur coffre, plus bas (5 bis).
      L'hote fournit api.base = { tout, poser, oter } ; sans lui, rien ne
      change et le Greffe reste local, comme avant.
      ================================================================= */
@@ -657,6 +661,94 @@
   }
   function dbOter(magasin, cle) {
     return dbOterLocal(magasin, cle).then(function () { return miroirOter(magasin, cle); });
+  }
+
+  /* =================================================================
+     5 bis. LE COFFRE DU CLUB : POLICES, SIGNATURE, CACHET
+     « faire de ces polices des composants intégrants du Greffe, pareil
+     pour la signature et le cachet » (24 septembre 2026). Pas dans le
+     code : le dépôt et le site sont publics, et un cachet téléchargeable
+     par tous fabrique de faux actes. Dans un coffre privé (le bucket
+     greffe-coffre), que l'hôte lit avec la session du compte. Le
+     propriétaire y dépose une fois ; chaque poste admis y prend ce qui
+     lui manque à l'ouverture. La base tient la règle : les polices à qui
+     ouvre le Greffe, l'encre et le cachet à qui signe, l'écriture au
+     propriétaire seul.
+     L'hôte fournit api.coffre = { lister(dossier), lire(chemin),
+     ecrire(chemin, blob) } ; sans lui, on dépose à la main comme avant.
+     ================================================================= */
+  var coffreEtat = { dispo: false, recus: 0, envoyes: 0, erreur: null };
+  function coffreDispo() { return !!(api && api.coffre && typeof api.coffre.lire === 'function'); }
+  function cheminCoffre(b) { return b.coffre + '/' + b.cle; }
+  /* un compte qui compose sans signer n'a ni l'encre ni le cachet : il
+     ne les attend pas, et le Greffe ne le bloque pas faute de les avoir */
+  function besoinsDuCompte() {
+    return BESOINS.filter(function (b) { return b.coffre !== 'signature' || !droits || droits.signer !== false; });
+  }
+  /* « Gilroy-BoldItalic.ttf » contient « gilroybold » : déposé dans la
+     case Gilroy Bold, il a mis en italique les noms des cartes de
+     signature (vu sur un PDF du 24 septembre 2026). Une italique dans une
+     case droite ne part pas au coffre, et la liste le signale. */
+  function ressourceDouteuse(b, rec) { return !b.image && !b.italique && /italic|oblique/i.test((rec && rec.nom) || ''); }
+  function uriEnBlob(uri) {
+    var m = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(String(uri || ''));
+    if (!m) return null;
+    var bin = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+    var octets = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) octets[i] = bin.charCodeAt(i);
+    return new Blob([octets], { type: m[1] || 'application/octet-stream' });
+  }
+  function coffreEnvoyer(b, rec) {
+    if (!coffreDispo() || api.proprietaire !== true || !rec || !rec.uri || ressourceDouteuse(b, rec)) return Promise.resolve(false);
+    var blob = uriEnBlob(rec.uri);
+    if (!blob) return Promise.resolve(false);
+    return Promise.resolve(api.coffre.ecrire(cheminCoffre(b), blob)).then(function () {
+      coffreEtat.envoyes++;
+      rec.coffreMaj = Date.now();
+      return dbPoserLocal(MAG_RES, rec).then(function () { return true; });
+    });
+  }
+  function coffreSynchroniser() {
+    if (!coffreDispo()) return Promise.resolve();
+    var proprio = api.proprietaire === true;
+    var dossiers = [];
+    besoinsDuCompte().forEach(function (b) { if (dossiers.indexOf(b.coffre) < 0) dossiers.push(b.coffre); });
+    return Promise.all(dossiers.map(function (d) {
+      return Promise.resolve(api.coffre.lister(d)).catch(function (e) { return { erreur: e }; });
+    })).then(function (listes) {
+      var ratees = listes.filter(function (l) { return !Array.isArray(l); });
+      if (ratees.length === listes.length) throw (ratees[0] && ratees[0].erreur) || new Error('coffre injoignable');
+      var distant = {};
+      listes.forEach(function (l) { if (Array.isArray(l)) l.forEach(function (o) { distant[o.chemin] = o.maj || 0; }); });
+      return dbTout(MAG_RES).then(function (locaux) {
+        var parCle = {}; locaux.forEach(function (o) { parCle[o.cle] = o; });
+        var p = Promise.resolve();
+        besoinsDuCompte().forEach(function (b) {
+          var ch = cheminCoffre(b), loc = parCle[b.cle], maj = distant[ch];
+          if (maj == null) {
+            /* ce que le propriétaire a et que le coffre n'a pas : il monte */
+            if (proprio && loc && loc.uri) p = p.then(function () { return coffreEnvoyer(b, loc); });
+            return;
+          }
+          /* le propriétaire est la source : sa copie d'avant le coffre est la bonne */
+          if (proprio && loc && loc.uri && !loc.coffreMaj && !ressourceDouteuse(b, loc)) {
+            p = p.then(function () { loc.coffreMaj = maj; return dbPoserLocal(MAG_RES, loc); });
+            return;
+          }
+          /* le coffre est la référence du club : ce qui manque ou a changé descend (une minute de jeu pour les horloges) */
+          if (!loc || !loc.uri || ressourceDouteuse(b, loc) || maj - (loc.coffreMaj || 0) > 60000) {
+            p = p.then(function () {
+              return Promise.resolve(api.coffre.lire(ch)).then(lireFichier).then(function (uri) {
+                coffreEtat.recus++;
+                return dbPoserLocal(MAG_RES, { cle: b.cle, nom: b.nom + ' (coffre du club)', uri: uri, coffreMaj: maj });
+              });
+            });
+          }
+        });
+        return p;
+      });
+    }).then(function () { coffreEtat.dispo = true; coffreEtat.erreur = null; },
+            function (e) { coffreEtat.dispo = false; coffreEtat.erreur = e && e.message ? e.message : String(e); console.warn('[Greffe] coffre', e); });
   }
 
   function lireFichier(f) {
@@ -711,6 +803,7 @@
      ================================================================= */
   var racine = null, api = null, ouvert = false;
   var res = {};                 /* cle -> dataURI */
+  var resNoms = {};             /* cle -> nom du fichier déposé (une italique mal rangée se voit à son nom) */
   var modeleActif = null;
   var donnees = {};
   var acteId = null, acteSauve = true;
@@ -784,7 +877,7 @@
      5. L'ÉCRAN DES RESSOURCES
      ================================================================= */
   function ressourcesCompletes() {
-    return BESOINS.every(function (b) { return !!res[b.cle]; });
+    return besoinsDuCompte().every(function (b) { return !!res[b.cle]; });
   }
 
   function poids(uri) {
@@ -798,7 +891,7 @@
     if (!ul) return;
     ul.innerHTML = '';
     var groupe = '';
-    BESOINS.forEach(function (b) {
+    besoinsDuCompte().forEach(function (b) {
       if (b.groupe !== groupe) {
         groupe = b.groupe;
         var t = document.createElement('li');
@@ -808,14 +901,22 @@
       }
       var li = document.createElement('li');
       var ok = !!res[b.cle];
+      var douteux = ok && ressourceDouteuse(b, { nom: resNoms[b.cle] });
       li.className = ok ? 'is-ok' : '';
       li.innerHTML =
         '<span class="gf-pol-pastille">' + (ok ? '✓' : '') + '</span>' +
-        '<span class="gf-pol-nom">' + ech(b.nom) + '</span>' +
+        '<span class="gf-pol-nom">' + ech(b.nom)
+        + (douteux ? ' <em style="color:#E2574C;font-style:normal">· italique déposée (' + ech(resNoms[b.cle]) + ') : Tout retirer, puis déposer la version droite</em>' : '') + '</span>' +
         '<span class="gf-pol-poids">' + (ok ? poids(res[b.cle]) : 'manquant') + '</span>';
       ul.appendChild(li);
     });
     if (elt.polSuite) elt.polSuite.disabled = !ressourcesCompletes();
+    if (elt.polCoffre) {
+      elt.polCoffre.textContent = !coffreDispo() ? ''
+        : !coffreEtat.dispo ? 'Coffre du club injoignable' + (coffreEtat.erreur ? ' (' + coffreEtat.erreur + ')' : '') + ' : les ressources se déposent ici, à la main.'
+        : api.proprietaire === true ? 'Coffre du club branché : ce que vous déposez ici y part aussi, et chaque poste admis le reçoit à l\'ouverture du Greffe.'
+        : 'Coffre du club branché : ce poste reçoit les ressources tout seul, à chaque ouverture du Greffe.';
+    }
   }
 
   function accepterFichiers(liste) {
@@ -835,7 +936,8 @@
         } else {
           for (var i = 0; i < restants.length; i++) {
             var b = restants[i];
-            if (b.jeton && n.indexOf(b.jeton) !== -1) { cible = b; break; }
+            /* une italique n'entre pas dans une case droite : « gilroybolditalic » contient « gilroybold » */
+            if (b.jeton && n.indexOf(b.jeton) !== -1 && (b.italique || !/italic|oblique/.test(n))) { cible = b; break; }
           }
         }
         if (!cible) { ignores.push(f.name); return; }
@@ -844,15 +946,23 @@
           .then(function (uri) { return cible.image ? alleger(uri, 620) : uri; })
           .then(function (uri) {
             res[cible.cle] = uri;
+            resNoms[cible.cle] = f.name;
             restants = restants.filter(function (b) { return b.cle !== cible.cle; });
             poses++;
-            return dbPoser(MAG_RES, { cle: cible.cle, nom: f.name, uri: uri });
+            var rec = { cle: cible.cle, nom: f.name, uri: uri };
+            return dbPoser(MAG_RES, rec).then(function () {
+              /* déposé par le propriétaire : part aussi au coffre du club */
+              return coffreEnvoyer(cible, rec).catch(function (e) {
+                coffreEtat.erreur = e && e.message ? e.message : String(e); console.warn('[Greffe] coffre', e);
+              });
+            });
           });
       });
     }, Promise.resolve()).then(function () {
       peindreListeRessources();
-      if (poses && !ignores.length) dire(poses + ' fichier' + (poses > 1 ? 's' : '') + ' reconnu' + (poses > 1 ? 's' : ''), 'ok');
-      else if (poses) dire(poses + ' reconnu(s), ' + ignores.length + ' ignoré(s)', 'ok');
+      var auCoffre = coffreEtat.envoyes ? ' · envoyé' + (poses > 1 ? 's' : '') + ' au coffre du club' : '';
+      if (poses && !ignores.length) dire(poses + ' fichier' + (poses > 1 ? 's' : '') + ' reconnu' + (poses > 1 ? 's' : '') + auCoffre, 'ok');
+      else if (poses) dire(poses + ' reconnu(s), ' + ignores.length + ' ignoré(s)' + auCoffre, 'ok');
       else dire('Aucun fichier reconnu. Vérifiez les noms.', 'erreur');
     }).catch(function (e) {
       dire('Enregistrement impossible : ' + (e && e.message ? e.message : e), 'erreur');
@@ -7011,7 +7121,7 @@
       ecranReg: $('gf-ecran-registre'), registre: $('gf-registre'),
       ecranPol: $('gf-ecran-polices'), ecranAtl: $('gf-ecran-atelier'),
       formTete: $('gf-form-tete'),
-      polListe: $('gf-pol-liste'), polSuite: $('gf-pol-suite'), polOublier: $('gf-pol-oublier'),
+      polListe: $('gf-pol-liste'), polSuite: $('gf-pol-suite'), polOublier: $('gf-pol-oublier'), polCoffre: $('gf-pol-coffre'),
       depot: $('gf-depot'), depotInput: $('gf-depot-input'),
       formDefile: $('gf-form-defile'),
       scene: $('gf-scene'), feuille: $('gf-feuille'), pages: $('gf-pages'),
@@ -7047,7 +7157,7 @@
       accepterFichiers(e.dataTransfer && e.dataTransfer.files);
     });
     elt.polOublier.addEventListener('click', function () {
-      dbVider(MAG_RES).then(function () { res = {}; peindreListeRessources(); dire('Ressources retirées', 'ok'); });
+      dbVider(MAG_RES).then(function () { res = {}; resNoms = {}; peindreListeRessources(); dire('Ressources retirées', 'ok'); });
     });
     elt.polSuite.addEventListener('click', function () {
       montrer(modeleActif ? 'atelier' : 'accueil');
@@ -7395,7 +7505,9 @@
     mayaBouton();
     /* le registre en base d'abord : ce poste recoit ce qu'il n'a pas,
        et seulement ensuite on lit le poste */
-    return chargerMoteur().then(synchroniser).then(function () {
+    /* puis le coffre du club : les polices, l'encre et le cachet qui
+       manquent à ce poste descendent avant qu'on lise les ressources */
+    return chargerMoteur().then(synchroniser).then(coffreSynchroniser).then(function () {
       return Promise.all([dbTout(MAG_RES), dbTout(MAG_ACTES), chargerBlason(), dbTout(MAG_PRE), dbTout(MAG_REG), dbTout(MAG_DOS)]);
     }).then(function (r) {
       dossiers = (r[5] || []).sort(function (a, b) { return (b.maj || 0) - (a.maj || 0); });
@@ -7404,7 +7516,7 @@
       ecouterCanal();
       /* le navigateur peut vider IndexedDB sous pression : on demande qu'il ne le fasse pas */
       try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().then(function (ok) { stockagePersistant = ok; }); } catch (e) {}
-      (r[0] || []).forEach(function (o) { res[o.cle] = o.uri; });
+      (r[0] || []).forEach(function (o) { res[o.cle] = o.uri; resNoms[o.cle] = o.nom || ''; });
       var regClub = (r[4] || []).filter(function (x) { return x.cle === 'club'; })[0];
       G.club = Object.assign({}, CLUB_DEFAUT, regClub && regClub.valeur ? regClub.valeur : {});
       registre = (r[1] || []).sort(function (a, b) { return b.maj - a.maj; });
@@ -7414,6 +7526,8 @@
       var fiche = rep && rep.acte !== 'accueil' ? registre.filter(function (a) { return a.id === rep.acte; })[0] : null;
       if (fiche && ressourcesCompletes()) { ouvrirActe(fiche); dire('Reprise : ' + (fiche.intitule || fiche.nom) + (fiche.numero ? ' n° ' + fiche.numero : ''), 'ok'); }
       else montrer(ressourcesCompletes() ? 'accueil' : 'polices');
+      if (!fiche && coffreEtat.recus) dire(coffreEtat.recus + ' ressource' + (coffreEtat.recus > 1 ? 's' : '') + ' reçue' + (coffreEtat.recus > 1 ? 's' : '') + ' du coffre du club', 'ok');
+      else if (!fiche && coffreEtat.envoyes) dire(coffreEtat.envoyes + ' ressource' + (coffreEtat.envoyes > 1 ? 's' : '') + ' envoyée' + (coffreEtat.envoyes > 1 ? 's' : '') + ' au coffre du club', 'ok');
       if (baseDispo() && baseEtat.hors) dire('Registre en base injoignable : les actes restent sur ce poste pour l\'instant', 'erreur');
       /* l'onglet qui se ferme ou se rafraîchit : l'acte part au registre avant */
       window.addEventListener('pagehide', function () { if (modeleActif && !acteSauve && acteEtat === 'brouillon') enregistrer(true); });
