@@ -508,7 +508,15 @@
       ".signs-row .sig-name{ font-size:16pt; }",
       ".signs-row .sig-paraphe{ width:30mm; }",
       ".signs-row .sig-cachet{ width:21mm; height:21mm; right:2mm; }",
+      /* lieuDessus : le lieu au-dessus, une ou deux cartes à leur pleine taille */
+      ".signs-dessus{ display:flex; gap:12pt; align-items:stretch; }",
+      ".signs-dessus .sign-card{ flex:1 1 0; }",
+      ".signs-dessus .sign-who{ flex-direction:column; gap:1pt; white-space:normal; }",
       ".place{ font-size:8.6pt; color:var(--encre); }",
+      /* un blanc à remplir au stylo dans une ligne (« Fait à …, le … ») */
+      ".a-remplir{ display:inline-block; min-width:12mm; height:.9em; vertical-align:baseline;",
+      "  border-bottom:1px dotted var(--gris-clair); }",
+      ".a-remplir.long{ min-width:58mm; }",
       ".closing-note{ margin-top:4pt; font-size:7.1pt; line-height:1.45; color:var(--gris); max-width:80mm; }",
       ".ref{ margin-top:6pt; display:inline-flex; align-items:center; gap:6pt;",
       "  border:1px solid var(--filet); border-radius:5pt; padding:4pt 8pt;",
@@ -527,6 +535,12 @@
       ".sign-name{ font-family:'Gilroy',sans-serif; font-weight:700; font-size:8.9pt;",
       "  color:var(--encre); line-height:1.3; }",
       ".sign-role{ font-size:7pt; color:var(--gris); }",
+      /* une carte qui porte un texte ou des champs : une colonne, l'encre en bas */
+      ".sign-plein{ display:flex; flex-direction:column; }",
+      ".sign-plein .ink-zone{ flex:1 0 auto; height:auto; min-height:24mm; }",
+      ".sign-avant{ margin-top:5pt; }",
+      ".sign-avant p{ font-size:7.4pt; line-height:1.45; max-width:none; }",
+      ".sign-plein .party-champs{ margin-top:5pt; }",
       ".sign-cta{ margin-top:3.5pt; border-top:1px solid var(--filet); padding-top:3.5pt;",
       "  font-size:6pt; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--gris-clair); }",
       ".ink-zone{ position:relative; height:24mm; margin-top:4pt; }",
@@ -658,6 +672,23 @@
        peut alors y écrire ; un texte que le modèle ne prévoit pas n'existe pas */
     if (!s.t && !(s.a && s.declare)) return '';
     return '<' + tag + (classe ? ' class="' + classe + '"' : '') + s.a + '>' + U.enLigne(s.t || '') + '</' + tag + '>';
+  }
+
+  /* Des champs « Étiquette : valeur » d'une partie ou d'une carte de
+     signature (« Née le », « Nom et qualité »). Renseigné, le champ
+     s'imprime ; vide, il devient une ligne en pointillé, à compléter au
+     stylo sur l'exemplaire signé, et qui s'écrit aussi sur la feuille. */
+  function champsPointilles(liste, d, ctx, pre) {
+    var html = (liste || []).map(function (c, k) {
+      var preC = pre + '.champs.' + k;
+      var L = slot(c, 'label', d, ctx, '', preC), V = slot(c, 'valeur', d, ctx, '', preC);
+      var v = String(V.t == null ? '' : V.t).trim();
+      return '<div class="party-champ' + (c.large ? ' large' : '') + '">'
+        + '<span class="k"' + L.a + '>' + U.enLigne(L.t || '') + '</span>'
+        + '<span class="' + (v ? 'v' : 'pointille') + '"' + V.a + '>' + U.enLigne(v) + '</span>'
+        + '</div>';
+    }).join('');
+    return html ? '<div class="party-champs">' + html + '</div>' : '';
   }
 
   function fond(ctx) {
@@ -958,21 +989,11 @@
       var ps = val(cfg.parties, d, ctx) || [];
       return '<section class="parties avoid">' + ps.map(function (p, j) {
         var pre = 'parties.' + j;
-        var champs = (p.champs || []).map(function (c, k) {
-          var preC = pre + '.champs.' + k;
-          var L = slot(c, 'label', d, ctx, '', preC), V = slot(c, 'valeur', d, ctx, '', preC);
-          var v = String(V.t == null ? '' : V.t).trim();
-          /* vide : une ligne pointillée, à remplir au stylo ; mais elle s'écrit aussi sur la feuille */
-          return '<div class="party-champ' + (c.large ? ' large' : '') + '">'
-            + '<span class="k"' + L.a + '>' + U.enLigne(L.t || '') + '</span>'
-            + '<span class="' + (v ? 'v' : 'pointille') + '"' + V.a + '>' + U.enLigne(v) + '</span>'
-            + '</div>';
-        }).join('');
         var tx = slot(p, 'texte', d, ctx, '', pre);
         return '<div class="party">' + ligne('span', 'label', slot(p, 'label', d, ctx, '', pre))
           + ligne('div', 'party-nom', slot(p, 'nom', d, ctx, '', pre))
           + ((tx.t || p.texte != null) ? slotTexte(p, 'texte', d, ctx, '', pre) : '')
-          + (champs ? '<div class="party-champs">' + champs + '</div>' : '')
+          + champsPointilles(p.champs, d, ctx, pre)
           + ligne('div', 'party-tag', slot(p, 'tag', d, ctx, '', pre))
           + '</div>';
       }).join('') + '</section>';
@@ -1075,13 +1096,17 @@
     /* Une carte : le lieu à gauche, la carte à droite. Deux cartes : elles
        se partagent la droite. Trois et plus (visa, signature, « lu et
        approuvé ») : le lieu passe au-dessus et les cartes prennent toute
-       la largeur, sinon l'encre n'aurait plus la place de s'étaler. */
+       la largeur, sinon l'encre n'aurait plus la place de s'étaler.
+       lieuDessus : le lieu au-dessus dès une ou deux cartes, chacune à sa
+       pleine taille, pour deux parties qui signent côte à côte (le
+       débiteur et le créancier d'une reconnaissance de dette). */
     signatures: function (cfg, d, ctx) {
       var gauche = val(cfg.gauche, d, ctx);
       var cartes = (val(cfg.cartes, d, ctx) || []);
       var enColonne = cartes.length > 2;
+      var dessus = !enColonne && val(cfg.lieuDessus, d, ctx) === true;
       var html = '<section class="closing avoid"><div class="closing-grid'
-        + (enColonne ? ' closing-col' : (cartes.length > 1 ? ' signs-2' : '')) + '">';
+        + (enColonne ? ' closing-col' : (dessus ? ' closing-col closing-dessus' : (cartes.length > 1 ? ' signs-2' : ''))) + '">';
       if (gauche) {
         /* lieuDate et note sont du HTML quand un modèle les calcule (un
            <b> autour de la date) : ils s'affichent tels quels tant qu'on
@@ -1097,7 +1122,8 @@
           + '</div>';
       }
       var htmlCartes = cartes.map(function (c, j) { return B.carteSignature(c, d, ctx, 'cartes.' + j); }).join('');
-      html += enColonne ? '<div class="signs-row">' + htmlCartes + '</div>' : htmlCartes;
+      html += enColonne ? '<div class="signs-row">' + htmlCartes + '</div>'
+        : (dessus ? '<div class="signs-dessus">' + htmlCartes + '</div>' : htmlCartes);
       return html + '</div></section>';
     },
 
@@ -1370,16 +1396,28 @@
     var nom = slot(c, 'nom', d, ctx, '', prefixe), qualite = slot(c, 'qualite', d, ctx, '', prefixe);
     var pour = slot(c, 'pour', d, ctx, '', prefixe), mention = slot(c, 'mention', d, ctx, 'Signature et cachet', prefixe);
     var encre = '';
+    /* Entre le nom et l'encre, ce que le modèle y déclare : un texte
+       (« avant » : la mention « Lu et approuvé, bon pour… »), puis des
+       champs en pointillé (« Nom et qualité ») pour la partie qui remplit
+       sa carte au stylo. La carte devient alors une colonne et l'encre
+       prend la hauteur qui reste : deux cartes côte à côte gardent la
+       même hauteur, et leurs signatures la même ligne. */
+    var corps = (c.avant !== undefined ? '<div class="sign-avant">' + slotTexte(c, 'avant', d, ctx, '', prefixe) + '</div>' : '')
+      + champsPointilles(c.champs, d, ctx, prefixe);
+    var plein = corps ? ' sign-plein' : '';
     /* SANS ENCRE POUR QUI NE SIGNE PAS.
        Un coach compose l'acte mais ne l'engage pas : sa feuille montre
        la carte de signature vide, avec la mention de ce qui manque. Le
        président ouvre le même acte et l'encre y est. Rien n'est écrit
-       dans la donnée : c'est le rendu qui change, pas le document. */
-    if (ctx.sansEncre) {
-      return '<div class="sign-card sign-attente">'
+       dans la donnée : c'est le rendu qui change, pas le document.
+       La carte de l'autre partie (signer:false : un mandataire, un
+       créancier) signe au stylo : elle reste telle quelle. */
+    if (ctx.sansEncre && c.signer !== false) {
+      return '<div class="sign-card sign-attente' + plein + '">'
         + '<span class="label"' + pour.a + '>' + U.enLigne(pour.t || '') + '</span>'
         + '<div class="sign-who"><span class="sign-name"' + nom.a + '>' + U.enLigne(nom.t || '') + '</span>'
         + '<span class="sign-role"' + qualite.a + '>' + U.enLigne(qualite.t || '') + '</span></div>'
+        + corps
         + '<div class="ink-zone"></div>'
         + '<div class="sign-cta">À faire signer par le Président</div>'
         + '</div>';
@@ -1393,10 +1431,11 @@
     if (d.avecCachet !== false && c.cacheter !== false && ctx.res && ctx.res.cachet && !d.cachetDetache) {
       encre += '<div class="sig-cachet" style="background-image:url(' + ctx.res.cachet + ')"></div>';
     }
-    return '<div class="sign-card">'
+    return '<div class="sign-card' + plein + '">'
       + '<span class="label"' + pour.a + '>' + U.enLigne(pour.t || '') + '</span>'
       + '<div class="sign-who"><span class="sign-name"' + nom.a + '>' + U.enLigne(nom.t || '') + '</span>'
       + '<span class="sign-role"' + qualite.a + '>' + U.enLigne(qualite.t || '') + '</span></div>'
+      + corps
       + '<div class="ink-zone">' + encre + '</div>'
       + '<div class="sign-cta"' + mention.a + '>' + U.enLigne(mention.t || '') + '</div>'
       + '</div>';

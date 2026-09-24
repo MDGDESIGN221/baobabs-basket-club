@@ -94,7 +94,9 @@
                  /* le 20 septembre 2026, pour le relais : ce que le club signe avec chacun */
                  'contrat-staff', 'convention-benevolat', 'contrat-prestation', 'convention-essai',
                  'engagement-dirigeant', 'pret-joueuse', 'liberation', 'charte',
-                 'pv-passation', 'procuration', 'devis', 'avoir'];
+                 'pv-passation', 'procuration', 'devis', 'avoir',
+                 /* le 24 septembre 2026 : le club emprunte pour la tournée */
+                 'reconnaissance-dette'];
 
   /* =================================================================
      1. LES PETITS OUTILS, PARTAGÉS AVEC LES BLOCS ET LES MODÈLES
@@ -197,6 +199,51 @@
     var s = String(ent).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     if (dec) s += ',' + (dec < 10 ? '0' + dec : dec);
     return (neg ? '-' : '') + s;
+  }
+
+  /* Un montant tel qu'on le tape (« 200 000 », « 200.000 FCFA »,
+     « 200000 ») devient un nombre. Un point, une virgule ou une espace
+     devant trois chiffres sépare les milliers ; une virgule devant un
+     ou deux chiffres, les décimales. Rien de lisible : zéro. */
+  function montant(x) {
+    if (typeof x === 'number') return isNaN(x) ? 0 : x;
+    var s = String(x == null ? '' : x).replace(/[\s  ]/g, '')
+      .replace(/[.,](?=\d{3}(?!\d))/g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+    var n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+
+  /* Un montant en toutes lettres : 200 000 -> « deux cent mille ».
+     Cent et vingt ne prennent leur s qu'en fin de nombre (« deux
+     cents », « quatre-vingts ») : jamais devant mille (« deux cent
+     mille »), toujours devant million et milliard, qui sont des noms
+     (« deux cents millions »). Le reçu écrivait « deux cents mille ». */
+  function enLettres(x) {
+    var n = Math.round(montant(x));
+    if (!(n > 0)) return '';
+    var DZ = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
+    function sousCent(r, fin) {
+      if (r < 20) return UNITES[r];
+      var d = Math.floor(r / 10), u = r % 10;
+      if (d === 7 || d === 9) u += 10;
+      if (d === 8 && !u) return DZ[d] + (fin ? 's' : '');
+      if (!u) return DZ[d];
+      if ((u === 1 && d < 8) || (u === 11 && d === 7)) return DZ[d] + ' et ' + UNITES[u];
+      return DZ[d] + '-' + UNITES[u];
+    }
+    function centaine(x, fin) {
+      var c = Math.floor(x / 100), r = x % 100, s = '';
+      if (c) s = (c > 1 ? UNITES[c] + ' ' : '') + 'cent' + (c > 1 && !r && fin ? 's' : '');
+      if (r) s += (s ? ' ' : '') + sousCent(r, fin);
+      return s;
+    }
+    var mds = Math.floor(n / 1e9), mns = Math.floor(n % 1e9 / 1e6), mls = Math.floor(n % 1e6 / 1e3), rst = n % 1e3;
+    var p = [];
+    if (mds) p.push((mds > 1 ? centaine(mds, true) + ' ' : 'un ') + 'milliard' + (mds > 1 ? 's' : ''));
+    if (mns) p.push((mns > 1 ? centaine(mns, true) + ' ' : 'un ') + 'million' + (mns > 1 ? 's' : ''));
+    if (mls) p.push((mls > 1 ? centaine(mls, false) + ' ' : '') + 'mille');
+    if (rst) p.push(centaine(rst, true));
+    return p.join(' ');
   }
 
   function deuxChiffres(n) { return (n < 10 ? '0' : '') + n; }
@@ -418,7 +465,7 @@
     modeles: {},
     util: {
       ech: ech, dateDe: dateDe, isoDuJour: isoDuJour, dateLongue: dateLongue,
-      duAu: duAu, duAuCourt: duAuCourt, lettres: lettres, nombre: nombre,
+      duAu: duAu, duAuCourt: duAuCourt, lettres: lettres, nombre: nombre, montant: montant, enLettres: enLettres,
       deuxChiffres: deuxChiffres, compter: compter, enonce: enonce,
       enonceCourt: enonceCourt, initialeNom: initialeNom,
       paragraphes: paragraphes, enLigne: enLigne, sansMarques: sansMarques, fait: fait, normaliser: normaliser

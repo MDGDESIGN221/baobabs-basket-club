@@ -13,36 +13,11 @@
   'use strict';
   var U = G.util;
 
-  function enLettres(n) {
-    n = Math.round(parseFloat(String(n == null ? '' : n).replace(/[^\d.,-]/g, '').replace(',', '.')) || 0);
-    if (!n) return '';
-    var unites = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
-    var dizaines = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
-    function centaine(x) {
-      var s = '';
-      var c = Math.floor(x / 100), r = x % 100;
-      if (c) s += (c > 1 ? unites[c] + ' ' : '') + 'cent' + (c > 1 && !r ? 's' : '');
-      if (r) {
-        if (s) s += ' ';
-        if (r < 20) s += unites[r];
-        else {
-          var dz = Math.floor(r / 10), u = r % 10;
-          if (dz === 7 || dz === 9) { u += 10; }
-          s += dizaines[dz];
-          if (dz === 8 && !u) s += 's';
-          if (u === 1 && dz !== 8 && dz !== 9) s += ' et un';
-          else if (u === 11 && dz === 7) s += ' et onze';
-          else if (u) s += '-' + unites[u];
-        }
-      }
-      return s;
-    }
-    var parts = [], millions = Math.floor(n / 1000000), milliers = Math.floor((n % 1000000) / 1000), reste = n % 1000;
-    if (millions) parts.push((millions > 1 ? centaine(millions) + ' ' : 'un ') + 'million' + (millions > 1 ? 's' : ''));
-    if (milliers) parts.push((milliers > 1 ? centaine(milliers) + ' ' : '') + 'mille');
-    if (reste) parts.push(centaine(reste));
-    return parts.join(' ');
-  }
+  /* Le montant tel qu'il a été tapé (« 25 000 ») : U.nombre seul le
+     rendait vide, et le reçu affichait « FCFA » sans chiffre. Les lettres
+     viennent de U.enLettres, qui écrit « deux cent mille » et non plus
+     « deux cents mille ». */
+  function somme(x) { return U.nombre(U.montant(x)); }
 
   G.modeles['recu'] = {
     cle: 'recu',
@@ -88,7 +63,7 @@
 
     controles: function (d) {
       var c = [];
-      if (!(parseFloat(String(d.montant || '').replace(/[^\d.,-]/g, '')) > 0)) c.push({ n: 'erreur', t: 'Pas de montant' });
+      if (!(U.montant(d.montant) > 0)) c.push({ n: 'erreur', t: 'Pas de montant' });
       if (!String(d.payeur || '').trim()) c.push({ n: 'erreur', t: 'Qui a payé ?' });
       if (!String(d.motif || '').trim()) c.push({ n: 'avert', t: 'Pas de motif' });
       return c;
@@ -96,24 +71,24 @@
 
     page: [
       { b: 'entete', drapeau: false, droite: function (d) { return [(d.lieu || '') + ", le " + U.dateLongue(d.dateActe, false), d.numero ? "Reçu n° " + d.numero : ""]; } },
-      { b: 'bandeau', ton: 'or', etiquette: "Reçu de paiement", texte: function (d) { return U.nombre(d.montant) + " FCFA"; },
-        sous: function (d) { var l = enLettres(d.montant); return l ? "Soit " + l + " francs CFA" : ""; },
+      { b: 'bandeau', ton: 'or', etiquette: "Reçu de paiement", texte: function (d) { return somme(d.montant) + " FCFA"; },
+        sous: function (d) { var l = U.enLettres(d.montant); return l ? "Soit " + l + " francs CFA" : ""; },
         droite: function (d) { return [d.numero ? "N° " + d.numero : "", U.dateLongue(d.dateActe, false)]; } },
       { b: 'parties', parties: function (d) {
           return [{ label: "Reçu de", nom: '@payeur', texte: [d.pourQui ? "Pour le compte de **" + d.pourQui + "**" : "", d.telephone ? "Tél. " + d.telephone : ""].filter(Boolean).join("\n\n"), tag: '' },
                   { label: "Pour", nom: '@motif', texte: '@periode', tag: '' }];
         } },
       { b: 'chips', chips: function (d) {
-          return [{ label: "Mode de paiement", valeur: '@mode' }, { label: "Montant", valeur: U.nombre(d.montant) + " FCFA" },
-                  { label: "Reste à payer", valeur: d.reste ? U.nombre(d.reste) + " FCFA" : "Néant" }];
+          return [{ label: "Mode de paiement", valeur: '@mode' }, { label: "Montant", valeur: somme(d.montant) + " FCFA" },
+                  { label: "Reste à payer", valeur: d.reste ? somme(d.reste) + " FCFA" : "Néant" }];
         } },
-      { b: 'texte', texte: function (d) { return "Le club **" + "Baobabs Basket Club" + "** reconnaît avoir reçu la somme ci-dessus, et en donne quittance. Ce reçu vaut justificatif de paiement." + (d.reste ? " Le solde restant dû est de **" + U.nombre(d.reste) + " FCFA**." : ""); } },
+      { b: 'texte', texte: function (d) { return "Le club **" + "Baobabs Basket Club" + "** reconnaît avoir reçu la somme ci-dessus, et en donne quittance. Ce reçu vaut justificatif de paiement." + (d.reste ? " Le solde restant dû est de **" + somme(d.reste) + " FCFA**." : ""); } },
       { b: 'signatures', gauche: function (d) { return { lieuDate: "Fait à " + U.ech(d.lieu) + ", le <b>" + U.dateLongue(d.dateActe, true) + "</b>", note: "", reference: d.numero ? "BBC / RC / " + String(d.numero).replace('/', ' / ') : '' }; },
         cartes: [{ pour: "Pour Baobabs Basket Club", nom: '@signNom', qualite: '@signQualite', mention: "Signature et cachet" }] },
       { b: 'talon', si: function (d) { return d.avecTalon !== false; }, etiquette: "Talon à conserver par le club",
         colonnes: function (d) {
           return [{ label: "Reçu n°", valeur: d.numero || '' }, { label: "Date", valeur: U.dateLongue(d.dateActe, false) }, { label: "Reçu de", valeur: d.payeur || '' },
-                  { label: "Motif", valeur: d.motif || '' }, { label: "Montant", valeur: U.nombre(d.montant) + " FCFA" }, { label: "Mode", valeur: d.mode || '' }];
+                  { label: "Motif", valeur: d.motif || '' }, { label: "Montant", valeur: somme(d.montant) + " FCFA" }, { label: "Mode", valeur: d.mode || '' }];
         } }
     ],
 

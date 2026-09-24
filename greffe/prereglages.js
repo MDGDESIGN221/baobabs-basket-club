@@ -292,7 +292,28 @@
           "Monsieur Alioune Tall", "Maire de la commune de Mermoz Sacré Cœur", "Monsieur le Maire"),
 
     appui("Mauritanie 2026 · Président de Sénégal Bi Nu Bokk",
-          "Monsieur Barthélemy Diaz", "Président de Sénégal Bi Nu Bokk", "Monsieur le Président")
+          "Monsieur Barthélemy Diaz", "Président de Sénégal Bi Nu Bokk", "Monsieur le Président"),
+
+    /* ================================================================
+       LE PRÊT DU COMPLEXE PATRICK SEMEDO
+       La salle où le club joue à domicile avance 200 000 FCFA pour
+       compléter les frais de la tournée internationale, à rendre en
+       octobre 2026. Le texte est celui transmis le 24 septembre 2026,
+       mot pour mot ; le lieu et la date restent en blanc, ils
+       s'écrivent au stylo le jour de la signature. Le nom du président
+       s'écrit ici avec son trait d'union, comme dans le texte transmis
+       et dans sa présentation sur le site.
+       ================================================================ */
+    { nom: "Reconnaissance de dette · Complexe Patrick Semedo", modele: 'reconnaissance-dette',
+      donnees: {
+        titre: "Reconnaissance de dette", lieu: "Dakar", lieuDateEnBlanc: true,
+        montant: "200 000", montantLettres: "",
+        objet: "compléter les frais liés à la tournée internationale de Baobabs Basket Club",
+        echeance: "2026-10-30", auCoursDuMois: true,
+        genre: "Monsieur", signNom: "Antoine Jean-Pierre Ndong", pourCompte: "Baobabs Basket Club",
+        creancier: "Complexe Patrick Semedo", creancierArticle: "du … / au …", creancierSignataire: "",
+        avecSignature: true, avecCachet: true, tables: {}
+      } }
   ];
 
   /* ================================================================
