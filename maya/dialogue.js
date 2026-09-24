@@ -1169,6 +1169,27 @@
     }
     var t = r.plat || '';
 
+    /* ---- modele ou prereglage : a une question, une reponse ----
+       « c'est quoi la difference entre un modele et un prereglage »
+       ouvrait l'etagere des prereglages, sans rien expliquer. Le
+       proprietaire lui-meme s'y perdait (24 septembre 2026), et le
+       Greffe sera tenu par des benevoles qui n'y connaissent rien. */
+    if (/\b(modeles?|prereglages?)\b/.test(t) &&
+        /\b(c est quoi|qu est ce|que veut dire|veut dire|signifie|a quoi (sert|servent)|difference|differences|different|differents|distingue|distinguer|comprends? pas|comprend pas|perdue?|explique|expliquer|expliques|pourquoi)\b/.test(t)) {
+      return elle('<p>Dans le Greffe, un acte se commence de deux façons.</p>' +
+        '<p><b>Un modèle, c’est un acte vierge.</b> La mise en page est prête, mais rien n’est écrit dedans : ' +
+        'vous remplissez les noms, les dates, les montants. Comme un formulaire neuf.</p>' +
+        '<p><b>Un préréglage, c’est un acte déjà rempli.</b> Quelqu’un l’a écrit une fois et l’a gardé : ' +
+        'vous l’ouvrez, vous changez seulement ce qui change, et il est prêt. Comme la copie d’une lettre déjà tapée.</p>' +
+        '<p class="doux">Exemple : le modèle du reçu s’ouvre vide ; un préréglage « Reçu de cotisation » s’ouvrirait ' +
+        'avec le motif et le montant déjà écrits.</p>' +
+        '<p class="doux">Chaque carte du Greffe le dit : « Vierge » pour un modèle, « Déjà composé » pour un préréglage. ' +
+        'Pour en créer un : remplissez un acte, puis menu Fichier, « Garder comme préréglage ».' +
+        (e.modeles ? ' Vous en avez ' + e.modeles + ' modèle' + (e.modeles > 1 ? 's' : '') +
+          ' et ' + (e.prereglages || 0) + ' préréglage' + ((e.prereglages || 0) > 1 ? 's' : '') + '.' : '') + '</p>' +
+        pistes(['ouvre les modèles d’acte', 'ouvre les préréglages']));
+    }
+
     /* ---- le filigrane BROUILLON ---- */
     if (/\bfiligrane\b/.test(t)) {
       var oter = /\b(enleve|enlever|retire|retirer|supprime|supprimer|sans|vire|virer|cache|cacher|ote|oter)\b/.test(t);

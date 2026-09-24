@@ -6040,7 +6040,31 @@
     dire('Fichier source téléchargé, sans signature ni cachet', 'ok');
   }
 
+  /* UNE IMPRIMANTE PDF CHANGE LA PAGE EN IMAGE. PDF24, PDFCreator et
+     leurs semblables repassent la feuille par un pilote d'impression :
+     la transparence du cachet et de l'encre la change en image, et le
+     texte ne se sélectionne plus dans un autre programme. Mesuré le
+     24 septembre 2026 sur la reconnaissance de dette : 3 morceaux de
+     texte sur la page (« PScript5.dll »), contre 1 240 par « Enregistrer
+     au format PDF ». On le dit une fois par poste, avant la fenêtre. */
+  var CLE_CONSEIL_PDF = 'greffe-conseil-pdf';
   function imprimer() {
+    if (!cadre || !cadre.contentWindow) return;
+    var vu = false;
+    try { vu = !!localStorage.getItem(CLE_CONSEIL_PDF); } catch (e) {}
+    if (vu) { imprimerMaintenant(); return; }
+    modale("Avant d'imprimer",
+      "<p>Dans la fenêtre qui va s'ouvrir, à la ligne <b>Destination</b>, choisissez "
+      + "<b>« Enregistrer au format PDF »</b>.</p>"
+      + "<p>Une imprimante PDF (PDF24, PDFCreator…) change la page en image : le texte ne se "
+      + "sélectionne plus et ne se modifie plus dans un autre programme.</p>",
+      [{ lab: 'Compris, imprimer', accent: true, ok: true }]).then(function (b) {
+        if (!b || !b.ok) return;
+        try { localStorage.setItem(CLE_CONSEIL_PDF, '1'); } catch (e) {}
+        imprimerMaintenant();
+      });
+  }
+  function imprimerMaintenant() {
     if (!cadre || !cadre.contentWindow) return;
     /* Le titre du document devient le nom proposé par Chrome dans la
        boîte « Enregistrer au format PDF ». */

@@ -452,7 +452,11 @@
                /\b(etabli(r|s)|redige|rediger|fabrique|fabriquer|prepare|preparer|cree|creer) [a-z' ]{0,14}\b(acte|attestation|certificat|decharge|recu|courrier|proces verbal|ordre de mission|communique|note de service|autorisation parentale|feuille de presence|fiche de fonction)\b/,
                /\b(papier|document|courrier) officiel/,
                /\bmodeles? d acte/,
-               /\bprereglages?\b/],
+               /\bprereglages?\b/,
+               /* « c'est quoi un modele vierge », « les modeles du greffe » :
+                  le mot seul reste a qui le veut (un modele de maillot,
+                  d'affiche), il faut le Greffe autour. */
+               /\bmodeles?\b.{0,40}\b(vierges?|greffe|actes?)\b/],
       exemple: 'ouvre le Greffe' },
     /* « ici » AVANT « manque » : un marqueur d'ecran l'emporte toujours.
        « il manque quoi sur cet ecran » parle de l'ecran, pas d'un
