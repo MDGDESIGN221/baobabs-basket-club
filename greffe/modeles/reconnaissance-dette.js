@@ -94,13 +94,19 @@
       ]}
     ],
 
+    /* PAS VIERGE, PAR EXCEPTION. Ouvert depuis les Modèles, l'acte montrait
+       des pointillés partout : « tu n'as pas rempli la somme et tout »
+       (24 septembre 2026). Il s'ouvre donc avec le prêt du Complexe
+       Patrick Semedo, d'où qu'on vienne ; pour un autre prêt, on change
+       les champs. */
     defauts: function () {
       return {
         titre: "Reconnaissance de dette", numero: "", dateActe: U.isoDuJour(), lieu: "Dakar", lieuDateEnBlanc: false,
-        montant: "", montantLettres: "", objet: "",
-        echeance: "", auCoursDuMois: true,
-        genre: "Monsieur", signNom: "Antoine Jean Pierre Ndong", pourCompte: "Baobabs Basket Club",
-        creancier: "", creancierArticle: ARTICLES[0], creancierSignataire: "",
+        montant: "200 000", montantLettres: "",
+        objet: "compléter les frais liés à la tournée internationale de Baobabs Basket Club",
+        echeance: "2026-10-30", auCoursDuMois: true,
+        genre: "Monsieur", signNom: "Antoine Jean-Pierre Ndong", pourCompte: "Baobabs Basket Club",
+        creancier: "Complexe Patrick Semedo", creancierArticle: ARTICLES[0], creancierSignataire: "",
         avecSignature: true, avecCachet: true, tables: {}
       };
     },
