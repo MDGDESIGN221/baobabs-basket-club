@@ -2694,7 +2694,7 @@
     hote.innerHTML =
       '<h2 class="gf-pol-titre">La sauvegarde</h2>'
       + '<p class="gf-pol-intro">Le registre vit dans ce navigateur : un profil réinitialisé, un disque perdu, un poste changé, et tout s\'en va. '
-      + 'Un fichier de sauvegarde le met à l\'abri et le fait passer d\'un poste à l\'autre. Il ne contient jamais le cachet ni les polices : ils se redéposent.</p>'
+      + 'Un fichier de sauvegarde le met à l\'abri et le fait passer d\'un poste à l\'autre. Il ne contient jamais le cachet ni les polices : ils reviennent seuls du coffre du club.</p>'
       + '<div class="gf-sauvegarde"><button type="button" class="gf-btn gf-btn-accent" id="gf-sauver">'
       + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 9l6-6 6 6M4 21h16"/></svg>'
       + 'Sauvegarder le Greffe <kbd>Ctrl+Maj+S</kbd></button>'
