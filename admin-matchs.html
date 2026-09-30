@@ -27640,11 +27640,16 @@
       : 'matches?select=' + champs + '&match_date=gte.' + todayISO() + '&order=match_date.asc&limit=1';
     return sbGet(req).then(function(ms){
       var m = (ms || [])[0]; if (!m) return { mode: mode, m: null, cinq: [] };
-      return sbGet('match_stats?select=player_id,is_starter,lineup_sort,is_captain&match_id=eq.' + encodeURIComponent(m.id) + '&is_starter=eq.true')
+      // toute la composition : les titulaires font le cinq, les autres le
+      // banc (la video le montre, meme sans ouvrir la composition)
+      return sbGet('match_stats?select=player_id,is_starter,lineup_sort,is_captain&match_id=eq.' + encodeURIComponent(m.id))
         .catch(function(){ return []; })
         .then(function(l){
-          var lignes = (l || []).sort(function(a, b){ return (a.lineup_sort == null ? 9999 : a.lineup_sort) - (b.lineup_sort == null ? 9999 : b.lineup_sort); });
+          var tri = function(a, b){ return (a.lineup_sort == null ? 9999 : a.lineup_sort) - (b.lineup_sort == null ? 9999 : b.lineup_sort); };
+          var lignes = (l || []).filter(function(x){ return x.is_starter; }).sort(tri);
+          var banc = (l || []).filter(function(x){ return !x.is_starter; }).sort(tri);
           return { mode: mode, m: m, cinq: lignes.map(function(x){ return String(x.player_id); }),
+                   banc: banc.map(function(x){ return String(x.player_id); }),
                    cap: (lignes.filter(function(x){ return x.is_captain; })[0] || {}).player_id || null };
         });
     }).catch(function(){ return { mode: mode, m: null, cinq: [] }; });
@@ -27947,7 +27952,7 @@
     var c = pzCinq || {};
     if (c.m && mcCompo.hote === 'pz' && String(mcCompo.mid) === String(c.m.id))
       return { cinq: mcCompo.cinq.slice(0, 5), banc: mcCompo.banc.slice(), cap: mcCompo.cap };
-    return { cinq: (c.cinq || []).slice(), banc: [], cap: c.cap || null };
+    return { cinq: (c.cinq || []).slice(), banc: (c.banc || []).slice(), cap: c.cap || null };
   }
   // =================================================================
   // LE VISUALISEUR : le bloc, en temps reel, dans le panneau
@@ -28540,21 +28545,38 @@
       var c = pzCinq || {}; if (!c.m) return;
       var src = pzCinqSrc();
       var js = src.cinq.map(function(pid){
-        var p = pzJoueuse(pid); return p ? vcJoueuse(p, String(src.cap) === String(pid)) : null;
+        var p = pzJoueuse(pid); return p ? vcJoueuse(p, String(src.cap) === String(pid), 'Titulaire') : null;
       }).filter(Boolean);
-      return vcLancer(btn, vcMatch(c.m, js));
+      return vcLancer(btn, vcMatch(c.m, js, vcBanc(src.banc)));
     }
     var e = pzEtat[String(id)];
     var pr = pzRows.filter(function(x){ return String(x.id) === String(id); })[0] || {};
     var carte = document.querySelector('#pz-liste .pz-c[data-id="' + id + '"]');
     var v = carte ? pzValeurs(carte) : pr;
     var ev = pzEvs.filter(function(x){ return String(x.id) === String(v.evenement_id); })[0] || null;
+    var role = v.type === 'libre' ? (v.titre || 'Joueuse') : 'Sélectionnée';
     var js2 = (e ? e.joueuses : []).map(function(pid){
-      var p = pzJoueuse(pid); return p ? vcJoueuse(p, !!e && String(e.cap) === String(pid)) : null;
+      var p = pzJoueuse(pid); return p ? vcJoueuse(p, !!e && String(e.cap) === String(pid), role) : null;
     }).filter(Boolean);
+    // l'encadrement, comme sur le site : le chef de delegation (a defaut
+    // le premier), puis les autres avec leur fonction
+    var staff = null;
+    if (v.staff_acte && e && (e.staff || []).length){
+      var l = e.staff.map(function(x){
+        var r = pzStaffRows.filter(function(y){ return String(y.id) === String(x.staff_id); })[0];
+        return r ? { nom: r.name || '', fonction: x.fonction || r.role || '', photo: r.photo_url || '' } : null;
+      }).filter(Boolean);
+      var chef = l.filter(function(x){ return /chef|d[ée]l[ée]gation/i.test(x.fonction); })[0] || l[0];
+      if (chef) staff = { chef: chef, autres: l.filter(function(x){ return x !== chef; }) };
+    }
     vcLancer(btn, { genre:'selection', titre: v.titre || 'La sélection', sur: 'Baobabs Basket Club',
+      contre: v.sous_titre || (js2.length + ' joueuses' + (v.kicker ? ' · ' + v.kicker : '')),
       infos: ev ? [ev.titre, ev.dates, ev.lieu].filter(Boolean) : [v.sous_titre || v.kicker || ''].filter(Boolean),
-      adversaire: null, joueuses: js2, nomFichier: 'baobabs-' + vcSlug(v.titre || 'la-selection') });
+      adversaire: null, joueuses: js2, staff: staff,
+      evenement: ev ? { titre: ev.titre || '', kicker: String(ev.kicker || '').replace(/^\s*À la une\s*·\s*/i, ''), dates: ev.dates || '',
+                        lieu: ev.lieu || '', nations: String(ev.nations || '').split(','), affiche: ev.affiche_url || '' } : null,
+      groupeSur: v.kicker || (ev && ev.titre) || v.titre || '',
+      nomFichier: 'baobabs-' + vcSlug(v.titre || 'la-selection') });
   }
 
   // LA LISTE OFFICIELLE : les joueuses et le staff qui partent, avec
@@ -28598,7 +28620,7 @@
     if (window.BaobabsVideo) return Promise.resolve();
     return new Promise(function(res, rej){
       var s = document.createElement('script');
-      s.src = '/studio/video-compo.js?v=20260930';
+      s.src = '/studio/video-compo.js?v=20260930b';
       s.onload = function(){ window.BaobabsVideo ? res() : rej(new Error('le générateur ne s’est pas chargé')); };
       s.onerror = function(){ rej(new Error('le générateur ne s’est pas chargé')); };
       document.head.appendChild(s);
@@ -28612,33 +28634,50 @@
     return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   }
-  function vcJoueuse(p, cap){
-    return { nom: p.name || '', no: p.jersey_number == null ? '' : p.jersey_number, photo: p.photo_url || '', cap: !!cap };
+  function vcJoueuse(p, cap, role){
+    return { nom: p.name || '', no: p.jersey_number == null ? '' : p.jersey_number, photo: p.photo_url || '', cap: !!cap,
+             role: cap ? 'Capitaine' : (role || ''), poste: p.position || '', taille: p.height || '', age: pzAgeDe(p) };
   }
-  function vcMatch(m, joueuses){
+  function vcMatch(m, joueuses, banc){
     var quand = pcQuandCourt(m); quand = quand ? quand.charAt(0).toUpperCase() + quand.slice(1) : '';
+    var date = [quand, vcHeure(m.match_time)].filter(Boolean).join(' · ');
+    banc = banc || [];
     return { genre:'cinq', titre:'Cinq majeur', sur:'Baobabs Basket Club',
-      infos: ['Baobabs ' + (m.is_home === false ? 'chez' : 'vs') + ' ' + (m.opponent_name || ''),
-              [quand, vcHeure(m.match_time)].filter(Boolean).join(' · '), m.venue || ''].filter(Boolean),
+      contre: joueuses.length + ' titulaires' + (banc.length ? ', ' + banc.length + ' sur le banc' : ''),
+      infos: ['Baobabs ' + (m.is_home === false ? 'chez' : 'vs') + ' ' + (m.opponent_name || ''), date, m.venue || ''].filter(Boolean),
       adversaire: { nom: m.opponent_name || '', logo: m.opponent_logo_url || '' },
-      joueuses: joueuses,
+      match: { dom: m.is_home !== false, quand: date, lieu: m.venue || '', competition: m.competition || m.round_label || 'Prochain match' },
+      joueuses: joueuses, banc: banc, groupeTitre: 'Le cinq', groupeSur: 'Baobabs ' + (m.is_home === false ? 'chez' : 'vs') + ' ' + (m.opponent_name || ''),
       nomFichier: 'baobabs-cinq-majeur-' + (m.match_date || '') + '-' + vcSlug(m.opponent_name) };
+  }
+  function vcBanc(pids){
+    return (pids || []).map(function(pid){
+      var p = mcCompoJoueuse(pid) || pzJoueuse(pid); return p ? { nom: p.name || '', no: p.jersey_number == null ? '' : p.jersey_number } : null;
+    }).filter(Boolean);
   }
   // Le bouton dit ou en est la fabrication (une dizaine de secondes), puis
   // le fichier part dans les telechargements du navigateur.
+  // Deux videos : la presentation (joueuse par joueuse, comme sur le
+  // site) ou la liste. Le choix s'ouvre sous le bouton.
   function vcLancer(btn, donnees){
     if (!donnees || !(donnees.joueuses || []).length){
       qgToast('Aucune joueuse dans la composition : il n’y a rien à mettre en vidéo.', true); return;
     }
+    if (btn && btn.getAttribute('data-vc-lib')) return;          // une video est deja en fabrication
     var lib = btn ? btn.textContent : '';
-    if (btn){ btn.disabled = true; btn.textContent = 'Préparation…'; }
+    var rendre = function(){ if (btn){ btn.disabled = false; btn.textContent = lib; btn.removeAttribute('data-vc-lib'); } };
     vcCharger().then(function(){
-      return window.BaobabsVideo.telecharger(donnees, function(p){ if (btn) btn.textContent = 'Vidéo… ' + Math.round(p * 100) + ' %'; });
-    }).then(function(r){
-      qgToast('Vidéo téléchargée ✓ ' + r.nom);
+      return window.BaobabsVideo.choisir(btn, donnees);
+    }).then(function(style){
+      if (!style) return rendre();
+      donnees.style = style;
+      if (btn){ btn.setAttribute('data-vc-lib', lib); btn.disabled = true; btn.textContent = 'Préparation…'; }
+      return window.BaobabsVideo.telecharger(donnees, function(p){ if (btn) btn.textContent = 'Vidéo… ' + Math.round(p * 100) + ' %'; })
+        .then(function(r){ qgToast('Vidéo téléchargée ✓ ' + r.nom); rendre(); });
     }).catch(function(e){
       qgToast('La vidéo n’a pas pu être fabriquée' + (e && e.message ? ' : ' + e.message : '') + '.', true);
-    }).then(function(){ if (btn){ btn.disabled = false; btn.textContent = lib; } });
+      rendre();
+    });
   }
 
   // =================================================================
@@ -29056,9 +29095,9 @@
   function mcVideo(btn){
     var m = mcById(mcCompo.mid); if (!m) return;
     var js = mcCompo.cinq.map(function(pid){
-      var p = mcCompoJoueuse(pid); return p ? vcJoueuse(p, String(mcCompo.cap) === String(pid)) : null;
+      var p = mcCompoJoueuse(pid); return p ? vcJoueuse(p, String(mcCompo.cap) === String(pid), 'Titulaire') : null;
     }).filter(Boolean);
-    vcLancer(btn, vcMatch(m, js));
+    vcLancer(btn, vcMatch(m, js, vcBanc(mcCompo.banc)));
   }
   function mcSceneRejouer(){
     if (!tmEtat.ouvert || tmEtat.id !== mcCompoTemoinId()){ mcCompoTemoin(true); return; }
