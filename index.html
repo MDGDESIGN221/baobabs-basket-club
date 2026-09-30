@@ -1191,14 +1191,29 @@ window.addEventListener('error', function (e) {
      l'ajout d'Inscriptions : le menu ne rétrécissait pas, il pliait. Entre
      les deux, le bouton du compte perd son mot et garde son icône — c'est
      là qu'il y a de la place à reprendre, pas dans la navigation. */
+  /* LE NOM DU CLUB NE SE LAISSE PLUS ECRASER (30/09/2026). Son bloc portait
+     min-width:0 : quand le menu manquait de place, il tombait a 70 px et le
+     mot BAOBABS debordait de 90 px par-dessus « Accueil » et « Le Club »
+     (mesure a 1230 px). Il ne retrecit plus ; c'est le reste qui cede, a
+     des paliers mesures le meme jour :
+       1230 px, tel quel ............................ 1 318 px necessaires
+       <= 1320 : sans « Accueil » ni le mot du compte  1 165
+       <= 1180 : libelles resserres .................. 1 072
+       1025-1100 : le blason seul, sans le nom ......... 929
+     « Accueil » peut partir : le blason y mene deja. */
   #bb-desktop-nav .bb-nav-link{white-space:nowrap}
-  @media(max-width:1320px){#bb-desktop-nav{gap:16px!important;font-size:12px!important}}
-  @media(max-width:1180px){
-    #bb-desktop-nav{gap:10px!important;font-size:11.5px!important;letter-spacing:.03em!important}
+  #bb-hdr-brand{flex:none}
+  @media(max-width:1320px){
+    #bb-desktop-nav{gap:16px!important;font-size:12px!important}
+    #bb-desktop-nav .bb-nav-link[data-nav="accueil"]{display:none}
     #bb-account-label{display:none}
     #bb-account-btn{padding:8px 10px!important}
   }
+  @media(max-width:1180px){
+    #bb-desktop-nav{gap:10px!important;font-size:11.5px!important;letter-spacing:.03em!important}
+  }
   @media(max-width:1100px){#bb-desktop-nav{gap:8px!important;font-size:11px!important}}
+  @media(min-width:1025px) and (max-width:1100px){#bb-hdr-brand > div{display:none}}
 
   /* ===== FACE-OFF : LE DUEL, COMME UNE AFFICHE DE MATCH =====
      Deux cartes cote a cote et une liste de barres : c'etait un tableau.
@@ -4982,19 +4997,15 @@ window.addEventListener('error', function (e) {
           </script>
       </div>
 
-      <div style="margin:22px 0 0;border-top:1px solid rgba(var(--bb-fil-rgb),.2);border-bottom:1px solid rgba(var(--bb-fil-rgb),.2);background:#0C1A12;overflow:hidden">
+      <!-- Le bandeau des resultats. Il montrait huit scores INVENTES (« Baobabs
+           84 - 79 ASC Ville de Dakar », « DUC Dakar 68 - 80 Baobabs »...) tant
+           que la base ne repondait pas, et pour toujours si elle n'avait rien.
+           Il nait cache et renderResults() ne l'ouvre qu'avec de vrais scores. -->
+      <div id="bb-results-band" class="bb-hide" style="margin:22px 0 0;border-top:1px solid rgba(var(--bb-fil-rgb),.2);border-bottom:1px solid rgba(var(--bb-fil-rgb),.2);background:#0C1A12;overflow:hidden">
         <div style="display:flex;align-items:center">
           <span style="flex:none;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.14em;color:#07130D;background:var(--bb-or);padding:12px 18px">RÉSULTATS</span>
           <div style="overflow:hidden;flex:1">
             <div id="bb-results-ticker" style="display:flex;gap:36px;width:max-content;animation:bbTicker 32s linear infinite;padding:12px 24px">
-              <span style="font-family:'Inter',sans-serif;font-size:13.5px;color:#D8D6CE;white-space:nowrap">Baobabs <b style="color:var(--bb-or)">84</b> · <b style="color:#F3EFE6">79</b> ASC Ville de Dakar</span>
-              <span style="font-family:'Inter',sans-serif;font-size:13.5px;color:#D8D6CE;white-space:nowrap">Guédiawaye BC <b style="color:var(--bb-or)">66</b> · <b style="color:#F3EFE6">71</b> Baobabs</span>
-              <span style="font-family:'Inter',sans-serif;font-size:13.5px;color:#D8D6CE;white-space:nowrap">Baobabs <b style="color:var(--bb-or)">90</b> · <b style="color:#F3EFE6">77</b> UGB Saint-Louis</span>
-              <span style="font-family:'Inter',sans-serif;font-size:13.5px;color:#D8D6CE;white-space:nowrap">DUC Dakar <b style="color:var(--bb-or)">68</b> · <b style="color:#F3EFE6">80</b> Baobabs</span>
-              <span style="font-family:'Inter',sans-serif;font-size:13.5px;color:#D8D6CE;white-space:nowrap">Baobabs <b style="color:var(--bb-or)">73</b> · <b style="color:#F3EFE6">69</b> Jaraaf BC</span>
-              <span style="font-family:'Inter',sans-serif;font-size:13.5px;color:#D8D6CE;white-space:nowrap">Baobabs <b style="color:var(--bb-or)">84</b> · <b style="color:#F3EFE6">79</b> ASC Ville de Dakar</span>
-              <span style="font-family:'Inter',sans-serif;font-size:13.5px;color:#D8D6CE;white-space:nowrap">Guédiawaye BC <b style="color:var(--bb-or)">66</b> · <b style="color:#F3EFE6">71</b> Baobabs</span>
-              <span style="font-family:'Inter',sans-serif;font-size:13.5px;color:#D8D6CE;white-space:nowrap">Baobabs <b style="color:var(--bb-or)">90</b> · <b style="color:#F3EFE6">77</b> UGB Saint-Louis</span>
             </div>
           </div>
         </div>
@@ -15617,13 +15628,26 @@ document.addEventListener('keydown', function(e){
   function renderResults(played){
     var ticker = document.getElementById('bb-results-ticker');
     var list = document.getElementById('bb-results-list');
+    var band = document.getElementById('bb-results-band');
     if (!played || !played.length) {
       if (list) list.innerHTML = '<span style="font-family:\'Inter\',sans-serif;font-size:13.5px;color:#7E8A82">Aucun résultat pour le moment.</span>';
-      return; // le ticker garde son contenu de secours codé en dur
+      // Rien de joue : le bandeau reste ferme. Il n'a plus de scores de
+      // secours ecrits en dur, et c'est voulu : ils etaient inventes.
+      if (band) band.classList.add('bb-hide');
+      return;
     }
     if (ticker) {
       var itemsHtml = played.map(tickerItemHtml).join('');
-      ticker.innerHTML = itemsHtml + itemsHtml; // dupliqué pour la boucle d'animation continue
+      ticker.innerHTML = itemsHtml;
+      if (band) band.classList.remove('bb-hide');
+      // Deux scores ne remplissent pas la bande : les faire defiler montrait
+      // un grand vide puis un saut. La boucle (deux copies, translateX -50 %)
+      // ne demarre que si une copie depasse la largeur visible. Page cachee,
+      // la largeur vaut 0 : on s'en remet au nombre de matchs.
+      var fen = ticker.parentElement;
+      var boucle = (fen && fen.clientWidth) ? ticker.scrollWidth > fen.clientWidth : played.length > 3;
+      if (boucle) ticker.innerHTML = itemsHtml + itemsHtml;
+      ticker.style.animation = boucle ? 'bbTicker 32s linear infinite' : 'none';
     }
     if (list) {
       list.innerHTML = played.slice(0, 8).map(resultRowHtml).join('');
