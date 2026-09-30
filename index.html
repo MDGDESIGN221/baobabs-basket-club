@@ -4484,6 +4484,100 @@ window.addEventListener('error', function (e) {
   font-size:13px;letter-spacing:.01em;text-transform:none;border-left:0;padding-left:0}
 .bb-ph-k::before,.bb-ac-kick::before,.bb-ev-k i{display:none}
 </style>
+<style id="bb-lu-mouvement">
+/* =====================================================================
+   LA PRESENTATION, DANS LE STYLE DU « STARTING LINEUP » (30/09/2026)
+   ---------------------------------------------------------------------
+   « pas ouf cette presentation », « je veux de la vraie motion design »,
+   et pour reference la video « Starting Lineup » des Celtics.
+   1. La matiere. Un vert plus franc au fond, plus de lueurs (halo derriere
+      la joueuse, halos du fond, eclat autour des lettres), plus de verre.
+      La carte du titre est une plaque sombre arrondie ; la fiche de la
+      joueuse, une liste encadree d'un filet ; le numero, un cercle au
+      trait a gauche du nom ; le groupe, des bandes de portraits.
+   2. Le mouvement (classe bb-lu-mo, posee par bbLuMonter) : le JS mene
+      l'entree (bbLuMouvoir). La feuille pose donc chaque element dans son
+      etat d'arrivee, SANS !important : une declaration importante
+      battrait l'animation qui doit l'amener la.
+   ===================================================================== */
+.bb-lu-cadre{background:linear-gradient(160deg,#17512F 0%,#0F3D24 52%,#0A2A19 100%)}
+.bb-lu-fond img{opacity:.42}
+.bb-lu-fond span{background:
+  linear-gradient(90deg,rgba(9,36,22,.72) 0%,rgba(9,36,22,.32) 42%,rgba(9,36,22,.72) 100%),
+  linear-gradient(180deg,rgba(6,24,15,0) 45%,rgba(6,24,15,.62) 100%)}
+.bb-lu-halo{display:none}
+.bb-lu-cadre::before,.bb-lu-cadre::after{display:none}
+.bb-lu-scene .bb-lu-l{text-shadow:none}
+.bb-lu-id .bb-lu-nom-bloc{filter:none}
+.bb-lu-num{display:none}
+
+/* la carte : une plaque sombre, arrondie, sans verre */
+.bb-lu-plaque{background:rgba(7,30,19,.9);backdrop-filter:none;border:0;border-radius:clamp(8px,1.2cqw,16px);box-shadow:0 clamp(10px,2cqw,28px) clamp(24px,5cqw,60px) rgba(0,0,0,.35)}
+
+/* le nom : le numero dans un cercle au trait, a gauche, sur deux lignes */
+.bb-lu-id .bb-lu-nom-bloc{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:clamp(8px,1.4cqw,20px);align-items:center}
+.bb-lu-nom-bloc .bb-lu-pre,.bb-lu-nom-bloc .bb-lu-fam{grid-column:2}
+.bb-lu-rond{grid-column:1;grid-row:1 / span 2;display:grid;place-items:center;
+  width:clamp(26px,4.4cqw,60px);aspect-ratio:1;border:clamp(1px,.16cqw,2px) solid var(--bb-or);border-radius:50%;
+  font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(11px,1.9cqw,26px);line-height:1;color:#F3EFE6;font-variant-numeric:tabular-nums}
+
+/* la fiche : une liste encadree d'un filet, une rangee par fait */
+.bb-lu-tuiles{display:block;width:100%;max-width:clamp(180px,34cqw,440px);margin-top:clamp(10px,1.8cqw,24px);
+  border:1px solid rgba(var(--bb-or-rgb),.55)}
+.bb-lu-tuile{display:flex;align-items:baseline;justify-content:space-between;gap:clamp(8px,1.4cqw,20px);text-align:left;
+  padding:clamp(5px,.85cqw,11px) clamp(8px,1.2cqw,16px);background:none;backdrop-filter:none;
+  border:0;border-top:1px solid rgba(var(--bb-or-rgb),.3);border-radius:0;box-shadow:none}
+.bb-lu-tuile:first-child,.bb-lu-tuile.maillot + .bb-lu-tuile{border-top:0}
+.bb-lu-tuile.maillot{display:none}
+.bb-lu-tuile span{margin:0;color:rgba(243,239,230,.62)}
+.bb-lu-tuile b{font-size:clamp(12px,1.9cqw,24px)}
+.bb-lu-tuile.vert b{font-size:clamp(11px,1.6cqw,20px)}
+.bb-lu-tuiles-enc{max-width:none}
+@container lu (max-width:560px){
+  .bb-lu-tuile{padding:3px 6px}
+  .bb-lu-tuile b{font-size:11px}
+  .bb-lu-rond{width:24px;font-size:11px}
+}
+.bb-lu-segs i{border-radius:0}
+.bb-lu-nat li{border-radius:0}
+
+/* le groupe : des bandes de portraits serrees sur les visages, cote a cote */
+.bb-lu-grp{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:clamp(2px,.3cqw,4px)}
+.bb-lu-grp figure{width:100%;height:clamp(80px,24cqw,300px);border-radius:0;border:0;box-shadow:none;background:#0B2A19;overflow:hidden}
+/* le cadrage en ligne (bbLuCadre) etait regle pour les anciens medaillons ronds :
+   dans une bande etroite, il poussait deux joueuses hors du cadre (on ne voyait qu'un bras).
+   Les bandes se cadrent toutes sur le visage. */
+.bb-lu-grp figure img{border-radius:0;object-fit:cover;object-position:50% 6% !important;transform:none !important}
+.bb-lu-grp figure b{left:clamp(3px,.5cqw,8px);right:auto;bottom:clamp(3px,.5cqw,8px);height:auto;min-width:0;width:clamp(16px,2.4cqw,32px);aspect-ratio:1;
+  padding:0;border-radius:50%;background:rgba(7,30,19,.85);color:#F3EFE6;box-shadow:none;border:1px solid var(--bb-or);font-size:clamp(8px,1.1cqw,14px)}
+@container lu (max-width:560px){
+  .bb-lu-grp{grid-auto-flow:row;grid-template-columns:repeat(6,minmax(0,1fr))}
+  .bb-lu-grp figure{height:48px}
+}
+
+/* le volet en escalier : cinq barres du vert du club, une par bande */
+.bb-lu-volet{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden}
+.bb-lu-volet i{position:absolute;left:0;width:24%;height:calc(20% + 1px);background:var(--bb-or);opacity:0}
+.bb-lu-volet i:nth-child(1){top:0}
+.bb-lu-volet i:nth-child(2){top:20%}
+.bb-lu-volet i:nth-child(3){top:40%}
+.bb-lu-volet i:nth-child(4){top:60%}
+.bb-lu-volet i:nth-child(5){top:80%}
+
+/* l'acte qui sort passe sous l'entrant */
+.bb-lu-scene.bb-lu-mo .bb-lu-act.part{z-index:1}
+.bb-lu-scene.bb-lu-mo .bb-lu-act.on:not(.part){z-index:2}
+/* ce que le JS amene : la feuille ne pose que l'arrivee */
+.bb-lu-scene.bb-lu-mo .bb-lu-act .bb-lu-fig{transition:none;transform:none;opacity:1;filter:none;clip-path:none}
+.bb-lu-scene.bb-lu-mo .bb-lu-act .bb-lu-l{transition:none;transform:none;opacity:1}
+.bb-lu-scene.bb-lu-mo .bb-lu-act .bb-lu-id,
+.bb-lu-scene.bb-lu-mo .bb-lu-act .bb-lu-plaque{transition:none;transform:none;opacity:1}
+.bb-lu-scene.bb-lu-mo .bb-lu-act .bb-lu-id .bb-lu-role,
+.bb-lu-scene.bb-lu-mo .bb-lu-act .bb-lu-id .bb-lu-role i{transition:none;transform:none;opacity:1}
+.bb-lu-scene.bb-lu-mo .bb-lu-act .bb-lu-tuile{transition:none;transform:none;opacity:1}
+.bb-lu-scene.bb-lu-mo .bb-lu-act .bb-lu-grp li{transition:none;transform:none;opacity:1}
+.bb-lu-scene.bb-lu-mo .bb-lu-liq,.bb-lu-scene.bb-lu-mo .bb-lu-ray{display:none}
+</style>
 </head>
 <body>
 <!-- Le fil de lecture : pilote par le defilement, sans JavaScript. -->
@@ -10889,6 +10983,7 @@ window.addEventListener('load', function () {
     if (!sc) return;
     clearTimeout(sc.t); clearTimeout(sc.tSort); clearTimeout(sc.tForme); clearInterval(sc.forme);
     (sc.compteurs || []).forEach(cancelAnimationFrame);
+    bbLuMoArreter(sc);
     if (sc.obs) sc.obs.disconnect();
     var k = bbLuScenes.indexOf(sc); if (k >= 0) bbLuScenes.splice(k, 1);
     if (sc.hote) sc.hote.__sc = null;
@@ -10988,7 +11083,7 @@ window.addEventListener('load', function () {
      place d'une vraie information sans en etre une. */
   function bbLuTuiles(p){
     var l = [];
-    if (p.no != null && p.no !== '') l.push(['', 'Maillot', String(p.no)]);
+    if (p.no != null && p.no !== '') l.push(['maillot', 'Maillot', String(p.no)]);
     var poste = bbLuPosteLu(p.pos);
     if (poste) l.push(['vert', 'Poste', poste]);
     if (p.height){ var t = String(p.height).trim().replace(/\s*m\s*$/i, ''); if (t) l.push(['', 'Taille', t + ' m']); }
@@ -11080,6 +11175,7 @@ window.addEventListener('load', function () {
           // lettres decoupees sont cachees, le nom complet est dans un
           // texte a part. Sans cela, on entendrait « S, E, Y... ».
           '<span class="bb-lu-litt">' + esc(p.name || '') + '</span>' +
+          (no ? '<span class="bb-lu-rond" aria-hidden="true">' + esc(no) + '</span>' : '') +
           (n.pre ? '<span class="bb-lu-pre" aria-hidden="true">' + bbLuLettres(n.pre, 0) + '</span>' : '') +
           '<span class="bb-lu-fam" aria-hidden="true">' + bbLuLettres(n.fam, n.pre ? n.pre.length : 0) + '</span>' +
         '</div>' +
@@ -11415,6 +11511,145 @@ window.addEventListener('load', function () {
     });
   }
 
+  /* =====================================================================
+     LA PRESENTATION EN MOUVEMENT (30/09/2026)
+     ---------------------------------------------------------------------
+     « la transition un peu basique, je veux de la vraie motion design »,
+     avec pour reference le « Starting Lineup » des Celtics (Pinterest,
+     video de 12 s). Le passage d'un acte a l'autre etait un fondu flou :
+     filme au ralenti, une bouillie verte pendant pres d'une seconde, puis
+     un bord vertical net sur une photo encore floue.
+
+     LE VOLET EN ESCALIER, pris a la reference. Cinq barres du vert du
+     club, une par bande horizontale du cadre, decalees de 60 ms, entrent
+     par la droite et sortent par la gauche. Chacune decouvre SA bande du
+     nouvel acte dans son sillage : le bord decouvert est une marche
+     d'escalier, calculee image par image pour coller au bord des barres.
+     L'acte sortant garde tout ce qu'il porte (il reste « on ») et recule
+     dessous (« part ») ; il s'eteint quand le volet est passe.
+
+     L'ENTREE, DANS L'ORDRE DU VOLET : il decouvre la droite du cadre (le
+     nom) avant la gauche (la joueuse). Le role se trace, le cercle du
+     numero se pose, le prenom puis le nom montent lettre par lettre dans
+     leur ligne (qui sert de fente), les rangees de la fiche arrivent en
+     cascade, la joueuse glisse et se pose. Plus de flou, plus de lettres
+     brouillees.
+
+     Tout passe par l'API Web Animations. Chaque animation est gardee dans
+     sc.anims : bbLuMoArreter les pose toutes sur leur arrivee, ce que
+     l'ecran Regler de l'admin exige (« on ne regle pas une image qui bouge
+     encore »). Qui a demande moins d'animation garde l'ancien passage.
+     ===================================================================== */
+  var BB_LU_BARRES = 5, BB_LU_LARGEUR_BARRE = .24;
+  var BB_LU_VOLET = 600, BB_LU_ECART = 60;
+  var BB_LU_COURBE_POSE = 'cubic-bezier(.16,1,.3,1)';
+  function bbLuQuart(t){ return t < .5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2; }
+  function bbLuMo(h){
+    var sc = h && h.__sc;
+    return !!(h && h.classList.contains('bb-lu-mo') && !bbLuPeu() && !(sc && sc.fige));
+  }
+  // Tout ce qui bouge encore se pose sur son arrivee, et l'acte qui
+  // sortait s'eteint : c'est l'image fixe du mode Regler.
+  function bbLuMoArreter(sc){
+    if (!sc) return;
+    clearTimeout(sc.tPart);
+    (sc.anims || []).forEach(function(a){ try { a.cancel(); } catch(e){} });
+    sc.anims = [];
+    var h = sc.hote; if (!h) return;
+    h.querySelectorAll('.bb-lu-act.part').forEach(function(a){ a.classList.remove('part'); a.classList.remove('on'); });
+  }
+  function bbLuMouvoir(sc, entrant, sortant){
+    var h = sc && sc.hote; if (!h || !entrant) return;
+    var cadre = h.querySelector('.bb-lu-cadre'); if (!cadre) return;
+    // une transition encore en cours se pose d'abord : jamais deux volets
+    clearTimeout(sc.tPart);
+    (sc.anims || []).forEach(function(a){ try { a.cancel(); } catch(e){} });
+    sc.anims = [];
+    h.querySelectorAll('.bb-lu-act.part').forEach(function(a){
+      if (a !== sortant){ a.classList.remove('part'); a.classList.remove('on'); }
+    });
+    var W = cadre.clientWidth || 1, H = cadre.clientHeight || 1;
+    var jouer = function(el, kf, o){
+      if (!el || typeof el.animate !== 'function') return null;
+      var a = el.animate(kf, o); sc.anims.push(a); return a;
+    };
+    // LE VOLET. Les barres et la decoupe de l'acte entrant lisent la meme
+    // courbe, echantillonnee : le bord decouvert colle au bord des barres.
+    var N = BB_LU_BARRES, BW = BB_LU_LARGEUR_BARRE, D = BB_LU_VOLET, EC = BB_LU_ECART;
+    var TOT = D + (N - 1) * EC, PAS = 36, bande = 100 / N;
+    var decoupe = [], barres = [];
+    for (var b = 0; b < N; b++) barres.push([]);
+    for (var k = 0; k <= PAS; k++){
+      var t = k / PAS * TOT, pts = ['100% 0%'];
+      for (var b2 = 0; b2 < N; b2++){
+        var p = Math.min(1, Math.max(0, (t - b2 * EC) / D));
+        var gauche = 1 - bbLuQuart(p) * (1 + BW);        // bord gauche de la barre, en fraction du cadre
+        var bord = ((gauche + BW) * 100).toFixed(2) + '%'; // on decouvre a droite de la barre
+        pts.push(bord + ' ' + (b2 * bande) + '%', bord + ' ' + ((b2 + 1) * bande) + '%');
+        barres[b2].push({ offset:k / PAS, opacity:1, transform:'translate3d(' + (gauche * W).toFixed(1) + 'px,0,0)' });
+      }
+      pts.push('100% 100%');
+      decoupe.push({ offset:k / PAS, clipPath:'polygon(' + pts.join(',') + ')' });
+    }
+    jouer(entrant, decoupe, { duration:TOT, easing:'linear', fill:'backwards' });
+    var bs = h.querySelectorAll('.bb-lu-volet i');
+    for (var b3 = 0; b3 < bs.length && b3 < N; b3++) jouer(bs[b3], barres[b3], { duration:TOT, easing:'linear' });
+    // L'ACTE SORTANT recule sous le volet et s'assombrit, puis s'eteint.
+    if (sortant && sortant !== entrant){
+      jouer(sortant, [
+        { transform:'none', opacity:1 },
+        { transform:'translate3d(' + (-.04 * W) + 'px,0,0)', opacity:.35 }
+      ], { duration:TOT, easing:'cubic-bezier(.55,0,.8,.2)', fill:'forwards' });
+      sc.tPart = setTimeout(function(){
+        sortant.classList.remove('part'); sortant.classList.remove('on');
+        sc.anims = sc.anims.filter(function(a){
+          if (a.effect && a.effect.target === sortant){ try { a.cancel(); } catch(e){} return false; }
+          return true;
+        });
+      }, TOT + 30);
+    }
+    // L'ENTREE, dans l'ordre ou le volet decouvre : la droite, puis la gauche.
+    jouer(entrant.querySelector('.bb-lu-plaque'), [
+      { transform:'translate3d(0,' + (.03 * H) + 'px,0) scale(.985)', opacity:0 },
+      { transform:'none', opacity:1 }
+    ], { duration:760, delay:200, easing:BB_LU_COURBE_POSE, fill:'backwards' });
+    jouer(entrant.querySelector('.bb-lu-role'), [
+      { clipPath:'inset(0 100% 0 0)' }, { clipPath:'inset(0 0% 0 0)' }
+    ], { duration:520, delay:300, easing:'cubic-bezier(.65,0,.35,1)', fill:'backwards' });
+    jouer(entrant.querySelector('.bb-lu-rond'), [
+      { transform:'scale(.55)', opacity:0 }, { transform:'none', opacity:1 }
+    ], { duration:560, delay:330, easing:BB_LU_COURBE_POSE, fill:'backwards' });
+    // les lignes de titre : chaque lettre monte dans sa ligne, qui la
+    // coupe au ras (overflow:hidden) -- c'est la fente
+    entrant.querySelectorAll('.bb-lu-pre, .bb-lu-fam, .bb-lu-titre, .bb-lu-banc-t, .bb-lu-ev-t').forEach(function(ligne, n){
+      var ls = ligne.querySelectorAll('.bb-lu-l');
+      if (!ls.length){
+        jouer(ligne, [{ clipPath:'inset(0 0 100% 0)', transform:'translate3d(0,40%,0)' },
+                      { clipPath:'inset(0 0 0% 0)', transform:'none' }],
+          { duration:720, delay:360 + n * 70, easing:BB_LU_COURBE_POSE, fill:'backwards' });
+        return;
+      }
+      for (var q = 0; q < ls.length; q++){
+        jouer(ls[q], [{ transform:'translate3d(0,112%,0)' }, { transform:'none' }],
+          { duration:720, delay:360 + n * 70 + q * 18, easing:BB_LU_COURBE_POSE, fill:'backwards' });
+      }
+    });
+    entrant.querySelectorAll('.bb-lu-tuile').forEach(function(tu, q){
+      jouer(tu, [{ transform:'translate3d(0,14px,0)', opacity:0 }, { transform:'none', opacity:1 }],
+        { duration:520, delay:520 + q * 70, easing:BB_LU_COURBE_POSE, fill:'backwards' });
+    });
+    // le groupe : chaque bande de portrait monte de sa fente, en cascade
+    entrant.querySelectorAll('.bb-lu-grp li').forEach(function(li, q){
+      jouer(li, [{ clipPath:'inset(100% 0 0 0)', transform:'translate3d(0,10%,0)' },
+                 { clipPath:'inset(0% 0 0 0)', transform:'none' }],
+        { duration:700, delay:380 + q * 45, easing:BB_LU_COURBE_POSE, fill:'backwards' });
+    });
+    jouer(entrant.querySelector('.bb-lu-fig'), [
+      { transform:'translate3d(' + (.06 * W) + 'px,0,0) scale(1.05)', opacity:0 },
+      { offset:.3, opacity:1 },
+      { transform:'none', opacity:1 }
+    ], { duration:1000, delay:300, easing:BB_LU_COURBE_POSE, fill:'backwards' });
+  }
   function bbLuAller(sc, i){
     var h = sc && sc.hote; if (!h || !sc.n) return;
     sc.i = ((i % sc.n) + sc.n) % sc.n;
@@ -11423,10 +11658,17 @@ window.addEventListener('load', function () {
     // visible le temps de reculer et de se reduire. Sans lui, il n'y a
     // pas de transition -- seulement deux etats qui se succedent.
     var avant = sc.dernier;
+    // EN MOUVEMENT, L'ACTE QUI SORT RESTE ALLUME sous le volet : il garde
+    // « on » (tout ce qu'il porte reste pose) et prend « part », qui le
+    // range sous l'entrant. bbLuMouvoir l'eteint quand le volet est passe.
+    var mo = bbLuMo(h), sortant = null;
     for (var k = 0; k < actes.length; k++){
       var on = k === sc.i;
-      actes[k].classList.toggle('on', on);
-      actes[k].classList.toggle('sort', !on && k === avant);
+      var part = mo && !on && k === avant && actes[k].classList.contains('on');
+      if (part) sortant = actes[k];
+      actes[k].classList.toggle('on', on || part);
+      actes[k].classList.toggle('part', part);
+      actes[k].classList.toggle('sort', !mo && !on && k === avant);
       actes[k].setAttribute('aria-hidden', on ? 'false' : 'true');
       if (vgs[k]){
         // On retire puis on remet la classe pour relancer la barre :
@@ -11438,9 +11680,11 @@ window.addEventListener('load', function () {
     }
     if (vgs[sc.i]) bbLuStripSuivre(h, vgs[sc.i]);
     // le nom se forme au moment ou les lettres finissent de monter
-    var actif = h.querySelector('.bb-lu-act.on');
+    var actif = h.querySelector('.bb-lu-act.on:not(.part)');
     clearTimeout(sc.tForme);
-    sc.tForme = setTimeout(function(){ bbLuFormer(sc, actif); }, 150);
+    // en mouvement, les lettres montent dans leur fente : plus de brouillage
+    if (mo) bbLuMouvoir(sc, actif, sortant);
+    else sc.tForme = setTimeout(function(){ bbLuFormer(sc, actif); }, 150);
     bbLuCompter(sc, actif);
     // le fond bascule d'un cote a l'autre a chaque acte
     var cadre = h.querySelector('.bb-lu-cadre');
@@ -11470,9 +11714,10 @@ window.addEventListener('load', function () {
     sc.tSort = setTimeout(function(){
       h.querySelectorAll('.bb-lu-act.sort').forEach(function(a){ a.classList.remove('sort'); });
     }, 700);
-    var duree = h.querySelector('.bb-lu-act.on.bb-lu-act-intro') ? BB_LU_INTRO
-              : h.querySelector('.bb-lu-act.on.bb-lu-act-duel')   ? BB_LU_DUEL
-              : h.querySelector('.bb-lu-act.on.bb-lu-act-banc')   ? BB_LU_BANC
+    // lu sur l'acte entrant : l'acte qui sort porte encore « on »
+    var duree = (actif && actif.classList.contains('bb-lu-act-intro')) ? BB_LU_INTRO
+              : (actif && actif.classList.contains('bb-lu-act-duel'))  ? BB_LU_DUEL
+              : (actif && actif.classList.contains('bb-lu-act-banc'))  ? BB_LU_BANC
               : BB_LU_DUREE;
     h.style.setProperty('--bb-lu-duree', duree + 'ms');
     sc.depuis = Date.now();
@@ -11489,7 +11734,7 @@ window.addEventListener('load', function () {
   function bbLuEtatDire(sc){
     var h = sc && sc.hote; if (!h) return;
     if (!bbTemoin || window.parent === window) return;
-    var actif = h.querySelector('.bb-lu-act.on'); if (!actif) return;
+    var actif = h.querySelector('.bb-lu-act.on:not(.part)'); if (!actif) return;
     var rang = h.querySelector('.bb-lu-rang');
     try {
       parent.postMessage({ type:'bbc-scene-etat', i: sc.i, n: sc.n, pid: actif.getAttribute('data-pid') || null,
@@ -11531,6 +11776,7 @@ window.addEventListener('load', function () {
     var h = sc && sc.hote; if (!h || !sc.n) return;
     // on retire l'etat « on » avant de le remettre : une transition ne
     // rejoue pas si la classe ne bouge pas.
+    bbLuMoArreter(sc);
     h.querySelectorAll('.bb-lu-act.on, .bb-lu-act.sort').forEach(function(a){ a.classList.remove('on'); a.classList.remove('sort'); });
     void h.offsetWidth;
     sc.dernier = undefined;
@@ -11603,8 +11849,12 @@ window.addEventListener('load', function () {
     var sc = bbLuSceneDe(h);
     clearTimeout(sc.t); clearTimeout(sc.tSort); clearTimeout(sc.tForme); clearInterval(sc.forme);
     (sc.compteurs || []).forEach(cancelAnimationFrame); sc.compteurs = [];
+    bbLuMoArreter(sc);
     sc.fige = false;
     h.className = 'bb-lu-scene';
+    // la mise en mouvement (bbLuMouvoir) : il faut l'API Web Animations, et
+    // qu'on n'ait pas demande moins d'animation
+    if (!bbLuPeu() && typeof h.animate === 'function') h.classList.add('bb-lu-mo');
     h.setAttribute('data-mot', mot || 'titulaires');
     // La police des noms : un gout, donc un reglage. Sans reglage, celle
     // d'avant -- personne ne voit son site changer tout seul.
@@ -11624,6 +11874,7 @@ window.addEventListener('load', function () {
         '" alt="" loading="lazy" decoding="async"><span></span></div>' +
       '<span class="bb-lu-court" aria-hidden="true"></span>' +
       '<span class="bb-lu-trame" aria-hidden="true"></span>' +
+      '<span class="bb-lu-volet" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
       '<span class="bb-lu-coin bb-lu-coin-hg" aria-hidden="true">Saison ' + bbLuSaison() + '</span>' +
       '<span class="bb-lu-coin bb-lu-coin-hd bb-lu-rang" aria-hidden="true"></span>' +
       '<div class="bb-lu-acts">' + actes.join('') + '</div>' +
@@ -11936,10 +12187,11 @@ window.addEventListener('load', function () {
     var h = sc && sc.hote; if (!h) return;
     sc.fige = true; h.classList.add('bb-lu-figee');
     bbLuTemoinFige = true;
+    bbLuMoArreter(sc);
     clearTimeout(sc.t); clearTimeout(sc.tForme); clearTimeout(sc.tSort);
     clearInterval(sc.forme);
     (sc.compteurs || []).forEach(cancelAnimationFrame); sc.compteurs = [];
-    var actif = h.querySelector('.bb-lu-act.on');
+    var actif = h.querySelector('.bb-lu-act.on:not(.part)');
     if (actif){
       actif.querySelectorAll('.bb-lu-l[data-v]').forEach(function(s){
         var v = s.getAttribute('data-v') || ''; if (s.textContent !== v) s.textContent = v;
