@@ -1215,6 +1215,17 @@ window.addEventListener('error', function (e) {
   @media(max-width:1100px){#bb-desktop-nav{gap:8px!important;font-size:11px!important}}
   @media(min-width:1025px) and (max-width:1100px){#bb-hdr-brand > div{display:none}}
 
+  /* LE POINT ROUGE NE BAT QUE PENDANT UN DIRECT (30/09/2026). Celui du menu
+     clignotait tous les jours de l'annee, celui de la pastille du hero
+     aussi, a cote de « Prochain direct ». bbDirectPeindre() pose
+     « bb-en-direct » sur <html> quand la table de marque est ouverte (ou
+     que l'admin force le direct) : hors de la, le point reste, immobile et
+     sourd, pour que le bouton rond du telephone ne soit pas vide. */
+  .bb-live-point{background:rgba(7,19,13,.45)}
+  .bb-en-direct .bb-live-point{background:#C0271B;animation:bbPulse 1.3s infinite}
+  html:not(.bb-en-direct) #bb-hs-livepill > span:first-child{animation:none;background:rgba(243,239,230,.45)}
+  @media (prefers-reduced-motion:reduce){.bb-calme.bb-en-direct .bb-live-point{animation:none}}
+
   /* ===== FACE-OFF : LE DUEL, COMME UNE AFFICHE DE MATCH =====
      Deux cartes cote a cote et une liste de barres : c'etait un tableau.
      C'est une scene, dans la langue du Cinq majeur : un cadre sombre
@@ -4534,7 +4545,7 @@ window.addEventListener('error', function (e) {
 
       <div id="bb-hdr-actions" style="display:flex;align-items:center;gap:12px;flex:none">
         <button type="button" id="bb-live-btn" data-nav="accueil" style="display:inline-flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;letter-spacing:.1em;color:#07130D;background:#A8D93B;padding:9px 15px;border-radius:7px;border:none;cursor:pointer;flex:none">
-          <span style="width:8px;height:8px;border-radius:50%;background:#C0271B;animation:bbPulse 1.3s infinite;flex:none"></span><span id="bb-live-btn-label" data-bb="nav_live_label">DIRECTS</span>
+          <span class="bb-live-point" style="width:8px;height:8px;border-radius:50%;flex:none"></span><span id="bb-live-btn-label" data-bb="nav_live_label">DIRECTS</span>
         </button>
         <button type="button" id="bb-account-btn" style="display:inline-flex;align-items:center;gap:7px;flex:none;font-family:'Inter',sans-serif;font-weight:600;font-size:12.5px;color:#D8D6CE;background:transparent;border:1px solid rgba(243,239,230,.18);border-radius:20px;padding:8px 14px;cursor:pointer">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-3.5 3.5-6 8-6s8 2.5 8 6"></path></svg>
@@ -4665,7 +4676,12 @@ window.addEventListener('error', function (e) {
 
       <!-- La carte "direct" quitte le hero et prend toute la largeur : elle ne se
            remplit que les jours de match (voir window.bbInitLive). -->
-      <div id="bb-live-wrap" style="margin-top:16px">
+      <!-- Nee cachee (30/09/2026) : au repos, la carte ne disait que « Aucun
+           match en direct pour le moment », sur une bande entiere de
+           l'accueil, tous les jours. bbLiveNet() la rouvre des qu'un direct,
+           un lien ou un score existe ; bbLiveOff() ne la montre que si
+           l'admin a ecrit une annonce (live_offline_note). -->
+      <div id="bb-live-wrap" class="bb-hide" style="margin-top:16px">
         <div id="bb-live-card" class="bb-live-repos">
             <!-- La photo en fond, voilee de vert comme celle du hero : la
                  carte parle la meme langue que lui, pastille de verre et
@@ -4754,6 +4770,7 @@ window.addEventListener('error', function (e) {
             // feuille de style. Reserver un lecteur 16/9 pour dire qu'il
             // n'y a rien a regarder, c'est meubler.
             var carte = document.getElementById('bb-live-card');
+            var enveloppe = document.getElementById('bb-live-wrap');
             // Un seul endroit remet la carte a plat, pour qu'aucun etat
             // ne survive au precedent : le bouton de renvoi, la sortie de
             // secours, le panneau de score et le cadre.
@@ -4763,6 +4780,7 @@ window.addEventListener('error', function (e) {
               iframe.removeAttribute('src');
               if (lienSortie) lienSortie.style.display = 'none';
               if (carte){ carte.classList.remove('bb-lv-score'); carte.classList.remove('bb-lv-lien'); }
+              if (enveloppe) enveloppe.classList.remove('bb-hide');
             }
             function bbLiveOff(note){
               if (fallbackTitre) fallbackTitre.textContent = note || fallbackTitreDef;
@@ -4772,6 +4790,8 @@ window.addEventListener('error', function (e) {
               liveBadge.style.display = 'none';
               offlineBadge.style.display = 'flex';
               if (carte) carte.classList.add('bb-live-repos');
+              // Sans annonce de l'admin, la carte n'a rien a dire : elle se tait.
+              if (enveloppe && !String(note || '').trim()) enveloppe.classList.add('bb-hide');
             }
             // « sortie » est l'adresse publique du direct : elle reste
             // affichee A COTE du cadre. Voir le commentaire du lien dans
@@ -4951,6 +4971,12 @@ window.addEventListener('error', function (e) {
               var note = s.live_offline_note || '';
               var mode = s.live_mode || 'auto';
               var canal = s.live_channel || 'youtube';
+
+              // Le point rouge du menu et de la pastille du hero : il ne bat
+              // que si la table de marque est ouverte, ou si l'admin force le
+              // direct (tout mode autre que « auto » et « off »).
+              document.documentElement.classList.toggle('bb-en-direct',
+                mode !== 'off' && (mode !== 'auto' || !!(e.live && e.live.is_live)));
 
               if (mode === 'off') return bbLiveOff(note);
 
