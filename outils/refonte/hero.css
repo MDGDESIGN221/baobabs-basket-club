@@ -1,0 +1,219 @@
+  /* ================================================================
+     LE HERO D'ACCUEIL (refonte, piste A sombre, 30/09/2026)
+     ================================================================
+     Deux cases, comme la maquette validee : le discours sur un aplat du
+     vert du blason a gauche, la photo a droite, sans voile ni grain. Le
+     pied du hero est une bande claire : « A la une » sous le discours, la
+     carte du match sous la photo. Posee sur la photo, la carte couvrait
+     les joueuses.
+
+     Les identifiants restent le contrat avec l'admin (applyHeroSplit,
+     renderNextMatch, bbCadre) : aucun ne disparait.
+
+     LA PHOTO NE S'ANIME QU'EN OPACITE. bbCadre ecrit le zoom du club en
+     ligne, dans un transform : une animation sur transform l'ecraserait
+     pendant qu'elle joue, puis pour de bon avec « both ». */
+  :root{ --hh-accent:#134A2E; --hh-accent-cerne:rgba(19,74,46,.3) }
+  #bb-hero{
+    position:relative; display:grid;
+    grid-template-columns:minmax(0,5fr) minmax(0,7fr);
+    grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"haut photo" "discours photo" "actu carte";
+    width:100vw; margin-left:calc(50% - 50vw);
+    margin-top:calc(-1 * clamp(20px,3vw,28px));
+    min-height:min(calc(100dvh - 110px),820px);
+    background:var(--pa-vert); color:var(--pa-encre);
+  }
+  /* la colonne du discours s'aligne sur la marge du reste de la page */
+  #bb-hero-haut, #bb-hero-left{
+    padding-left:max(clamp(16px,4vw,24px), calc((100vw - 1500px) / 2 + clamp(16px,4vw,24px)));
+    padding-right:clamp(24px,4vw,64px);
+  }
+  #bb-hero-haut{
+    grid-area:haut; position:relative; z-index:2;
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding-top:clamp(24px,3vw,40px);
+  }
+  .bb-hh-haut-d{ display:flex; align-items:center; gap:12px; flex:none }
+  .bb-hh-marque{ display:flex; align-items:center; gap:12px; min-width:0 }
+  #bb-hero-logo{ width:40px; height:40px; object-fit:contain; flex:none }
+  #bb-hs-kicker{
+    font-family:var(--pa-f); font-weight:700; font-stretch:88%; font-size:12.5px;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--pa-or);
+  }
+  #bb-hero-left{
+    grid-area:discours; position:relative; z-index:2; min-width:0;
+    display:flex; flex-direction:column; justify-content:flex-end;
+    padding-top:clamp(28px,4vw,56px); padding-bottom:clamp(32px,4vw,56px);
+  }
+  .bb-hh-h1{
+    font-family:var(--pa-titre); font-weight:800; text-transform:uppercase;
+    font-size:clamp(46px,5.9vw,96px); line-height:.9; letter-spacing:-.004em;
+    color:var(--pa-encre); margin:0;
+  }
+  .bb-hh-h1 #bb-hs-title{ display:inline }
+  .bb-hh-h1 #bb-hs-accent{ display:block; color:var(--pa-encre) }
+  .bb-hh-seo{
+    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+  #bb-hs-text{
+    max-width:40ch; margin:clamp(20px,2.4vw,28px) 0 0;
+    font-size:clamp(16px,1.25vw,18px); line-height:1.5; color:rgba(241,242,239,.8); text-wrap:pretty;
+  }
+  #bb-hs-ctas{ display:flex; flex-wrap:wrap; align-items:center; gap:14px 28px; margin:clamp(26px,3vw,38px) 0 0 }
+  #bb-hs-btn1, #bb-hs-btn2{
+    display:inline-flex; align-items:center; gap:9px; text-decoration:none; white-space:nowrap;
+    font-family:var(--pa-f); font-weight:700; font-stretch:86%; font-size:14px;
+    letter-spacing:.04em; text-transform:uppercase;
+    transition:background .2s ease, color .2s ease, transform .12s ease;
+  }
+  #bb-hs-btn1{ height:50px; padding:0 24px; background:var(--pa-clair); color:var(--pa-sur-clair) }
+  #bb-hs-btn1:hover{ background:#fff }
+  #bb-hs-btn1:active{ transform:translateY(1px) }
+  #bb-hs-btn2{ color:var(--pa-encre); padding-bottom:3px; border-bottom:1px solid currentColor }
+  #bb-hs-btn2::after{ content:"\2192"; transition:transform .2s ease }
+  #bb-hs-btn2:hover::after{ transform:translateX(3px) }
+  #bb-hs-btn1:focus-visible, #bb-hs-btn2:focus-visible{ outline:2px solid var(--pa-clair); outline-offset:3px }
+  /* les trois chiffres : un filet, puis la valeur et son libelle, sans cadre */
+  #bb-hs-figures{
+    display:grid; grid-template-columns:repeat(3,auto); justify-content:start;
+    gap:clamp(22px,3vw,48px); margin-top:clamp(28px,3.4vw,44px);
+    padding-top:clamp(18px,2.2vw,24px); border-top:1px solid rgba(241,242,239,.22);
+  }
+  #bb-hs-f1v, #bb-hs-f2v, #bb-hs-f3v{
+    font-family:var(--pa-titre); font-weight:800; font-size:clamp(30px,3vw,44px);
+    line-height:.9; color:var(--pa-encre); font-variant-numeric:tabular-nums;
+  }
+  #bb-hs-f1l, #bb-hs-f2l, #bb-hs-f3l{
+    margin-top:8px; font-size:12px; font-weight:600; font-stretch:88%;
+    letter-spacing:.05em; text-transform:uppercase; color:rgba(241,242,239,.66);
+  }
+
+  /* ---- la photo ---- */
+  #bb-hero-img-wrap{ grid-area:photo; position:relative; z-index:0; overflow:hidden; background:#1B2420; min-height:420px }
+  #bb-hero-img, #bb-hero-img-b{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; object-position:center 30%;
+  }
+  #bb-hero-img{ animation:bbHhEntre 1s cubic-bezier(.2,.7,.2,1) both }
+  @keyframes bbHhEntre{ from{ opacity:0 } to{ opacity:1 } }
+  #bb-hero-img-b{ opacity:0; transition:opacity .9s ease }
+  .bb-hh-voile, .bb-hh-grain{ display:none }
+
+  /* les points du defile et l'annonce du prochain direct, dans la barre du haut */
+  #bb-hero-dots{ display:none; gap:6px; align-items:center }
+  #bb-hs-livepill{ display:flex; align-items:center; gap:8px }
+  #bb-hs-livepill > span:first-child{ width:7px; height:7px; border-radius:50%; background:#E5564A; flex:none }
+  #bb-hs-livenote{
+    font-size:12px; font-weight:700; font-stretch:88%; letter-spacing:.05em;
+    text-transform:uppercase; color:rgba(241,242,239,.8);
+  }
+
+  /* Le conteneur s'efface : ses deux enfants sont des cases de la grille.
+     Le JS les trouve par leurs identifiants. */
+  #bb-hero-overlays{ display:contents }
+
+  /* ---- la carte du match : dans la bande du pied, sous la photo ----
+     Une ligne : les deux equipes, la date et le lieu, puis le bouton. */
+  #bb-next-match{
+    grid-area:carte; position:relative; z-index:2; min-width:0;
+    display:grid; align-items:center; column-gap:clamp(18px,2.4vw,36px);
+    grid-template-columns:minmax(0,auto) minmax(0,1fr) auto;
+    grid-template-areas:"tete tete tete" "equipes infos billet" "equipes details billet";
+    padding:18px clamp(20px,2.4vw,32px) 18px;
+    background:var(--pa-surface); color:var(--pa-encre);
+    border-left:1px solid var(--pa-filet); border-bottom:1px solid var(--pa-filet);
+  }
+  .bb-hh-mt-h{ grid-area:tete; display:flex; align-items:baseline; gap:16px; margin-bottom:10px }
+  #bb-hs-matchlabel, #bb-next-match-badge{
+    font-size:12.5px; font-weight:700; font-stretch:88%; letter-spacing:.05em; text-transform:uppercase;
+  }
+  #bb-hs-matchlabel{ color:var(--pa-or) }
+  #bb-next-match-badge{ color:var(--pa-or-t); font-variant-numeric:tabular-nums }
+  #bb-next-match-teams{ grid-area:equipes; display:flex; align-items:center; gap:14px; min-width:0 }
+  #bb-next-match .bb-nm-team{ display:flex!important; align-items:center; gap:10px; text-align:left!important; flex:none!important; min-width:0 }
+  #bb-next-match img.bb-nm-logo{
+    width:38px!important; height:38px!important; margin:0!important; flex:none;
+    border-radius:0!important; background:none!important; border:0!important; object-fit:contain;
+  }
+  #bb-next-match div.bb-nm-logo{ width:38px!important; height:38px!important; border-radius:0!important; margin:0!important; flex:none }
+  #bb-next-match .bb-nm-name{ font-size:15px!important; font-weight:700!important; line-height:1.15; color:var(--pa-encre)!important; white-space:nowrap }
+  #bb-next-match .bb-nm-vs{ flex:none; height:auto; font-family:var(--pa-titre)!important; font-size:18px!important; color:var(--pa-gris)!important }
+  #bb-next-match-info{ grid-area:infos; display:flex; flex-wrap:wrap; gap:0 12px; font-size:14px; line-height:1.45; color:var(--pa-corps) }
+  #bb-next-match-info > div:first-child{ font-size:14px!important; font-weight:700!important; letter-spacing:0!important; color:var(--pa-encre)!important }
+  #bb-next-match-detail{ grid-area:details; display:flex; flex-wrap:wrap; gap:4px 0; margin-top:4px }
+  #bb-next-match-detail:empty{ display:none }
+  #bb-next-match-detail > span{
+    padding:0 10px; border-left:1px solid var(--pa-filet);
+    font-size:12px; font-weight:600; font-stretch:88%; letter-spacing:.03em; text-transform:uppercase; color:var(--pa-gris);
+  }
+  #bb-next-match-detail > span:first-child{ padding-left:0; border-left:0 }
+  #bb-next-match-detail > span.libre{ color:var(--pa-or) }
+  #bb-hs-ticket{
+    grid-area:billet; display:inline-flex; align-items:center; gap:8px; height:44px; padding:0 18px;
+    background:var(--pa-clair); color:var(--pa-sur-clair); text-decoration:none;
+    font-size:13px; font-weight:700; font-stretch:86%; letter-spacing:.04em; text-transform:uppercase;
+    transition:background .2s ease;
+  }
+  #bb-hs-ticket:hover{ background:#fff; color:var(--pa-sur-clair) }
+
+  /* La carte entre une fois. Plus de halo, plus d'inclinaison au curseur,
+     plus de « VS » qui respire : bbNmSuivreCurseur pose toujours ses
+     classes, elles ne font plus rien. */
+  #bb-next-match::before, #bb-next-match-badge::after{ display:none!important }
+  #bb-next-match.bb-nm-suit{ transform:none!important }
+  #bb-next-match.bb-nm-suit .bb-nm-team, .bb-nm-team{ transform:none!important }
+  #bb-next-match.bb-nm-pret > *{ opacity:0 }
+  #bb-next-match.bb-nm-anime > *, #bb-next-match.bb-nm-anime *{ opacity:1; animation:none }
+  #bb-next-match.bb-nm-anime{ animation:bbHhCarte .6s cubic-bezier(.2,.7,.2,1) both }
+  @keyframes bbHhCarte{ from{ opacity:0; transform:translateY(16px) } to{ opacity:1; transform:none } }
+
+  /* ---- le bandeau « A la une », en pied du hero, sous le discours ----
+     Sans match en base, la carte s'efface et la une prend toute la bande. */
+  #bb-hero:has(#bb-next-match.bb-hide) #bb-hero-actu{ grid-column:1 / -1 }
+  #bb-hero-actu{
+    grid-area:actu; display:flex; align-items:center; gap:clamp(14px,2vw,28px); min-width:0;
+    padding:18px clamp(20px,2.4vw,32px) 18px max(clamp(16px,4vw,24px), calc((100vw - 1500px) / 2 + clamp(16px,4vw,24px)));
+    background:var(--pa-surface); color:var(--pa-encre); text-decoration:none;
+    border-bottom:1px solid var(--pa-filet);
+  }
+  #bb-hs-alaune{
+    flex:none; font-size:12.5px; font-weight:700; font-stretch:88%;
+    letter-spacing:.05em; text-transform:uppercase; color:var(--pa-or);
+  }
+  /* L'admin choisit une couleur pour ce titre et ce sous-titre (hero_title_color,
+     hero_subtitle_color), ecrite en ligne. Elle avait ete choisie pour l'ancien
+     fond : la bande impose les siennes. */
+  #bb-hero-title{ display:block; font-size:clamp(16px,1.4vw,19px); font-weight:700; font-stretch:92%; line-height:1.25; color:var(--pa-encre)!important }
+  #bb-hero-sub{ display:flex; flex-wrap:wrap; gap:8px; margin-top:3px; font-size:13px; color:var(--pa-gris)!important }
+  #bb-hero-actu:hover #bb-hero-title{ text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:4px }
+  .bb-hh-fleche{ margin-left:auto; flex:none; color:var(--pa-or); transition:transform .2s ease }
+  #bb-hero-actu:hover .bb-hh-fleche{ transform:translateX(3px) }
+
+  /* ---- telephone : la photo d'abord, puis le discours, la carte et la une ---- */
+  @media (max-width:900px){
+    #bb-hero{
+      grid-template-columns:minmax(0,1fr); grid-template-rows:none;
+      grid-template-areas:"photo" "haut" "discours" "carte" "actu"; min-height:0;
+    }
+    #bb-hero-img-wrap{ min-height:0; aspect-ratio:4/3 }
+    #bb-hero-haut, #bb-hero-left{ padding-left:clamp(16px,5vw,24px); padding-right:clamp(16px,5vw,24px) }
+    #bb-hero-haut{ padding-top:24px; flex-wrap:wrap }
+    #bb-hero-left{ padding-top:18px; padding-bottom:32px }
+    .bb-hh-h1{ font-size:clamp(40px,11vw,60px) }
+    .bb-hh-h1 br{ display:none }
+    #bb-hs-figures{ grid-template-columns:repeat(3,minmax(0,1fr)) }
+    #bb-next-match{
+      grid-template-columns:minmax(0,1fr); grid-template-areas:"tete" "equipes" "infos" "details" "billet";
+      row-gap:10px; border-left:0; padding:20px clamp(16px,5vw,24px);
+    }
+    #bb-hs-ticket{ justify-self:start; margin-top:6px }
+    #bb-hero-actu{ padding:16px clamp(16px,5vw,24px); border-top:1px solid var(--pa-filet) }
+    #bb-next-match .bb-nm-name{ white-space:normal }
+    #bb-hero-sub > span:not(:first-child){ display:none }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .bb-calme #bb-hero-img, .bb-calme #bb-next-match.bb-nm-anime{ animation:none }
+  }
+
