@@ -27897,6 +27897,8 @@
     bar.querySelector('[data-pz="save"]').addEventListener('click', function(){ pzToutEnregistrer(this); });
     bar.querySelector('[data-pz="site"]').addEventListener('change', function(){ pzSurAccueil(id); });
     bar.querySelector('[data-pz="pdf"]').addEventListener('click', function(){ pzListeOfficielle(id, carte()); });
+    var bv = bar.querySelector('[data-pz="video"]');
+    if (bv) bv.addEventListener('click', function(){ pzVideo(id, bv); });
     bar.querySelector('[data-pz="del"]').addEventListener('click', function(){ pzSupprimer(id); });
   }
   /* L'en-tete suit l'edition -- les visages, le compte, le rang --
@@ -27918,6 +27920,7 @@
         var a = b.getAttribute('data-pz');
         if (a === 'cinq-site') return;                       // la bascule ecoute « change », plus bas
         if (a === 'cinq-cal') return showSection('matches2');
+        if (a === 'video') return pzVideo('cinq', b);
         if (a === 'cinq-fiche'){
           showSection('matches2');
           if (pzCinq && pzCinq.m && typeof mcOpen === 'function') setTimeout(function(){ mcOpen(pzCinq.m.id); }, 160);
@@ -28238,6 +28241,7 @@
         '<label class="pz-sw" title="' + (cinq ? 'Le site montre ou non le cinq du match sur l’accueil' : 'Le site montre ou non cette présentation sur l’accueil') + '">' +
           '<input type="checkbox" data-pz="' + (cinq ? 'cinq-site' : 'site') + '"' + (surSite ? ' checked' : '') + '><i></i><span>Affiché sur l’accueil</span></label>' +
         (cinq && opt.fiche ? '<button type="button" class="btn btn-ghost" data-pz="cinq-fiche">Ouvrir la fiche du match</button>' : '') +
+        ((!cinq || opt.fiche) ? '<button type="button" class="btn btn-ghost" data-pz="video" title="Ce bloc en vidéo verticale (MP4, 1080 × 1350), pour WhatsApp et Instagram">Vidéo (MP4)</button>' : '') +
         (!cinq ? '<button type="button" class="btn btn-ghost" data-pz="pdf" title="La liste des joueuses et du staff, avec leurs caractéristiques, dans le Greffe">Liste officielle (PDF)</button>' : '') +
         (!cinq ? '<button type="button" class="ds-act" data-pz="del">Supprimer</button>' : '') +
       '</div>' +
@@ -28529,6 +28533,30 @@
     } catch(err){}
   }
 
+  // LA VIDEO D'UN BLOC : le cinq du match annonce, ou une presentation,
+  // tels qu'ils sont dans l'editeur (avant meme d'enregistrer)
+  function pzVideo(id, btn){
+    if (String(id) === 'cinq'){
+      var c = pzCinq || {}; if (!c.m) return;
+      var src = pzCinqSrc();
+      var js = src.cinq.map(function(pid){
+        var p = pzJoueuse(pid); return p ? vcJoueuse(p, String(src.cap) === String(pid)) : null;
+      }).filter(Boolean);
+      return vcLancer(btn, vcMatch(c.m, js));
+    }
+    var e = pzEtat[String(id)];
+    var pr = pzRows.filter(function(x){ return String(x.id) === String(id); })[0] || {};
+    var carte = document.querySelector('#pz-liste .pz-c[data-id="' + id + '"]');
+    var v = carte ? pzValeurs(carte) : pr;
+    var ev = pzEvs.filter(function(x){ return String(x.id) === String(v.evenement_id); })[0] || null;
+    var js2 = (e ? e.joueuses : []).map(function(pid){
+      var p = pzJoueuse(pid); return p ? vcJoueuse(p, !!e && String(e.cap) === String(pid)) : null;
+    }).filter(Boolean);
+    vcLancer(btn, { genre:'selection', titre: v.titre || 'La sélection', sur: 'Baobabs Basket Club',
+      infos: ev ? [ev.titre, ev.dates, ev.lieu].filter(Boolean) : [v.sous_titre || v.kicker || ''].filter(Boolean),
+      adversaire: null, joueuses: js2, nomFichier: 'baobabs-' + vcSlug(v.titre || 'la-selection') });
+  }
+
   // LA LISTE OFFICIELLE : les joueuses et le staff qui partent, avec
   // leurs caracteristiques, dans un acte du Greffe.
   function pzListeOfficielle(id, carte){
@@ -28555,6 +28583,62 @@
       mention: 'Les ' + joueuses.length + ' joueuses sélectionnées pour représenter Baobabs Basket Club' + (ev && ev.lieu ? ' à ' + ev.lieu.replace(/^terrain de basket de /i, '') : '') + '.',
       tables: { joueuses: joueuses, staff: staff }
     }, { origine: 'Présentations' });
+  }
+
+  // =================================================================
+  // LA COMPOSITION EN VIDEO (30/09/2026)
+  // =================================================================
+  // « pouvoir avoir la composition en video a telecharger, pour chaque
+  //   composition future aussi ». Le generateur vit a part
+  // (/studio/video-compo.js, charge au premier clic, comme le Studio) :
+  // ici, on ne fait que lui donner la composition telle qu'elle est sous
+  // la main, au moment du clic. Une composition future a donc sa video
+  // des qu'elle est posee.
+  function vcCharger(){
+    if (window.BaobabsVideo) return Promise.resolve();
+    return new Promise(function(res, rej){
+      var s = document.createElement('script');
+      s.src = '/studio/video-compo.js?v=20260930';
+      s.onload = function(){ window.BaobabsVideo ? res() : rej(new Error('le générateur ne s’est pas chargé')); };
+      s.onerror = function(){ rej(new Error('le générateur ne s’est pas chargé')); };
+      document.head.appendChild(s);
+    });
+  }
+  function vcHeure(h){
+    var t = String(h || '').slice(0, 5); if (!/^\d{1,2}:\d{2}$/.test(t)) return '';
+    var p = t.split(':'); return Number(p[0]) + ' h' + (p[1] !== '00' ? ' ' + p[1] : '');
+  }
+  function vcSlug(t){
+    return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+  function vcJoueuse(p, cap){
+    return { nom: p.name || '', no: p.jersey_number == null ? '' : p.jersey_number, photo: p.photo_url || '', cap: !!cap };
+  }
+  function vcMatch(m, joueuses){
+    var quand = pcQuandCourt(m); quand = quand ? quand.charAt(0).toUpperCase() + quand.slice(1) : '';
+    return { genre:'cinq', titre:'Cinq majeur', sur:'Baobabs Basket Club',
+      infos: ['Baobabs ' + (m.is_home === false ? 'chez' : 'vs') + ' ' + (m.opponent_name || ''),
+              [quand, vcHeure(m.match_time)].filter(Boolean).join(' · '), m.venue || ''].filter(Boolean),
+      adversaire: { nom: m.opponent_name || '', logo: m.opponent_logo_url || '' },
+      joueuses: joueuses,
+      nomFichier: 'baobabs-cinq-majeur-' + (m.match_date || '') + '-' + vcSlug(m.opponent_name) };
+  }
+  // Le bouton dit ou en est la fabrication (une dizaine de secondes), puis
+  // le fichier part dans les telechargements du navigateur.
+  function vcLancer(btn, donnees){
+    if (!donnees || !(donnees.joueuses || []).length){
+      qgToast('Aucune joueuse dans la composition : il n’y a rien à mettre en vidéo.', true); return;
+    }
+    var lib = btn ? btn.textContent : '';
+    if (btn){ btn.disabled = true; btn.textContent = 'Préparation…'; }
+    vcCharger().then(function(){
+      return window.BaobabsVideo.telecharger(donnees, function(p){ if (btn) btn.textContent = 'Vidéo… ' + Math.round(p * 100) + ' %'; });
+    }).then(function(r){
+      qgToast('Vidéo téléchargée ✓ ' + r.nom);
+    }).catch(function(e){
+      qgToast('La vidéo n’a pas pu être fabriquée' + (e && e.message ? ' : ' + e.message : '') + '.', true);
+    }).then(function(){ if (btn){ btn.disabled = false; btn.textContent = lib; } });
   }
 
   // =================================================================
@@ -28866,6 +28950,7 @@
     h += '<div class="mc-sc-bar">' +
       '<button type="button" class="btn btn-primary" data-sc="voir">Voir l’annonce sur le site</button>' +
       '<button type="button" class="btn btn-ghost" data-sc="rejouer">Rejouer l’animation</button>' +
+      '<button type="button" class="btn btn-ghost" data-sc="video" title="Le cinq en vidéo verticale (MP4, 1080 × 1350), pour WhatsApp et Instagram">Télécharger la vidéo</button>' +
       '<button type="button" class="btn btn-ghost" data-sc="enregistrer" disabled>Enregistrer les réglages</button>' +
       '<span class="mc-sc-etat" id="mc-sc-etat">Réglage ordinateur. Bougez un curseur : le site suit, et se fige sur la joueuse. Le téléphone se règle dans « Blocs de l’accueil ».</span>' +
     '</div>';
@@ -28905,6 +28990,7 @@
         var a = b.getAttribute('data-sc');
         if (a === 'voir') return mcCompoTemoin(true);
         if (a === 'rejouer') return mcSceneRejouer();
+        if (a === 'video') return mcVideo(b);
         if (a === 'enregistrer') return mcSceneEnregistrer();
         if (a === 'zero'){
           var row = b.closest('[data-pid]'), pid = row.getAttribute('data-pid'), p = mcCompoJoueuse(pid);
@@ -28965,6 +29051,14 @@
       w.postMessage({ type:'bbc-temoin-cinq-scene', pid:String(p.id),
         sx:mcSceneVal(p, 'scene_x', 0), sy:mcSceneVal(p, 'scene_y', 0), sz:mcSceneVal(p, 'scene_zoom', 100) }, location.origin);
     } catch(e){}
+  }
+  // le cinq tel qu'il est pose ici, dans l'ordre de la planche
+  function mcVideo(btn){
+    var m = mcById(mcCompo.mid); if (!m) return;
+    var js = mcCompo.cinq.map(function(pid){
+      var p = mcCompoJoueuse(pid); return p ? vcJoueuse(p, String(mcCompo.cap) === String(pid)) : null;
+    }).filter(Boolean);
+    vcLancer(btn, vcMatch(m, js));
   }
   function mcSceneRejouer(){
     if (!tmEtat.ouvert || tmEtat.id !== mcCompoTemoinId()){ mcCompoTemoin(true); return; }
