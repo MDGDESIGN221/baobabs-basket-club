@@ -2528,8 +2528,10 @@
   function peindreRegistre() {
     var hote = elt.registre;
     if (!hote) return;
-    var q = registreRecherche.trim().toLowerCase();
-    var normal = function (s) { return String(s || '').toLowerCase(); };
+    /* la même clé que l'accueil : sans accents ni ponctuation. Un intitulé
+       collé avec son apostrophe typographique (’) ou son point médian ne
+       trouvait rien ici, alors que l'accueil le trouvait (29/10/2026). */
+    var q = cleRecherche(registreRecherche);
     var liste = registre.filter(function (a) {
       var e = a.etat || 'brouillon';
       if (registreFiltre === 'archive') { if (e !== 'archive') return false; }
@@ -2539,8 +2541,8 @@
       else if (registreDossier !== 'tous' && (a.dossier || null) !== registreDossier) return false;
       if (!q) return true;
       /* la recherche va jusque dans la donnée : un nom de joueuse, une ville */
-      var corps = normal(a.intitule) + ' ' + normal(a.nom) + ' ' + normal(a.numero) + ' ' + normal(a.date) + ' ' + normal(JSON.stringify(a.donnees || {}));
-      return q.split(/\s+/).every(function (mot) { return corps.indexOf(mot) !== -1; });
+      var corps = cleRecherche([a.intitule, a.nom, a.numero, a.date, JSON.stringify(a.donnees || {})].join(' '));
+      return q.split(' ').every(function (mot) { return corps.indexOf(mot) !== -1; });
     });
     var compte = {};
     registre.forEach(function (a) { var e = a.etat || 'brouillon'; compte[e] = (compte[e] || 0) + 1; });
