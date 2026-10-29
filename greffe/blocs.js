@@ -630,6 +630,7 @@
   }
   function editChemin(chemin) { return chemin ? ' data-edit="' + chemin + '"' : ''; }
   B.edit = edit;
+  B.editChemin = editChemin;
 
   /* Un texte riche (paragraphes, puces, notes) dans son enveloppe
      modifiable quand il vient d'une donnée. */
@@ -665,6 +666,7 @@
     if (!s.a) return U.paragraphes(s.t || '');
     return '<div class="txt"' + s.a + '>' + U.paragraphes(s.t || '') + '</div>';
   }
+  B.slotTexte = slotTexte;
   /* Un élément d'une ligne : <tag class="x" data-edit="…">texte</tag>, ou rien
      si le texte est vide et qu'aucun chemin ne permet d'en écrire un. */
   function ligne(tag, classe, s) {
@@ -673,6 +675,7 @@
     if (!s.t && !(s.a && s.declare)) return '';
     return '<' + tag + (classe ? ' class="' + classe + '"' : '') + s.a + '>' + U.enLigne(s.t || '') + '</' + tag + '>';
   }
+  B.ligne = ligne;
 
   /* Des champs « Étiquette : valeur » d'une partie ou d'une carte de
      signature (« Née le », « Nom et qualité »). Renseigné, le champ

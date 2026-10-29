@@ -96,7 +96,9 @@
                  'engagement-dirigeant', 'pret-joueuse', 'liberation', 'charte',
                  'pv-passation', 'procuration', 'devis', 'avoir',
                  /* le 24 septembre 2026 : le club emprunte pour la tournée */
-                 'reconnaissance-dette'];
+                 'reconnaissance-dette',
+                 /* le 29 octobre 2026 : un contrat qui n'est pas du club, à l'allure administrative */
+                 'marche-public'];
 
   /* =================================================================
      1. LES PETITS OUTILS, PARTAGÉS AVEC LES BLOCS ET LES MODÈLES
@@ -5125,7 +5127,7 @@
     var noms = { entete: 'En-tête', titre: 'Titre', reperes: 'Cases de repères', encadre: 'Encadré', parties: 'Parties', phrase: 'Phrase',
                  articles: 'Articles', lettre: 'Lettre', signatures: 'Signatures', annexe: 'Annexe', tableau: 'Tableau', postes: 'Postes',
                  chips: 'Pastilles', certification: 'Certification', texte: 'Texte', image: 'Image', espace: 'Espace' };
-    return cfg ? (noms[cfg.b] || cfg.b) : 'Bloc';
+    return cfg ? (cfg.nom || noms[cfg.b] || cfg.b) : 'Bloc';
   }
   function commandeBloc(cmd, bi) {
     if (cmd === 'reglages') { blocSel = bi; propsOnglet = 'proprietes'; ouvrirProps(true); peindreProps(); majOutils(); return; }
