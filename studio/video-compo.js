@@ -122,6 +122,18 @@
     });
     return policesPretes;
   }
+  // une feuille de polices de plus (celle de l'affiche), chargee une fois
+  var feuilles = {};
+  function policesEn(url, faces){
+    if (!url) return Promise.resolve();
+    if (!feuilles[url]) feuilles[url] = new Promise(function(res){
+      var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = url;
+      l.onload = res; l.onerror = res; document.head.appendChild(l);
+    }).then(function(){
+      return Promise.all((faces || []).map(function(f){ return document.fonts.load(f).catch(function(){}); }));
+    });
+    return feuilles[url];
+  }
   // une photo de la base, servie a la bonne taille (le rendu Supabase)
   function taille(u, w){
     u = String(u || '').trim(); if (!u) return '';
@@ -859,8 +871,26 @@
      terrain absents ne font pas de rangee.
      ================================================================= */
   var PAPIER = '#F1ECE1', ENCRE = '#0A1C12', FORET = '#17502F', LAME = .6;
-  // depasse, puis revient : le blason qui tombe et rebondit
-  function rebond(x){ x = borne(x); var c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); }
+  /* LES POLICES DE L'AFFICHE : « pour la police d'ecriture on peut avoir
+     mieux » (08/11). Elles sont a part de celles de la composition, et
+     passent toutes par fT() : en changer tient en une ligne. gras / mi :
+     le titre plein et le titre un cran plus leger (une police qui n'a
+     qu'une graisse les met egales, sinon le navigateur fabrique un faux
+     gras). */
+  var POLICES_AFF = {
+    anton:  { titre: '"Anton", Impact, sans-serif', gras: '400', mi: '400', texte: '"Archivo", system-ui, sans-serif',
+              url: 'https://fonts.googleapis.com/css2?family=Anton&display=swap', faces: ['400 100px Anton'] },
+    barlow: { titre: '"Barlow Condensed", Impact, sans-serif', gras: 'italic 800', mi: 'italic 700', texte: '"Barlow", system-ui, sans-serif',
+              url: 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,700;1,800&family=Barlow:wght@500;600;700;800&display=swap',
+              faces: ['italic 800 100px "Barlow Condensed"', 'italic 700 100px "Barlow Condensed"', '800 40px Barlow', '700 40px Barlow', '600 40px Barlow'] },
+    saira:  { titre: '"Saira Extra Condensed", Impact, sans-serif', gras: '900', mi: '800', texte: '"Archivo", system-ui, sans-serif',
+              url: 'https://fonts.googleapis.com/css2?family=Saira+Extra+Condensed:wght@800;900&display=swap',
+              faces: ['900 100px "Saira Extra Condensed"', '800 100px "Saira Extra Condensed"'] },
+    big:    { titre: TITRE, gras: '900', mi: '800', texte: TEXTE, url: '', faces: [] }
+  };
+  var POLICE_AFF = 'barlow', AFF = POLICES_AFF[POLICE_AFF];
+  function policeAff(d){ AFF = POLICES_AFF[d && d.policeAffiche] || POLICES_AFF[POLICE_AFF]; return AFF; }
+  function fT(px, mi){ return (mi ? AFF.mi : AFF.gras) + ' ' + px + 'px ' + AFF.titre; }
   function deux(n){ return (n < 10 ? '0' : '') + n; }
   // un hasard qui redonne le meme tirage pour la meme image : l'apercu
   // et la video montrent la meme chose a la meme seconde
@@ -887,6 +917,7 @@
       titre: !dt || iso > auj ? 'PROCHAIN MATCH' : iso === auj ? 'JOUR DE MATCH' : 'LE MATCH',
       jour: jour, num: num, mois: mois,
       date: dt ? jour + ' ' + num + ' ' + mois : '',
+      dateCourte: dt ? (dt.toLocaleDateString('fr-FR', { weekday: 'short' }) + ' ' + num + ' ' + dt.toLocaleDateString('fr-FR', { month: 'short' })).toUpperCase() : '',
       heure: hm ? Number(hm[1]) + 'H' + hm[2] : '',
       lieu: String(m.lieu || '').trim().toUpperCase(),
       dom: m.dom !== false,
@@ -895,6 +926,8 @@
       adv: String(adv.nom || '').trim().toUpperCase() || 'ADVERSAIRE'
     };
   }
+
+
 
   // une ligne qui sort d'une fente, d'un seul bloc
   function fente(x, txt, gx, by, taille, police, t, debut, duree, couleur, align){
@@ -946,16 +979,42 @@
     }
     return mieux;
   }
-  // un blason sur sa pastille ; sans logo, l'initiale
-  function ecu(x, im, nom, cx, cy, D, disque){
+  /* « l'autre logo ne remplit pas bien son cercle » (08/11) : un logo en
+     JPG a son propre fond (blanc, le plus souvent), et pose a 68 % du
+     disque il faisait un carre blanc au milieu du rond. fondLogo() lit
+     les quatre coins : transparents, le logo est detoure ; pleins, on en
+     tire la couleur du fond. */
+  function fondLogo(im){
+    if (!im || !im.naturalWidth) return null;
+    try {
+      var c = document.createElement('canvas'); c.width = 16; c.height = 16;
+      var x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, 16, 16);
+      var d = x.getImageData(0, 0, 16, 16).data, r = 0, g = 0, b = 0;
+      var coins = [0, 15, 240, 255];
+      for (var i = 0; i < 4; i++){
+        var p = coins[i] * 4; if (d[p + 3] < 200) return null;
+        r += d[p]; g += d[p + 1]; b += d[p + 2];
+      }
+      return 'rgb(' + Math.round(r / 4) + ',' + Math.round(g / 4) + ',' + Math.round(b / 4) + ')';
+    } catch(e){ return null; }
+  }
+  // un blason sur sa pastille ; sans logo, l'initiale. fondImg : la
+  // couleur du fond d'un logo plein (fondLogo) : le logo remplit alors
+  // tout le disque, un filet de la pastille autour ; detoure, il occupe
+  // 84 % du disque.
+  function ecu(x, im, nom, cx, cy, D, disque, fondImg){
     if (D <= 1) return;
     x.save();
     x.beginPath(); x.arc(cx, cy, D / 2, 0, Math.PI * 2); x.fillStyle = disque; x.fill();
     if (im && im.naturalWidth){
-      var c = D * .68, s = Math.min(c / im.naturalWidth, c / im.naturalHeight);
-      x.drawImage(im, cx - im.naturalWidth * s / 2, cy - im.naturalHeight * s / 2, im.naturalWidth * s, im.naturalHeight * s);
+      var iw = im.naturalWidth, ih = im.naturalHeight, s;
+      if (fondImg){
+        x.beginPath(); x.arc(cx, cy, D / 2 - Math.max(2, D * .035), 0, Math.PI * 2); x.fillStyle = fondImg; x.fill(); x.clip();
+        s = Math.min(D / iw, D / ih) * .97;
+      } else s = Math.min(D * .84 / iw, D * .84 / ih);
+      x.drawImage(im, cx - iw * s / 2, cy - ih * s / 2, iw * s, ih * s);
     } else {
-      x.fillStyle = ENCRE; x.font = '900 ' + Math.round(D * .5) + 'px ' + TITRE; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillStyle = ENCRE; x.font = fT(Math.round(D * .5)); x.textAlign = 'center'; x.textBaseline = 'middle';
       x.fillText(String(nom || '?').trim().charAt(0).toUpperCase(), cx, cy + D * .03);
     }
     x.restore();
@@ -979,49 +1038,66 @@
     });
     return out;
   }
-  // o : alpha, y (le haut des tetes), debut, sens de la derive
+  /* « les joueuses a opacite reduite, si on les superpose, c'est un peu
+     bizarre » (08/11) : chacune etait pale pour son compte, et la ou
+     deux se croisaient on voyait l'une a travers l'autre, une double
+     exposition. Elles se posent maintenant OPAQUES sur un calque, comme
+     une photo d'equipe (le second rang d'abord, le premier le cache) ;
+     le calque prend la couleur de la scene, s'efface vers le bas, et
+     c'est LUI qui passe sous le voile, d'un seul tenant. */
+  var calque = null;
+  // o : alpha, y (le haut des tetes du second rang), debut, sens de la
+  // derive, teinte (la couleur de la scene, melangee au gris)
   function fantomes(x, A, w, h, t, o){
     var F = A.fantomes; if (!F || !F.length) return;
-    var n = F.length;
-    x.save();
-    for (var k = 0; k < n; k++){
-      var f = F[k], loin = k % 2 === 1, prof = loin ? .8 : 1;
-      var e = sortie(phase(t, (o.debut || 0) + k * .09, 1.1));
-      if (e <= 0) continue;
-      var cx = w * (k + .5) / n + (o.sens || 1) * t * w * (loin ? .008 : .018);
-      var top = o.y + (1 - e) * h * .07 + (loin ? h * .07 : 0);
-      x.globalAlpha = o.alpha * e * (loin ? .7 : 1);
-      x.drawImage(f.c, cx - f.cx * prof, top - f.top * prof, f.c.width * prof, f.c.height * prof);
-    }
-    x.restore();
+    var ea = sortie(phase(t, o.debut || 0, .9)); if (ea <= 0) return;
+    if (!calque || calque.width !== w || calque.height !== h){ calque = document.createElement('canvas'); calque.width = w; calque.height = h; }
+    var c = calque.getContext('2d');
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, w, h);
+    // premier rang : les paires (0, 2, 4...) ; second rang : entre elles
+    var devant = [], derriere = [], k;
+    for (k = 0; k < F.length; k++) (k % 2 ? derriere : devant).push(F[k]);
+    var poser = function(rang, loin){
+      rang.forEach(function(f, i){
+        var q = loin ? (i + 1) / (rang.length + 1) : (i + .5) / rang.length;
+        var prof = loin ? .84 : 1, j = F.indexOf(f);
+        var e = sortie(phase(t, (o.debut || 0) + j * .07, 1));
+        // la derive suit l'horloge de toute la video : elle ne repart pas
+        // de zero a chaque scene
+        var cx = w * q + (o.sens || 1) * TG * w * (loin ? .006 : .014);
+        var top = o.y + (loin ? 0 : h * .09) + (1 - e) * h * .06;
+        c.drawImage(f.c, cx - f.cx * prof, top - f.top * prof, f.c.width * prof, f.c.height * prof);
+      });
+    };
+    poser(derriere, true); poser(devant, false);
+    // la couleur de la scene, sur les seules joueuses
+    if (o.teinte){ c.globalCompositeOperation = 'source-atop'; c.globalAlpha = .55; c.fillStyle = o.teinte; c.fillRect(0, 0, w, h); c.globalAlpha = 1; }
+    // le bas s'efface : pas de coupure nette au bord des photos
+    c.globalCompositeOperation = 'destination-out';
+    var g = c.createLinearGradient(0, h * .5, 0, h);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    c.globalCompositeOperation = 'source-over';
+    // un lent zoom qui respire, comme une camera qui ne s'arrete jamais
+    var z = 1.02 + .004 * TG;
+    x.save(); x.globalAlpha = o.alpha * ea;
+    x.translate(w / 2, h * .4); x.scale(z, z); x.translate(-w / 2, -h * .4);
+    x.drawImage(calque, 0, 0); x.restore();
   }
-  // UN REFLET passe sur une pastille ronde (p : de 0 a 1)
-  function reflet(x, cx, cy, r, p){
-    if (p <= 0 || p >= 1) return;
-    x.save();
-    x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.clip();
-    var g0 = cx - r * 1.8 + p * r * 3.6, g = x.createLinearGradient(g0 - r * .45, cy - r, g0 + r * .45, cy + r);
-    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)');
-    x.fillStyle = g; x.fillRect(cx - r, cy - r, r * 2, r * 2);
-    x.restore();
-  }
-  // LE TAMPON : il tombe de haut, accelere, frappe la feuille et rebondit
-  // a peine. gx : son bord gauche.
+
+  // L'ETIQUETTE du domicile : un aplat qui s'ouvre de gauche a droite,
+  // le texte sort de sa fente. « du professionnalisme et pas de trucs
+  // IA » (08/11) : plus de tampon penche qui rebondit. gx : bord gauche.
   function tampon(x, txt, gx, cy, u, t, debut, plein){
-    var e = phase(t, debut, .26); if (e <= 0) return;
-    var apres = Math.max(0, t - debut - .26);
-    var s = e < 1 ? 1 + .9 * (1 - e * e) : 1 - .035 * Math.sin(Math.min(1, apres / .22) * Math.PI);
-    var taille = Math.round(84 * u);
-    x.save(); x.font = '900 ' + taille + 'px ' + TITRE; espace(x, 2 * u);
-    var l = x.measureText(txt).width, bw = l + 76 * u, bh = taille * 1.3;
-    x.translate(gx + bw / 2, cy); x.rotate(-.07); x.scale(s, s);
-    x.globalAlpha = borne(e * 2.5);
-    x.fillStyle = plein ? VERT : ENCRE; x.fillRect(-bw / 2, -bh / 2, bw, bh);
-    x.lineWidth = 4 * u; x.strokeStyle = plein ? ENCRE : PAPIER;
-    x.strokeRect(-bw / 2 + 11 * u, -bh / 2 + 11 * u, bw - 22 * u, bh - 22 * u);
-    x.fillStyle = plein ? ENCRE : PAPIER; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
-    x.fillText(txt, u, taille * .36);
+    var e = quart(phase(t, debut, .45)); if (e <= 0) return;
+    var taille = Math.round(72 * u);
+    x.save(); x.font = fT(taille); espace(x, 2 * u);
+    var l = x.measureText(txt).width, bw = l + 64 * u, bh = taille * 1.25;
+    x.fillStyle = plein ? VERT : ENCRE; x.fillRect(gx, cy - bh / 2, bw * e, bh);
     x.restore();
+    espace(x, 2 * u);
+    fente(x, txt, gx + 32 * u, cy + taille * .36, taille, fT(taille), t, debut + .15, .5, plein ? ENCRE : PAPIER);
+    espace(x, 0);
   }
 
   // 1. LE TITRE QUI DEFILE : des rangees geantes, en sens contraires, sur
@@ -1033,15 +1109,16 @@
     return { duree: 2.7, dessiner: function(x, t){
       neutre(x);
       x.fillStyle = VERT; x.fillRect(0, 0, w, h);
-      fantomes(x, A, w, h, t, { alpha: .16, y: h * .08, debut: 0, sens: -1 });
-      x.save(); x.font = '900 ' + fs + 'px ' + TITRE;
+      fantomes(x, A, w, h, t, { alpha: .2, y: h * .06, debut: 0, sens: -1, teinte: ENCRE });
+      fondAnime(x, w, h, false);
+      x.save(); x.font = fT(fs);
       var mot = I.titre + ' · ', mw = x.measureText(mot).width;
       for (var r = 0; r < rangs; r++){
         // chaque rangee arrive lancee, penchee par la vitesse, puis se
         // redresse en ralentissant jusqu'a la derive
         var sens = r % 2 ? 1 : -1, ent = sortie(phase(t, r * .05, 1.2));
         var dec = sens * (t * w * .14 - (1 - ent) * w * 1.4) + r * mw * .37;
-        var gx = ((dec % mw) + mw) % mw - mw, by = y0 + r * pas, pen = sens * .38 * (1 - ent);
+        var gx = ((dec % mw) + mw) % mw - mw, by = y0 + r * pas, pen = sens * .16 * (1 - ent);
         x.globalAlpha = borne(ent * 1.6) * (r % 2 ? 1 : .9);
         x.save(); x.translate(0, by); x.transform(1, 0, -pen, 1, 0, 0);
         for (var q = gx; q < w + fs; q += mw){
@@ -1051,28 +1128,18 @@
         x.restore();
       }
       x.restore();
-      var cx = w / 2, cy = h / 2, ed = rebond(phase(t, .3, .55));
+      var cx = w / 2, cy = h / 2, ed = sortie(phase(t, .3, .6));
       if (ed > 0){
-        x.save();
         x.beginPath(); x.arc(cx, cy, R * ed, 0, Math.PI * 2); x.fillStyle = ENCRE; x.fill();
-        x.beginPath(); x.arc(cx, cy, R * ed * .9, 0, Math.PI * 2); x.strokeStyle = 'rgba(241,236,225,.22)'; x.lineWidth = 2 * u; x.stroke();
-        // l'onde du choc, quand le disque se pose
-        var oc = phase(t, .6, .8);
-        if (oc > 0 && oc < 1){
-          x.globalAlpha = 1 - oc; x.lineWidth = 8 * u * (1 - oc) + 1; x.strokeStyle = ENCRE;
-          x.beginPath(); x.arc(cx, cy, R * (1 + oc * .8), 0, Math.PI * 2); x.stroke();
-        }
-        x.restore();
-        if (A.logo){ var tb = R * 1.3 * rebond(phase(t, .45, .5)); if (tb > 1) x.drawImage(A.logo, cx - tb / 2, cy - tb / 2, tb, tb); }
-        reflet(x, cx, cy, R * ed, phase(t, 1.05, .7));
+        if (A.logo){ var tb = R * 1.3 * sortie(phase(t, .42, .6)); if (tb > 1) x.drawImage(A.logo, cx - tb / 2, cy - tb / 2, tb, tb); }
       }
       // la competition, sur une bande d'encre qui s'ouvre du centre
       if (I.comp){
         var et = quart(phase(t, .85, .45));
         if (et > 0){
           x.save(); espace(x, 4 * u);
-          var tc = ajuster(x, I.comp, '700 {t}px ' + TEXTE, Math.round(26 * u), w - 200 * u);
-          x.font = '700 ' + tc + 'px ' + TEXTE;
+          var tc = ajuster(x, I.comp, '700 {t}px ' + AFF.texte, Math.round(26 * u), w - 200 * u);
+          x.font = '700 ' + tc + 'px ' + AFF.texte;
           var bw = x.measureText(I.comp).width + 60 * u, bh = tc + 34 * u, by2 = cy + R + 44 * u;
           x.beginPath(); x.rect(cx - bw * et / 2, by2, bw * et, bh); x.fillStyle = ENCRE; x.fill(); x.clip();
           x.fillStyle = PAPIER; x.textAlign = 'center'; x.textBaseline = 'middle';
@@ -1092,28 +1159,26 @@
     return { duree: 3.8, dessiner: function(x, t){
       neutre(x);
       var e = sortie(phase(t, 0, CHOC)), off = (1 - e) * h * .75, m = 80 * u;
-      var sec = t > CHOC && t < CHOC + .45 ? 1 - (t - CHOC) / .45 : 0;
-      // la camera : penchee pendant l'approche, elle se redresse au choc
-      // et avance doucement ensuite
-      var zoom = 1.04 - .04 * sortie(phase(t, 0, CHOC)) + .03 * phase(t, CHOC + .4, 3);
-      var rot = -.045 * (1 - sortie(phase(t, CHOC - .1, .9)));
+      // la camera avance doucement, sans a-coup
+      var zoom = 1 + .03 * phase(t, CHOC, 3.3);
       x.fillStyle = PAPIER; x.fillRect(0, 0, w, h);
       x.save();
-      x.translate(w / 2 + sec * 15 * u * Math.sin(t * 97), h / 2 + sec * 11 * u * Math.cos(t * 83));
-      x.rotate(rot); x.scale(zoom, zoom); x.translate(-w / 2, -h / 2);
+      x.translate(w / 2, h / 2); x.scale(zoom, zoom); x.translate(-w / 2, -h / 2);
       // le haut : les Baobabs, sur le vert de foret, et l'equipe derriere
       // le blason, sous le voile
       x.save(); x.translate(0, -off);
       x.beginPath(); x.moveTo(-m, -m - h); x.lineTo(w + m, -m - h); x.lineTo(w + m, ys(w + m)); x.lineTo(-m, ys(-m)); x.closePath();
       x.fillStyle = FORET; x.fill(); x.clip();
-      fantomes(x, A, w, h, t, { alpha: .14, y: h * .03, debut: .1, sens: 1 });
-      ecu(x, A.logo, 'B', cxA, cyA, S * (1 + .07 * sec), PAPIER);
+      fantomes(x, A, w, h, t, { alpha: .16, y: h * .02, debut: .1, sens: 1, teinte: PAPIER });
+      fondAnime(x, w, h, true);
+      ecu(x, A.logo, 'B', cxA, cyA, S, PAPIER, A.logoFond);
       x.restore();
       // le bas : l'adversaire, sur l'encre
       x.save(); x.translate(0, off);
       x.beginPath(); x.moveTo(-m, ys(-m)); x.lineTo(w + m, ys(w + m)); x.lineTo(w + m, 2 * h + m); x.lineTo(-m, 2 * h + m); x.closePath();
-      x.fillStyle = ENCRE; x.fill();
-      ecu(x, A.adv, I.adv, cxB, cyB, S * (1 + .07 * sec), PAPIER);
+      x.fillStyle = ENCRE; x.fill(); x.clip();
+      fondAnime(x, w, h, true);
+      ecu(x, A.adv, I.adv, cxB, cyB, S, PAPIER, A.advFond);
       x.restore();
       // la couture s'allume du centre vers les bords
       var es = quart(phase(t, CHOC, .35));
@@ -1127,39 +1192,35 @@
       var en = sortie(phase(t, CHOC + .25, .6));
       if (en > 0){
         var gx = cxA + S * .6, lg = w - gx - 56 * u;
-        var tA = ajuster(x, 'BAOBABS', '900 {t}px ' + TITRE, Math.round(150 * u), lg);
+        var tA = ajuster(x, 'BAOBABS', fT('{t}'), Math.round(150 * u), lg);
         x.save(); x.beginPath(); x.rect(cxA + S / 2 + 2, 0, w, h); x.clip();
-        x.font = '900 ' + tA + 'px ' + TITRE; x.fillStyle = PAPIER;
+        x.font = fT(tA); x.fillStyle = PAPIER;
         var lA = x.measureText('BAOBABS').width, dA = (1 - en) * (lA + S * .2);
         x.fillText('BAOBABS', gx - dA, cyA + tA * .22);
-        espace(x, 5 * u); x.font = '700 ' + Math.round(24 * u) + 'px ' + TEXTE; x.fillStyle = VERT;
+        espace(x, 5 * u); x.font = '700 ' + Math.round(24 * u) + 'px ' + AFF.texte; x.fillStyle = VERT;
         x.fillText('BASKET CLUB', gx + 4 * u - dA, cyA + tA * .22 + 48 * u);
         x.restore();
         var gxB = cxB - S * .6, lgB = gxB - 56 * u;
-        var L = enLignes(x, I.adv, '900 {t}px ' + TITRE, Math.round(140 * u), lgB);
+        var L = enLignes(x, I.adv, fT('{t}'), Math.round(140 * u), lgB);
         var pasL = L.t * .9, yB = cyB - (L.l.length - 1) * pasL / 2 + L.t * .3;
         x.save(); x.beginPath(); x.rect(0, 0, cxB - S / 2 - 2, h); x.clip();
-        x.font = '900 ' + L.t + 'px ' + TITRE; x.fillStyle = PAPIER; x.textAlign = 'right';
+        x.font = fT(L.t); x.fillStyle = PAPIER; x.textAlign = 'right';
         var lB = Math.max.apply(null, L.l.map(function(s){ return x.measureText(s).width; })), dB = (1 - en) * (lB + S * .2);
         L.l.forEach(function(s, k){ x.fillText(s, gxB + dB, yB + k * pasL); });
         x.restore();
       }
       // le VS tombe et frappe la couture a l'instant du choc
-      var ev = phase(t, CHOC - .22, .22);
+      var ev = sortie(phase(t, CHOC - .1, .5));
       if (ev > 0){
-        var sv = ev < 1 ? 1 + 1.4 * (1 - ev * ev) : 1;
-        x.save(); x.translate(w / 2, h / 2); x.rotate(-.12); x.scale(sv, sv); x.globalAlpha = borne(ev * 3);
+        var sv = .6 + .4 * ev;
+        x.save(); x.translate(w / 2, h / 2); x.scale(sv, sv); x.globalAlpha = borne(ev * 2);
         x.beginPath(); x.arc(0, 0, RV, 0, Math.PI * 2); x.fillStyle = VERT; x.fill();
         x.lineWidth = 5 * u; x.strokeStyle = ENCRE; x.stroke();
-        x.fillStyle = ENCRE; x.font = '900 ' + Math.round(RV * 1.05) + 'px ' + TITRE; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+        x.fillStyle = ENCRE; x.font = fT(Math.round(RV * 1.05)); x.textAlign = 'center'; x.textBaseline = 'alphabetic';
         x.fillText('VS', 0, RV * .38);
-        reflet(x, 0, 0, RV, phase(t, CHOC + .15, .55));
         x.restore();
       }
       x.restore();
-      // l'eclair du choc
-      var fl = phase(t, CHOC, .18);
-      if (fl > 0 && fl < 1){ x.save(); x.globalAlpha = .55 * (1 - fl); x.fillStyle = PAPIER; x.fillRect(0, 0, w, h); x.restore(); }
     } };
   }
 
@@ -1178,15 +1239,15 @@
     var vmax = Math.round((hR - 90 * u) / .8);
     return { duree: 4.4, dessiner: function(x, t){
       neutre(x);
-      var sec = t > tT + .26 && t < tT + .6 ? 1 - (t - tT - .26) / .34 : 0;
       x.fillStyle = PAPIER; x.fillRect(0, 0, w, h);
-      fantomes(x, A, w, h, t, { alpha: .1, y: h * .2, debut: .05, sens: 1 });
-      x.save(); x.translate(sec * 7 * u * Math.sin(t * 101), sec * 5 * u * Math.cos(t * 89));
+      fantomes(x, A, w, h, t, { alpha: .1, y: h * .18, debut: .05, sens: 1, teinte: FORET });
+      fondAnime(x, w, h, false);
+      x.save();
       // qui joue, souligne d'un trait vert
       var kick = 'BAOBABS  VS  ' + I.adv;
       espace(x, 3 * u);
-      var tk = ajuster(x, kick, '800 {t}px ' + TEXTE, Math.round(30 * u), larg), yk = y0 + tk;
-      var lk = fente(x, kick, mx, yk, tk, '800 ' + tk + 'px ' + TEXTE, t, .1, .5, ENCRE);
+      var tk = ajuster(x, kick, '800 {t}px ' + AFF.texte, Math.round(30 * u), larg), yk = y0 + tk;
+      var lk = fente(x, kick, mx, yk, tk, '800 ' + tk + 'px ' + AFF.texte, t, .1, .5, ENCRE);
       espace(x, 0);
       x.fillStyle = VERT; x.fillRect(mx, yk + 16 * u, Math.min(lk, larg) * quart(phase(t, .2, .5)), 9 * u);
       rang.forEach(function(r, k){
@@ -1194,25 +1255,25 @@
         x.fillStyle = ENCRE; x.fillRect(mx, top, larg * quart(phase(t, d0 - .1, .5)), Math.max(2, 3 * u));
         espace(x, 5 * u);
         var tl = Math.round(22 * u);
-        fente(x, r.lib.toUpperCase(), mx, top + 50 * u, tl, '700 ' + tl + 'px ' + TEXTE, t, d0, .45, 'rgba(10,28,18,.55)');
+        fente(x, r.lib.toUpperCase(), mx, top + 50 * u, tl, '700 ' + tl + 'px ' + AFF.texte, t, d0, .45, 'rgba(10,28,18,.55)');
         espace(x, 0);
         if (r.bloc){
           // l'heure sur un bloc vert, coupe en deux comme une horloge a palettes
           var th = Math.round(Math.min(150 * u, vmax));
-          x.font = '900 ' + th + 'px ' + TITRE;
+          x.font = fT(th);
           var bw = x.measureText(r.val).width + 56 * u, bTop = base - th * .72 - 18 * u, bH = th * .72 + 36 * u;
           var eB = quart(phase(t, d0 + .05, .4));
           x.fillStyle = VERT; x.fillRect(mx, bTop, bw * eB, bH);
-          palettes(x, r.val, mx + 28 * u, base, th, '900 ' + th + 'px ' + TITRE, t, d0 + .2, ENCRE);
+          palettes(x, r.val, mx + 28 * u, base, th, fT(th), t, d0 + .2, ENCRE);
           if (eB >= 1){ x.fillStyle = 'rgba(10,28,18,.32)'; x.fillRect(mx, bTop + bH / 2 - 1.5 * u, bw, 3 * u); }
         } else if (r.palettes){
-          var td = ajuster(x, r.val, '900 {t}px ' + TITRE, Math.round(Math.min(130 * u, vmax)), larg);
-          palettes(x, r.val, mx, base, td, '900 ' + td + 'px ' + TITRE, t, d0 + .12, ENCRE);
+          var td = ajuster(x, r.val, fT('{t}'), Math.round(Math.min(130 * u, vmax)), larg);
+          palettes(x, r.val, mx, base, td, fT(td), t, d0 + .12, ENCRE);
         } else {
-          var L = enLignes(x, r.val, '900 {t}px ' + TITRE, Math.round(Math.min(110 * u, vmax)), larg);
+          var L = enLignes(x, r.val, fT('{t}'), Math.round(Math.min(110 * u, vmax)), larg);
           if (L.l.length > 1) L.t = Math.min(L.t, Math.round((hR - 96 * u) / 1.62));
           L.l.forEach(function(s, q){
-            fente(x, s, mx, base - (L.l.length - 1 - q) * L.t * .9, L.t, '900 ' + L.t + 'px ' + TITRE, t, d0 + .12 + q * .08, .55, ENCRE);
+            fente(x, s, mx, base - (L.l.length - 1 - q) * L.t * .9, L.t, fT(L.t), t, d0 + .12 + q * .08, .55, ENCRE);
           });
         }
       });
@@ -1221,95 +1282,120 @@
     } };
   }
 
-  // 4. L'AFFICHE : tout d'un coup d'oeil. C'est l'image qui reste a la
-  //    fin, et celle que donne la sortie Image.
+  // 4. L'AFFICHE : « avoir les deux logos au milieu a la fin » (08/11).
+  //    Les deux blasons en grand, au centre, le VS entre eux, leur nom
+  //    dessous ; au-dessus ce qu'on annonce, en dessous un billet (la
+  //    date, l'heure), le terrain, le domicile. C'est l'image qui reste
+  //    a la fin, et celle que donne la sortie Image.
   function affFinale(I, A, w, h){
     var u = affU(w, h), Z = affZone(w, h), mx = Math.round(76 * u), larg = w - 2 * mx;
-    var D = Math.round(176 * u), G = Math.round(Math.min(380 * u, w * .36)), tH = Math.round(70 * u);
-    return { duree: 3.6, dessiner: function(x, t){
+    var D = Math.round(Math.min(300 * u, w * .29)), ecart = Math.round(150 * u);
+    var cxA = w / 2 - D / 2 - ecart / 2, cxB = w / 2 + D / 2 + ecart / 2;
+    var hBillet = Math.round(138 * u), tK = Math.round(26 * u), tC = Math.round(20 * u);
+    return { duree: 4.2, dessiner: function(x, t){
       neutre(x);
       x.fillStyle = ENCRE; x.fillRect(0, 0, w, h);
-      fantomes(x, A, w, h, t, { alpha: .13, y: h * .2, debut: 0, sens: -1 });
-      // le voile : l'encre remonte du bas, le texte y reste lisible
-      var vo = x.createLinearGradient(0, h * .35, 0, h);
-      vo.addColorStop(0, 'rgba(10,28,18,0)'); vo.addColorStop(1, 'rgba(10,28,18,.85)');
+      fantomes(x, A, w, h, t, { alpha: .16, y: h * .14, debut: 0, sens: -1, teinte: VERT });
+      fondAnime(x, w, h, true);
+      // le voile : l'encre descend du haut et remonte du bas
+      var vo = x.createLinearGradient(0, 0, 0, h);
+      vo.addColorStop(0, 'rgba(10,28,18,.55)'); vo.addColorStop(.3, 'rgba(10,28,18,0)');
+      vo.addColorStop(.55, 'rgba(10,28,18,.2)'); vo.addColorStop(1, 'rgba(10,28,18,.92)');
       x.fillStyle = vo; x.fillRect(0, 0, w, h);
+      // les hauteurs de chaque etage, puis l'air reparti entre eux
+      var lN = D + 70 * u;
+      var nB = enLignes(x, I.adv, fT('{t}'), Math.round(76 * u), lN), nA = enLignes(x, 'BAOBABS', fT('{t}'), Math.round(76 * u), lN);
+      var tNom = Math.min(nA.t, nB.t), lignesN = Math.max(nA.l.length, nB.l.length);
+      var hNoms = tNom * .72 + (lignesN - 1) * tNom * .92, hDuel = D + 34 * u + hNoms;
+      var hTete = tK + (I.comp ? 18 * u + tC : 0);
+      var Lv = I.lieu ? enLignes(x, I.lieu, '700 {t}px ' + AFF.texte, Math.round(30 * u), larg) : null;
+      var hLieu = Lv ? Lv.t * (.75 + (Lv.l.length - 1) * 1.25) : 0, hOu = Math.round(54 * u), hPied = Math.round(22 * u);
+      var billet = !!(I.date || I.heure);
+      var parts = [hTete, hDuel]; if (billet) parts.push(hBillet); if (hLieu) parts.push(hLieu); parts.push(hOu, hPied);
+      var somme = parts.reduce(function(a, b){ return a + b; }, 0);
+      var air = Math.min(100 * u, Math.max(22 * u, (Z.y1 - Z.y0 - somme) / (parts.length - 1)));
+      var y = Z.y0 + Math.max(0, (Z.y1 - Z.y0 - somme - air * (parts.length - 1)) / 2);
+      var yC = y + hTete + air + D / 2;
       // le filet du cadre se tire tout autour
       var ec = quart(phase(t, .1, 1.1)), ins = 30 * u;
-      x.save(); x.strokeStyle = 'rgba(168,217,59,.55)'; x.lineWidth = 2 * u;
+      x.save(); x.strokeStyle = 'rgba(168,217,59,.5)'; x.lineWidth = 2 * u;
       x.setLineDash([(2 * (w - 2 * ins) + 2 * (h - 2 * ins)) * ec, 1e5]);
       x.strokeRect(ins, ins, w - 2 * ins, h - 2 * ins); x.restore();
-      // les hauteurs de chaque etage, puis l'air reparti entre eux
-      x.font = '900 ' + G + 'px ' + TITRE;
-      var lNum = I.num ? x.measureText(I.num).width : 0, sl = larg - lNum - 34 * u;
-      var tJ = I.num ? Math.min(ajuster(x, I.jour, '800 {t}px ' + TITRE, Math.round(92 * u), sl), ajuster(x, I.mois, '800 {t}px ' + TITRE, Math.round(92 * u), sl)) : 0;
-      var hPile = tJ * .72 + tJ * .95 + (I.heure ? 26 * u + tH * .72 + 32 * u : 0);
-      var hDate = I.num ? Math.max(G * .72, hPile) : 0;
-      var noms = 'BAOBABS VS ' + I.adv, tN = ajuster(x, noms, '900 {t}px ' + TITRE, Math.round(78 * u), larg);
-      var Lv = I.lieu ? enLignes(x, I.lieu, '700 {t}px ' + TEXTE, Math.round(34 * u), larg) : null;
-      var hLieu = Lv ? Lv.t * (.75 + (Lv.l.length - 1) * 1.25) : 0, hOu = 58 * u, hPied = 26 * u;
-      var parts = [D, tN * .72]; if (hDate) parts.push(hDate); if (hLieu) parts.push(hLieu); parts.push(hOu, hPied);
-      var somme = parts.reduce(function(a, b){ return a + b; }, 0);
-      var air = Math.min(110 * u, Math.max(24 * u, (Z.y1 - Z.y0 - somme) / (parts.length - 1)));
-      var y = Z.y0 + Math.max(0, (Z.y1 - Z.y0 - somme - air * (parts.length - 1)) / 2);
-      // les deux blasons et le VS
-      var yC = y + D / 2;
-      ecu(x, A.logo, 'B', w / 2 - D * .95, yC, D * rebond(phase(t, .05, .5)), PAPIER);
-      ecu(x, A.adv, I.adv, w / 2 + D * .95, yC, D * rebond(phase(t, .15, .5)), PAPIER);
-      reflet(x, w / 2 - D * .95, yC, D / 2, phase(t, 1.3, .6));
-      reflet(x, w / 2 + D * .95, yC, D / 2, phase(t, 1.4, .6));
-      var tv = Math.round(72 * u);
-      fente(x, 'VS', w / 2, yC + tv * .36, tv, '900 ' + tv + 'px ' + TITRE, t, .3, .4, VERT, 'centre');
-      y += D + air;
-      // BAOBABS VS ADVERSAIRE, sur une ligne, le VS en vert
-      x.font = '900 ' + tN + 'px ' + TITRE;
-      var l1 = x.measureText('BAOBABS ').width, l2 = x.measureText('VS ').width, l3 = x.measureText(I.adv).width;
-      var gx0 = w / 2 - (l1 + l2 + l3) / 2, yN = y + tN * .72, pN = '900 ' + tN + 'px ' + TITRE;
-      fente(x, 'BAOBABS', gx0, yN, tN, pN, t, .35, .5, PAPIER);
-      fente(x, 'VS', gx0 + l1, yN, tN, pN, t, .42, .5, VERT);
-      fente(x, I.adv, gx0 + l1 + l2, yN, tN, pN, t, .49, .5, PAPIER);
-      y += tN * .72 + air;
-      // la date : le jour en grand, le reste en pile a sa droite
-      if (hDate){
-        x.font = '800 ' + tJ + 'px ' + TITRE;
-        var lP = Math.max(x.measureText(I.jour).width, x.measureText(I.mois).width);
-        x.font = '900 ' + tH + 'px ' + TITRE;
-        var lHe = I.heure ? x.measureText(I.heure).width + 40 * u : 0;
-        var gxD = (w - (lNum + 34 * u + Math.max(lP, lHe))) / 2, sx = gxD + lNum + 34 * u;
-        fente(x, I.num, gxD, y + (hDate - G * .72) / 2 + G * .72, G, '900 ' + G + 'px ' + TITRE, t, .55, .6, VERT);
-        var yJ = y + (hDate - hPile) / 2 + tJ * .72;
-        fente(x, I.jour, sx, yJ, tJ, '800 ' + tJ + 'px ' + TITRE, t, .65, .5, PAPIER);
-        fente(x, I.mois, sx, yJ + tJ * .95, tJ, '800 ' + tJ + 'px ' + TITRE, t, .72, .5, PAPIER);
-        if (I.heure){
-          var hb = yJ + tJ * .95 + 26 * u;
-          x.fillStyle = VERT; x.fillRect(sx, hb, lHe * quart(phase(t, .85, .4)), tH * .72 + 32 * u);
-          fente(x, I.heure, sx + 20 * u, hb + 16 * u + tH * .72, tH, '900 ' + tH + 'px ' + TITRE, t, .95, .45, ENCRE);
-        }
-        y += hDate + air;
+      // ce qu'on annonce, et la competition
+      espace(x, 6 * u);
+      fente(x, I.titre, w / 2 + 3 * u, y + tK * .75, tK, '800 ' + tK + 'px ' + AFF.texte, t, .1, .5, VERT, 'centre');
+      espace(x, 2 * u);
+      if (I.comp) fente(x, I.comp, w / 2 + u, y + tK + 18 * u + tC * .75, tC, '600 ' + tC + 'px ' + AFF.texte, t, .2, .5, 'rgba(241,236,225,.62)', 'centre');
+      espace(x, 0);
+      // LES DEUX BLASONS arrivent des bords et se rencontrent au milieu
+      var eA = sortie(phase(t, .15, .65)), eB = sortie(phase(t, .2, .65));
+      ecu(x, A.logo, 'B', cxA - (1 - eA) * w * .6, yC, D, PAPIER, A.logoFond);
+      ecu(x, A.adv, I.adv, cxB + (1 - eB) * w * .6, yC, D, PAPIER, A.advFond);
+      // le VS frappe entre les deux, deux traits verts l'encadrent
+      var ev = phase(t, .5, .22);
+      if (ev > 0){
+        var tv = Math.round(112 * u), sv = .7 + .3 * sortie(ev);
+        x.save(); x.translate(w / 2, yC); x.scale(sv, sv); x.globalAlpha = borne(ev * 3);
+        x.font = fT(tv); x.textAlign = 'center'; x.textBaseline = 'alphabetic'; x.fillStyle = VERT;
+        x.fillText('VS', 0, tv * .36);
+        x.restore();
+        var et = quart(phase(t, .75, .5)), lt = Math.max(0, D / 2 - tv * .55) * et;
+        x.fillStyle = 'rgba(168,217,59,.6)';
+        x.fillRect(w / 2 - u, yC - tv * .55 - lt, 2 * u, lt);
+        x.fillRect(w / 2 - u, yC + tv * .55, 2 * u, lt);
+      }
+      // les noms sous les blasons
+      var yN = yC + D / 2 + 34 * u + tNom * .72;
+      nA.l.forEach(function(s, q){ fente(x, s, cxA, yN + q * tNom * .92, tNom, fT(tNom), t, .85 + q * .05, .5, PAPIER, 'centre'); });
+      nB.l.forEach(function(s, q){ fente(x, s, cxB, yN + q * tNom * .92, tNom, fT(tNom), t, .9 + q * .05, .5, PAPIER, 'centre'); });
+      y = yC + D / 2 + 34 * u + hNoms + air;
+      // LE BILLET : la date et l'heure, cote a cote
+      if (billet){
+        var cases = [];
+        if (I.date) cases.push({ lib: 'DATE', val: I.dateCourte, coul: PAPIER, part: I.heure ? .6 : 1 });
+        if (I.heure) cases.push({ lib: 'HEURE', val: I.heure, coul: VERT, part: I.date ? .4 : 1 });
+        var eb = quart(phase(t, 1, .7));
+        x.save(); x.strokeStyle = 'rgba(168,217,59,.55)'; x.lineWidth = 2 * u;
+        x.setLineDash([(2 * larg + 2 * hBillet) * eb, 1e5]);
+        arrondi(x, mx, y, larg, hBillet, 14 * u); x.stroke(); x.restore();
+        var cx0 = mx;
+        cases.forEach(function(c, k){
+          var lc = larg * c.part;
+          if (k > 0){ x.fillStyle = 'rgba(168,217,59,.35)'; x.fillRect(cx0, y + 22 * u, 2 * u, (hBillet - 44 * u) * eb); }
+          espace(x, 4 * u);
+          var tl = Math.round(17 * u);
+          fente(x, c.lib, cx0 + 30 * u, y + 40 * u, tl, '700 ' + tl + 'px ' + AFF.texte, t, 1.1 + k * .1, .45, 'rgba(241,236,225,.55)');
+          espace(x, 0);
+          var tvv = ajuster(x, c.val, fT('{t}'), Math.round(66 * u), lc - 60 * u);
+          fente(x, c.val, cx0 + 30 * u, y + hBillet - 28 * u, tvv, fT(tvv), t, 1.18 + k * .1, .5, c.coul);
+          cx0 += lc;
+        });
+        y += hBillet + air;
       }
       if (Lv){
         Lv.l.forEach(function(s, q){
-          fente(x, s, w / 2, y + Lv.t * .75 + q * Lv.t * 1.25, Lv.t, '700 ' + Lv.t + 'px ' + TEXTE, t, 1 + q * .06, .5, 'rgba(241,236,225,.8)', 'centre');
+          fente(x, s, w / 2, y + Lv.t * .75 + q * Lv.t * 1.25, Lv.t, '700 ' + Lv.t + 'px ' + AFF.texte, t, 1.35 + q * .06, .5, 'rgba(241,236,225,.85)', 'centre');
         });
         y += hLieu + air;
       }
       // domicile : la pastille pleine ; exterieur : le contour
       x.save(); espace(x, 4 * u);
-      var tO = Math.round(24 * u); x.font = '800 ' + tO + 'px ' + TEXTE;
-      var lo = x.measureText(I.ou).width + 52 * u;
-      x.globalAlpha = quart(phase(t, 1.1, .4));
-      arrondi(x, w / 2 - lo / 2, y, lo, hOu, hOu / 2);
-      if (I.dom){ x.fillStyle = VERT; x.fill(); } else { x.strokeStyle = VERT; x.lineWidth = 2.5 * u; x.stroke(); }
-      x.fillStyle = I.dom ? ENCRE : VERT; x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.fillText(I.ou, w / 2 + 2 * u, y + hOu / 2 + u);
+      var tO = Math.round(22 * u); x.font = '800 ' + tO + 'px ' + AFF.texte;
+      var lo = x.measureText(I.ou).width + 52 * u, eo = sortie(phase(t, 1.45, .45));
+      if (eo > .01){
+        x.translate(w / 2, y + hOu / 2); x.scale(eo, eo); x.globalAlpha = borne(eo);
+        arrondi(x, -lo / 2, -hOu / 2, lo, hOu, hOu / 2);
+        if (I.dom){ x.fillStyle = VERT; x.fill(); } else { x.strokeStyle = VERT; x.lineWidth = 2.5 * u; x.stroke(); }
+        x.fillStyle = I.dom ? ENCRE : VERT; x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.fillText(I.ou, 2 * u, u);
+      }
       x.restore();
       y += hOu + air;
-      x.save(); espace(x, 4 * u);
-      var pied = ['BAOBABS BASKET CLUB', I.comp].filter(Boolean).join('  ·  ');
-      var tp = ajuster(x, pied, '700 {t}px ' + TEXTE, Math.round(20 * u), larg);
-      x.globalAlpha = sortie(phase(t, 1.2, .5)); x.fillStyle = 'rgba(241,236,225,.6)';
-      x.font = '700 ' + tp + 'px ' + TEXTE; x.textAlign = 'center';
-      x.fillText(pied, w / 2 + 2 * u, y + tp * .75);
+      x.save(); espace(x, 5 * u);
+      var tp = Math.round(18 * u);
+      x.globalAlpha = sortie(phase(t, 1.6, .5)); x.fillStyle = 'rgba(241,236,225,.5)';
+      x.font = '700 ' + tp + 'px ' + AFF.texte; x.textAlign = 'center';
+      x.fillText('BAOBABS BASKET CLUB', w / 2 + 2 * u, y + tp * .75);
       x.restore();
     } };
   }
@@ -1329,12 +1415,6 @@
       x.restore();
     }
     x.save();
-    // la trainee : la lame va vite, elle laisse un sillage translucide
-    var sil = bw * .7 * Math.sin(e * Math.PI);
-    x.globalAlpha = .35;
-    x.beginPath(); x.moveTo(tr - sil, -1); x.lineTo(tr, -1); x.lineTo(tr - pente, h + 1); x.lineTo(tr - sil - pente, h + 1); x.closePath();
-    x.fillStyle = VERT; x.fill();
-    x.globalAlpha = 1;
     x.beginPath(); x.moveTo(tr, -1); x.lineTo(a, -1); x.lineTo(a - pente, h + 1); x.lineTo(tr - pente, h + 1); x.closePath();
     x.fillStyle = VERT; x.fill();
     var f = bw * .12;
@@ -1350,15 +1430,38 @@
     return { scenes: sc, debuts: debut, total: T, w: w, h: h };
   }
   function image_affiche(x, M, T, grain){
+    TG = T;
     var k = 0;
     while (k + 1 < M.scenes.length && T >= M.debuts[k + 1]) k++;
     var dessiner = function(j){ return function(){ M.scenes[j].dessiner(x, T - M.debuts[j]); }; };
     if (k > 0 && T - M.debuts[k] < LAME) lame(x, T - M.debuts[k], M.w, M.h, dessiner(k - 1), dessiner(k));
     else dessiner(k)();
-    if (grain) x.drawImage(grain, 0, 0);
+    // le grain de pellicule bouge a chaque image
+    if (grain){
+      var n = Math.round(T * FPS);
+      x.drawImage(grain, -Math.floor(hasard(n, 7) * 48), -Math.floor(hasard(n, 13) * 48));
+    }
   }
-  // le grain du papier, fixe : une affiche imprimee n'est jamais lisse
+  /* L'ARRIERE-PLAN ANIME : « faut un arriere-plan comme une video
+     animee », puis « du professionnalisme et pas de trucs IA » (08/11).
+     Ni lueurs, ni faisceaux, ni particules : la trame en biais du site,
+     qui glisse lentement sur l'horloge de TOUTE la video (TG), d'une
+     scene a l'autre sans repartir de zero. Avec les joueuses sous leur
+     voile et leur lente avancee de camera, c'est le film qui tourne
+     derriere. sombre : filets clairs ; sinon filets d'encre. */
+  var TG = 0;
+  function fondAnime(x, w, h, sombre){
+    var u = affU(w, h), pas = 26 * u, dec = (TG * 22 * u) % pas;
+    x.save();
+    x.strokeStyle = sombre ? 'rgba(241,236,225,.05)' : 'rgba(10,28,18,.06)'; x.lineWidth = Math.max(1, 2 * u);
+    x.beginPath();
+    for (var k = -h + dec; k < w + h; k += pas){ x.moveTo(k, 0); x.lineTo(k - h * .4, h); }
+    x.stroke();
+    x.restore();
+  }
+  // le grain, un peu plus grand que l'image : il se decale a chaque image
   function grainPret(w, h){
+    w += 48; h += 48;
     var c = document.createElement('canvas'); c.width = w; c.height = h;
     var x = c.getContext('2d'), im = x.createImageData(w, h), d = im.data;
     for (var i = 0; i < d.length; i += 4){ var v = Math.random() < .5 ? 0 : 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = Math.random() * 14; }
@@ -1374,6 +1477,8 @@
     var x = c.getContext('2d', { alpha: false }), M, dessiner;
     if (d.style === 'affiche'){
       A.fantomes = fantomesPrets(A, h);
+      A.logoFond = fondLogo(A.logo); A.advFond = fondLogo(A.adv);
+      policeAff(d);
       M = monterAffiche(d, A, w, h);
       var G = grainPret(w, h);
       dessiner = function(T){ image_affiche(x, M, T, G); };
@@ -1409,6 +1514,39 @@
     };
     return essayer(0);
   }
+  /* « pas de metadonnees sur les videos » (08/11) : le fichier ne dit ni
+     quand il a ete fabrique, ni avec quoi. Les dates des boites mvhd,
+     tkhd et mdhd passent a zero ; le nom du gestionnaire (hdlr, ou
+     mp4-muxer ecrit le sien) est efface ; une boite udta ou meta devient
+     une boite free, que les lecteurs sautent. Les tailles ne bougent pas. */
+  function sansMeta(buf){
+    var v = new DataView(buf), o8 = new Uint8Array(buf);
+    var type = function(o){ return String.fromCharCode(o8[o + 4], o8[o + 5], o8[o + 6], o8[o + 7]); };
+    var conteneurs = { moov: 1, trak: 1, mdia: 1, minf: 1, stbl: 1, dinf: 1, edts: 1, mvex: 1 };
+    var parcourir = function(debut, fin){
+      var o = debut;
+      while (o + 8 <= fin){
+        var taille = v.getUint32(o), t = type(o), entete = 8, i;
+        if (taille === 1){ taille = Number(v.getBigUint64(o + 8)); entete = 16; }
+        else if (taille === 0) taille = fin - o;
+        if (taille < 8 || o + taille > fin) break;
+        var c = o + entete;
+        if (conteneurs[t]) parcourir(c, o + taille);
+        else if (t === 'mvhd' || t === 'tkhd' || t === 'mdhd'){
+          var n = o8[c] === 1 ? 16 : 8;
+          for (i = 0; i < n; i++) o8[c + 4 + i] = 0;
+        } else if (t === 'hdlr'){
+          for (i = c + 24; i < o + taille; i++) o8[i] = 0;
+        } else if (t === 'udta' || t === 'meta'){
+          o8[o + 4] = 102; o8[o + 5] = 114; o8[o + 6] = 101; o8[o + 7] = 101;
+          for (i = c; i < o + taille; i++) o8[i] = 0;
+        }
+        o += taille;
+      }
+    };
+    parcourir(0, buf.byteLength);
+    return buf;
+  }
   function encoderMp4(J, cfg, surProgres){
     return (window.Mp4Muxer ? Promise.resolve() : charger(MUXER)).then(function(){
       var cible = new Mp4Muxer.ArrayBufferTarget();
@@ -1438,7 +1576,7 @@
           enc.flush().then(function(){
             mux.finalize();
             if (surProgres) surProgres(1);
-            res({ blob: new Blob([cible.buffer], { type: 'video/mp4' }), type: 'video/mp4', ext: 'mp4' });
+            res({ blob: new Blob([sansMeta(cible.buffer)], { type: 'video/mp4' }), type: 'video/mp4', ext: 'mp4' });
           }, rej);
         };
         pas();
@@ -1477,6 +1615,7 @@
     var aff = d.style === 'presentation' && d.evenement ? d.evenement.affiche : '';
     return Promise.all([
       polices(),
+      d.style === 'affiche' ? policesEn(policeAff(d).url, AFF.faces) : null,
       image(LOGO).then(function(i){ A.logo = i; }),
       image(d.adversaire && d.adversaire.logo ? taille(d.adversaire.logo, 400) : '').then(function(i){ A.adv = i; }),
       image(aff ? taille(aff, 900) : '').then(function(i){ A.affiche = i; }),
@@ -1528,7 +1667,7 @@
   // la duree, sans rien charger : les scenes ne dependent pas des images
   function duree(d, style){
     var c = {}; for (var k in d) c[k] = d[k]; if (style) c.style = style;
-    if (c.style === 'affiche') return Math.round(monterAffiche(c, {}, 1080, 1350).total);
+    if (c.style === 'affiche'){ policeAff(c); return Math.round(monterAffiche(c, {}, 1080, 1350).total); }
     return Math.round(monter(c, { photos: [], visages: [] }).total);
   }
 
