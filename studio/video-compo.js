@@ -20,7 +20,20 @@
      Cinq joueuses par page au plus : a six, « on voit pas bien les
      joueuses ». Les bandes sont eclairees et cadrees jusqu'aux epaules.
 
-   Format des reseaux : 1080 x 1350 (4:5), 30 images par seconde, sans
+   - L'AFFICHE DU MATCH (08/11/2026) : seulement l'annonce, Baobabs
+     contre l'adversaire, la date, l'heure, le terrain, domicile ou
+     exterieur. « ca doit etre different des autres videos qui ont la
+     meme transition et tout » : une autre grammaire, voir plus bas.
+
+   LE FORMAT se choisit au moment du clic : publication 4:5 (1080 x
+   1350), story ou statut 9:16 (1080 x 1920), et carre 1:1 pour
+   l'affiche. La presentation et la liste sont dessinees en 4:5 : en
+   story, elles se posent au milieu, sur le meme fond prolonge (le haut
+   et le bas d'une story sont couverts par l'interface du reseau).
+   L'affiche se dessine a toutes les tailles, et se telecharge aussi en
+   image fixe (PNG) : sa derniere image est une affiche complete.
+
+   Le reste du temps : 30 images par seconde, sans
    son. La video se FABRIQUE image par image dans le navigateur (canvas),
    puis s'encode en MP4 H.264 par WebCodecs et mp4-muxer (jsdelivr, que
    la politique de securite du site accepte). Sans WebCodecs, elle
@@ -32,12 +45,16 @@
    qu'elle est posee.
 
    Contrat : un seul global, window.BaobabsVideo.
-     choisir(bouton, donnees)          -> Promise<'presentation' | 'liste' | null>
+     choisir(bouton, donnees)          -> Promise<{ style, format, sortie } | null>
      telecharger(donnees, surProgres)  -> Promise<{ nom, type, taille }>
      fabriquer(donnees, surProgres)    -> Promise<{ blob, nom, type }>
      apercu(donnees, T)                -> Promise<{ canvas, total }>
    donnees = {
-     style: 'presentation' | 'liste',
+     style: 'presentation' | 'liste' | 'affiche',
+     format: '4x5' | '9x16' | '1x1',  // 1x1 : l'affiche seulement
+     sortie: 'mp4' | 'png',           // png : l'affiche seulement
+     // l'affiche ne lit que match et adversaire :
+     //   match: { dom, date:'2026-11-15', heure:'19:00', lieu, competition, journee }
      genre: 'cinq' | 'selection',
      titre: 'Cinq majeur',            // le titre du generique
      sur:   'Baobabs Basket Club',    // la ligne au-dessus
@@ -57,7 +74,18 @@
   'use strict';
   if (window.BaobabsVideo) return;
 
+  // W x H : la planche ou se dessinent la presentation et la liste
   var W = 1080, H = 1350, FPS = 30;
+  // les formats de sortie ; compo : la presentation et la liste y vont
+  var FORMATS = {
+    '4x5':  { w: 1080, h: 1350, lib: 'Publication', ratio: '4:5',  compo: true,  suffixe: '' },
+    '9x16': { w: 1080, h: 1920, lib: 'Story',       ratio: '9:16', compo: true,  suffixe: '-story' },
+    '1x1':  { w: 1080, h: 1080, lib: 'Carré',       ratio: '1:1',  compo: false, suffixe: '-carre' }
+  };
+  function formatDe(d){
+    var f = FORMATS[d && d.format] || FORMATS['4x5'];
+    return d && d.style !== 'affiche' && !f.compo ? FORMATS['4x5'] : f;
+  }
   var VERT = '#A8D93B', VERT_PALE = '#E3F5B4', CREME = '#F3EFE6', GRIS = 'rgba(243,239,230,.62)';
   var NUIT = '#06190F';
   var LOGO = '/media/img/BBC_-_COLORED_LOGO_jjcrux.webp';
@@ -204,28 +232,34 @@
   }
 
   /* ---------------------------------------------------------- le fond */
-  function fondPret(){
-    var c = document.createElement('canvas'); c.width = W; c.height = H;
+  // w x h : la taille de sortie (la planche 4:5 se pose dessus en story)
+  function fondPret(w, h){
+    w = w || W; h = h || H;
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
     var x = c.getContext('2d');
-    var g = x.createLinearGradient(0, 0, W * .35, H);
+    var g = x.createLinearGradient(0, 0, w * .35, h);
     g.addColorStop(0, '#1C6038'); g.addColorStop(.5, '#10412A'); g.addColorStop(1, '#082417');
-    x.fillStyle = g; x.fillRect(0, 0, W, H);
-    var r = x.createRadialGradient(W * .72, H * .12, 0, W * .72, H * .12, W * .9);
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+    var r = x.createRadialGradient(w * .72, h * .12, 0, w * .72, h * .12, w * .9);
     r.addColorStop(0, 'rgba(168,217,59,.16)'); r.addColorStop(1, 'rgba(168,217,59,0)');
-    x.fillStyle = r; x.fillRect(0, 0, W, H);
+    x.fillStyle = r; x.fillRect(0, 0, w, h);
     // la trame du site, tres pale, en biais
     x.save(); x.globalAlpha = .05; x.strokeStyle = CREME; x.lineWidth = 2;
-    for (var k = -H; k < W + H; k += 22){ x.beginPath(); x.moveTo(k, 0); x.lineTo(k - H * .4, H); x.stroke(); }
+    for (var k = -h; k < w + h; k += 22){ x.beginPath(); x.moveTo(k, 0); x.lineTo(k - h * .4, h); x.stroke(); }
     x.restore();
     // le grain : une image de retransmission n'a jamais un fond lisse
-    var bruit = x.getImageData(0, 0, W, H), d = bruit.data;
+    var bruit = x.getImageData(0, 0, w, h), d = bruit.data;
     for (var i = 0; i < d.length; i += 4){ var v = (Math.random() - .5) * 18; d[i] += v; d[i + 1] += v; d[i + 2] += v; }
     x.putImageData(bruit, 0, 0);
     return c;
   }
-  function fond(x, F, T, total){
+  // sans F, la planche reste transparente : le fond est pose dessous, a
+  // la taille de sortie (la story), et clearRect respecte le volet (clip)
+  function fond(x, F, T, total, w, h){
+    w = w || W; h = h || H;
+    if (!F){ x.clearRect(0, 0, w, h); return; }
     var s = 1 + .035 * (T / total);
-    x.save(); x.translate(W / 2, H / 2); x.scale(s, s); x.translate(-W / 2, -H / 2);
+    x.save(); x.translate(w / 2, h / 2); x.scale(s, s); x.translate(-w / 2, -h / 2);
     x.drawImage(F, 0, 0); x.restore();
   }
 
@@ -799,29 +833,592 @@
     else dessiner(k)();
   }
 
+  /* =================================================================
+     L'AFFICHE DU MATCH (08/11/2026)
+     -----------------------------------------------------------------
+     « celles de match, juste les infos : Baobabs vs adversaire, la date
+       et l'heure, le terrain, a domicile ou a l'exterieur, mais ca doit
+       etre different des autres videos qui ont la meme transition ».
+
+     Une autre grammaire que la composition, point par point :
+     - pas de fond vert qui zoome : des aplats francs, le vert vif, le
+       papier, l'encre, qui changent a chaque scene ;
+     - pas de volet en escalier : une LAME en biais traverse l'image,
+       la scene suivante est deja derriere elle ;
+     - pas de lettres qui montent une a une : une ligne sort d'une
+       fente d'un seul bloc, la date et l'heure tournent comme un
+       tableau a palettes, le domicile se frappe d'un tampon ;
+     - un choc : les deux clubs se rencontrent sur une couture en biais,
+       la feuille tremble, le VS est frappe dessus.
+     Quatre scenes : le titre qui defile, le choc, le tableau, l'affiche.
+     La derniere image est une affiche complete : c'est elle que donne
+     la sortie Image (PNG).
+
+     Tout se pose en proportion de (w, h) : la meme affiche en 4:5, en
+     story 9:16 et en carre. Rien n'y est invente : une heure ou un
+     terrain absents ne font pas de rangee.
+     ================================================================= */
+  var PAPIER = '#F1ECE1', ENCRE = '#0A1C12', FORET = '#17502F', LAME = .6;
+  // depasse, puis revient : le blason qui tombe et rebondit
+  function rebond(x){ x = borne(x); var c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); }
+  function deux(n){ return (n < 10 ? '0' : '') + n; }
+  // un hasard qui redonne le meme tirage pour la meme image : l'apercu
+  // et la video montrent la meme chose a la meme seconde
+  function hasard(a, b){ var s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); }
+  function affU(w, h){ return Math.min(w / 1080, h / 1350); }
+  // la ou vit le texte : une story est couverte en haut (le nom du
+  // compte) et en bas (le champ de reponse)
+  function affZone(w, h){ return h / w > 1.6 ? { y0: h * .15, y1: h * .80 } : { y0: h * .08, y1: h * .93 }; }
+  function neutre(x){ x.globalAlpha = 1; x.textAlign = 'left'; x.textBaseline = 'alphabetic'; espace(x, 0); }
+
+  function affLire(d){
+    var m = d.match || {}, adv = d.adversaire || {};
+    var iso = String(m.date || '').slice(0, 10);
+    var dt = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(iso + 'T12:00:00') : null;
+    if (dt && isNaN(dt.getTime())) dt = null;
+    var n = new Date(), auj = n.getFullYear() + '-' + deux(n.getMonth() + 1) + '-' + deux(n.getDate());
+    var jour = dt ? dt.toLocaleDateString('fr-FR', { weekday: 'long' }).toUpperCase() : '';
+    var mois = dt ? dt.toLocaleDateString('fr-FR', { month: 'long' }).toUpperCase() : '';
+    var num = dt ? (dt.getDate() === 1 ? '1ER' : String(dt.getDate())) : '';
+    var hm = /^(\d{1,2}):(\d{2})/.exec(String(m.heure || '').trim());
+    return {
+      titre: !dt || iso > auj ? 'PROCHAIN MATCH' : iso === auj ? 'JOUR DE MATCH' : 'LE MATCH',
+      jour: jour, num: num, mois: mois,
+      date: dt ? jour + ' ' + num + ' ' + mois : '',
+      heure: hm ? Number(hm[1]) + 'H' + hm[2] : '',
+      lieu: String(m.lieu || '').trim().toUpperCase(),
+      dom: m.dom !== false,
+      ou: m.dom !== false ? 'À DOMICILE' : 'À L’EXTÉRIEUR',
+      comp: [m.competition, m.journee].map(function(s){ return String(s || '').trim(); }).filter(Boolean).join(' · ').toUpperCase(),
+      adv: String(adv.nom || '').trim().toUpperCase() || 'ADVERSAIRE'
+    };
+  }
+
+  // une ligne qui sort d'une fente, d'un seul bloc
+  function fente(x, txt, gx, by, taille, police, t, debut, duree, couleur, align){
+    if (!txt) return 0;
+    x.save(); x.font = police; x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+    var l = x.measureText(txt).width, dx = align === 'centre' ? gx - l / 2 : align === 'droite' ? gx - l : gx;
+    var e = sortie(phase(t, debut, duree));
+    if (e > 0){
+      x.beginPath(); x.rect(dx - taille, by - taille * 1.05, l + taille * 2, taille * 1.3); x.clip();
+      x.fillStyle = couleur; x.fillText(txt, dx, by + (1 - e) * taille * 1.25);
+    }
+    x.restore();
+    return l;
+  }
+  // LE TABLEAU A PALETTES : chaque signe bat des lettres au hasard,
+  // chaque battement ecrase la palette, puis il se fige sur le bon
+  var SIGNES = 'ABCDEFGHIJKLMNOPRSTUVZ0123456789';
+  function palettes(x, txt, gx, by, taille, police, t, debut, couleur){
+    if (!txt) return 0;
+    x.save(); x.font = police; x.textAlign = 'center'; x.textBaseline = 'alphabetic'; x.fillStyle = couleur;
+    var ls = [], l = 0, k;
+    for (k = 0; k < txt.length; k++){ ls.push(x.measureText(txt.charAt(k)).width); l += ls[k]; }
+    var cur = gx, mi = taille * .36;
+    for (k = 0; k < txt.length; k++){
+      var ch = txt.charAt(k), p = (t - debut - k * .04) / .45;
+      if (p >= 0 && ch !== ' '){
+        var vu = ch, sy = 1;
+        if (p < 1){
+          var nb = p * 8, pas = Math.floor(nb);
+          vu = SIGNES.charAt(Math.floor(hasard(k + 1, pas + 1) * SIGNES.length));
+          sy = .2 + .8 * Math.abs(Math.cos((nb - pas) * Math.PI));
+        }
+        x.save(); x.translate(cur + ls[k] / 2, by - mi); x.scale(1, sy); x.fillText(vu, 0, mi); x.restore();
+      }
+      cur += ls[k];
+    }
+    x.restore();
+    return l;
+  }
+  // un nom trop long passe sur deux lignes plutot que de fondre
+  function enLignes(x, txt, police, max, larg){
+    txt = String(txt || ''); var mots = txt.split(/\s+/).filter(Boolean);
+    var t1 = ajuster(x, txt, police, max, larg), mieux = { t: t1, l: [txt] };
+    if (t1 >= max * .72 || mots.length < 2) return mieux;
+    for (var k = 1; k < mots.length; k++){
+      var a = mots.slice(0, k).join(' '), b = mots.slice(k).join(' ');
+      var t = Math.min(ajuster(x, a, police, max, larg), ajuster(x, b, police, max, larg));
+      if (t > mieux.t) mieux = { t: t, l: [a, b] };
+    }
+    return mieux;
+  }
+  // un blason sur sa pastille ; sans logo, l'initiale
+  function ecu(x, im, nom, cx, cy, D, disque){
+    if (D <= 1) return;
+    x.save();
+    x.beginPath(); x.arc(cx, cy, D / 2, 0, Math.PI * 2); x.fillStyle = disque; x.fill();
+    if (im && im.naturalWidth){
+      var c = D * .68, s = Math.min(c / im.naturalWidth, c / im.naturalHeight);
+      x.drawImage(im, cx - im.naturalWidth * s / 2, cy - im.naturalHeight * s / 2, im.naturalWidth * s, im.naturalHeight * s);
+    } else {
+      x.fillStyle = ENCRE; x.font = '900 ' + Math.round(D * .5) + 'px ' + TITRE; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText(String(nom || '?').trim().charAt(0).toUpperCase(), cx, cy + D * .03);
+    }
+    x.restore();
+  }
+  /* LES JOUEUSES EN FOND : « sous un voile, en les faisant apparaitre de
+     peu, pas trop visibles ». Detourees, passees en gris une fois pour
+     toutes, a la hauteur de l'image ; chaque scene les pose tres pales,
+     et chacune derive a sa propre profondeur (une sur deux plus loin,
+     plus petite, plus lente). Une photo non detouree ferait un
+     rectangle gris : elle n'y va pas. */
+  function fantomesPrets(A, h){
+    var out = [];
+    (A.photos || []).forEach(function(im, k){
+      var v = A.visages && A.visages[k];
+      if (!im || !v || v.opaque || out.length >= 7) return;
+      var sc = h * .95 / (v.haut * im.naturalHeight);
+      var cw = Math.max(1, Math.round(im.naturalWidth * sc)), ch = Math.max(1, Math.round(im.naturalHeight * sc));
+      var c = document.createElement('canvas'); c.width = cw; c.height = ch;
+      var x = c.getContext('2d'); x.filter = 'grayscale(1) contrast(1.15)'; x.drawImage(im, 0, 0, cw, ch);
+      out.push({ c: c, top: v.top * ch, cx: v.cx * cw });
+    });
+    return out;
+  }
+  // o : alpha, y (le haut des tetes), debut, sens de la derive
+  function fantomes(x, A, w, h, t, o){
+    var F = A.fantomes; if (!F || !F.length) return;
+    var n = F.length;
+    x.save();
+    for (var k = 0; k < n; k++){
+      var f = F[k], loin = k % 2 === 1, prof = loin ? .8 : 1;
+      var e = sortie(phase(t, (o.debut || 0) + k * .09, 1.1));
+      if (e <= 0) continue;
+      var cx = w * (k + .5) / n + (o.sens || 1) * t * w * (loin ? .008 : .018);
+      var top = o.y + (1 - e) * h * .07 + (loin ? h * .07 : 0);
+      x.globalAlpha = o.alpha * e * (loin ? .7 : 1);
+      x.drawImage(f.c, cx - f.cx * prof, top - f.top * prof, f.c.width * prof, f.c.height * prof);
+    }
+    x.restore();
+  }
+  // UN REFLET passe sur une pastille ronde (p : de 0 a 1)
+  function reflet(x, cx, cy, r, p){
+    if (p <= 0 || p >= 1) return;
+    x.save();
+    x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.clip();
+    var g0 = cx - r * 1.8 + p * r * 3.6, g = x.createLinearGradient(g0 - r * .45, cy - r, g0 + r * .45, cy + r);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.fillRect(cx - r, cy - r, r * 2, r * 2);
+    x.restore();
+  }
+  // LE TAMPON : il tombe de haut, accelere, frappe la feuille et rebondit
+  // a peine. gx : son bord gauche.
+  function tampon(x, txt, gx, cy, u, t, debut, plein){
+    var e = phase(t, debut, .26); if (e <= 0) return;
+    var apres = Math.max(0, t - debut - .26);
+    var s = e < 1 ? 1 + .9 * (1 - e * e) : 1 - .035 * Math.sin(Math.min(1, apres / .22) * Math.PI);
+    var taille = Math.round(84 * u);
+    x.save(); x.font = '900 ' + taille + 'px ' + TITRE; espace(x, 2 * u);
+    var l = x.measureText(txt).width, bw = l + 76 * u, bh = taille * 1.3;
+    x.translate(gx + bw / 2, cy); x.rotate(-.07); x.scale(s, s);
+    x.globalAlpha = borne(e * 2.5);
+    x.fillStyle = plein ? VERT : ENCRE; x.fillRect(-bw / 2, -bh / 2, bw, bh);
+    x.lineWidth = 4 * u; x.strokeStyle = plein ? ENCRE : PAPIER;
+    x.strokeRect(-bw / 2 + 11 * u, -bh / 2 + 11 * u, bw - 22 * u, bh - 22 * u);
+    x.fillStyle = plein ? ENCRE : PAPIER; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+    x.fillText(txt, u, taille * .36);
+    x.restore();
+  }
+
+  // 1. LE TITRE QUI DEFILE : des rangees geantes, en sens contraires, sur
+  //    le vert vif ; le blason tombe au milieu dans un disque d'encre
+  function affOuverture(I, A, w, h){
+    var u = affU(w, h), fs = Math.round(Math.max(h / 4.3, 250 * u)), pas = fs * .82;
+    var rangs = Math.ceil(h / pas) + 1, R = Math.min(w, h) * .21;
+    var y0 = h / 2 - (rangs - 1) * pas / 2 + fs * .36;
+    return { duree: 2.7, dessiner: function(x, t){
+      neutre(x);
+      x.fillStyle = VERT; x.fillRect(0, 0, w, h);
+      fantomes(x, A, w, h, t, { alpha: .16, y: h * .08, debut: 0, sens: -1 });
+      x.save(); x.font = '900 ' + fs + 'px ' + TITRE;
+      var mot = I.titre + ' · ', mw = x.measureText(mot).width;
+      for (var r = 0; r < rangs; r++){
+        // chaque rangee arrive lancee, penchee par la vitesse, puis se
+        // redresse en ralentissant jusqu'a la derive
+        var sens = r % 2 ? 1 : -1, ent = sortie(phase(t, r * .05, 1.2));
+        var dec = sens * (t * w * .14 - (1 - ent) * w * 1.4) + r * mw * .37;
+        var gx = ((dec % mw) + mw) % mw - mw, by = y0 + r * pas, pen = sens * .38 * (1 - ent);
+        x.globalAlpha = borne(ent * 1.6) * (r % 2 ? 1 : .9);
+        x.save(); x.translate(0, by); x.transform(1, 0, -pen, 1, 0, 0);
+        for (var q = gx; q < w + fs; q += mw){
+          if (r % 2){ x.lineWidth = Math.max(2, 3 * u); x.strokeStyle = ENCRE; x.strokeText(mot, q, 0); }
+          else { x.fillStyle = ENCRE; x.fillText(mot, q, 0); }
+        }
+        x.restore();
+      }
+      x.restore();
+      var cx = w / 2, cy = h / 2, ed = rebond(phase(t, .3, .55));
+      if (ed > 0){
+        x.save();
+        x.beginPath(); x.arc(cx, cy, R * ed, 0, Math.PI * 2); x.fillStyle = ENCRE; x.fill();
+        x.beginPath(); x.arc(cx, cy, R * ed * .9, 0, Math.PI * 2); x.strokeStyle = 'rgba(241,236,225,.22)'; x.lineWidth = 2 * u; x.stroke();
+        // l'onde du choc, quand le disque se pose
+        var oc = phase(t, .6, .8);
+        if (oc > 0 && oc < 1){
+          x.globalAlpha = 1 - oc; x.lineWidth = 8 * u * (1 - oc) + 1; x.strokeStyle = ENCRE;
+          x.beginPath(); x.arc(cx, cy, R * (1 + oc * .8), 0, Math.PI * 2); x.stroke();
+        }
+        x.restore();
+        if (A.logo){ var tb = R * 1.3 * rebond(phase(t, .45, .5)); if (tb > 1) x.drawImage(A.logo, cx - tb / 2, cy - tb / 2, tb, tb); }
+        reflet(x, cx, cy, R * ed, phase(t, 1.05, .7));
+      }
+      // la competition, sur une bande d'encre qui s'ouvre du centre
+      if (I.comp){
+        var et = quart(phase(t, .85, .45));
+        if (et > 0){
+          x.save(); espace(x, 4 * u);
+          var tc = ajuster(x, I.comp, '700 {t}px ' + TEXTE, Math.round(26 * u), w - 200 * u);
+          x.font = '700 ' + tc + 'px ' + TEXTE;
+          var bw = x.measureText(I.comp).width + 60 * u, bh = tc + 34 * u, by2 = cy + R + 44 * u;
+          x.beginPath(); x.rect(cx - bw * et / 2, by2, bw * et, bh); x.fillStyle = ENCRE; x.fill(); x.clip();
+          x.fillStyle = PAPIER; x.textAlign = 'center'; x.textBaseline = 'middle';
+          x.fillText(I.comp, cx + 2 * u, by2 + bh / 2 + u);
+          x.restore();
+        }
+      }
+    } };
+  }
+
+  // 2. LE CHOC : deux aplats en biais se rencontrent, la feuille tremble,
+  //    le VS est frappe sur la couture
+  function affDuel(I, A, w, h){
+    var u = affU(w, h), S = Math.round(Math.min(w, h) * .28 * (h / w > 1.6 ? 1.1 : 1));
+    var yG = h * .575, yD = h * .425, ys = function(X){ return yG + (yD - yG) * X / w; };
+    var cxA = w * .27, cyA = h * .27, cxB = w * .73, cyB = h * .73, RV = Math.round(92 * u), CHOC = .5;
+    return { duree: 3.8, dessiner: function(x, t){
+      neutre(x);
+      var e = sortie(phase(t, 0, CHOC)), off = (1 - e) * h * .75, m = 80 * u;
+      var sec = t > CHOC && t < CHOC + .45 ? 1 - (t - CHOC) / .45 : 0;
+      // la camera : penchee pendant l'approche, elle se redresse au choc
+      // et avance doucement ensuite
+      var zoom = 1.04 - .04 * sortie(phase(t, 0, CHOC)) + .03 * phase(t, CHOC + .4, 3);
+      var rot = -.045 * (1 - sortie(phase(t, CHOC - .1, .9)));
+      x.fillStyle = PAPIER; x.fillRect(0, 0, w, h);
+      x.save();
+      x.translate(w / 2 + sec * 15 * u * Math.sin(t * 97), h / 2 + sec * 11 * u * Math.cos(t * 83));
+      x.rotate(rot); x.scale(zoom, zoom); x.translate(-w / 2, -h / 2);
+      // le haut : les Baobabs, sur le vert de foret, et l'equipe derriere
+      // le blason, sous le voile
+      x.save(); x.translate(0, -off);
+      x.beginPath(); x.moveTo(-m, -m - h); x.lineTo(w + m, -m - h); x.lineTo(w + m, ys(w + m)); x.lineTo(-m, ys(-m)); x.closePath();
+      x.fillStyle = FORET; x.fill(); x.clip();
+      fantomes(x, A, w, h, t, { alpha: .14, y: h * .03, debut: .1, sens: 1 });
+      ecu(x, A.logo, 'B', cxA, cyA, S * (1 + .07 * sec), PAPIER);
+      x.restore();
+      // le bas : l'adversaire, sur l'encre
+      x.save(); x.translate(0, off);
+      x.beginPath(); x.moveTo(-m, ys(-m)); x.lineTo(w + m, ys(w + m)); x.lineTo(w + m, 2 * h + m); x.lineTo(-m, 2 * h + m); x.closePath();
+      x.fillStyle = ENCRE; x.fill();
+      ecu(x, A.adv, I.adv, cxB, cyB, S * (1 + .07 * sec), PAPIER);
+      x.restore();
+      // la couture s'allume du centre vers les bords
+      var es = quart(phase(t, CHOC, .35));
+      if (es > 0){
+        var hw = (w / 2 + m) * es, e2 = 9 * u;
+        x.save(); x.beginPath(); x.rect(w / 2 - hw, -m, hw * 2, h + 2 * m); x.clip();
+        x.beginPath(); x.moveTo(-m, ys(-m) - e2); x.lineTo(w + m, ys(w + m) - e2); x.lineTo(w + m, ys(w + m) + e2); x.lineTo(-m, ys(-m) + e2); x.closePath();
+        x.fillStyle = VERT; x.fill(); x.restore();
+      }
+      // les noms sortent de derriere leur blason
+      var en = sortie(phase(t, CHOC + .25, .6));
+      if (en > 0){
+        var gx = cxA + S * .6, lg = w - gx - 56 * u;
+        var tA = ajuster(x, 'BAOBABS', '900 {t}px ' + TITRE, Math.round(150 * u), lg);
+        x.save(); x.beginPath(); x.rect(cxA + S / 2 + 2, 0, w, h); x.clip();
+        x.font = '900 ' + tA + 'px ' + TITRE; x.fillStyle = PAPIER;
+        var lA = x.measureText('BAOBABS').width, dA = (1 - en) * (lA + S * .2);
+        x.fillText('BAOBABS', gx - dA, cyA + tA * .22);
+        espace(x, 5 * u); x.font = '700 ' + Math.round(24 * u) + 'px ' + TEXTE; x.fillStyle = VERT;
+        x.fillText('BASKET CLUB', gx + 4 * u - dA, cyA + tA * .22 + 48 * u);
+        x.restore();
+        var gxB = cxB - S * .6, lgB = gxB - 56 * u;
+        var L = enLignes(x, I.adv, '900 {t}px ' + TITRE, Math.round(140 * u), lgB);
+        var pasL = L.t * .9, yB = cyB - (L.l.length - 1) * pasL / 2 + L.t * .3;
+        x.save(); x.beginPath(); x.rect(0, 0, cxB - S / 2 - 2, h); x.clip();
+        x.font = '900 ' + L.t + 'px ' + TITRE; x.fillStyle = PAPIER; x.textAlign = 'right';
+        var lB = Math.max.apply(null, L.l.map(function(s){ return x.measureText(s).width; })), dB = (1 - en) * (lB + S * .2);
+        L.l.forEach(function(s, k){ x.fillText(s, gxB + dB, yB + k * pasL); });
+        x.restore();
+      }
+      // le VS tombe et frappe la couture a l'instant du choc
+      var ev = phase(t, CHOC - .22, .22);
+      if (ev > 0){
+        var sv = ev < 1 ? 1 + 1.4 * (1 - ev * ev) : 1;
+        x.save(); x.translate(w / 2, h / 2); x.rotate(-.12); x.scale(sv, sv); x.globalAlpha = borne(ev * 3);
+        x.beginPath(); x.arc(0, 0, RV, 0, Math.PI * 2); x.fillStyle = VERT; x.fill();
+        x.lineWidth = 5 * u; x.strokeStyle = ENCRE; x.stroke();
+        x.fillStyle = ENCRE; x.font = '900 ' + Math.round(RV * 1.05) + 'px ' + TITRE; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+        x.fillText('VS', 0, RV * .38);
+        reflet(x, 0, 0, RV, phase(t, CHOC + .15, .55));
+        x.restore();
+      }
+      x.restore();
+      // l'eclair du choc
+      var fl = phase(t, CHOC, .18);
+      if (fl > 0 && fl < 1){ x.save(); x.globalAlpha = .55 * (1 - fl); x.fillStyle = PAPIER; x.fillRect(0, 0, w, h); x.restore(); }
+    } };
+  }
+
+  // 3. LE TABLEAU : la date et l'heure en palettes, le terrain, puis le
+  //    tampon du domicile ou de l'exterieur
+  function affTableau(I, A, w, h){
+    var u = affU(w, h), Z = affZone(w, h), mx = Math.round(76 * u), larg = w - 2 * mx;
+    var rang = [];
+    if (I.date) rang.push({ lib: 'Date', val: I.date, palettes: true });
+    if (I.heure) rang.push({ lib: 'Heure', val: I.heure, palettes: true, bloc: true });
+    if (I.lieu) rang.push({ lib: 'Terrain', val: I.lieu });
+    var hK = 84 * u, hR = 240 * u, hT = 210 * u, haut = Z.y1 - Z.y0;
+    if (hK + rang.length * hR + hT > haut) hR = (haut - hK - hT) / Math.max(1, rang.length);
+    var y0 = Z.y0 + Math.max(0, (haut - hK - rang.length * hR - hT) / 2);
+    var tT = .35 + rang.length * .3 + .4;
+    var vmax = Math.round((hR - 90 * u) / .8);
+    return { duree: 4.4, dessiner: function(x, t){
+      neutre(x);
+      var sec = t > tT + .26 && t < tT + .6 ? 1 - (t - tT - .26) / .34 : 0;
+      x.fillStyle = PAPIER; x.fillRect(0, 0, w, h);
+      fantomes(x, A, w, h, t, { alpha: .1, y: h * .2, debut: .05, sens: 1 });
+      x.save(); x.translate(sec * 7 * u * Math.sin(t * 101), sec * 5 * u * Math.cos(t * 89));
+      // qui joue, souligne d'un trait vert
+      var kick = 'BAOBABS  VS  ' + I.adv;
+      espace(x, 3 * u);
+      var tk = ajuster(x, kick, '800 {t}px ' + TEXTE, Math.round(30 * u), larg), yk = y0 + tk;
+      var lk = fente(x, kick, mx, yk, tk, '800 ' + tk + 'px ' + TEXTE, t, .1, .5, ENCRE);
+      espace(x, 0);
+      x.fillStyle = VERT; x.fillRect(mx, yk + 16 * u, Math.min(lk, larg) * quart(phase(t, .2, .5)), 9 * u);
+      rang.forEach(function(r, k){
+        var top = y0 + hK + k * hR, d0 = .35 + k * .3, base = top + hR - 34 * u;
+        x.fillStyle = ENCRE; x.fillRect(mx, top, larg * quart(phase(t, d0 - .1, .5)), Math.max(2, 3 * u));
+        espace(x, 5 * u);
+        var tl = Math.round(22 * u);
+        fente(x, r.lib.toUpperCase(), mx, top + 50 * u, tl, '700 ' + tl + 'px ' + TEXTE, t, d0, .45, 'rgba(10,28,18,.55)');
+        espace(x, 0);
+        if (r.bloc){
+          // l'heure sur un bloc vert, coupe en deux comme une horloge a palettes
+          var th = Math.round(Math.min(150 * u, vmax));
+          x.font = '900 ' + th + 'px ' + TITRE;
+          var bw = x.measureText(r.val).width + 56 * u, bTop = base - th * .72 - 18 * u, bH = th * .72 + 36 * u;
+          var eB = quart(phase(t, d0 + .05, .4));
+          x.fillStyle = VERT; x.fillRect(mx, bTop, bw * eB, bH);
+          palettes(x, r.val, mx + 28 * u, base, th, '900 ' + th + 'px ' + TITRE, t, d0 + .2, ENCRE);
+          if (eB >= 1){ x.fillStyle = 'rgba(10,28,18,.32)'; x.fillRect(mx, bTop + bH / 2 - 1.5 * u, bw, 3 * u); }
+        } else if (r.palettes){
+          var td = ajuster(x, r.val, '900 {t}px ' + TITRE, Math.round(Math.min(130 * u, vmax)), larg);
+          palettes(x, r.val, mx, base, td, '900 ' + td + 'px ' + TITRE, t, d0 + .12, ENCRE);
+        } else {
+          var L = enLignes(x, r.val, '900 {t}px ' + TITRE, Math.round(Math.min(110 * u, vmax)), larg);
+          if (L.l.length > 1) L.t = Math.min(L.t, Math.round((hR - 96 * u) / 1.62));
+          L.l.forEach(function(s, q){
+            fente(x, s, mx, base - (L.l.length - 1 - q) * L.t * .9, L.t, '900 ' + L.t + 'px ' + TITRE, t, d0 + .12 + q * .08, .55, ENCRE);
+          });
+        }
+      });
+      tampon(x, I.ou, mx, y0 + hK + rang.length * hR + hT / 2, u, t, tT, I.dom);
+      x.restore();
+    } };
+  }
+
+  // 4. L'AFFICHE : tout d'un coup d'oeil. C'est l'image qui reste a la
+  //    fin, et celle que donne la sortie Image.
+  function affFinale(I, A, w, h){
+    var u = affU(w, h), Z = affZone(w, h), mx = Math.round(76 * u), larg = w - 2 * mx;
+    var D = Math.round(176 * u), G = Math.round(Math.min(380 * u, w * .36)), tH = Math.round(70 * u);
+    return { duree: 3.6, dessiner: function(x, t){
+      neutre(x);
+      x.fillStyle = ENCRE; x.fillRect(0, 0, w, h);
+      fantomes(x, A, w, h, t, { alpha: .13, y: h * .2, debut: 0, sens: -1 });
+      // le voile : l'encre remonte du bas, le texte y reste lisible
+      var vo = x.createLinearGradient(0, h * .35, 0, h);
+      vo.addColorStop(0, 'rgba(10,28,18,0)'); vo.addColorStop(1, 'rgba(10,28,18,.85)');
+      x.fillStyle = vo; x.fillRect(0, 0, w, h);
+      // le filet du cadre se tire tout autour
+      var ec = quart(phase(t, .1, 1.1)), ins = 30 * u;
+      x.save(); x.strokeStyle = 'rgba(168,217,59,.55)'; x.lineWidth = 2 * u;
+      x.setLineDash([(2 * (w - 2 * ins) + 2 * (h - 2 * ins)) * ec, 1e5]);
+      x.strokeRect(ins, ins, w - 2 * ins, h - 2 * ins); x.restore();
+      // les hauteurs de chaque etage, puis l'air reparti entre eux
+      x.font = '900 ' + G + 'px ' + TITRE;
+      var lNum = I.num ? x.measureText(I.num).width : 0, sl = larg - lNum - 34 * u;
+      var tJ = I.num ? Math.min(ajuster(x, I.jour, '800 {t}px ' + TITRE, Math.round(92 * u), sl), ajuster(x, I.mois, '800 {t}px ' + TITRE, Math.round(92 * u), sl)) : 0;
+      var hPile = tJ * .72 + tJ * .95 + (I.heure ? 26 * u + tH * .72 + 32 * u : 0);
+      var hDate = I.num ? Math.max(G * .72, hPile) : 0;
+      var noms = 'BAOBABS VS ' + I.adv, tN = ajuster(x, noms, '900 {t}px ' + TITRE, Math.round(78 * u), larg);
+      var Lv = I.lieu ? enLignes(x, I.lieu, '700 {t}px ' + TEXTE, Math.round(34 * u), larg) : null;
+      var hLieu = Lv ? Lv.t * (.75 + (Lv.l.length - 1) * 1.25) : 0, hOu = 58 * u, hPied = 26 * u;
+      var parts = [D, tN * .72]; if (hDate) parts.push(hDate); if (hLieu) parts.push(hLieu); parts.push(hOu, hPied);
+      var somme = parts.reduce(function(a, b){ return a + b; }, 0);
+      var air = Math.min(110 * u, Math.max(24 * u, (Z.y1 - Z.y0 - somme) / (parts.length - 1)));
+      var y = Z.y0 + Math.max(0, (Z.y1 - Z.y0 - somme - air * (parts.length - 1)) / 2);
+      // les deux blasons et le VS
+      var yC = y + D / 2;
+      ecu(x, A.logo, 'B', w / 2 - D * .95, yC, D * rebond(phase(t, .05, .5)), PAPIER);
+      ecu(x, A.adv, I.adv, w / 2 + D * .95, yC, D * rebond(phase(t, .15, .5)), PAPIER);
+      reflet(x, w / 2 - D * .95, yC, D / 2, phase(t, 1.3, .6));
+      reflet(x, w / 2 + D * .95, yC, D / 2, phase(t, 1.4, .6));
+      var tv = Math.round(72 * u);
+      fente(x, 'VS', w / 2, yC + tv * .36, tv, '900 ' + tv + 'px ' + TITRE, t, .3, .4, VERT, 'centre');
+      y += D + air;
+      // BAOBABS VS ADVERSAIRE, sur une ligne, le VS en vert
+      x.font = '900 ' + tN + 'px ' + TITRE;
+      var l1 = x.measureText('BAOBABS ').width, l2 = x.measureText('VS ').width, l3 = x.measureText(I.adv).width;
+      var gx0 = w / 2 - (l1 + l2 + l3) / 2, yN = y + tN * .72, pN = '900 ' + tN + 'px ' + TITRE;
+      fente(x, 'BAOBABS', gx0, yN, tN, pN, t, .35, .5, PAPIER);
+      fente(x, 'VS', gx0 + l1, yN, tN, pN, t, .42, .5, VERT);
+      fente(x, I.adv, gx0 + l1 + l2, yN, tN, pN, t, .49, .5, PAPIER);
+      y += tN * .72 + air;
+      // la date : le jour en grand, le reste en pile a sa droite
+      if (hDate){
+        x.font = '800 ' + tJ + 'px ' + TITRE;
+        var lP = Math.max(x.measureText(I.jour).width, x.measureText(I.mois).width);
+        x.font = '900 ' + tH + 'px ' + TITRE;
+        var lHe = I.heure ? x.measureText(I.heure).width + 40 * u : 0;
+        var gxD = (w - (lNum + 34 * u + Math.max(lP, lHe))) / 2, sx = gxD + lNum + 34 * u;
+        fente(x, I.num, gxD, y + (hDate - G * .72) / 2 + G * .72, G, '900 ' + G + 'px ' + TITRE, t, .55, .6, VERT);
+        var yJ = y + (hDate - hPile) / 2 + tJ * .72;
+        fente(x, I.jour, sx, yJ, tJ, '800 ' + tJ + 'px ' + TITRE, t, .65, .5, PAPIER);
+        fente(x, I.mois, sx, yJ + tJ * .95, tJ, '800 ' + tJ + 'px ' + TITRE, t, .72, .5, PAPIER);
+        if (I.heure){
+          var hb = yJ + tJ * .95 + 26 * u;
+          x.fillStyle = VERT; x.fillRect(sx, hb, lHe * quart(phase(t, .85, .4)), tH * .72 + 32 * u);
+          fente(x, I.heure, sx + 20 * u, hb + 16 * u + tH * .72, tH, '900 ' + tH + 'px ' + TITRE, t, .95, .45, ENCRE);
+        }
+        y += hDate + air;
+      }
+      if (Lv){
+        Lv.l.forEach(function(s, q){
+          fente(x, s, w / 2, y + Lv.t * .75 + q * Lv.t * 1.25, Lv.t, '700 ' + Lv.t + 'px ' + TEXTE, t, 1 + q * .06, .5, 'rgba(241,236,225,.8)', 'centre');
+        });
+        y += hLieu + air;
+      }
+      // domicile : la pastille pleine ; exterieur : le contour
+      x.save(); espace(x, 4 * u);
+      var tO = Math.round(24 * u); x.font = '800 ' + tO + 'px ' + TEXTE;
+      var lo = x.measureText(I.ou).width + 52 * u;
+      x.globalAlpha = quart(phase(t, 1.1, .4));
+      arrondi(x, w / 2 - lo / 2, y, lo, hOu, hOu / 2);
+      if (I.dom){ x.fillStyle = VERT; x.fill(); } else { x.strokeStyle = VERT; x.lineWidth = 2.5 * u; x.stroke(); }
+      x.fillStyle = I.dom ? ENCRE : VERT; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText(I.ou, w / 2 + 2 * u, y + hOu / 2 + u);
+      x.restore();
+      y += hOu + air;
+      x.save(); espace(x, 4 * u);
+      var pied = ['BAOBABS BASKET CLUB', I.comp].filter(Boolean).join('  ·  ');
+      var tp = ajuster(x, pied, '700 {t}px ' + TEXTE, Math.round(20 * u), larg);
+      x.globalAlpha = sortie(phase(t, 1.2, .5)); x.fillStyle = 'rgba(241,236,225,.6)';
+      x.font = '700 ' + tp + 'px ' + TEXTE; x.textAlign = 'center';
+      x.fillText(pied, w / 2 + 2 * u, y + tp * .75);
+      x.restore();
+    } };
+  }
+
+  // LA LAME : une coupe en biais traverse l'image de gauche a droite ;
+  // derriere elle, la scene suivante est deja la, et se pose en reculant
+  function lame(x, t, w, h, sortant, entrant){
+    var e = quart(phase(t, 0, LAME)), pente = h * .3, bw = w * .22;
+    var a = e * (w + pente + bw), tr = a - bw;     // l'attaque et la fuite, en haut
+    sortant();
+    if (tr > -1){
+      x.save();
+      x.beginPath(); x.moveTo(-1, -1); x.lineTo(tr, -1); x.lineTo(tr - pente, h + 1); x.lineTo(-1, h + 1); x.closePath(); x.clip();
+      var z = 1.07 - .07 * sortie(e);
+      x.translate(w / 2, h / 2); x.scale(z, z); x.translate(-w / 2, -h / 2);
+      entrant();
+      x.restore();
+    }
+    x.save();
+    // la trainee : la lame va vite, elle laisse un sillage translucide
+    var sil = bw * .7 * Math.sin(e * Math.PI);
+    x.globalAlpha = .35;
+    x.beginPath(); x.moveTo(tr - sil, -1); x.lineTo(tr, -1); x.lineTo(tr - pente, h + 1); x.lineTo(tr - sil - pente, h + 1); x.closePath();
+    x.fillStyle = VERT; x.fill();
+    x.globalAlpha = 1;
+    x.beginPath(); x.moveTo(tr, -1); x.lineTo(a, -1); x.lineTo(a - pente, h + 1); x.lineTo(tr - pente, h + 1); x.closePath();
+    x.fillStyle = VERT; x.fill();
+    var f = bw * .12;
+    x.beginPath(); x.moveTo(a - f, -1); x.lineTo(a, -1); x.lineTo(a - pente, h + 1); x.lineTo(a - f - pente, h + 1); x.closePath();
+    x.fillStyle = ENCRE; x.fill();
+    x.restore();
+  }
+  function monterAffiche(d, A, w, h){
+    var I = affLire(d);
+    var sc = [affOuverture(I, A, w, h), affDuel(I, A, w, h), affTableau(I, A, w, h), affFinale(I, A, w, h)];
+    var debut = [], T = 0;
+    sc.forEach(function(s){ debut.push(T); T += s.duree; });
+    return { scenes: sc, debuts: debut, total: T, w: w, h: h };
+  }
+  function image_affiche(x, M, T, grain){
+    var k = 0;
+    while (k + 1 < M.scenes.length && T >= M.debuts[k + 1]) k++;
+    var dessiner = function(j){ return function(){ M.scenes[j].dessiner(x, T - M.debuts[j]); }; };
+    if (k > 0 && T - M.debuts[k] < LAME) lame(x, T - M.debuts[k], M.w, M.h, dessiner(k - 1), dessiner(k));
+    else dessiner(k)();
+    if (grain) x.drawImage(grain, 0, 0);
+  }
+  // le grain du papier, fixe : une affiche imprimee n'est jamais lisse
+  function grainPret(w, h){
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var x = c.getContext('2d'), im = x.createImageData(w, h), d = im.data;
+    for (var i = 0; i < d.length; i += 4){ var v = Math.random() < .5 ? 0 : 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = Math.random() * 14; }
+    x.putImageData(im, 0, 0);
+    return c;
+  }
+
+  /* ---------------------------------------------------------- le chantier */
+  // ce qui se dessine, a quelle taille, et comment
+  function chantier(d, A){
+    var f = formatDe(d), w = f.w, h = f.h;
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var x = c.getContext('2d', { alpha: false }), M, dessiner;
+    if (d.style === 'affiche'){
+      A.fantomes = fantomesPrets(A, h);
+      M = monterAffiche(d, A, w, h);
+      var G = grainPret(w, h);
+      dessiner = function(T){ image_affiche(x, M, T, G); };
+    } else if (w === W && h === H){
+      M = monter(d, A);
+      var F = fondPret(W, H);
+      dessiner = function(T){ image_a(x, F, M, T); };
+    } else {
+      // la planche 4:5 au milieu, sur le meme fond prolonge a la taille
+      // de sortie : la planche reste transparente, le fond passe dessous
+      M = monter(d, A);
+      var F2 = fondPret(w, h), p = document.createElement('canvas'); p.width = W; p.height = H;
+      var xp = p.getContext('2d'), ox = Math.round((w - W) / 2), oy = Math.round((h - H) / 2);
+      dessiner = function(T){
+        image_a(xp, null, M, T);
+        fond(x, F2, T, M.total, w, h);
+        x.drawImage(p, ox, oy);
+      };
+    }
+    return { c: c, w: w, h: h, total: M.total, dessiner: dessiner, format: f };
+  }
+
   /* ---------------------------------------------------------- les encodeurs */
-  function avcConfig(){
+  function avcConfig(w, h){
     if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') return Promise.resolve(null);
-    var codecs = ['avc1.640028', 'avc1.4d0028', 'avc1.42e028', 'avc1.640029'];
+    // 1080 x 1920 tient tout juste dans le niveau 4.0 ; 4.2 en secours
+    var codecs = ['avc1.640028', 'avc1.4d0028', 'avc1.42e028', 'avc1.640029', 'avc1.64002a', 'avc1.4d002a'];
+    var debit = Math.round(5e6 * w * h / (W * H));
     var essayer = function(i){
       if (i >= codecs.length) return Promise.resolve(null);
-      var cfg = { codec: codecs[i], width: W, height: H, bitrate: 5e6, framerate: FPS, avc: { format: 'avc' } };
+      var cfg = { codec: codecs[i], width: w, height: h, bitrate: debit, framerate: FPS, avc: { format: 'avc' } };
       return VideoEncoder.isConfigSupported(cfg).then(function(r){ return r && r.supported ? cfg : essayer(i + 1); }, function(){ return essayer(i + 1); });
     };
     return essayer(0);
   }
-  function encoderMp4(c, x, F, M, cfg, surProgres){
+  function encoderMp4(J, cfg, surProgres){
     return (window.Mp4Muxer ? Promise.resolve() : charger(MUXER)).then(function(){
       var cible = new Mp4Muxer.ArrayBufferTarget();
       var mux = new Mp4Muxer.Muxer({ target: cible, fastStart: 'in-memory',
-        video: { codec: 'avc', width: W, height: H, frameRate: FPS } });
+        video: { codec: 'avc', width: J.w, height: J.h, frameRate: FPS } });
       var erreur = null;
       var enc = new VideoEncoder({
         output: function(chunk, meta){ mux.addVideoChunk(chunk, meta); },
         error: function(e){ erreur = e; }
       });
       enc.configure(cfg);
-      var n = Math.ceil(M.total * FPS), f = 0;
+      var n = Math.ceil(J.total * FPS), f = 0;
       return new Promise(function(res, rej){
         var pas = function(){
           if (erreur) return rej(erreur);
@@ -829,8 +1426,8 @@
           // d'un telephone d'entree de gamme suit
           var lot = 0;
           while (f < n && lot < 6 && enc.encodeQueueSize < 12){
-            image_a(x, F, M, f / FPS);
-            var vf = new VideoFrame(c, { timestamp: Math.round(f * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+            J.dessiner(f / FPS);
+            var vf = new VideoFrame(J.c, { timestamp: Math.round(f * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
             enc.encode(vf, { keyFrame: f % (FPS * 2) === 0 }); vf.close();
             f++; lot++;
           }
@@ -846,7 +1443,8 @@
       });
     });
   }
-  function enregistrer(c, x, F, M, surProgres){
+  function enregistrer(J, surProgres){
+    var c = J.c, M = { total: J.total };
     if (!c.captureStream || typeof MediaRecorder === 'undefined') return Promise.reject(new Error('Ce navigateur ne sait pas fabriquer de video.'));
     var types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
     var type = types.filter(function(t){ return MediaRecorder.isTypeSupported(t); })[0] || '';
@@ -862,7 +1460,7 @@
       var t0 = performance.now();
       var boucle = function(){
         var T = (performance.now() - t0) / 1000;
-        image_a(x, F, M, Math.min(T, M.total));
+        J.dessiner(Math.min(T, M.total));
         if (surProgres) surProgres(Math.min(.99, T / M.total));
         if (T < M.total) requestAnimationFrame(boucle); else rec.stop();
       };
@@ -886,19 +1484,25 @@
       }))
     ]).then(function(){ return A; });
   }
+  // l'affiche en image fixe : sa derniere image, complete
+  function enImage(J){
+    J.dessiner(Math.max(0, J.total - .05));
+    return new Promise(function(res, rej){
+      J.c.toBlob(function(b){ b ? res({ blob: b, type: 'image/png', ext: 'png' }) : rej(new Error('l’image n’a pas pu être tirée')); }, 'image/png');
+    });
+  }
   function fabriquer(d, surProgres){
     d = d || {};
-    if (!(d.joueuses || []).length) return Promise.reject(new Error('Aucune joueuse dans la composition.'));
+    var affiche = d.style === 'affiche';
+    if (!affiche && !(d.joueuses || []).length) return Promise.reject(new Error('Aucune joueuse dans la composition.'));
     if (surProgres) surProgres(0);
     return preparer(d).then(function(A){
-      var c = document.createElement('canvas'); c.width = W; c.height = H;
-      var x = c.getContext('2d', { alpha: false });
-      var F = fondPret(), M = monter(d, A);
-      return avcConfig().then(function(cfg){
-        return cfg ? encoderMp4(c, x, F, M, cfg, surProgres) : enregistrer(c, x, F, M, surProgres);
-      }).then(function(r){
-        r.nom = String(d.nomFichier || 'baobabs-composition').replace(/[^a-z0-9._-]+/gi, '-') +
-                (d.style === 'presentation' ? '-presentation' : '') + '.' + r.ext;
+      var J = chantier(d, A);
+      return (affiche && d.sortie === 'png' ? enImage(J) : avcConfig(J.w, J.h).then(function(cfg){
+        return cfg ? encoderMp4(J, cfg, surProgres) : enregistrer(J, surProgres);
+      })).then(function(r){
+        r.nom = String(d.nomFichier || (affiche ? 'baobabs-affiche' : 'baobabs-composition')).replace(/[^a-z0-9._-]+/gi, '-') +
+                (d.style === 'presentation' ? '-presentation' : '') + J.format.suffixe + '.' + r.ext;
         return r;
       });
     });
@@ -914,24 +1518,31 @@
   // une image fixe a un instant donne : pour verifier la composition sans encoder
   function apercu(d, T){
     return preparer(d).then(function(A){
-      var c = document.createElement('canvas'); c.width = W; c.height = H;
-      var x = c.getContext('2d', { alpha: false }), M = monter(d, A);
-      image_a(x, fondPret(), M, Math.min(T, M.total));
-      return { canvas: c, total: M.total };
+      var J = chantier(d, A);
+      J.dessiner(Math.min(T, J.total));
+      return { canvas: J.c, total: J.total };
     });
   }
   // la duree, sans rien charger : les scenes ne dependent pas des images
   function duree(d, style){
-    var c = {}; for (var k in d) c[k] = d[k]; c.style = style;
+    var c = {}; for (var k in d) c[k] = d[k]; if (style) c.style = style;
+    if (c.style === 'affiche') return Math.round(monterAffiche(c, {}, 1080, 1350).total);
     return Math.round(monter(c, { photos: [], visages: [] }).total);
   }
 
   /* ---------------------------------------------------------- le choix */
-  // Deux videos : on demande laquelle, sous le bouton, sans fenetre.
-  var choixOuvert = null;
+  // On demande, sous le bouton et sans fenetre : le format d'abord (il
+  // reste choisi d'une fois sur l'autre), puis la video ou l'image.
+  var choixOuvert = null, CLE_FORMAT = 'bbc-video-format';
   function fermerChoix(){ if (choixOuvert) choixOuvert(null); }
+  function formatRetenu(affiche){
+    var f = null; try { f = localStorage.getItem(CLE_FORMAT); } catch(e){}
+    return FORMATS[f] && (affiche || FORMATS[f].compo) ? f : '4x5';
+  }
   function choisir(btn, d){
     fermerChoix();
+    d = d || {};
+    var affiche = d.style === 'affiche', fmt = formatRetenu(affiche);
     if (!document.getElementById('bv-choix-style')){
       var st = document.createElement('style'); st.id = 'bv-choix-style';
       st.textContent =
@@ -942,17 +1553,38 @@
           'background:transparent;border:1px solid transparent;color:inherit;font:inherit}' +
         '.bv-choix button:hover,.bv-choix button:focus-visible{background:rgba(168,217,59,.1);border-color:rgba(168,217,59,.45);outline:none}' +
         '.bv-choix b{display:block;font-size:15px;font-weight:700}' +
-        '.bv-choix span{display:block;margin-top:3px;font-size:13px;line-height:1.35;color:rgba(243,239,230,.68)}';
+        '.bv-choix span{display:block;margin-top:3px;font-size:13px;line-height:1.35;color:rgba(243,239,230,.68)}' +
+        // les formats : trois pastilles, chacune avec la forme de l'image
+        '.bv-choix .bv-formats{display:flex;gap:6px;margin:0 0 10px}' +
+        '.bv-choix .bv-f{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:7px;width:auto;margin:0;padding:10px 4px 9px;' +
+          'text-align:center;border:1px solid rgba(243,239,230,.14)}' +
+        '.bv-choix .bv-f i{display:block;border:2px solid currentColor;border-radius:3px;opacity:.8}' +
+        '.bv-choix .bv-f b{font-size:13px}' +
+        '.bv-choix .bv-f span{margin:0;font-size:11px}' +
+        '.bv-choix .bv-f[aria-pressed="true"]{background:rgba(168,217,59,.16);border-color:#A8D93B;color:#A8D93B}' +
+        '.bv-choix .bv-f[aria-pressed="true"] span{color:#A8D93B}';
       document.head.appendChild(st);
     }
-    var n = (d && d.joueuses || []).length, pages = pagesDe(joueusesDe(d || {})).length;
+    var n = (d.joueuses || []).length, pages = pagesDe(joueusesDe(d)).length;
+    var pastille = function(k){
+      var f = FORMATS[k], hh = 26, ww = Math.round(hh * f.w / f.h);
+      return '<button type="button" class="bv-f" data-f="' + k + '" aria-pressed="' + (k === fmt) + '" title="' + f.w + ' × ' + f.h + '">' +
+        '<i style="width:' + ww + 'px;height:' + hh + 'px"></i><b>' + f.lib + '</b><span>' + f.ratio + '</span></button>';
+    };
     var m = document.createElement('div');
-    m.className = 'bv-choix'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-label', 'Quelle vidéo ?');
-    m.innerHTML = '<p>Quelle vidéo ?</p>' +
-      '<button type="button" data-v="presentation"><b>La présentation</b><span>Joueuse par joueuse, en grand, comme sur le site · environ ' +
-        duree(d || {}, 'presentation') + ' s</span></button>' +
-      '<button type="button" data-v="liste"><b>La liste</b><span>' + (n > 1 ? 'Les ' + n + ' joueuses ' : 'La joueuse ') +
-        (pages > 1 ? 'sur ' + pages + ' pages' : 'sur une page') + ', visages et noms · environ ' + duree(d || {}, 'liste') + ' s</span></button>';
+    m.className = 'bv-choix'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-label', affiche ? 'L’affiche du match' : 'Quelle vidéo ?');
+    m.innerHTML = '<p>Format</p><div class="bv-formats">' +
+        Object.keys(FORMATS).filter(function(k){ return affiche || FORMATS[k].compo; }).map(pastille).join('') + '</div>' +
+      (affiche
+        ? '<p>Télécharger</p>' +
+          '<button type="button" data-v="affiche" data-s="mp4"><b>La vidéo</b><span>MP4 · environ ' + duree(d, 'affiche') +
+            ' s · l’adversaire, la date, l’heure, le terrain, domicile ou extérieur</span></button>' +
+          '<button type="button" data-v="affiche" data-s="png"><b>L’affiche seule</b><span>Image PNG : la dernière image de la vidéo</span></button>'
+        : '<p>Quelle vidéo ?</p>' +
+          '<button type="button" data-v="presentation"><b>La présentation</b><span>Joueuse par joueuse, en grand, comme sur le site · environ ' +
+            duree(d, 'presentation') + ' s</span></button>' +
+          '<button type="button" data-v="liste"><b>La liste</b><span>' + (n > 1 ? 'Les ' + n + ' joueuses ' : 'La joueuse ') +
+            (pages > 1 ? 'sur ' + pages + ' pages' : 'sur une page') + ', visages et noms · environ ' + duree(d, 'liste') + ' s</span></button>');
     document.body.appendChild(m);
     var r = btn ? btn.getBoundingClientRect() : { left: 16, right: 16, top: 16, bottom: 16 };
     var h = m.offsetHeight, lg = m.offsetWidth;
@@ -970,14 +1602,23 @@
       var dehors = function(e){ if (!m.contains(e.target) && e.target !== btn) fini(null); };
       var touche = function(e){ if (e.key === 'Escape'){ e.preventDefault(); fini(null); if (btn) btn.focus(); } };
       var defile = function(e){ if (!m.contains(e.target)) fini(null); };
+      m.querySelectorAll('button[data-f]').forEach(function(b){
+        b.addEventListener('click', function(){
+          fmt = b.getAttribute('data-f');
+          try { localStorage.setItem(CLE_FORMAT, fmt); } catch(e){}
+          m.querySelectorAll('button[data-f]').forEach(function(o){ o.setAttribute('aria-pressed', String(o === b)); });
+        });
+      });
       m.querySelectorAll('button[data-v]').forEach(function(b){
-        b.addEventListener('click', function(){ fini(b.getAttribute('data-v')); });
+        b.addEventListener('click', function(){
+          fini({ style: b.getAttribute('data-v'), format: fmt, sortie: b.getAttribute('data-s') || 'mp4' });
+        });
       });
       document.addEventListener('mousedown', dehors, true);
       document.addEventListener('keydown', touche, true);
       window.addEventListener('scroll', defile, true);
       choixOuvert = fini;
-      var premier = m.querySelector('button'); if (premier) premier.focus();
+      var premier = m.querySelector('button[data-v]'); if (premier) premier.focus();
     });
   }
 

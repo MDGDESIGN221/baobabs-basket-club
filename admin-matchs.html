@@ -28620,7 +28620,7 @@
     if (window.BaobabsVideo) return Promise.resolve();
     return new Promise(function(res, rej){
       var s = document.createElement('script');
-      s.src = '/studio/video-compo.js?v=20260930b';
+      s.src = '/studio/video-compo.js?v=20261108a';
       s.onload = function(){ window.BaobabsVideo ? res() : rej(new Error('le générateur ne s’est pas chargé')); };
       s.onerror = function(){ rej(new Error('le générateur ne s’est pas chargé')); };
       document.head.appendChild(s);
@@ -28659,8 +28659,11 @@
   // le fichier part dans les telechargements du navigateur.
   // Deux videos : la presentation (joueuse par joueuse, comme sur le
   // site) ou la liste. Le choix s'ouvre sous le bouton.
+  // Le menu demande aussi le FORMAT (publication 4:5, story 9:16, carre
+  // pour l'affiche) et, pour l'affiche, video ou image.
   function vcLancer(btn, donnees){
-    if (!donnees || !(donnees.joueuses || []).length){
+    var affiche = donnees && donnees.style === 'affiche';
+    if (!donnees || (!affiche && !(donnees.joueuses || []).length)){
       qgToast('Aucune joueuse dans la composition : il n’y a rien à mettre en vidéo.', true); return;
     }
     if (btn && btn.getAttribute('data-vc-lib')) return;          // une video est deja en fabrication
@@ -28668,12 +28671,14 @@
     var rendre = function(){ if (btn){ btn.disabled = false; btn.textContent = lib; btn.removeAttribute('data-vc-lib'); } };
     vcCharger().then(function(){
       return window.BaobabsVideo.choisir(btn, donnees);
-    }).then(function(style){
-      if (!style) return rendre();
-      donnees.style = style;
+    }).then(function(choix){
+      if (!choix) return rendre();
+      if (typeof choix === 'string') choix = { style: choix };
+      donnees.style = choix.style; donnees.format = choix.format || '4x5'; donnees.sortie = choix.sortie || 'mp4';
+      var image = donnees.sortie === 'png';
       if (btn){ btn.setAttribute('data-vc-lib', lib); btn.disabled = true; btn.textContent = 'Préparation…'; }
-      return window.BaobabsVideo.telecharger(donnees, function(p){ if (btn) btn.textContent = 'Vidéo… ' + Math.round(p * 100) + ' %'; })
-        .then(function(r){ qgToast('Vidéo téléchargée ✓ ' + r.nom); rendre(); });
+      return window.BaobabsVideo.telecharger(donnees, function(p){ if (btn && !image) btn.textContent = 'Vidéo… ' + Math.round(p * 100) + ' %'; })
+        .then(function(r){ qgToast((image ? 'Image' : 'Vidéo') + ' téléchargée ✓ ' + r.nom); rendre(); });
     }).catch(function(e){
       qgToast('La vidéo n’a pas pu être fabriquée' + (e && e.message ? ' : ' + e.message : '') + '.', true);
       rendre();
@@ -29099,6 +29104,46 @@
     }).filter(Boolean);
     vcLancer(btn, vcMatch(m, js, vcBanc(mcCompo.banc)));
   }
+  // L'AFFICHE DU MATCH (08/11/2026) : l'annonce seule, sans composition.
+  // « juste les infos : Baobabs vs adversaire, la date et l'heure, le
+  // terrain, a domicile ou a l'exterieur ». Les champs de la fiche s'ils
+  // sont ouverts (la video suit ce qu'on vient de taper, avant meme
+  // d'enregistrer), sinon le match tel qu'il est en base. En fond, sous
+  // un voile, le cinq de ce match s'il est pose, sinon l'effectif.
+  function vcAffiche(m){
+    var ici = String(mcSel) === String(m.id);
+    var lu = function(id, def){ var e = ici ? document.getElementById(id) : null; return e ? e.value : def; };
+    var date = lu('mc-date', m.match_date) || '';
+    return { style: 'affiche', titre: 'L’affiche du match', sur: 'Baobabs Basket Club',
+      match: { dom: lu('mc-home', m.is_home === false ? 'false' : 'true') !== 'false', date: date,
+               heure: lu('mc-time', m.match_time) || '', lieu: lu('mc-venue', m.venue) || '',
+               competition: lu('mc-comp', m.competition) || '', journee: lu('mc-round', m.round_label) || '' },
+      adversaire: { nom: m.opponent_name || '', logo: m.opponent_logo_url || '' },
+      joueuses: [], nomFichier: 'baobabs-affiche-' + date + '-' + vcSlug(m.opponent_name) };
+  }
+  function vcAfficheJoueuses(m){
+    if (String(mcCompo.mid) === String(m.id) && mcCompo.cinq.length)
+      return Promise.resolve(mcCompo.cinq.concat(mcCompo.banc).map(mcCompoJoueuse).filter(Boolean));
+    return sbGet('players?select=id,name,jersey_number,photo_url,status&order=jersey_number.asc' + SANS_ATTENTE)
+      .then(function(r){ return (r || []).filter(function(p){ return (p.status || 'active') !== 'partie'; }); })
+      .catch(function(){ return []; });
+  }
+  function mcAffiche(btn){
+    var m = mcById(mcSel); if (!m) return;
+    if (btn && (btn.getAttribute('data-vc-lib') || btn.disabled)) return;
+    var d = vcAffiche(m), lib = btn ? btn.textContent : '';
+    // le premier clic charge le generateur et lit l'effectif : le bouton
+    // le dit, sinon on croit qu'il ne fait rien
+    if (btn){ btn.disabled = true; btn.textContent = 'Un instant…'; }
+    Promise.all([vcCharger().catch(function(){}), vcAfficheJoueuses(m)]).then(function(r){
+      if (btn){ btn.disabled = false; btn.textContent = lib; }
+      // sept au plus : au-dela, le fond devient une foule illisible
+      d.joueuses = (r[1] || []).filter(function(p){ return p.photo_url; }).slice(0, 7).map(function(p){
+        return { nom: p.name || '', no: p.jersey_number == null ? '' : p.jersey_number, photo: p.photo_url };
+      });
+      vcLancer(btn, d);
+    });
+  }
   function mcSceneRejouer(){
     if (!tmEtat.ouvert || tmEtat.id !== mcCompoTemoinId()){ mcCompoTemoin(true); return; }
     var f = tmIframe(), w = f && f.contentWindow; if (!w) return;
@@ -29380,6 +29425,7 @@
             // Matchs, retire du menu : une rencontre ne pouvait ni se copier
             // (aller-retour d'une meme affiche) ni disparaitre.
             '<div class="ds-quick" style="margin-top:10px">'+
+              '<button type="button" id="mc-affiche" title="L’annonce du match en vidéo ou en image : l’adversaire, la date, l’heure, le terrain, domicile ou extérieur">Vidéo d’annonce</button>'+
               '<button type="button" id="mc-dup">Dupliquer (J+7)</button>'+
               '<button type="button" id="mc-del" class="ds-danger">Supprimer ce match</button>'+
             '</div>'+
@@ -29398,6 +29444,8 @@
         mcTab = b.getAttribute('data-mc-tab'); mcDirty = null; mcRenderDoc();
       });
     });
+    var bAff = document.getElementById('mc-affiche');
+    if (bAff) bAff.addEventListener('click', function(){ mcAffiche(bAff); });
     var bDup = document.getElementById('mc-dup');
     if (bDup) bDup.addEventListener('click', function(){ bDup.disabled = true; gmDuplicate(m.id); setTimeout(function(){ bDup.disabled = false; }, 1500); });
     var bDel = document.getElementById('mc-del');
