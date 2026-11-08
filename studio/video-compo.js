@@ -82,9 +82,12 @@
     '9x16': { w: 1080, h: 1920, lib: 'Story',       ratio: '9:16', compo: true,  suffixe: '-story' },
     '1x1':  { w: 1080, h: 1080, lib: 'Carré',       ratio: '1:1',  compo: false, suffixe: '-carre' }
   };
+  // l'affiche, l'annonce epuree et le resultat se dessinent a toutes les
+  // tailles et sortent aussi en image ; la composition, non
+  function libre(style){ return style === 'affiche' || style === 'annonce' || style === 'resultat'; }
   function formatDe(d){
     var f = FORMATS[d && d.format] || FORMATS['4x5'];
-    return d && d.style !== 'affiche' && !f.compo ? FORMATS['4x5'] : f;
+    return d && !libre(d.style) && !f.compo ? FORMATS['4x5'] : f;
   }
   var VERT = '#A8D93B', VERT_PALE = '#E3F5B4', CREME = '#F3EFE6', GRIS = 'rgba(243,239,230,.62)';
   var NUIT = '#06190F';
@@ -922,7 +925,7 @@
       lieu: String(m.lieu || '').trim().toUpperCase(),
       dom: m.dom !== false,
       ou: m.dom !== false ? 'À DOMICILE' : 'À L’EXTÉRIEUR',
-      comp: [brut.competition, brut.journee].map(function(s){ return String(s || '').trim(); }).filter(Boolean).join(' · ').toUpperCase(),
+      comp: [brut.competition, brut.journee].map(function(s){ s = String(s || '').trim(); return /^amical$/i.test(s) ? 'Match amical' : s; }).filter(Boolean).join(' · ').toUpperCase(),
       adv: String(adv.nom || '').trim().toUpperCase() || 'ADVERSAIRE'
     };
   }
@@ -1496,13 +1499,248 @@
     return c;
   }
 
+  /* =================================================================
+     LA NUIT : l'annonce epuree et le resultat (08/11/2026)
+     -----------------------------------------------------------------
+     Le president a donne quatre references et choisi la sienne : une
+     affiche « NEXT MATCH ». « le design next match me plait trop et les
+     polices, mais sur nos couleurs. » Donc : un fond presque noir, une
+     grande nappe de lumiere verte qui monte du bas a gauche, les deux
+     logos en haut a gauche separes d'un eclair, un titre geant en
+     capitales serrees (Anton), les infos en serif fin (Cormorant
+     Garamond), la signature du club en bas a gauche.
+     Deux affiches, chacune en image ou animee :
+     - 'annonce' : PROCHAIN MATCH, le terrain, la date // l'heure ;
+     - 'resultat' : VICTOIRE ou DEFAITE, le score geant qui se compte,
+       les quarts-temps, la joueuse du match en une ligne. Pas de photo :
+       « pas fan de la joueuse presente car ca gache la hierarchie », le
+       score commande. Rien d'invente : sans feuille de match, pas de
+       joueuse du match ; sans quarts-temps, pas de bande.
+     ================================================================= */
+  // Anton : ses capitales font 87 % du corps (mesure le 08/11), d'ou les
+  // .87 ci-dessous. Le serif : Libre Caslon Text, chiffres a hauteur des
+  // capitales (Cormorant Garamond ecrivait « 19Hoo », ses chiffres sont
+  // a l'ancienne).
+  var NUIT = { titre: '"Anton", Impact, sans-serif', serif: '"Libre Caslon Text", Georgia, serif',
+    url: 'https://fonts.googleapis.com/css2?family=Anton&family=Libre+Caslon+Text:wght@400;700&family=Archivo:wght@700;800&display=swap',
+    faces: ['400 100px Anton', '400 40px "Libre Caslon Text"', '700 40px "Libre Caslon Text"', '700 20px Archivo'] };
+  function nA(px){ return '400 ' + px + 'px ' + NUIT.titre; }
+  function nS(px, g){ return ((g || 400) >= 600 ? 700 : 400) + ' ' + px + 'px ' + NUIT.serif; }
+  var NOIR = '#030A06';
+
+  // le fond : le noir, et la lumiere qui monte du bas a gauche. ton :
+  // 'victoire' (la plus vive), 'annonce', 'defaite' (sans vert vif)
+  function nuitFond(x, w, h, t, ton){
+    x.fillStyle = NOIR; x.fillRect(0, 0, w, h);
+    var e = sortie(phase(t, 0, 1.6)), T = TG, M = Math.max(w, h);
+    var vif = ton === 'defaite' ? 0 : ton === 'victoire' ? 1 : .8;
+    x.save(); x.globalCompositeOperation = 'screen';
+    // la nappe principale : une ellipse longue, en biais
+    x.save(); x.globalAlpha = e;
+    // « certaines parties pas lisibles » (08/11) : le coeur de la nappe
+    // est descendu sous le texte, et adouci
+    x.translate(w * (.0 + .035 * Math.sin(T * .22)), h * (.84 + .025 * Math.cos(T * .18)));
+    x.rotate(-.55 + .04 * Math.sin(T * .15)); x.scale(1, .5);
+    var R = M * (.9 + .1 * e), g = x.createRadialGradient(0, 0, 0, 0, 0, R);
+    g.addColorStop(0, vif ? 'rgba(200,232,140,' + (.55 * vif) + ')' : 'rgba(60,140,80,.45)');
+    g.addColorStop(.2, vif ? 'rgba(150,200,60,' + (.42 * vif) + ')' : 'rgba(40,110,64,.4)');
+    g.addColorStop(.5, 'rgba(28,96,56,.42)');
+    g.addColorStop(1, 'rgba(28,96,56,0)');
+    x.fillStyle = g; x.fillRect(-R, -R, 2 * R, 2 * R); x.restore();
+    // un second fond de foret, en bas a droite
+    x.save(); x.globalAlpha = e * .9;
+    var g2 = x.createRadialGradient(w * (.85 + .04 * Math.cos(T * .2)), h * 1.02, 0, w * .85, h * 1.02, M * .75);
+    g2.addColorStop(0, 'rgba(23,80,47,.75)'); g2.addColorStop(1, 'rgba(23,80,47,0)');
+    x.fillStyle = g2; x.fillRect(0, 0, w, h); x.restore();
+    x.restore();
+    // le haut reste noir
+    var g3 = x.createLinearGradient(0, 0, 0, h * .55);
+    g3.addColorStop(0, 'rgba(3,10,6,.92)'); g3.addColorStop(1, 'rgba(3,10,6,0)');
+    x.fillStyle = g3; x.fillRect(0, 0, w, h);
+  }
+  // un logo tel quel ; un logo plein (JPG) dans son rond
+  function nuitLogo(x, im, fond, nom, gx, cy, L){
+    if (im && im.naturalWidth && !fond){
+      var s = Math.min(L / im.naturalWidth, L / im.naturalHeight), iw = im.naturalWidth * s, ih = im.naturalHeight * s;
+      x.drawImage(im, gx + (L - iw) / 2, cy - ih / 2, iw, ih);
+    } else ecu(x, im, nom, gx + L / 2, cy, L, fond || PAPIER, fond);
+  }
+  // l'eclair entre les deux logos, au trait, qui se dessine (p : 0 a 1)
+  function eclair(x, cx, cy, hb, u, p){
+    if (p <= 0) return;
+    var lb = hb * .42, pts = [[.3, -.5], [-.22, .07], [.04, .07], [-.3, .5], [.24, -.1], [-.02, -.1], [.3, -.5]];
+    var long = 0, k;
+    for (k = 1; k < pts.length; k++) long += Math.hypot((pts[k][0] - pts[k - 1][0]) * lb, (pts[k][1] - pts[k - 1][1]) * hb);
+    x.save(); x.strokeStyle = 'rgba(243,239,230,.85)'; x.lineWidth = Math.max(1.5, 2 * u); x.lineJoin = 'miter';
+    x.setLineDash([long * p, 1e5]);
+    x.beginPath(); x.moveTo(cx + pts[0][0] * lb, cy + pts[0][1] * hb);
+    for (k = 1; k < pts.length; k++) x.lineTo(cx + pts[k][0] * lb, cy + pts[k][1] * hb);
+    x.stroke(); x.restore();
+  }
+  // l'en-tete : logo du club, eclair, logo adverse ; rend la hauteur
+  function nuitEnTete(x, A, I, mx, cy, L, u, t){
+    var eA = sortie(phase(t, .25, .7)), eB = sortie(phase(t, .45, .7));
+    x.save(); x.globalAlpha = eA; nuitLogo(x, A.logo, A.logoFond, 'B', mx - (1 - eA) * 40 * u, cy, L); x.restore();
+    eclair(x, mx + L + 52 * u, cy, L * .62, u, quart(phase(t, .4, .5)));
+    x.save(); x.globalAlpha = eB; nuitLogo(x, A.adv, A.advFond, I.adv, mx + L + 104 * u - (1 - eB) * 40 * u, cy, L); x.restore();
+  }
+  // la signature du club, en bas a gauche
+  function nuitSignature(x, A, mx, by, u, t){
+    var e = sortie(phase(t, 1.5, .7)), L = Math.round(62 * u);
+    x.save(); x.globalAlpha = e;
+    if (A.logo) x.drawImage(A.logo, mx, by - L, L, L);
+    x.fillStyle = CREME; x.font = nA(Math.round(40 * u)); x.textBaseline = 'alphabetic';
+    x.fillText('BAOBABS', mx + L + 16 * u, by - L * .42);
+    espace(x, 6 * u); x.font = '700 ' + Math.round(15 * u) + 'px Archivo, system-ui, sans-serif'; x.fillStyle = 'rgba(243,239,230,.85)';
+    x.fillText('BASKET CLUB', mx + L + 18 * u, by - L * .42 + 24 * u);
+    x.restore(); espace(x, 0);
+  }
+  // les lignes en serif fin, qui montent l'une apres l'autre
+  // « certains mots se touchent » (08/11) : interligne 1,5, et toutes les
+  // lignes a la taille de la plus serree, pour un bloc regulier
+  function nuitLignes(x, lignes, mx, y, taille, larg, t, debut){
+    var tl = lignes.reduce(function(m, l){ return Math.min(m, ajuster(x, l, nS('{t}'), taille, larg)); }, taille);
+    lignes.forEach(function(l, k){
+      var e = sortie(phase(t, debut + k * .12, .7));
+      x.save(); x.globalAlpha = e; x.fillStyle = CREME; x.font = nS(tl); x.textBaseline = 'alphabetic';
+      x.fillText(l, mx, y + k * tl * 1.5 + (1 - e) * 14);
+      x.restore();
+    });
+    return lignes.length * tl * 1.5;
+  }
+
+  // L'ANNONCE EPUREE : la reference, presque telle quelle
+  function nuitAnnonce(d, A, w, h){
+    var I = affLire(d), u = affU(w, h), Z = affZone(w, h), mx = Math.round(Math.max(76 * u, w * .1)), larg = w - 2 * mx;
+    var L = Math.round(150 * u);
+    var mots = I.titre.split(' '), l1 = mots[0], l2 = mots.slice(1).join(' ') || '';
+    var infos = [I.lieu, [I.date, I.heure].filter(Boolean).join('  //  '), I.ou].filter(Boolean);
+    return { duree: 6, dessiner: function(x, t){
+      neutre(x);
+      nuitFond(x, w, h, t, 'annonce');
+      var haut = Z.y1 - Z.y0, yL = Z.y0 + haut * .09 + L / 2;
+      nuitEnTete(x, A, I, mx, yL, L, u, t);
+      var tt = Math.min(ajuster(x, l1, nA('{t}'), Math.round(h * .15), larg * .9), ajuster(x, l2, nA('{t}'), Math.round(h * .15), larg * .9));
+      var y1 = yL + L / 2 + haut * .07 + tt * .87;
+      fente(x, l1, mx - 4 * u, y1, tt, nA(tt), t, .55, .7, CREME);
+      fente(x, l2, mx - 4 * u, y1 + tt * .98, tt, nA(tt), t, .68, .7, CREME);
+      var ts = Math.round(Math.min(38 * u, h * .029));
+      nuitLignes(x, infos, mx, y1 + tt * .98 + haut * .08, ts, larg, t, 1.1);
+      nuitSignature(x, A, mx, Z.y1 - 6 * u, u, t);
+    } };
+  }
+
+  // LE RESULTAT
+  function nuitResultat(d, A, w, h){
+    var I = affLire(d), u = affU(w, h), Z = affZone(w, h), mx = Math.round(Math.max(70 * u, w * .085)), larg = w - 2 * mx;
+    var sc = d.score || {}, b = Number(sc.b) || 0, o = Number(sc.o) || 0;
+    var ton = b > o ? 'victoire' : b < o ? 'defaite' : 'nul';
+    var titre = ton === 'victoire' ? 'VICTOIRE' : ton === 'defaite' ? 'DÉFAITE' : 'MATCH NUL';
+    var quarts = (d.quarts || []).filter(function(q){ return q && (q.b != null || q.o != null); }).slice(0, 6);
+    var mvp = d.mvp && d.mvp.nom ? d.mvp : null;
+    var L = Math.round(118 * u), haut = Z.y1 - Z.y0;
+    return { duree: 7.5, dessiner: function(x, t){
+      neutre(x);
+      nuitFond(x, w, h, t, ton === 'nul' ? 'annonce' : ton);
+      var yL = Z.y0 + L / 2;
+      nuitEnTete(x, A, I, mx, yL, L, u, t);
+      // SCORE FINAL, en serif ; le titre en grand
+      var y = yL + L / 2 + haut * .07, tk = Math.round(32 * u);
+      espace(x, 5 * u);
+      fente(x, 'SCORE FINAL', mx, y, tk, nS(tk, 600), t, .5, .6, ton === 'defaite' ? 'rgba(243,239,230,.75)' : VERT);
+      espace(x, 0);
+      var tt = ajuster(x, titre, nA('{t}'), Math.round(h * .115), larg * .82);
+      y += 30 * u + tt * .87;
+      fente(x, titre, mx - 3 * u, y, tt, nA(tt), t, .6, .7, CREME);
+      // LE SCORE, geant, qui se compte
+      var sB = String(b), sO = String(o), sep = '–';
+      var ts = ajuster(x, sB + ' ' + sep + ' ' + sO, nA('{t}'), Math.round(Math.min(h * .2, w * .3)), larg);
+      x.font = nA(ts);
+      var lB = x.measureText(sB).width, lS = x.measureText(' ' + sep + ' ').width, lO = x.measureText(sO).width;
+      y += 44 * u + ts * .87;
+      var ec = cube(phase(t, .95, 1.3)), es = sortie(phase(t, .85, .6));
+      x.save(); x.globalAlpha = es; x.font = nA(ts); x.textBaseline = 'alphabetic';
+      x.fillStyle = ton === 'victoire' ? VERT : CREME; x.fillText(String(Math.round(b * ec)), mx - 3 * u, y + (1 - es) * 30 * u);
+      x.fillStyle = 'rgba(243,239,230,.45)'; x.fillText(' ' + sep + ' ', mx + lB, y + (1 - es) * 30 * u);
+      x.fillStyle = ton === 'nul' ? CREME : ton === 'victoire' ? 'rgba(243,239,230,.6)' : 'rgba(243,239,230,.5)';
+      x.fillText(String(Math.round(o * ec)), mx + lB + lS, y + (1 - es) * 30 * u);
+      x.restore();
+      // le nom de chacun sous son score
+      var tn = Math.round(26 * u);
+      espace(x, 3 * u);
+      fente(x, 'BAOBABS', mx, y + 44 * u, tn, nS(tn, 700), t, 1.3, .5, CREME);
+      var tnB = ajuster(x, I.adv, nS('{t}', 700), tn, Math.max(lO + 60 * u, w - mx - (mx + lB + lS)));
+      fente(x, I.adv, mx + lB + lS, y + 44 * u, tnB, nS(tnB, 700), t, 1.38, .5, CREME);
+      espace(x, 0);
+      y += 44 * u + 50 * u;
+      // LES QUARTS-TEMPS : une bande, chaque case gagnee en vert
+      if (quarts.length){
+        var cw = Math.min(170 * u, larg / quarts.length), tq = Math.round(38 * u), tl = Math.round(22 * u);
+        quarts.forEach(function(q, k){
+          var e = sortie(phase(t, 1.5 + k * .08, .5)), gx = mx + k * cw;
+          x.save(); x.globalAlpha = e;
+          var gagne = Number(q.b) > Number(q.o);
+          x.fillStyle = gagne ? VERT : 'rgba(243,239,230,.3)'; x.fillRect(gx, y, cw - 16 * u, gagne ? Math.max(2, 4 * u) : Math.max(1, 1.5 * u));
+          x.font = nS(tl, 700); x.fillStyle = 'rgba(243,239,230,.8)'; x.textBaseline = 'alphabetic';
+          x.fillText((k < 4 ? 'Q' + (k + 1) : 'PROL.'), gx, y + 30 * u);
+          x.font = nA(tq); x.fillStyle = CREME;
+          x.fillText((q.b == null ? '' : q.b) + '-' + (q.o == null ? '' : q.o), gx, y + 30 * u + 14 * u + tq * .87 + (1 - e) * 10 * u);
+          x.restore();
+        });
+        y += 30 * u + 14 * u + tq * .87 + 46 * u;
+      }
+      // la competition, la date et le terrain, en serif
+      var ts2 = Math.round(Math.min(36 * u, h * .028));
+      var infos = [I.comp, I.date, I.lieu].filter(Boolean);
+      // a cote des infos, a droite : la joueuse du match (une colonne, pour
+      // qu'elle tienne en 4:5 comme en carre)
+      var yI = y, lI = mvp ? larg * .54 : larg;
+      y += nuitLignes(x, infos, mx, y + ts2, ts2, lI, t, 1.7) + 26 * u;
+      // la joueuse du match : son nom, ses chiffres
+      if (mvp){
+        var e2 = sortie(phase(t, 2, .6)), tl2 = Math.round(22 * u), tm = Math.round(50 * u), tc = Math.round(34 * u);
+        var gxM = mx + larg * .6, lM = larg * .4, yM = yI;
+        if (yM + tl2 + tm + tc + 60 * u < Z.y1 - 90 * u){
+          x.fillStyle = 'rgba(243,239,230,.22)'; x.fillRect(gxM - 24 * u, yM, Math.max(1, 1.5 * u), (tl2 + tm + tc + 40 * u) * e2);
+          espace(x, 5 * u);
+          var tit = String(mvp.titre || 'JOUEUSE DU MATCH').toUpperCase(), tl3 = ajuster(x, tit, nS('{t}', 700), tl2, lM);
+          fente(x, tit, gxM, yM + tl2, tl3, nS(tl3, 700), t, 2, .5, VERT);
+          espace(x, 0);
+          var nmv = String(mvp.nom).toUpperCase(), tmv = ajuster(x, nmv, nA('{t}'), tm, lM);
+          fente(x, nmv, gxM, yM + tl2 + 14 * u + tmv * .87, tmv, nA(tmv), t, 2.08, .6, CREME);
+          var chiffres = [[mvp.pts, 'PTS'], [mvp.reb, 'REB'], [mvp.ast, 'PD']].filter(function(c){ return c[0] != null; });
+          var gx2 = gxM, yc = yM + tl2 + 14 * u + tmv * .87 + 18 * u + tc * .87;
+          chiffres.forEach(function(c, k){
+            var e3 = sortie(phase(t, 2.2 + k * .1, .5));
+            x.save(); x.globalAlpha = e3 * e2;
+            x.font = nA(tc); x.fillStyle = CREME; x.fillText(String(c[0]), gx2, yc);
+            var ln = x.measureText(String(c[0])).width;
+            x.font = nS(Math.round(tc * .66), 700); x.fillStyle = 'rgba(243,239,230,.85)'; x.fillText(c[1], gx2 + ln + 8 * u, yc);
+            gx2 += ln + 9 * u + x.measureText(c[1]).width + 30 * u;
+            x.restore();
+          });
+        }
+      }
+      nuitSignature(x, A, mx, Z.y1 - 6 * u, u, t);
+    } };
+  }
+  function monterNuit(d, A, w, h){
+    var s = d.style === 'resultat' ? nuitResultat(d, A, w, h) : nuitAnnonce(d, A, w, h);
+    return { scenes: [s], debuts: [0], total: s.duree, w: w, h: h };
+  }
+
   /* ---------------------------------------------------------- le chantier */
   // ce qui se dessine, a quelle taille, et comment
   function chantier(d, A){
     var f = formatDe(d), w = f.w, h = f.h;
     var c = document.createElement('canvas'); c.width = w; c.height = h;
     var x = c.getContext('2d', { alpha: false }), M, dessiner;
-    if (d.style === 'affiche'){
+    if (d.style === 'annonce' || d.style === 'resultat'){
+      A.logoFond = fondLogo(A.logo); A.advFond = fondLogo(A.adv);
+      M = monterNuit(d, A, w, h);
+      var GN = grainPret(w, h);
+      dessiner = function(T){ image_affiche(x, M, T, GN); };
+    } else if (d.style === 'affiche'){
       A.fantomes = fantomesPrets(A, h);
       A.logoFond = fondLogo(A.logo); A.advFond = fondLogo(A.adv);
       policeAff(d);
@@ -1643,6 +1881,7 @@
     return Promise.all([
       polices(),
       d.style === 'affiche' ? policesEn(policeAff(d).url, AFF.faces) : null,
+      d.style === 'annonce' || d.style === 'resultat' ? policesEn(NUIT.url, NUIT.faces) : null,
       image(LOGO).then(function(i){ A.logo = i; }),
       image(d.adversaire && d.adversaire.logo ? taille(d.adversaire.logo, 400) : '').then(function(i){ A.adv = i; }),
       image(aff ? taille(aff, 900) : '').then(function(i){ A.affiche = i; }),
@@ -1661,7 +1900,7 @@
   }
   function fabriquer(d, surProgres){
     d = d || {};
-    var affiche = d.style === 'affiche';
+    var affiche = libre(d.style);
     if (!affiche && !(d.joueuses || []).length) return Promise.reject(new Error('Aucune joueuse dans la composition.'));
     if (surProgres) surProgres(0);
     return preparer(d).then(function(A){
@@ -1669,8 +1908,9 @@
       return (affiche && d.sortie === 'png' ? enImage(J) : avcConfig(J.w, J.h).then(function(cfg){
         return cfg ? encoderMp4(J, cfg, surProgres) : enregistrer(J, surProgres);
       })).then(function(r){
-        r.nom = String((affiche && d.nomAffiche) || d.nomFichier || (affiche ? 'baobabs-affiche' : 'baobabs-composition')).replace(/[^a-z0-9._-]+/gi, '-') +
-                (d.style === 'presentation' ? '-presentation' : '') + J.format.suffixe + '.' + r.ext;
+        var base = d.style === 'resultat' ? (d.nomResultat || 'baobabs-resultat') : ((affiche && d.nomAffiche) || d.nomFichier || (affiche ? 'baobabs-affiche' : 'baobabs-composition'));
+        r.nom = String(base).replace(/[^a-z0-9._-]+/gi, '-') + (d.style === 'presentation' ? '-presentation' : '') +
+                (d.style === 'annonce' ? '-epuree' : '') + J.format.suffixe + '.' + r.ext;
         return r;
       });
     });
@@ -1695,6 +1935,7 @@
   function duree(d, style){
     var c = {}; for (var k in d) c[k] = d[k]; if (style) c.style = style;
     if (c.style === 'affiche'){ policeAff(c); return Math.round(monterAffiche(c, {}, 1080, 1350).total); }
+    if (c.style === 'annonce' || c.style === 'resultat') return Math.round(monterNuit(c, {}, 1080, 1350).total);
     return Math.round(monter(c, { photos: [], visages: [] }).total);
   }
 
@@ -1710,7 +1951,7 @@
   function choisir(btn, d){
     fermerChoix();
     d = d || {};
-    var affiche = d.style === 'affiche', fmt = formatRetenu(affiche);
+    var affiche = libre(d.style), fmt = formatRetenu(affiche);
     if (!document.getElementById('bv-choix-style')){
       var st = document.createElement('style'); st.id = 'bv-choix-style';
       st.textContent =
@@ -1740,14 +1981,22 @@
         '<i style="width:' + ww + 'px;height:' + hh + 'px"></i><b>' + f.lib + '</b><span>' + f.ratio + '</span></button>';
     };
     var m = document.createElement('div');
-    m.className = 'bv-choix'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-label', affiche ? 'L’affiche du match' : 'Quelle vidéo ?');
+    m.className = 'bv-choix'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-label', d.style === 'resultat' ? 'Le résultat' : affiche ? 'L’affiche du match' : 'Quelle vidéo ?');
     m.innerHTML = '<p>Format</p><div class="bv-formats">' +
         Object.keys(FORMATS).filter(function(k){ return affiche || FORMATS[k].compo; }).map(pastille).join('') + '</div>' +
-      (affiche
-        ? '<p>Télécharger</p>' +
+      (d.style === 'resultat'
+        ? '<p>Le résultat</p>' +
+          '<button type="button" data-v="resultat" data-s="png"><b>L’affiche du résultat</b><span>Image PNG : le score, la victoire ou la défaite' +
+            (d.mvp && d.mvp.nom ? ', ' + String(d.mvp.titre || 'la joueuse du match').toLowerCase() : '') + '</span></button>' +
+          '<button type="button" data-v="resultat" data-s="mp4"><b>La même, animée</b><span>MP4 · environ ' + duree(d, 'resultat') + ' s · le score se compte</span></button>'
+        : affiche
+        ? '<p>Avec les joueuses</p>' +
           '<button type="button" data-v="affiche" data-s="mp4"><b>La vidéo</b><span>MP4 · environ ' + duree(d, 'affiche') +
             ' s · l’adversaire, la date, l’heure, le terrain, domicile ou extérieur</span></button>' +
-          '<button type="button" data-v="affiche" data-s="png"><b>L’affiche seule</b><span>Image PNG : la dernière image de la vidéo</span></button>'
+          '<button type="button" data-v="affiche" data-s="png"><b>L’affiche seule</b><span>Image PNG : la dernière image de la vidéo</span></button>' +
+          '<p>Épurée</p>' +
+          '<button type="button" data-v="annonce" data-s="png"><b>L’affiche épurée</b><span>Image PNG : fond nuit, les deux logos, PROCHAIN MATCH</span></button>' +
+          '<button type="button" data-v="annonce" data-s="mp4"><b>La même, animée</b><span>MP4 · environ ' + duree(d, 'annonce') + ' s</span></button>'
         : '<p>Quelle vidéo ?</p>' +
           '<button type="button" data-v="presentation"><b>La présentation</b><span>Joueuse par joueuse, en grand, comme sur le site · environ ' +
             duree(d, 'presentation') + ' s</span></button>' +

@@ -28620,7 +28620,7 @@
     if (window.BaobabsVideo) return Promise.resolve();
     return new Promise(function(res, rej){
       var s = document.createElement('script');
-      s.src = '/studio/video-compo.js?v=20261108d';
+      s.src = '/studio/video-compo.js?v=20261108e';
       s.onload = function(){ window.BaobabsVideo ? res() : rej(new Error('le générateur ne s’est pas chargé')); };
       s.onerror = function(){ rej(new Error('le générateur ne s’est pas chargé')); };
       document.head.appendChild(s);
@@ -28666,7 +28666,8 @@
   // Le menu demande aussi le FORMAT (publication 4:5, story 9:16, carre
   // pour l'affiche) et, pour l'affiche, video ou image.
   function vcLancer(btn, donnees){
-    var affiche = donnees && donnees.style === 'affiche';
+    // l'annonce et le resultat se passent de composition
+    var affiche = donnees && /^(affiche|annonce|resultat)$/.test(donnees.style || '');
     if (!donnees || (!affiche && !(donnees.joueuses || []).length)){
       qgToast('Aucune joueuse dans la composition : il n’y a rien à mettre en vidéo.', true); return;
     }
@@ -29148,6 +29149,58 @@
       vcLancer(btn, d);
     });
   }
+  // LE RESULTAT (08/11/2026) : « on doit avoir d'autres pour le score
+  // final ou fin de match, victoire ou defaite ». Le score et les
+  // quarts-temps de l'onglet Resultat s'il est ouvert (la video suit ce
+  // qu'on vient de taper), sinon ceux de la base.
+  function vcResultat(m){
+    var d = vcAffiche(m), ici = String(mcSel) === String(m.id);
+    var lu = function(id, def){ var e = ici ? document.getElementById(id) : null; return e && e.value !== '' ? e.value : def; };
+    var b = lu('mc-sb', m.score_baobabs), o = lu('mc-so', m.score_opponent);
+    if (b == null || o == null || b === '' || o === '') return null;
+    var qs = [];
+    if (ici && document.getElementById('mc-q1-b')){
+      for (var i = 1; i <= 4; i++){
+        var qb = document.getElementById('mc-q' + i + '-b').value, qo = document.getElementById('mc-q' + i + '-o').value;
+        if (qb === '' && qo === '') continue;
+        qs.push({ b: parseInt(qb, 10) || 0, o: parseInt(qo, 10) || 0 });
+      }
+    } else qs = mcQuarters(m);
+    d.style = 'resultat';
+    d.score = { b: parseInt(b, 10) || 0, o: parseInt(o, 10) || 0 };
+    d.quarts = qs;
+    d.nomResultat = 'baobabs-resultat-' + (m.match_date || '') + '-' + vcSlug(m.opponent_name);
+    return d;
+  }
+  // La joueuse du match : celle que la base designe (son evaluation se
+  // detache d'au moins deux points), sinon la meilleure marqueuse si elle
+  // est seule a ce total, sinon personne. Rien n'est invente.
+  function vcJoueuseDuMatch(m){
+    return Promise.all([
+      tkRpc('bbc_mvp_match', { p_match_id: m.id }).catch(function(){ return []; }),
+      sbGet('match_stats?select=pts,reb,ast,players(name)&match_id=eq.' + m.id).catch(function(){ return []; })
+    ]).then(function(r){
+      var mvp = (r[0] || [])[0];
+      if (mvp && mvp.name) return { nom: mvp.name, pts: mvp.pts, reb: mvp.reb, ast: mvp.ast, titre: 'Joueuse du match' };
+      var l = (r[1] || []).filter(function(x){ return x.players && x.players.name && x.pts != null; })
+        .sort(function(a, b){ return (b.pts || 0) - (a.pts || 0); });
+      if (!l.length || !(l[0].pts > 0) || (l[1] && l[1].pts === l[0].pts)) return null;
+      return { nom: l[0].players.name, pts: l[0].pts, reb: l[0].reb, ast: l[0].ast, titre: 'Meilleure marqueuse' };
+    });
+  }
+  function mcResultat(btn){
+    var m = mcById(mcSel); if (!m) return;
+    if (btn && (btn.getAttribute('data-vc-lib') || btn.disabled)) return;
+    var d = vcResultat(m);
+    if (!d){ qgToast('Saisissez d’abord le score, dans l’onglet Résultat.', true); return; }
+    var lib = btn ? btn.textContent : '';
+    if (btn){ btn.disabled = true; btn.textContent = 'Un instant…'; }
+    Promise.all([vcCharger().catch(function(){}), vcJoueuseDuMatch(m)]).then(function(r){
+      if (btn){ btn.disabled = false; btn.textContent = lib; }
+      d.mvp = r[1];
+      vcLancer(btn, d);
+    });
+  }
   function mcSceneRejouer(){
     if (!tmEtat.ouvert || tmEtat.id !== mcCompoTemoinId()){ mcCompoTemoin(true); return; }
     var f = tmIframe(), w = f && f.contentWindow; if (!w) return;
@@ -29430,6 +29483,10 @@
             // (aller-retour d'une meme affiche) ni disparaitre.
             '<div class="ds-quick" style="margin-top:10px">'+
               '<button type="button" id="mc-affiche" title="L’annonce du match en vidéo ou en image : l’adversaire, la date, l’heure, le terrain, domicile ou extérieur">Vidéo d’annonce</button>'+
+              // le resultat : des que le score est saisi, ou dans l'onglet Resultat
+              (hasScore || mcTab === 'resultat'
+                ? '<button type="button" id="mc-resultat" title="Le score final en image ou en vidéo : victoire ou défaite, les quarts-temps, la joueuse du match">Visuel du résultat</button>'
+                : '')+
               '<button type="button" id="mc-dup">Dupliquer (J+7)</button>'+
               '<button type="button" id="mc-del" class="ds-danger">Supprimer ce match</button>'+
             '</div>'+
@@ -29450,6 +29507,8 @@
     });
     var bAff = document.getElementById('mc-affiche');
     if (bAff) bAff.addEventListener('click', function(){ mcAffiche(bAff); });
+    var bRes = document.getElementById('mc-resultat');
+    if (bRes) bRes.addEventListener('click', function(){ mcResultat(bRes); });
     var bDup = document.getElementById('mc-dup');
     if (bDup) bDup.addEventListener('click', function(){ bDup.disabled = true; gmDuplicate(m.id); setTimeout(function(){ bDup.disabled = false; }, 1500); });
     var bDel = document.getElementById('mc-del');
