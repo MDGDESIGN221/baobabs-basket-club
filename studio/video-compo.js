@@ -1282,121 +1282,148 @@
     } };
   }
 
-  // 4. L'AFFICHE : « avoir les deux logos au milieu a la fin » (08/11).
-  //    Les deux blasons en grand, au centre, le VS entre eux, leur nom
-  //    dessous ; au-dessus ce qu'on annonce, en dessous un billet (la
-  //    date, l'heure), le terrain, le domicile. C'est l'image qui reste
-  //    a la fin, et celle que donne la sortie Image.
+  // 4. L'AFFICHE. « avoir les deux logos au milieu a la fin », puis
+  //    « l'affiche de match n'est pas tres ambitieuse » (08/11). Une vraie
+  //    affiche de jour de match : la date en chiffre geant au fond, deux
+  //    joueuses en couleur devant, qui sortent de derriere un panneau
+  //    d'encre ; les deux logos a cheval sur le bord du panneau, au
+  //    milieu ; dessous, une grille nette : date, heure, terrain. C'est
+  //    l'image qui reste a la fin, et celle que donne la sortie Image.
+  function herosPrets(A, hs){
+    var out = [];
+    (A.photos || []).forEach(function(im, k){
+      var v = A.visages && A.visages[k];
+      if (!im || !v || v.opaque || out.length >= 2) return;
+      var sc = hs / (v.haut * im.naturalHeight);
+      var cw = Math.max(1, Math.round(im.naturalWidth * sc)), ch = Math.max(1, Math.round(im.naturalHeight * sc));
+      var c = document.createElement('canvas'); c.width = cw; c.height = ch;
+      c.getContext('2d').drawImage(im, 0, 0, cw, ch);
+      out.push({ c: c, top: v.top * ch, cx: v.cx * cw });
+    });
+    return out;
+  }
   function affFinale(I, A, w, h){
-    var u = affU(w, h), Z = affZone(w, h), mx = Math.round(76 * u), larg = w - 2 * mx;
-    var D = Math.round(Math.min(300 * u, w * .29)), ecart = Math.round(150 * u);
+    var u = affU(w, h), Z = affZone(w, h), mx = Math.round(70 * u), larg = w - 2 * mx;
+    // le bord haut du panneau : juste ce qu'il faut au-dessous pour les logos,
+    // les noms, la grille et le domicile (410 unites)
+    var haut = Z.y1 - Z.y0, yP = Math.max(Z.y0 + haut * .5, Z.y1 - 410 * u), pente = 34 * u;
+    // les tetes un peu basses : le haut du chiffre geant se lit au-dessus
+    var yTete = Z.y0 + 62 * u + (yP - Z.y0) * .2, hs = (yP - yTete) * 1.5;
+    var HE = herosPrets(A, hs);
+    var D = Math.round(Math.min(214 * u, w * .21)), ecart = Math.round(96 * u);
     var cxA = w / 2 - D / 2 - ecart / 2, cxB = w / 2 + D / 2 + ecart / 2;
-    var hBillet = Math.round(138 * u), tK = Math.round(26 * u), tC = Math.round(20 * u);
-    return { duree: 4.2, dessiner: function(x, t){
+    var tK = Math.round(22 * u);
+    return { duree: 4.4, dessiner: function(x, t){
       neutre(x);
+      // le fond : l'encre, un grand pan de vert de foret en biais, la trame
       x.fillStyle = ENCRE; x.fillRect(0, 0, w, h);
-      fantomes(x, A, w, h, t, { alpha: .16, y: h * .14, debut: 0, sens: -1, teinte: VERT });
+      x.save(); x.fillStyle = FORET;
+      x.beginPath(); x.moveTo(w * .38, 0); x.lineTo(w, 0); x.lineTo(w, yP); x.lineTo(w * .02, yP); x.closePath(); x.fill();
+      x.restore();
       fondAnime(x, w, h, true);
-      // le voile : l'encre descend du haut et remonte du bas
-      var vo = x.createLinearGradient(0, 0, 0, h);
-      vo.addColorStop(0, 'rgba(10,28,18,.55)'); vo.addColorStop(.3, 'rgba(10,28,18,0)');
-      vo.addColorStop(.55, 'rgba(10,28,18,.2)'); vo.addColorStop(1, 'rgba(10,28,18,.92)');
-      x.fillStyle = vo; x.fillRect(0, 0, w, h);
-      // les hauteurs de chaque etage, puis l'air reparti entre eux
-      var lN = D + 70 * u;
-      var nB = enLignes(x, I.adv, fT('{t}'), Math.round(76 * u), lN), nA = enLignes(x, 'BAOBABS', fT('{t}'), Math.round(76 * u), lN);
-      var tNom = Math.min(nA.t, nB.t), lignesN = Math.max(nA.l.length, nB.l.length);
-      var hNoms = tNom * .72 + (lignesN - 1) * tNom * .92, hDuel = D + 34 * u + hNoms;
-      var hTete = tK + (I.comp ? 18 * u + tC : 0);
-      var Lv = I.lieu ? enLignes(x, I.lieu, '700 {t}px ' + AFF.texte, Math.round(30 * u), larg) : null;
-      var hLieu = Lv ? Lv.t * (.75 + (Lv.l.length - 1) * 1.25) : 0, hOu = Math.round(54 * u), hPied = Math.round(22 * u);
-      var billet = !!(I.date || I.heure);
-      var parts = [hTete, hDuel]; if (billet) parts.push(hBillet); if (hLieu) parts.push(hLieu); parts.push(hOu, hPied);
-      var somme = parts.reduce(function(a, b){ return a + b; }, 0);
-      var air = Math.min(100 * u, Math.max(22 * u, (Z.y1 - Z.y0 - somme) / (parts.length - 1)));
-      var y = Z.y0 + Math.max(0, (Z.y1 - Z.y0 - somme - air * (parts.length - 1)) / 2);
-      var yC = y + hTete + air + D / 2;
-      // le filet du cadre se tire tout autour
-      var ec = quart(phase(t, .1, 1.1)), ins = 30 * u;
-      x.save(); x.strokeStyle = 'rgba(168,217,59,.5)'; x.lineWidth = 2 * u;
-      x.setLineDash([(2 * (w - 2 * ins) + 2 * (h - 2 * ins)) * ec, 1e5]);
-      x.strokeRect(ins, ins, w - 2 * ins, h - 2 * ins); x.restore();
-      // ce qu'on annonce, et la competition
+      // l'en-tete : ce qu'on annonce a gauche, la competition a droite
       espace(x, 6 * u);
-      fente(x, I.titre, w / 2 + 3 * u, y + tK * .75, tK, '800 ' + tK + 'px ' + AFF.texte, t, .1, .5, VERT, 'centre');
+      fente(x, I.titre, mx, Z.y0 + tK * .8, tK, '800 ' + tK + 'px ' + AFF.texte, t, .1, .5, VERT);
       espace(x, 2 * u);
-      if (I.comp) fente(x, I.comp, w / 2 + u, y + tK + 18 * u + tC * .75, tC, '600 ' + tC + 'px ' + AFF.texte, t, .2, .5, 'rgba(241,236,225,.62)', 'centre');
+      if (I.comp){
+        var tc = ajuster(x, I.comp, '600 {t}px ' + AFF.texte, Math.round(19 * u), larg * .55);
+        fente(x, I.comp, w - mx, Z.y0 + tK * .8, tc, '600 ' + tc + 'px ' + AFF.texte, t, .18, .5, 'rgba(241,236,225,.7)', 'droite');
+      }
       espace(x, 0);
-      // LES DEUX BLASONS arrivent des bords et se rencontrent au milieu
-      var eA = sortie(phase(t, .15, .65)), eB = sortie(phase(t, .2, .65));
-      ecu(x, A.logo, 'B', cxA - (1 - eA) * w * .6, yC, D, PAPIER, A.logoFond);
-      ecu(x, A.adv, I.adv, cxB + (1 - eB) * w * .6, yC, D, PAPIER, A.advFond);
-      // le VS frappe entre les deux, deux traits verts l'encadrent
-      var ev = phase(t, .5, .22);
-      if (ev > 0){
-        var tv = Math.round(112 * u), sv = .7 + .3 * sortie(ev);
-        x.save(); x.translate(w / 2, yC); x.scale(sv, sv); x.globalAlpha = borne(ev * 3);
-        x.font = fT(tv); x.textAlign = 'center'; x.textBaseline = 'alphabetic'; x.fillStyle = VERT;
-        x.fillText('VS', 0, tv * .36);
+      x.fillStyle = 'rgba(241,236,225,.25)'; x.fillRect(mx, Z.y0 + tK + 16 * u, larg * quart(phase(t, .05, .8)), Math.max(1, 1.5 * u));
+      // LE CHIFFRE DU JOUR, geant, en vert plein : il derive tres
+      // lentement, les joueuses passent devant
+      if (I.num){
+        var hMax = (yP - (Z.y0 + tK + 40 * u)) * 1.02;
+        var tg = ajuster(x, I.num, fT('{t}'), Math.round(hMax / .7), w * .9);
+        var eg = sortie(phase(t, 0, .9)), byg = Z.y0 + tK + 40 * u + tg * .7 + (1 - eg) * tg * .3;
+        x.save();
+        x.beginPath(); x.rect(0, Z.y0 + tK + 30 * u, w, yP - Z.y0); x.clip();
+        x.font = fT(tg); x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+        x.globalAlpha = eg; x.fillStyle = VERT;
+        x.fillText(I.num, w / 2 - t * 5 * u, byg);
         x.restore();
-        var et = quart(phase(t, .75, .5)), lt = Math.max(0, D / 2 - tv * .55) * et;
-        x.fillStyle = 'rgba(168,217,59,.6)';
-        x.fillRect(w / 2 - u, yC - tv * .55 - lt, 2 * u, lt);
-        x.fillRect(w / 2 - u, yC + tv * .55, 2 * u, lt);
       }
-      // les noms sous les blasons
-      var yN = yC + D / 2 + 34 * u + tNom * .72;
-      nA.l.forEach(function(s, q){ fente(x, s, cxA, yN + q * tNom * .92, tNom, fT(tNom), t, .85 + q * .05, .5, PAPIER, 'centre'); });
-      nB.l.forEach(function(s, q){ fente(x, s, cxB, yN + q * tNom * .92, tNom, fT(tNom), t, .9 + q * .05, .5, PAPIER, 'centre'); });
-      y = yC + D / 2 + 34 * u + hNoms + air;
-      // LE BILLET : la date et l'heure, cote a cote
-      if (billet){
-        var cases = [];
-        if (I.date) cases.push({ lib: 'DATE', val: I.dateCourte, coul: PAPIER, part: I.heure ? .6 : 1 });
-        if (I.heure) cases.push({ lib: 'HEURE', val: I.heure, coul: VERT, part: I.date ? .4 : 1 });
-        var eb = quart(phase(t, 1, .7));
-        x.save(); x.strokeStyle = 'rgba(168,217,59,.55)'; x.lineWidth = 2 * u;
-        x.setLineDash([(2 * larg + 2 * hBillet) * eb, 1e5]);
-        arrondi(x, mx, y, larg, hBillet, 14 * u); x.stroke(); x.restore();
-        var cx0 = mx;
-        cases.forEach(function(c, k){
-          var lc = larg * c.part;
-          if (k > 0){ x.fillStyle = 'rgba(168,217,59,.35)'; x.fillRect(cx0, y + 22 * u, 2 * u, (hBillet - 44 * u) * eb); }
-          espace(x, 4 * u);
-          var tl = Math.round(17 * u);
-          fente(x, c.lib, cx0 + 30 * u, y + 40 * u, tl, '700 ' + tl + 'px ' + AFF.texte, t, 1.1 + k * .1, .45, 'rgba(241,236,225,.55)');
-          espace(x, 0);
-          var tvv = ajuster(x, c.val, fT('{t}'), Math.round(66 * u), lc - 60 * u);
-          fente(x, c.val, cx0 + 30 * u, y + hBillet - 28 * u, tvv, fT(tvv), t, 1.18 + k * .1, .5, c.coul);
-          cx0 += lc;
-        });
-        y += hBillet + air;
-      }
-      if (Lv){
-        Lv.l.forEach(function(s, q){
-          fente(x, s, w / 2, y + Lv.t * .75 + q * Lv.t * 1.25, Lv.t, '700 ' + Lv.t + 'px ' + AFF.texte, t, 1.35 + q * .06, .5, 'rgba(241,236,225,.85)', 'centre');
-        });
-        y += hLieu + air;
-      }
-      // domicile : la pastille pleine ; exterieur : le contour
+      // LES DEUX JOUEUSES, en couleur, sortent de derriere le panneau
+      HE.forEach(function(f, k){
+        var e = sortie(phase(t, .2 + k * .12, .9));
+        var cx = HE.length === 1 ? w / 2 : (k ? w * .7 : w * .3);
+        var z = 1 + .012 * t;
+        var top = yTete + (1 - e) * h * .35;
+        x.save();
+        x.beginPath(); x.rect(0, 0, w, yP + pente + 2); x.clip();
+        x.translate(cx, top); x.scale(z, z);
+        x.drawImage(f.c, -f.cx, -f.top);
+        x.restore();
+      });
+      // LE PANNEAU : il monte du bas, bord superieur en biais, filet vert
+      var ep = sortie(phase(t, 0, .6)), dy = (1 - ep) * (h - yP + pente);
+      x.save(); x.translate(0, dy);
+      x.beginPath(); x.moveTo(-2, yP + pente); x.lineTo(w + 2, yP - pente); x.lineTo(w + 2, h + 2); x.lineTo(-2, h + 2); x.closePath();
+      x.fillStyle = '#07150D'; x.fill();
+      x.beginPath(); x.moveTo(-2, yP + pente); x.lineTo(w + 2, yP - pente);
+      x.strokeStyle = VERT; x.lineWidth = Math.max(2, 3 * u); x.stroke();
+      x.restore();
+      // LES DEUX LOGOS, au milieu, a cheval sur le bord du panneau
+      var eA = sortie(phase(t, .45, .55)), eB = sortie(phase(t, .52, .55));
+      if (eA > 0){ x.save(); x.globalAlpha = borne(eA * 1.5); ecu(x, A.logo, 'B', cxA, yP, D * (.75 + .25 * eA), PAPIER, A.logoFond); x.restore(); }
+      if (eB > 0){ x.save(); x.globalAlpha = borne(eB * 1.5); ecu(x, A.adv, I.adv, cxB, yP, D * (.75 + .25 * eB), PAPIER, A.advFond); x.restore(); }
+      var tv = Math.round(64 * u);
+      fente(x, 'VS', w / 2, yP + tv * .36, tv, fT(tv), t, .62, .4, VERT, 'centre');
+      // les deux noms, sur une ligne
+      var y = yP + D / 2 + 34 * u;
+      var noms = 'BAOBABS  VS  ' + I.adv, tn = ajuster(x, noms, fT('{t}'), Math.round(58 * u), larg);
+      x.font = fT(tn);
+      var l1 = x.measureText('BAOBABS  ').width, l2 = x.measureText('VS  ').width, l3 = x.measureText(I.adv).width;
+      var g0 = w / 2 - (l1 + l2 + l3) / 2, yN = y + tn * .72;
+      fente(x, 'BAOBABS', g0, yN, tn, fT(tn), t, .7, .5, PAPIER);
+      fente(x, 'VS', g0 + l1, yN, tn, fT(tn), t, .75, .5, VERT);
+      fente(x, I.adv, g0 + l1 + l2, yN, tn, fT(tn), t, .8, .5, PAPIER);
+      y = yN + 30 * u;
+      // LA GRILLE : date, heure, terrain, separes par des filets
+      var cols = [];
+      if (I.date) cols.push({ lib: 'DATE', val: I.dateCourte, coul: PAPIER, p: .32 });
+      if (I.heure) cols.push({ lib: 'HEURE', val: I.heure, coul: VERT, p: .22 });
+      if (I.lieu) cols.push({ lib: 'TERRAIN', val: I.lieu, coul: PAPIER, p: .46, lignes: true });
+      var somme = cols.reduce(function(a, c){ return a + c.p; }, 0) || 1, hG = Math.round(118 * u);
+      var eg2 = quart(phase(t, .85, .6));
+      x.fillStyle = 'rgba(241,236,225,.22)';
+      x.fillRect(mx, y, larg * eg2, Math.max(1, 1.5 * u)); x.fillRect(mx, y + hG, larg * eg2, Math.max(1, 1.5 * u));
+      var gx = mx;
+      cols.forEach(function(c, k){
+        var lc = larg * c.p / somme;
+        if (k > 0){ x.fillStyle = 'rgba(241,236,225,.22)'; x.fillRect(gx, y + 18 * u, Math.max(1, 1.5 * u), (hG - 36 * u) * eg2); }
+        var px0 = gx + (k ? 22 * u : 0), lu = lc - (k ? 22 * u : 0) - 14 * u;
+        espace(x, 4 * u);
+        var tl = Math.round(15 * u);
+        fente(x, c.lib, px0, y + 34 * u, tl, '700 ' + tl + 'px ' + AFF.texte, t, .95 + k * .08, .45, 'rgba(241,236,225,.55)');
+        espace(x, 0);
+        if (c.lignes){
+          var L = enLignes(x, c.val, fT('{t}', 1), Math.round(40 * u), lu);
+          var tt = L.l.length > 1 ? Math.min(L.t, Math.round((hG - 56 * u) / 1.62)) : L.t;
+          L.l.forEach(function(s, q){
+            fente(x, s, px0, y + hG - 20 * u - (L.l.length - 1 - q) * tt * .92, tt, fT(tt, 1), t, 1.02 + k * .08 + q * .05, .5, c.coul);
+          });
+        } else {
+          var tv2 = ajuster(x, c.val, fT('{t}'), Math.round(56 * u), lu);
+          fente(x, c.val, px0, y + hG - 22 * u, tv2, fT(tv2), t, 1.02 + k * .08, .5, c.coul);
+        }
+        gx += lc;
+      });
+      y += hG + 28 * u;
+      // le domicile, et le club
       x.save(); espace(x, 4 * u);
-      var tO = Math.round(22 * u); x.font = '800 ' + tO + 'px ' + AFF.texte;
-      var lo = x.measureText(I.ou).width + 52 * u, eo = sortie(phase(t, 1.45, .45));
-      if (eo > .01){
-        x.translate(w / 2, y + hOu / 2); x.scale(eo, eo); x.globalAlpha = borne(eo);
-        arrondi(x, -lo / 2, -hOu / 2, lo, hOu, hOu / 2);
-        if (I.dom){ x.fillStyle = VERT; x.fill(); } else { x.strokeStyle = VERT; x.lineWidth = 2.5 * u; x.stroke(); }
-        x.fillStyle = I.dom ? ENCRE : VERT; x.textAlign = 'center'; x.textBaseline = 'middle';
-        x.fillText(I.ou, 2 * u, u);
-      }
+      var tO = Math.round(19 * u), hO = Math.round(44 * u); x.font = '800 ' + tO + 'px ' + AFF.texte;
+      var lo = x.measureText(I.ou).width + 40 * u, eo = quart(phase(t, 1.2, .45));
+      x.fillStyle = I.dom ? VERT : 'rgba(0,0,0,0)';
+      if (I.dom) x.fillRect(mx, y, lo * eo, hO);
+      else { x.strokeStyle = VERT; x.lineWidth = Math.max(1.5, 2 * u); x.strokeRect(mx, y, lo * eo, hO); }
       x.restore();
-      y += hOu + air;
-      x.save(); espace(x, 5 * u);
-      var tp = Math.round(18 * u);
-      x.globalAlpha = sortie(phase(t, 1.6, .5)); x.fillStyle = 'rgba(241,236,225,.5)';
-      x.font = '700 ' + tp + 'px ' + AFF.texte; x.textAlign = 'center';
-      x.fillText('BAOBABS BASKET CLUB', w / 2 + 2 * u, y + tp * .75);
-      x.restore();
+      espace(x, 4 * u);
+      fente(x, I.ou, mx + 20 * u, y + hO / 2 + tO * .36, tO, '800 ' + tO + 'px ' + AFF.texte, t, 1.3, .4, I.dom ? ENCRE : VERT);
+      var tp = Math.round(15 * u);
+      fente(x, 'BAOBABS BASKET CLUB', w - mx, y + hO / 2 + tp * .36, tp, '700 ' + tp + 'px ' + AFF.texte, t, 1.35, .4, 'rgba(241,236,225,.5)', 'droite');
+      espace(x, 0);
     } };
   }
 
