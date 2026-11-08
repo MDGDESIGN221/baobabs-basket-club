@@ -872,7 +872,9 @@
   function neutre(x){ x.globalAlpha = 1; x.textAlign = 'left'; x.textBaseline = 'alphabetic'; espace(x, 0); }
 
   function affLire(d){
-    var m = d.match || {}, adv = d.adversaire || {};
+    // venue d'un menu de composition, la competition du match porte un
+    // repli (« Prochain match ») : l'annonce lit la valeur brute
+    var m = d.match || {}, adv = d.adversaire || {}, brut = m.annonce || m;
     var iso = String(m.date || '').slice(0, 10);
     var dt = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(iso + 'T12:00:00') : null;
     if (dt && isNaN(dt.getTime())) dt = null;
@@ -889,7 +891,7 @@
       lieu: String(m.lieu || '').trim().toUpperCase(),
       dom: m.dom !== false,
       ou: m.dom !== false ? 'À DOMICILE' : 'À L’EXTÉRIEUR',
-      comp: [m.competition, m.journee].map(function(s){ return String(s || '').trim(); }).filter(Boolean).join(' · ').toUpperCase(),
+      comp: [brut.competition, brut.journee].map(function(s){ return String(s || '').trim(); }).filter(Boolean).join(' · ').toUpperCase(),
       adv: String(adv.nom || '').trim().toUpperCase() || 'ADVERSAIRE'
     };
   }
@@ -1501,7 +1503,7 @@
       return (affiche && d.sortie === 'png' ? enImage(J) : avcConfig(J.w, J.h).then(function(cfg){
         return cfg ? encoderMp4(J, cfg, surProgres) : enregistrer(J, surProgres);
       })).then(function(r){
-        r.nom = String(d.nomFichier || (affiche ? 'baobabs-affiche' : 'baobabs-composition')).replace(/[^a-z0-9._-]+/gi, '-') +
+        r.nom = String((affiche && d.nomAffiche) || d.nomFichier || (affiche ? 'baobabs-affiche' : 'baobabs-composition')).replace(/[^a-z0-9._-]+/gi, '-') +
                 (d.style === 'presentation' ? '-presentation' : '') + J.format.suffixe + '.' + r.ext;
         return r;
       });
@@ -1584,7 +1586,15 @@
           '<button type="button" data-v="presentation"><b>La présentation</b><span>Joueuse par joueuse, en grand, comme sur le site · environ ' +
             duree(d, 'presentation') + ' s</span></button>' +
           '<button type="button" data-v="liste"><b>La liste</b><span>' + (n > 1 ? 'Les ' + n + ' joueuses ' : 'La joueuse ') +
-            (pages > 1 ? 'sur ' + pages + ' pages' : 'sur une page') + ', visages et noms · environ ' + duree(d, 'liste') + ' s</span></button>');
+            (pages > 1 ? 'sur ' + pages + ' pages' : 'sur une page') + ', visages et noms · environ ' + duree(d, 'liste') + ' s</span></button>' +
+          // « j'ai pas vu celle du match seul » : on la cherchait ici, a
+          // cote des deux autres. Seulement quand le match a une date.
+          (d.match && d.match.date
+            ? '<p>Le match seul</p>' +
+              '<button type="button" data-v="affiche" data-s="mp4"><b>L’annonce du match</b><span>Sans la composition : l’adversaire, la date, l’heure, le terrain, domicile ou extérieur · environ ' +
+                duree(d, 'affiche') + ' s</span></button>' +
+              '<button type="button" data-v="affiche" data-s="png"><b>L’affiche du match</b><span>La même annonce en image PNG</span></button>'
+            : ''));
     document.body.appendChild(m);
     var r = btn ? btn.getBoundingClientRect() : { left: 16, right: 16, top: 16, bottom: 16 };
     var h = m.offsetHeight, lg = m.offsetWidth;

@@ -28620,7 +28620,7 @@
     if (window.BaobabsVideo) return Promise.resolve();
     return new Promise(function(res, rej){
       var s = document.createElement('script');
-      s.src = '/studio/video-compo.js?v=20261108a';
+      s.src = '/studio/video-compo.js?v=20261108b';
       s.onload = function(){ window.BaobabsVideo ? res() : rej(new Error('le générateur ne s’est pas chargé')); };
       s.onerror = function(){ rej(new Error('le générateur ne s’est pas chargé')); };
       document.head.appendChild(s);
@@ -28646,7 +28646,11 @@
       contre: joueuses.length + ' titulaires' + (banc.length ? ', ' + banc.length + ' sur le banc' : ''),
       infos: ['Baobabs ' + (m.is_home === false ? 'chez' : 'vs') + ' ' + (m.opponent_name || ''), date, m.venue || ''].filter(Boolean),
       adversaire: { nom: m.opponent_name || '', logo: m.opponent_logo_url || '' },
-      match: { dom: m.is_home !== false, quand: date, lieu: m.venue || '', competition: m.competition || m.round_label || 'Prochain match' },
+      match: { dom: m.is_home !== false, quand: date, lieu: m.venue || '', competition: m.competition || m.round_label || 'Prochain match',
+               // pour l'annonce du match seul, proposee dans le meme menu
+               date: m.match_date || '', heure: m.match_time || '',
+               annonce: { competition: m.competition || '', journee: m.round_label || '' } },
+      nomAffiche: 'baobabs-affiche-' + (m.match_date || '') + '-' + vcSlug(m.opponent_name),
       joueuses: joueuses, banc: banc, groupeTitre: 'Le cinq', groupeSur: 'Baobabs ' + (m.is_home === false ? 'chez' : 'vs') + ' ' + (m.opponent_name || ''),
       nomFichier: 'baobabs-cinq-majeur-' + (m.match_date || '') + '-' + vcSlug(m.opponent_name) };
   }
