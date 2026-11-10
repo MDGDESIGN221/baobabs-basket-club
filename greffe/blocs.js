@@ -82,13 +82,18 @@
       ".wordmark{ font-family:'Organetto',Gilroy,sans-serif; font-weight:800;",
       "  font-size:11.6pt; line-height:1; color:var(--vert); white-space:nowrap; }",
       ".tagline{ margin-top:4pt; font-size:7.2pt; font-style:italic; color:var(--or); }",
-      ".head-right{ text-align:right; flex:0 0 auto; padding-top:1pt; }",
+      /* La colonne de droite cède la place quand l'en-tête est trop large
+         (le nom du club en Organetto, agrandi à 125 %) : ses lignes passent
+         à la ligne au lieu d'être rognées par le bord de la feuille. Le
+         règlement du logement (09/11/2026) perdait ainsi « République du
+         Sénégal » et sa date, coupés net. Quand tout tient, rien ne bouge. */
+      ".head-right{ text-align:right; flex:0 1 auto; min-width:0; padding-top:1pt; }",
       ".flagbox{ display:inline-flex; align-items:center; gap:6pt; }",
       ".flagwrap{ width:19pt; flex:0 0 19pt; line-height:0; }",
       ".flag-svg{ width:100%; display:block; }",
       ".flagtxt{ font-size:6pt; font-weight:600; letter-spacing:.17em; text-transform:uppercase;",
       "  color:var(--encre); text-align:left; line-height:1.42; }",
-      ".meta{ margin-top:5.5pt; font-size:6.9pt; line-height:1.5; color:var(--gris); white-space:nowrap; }",
+      ".meta{ margin-top:5.5pt; font-size:6.9pt; line-height:1.5; color:var(--gris); }",
       ".meta b{ color:var(--encre); font-weight:600; }",
       ".head-rule{ margin-top:6pt; height:1px; background:var(--filet); }",
       ".head-rule-or{ height:1.6pt; width:34pt; background:var(--or); margin-top:-.8pt; }",

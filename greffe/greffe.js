@@ -1176,6 +1176,28 @@
         var corps = p.querySelector('.corps');
         if (corps && corps.scrollHeight > corps.clientHeight + 2) { deborde++; erreur('Un texte dépasse la page ' + (i + 1)); }
       });
+      /* Le bord droit : .corps cache ce qui dépasse, sans rien dire, et la
+         mesure du bas ne le voit pas. Un en-tête agrandi y a perdu
+         « République du Sénégal » et sa date (règlement du logement,
+         09/11/2026), le contrôle disait « Aucun texte hors page ». */
+      var rognes = [];
+      Array.prototype.forEach.call(pages, function (p, i) {
+        var corps = p.querySelector('.corps');
+        if (!corps) return;
+        var bord = corps.getBoundingClientRect().right;
+        Array.prototype.forEach.call(corps.querySelectorAll('*'), function (el) {
+          var aDuTexte = Array.prototype.some.call(el.childNodes, function (n) { return n.nodeType === 3 && n.nodeValue.trim(); });
+          if (!aDuTexte) return;
+          var r = el.getBoundingClientRect();
+          if (r.width && r.right > bord + 1) rognes.push({ p: i + 1, t: (el.innerText || el.textContent).replace(/\s+/g, ' ').trim().slice(0, 40) });
+        });
+      });
+      if (rognes.length) {
+        deborde++;
+        erreur('Un texte est coupé au bord droit, page ' + rognes[0].p + ' (' + rognes[0].t + '…)'
+          + (rognes.length > 1 ? ' et ' + (rognes.length - 1) + ' autre' + (rognes.length > 2 ? 's' : '') : '')
+          + ' : réduisez la taille du bloc.');
+      }
       if (!deborde) ok('Aucun texte hors page');
       var vides = Array.prototype.filter.call(doc.querySelectorAll('[data-edit]'), function (e) {
         return !e.closest('tr') && !e.textContent.trim() && !/^fixes\./.test(e.getAttribute('data-edit'));
